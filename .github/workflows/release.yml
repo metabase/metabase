@@ -11,26 +11,40 @@ on:
       commit:
         description: 'A full-length commit SHA-1 hash'
         required: true
-      skip-docker:
-        description: 'Skip Docker image publishing'
+      release-channel:
+        description: 'The release channel to publish to (optional)'
+        type: choice
+        options:
+          - none
+          - latest
+          - beta
+          - nightly
+        required: true
+        default: 'none'
+      auto:
+        description: 'auto-patch release DO NOT SET MANUALLY'
         type: boolean
         default: false
-      skip-s3:
-        description: 'Skip S3 artifact publishing'
-        type: boolean
-        default: false
-      skip-version-info:
-        description: 'Skip publishing version-info.json'
-        type: boolean
-        default: false
-      skip-tag:
-        description: 'Skip tagging the release'
-        type: boolean
-        default: false
-      skip-release-notes:
-        description: 'Skip publishing release notes'
-        type: boolean
-        default: false
+  workflow_call:
+    inputs:
+      version:
+        description: 'Metabase version (e.g. v0.46.3)'
+        type: string
+        required: true
+      commit:
+        description: 'A full-length commit SHA-1 hash'
+        type: string
+        required: true
+      release-channel:
+        description: 'The release channel to publish to (optional)'
+        type: string
+        # options:
+        #   - none
+        #   - latest
+        #   - beta
+        #   - nightly
+        required: true
+        default: 'none'
       auto:
         description: 'auto-patch release DO NOT SET MANUALLY'
         type: boolean
@@ -185,6 +199,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: metabase-${{ matrix.edition }}-uberjar
+        overwrite: true
         path: |
           ./metabase.jar
           ./COMMIT-ID
@@ -192,7 +207,6 @@ jobs:
           ./version.properties
 
   upload-to-s3:
-    if: ${{ inputs.skip-s3 != true }}
     runs-on: ubuntu-22.04
     needs: download-uberjar
     timeout-minutes: 15
@@ -230,38 +244,10 @@ jobs:
 
           console.log("The download path for this", edition, "edition is", version_path);
           return version_path;
-    - name: Determine if this is a latest version
-      uses: actions/github-script@v7
-      id: latest_path
-      with:
-        result-encoding: string
-        script: | # js
-          const { isLatestRelease, getCanonicalVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
-
-          const version = '${{ inputs.version }}';
-          const edition = '${{ matrix.edition }}';
-
-          const canonical_version = getCanonicalVersion(version, edition);
-
-          const isLatest = await isLatestRelease({
-            github,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            version: canonical_version,
-          });
-
-          console.log("Latest version?", isLatest);
-
-          if (isLatest) {
-            return edition === 'ee' ? 'enterprise/latest' : 'latest';
-          }
-          return "false";
 
     - name: Upload to S3
       run: aws s3 cp ./metabase.jar s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.version_path.outputs.result }}/metabase.jar
-    - name: Upload to s3 latest path
-      if: ${{ !inputs.auto && steps.latest_path.outputs.result != 'false' }}
-      run: aws s3 cp ./metabase.jar s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.latest_path.outputs.result }}/metabase.jar
+
     - name: Create cloudfront invalidation
       run: |
         aws cloudfront create-invalidation \
@@ -270,7 +256,6 @@ jobs:
 
 
   verify-s3-download:
-    if: ${{ inputs.skip-s3 != true }}
     runs-on: ubuntu-22.04
     needs: upload-to-s3
     timeout-minutes: 15
@@ -287,7 +272,7 @@ jobs:
       id: version_path
       with:
         result-encoding: string
-        script: |
+        script: | # js
           const version = '${{ inputs.version }}';
           const edition = '${{ matrix.edition }}';
 
@@ -304,7 +289,6 @@ jobs:
       run: grep -q $(sha256sum ./metabase-downloaded.jar) SHA256.sum && echo "checksums match" || exit 1
 
   containerize:
-    if: ${{ inputs.skip-docker != true }}
     runs-on: ubuntu-22.04
     needs: [check-version, download-uberjar]
     timeout-minutes: 15
@@ -319,6 +303,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
+        # checkout the commit that was tagged so we get the right dockerfile
+        ref: ${{ inputs.commit }}
         fetch-depth: 0  # IMPORTANT! to get all the tags
     - name: prepare release scripts
       run: cd release && yarn && yarn build
@@ -338,23 +324,6 @@ jobs:
           console.log("The canonical version of this Metabase", edition, "edition is", canonical_version);
 
           return canonical_version;
-    - name: Check if the container image should be tagged as latest
-      uses: actions/github-script@v7
-      id: latest_version_check
-      with:
-        result-encoding: string
-        script: |
-          const { execSync } = require("child_process");
-          const { isLatestVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
-
-          const currentTag = '${{ inputs.version }}';
-          const allTags = execSync("git tag -l").toString("utf-8").split("\n");
-
-          const isLatest = isLatestVersion(currentTag, allTags);
-
-          console.log("Latest version?", isLatest);
-
-          return isLatest ? "latest" : "not-latest";
     - uses: actions/download-artifact@v4
       name: Retrieve previously downloaded Uberjar
       with:
@@ -405,16 +374,7 @@ jobs:
         docker push ${{ env.DOCKERHUB_REPO }}:${{ steps.canonical_version.outputs.result }}
         echo "Finished!"
 
-    - name: Tag the container image as latest
-      if: ${{ !inputs.auto && steps.latest_version_check.outputs.result == 'latest' }}
-      run: |
-        echo "Pushing ${{ env.DOCKERHUB_REPO }}:latest ..."
-        docker tag localhost:5000/local-metabase:${{ steps.canonical_version.outputs.result }} ${{ env.DOCKERHUB_REPO }}:latest
-        docker push ${{ env.DOCKERHUB_REPO }}:latest
-        echo "Finished!"
-
   verify-docker-pull:
-    if: ${{ inputs.skip-docker != true }}
     runs-on: ubuntu-22.04
     needs: containerize
     timeout-minutes: 15
@@ -463,7 +423,6 @@ jobs:
       timeout-minutes: 3
 
   push-tags:
-    if: ${{ inputs.skip-tag != true }}
     permissions: write-all
     needs: [verify-s3-download, verify-docker-pull, check-version]
     runs-on: ubuntu-22.04
@@ -514,7 +473,7 @@ jobs:
         $GITHUB_WORKSPACE/release/reorder-tags.sh ${{ needs.check-version.outputs.ee }} ${{ inputs.commit }}
 
   trigger-docs-update:
-    if: ${{ !inputs.auto && inputs.skip-release-notes != true }}
+    if: ${{ !inputs.auto }}
     needs:
       - push-tags
       - check-version
@@ -586,6 +545,7 @@ jobs:
             --assignee "jeff-bruemmer"
 
   trigger-cloud-issues:
+    if: ${{ !inputs.auto }}
     needs: push-tags
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -624,12 +584,12 @@ jobs:
               event_type: 'update-ee-extra-build',
               client_payload: {
                 version: enterpriseVersion,
-                auto: '${{ inputs.auto }}',
+                auto: 'true', // always auto-merge
               }
             });
 
   draft-release-notes:
-    if: ${{ !inputs.auto && inputs.skip-release-notes != true }}
+    if: ${{ !inputs.auto }}
     needs: push-tags
     runs-on: ubuntu-22.04
     timeout-minutes: 15
@@ -681,7 +641,6 @@ jobs:
             });
 
   publish-version-info:
-    if: ${{ !inputs.auto && inputs.skip-version-info != true }}
     runs-on: ubuntu-22.04
     needs: [push-tags, check-version]
     timeout-minutes: 15
@@ -692,6 +651,11 @@ jobs:
       AWS_S3_STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
       AWS_REGION: ${{ vars.AWS_REGION }}
     steps:
+    - name: Finish early
+      if: ${{ inputs.auto }}
+      run: |
+        echo "skipping version info update for nightly patch"
+        exit 0
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -703,12 +667,12 @@ jobs:
         sparse-checkout: release
     - name: Prepare build scripts
       run: cd ${{ github.workspace }}/release && yarn && yarn build
-    - name: Publish release notes
+    - name: Publish version info
       uses: actions/github-script@v7
       id: new_version_info
       with:
         result-encoding: string
-        script: |
+        script: | # js
           const { getVersionInfo } = require('${{ github.workspace }}/release/dist/index.cjs');
           const fs = require('fs');
 
@@ -739,10 +703,20 @@ jobs:
         --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
         --paths "/version-info.json" "/version-info-ee.json"
 
+  set-release-channel:
+    needs: publish-version-info
+    uses: ./.github/workflows/release-tag.yml
+    secrets: inherit
+    with:
+      version: ${{ inputs.version }}
+      tag_name: ${{ inputs.release-channel }}
+      tag_rollout: 100
+      tag_ee: true
+      tag_oss: true
+
   publish-complete-message:
-    if: ${{ !inputs.auto }}
     runs-on: ubuntu-22.04
-    needs: [draft-release-notes, verify-docker-pull, verify-s3-download, publish-version-info]
+    needs: set-release-channel
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -759,34 +733,7 @@ jobs:
           script: | # js
             const { sendPublishCompleteMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            await sendPublishCompleteMessage({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              version: '${{ inputs.version }}',
-              runId: '${{ github.run_id }}',
-              channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
-              generalChannelName: 'general',
-            }).catch(console.error);
-
-  auto-publish-complete-message:
-    if: ${{ inputs.auto }}
-    runs-on: ubuntu-22.04
-    needs: [push-tags, verify-docker-pull, verify-s3-download]
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: release
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
-      - name: Send auto publish complete message
-        uses: actions/github-script@v7
-        env:
-          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        with:
-          script: | # js
-            const { sendPublishCompleteMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const isAutoRelease = '${{ inputs.auto }}' === 'true';
 
             await sendPublishCompleteMessage({
               owner: context.repo.owner,
@@ -794,7 +741,7 @@ jobs:
               version: '${{ inputs.version }}',
               runId: '${{ github.run_id }}',
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
-              generalChannelName: '',
+              generalChannelName: !isAutoRelease ? '${{ vars.SLACK_GENERAL_CHANNEL }}' : '',
             }).catch(console.error);
 
   manage-milestones:
@@ -813,12 +760,12 @@ jobs:
       uses: actions/github-script@v7
       with:
         script: | # js
-          const { closeMilestone, openNextMilestones, isRCVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const { closeMilestone, openNextMilestones, isPreReleaseVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
 
           const version = '${{ inputs.version }}';
 
-          if (isRCVersion(version)) {
-            console.log("This is a release candidate, skipping milestone management");
+          if (isPreReleaseVersion(version)) {
+            console.log("This is a prerelease version, skipping milestone management");
             return;
           }
 

@@ -40,7 +40,7 @@ You can set the following types of permissions on a database, schema, or table:
 
 {% include plans-blockquote.html feature="View data permissions" %}
 
-The **View data** permission determines what data people can see.
+The **View data** permission determines what data people can see when viewing questions, dashboards, models, and metrics. View data permissions also determine whether a group can view the models and metrics browsers in the sidebar. To [browse databases](../exploration-and-organization/exploration.md#browse-your-databases), a group will also need [Create queries](#create-queries-permissions) permissions for the relevant data.
 
 Permission levels include:
 
@@ -54,18 +54,18 @@ View data permission settings apply to different levels in your database:
 
 | View data permission | Database | Schema | Table |
 | -------------------- | -------- | ------ | ----- |
-| Can view             | ✅        | ✅      | ✅     |
-| Granular*             | ✅        | ✅      | ❌     |
-| Sandboxed            | ❌        | ❌      | ✅     |
-| Impersonated         | ✅        | ❌      | ❌     |
-| Blocked              | ✅        | ✅      | ✅     |
+| Can view             | ✅       | ✅     | ✅    |
+| Granular\*           | ✅       | ✅     | ❌    |
+| Sandboxed            | ❌       | ❌     | ✅    |
+| Impersonated         | ✅       | ❌     | ❌    |
+| Blocked              | ✅       | ✅     | ✅    |
 
-
-* The "Granular" setting is not itself a type of permission; it just signals that permissions are set at a level below the current level. For example, you can select "Granular" at a schema level to set permissions per table for tables in that schema.
+\* The "Granular" setting is not itself a type of permission; it just signals that permissions are set at a level below the current level. For example, you can select "Granular" at a schema level to set permissions per table for tables in that schema.
 
 In the free, open-source version of Metabase, the **View data** setting defaults to "Can view". Since the setting's options aren't available in the OSS version, Metabase will only display this **View data** setting in the Pro/Enterprise version.
 
-For which questions, models, and dashboards a group can view, instead see [collection permissions](collections.md).
+For _which_ questions, models, and dashboards a group can view, instead see [collection permissions](collections.md).
+\_
 
 ### Can view data permission
 
@@ -73,7 +73,7 @@ For which questions, models, and dashboards a group can view, instead see [colle
 
 Setting to **Can view** means the group can view all the data for the data source, provided they have [collection permissions](./collections.md) to view questions, models, and dashboards.
 
-In order to view the data in the [Browse databases](../exploration-and-organization/exploration.md#browse-your-data) section, the group would additionally need to be able to [Create queries](#create-queries-permissions).
+In order to view the data in the [Browse databases](../exploration-and-organization/exploration.md#browse-your-databases) section, the group would additionally need to be able to [Create queries](#create-queries-permissions).
 
 ### Granular view data permission
 
@@ -113,7 +113,7 @@ If a person in a Blocked group belongs to _another_ group that has its View data
 
 ## Create queries permissions
 
-Specifies whether people can create new questions based on the data source. Creating queries includes the ability to drill-through and filter questions, or anything that involves changing the results.
+Specifies whether a group can create new questions based on the data source. Creating queries includes the ability to drill-through and filter questions, or anything that involves changing the results. This permission also determines whether a group will get access to the [database browser](../exploration-and-organization/exploration.md#browse-your-databases) to explore that data source.
 
 To enable Create queries permissions for a group, that group must be able to view the data source ("Can view" permission.)
 
@@ -178,7 +178,7 @@ See [Upload permissions](../databases/uploads.md#add-people-to-a-group-with-data
 
 - [Permissions introduction](./introduction.md)
 - [Impersonation](./impersonation.md)
-- [Learn permissions](https://www.metabase.com/learn/permissions)
+- [Learn permissions](https://www.metabase.com/learn/metabase-basics/administration/permissions)
 - [Troubleshooting permissions](../troubleshooting-guide/permissions.md)
 - [Data sandboxing: setting row-level permissions][sandbox-rows]
 - [Advanced data sandboxing: limiting access to columns][sandbox-columns]
@@ -188,6 +188,6 @@ See [Upload permissions](../databases/uploads.md#add-people-to-a-group-with-data
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
 [data-sandboxing]: ./data-sandboxes.md
 [permissions-overview]: ./introduction.md
-[sandbox-columns]: https://www.metabase.com/learn/permissions/data-sandboxing-column-permissions.html
-[sandbox-rows]: https://www.metabase.com/learn/permissions/data-sandboxing-row-permissions.html
+[sandbox-columns]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions.html
+[sandbox-rows]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions.html
 [sql-snippet-folders]: ../questions/native-editor/sql-snippets.md

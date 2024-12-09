@@ -27,12 +27,13 @@
         (is (mc/validate :mbql.clause/* expr))
         (is (mc/validate ::expression/integer expr))))
     (testing "Multiplication with one or more non-integer args should NOT be considered to be an integer expression."
-      (let [expr [:* {:lib/uuid (str (random-uuid))} venues-price 2.1]]
-        (is (= :type/Float
-               (expression/type-of expr)))
-        (is (mc/validate :mbql.clause/* expr))
-        (is (not (mc/validate ::expression/integer expr)))
-        (is (mc/validate ::expression/number expr))))))
+      (binding [expression/*suppress-expression-type-check?* false]
+        (let [expr [:* {:lib/uuid (str (random-uuid))} venues-price 2.1]]
+          (is (= :type/Float
+                 (expression/type-of expr)))
+          (is (mc/validate :mbql.clause/* expr))
+          (is (not (mc/validate ::expression/integer expr)))
+          (is (mc/validate ::expression/number expr)))))))
 
 (deftest ^:parallel power-type-of-test
   (testing "Make sure we can calculate type of a `:power` clause (#29944)"

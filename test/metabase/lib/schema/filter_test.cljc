@@ -81,20 +81,22 @@
       (doseq [filter-clause (rest filter-expr)
               :let          [filter-clause (ensure-uuids filter-clause)]]
         (testing (pr-str filter-clause)
-          (is (= (expression/type-of filter-clause) :type/Boolean))
+          (is (= :type/Boolean
+                 (expression/type-of filter-clause)))
           (is (not (me/humanize (mc/explain ::expression/boolean filter-clause))))))
       ;; now test the entire thing
       (is (mc/validate ::expression/boolean (ensure-uuids filter-expr))))))
 
 (deftest ^:parallel invalid-filter-test
-  (testing "invalid filters"
-    (are [clause] (mc/explain
-                   ::expression/boolean
-                   (ensure-uuids clause))
-      ;; xor doesn't exist
-      [:xor 13 [:field 1 {:lib/uuid (str (random-uuid))}]]
-      ;; 1 is not a valid <string> arg
-      [:contains "abc" 1])))
+  (binding [expression/*suppress-expression-type-check?* false]
+    (testing "invalid filters"
+      (are [clause] (mc/explain
+                     ::expression/boolean
+                     (ensure-uuids clause))
+        ;; xor doesn't exist
+        [:xor 13 [:field 1 {:lib/uuid (str (random-uuid))}]]
+        ;; 1 is not a valid <string> arg
+        [:contains "abc" 1]))))
 
 (deftest ^:parallel mongo-types-test
   (testing ":type/MongoBSONID"

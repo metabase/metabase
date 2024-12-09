@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { AdminLayout } from "metabase/components/AdminLayout";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
+import { PLUGIN_ADMIN_TROUBLESHOOTING } from "metabase/plugins";
 
 export default class TroubleshootingApp extends Component {
   static propTypes = {
@@ -17,6 +18,7 @@ export default class TroubleshootingApp extends Component {
       <AdminLayout
         sidebar={
           <LeftNavPane>
+            {PLUGIN_ADMIN_TROUBLESHOOTING.GET_EXTRA_NAV()}
             <LeftNavPaneItem
               name={t`Help`}
               path="/admin/troubleshooting/help"

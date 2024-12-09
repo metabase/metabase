@@ -1,4 +1,3 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCurrentUserEndpoint,
   setupPropertiesEndpoints,
@@ -26,7 +25,7 @@ import { createMockState } from "metabase-types/store/mocks";
 export const setupSdkState = ({
   currentUser = createMockUser(),
   settingValues = createMockSettings(),
-  tokenFeatures = createMockTokenFeatures(),
+  tokenFeatures = createMockTokenFeatures({ embedding_sdk: true }),
   settingDefinitions = [],
   sdkState = createMockSdkState({
     loginStatus: createMockLoginStatusState({ status: "success" }),
@@ -38,13 +37,12 @@ export const setupSdkState = ({
   tokenFeatures?: TokenFeatures;
   settingDefinitions?: SettingDefinition[];
   sdkState?: SdkState;
-} & Partial<SdkStoreState>) => {
+} & Partial<SdkStoreState> = {}) => {
   const settingValuesWithToken = {
     ...settingValues,
     "token-features": tokenFeatures,
   };
 
-  setupEnterprisePlugins();
   setupCurrentUserEndpoint(currentUser);
   setupSettingsEndpoints(settingDefinitions);
   setupPropertiesEndpoints(settingValuesWithToken);

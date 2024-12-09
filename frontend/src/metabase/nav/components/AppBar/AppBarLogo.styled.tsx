@@ -1,9 +1,12 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
+import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 import Link from "metabase/core/components/Link";
 
-export const LogoLink = styled(Link)<{ isSmallAppBar: boolean }>`
+export const LogoLink = styled(Link, doNotForwardProps("isSmallAppBar"))<{
+  isSmallAppBar: boolean;
+}>`
   cursor: pointer;
   display: flex;
   align-items: center;

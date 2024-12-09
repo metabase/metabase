@@ -1,32 +1,41 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
-import Alert from "./Alert";
+import Alert, { type AlertProps } from "./Alert";
 
 export default {
   title: "Core/Alert",
   component: Alert,
 };
 
-const Template: ComponentStory<typeof Alert> = args => {
+const Template: StoryFn<AlertProps> = args => {
   return <Alert {...args} />;
 };
 
-export const Default = Template.bind({});
-Default.args = {
-  children: "Info alert",
-  icon: "info",
+export const Default = {
+  render: Template,
+
+  args: {
+    children: "Info alert",
+    icon: "info",
+  },
 };
 
-export const Warning = Template.bind({});
-Warning.args = {
-  children: "Warning alert",
-  variant: "warning",
-  icon: "warning",
+export const Warning = {
+  render: Template,
+
+  args: {
+    children: "Warning alert",
+    variant: "warning",
+    icon: "warning",
+  },
 };
 
-export const Error = Template.bind({});
-Error.args = {
-  children: "Error alert",
-  variant: "error",
-  icon: "warning",
+export const Error = {
+  render: Template,
+
+  args: {
+    children: "Error alert",
+    variant: "error",
+    icon: "warning",
+  },
 };

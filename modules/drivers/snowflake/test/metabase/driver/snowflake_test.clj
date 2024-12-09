@@ -1,10 +1,11 @@
-(ns metabase.driver.snowflake-test
+(ns ^:mb/driver-tests metabase.driver.snowflake-test
   (:require
    [clojure.data.json :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.snowflake :as driver.snowflake]
@@ -189,6 +190,18 @@
        nil
        (fn [^java.sql.Connection conn]
          (is (sql-jdbc.sync/have-select-privilege? :snowflake conn "PUBLIC" "venues")))))))
+
+(deftest ^:parallel can-set-schema-in-additional-options
+  (mt/test-driver :snowflake
+    (qp.store/with-metadata-provider (mt/id)
+      (let [schema "INFORMATION_SCHEMA"
+            details (-> (mt/db)
+                        (assoc-in [:details :quote-db-name] true)
+                        (assoc-in [:details :additional-options] (format "schema=%s" schema))
+                        :details)]
+        (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [:snowflake details]]
+          (is (= [{:s schema}] (jdbc/query spec ["select CURRENT_SCHEMA() s"])))
+          (is (= 1 (count (jdbc/query spec ["select * from \"TABLES\" limit 1"])))))))))
 
 (deftest describe-database-test
   (mt/test-driver :snowflake
@@ -811,3 +824,113 @@
           (mt/with-native-query-testing-context query
             (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 "Red"]]
                    (mt/rows (qp/process-query query))))))))))
+
+;;;;
+;;;; GOOD DATETIMES IN BELIZE
+;;;; Testing Snowflake timestamp types in relative date time filter.
+;;;; (In Belize they know no DST anymore.)
+;;;;
+
+(def ^:private belize-offset (t/zone-offset "-06:00"))
+
+(defn- rows-for-good-datetimes-in-belize
+  []
+  (let [number-of-points (* 4 3)
+        today-dt (t/truncate-to (t/offset-date-time belize-offset) :days)
+        first-dt-point (t/- today-dt (t/days 2))
+        dt-points (for [i (range number-of-points)]
+                    (t/+ first-dt-point (t/hours (* 6 i))))
+        various-offset-strs ["-10:00" "-04:00" "+02:00" "+09:00"]]
+    (mapv (fn [today-dt offset-str]
+            (vector (t/with-offset-same-instant today-dt (t/zone-offset "Z"))
+                    (t/with-offset-same-instant today-dt (t/zone-offset offset-str))
+                    (t/local-date-time today-dt)
+                    ;;;; Shift local date time for belize offset so timestamp_ltz has same instant as rest!
+                    ;;   Even though later in the test the user with America/Belize timezone does the data loading,
+                    ;;   the timestamps have to be adjusted.
+                    ;;   I believe that it is because of either (1) us hardcoding the :timestamp connection property
+                    ;;   to UTC (see the `connection-details->spec :snowflake`) or (2) the fact that the JVM timezone
+                    ;;   is set to UTC.
+                    (t/+ (t/local-date-time today-dt) (t/hours 6))))
+          dt-points
+          (cycle various-offset-strs))))
+
+;; BEWARE: No cleanup is done atm. It is expected that every CI run creates its own instance of this database.
+(mt/defdataset good-datetimes-in-belize
+  [["GOOD_DATETIMES" [{:field-name "IN_Z_OFFSET"
+                       :base-type {:native "timestamptz"}}
+                      {:field-name "IN_VARIOUS_OFFSETS"
+                       :base-type {:native "timestamptz"}}
+                      {:field-name "JUST_NTZ"
+                       :base-type {:native "timestampntz"}}
+                      {:field-name "JUST_LTZ"
+                       :base-type {:native "timestampltz"}}]
+    (rows-for-good-datetimes-in-belize)]])
+
+;; The test needs user with no report timezone set and database timezone other than UTC. That's the reason for redefs
+;; prior to dataset generation.
+(deftest ^:synchronized correct-timestamp-type-querying-test
+  (mt/test-driver
+    :snowflake
+    (let [original-set-current-user-timezone! @#'test.data.snowflake/set-current-user-timezone!
+          original-dbdef->connection-details (get-method tx/dbdef->connection-details :snowflake)]
+      (with-redefs [test.data.snowflake/set-current-user-timezone!
+                    (fn [_timezone]
+                      (original-set-current-user-timezone! "America/Belize"))
+                    tx/dbdef->connection-details
+                    (fn [driver connection-type database-definition]
+                      (-> (original-dbdef->connection-details driver connection-type database-definition)
+                          (assoc :user "BELIZE_PERSON")))]
+        (mt/with-temporary-setting-values [report-timezone "America/Belize"]
+          (mt/dataset
+            good-datetimes-in-belize
+            (testing "Expected data is returned using yesterday filter"
+              (let [yesterday-first     (t/- (t/truncate-to (t/offset-date-time belize-offset) :days) (t/days 1))
+                    yesterday-last      (t/+ yesterday-first (t/hours 18))
+                    yesterday-first-str (t/format :iso-offset-date-time yesterday-first)
+                    yesterday-last-str  (t/format :iso-offset-date-time yesterday-last)]
+                (doseq [[tested-field-kw base-type database-type]
+                        [[:IN_Z_OFFSET        :type/DateTimeWithLocalTZ "timestamptz"]
+                         [:IN_VARIOUS_OFFSETS :type/DateTimeWithLocalTZ "timestamptz"]
+                         [:JUST_NTZ           :type/DateTime            "timestampntz"]
+                         [:JUST_LTZ           :type/DateTimeWithTZ      "timestampltz"]]
+                        :let [tested-field [:field (mt/id :GOOD_DATETIMES tested-field-kw) {:base-type base-type}]]]
+                  (testing (str "on column type " database-type)
+                    (let [rows (mt/rows (qp/process-query
+                                         {:database (mt/id)
+                                          :type     :query
+                                          :query {:source-table (mt/id :GOOD_DATETIMES)
+                                                  :fields [tested-field]
+                                                  :filter [:time-interval tested-field -1 :day]
+                                                  :order-by [[tested-field :asc]]}}))]
+                      (testing "Correct rows count returned"
+                        (is (= 4 (count rows))))
+                      (testing "First row has expected values"
+                        (is (= yesterday-first-str
+                               (ffirst rows))))
+                      (testing "Last row has expected values"
+                        (is (= yesterday-last-str
+                               (ffirst (reverse rows)))))))
+
+                  (testing "Rows should be properly allocated to days"
+                    (let [tested-day (assoc-in tested-field [2 :temporal-unit] :day)
+                          tested-minute (assoc-in tested-field [2 :temporal-unit] :minute)]
+                      (is (=? [[string? 4] [string? 4] [string? 4]]
+                              (mt/rows
+                               (qp/process-query
+                                {:database (mt/id)
+                                 :type :query
+                                 :query {:source-table (mt/id :GOOD_DATETIMES)
+                                         :aggregation [[:count]]
+                                         :breakout [tested-day]}}))))
+                      (is (= [[yesterday-first-str 4 yesterday-first-str yesterday-last-str]]
+                             (mt/rows
+                              (qp/process-query
+                               {:database (mt/id)
+                                :type :query
+                                :query {:source-table (mt/id :GOOD_DATETIMES)
+                                        :aggregation [[:count]
+                                                      [:min tested-minute]
+                                                      [:max tested-minute]]
+                                        :breakout [tested-day]
+                                        :filter [:= tested-field (t/format :iso-local-date yesterday-last)]}})))))))))))))))

@@ -212,6 +212,7 @@
 (derive ::upload-event ::event)
 (derive :event/upload-create ::upload-event)
 (derive :event/upload-append ::upload-event)
+(derive :event/upload-replace ::upload-event)
 
 (methodical/defmethod events/publish-event! ::upload-event
   [topic event]
@@ -221,5 +222,13 @@
 (derive :event/cache-config-update ::cache-config-changed-event)
 
 (methodical/defmethod events/publish-event! ::cache-config-changed-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+(derive ::channel-event ::event)
+(derive :event/channel-create ::channel-event)
+(derive :event/channel-update ::channel-event)
+
+(methodical/defmethod events/publish-event! ::channel-event
   [topic event]
   (audit-log/record-event! topic event))

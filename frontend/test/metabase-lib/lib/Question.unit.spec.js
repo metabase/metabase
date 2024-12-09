@@ -272,12 +272,15 @@ describe("Question", () => {
       it("has an id", () => {
         expect(orders_raw_question.id()).toBe(orders_raw_card.id);
       });
+
       it("has a name", () => {
         expect(orders_raw_question.displayName()).toBe(orders_raw_card.name);
       });
+
       it("is runnable", () => {
         expect(orders_raw_question.canRun()).toBe(true);
       });
+
       it("has correct display settings", () => {
         expect(orders_raw_question.display()).toBe("table");
       });
@@ -311,18 +314,22 @@ describe("Question", () => {
         expect(orders_raw_question.canRun()).toBe(true);
       });
     });
+
     describe("canWrite()", () => {
       it("You should be able to write to a question you have permissions to", () => {
         expect(orders_raw_question.canWrite()).toBe(true);
       });
+
       it("You should not be able to write to a question you don't have permissions to", () => {
         expect(orders_count_by_id_question.canWrite()).toBe(false);
       });
     });
+
     describe("isSaved()", () => {
       it("A newly created query doesn't have an id and shouldn't be marked as isSaved()", () => {
         expect(base_question.isSaved()).toBe(false);
       });
+
       it("A saved question does have an id and should be marked as isSaved()", () => {
         expect(orders_raw_question.isSaved()).toBe(true);
       });
@@ -338,6 +345,7 @@ describe("Question", () => {
         });
         expect(query instanceof StructuredQuery).toBe(true);
       });
+
       it("returns a correct class instance for native query", () => {
         const query = native_orders_count_question.legacyQuery({
           useStructuredQuery: true,
@@ -345,6 +353,7 @@ describe("Question", () => {
         expect(query instanceof NativeQuery).toBe(true);
       });
     });
+
     describe("setQuery(query)", () => {
       it("updates the dataset_query of card", () => {
         const rawQuery = native_orders_count_question.legacyQuery({
@@ -357,6 +366,7 @@ describe("Question", () => {
         ).toBe(true);
       });
     });
+
     describe("setDatasetQuery(datasetQuery)", () => {
       it("updates the dataset_query of card", () => {
         const rawQuestion = orders_raw_question.setDatasetQuery(
@@ -379,6 +389,7 @@ describe("Question", () => {
         expect(newQuestion.id()).toBeUndefined();
         expect(newQuestion.displayName()).toBeUndefined();
       });
+
       it("does not change the original", () => {
         expect(orders_raw_question.id()).toBeDefined();
         expect(orders_raw_question.displayName()).toBeDefined();
@@ -395,6 +406,7 @@ describe("Question", () => {
         expect(tableQuestion.display()).toBe("table");
       });
     });
+
     describe("setDisplay(display)", () => {
       it("sets the card's visualization type", () => {
         // Not sure I'm a huge fan of magic strings here.
@@ -403,6 +415,7 @@ describe("Question", () => {
         expect(orders_raw_question.display()).not.toBe("scalar");
       });
     });
+
     describe("setDefaultDisplay", () => {
       it("sets display to 'scalar' for order count", () => {
         const question = orders_count_question.setDefaultDisplay();
@@ -555,6 +568,7 @@ describe("Question", () => {
         const newQuestion = orders_raw_question.withoutNameAndId();
         expect(newQuestion.isDirtyComparedTo(orders_raw_question)).toBe(true);
       });
+
       it("Changing vis settings makes the question dirty", () => {
         const underlyingDataQuestion = orders_count_question.setSettings({
           "table.pivot": false,
@@ -580,6 +594,7 @@ describe("Question", () => {
         );
         expect(ML_Urls.getUrl(question)).toBe("/question/1-raw-orders-data");
       });
+
       it("returns a URL with hash for an unsaved question", () => {
         const question = new Question(dissoc(orders_raw_card, "id"), metadata);
         expect(ML_Urls.getUrl(question)).toBe(adhocUrl);
@@ -759,9 +774,11 @@ describe("Question", () => {
 
   describe("Question.prototype.convertParametersToMbql", () => {
     it("should do nothing to a native question", () => {
-      expect(native_orders_count_question._convertParametersToMbql()).toBe(
-        native_orders_count_question,
-      );
+      expect(
+        native_orders_count_question._convertParametersToMbql({
+          isComposed: false,
+        }),
+      ).toBe(native_orders_count_question);
     });
 
     it("should convert a question with parameters into a new question with filters", () => {
@@ -786,7 +803,9 @@ describe("Question", () => {
           foo_id: "abc",
         });
 
-      const questionWithFilters = question._convertParametersToMbql();
+      const questionWithFilters = question._convertParametersToMbql({
+        isComposed: false,
+      });
 
       expect(questionWithFilters.datasetQuery().query.filter).toEqual([
         "starts-with",
@@ -851,6 +870,7 @@ describe("Question", () => {
 
     describe("with structured card", () => {
       const question = new Question(card, metadata);
+      const originalQuestion = question;
 
       it("should return question URL with no parameters", () => {
         const parameters = [];
@@ -858,6 +878,7 @@ describe("Question", () => {
 
         const url = ML_Urls.getUrlWithParameters(
           question,
+          originalQuestion,
           parameters,
           parameterValues,
         );
@@ -870,9 +891,14 @@ describe("Question", () => {
       });
 
       it("should return question URL with string MBQL filter added", () => {
-        const url = ML_Urls.getUrlWithParameters(question, parameters, {
-          1: "bar",
-        });
+        const url = ML_Urls.getUrlWithParameters(
+          question,
+          originalQuestion,
+          parameters,
+          {
+            1: "bar",
+          },
+        );
 
         const deserializedCard = {
           ...assocIn(
@@ -891,9 +917,14 @@ describe("Question", () => {
       });
 
       it("should return question URL with number MBQL filter added", () => {
-        const url = ML_Urls.getUrlWithParameters(question, parameters, {
-          5: 123,
-        });
+        const url = ML_Urls.getUrlWithParameters(
+          question,
+          originalQuestion,
+          parameters,
+          {
+            5: 123,
+          },
+        );
 
         expect(parseUrl(url)).toEqual({
           pathname: "/question",
@@ -910,9 +941,14 @@ describe("Question", () => {
       });
 
       it("should return question URL with date MBQL filter added", () => {
-        const url = ML_Urls.getUrlWithParameters(question, parameters, {
-          3: "2017-05",
-        });
+        const url = ML_Urls.getUrlWithParameters(
+          question,
+          originalQuestion,
+          parameters,
+          {
+            3: "2017-05",
+          },
+        );
 
         expect(parseUrl(url)).toEqual({
           pathname: "/question",
@@ -940,6 +976,7 @@ describe("Question", () => {
         const OBJECT_ID = "5";
         const url = ML_Urls.getUrlWithParameters(
           question,
+          originalQuestion,
           parameters,
           { 1: "bar" },
           { objectId: OBJECT_ID },
@@ -955,11 +992,17 @@ describe("Question", () => {
 
     describe("with structured question & no permissions", () => {
       const question = new Question(card);
+      const originalQuestion = question;
 
       it("should return a card with attached parameters and parameter values as query params", () => {
-        const url = ML_Urls.getUrlWithParameters(question, parameters, {
-          1: "bar",
-        });
+        const url = ML_Urls.getUrlWithParameters(
+          question,
+          originalQuestion,
+          parameters,
+          {
+            1: "bar",
+          },
+        );
 
         const deserializedCard = {
           ...card,
@@ -984,6 +1027,7 @@ describe("Question", () => {
       it("should not include objectId in a URL", () => {
         const url = ML_Urls.getUrlWithParameters(
           question,
+          originalQuestion,
           parameters,
           { 1: "bar" },
           { objectId: 5 },
@@ -1030,9 +1074,15 @@ describe("Question", () => {
       };
 
       const question = new Question(cardWithTextFilter, metadata);
+      const originalQuestion = question;
 
       it("should return question URL when there are no parameters", () => {
-        const url = ML_Urls.getUrlWithParameters(question, [], {});
+        const url = ML_Urls.getUrlWithParameters(
+          question,
+          originalQuestion,
+          [],
+          {},
+        );
         expect(parseUrl(url)).toEqual({
           pathname: "/question/1",
           query: {},
@@ -1043,6 +1093,7 @@ describe("Question", () => {
       it("should return question URL with query string parameter when there is a value for a parameter mapped to the question's variable", () => {
         const url = ML_Urls.getUrlWithParameters(
           question,
+          originalQuestion,
           parametersForNativeQ,
           {
             1: "bar",
@@ -1060,6 +1111,7 @@ describe("Question", () => {
         const question = new Question(cardWithFieldFilter, metadata);
         const url = ML_Urls.getUrlWithParameters(
           question,
+          originalQuestion,
           parametersForNativeQ,
           {
             5: "111",
@@ -1076,6 +1128,7 @@ describe("Question", () => {
       it("should not include objectId in a URL", () => {
         const url = ML_Urls.getUrlWithParameters(
           question,
+          originalQuestion,
           parametersForNativeQ,
           {
             1: "bar",

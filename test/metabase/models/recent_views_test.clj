@@ -99,6 +99,7 @@
              :name "name",
              :parent_collection {:id coll-id, :name "my coll", :authority_level nil}
              :id dash-id,
+             :moderated_status nil
              :timestamp String
              :model :dashboard}]
            (mt/with-test-user :rasta
@@ -163,6 +164,7 @@
                                                    :database {:id db-id, :name "test-data", :initial_sync_status "incomplete"},
                                                    :timestamp String,
                                                    :display_name "Name",
+                                                   :table_schema nil
                                                    :model :table}]]
                                      [true true [{:description nil,
                                                   :can_write true,
@@ -171,6 +173,7 @@
                                                   :id table-id,
                                                   :database {:id db-id, :name "test-data", :initial_sync_status "incomplete"},
                                                   :timestamp String,
+                                                  :table_schema nil
                                                   :display_name "Name",
                                                   :model :table}]]]]
       (with-redefs [mi/can-read? (constantly read?)
@@ -178,7 +181,16 @@
         (is (= expected
                (mapv fixup
                      (mt/with-test-user :rasta
-                       (recent-views (mt/user->id :rasta))))))))))
+                       (recent-views (mt/user->id :rasta)))))))))
+  (testing "non admins can see tables in recents (#47420)"
+    (mt/dataset test-data
+      (let [products-id (mt/id :products)]
+        (assert (-> (mt/fetch-user :rasta) :is_superuser not) "User is a super user")
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table products-id :view)
+        (let [views (mt/with-test-user :rasta
+                      (recent-views (mt/user->id :rasta)))]
+          (is (contains? (into #{} (map (juxt :id :display_name :model)) views)
+                         [products-id "Products" :table])))))))
 
 (deftest update-users-recent-views!-duplicates-test
   (testing "`update-users-recent-views!` prunes duplicates of a certain model.`"
@@ -215,6 +227,7 @@
                    :name "tablet",
                    :description nil,
                    :model :table,
+                   :table_schema nil
                    :display_name "I am the table",
                    :can_write true,
                    :database {:id db-id, :name "My DB", :initial_sync_status "incomplete"}}
@@ -230,6 +243,7 @@
                    :name "my dash",
                    :description "this is my dash",
                    :model :dashboard,
+                   :moderated_status nil
                    :can_write true,
                    :parent_collection {:id "ID", :name "parent", :authority_level nil}}
                   {:description nil,

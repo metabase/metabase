@@ -1,11 +1,11 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { openTable, popover, restore } from "e2e/support/helpers";
 
 const { PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("operators in questions", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
   });
 
@@ -70,12 +70,12 @@ describe("operators in questions", () => {
     it("text operators", () => {
       setup(PRODUCTS_ID);
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("Title").click();
-        cy.findByDisplayValue("Is").click();
+        cy.findByText("Is").click();
       });
 
-      cy.findByRole("listbox").within(() => {
+      cy.findByRole("menu").within(() => {
         expected.text.expected.map(e => cy.contains(e).should("exist"));
         expected.text.unexpected.map(e => cy.contains(e).should("not.exist"));
       });
@@ -84,12 +84,12 @@ describe("operators in questions", () => {
     it("number operators", () => {
       setup(PRODUCTS_ID);
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("Price").click();
-        cy.findByDisplayValue("Between").click();
+        cy.findByText("Between").click();
       });
 
-      cy.findByRole("listbox").within(() => {
+      cy.findByRole("menu").within(() => {
         expected.number.expected.map(e => cy.contains(e).should("exist"));
         expected.number.unexpected.map(e => cy.contains(e).should("not.exist"));
       });
@@ -98,13 +98,13 @@ describe("operators in questions", () => {
     it("relative date operators", () => {
       setup(PRODUCTS_ID);
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("Created At").click();
         cy.findByText("Relative dates…").click();
         cy.findByText("Previous").click();
       });
 
-      popover().within(() => {
+      H.popover().within(() => {
         expected.relativeDates.expected.map(e =>
           cy.contains(e).should("exist"),
         );
@@ -123,13 +123,13 @@ describe("operators in questions", () => {
     it("specific date operators", () => {
       setup(PRODUCTS_ID);
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("Created At").click();
         cy.findByText("Specific dates…").click();
         cy.findByText("Between").click();
       });
 
-      popover().within(() => {
+      H.popover().within(() => {
         expected.specificDates.expected.map(e =>
           cy.contains(e).should("exist"),
         );
@@ -148,12 +148,12 @@ describe("operators in questions", () => {
     it("exclude date operators", () => {
       setup(PRODUCTS_ID);
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("Created At").click();
         cy.findByText("Exclude…").click();
       });
 
-      popover().within(() => {
+      H.popover().within(() => {
         expected.excludeDates.expected.map(e => cy.contains(e).should("exist"));
         expected.relativeDates.expected.map(e =>
           cy.contains(e).should("not.exist"),
@@ -170,12 +170,12 @@ describe("operators in questions", () => {
     it("id operators", () => {
       setup(PRODUCTS_ID);
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("ID").click();
-        cy.findByDisplayValue("Is").click();
+        cy.findByText("Is").click();
       });
 
-      cy.findByRole("listbox").within(() => {
+      cy.findByRole("menu").within(() => {
         expected.id.expected.map(e => cy.contains(e).should("exist"));
         expected.id.unexpected.map(e => cy.contains(e).should("not.exist"));
       });
@@ -184,12 +184,12 @@ describe("operators in questions", () => {
     it("geo operators", () => {
       setup(PEOPLE_ID);
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("State").click({ force: true });
-        cy.findByDisplayValue("Is").click();
+        cy.findByText("Is").click();
       });
 
-      cy.findByRole("listbox").within(() => {
+      cy.findByRole("menu").within(() => {
         expected.geo.expected.map(e => cy.contains(e).should("exist"));
         expected.geo.unexpected.map(e => cy.contains(e).should("not.exist"));
       });
@@ -198,6 +198,6 @@ describe("operators in questions", () => {
 });
 
 function setup(tableId) {
-  openTable({ table: tableId, mode: "notebook" });
+  H.openTable({ table: tableId, mode: "notebook" });
   cy.findByRole("button", { name: "Filter" }).click();
 }

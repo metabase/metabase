@@ -1,4 +1,4 @@
-import type { FilterOperatorOption } from "metabase/querying/filters/utils";
+import type { FilterOperatorOption } from "metabase/querying/filters/utils/operators";
 
 type CoordinatePickerOperator =
   | "="

@@ -38,7 +38,7 @@ Adds a model to the list of recently selected items.
 
 ### PARAMS:
 
--  **`model`** enum of :card, :dataset, :dashboard, :table, :collection.
+-  **`model`** enum of :card, :dataset, :metric, :dashboard, :table, :collection.
 
 -  **`model_id`** value must be an integer greater than zero.
 

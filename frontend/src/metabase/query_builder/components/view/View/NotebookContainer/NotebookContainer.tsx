@@ -9,11 +9,12 @@ import {
   setNotebookNativePreviewSidebarWidth,
   setUIControls,
 } from "metabase/query_builder/actions";
-import Notebook, {
-  type NotebookProps,
-} from "metabase/query_builder/components/notebook/Notebook";
-import { NotebookNativePreview } from "metabase/query_builder/components/notebook/NotebookNativePreview";
 import { getUiControls } from "metabase/query_builder/selectors";
+import {
+  Notebook,
+  type NotebookProps,
+} from "metabase/querying/notebook/components/Notebook";
+import { NotebookNativePreview } from "metabase/querying/notebook/components/NotebookNativePreview";
 import { Box, Flex, rem } from "metabase/ui";
 
 // There must exist some transition time, no matter how short,
@@ -77,18 +78,21 @@ export const NotebookContainer = ({
   const Handle = forwardRef<
     HTMLDivElement,
     Partial<ResizableBoxProps> & {
-      onResize?: any; //Mantine and react-resizeable have different opinions on what onResize should be
+      onResize?: any; //Mantine and react-resizable have different opinions on what onResize should be
+      handleAxis?: string; // undocumented prop https://github.com/react-grid-layout/react-resizable/issues/175
     }
   >(function Handle(props, ref) {
     const handleWidth = 10;
     const borderWidth = 1;
     const left = rem(-((handleWidth + borderWidth) / 2));
 
+    const { handleAxis, ...rest } = props;
+
     return (
       <Box
         data-testid="notebook-native-preview-resize-handle"
         ref={ref}
-        {...props}
+        {...rest}
         pos="absolute"
         top={0}
         bottom={0}
@@ -123,7 +127,7 @@ export const NotebookContainer = ({
           style={{ flex: 1, overflowY: "auto" }}
         >
           <Notebook
-            question={question}
+            question={question.setType("question")}
             isDirty={isDirty}
             isRunnable={isRunnable}
             isResultDirty={isResultDirty}

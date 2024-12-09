@@ -14,7 +14,7 @@ import {
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
 
-import { getDataSourceParts } from "./utils";
+import { getDataSourceParts, getQuestionIcon } from "./utils";
 
 QuestionDataSource.propTypes = {
   question: PropTypes.object,
@@ -121,7 +121,7 @@ function SourceDatasetBreadcrumbs({ question, ...props }) {
         <HeadBreadcrumbs.Badge
           key="dataset-collection"
           to={Urls.collection(collection)}
-          icon={question.type() === "metric" ? "metric" : "model"}
+          icon={getQuestionIcon(question)}
           inactiveColor="text-light"
         >
           {collection?.name || t`Our analytics`}

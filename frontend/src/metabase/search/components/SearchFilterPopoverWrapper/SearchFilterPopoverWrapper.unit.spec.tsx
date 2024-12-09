@@ -22,6 +22,7 @@ const setup = ({ isLoading = false }: SetupProps = {}) => {
     onApply,
   };
 };
+
 describe("SearchFilterPopoverWrapper", () => {
   it("should render loading spinner when isLoading is true", () => {
     setup({ isLoading: true });

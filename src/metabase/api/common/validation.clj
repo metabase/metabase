@@ -20,7 +20,7 @@
 (defn check-embedding-enabled
   "Is embedding of Cards or Objects (secured access via `/api/embed` endpoints with a signed JWT enabled?"
   []
-  (api/check (embed.settings/enable-embedding)
+  (api/check (embed.settings/enable-embedding-static)
              [400 (tru "Embedding is not enabled.")]))
 
 (defn check-has-application-permission

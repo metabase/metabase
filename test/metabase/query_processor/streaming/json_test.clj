@@ -1,10 +1,10 @@
 (ns metabase.query-processor.streaming.json-test
   (:require
-   [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.query-processor :as qp]
    [metabase.query-processor.streaming :as qp.streaming]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.util.json :as json])
   (:import
    [java.io ByteArrayOutputStream OutputStream]))
 
@@ -14,7 +14,7 @@
   (testing "Ensure JSON longitude and latitude values are correctly exported"
     (let [result (mt/user-http-request
                   :rasta :post 200 "dataset/json" :query
-                  (json/generate-string
+                  (json/encode
                    {:database (mt/id)
                     :type     :query
                     :query    {:source-table (mt/id :venues)
@@ -22,7 +22,8 @@
                                               [:field (mt/id :venues :longitude) {:base-type :type/Float}]
                                               [:field (mt/id :venues :latitude) {:base-type :type/Float}]]
                                :order-by     [[:asc (mt/id :venues :id)]]
-                               :limit        5}}))]
+                               :limit        5}})
+                  :format_rows true)]
       (is (= [{:ID "1", :Longitude "165.37400000° W", :Latitude "10.06460000° N"}
               {:ID "2", :Longitude "118.32900000° W", :Latitude "34.09960000° N"}
               {:ID "3", :Longitude "118.42800000° W", :Latitude "34.04060000° N"}

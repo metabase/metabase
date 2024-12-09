@@ -1,10 +1,12 @@
 (ns metabase.query-processor.middleware.update-used-cards-test
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
-   [metabase.pulse :as pulse]
-   [metabase.pulse-test :as pulse-test]
+   [metabase.notification.test-util :as notification.tu]
+   [metabase.pulse.core :as pulse]
+   [metabase.pulse.send-test :as pulse.send-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.update-used-cards :as qp.update-used-cards]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -17,23 +19,31 @@
 (defmacro with-used-cards-setup!
   [& body]
   `(mt/test-helpers-set-global-values!
-     (binding [qp.pipeline/*execute*    (fn [_driver# _query# respond#] (respond# {} []))
-               qp.util/*execute-async?* false]
-       ~@body)))
+     (notification.tu/with-send-notification-sync
+       (binding [qp.pipeline/*execute*    (fn [_driver# _query# respond#] (respond# {} []))
+                 qp.util/*execute-async?* false]
+         ~@body))))
 
 (defn- card-last-used-at
   [card-id]
   (t2/select-one-fn :last_used_at :model/Card card-id))
 
+(defn- card-updated-at
+  [card-id]
+  (t2/select-one-fn :updated_at :model/Card card-id))
+
 (defn do-test!
   "Check if `last_used_at` of `card-id` is nil, then execute `f`, then check that `last_used_at` is non nil."
   [card-id thunk]
   (assert (fn? thunk))
-  (let [original-last-used-at (card-last-used-at card-id)]
+  (let [original-last-used-at (card-last-used-at card-id)
+        original-updated-at   (card-updated-at card-id)]
     (mt/with-temporary-setting-values [synchronous-batch-updates true]
       (thunk))
     (testing "last_used_at should be updated after executing the query"
-      (is (not= original-last-used-at (card-last-used-at card-id))))))
+      (is (not= original-last-used-at (card-last-used-at card-id))))
+    (testing "updated_at should not be updated after executing the query"
+      (is (= original-updated-at (card-updated-at card-id))))))
 
 (deftest nested-cards-test
   (with-used-cards-setup!
@@ -61,7 +71,7 @@
 (deftest alert-test
   (with-used-cards-setup!
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
-      (pulse-test/with-pulse-for-card [pulse {:card card-id}]
+      (pulse.send-test/with-pulse-for-card [pulse {:card card-id}]
         (do-test! card-id #(pulse/send-pulse! pulse))))))
 
 (deftest dashboard-subscription-test

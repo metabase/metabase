@@ -69,7 +69,7 @@ export const getSubmitValues = (
   const entries = fields
     .filter(field => isDetailField(field))
     .filter(field => isFieldVisible(field, values.details))
-    .map(field => [field.name, values.details[field.name]]);
+    .map(field => [field.name, values.details?.[field.name]]);
 
   return {
     ...values,

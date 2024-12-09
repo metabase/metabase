@@ -1,7 +1,6 @@
 (ns metabase.driver.redshift
   "Amazon Redshift Driver."
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
@@ -25,14 +24,20 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
-   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Types)))
+   (java.sql
+    Connection
+    PreparedStatement
+    ResultSet
+    ResultSetMetaData
+    Types)))
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :redshift, :parent #{:postgres ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :redshift, :parent #{:postgres})
 
 (doseq [[feature supported?] {:connection-impersonation  true
                               :describe-fields           true
@@ -47,11 +52,10 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; don't use the Postgres implementation for `describe-table` since it tries to fetch enums which Redshift doesn't
-;; support
-(defmethod driver/describe-table :redshift
-  [& args]
-  (apply (get-method driver/describe-table :sql-jdbc) args))
+;; Skip the postgres implementation of describe fields as it has to handle custom enums which redshift doesn't support.
+(defmethod driver/describe-fields :redshift
+  [driver database & args]
+  (apply (get-method driver/describe-fields :sql-jdbc) driver database args))
 
 (def ^:private get-tables-sql
   ;; Cal 2024-04-09 This query uses tables that the JDBC redshift driver currently uses.
@@ -126,32 +130,6 @@
       (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
                       {}
                       e)))))
-
-(defmethod sql-jdbc.sync/describe-fks-sql :redshift
-  [driver & {:keys [schema-names table-names]}]
-  (sql/format {:select (vec
-                        {:fk_ns.nspname       "fk-table-schema"
-                         :fk_table.relname    "fk-table-name"
-                         :fk_column.attname   "fk-column-name"
-                         :pk_ns.nspname       "pk-table-schema"
-                         :pk_table.relname    "pk-table-name"
-                         :pk_column.attname   "pk-column-name"})
-               :from   [[:pg_constraint :c]]
-               :join   [[:pg_class     :fk_table]  [:= :c.conrelid :fk_table.oid]
-                        [:pg_namespace :fk_ns]     [:= :c.connamespace :fk_ns.oid]
-                        [:pg_attribute :fk_column] [:= :c.conrelid :fk_column.attrelid]
-                        [:pg_class     :pk_table]  [:= :c.confrelid :pk_table.oid]
-                        [:pg_namespace :pk_ns]     [:= :pk_table.relnamespace :pk_ns.oid]
-                        [:pg_attribute :pk_column] [:= :c.confrelid :pk_column.attrelid]]
-               :where  [:and
-                        [:raw "fk_ns.nspname !~ '^information_schema|catalog_history|pg_'"]
-                        [:= :c.contype [:raw "'f'::char"]]
-                        [:= :fk_column.attnum [:raw "ANY(c.conkey)"]]
-                        [:= :pk_column.attnum [:raw "ANY(c.confkey)"]]
-                        (when table-names [:in :fk_table.relname table-names])
-                        (when schema-names [:in :fk_ns.nspname schema-names])]
-               :order-by [:fk-table-schema :fk-table-name]}
-              :dialect (sql.qp/quote-style driver)))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :redshift
   ;; The implementation is based on `getColumns` in https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java
@@ -469,11 +447,11 @@
 (defmethod qp.util/query->remark :redshift
   [_ {{:keys [executed-by card-id dashboard-id]} :info, :as query}]
   (str "/* partner: \"metabase\", "
-       (json/generate-string {:dashboard_id        dashboard-id
-                              :chart_id            card-id
-                              :optional_user_id    executed-by
-                              :optional_account_id (public-settings/site-uuid)
-                              :filter_values       (field->parameter-value query)})
+       (json/encode {:dashboard_id        dashboard-id
+                     :chart_id            card-id
+                     :optional_user_id    executed-by
+                     :optional_account_id (public-settings/site-uuid)
+                     :filter_values       (field->parameter-value query)})
        " */ "
        (qp.util/default-query->remark query)))
 
@@ -485,7 +463,7 @@
   [_driver upload-type]
   (case upload-type
     ::upload/varchar-255              [[:varchar 255]]
-    ::upload/text                     [:text]
+    ::upload/text                     [[:varchar 65535]]
     ::upload/int                      [:bigint]
     ;; identity(1, 1) defines an auto-increment column starting from 1
     ::upload/auto-incrementing-int-pk [:bigint [:identity 1 1]]

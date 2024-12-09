@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.fields-test
+(ns ^:mb/driver-tests metabase.query-processor-test.fields-test
   "Tests for the `:fields` clause."
   (:require
    [clojure.test :refer :all]

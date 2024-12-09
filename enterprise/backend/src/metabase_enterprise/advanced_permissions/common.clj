@@ -71,8 +71,9 @@
             :can_access_db_details   (data-perms/user-has-any-perms-of-type? api/*current-user-id* :perms/manage-database)
             :is_group_manager        api/*is-group-manager?*})))
 
-(defn current-user-has-application-permissions?
+(defenterprise current-user-has-application-permissions?
   "Check if `*current-user*` has permissions for a application permissions of type `perm-type`."
+  :feature :advanced-permissions
   [perm-type]
   (or api/*is-superuser?*
       (perms/set-has-application-permission-of-type? @api/*current-user-permissions-set* perm-type)))
@@ -175,6 +176,19 @@
         (premium-features/enable-sandboxes?)
         (t2/exists? :model/GroupTableAccessPolicy
                     :group_id group-id)))
+    :blocked
+    :unrestricted))
+
+(defenterprise new-table-view-data-permission-level
+  "Returns the view-data permission level to set for a new table in a given group and database. This is `blocked`
+  if the group has `blocked` for the DB or any table in the DB; otherwise it is `unrestricted`."
+  :feature :advanced-permissions
+  [db-id group-id]
+  (if (t2/exists? :model/DataPermissions
+                  :db_id db-id
+                  :perm_type :perms/view-data
+                  :perm_value :blocked
+                  :group_id group-id)
     :blocked
     :unrestricted))
 

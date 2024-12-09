@@ -1,0 +1,29 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import {
+  Box,
+  Button,
+  Flex,
+  HoverCard,
+  Text,
+  TextInput,
+  Stack,
+} from "metabase/ui";
+import * as HoverCardStories from "./HoverCard.stories";
+
+<Meta of={HoverCardStories} />
+
+# HoverCard
+
+Our themed wrapper around [Mantine HoverCard](https://v6.mantine.dev/core/hover-card/).
+
+## Docs
+
+- [Mantine HoverCard Docs](https://v6.mantine.dev/core/hover-card/)
+
+## Examples
+
+<Canvas>
+  <Story of={HoverCardStories.Default} />
+  <Story of={HoverCardStories.InteractiveContent} />
+</Canvas>

@@ -255,33 +255,38 @@ export default class PinMap extends Component {
               {t`Save as default view`}
             </div>
           ) : null}
-          {!isDashboard && (
-            <div
-              className={cx(
-                "PinMapUpdateButton",
-                ButtonsS.Button,
-                ButtonsS.ButtonSmall,
-                CS.mb1,
-              )}
-              onClick={() => {
-                if (
-                  !this.state.filtering &&
-                  this._map &&
-                  this._map.startFilter
-                ) {
-                  this._map.startFilter();
-                } else if (
-                  this.state.filtering &&
-                  this._map &&
-                  this._map.stopFilter
-                ) {
-                  this._map.stopFilter();
-                }
-              }}
-            >
-              {!this.state.filtering ? t`Draw box to filter` : t`Cancel filter`}
-            </div>
-          )}
+          {!isDashboard &&
+            this._map &&
+            this._map.supportsFilter &&
+            this._map.supportsFilter() && (
+              <div
+                className={cx(
+                  "PinMapUpdateButton",
+                  ButtonsS.Button,
+                  ButtonsS.ButtonSmall,
+                  CS.mb1,
+                )}
+                onClick={() => {
+                  if (
+                    !this.state.filtering &&
+                    this._map &&
+                    this._map.startFilter
+                  ) {
+                    this._map.startFilter();
+                  } else if (
+                    this.state.filtering &&
+                    this._map &&
+                    this._map.stopFilter
+                  ) {
+                    this._map.stopFilter();
+                  }
+                }}
+              >
+                {!this.state.filtering
+                  ? t`Draw box to filter`
+                  : t`Cancel filter`}
+              </div>
+            )}
         </div>
       </div>
     );

@@ -1,6 +1,5 @@
 (ns metabase.query-processor.preprocess
   (:require
-   [clojure.data :as data]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.query :as lib.query]
@@ -34,6 +33,7 @@
    [metabase.query-processor.middleware.persistence :as qp.persistence]
    [metabase.query-processor.middleware.pre-alias-aggregations :as qp.pre-alias-aggregations]
    [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
+   [metabase.query-processor.middleware.remove-inactive-field-refs :as qp.remove-inactive-field-refs]
    [metabase.query-processor.middleware.resolve-fields :as qp.resolve-fields]
    [metabase.query-processor.middleware.resolve-joined-fields :as resolve-joined-fields]
    [metabase.query-processor.middleware.resolve-joins :as resolve-joins]
@@ -61,14 +61,39 @@
   (-> (fn [query]
         (let [query (cond-> query
                       (:lib/type query) ->legacy)]
-          (middleware-fn query)))
+          (vary-meta (middleware-fn query)
+                     assoc :converted-form query)))
       (with-meta (meta middleware-fn))))
 
 (defn- ensure-pmbql [middleware-fn]
   (-> (fn [query]
         (let [query (cond->> query
                       (not (:lib/type query)) (lib.query/query (qp.store/metadata-provider)))]
-          (middleware-fn query)))
+          (vary-meta (middleware-fn query)
+                     assoc :converted-form query)))
+      (with-meta (meta middleware-fn))))
+
+(def ^:private unconverted-property?
+  (some-fn #{:info} qualified-keyword?))
+
+(defn- copy-unconverted-properties
+  [to from]
+  (reduce-kv (fn [m k v]
+               (cond-> m
+                 (unconverted-property? k) (assoc k v)))
+             to
+             from))
+
+(defn- ensure-pmbql-for-unclean-query
+  [middleware-fn]
+  (-> (fn [query]
+        (mu/disable-enforcement
+          (binding [lib.convert/*clean-query* false]
+            (let [query' (-> (cond->> query
+                               (not (:lib/type query))
+                               (lib.query/query (qp.store/metadata-provider)))
+                             (copy-unconverted-properties query))]
+              (-> query' middleware-fn ->legacy)))))
       (with-meta (meta middleware-fn))))
 
 (def ^:private middleware
@@ -79,6 +104,7 @@
   #_{:clj-kondo/ignore [:deprecated-var]}
   [#'normalize/normalize-preprocessing-middleware
    (ensure-pmbql #'qp.perms/remove-permissions-key)
+   (ensure-pmbql #'qp.perms/remove-source-card-keys)
    (ensure-pmbql #'qp.constraints/maybe-add-default-userland-constraints)
    (ensure-pmbql #'validate/validate-query)
    (ensure-pmbql #'fetch-source-query/resolve-source-cards)
@@ -103,6 +129,7 @@
    (ensure-legacy #'resolve-joined-fields/resolve-joined-fields)
    (ensure-legacy #'fix-bad-refs/fix-bad-references)
    (ensure-legacy #'escape-join-aliases/escape-join-aliases)
+   (ensure-pmbql-for-unclean-query #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
@@ -141,7 +168,8 @@
                                            middleware-fn)]
                   (list middleware-fn-name '=> <>
                         ^{:portal.viewer/default :portal.viewer/diff}
-                        (data/diff query <>)))))
+                        [(or (-> <> meta :converted-form) query)
+                         <>]))))
             ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
             (when-not (map? <>)
               (throw (ex-info (format "Middleware did not return a valid query.")

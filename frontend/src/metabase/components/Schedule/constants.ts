@@ -1,4 +1,4 @@
-import { c, t } from "ttag";
+import { c, msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import { has24HourModeSetting } from "metabase/lib/time";
@@ -54,7 +54,9 @@ export type Weekday = {
 /** These strings are created in a function, rather than in module scope, so that ttag is not called until the locale is set */
 export const getScheduleStrings = () => {
   const scheduleOptionNames = {
-    // The context is needed because 'hourly' can be an adjective ('hourly rate') or adverb ('update hourly'). Same with 'daily', 'weekly', and 'monthly'.
+    // The context is needed because 'hourly' can be an adjective ('hourly
+    // rate') or adverb ('update hourly'). Same with 'daily', 'weekly', and
+    // 'monthly'.
     hourly: c("adverb").t`hourly`,
     daily: c("adverb").t`daily`,
     weekly: c("adverb").t`weekly`,
@@ -173,7 +175,9 @@ export const getScheduleComponentLabel = (
     weekday: t`Day of the week`,
     time: t`Time`,
     amPm: t`AM/PM`,
-    minute: t`Minute`,
+    // this has to be plural because it's plural elsewhere and "Minute" cannot be both a singular message ID and a
+    // plural message ID.
+    minute: ngettext(msgid`Minute`, `Minutes`, 1),
   };
   return map[componentType];
 };

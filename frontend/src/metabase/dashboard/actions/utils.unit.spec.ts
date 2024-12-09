@@ -170,6 +170,8 @@ describe("dashboard > actions > utils", () => {
         createMockDashboardCard({ id: 2 }),
       ];
 
+      console.log(newCards, oldCards);
+
       expect(haveDashboardCardsChanged(newCards, oldCards)).toBe(false);
     });
 

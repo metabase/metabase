@@ -8,9 +8,9 @@ They're pretty useful.
 
 ## Line charts
 
-**Line charts** are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/basics/visualizing-data/line-charts.html) and [Time series analysis](https://www.metabase.com/learn/time-series) tutorials.
+**Line charts** are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/line-charts) and [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series) tutorials.
 
-![Trend lines](../../images/trend-lines.png)
+![Trend lines](../../images/goal-line.png)
 
 ## Bar charts
 
@@ -20,7 +20,7 @@ If you're trying to group a number by a column that has a lot of possible values
 
 ![Row chart](../../images/row.png)
 
-If you have a bar chart like Count of Users by Age, where the x-axis is a number, you'll get a special kind of chart called a **[histogram](https://www.metabase.com/learn/basics/visualizing-data/histograms.html)**, where each bar represents a range of values (called a "bin"). Note that Metabase will automatically bin your results any time you use a number as a grouping, even if you aren't viewing a bar chart. Questions that use latitude and longitude will also get binned automatically.
+If you have a bar chart like Count of Users by Age, where the x-axis is a number, you'll get a special kind of chart called a **[histogram](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/histograms)**, where each bar represents a range of values (called a "bin"). Note that Metabase will automatically bin your results any time you use a number as a grouping, even if you aren't viewing a bar chart. Questions that use latitude and longitude will also get binned automatically.
 
 ## Combo line and bar charts
 
@@ -125,24 +125,43 @@ Here you'll find additional settings for configuring your x and y axes (as in ax
 
 ### X-axis
 
-- Show label (the legend label for the axis).
+- Show label (the label for the axis).
 - Rename the axis
 - Show line and marks
 - Scale: Timeseries or Ordinal.
 
 ### Y-axis
 
-- Show label (the legend label for the axis).
+- Show label (the label for the axis).
 - Rename the axis
 - Split y-axis when necessary
 - Auto y-axis range. When not toggled on, you can set the y-axis range (it's min and max values).
-- Unpin from zero. Allows you to "Zoom in" on charts with values well above zero. Here's an example (note the y-axis starts at 20,000):
-![y-axis unpinned from zero](../../images/unpinned-from-zero-y-axis.png)
 - Scale: Linear, power, or log.
 - Show lines and marks
+- Unpin from zero. Allows you to "Zoom in" on charts with values well above zero. Here's an example (note the y-axis starts at 20,000):
+  ![y-axis unpinned from zero](../../images/unpinned-from-zero-y-axis.png)
+
+## Chart legend
+
+For charts with multiple series or breakouts, chart legend displays the label and color of each series.
+
+![Legend](../../images/legend.png)
+
+You can change the color and label for each series and reorder them in [data settings](#data-settings).
+
+You can use the legend to:
+
+- Highlight a series, by hovering over the name of the series in the legend.
+- Hide the series, by clicking on the color circle for the series.
+
+To permanently hide the series from the chart, use the [data settings](#data-settings).
+
+- Drill down to individual records for aggregated series, by clicking on the series name.
+
+Currently, you can't hide the legend or change its position on the chart.
 
 ## Further reading
 
-- [Guide to line charts](https://www.metabase.com/learn/visualization/line-charts)
-- [Master the bar chart](https://www.metabase.com/learn/visualization/bar-charts)
-- [Visualize your data as a histogram](https://www.metabase.com/learn/visualization/histograms)
+- [Guide to line charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/line-charts)
+- [Master the bar chart](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/bar-charts)
+- [Visualize your data as a histogram](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/histograms)

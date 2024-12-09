@@ -1,9 +1,12 @@
-import type { RenderingContext } from "metabase/visualizations/types";
-import type { RawSeries, VisualizationSettings } from "metabase-types/api";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "metabase/visualizations/types";
+import type { RawSeries } from "metabase-types/api";
 
 export interface StaticChartProps {
   rawSeries: RawSeries;
-  dashcardSettings: VisualizationSettings;
+  settings: ComputedVisualizationSettings;
   renderingContext: RenderingContext;
   width?: number;
   height?: number;

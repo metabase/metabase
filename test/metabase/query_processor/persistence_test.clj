@@ -1,4 +1,4 @@
-(ns metabase.query-processor.persistence-test
+(ns ^:mb/driver-tests metabase.query-processor.persistence-test
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -93,6 +93,7 @@
                   (is (= [[num-rows-query]] (mt/rows (qp/process-query query-on-top)))))))))))))
 
 ;; sandbox tests in metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test
+;; impersonation tests in metabase-enterprise.advanced-permissions.driver.impersonation-test
 
 (defn- populate-metadata [{query :dataset_query id :id :as _model}]
   (let [updater (a/thread

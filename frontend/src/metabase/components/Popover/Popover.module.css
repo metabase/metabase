@@ -27,13 +27,16 @@
 :global(.tippy-box),
 :global(.tippy-content) {
   max-height: inherit;
-  transition: transform 0s, visibility 0.3s, opacity 0.3s;
+  transition:
+    transform 0s,
+    visibility 0.3s,
+    opacity 0.3s;
 }
 
 :global(.tippy-box[data-theme~="tooltip"]) {
-  color: white;
+  color: var(--mb-color-tooltip-text);
   font-weight: bold;
-  background-color: var(--mb-color-background-inverse);
+  background-color: var(--mb-color-tooltip-background);
   border: none;
   pointer-events: none;
   line-height: 1.26;

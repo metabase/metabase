@@ -41,7 +41,8 @@
    :schedule_hour  nil
    :schedule_day   nil
    :entity_id      true
-   :enabled        true})
+   :enabled        true
+   :channel_id     nil})
 
 (defn mock-execute-reducible-query [query respond]
   (respond

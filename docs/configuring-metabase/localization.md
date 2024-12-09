@@ -73,14 +73,15 @@ Report timezone doesn't apply to `timestamp without time zone` data types, inclu
 | `2022-12-28T12:00:00`                    | `timestamp without time zone` | 'Canada/Eastern' | Dec 28, 2022, 12:00 AM |
 
 Report timezone is only supported for the following databases:
-   - BigQuery
-   - Druid
-   - MySQL
-   - Oracle
-   - PostgreSQL
-   - Presto
-   - Redshift
-   - Vertica
+
+- BigQuery
+- Druid
+- MySQL
+- Oracle
+- PostgreSQL
+- Presto
+- Redshift
+- Vertica
 
 ## First day of the week
 

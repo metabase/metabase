@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.parameters.mbql-test
+(ns ^:mb/driver-tests metabase.query-processor.middleware.parameters.mbql-test
   "Tests for *MBQL* parameter substitution."
   (:require
    [clojure.string :as str]
@@ -56,14 +56,49 @@
                  {:hash   "abc123"
                   :name   "foo"
                   :type   :id
-                  :target [:dimension [:field (mt/id :venues :name) nil]]
+                  :target [:dimension [:field (mt/id :venues :name) nil] nil]
                   :value  "Cam's Toucannery"}
                  {:hash   "def456"
                   :name   "bar"
                   :type   :category
-                  :target [:dimension [:field (mt/id :venues :id) nil]]
+                  :target [:dimension [:field (mt/id :venues :id) nil] {}]
                   :value  999})
                 (assoc-in [:query :filter] [:and [:= [:field (mt/id :venues :id) nil] 12]])))))))
+
+(deftest ^:parallel multi-stage-test
+  (testing "adding parameters to different stages"
+    (is (= {:database 1,
+            :type     :query,
+            :query    {:source-query {:source-table 1000,
+                                      :aggregation  [[:count]],
+                                      :breakout     [[:field 17 {:temporal-unit :year}]],
+                                      :filter       [:= [:field 809 nil] "Cam's Toucannery"]},
+                       :filter [:and
+                                [:> [:field "count" {:base-type :type/Integer}] 0]
+                                [:<= [:field "count" {:base-type :type/Integer}] 30]]}}
+           (expand-parameters
+            {:database   1
+             :type       :query
+             :query      {:source-query {:source-table 1000
+                                         :aggregation  [[:count]]
+                                         :breakout     [[:field 17 {:temporal-unit :day}]]}
+                          :filter       [:> [:field "count" {:base-type :type/Integer}] 0]}
+             :parameters [{:hash   "abc123"
+                           :name   "foo"
+                           :type   "id"
+                           :target [:dimension [:field 809 nil] {:stage-number -2}]
+                           :value  "Cam's Toucannery"}
+                          {:hash   "def456"
+                           :name   "bar"
+                           :type   :number/<=
+                           :target [:dimension [:field "count" {:base-type :type/Integer}] {:stage-number 1}]
+                           :value  [30]}
+                          {:value "year"
+                           :type :temporal-unit
+                           :id "66cf9285"
+                           :target [:dimension
+                                    [:field 17 {:base-type :type/DateTime, :temporal-unit :day}]
+                                    {:stage-number -2}]}]})))))
 
 (deftest ^:parallel date-range-parameters-test
   (testing "date range parameters"
@@ -403,3 +438,22 @@
       (testing "Should prefer :value over :default"
         (is (= 59
                (venues-with-price {:default 1, :value 2})))))))
+
+(deftest ^:parallel time-granularity-parameters-test
+  (testing "time granularity parameters should update the matching clause in the breakouts and order-by clauses"
+    (let [by-unit  (fn [unit]
+                     [:field
+                      (mt/id :orders :created_at)
+                      {:base-type :type/DateTimeWithLocalTZ, :temporal-unit unit}])
+          query    {:database (mt/id)
+                    :type     :query
+                    :query    {:source-table (mt/id :orders)
+                               :aggregation  [[:count]]
+                               :breakout     [(by-unit :day)
+                                              (by-unit :month)]
+                               :order-by     [[:asc (by-unit :month)]]}
+                    :parameters [{:type   :temporal-unit
+                                  :target [:dimension (by-unit :month)]
+                                  :value  :week}]}]
+      (is (= ["2016-04-30T00:00:00Z" "2016-04-24T00:00:00Z" 1]
+             (first (mt/rows (mt/process-query query))))))))

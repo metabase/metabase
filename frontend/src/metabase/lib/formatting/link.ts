@@ -46,7 +46,7 @@ export function renderLinkTextForClick(
   );
 }
 
-function isSafeUrl(urlString: string): boolean {
+export function isSafeUrl(urlString: string): boolean {
   if (isSameOrSiteUrlOrigin(urlString)) {
     return true;
   }

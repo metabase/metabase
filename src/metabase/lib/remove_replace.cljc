@@ -205,10 +205,10 @@
                              (some (fn [{:keys [lib/source lib/source-uuid] :as column}]
                                      (when (and (= :source/previous-stage source) (= target-uuid source-uuid))
                                        (:lib/desired-column-alias column)))))]
-      (if target-ref-id
+      (cond-> query
         ;; We are moving to the next stage, so pass the current query as the unmodified-query-for-stage
-        (remove-local-references query stage-number query :field {} target-ref-id)
-        query))
+        target-ref-id
+        (remove-local-references stage-number query :field {} target-ref-id)))
     query))
 
 (defn- find-location
@@ -235,10 +235,10 @@
           changing-breakout? (= [:breakout] location)
           sync-breakout-ordering? (and replace?
                                        changing-breakout?
-                                       (and (= (first target-clause)
-                                               (first replacement-clause))
-                                            (= (last target-clause)
-                                               (last replacement-clause))))
+                                       (= (first target-clause)
+                                          (first replacement-clause))
+                                       (= (last target-clause)
+                                          (last replacement-clause)))
           new-query (cond
                       sync-breakout-ordering?
                       (sync-order-by-options-with-breakout

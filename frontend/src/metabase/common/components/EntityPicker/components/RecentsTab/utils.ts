@@ -5,7 +5,7 @@ dayjs.extend(relativeTime);
 
 import type { RecentItem } from "metabase-types/api";
 
-import type { ResultItemType } from "../ResultItem";
+import type { SearchItem } from "../../types";
 
 const dateBuckets = [
   { title: t`Today`, days: 1 },
@@ -45,7 +45,7 @@ export function getRecentGroups(items: RecentItem[]) {
 }
 
 // put a recent item into the shape expected by ResultItem component
-export const recentItemToResultItem = (item: RecentItem): ResultItemType => ({
+export const recentItemToResultItem = (item: RecentItem): SearchItem => ({
   ...item,
   ...("parent_collection" in item
     ? {

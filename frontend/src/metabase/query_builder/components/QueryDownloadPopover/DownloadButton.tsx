@@ -7,7 +7,7 @@ import DownloadButtonS from "./DownloadButton.module.css";
 import { checkCanManageFormatting } from "./utils";
 
 type DownloadButtonProps = {
-  format: typeof exportFormats[number] | typeof exportFormatPng;
+  format: (typeof exportFormats)[number] | typeof exportFormatPng;
   onClick: () => void;
   isAltPressed: boolean;
 };

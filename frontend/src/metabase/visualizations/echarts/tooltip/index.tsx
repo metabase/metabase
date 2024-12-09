@@ -5,14 +5,16 @@ import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 import TooltipStyles from "metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { ClickObject } from "metabase-lib";
 
 import type { BaseCartesianChartModel } from "../cartesian/model/types";
-import type { PieChartModel } from "../pie/model/types";
+import type { PieChartModel, SliceTreeNode } from "../pie/model/types";
+import { getArrayFromMapValues } from "../pie/util";
 
-const TOOLTIP_POINTER_MARGIN = 10;
+export const TOOLTIP_POINTER_MARGIN = 10;
 
-const getTooltipPositionFn =
+export const getTooltipPositionFn =
   (containerRef: React.RefObject<HTMLDivElement>) =>
   (
     relativePoint: [number, number],
@@ -38,7 +40,7 @@ const getTooltipPositionFn =
     if (hasRightSpace) {
       tooltipAbsoluteX = mouseX + TOOLTIP_POINTER_MARGIN;
     } else if (hasLeftSpace) {
-      tooltipAbsoluteX = mouseX - tooltipTotalHeight;
+      tooltipAbsoluteX = mouseX - tooltipTotalWidth;
     }
 
     let tooltipAbsoluteY = 0;
@@ -52,9 +54,9 @@ const getTooltipPositionFn =
     }
 
     const tooltipRelativeX = tooltipAbsoluteX - containerX;
-    const tooltipRelativey = tooltipAbsoluteY - containerY;
+    const tooltipRelativeY = tooltipAbsoluteY - containerY;
 
-    return [tooltipRelativeX, tooltipRelativey];
+    return [tooltipRelativeX, tooltipRelativeY];
   };
 
 export const getTooltipBaseOption = (
@@ -70,8 +72,8 @@ export const getTooltipBaseOption = (
         container = document.createElement("div");
         container.classList.add("echarts-tooltip-container");
         container.style.setProperty("overflow", "hidden");
-        container.style.setProperty("height", "100%");
-        container.style.setProperty("position", "relative");
+        container.style.setProperty("position", "absolute");
+        container.style.setProperty("inset", "0");
         container.style.setProperty("pointer-events", "none");
 
         document.body.append(container);
@@ -130,22 +132,37 @@ export const useClickedStateTooltipSync = (
 
 export const useCartesianChartSeriesColorsClasses = (
   chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
 ) => {
-  const hexColors = useMemo(
-    () =>
-      chartModel.seriesModels
-        .map(seriesModel => seriesModel.color)
-        .filter(isNotNull),
-    [chartModel],
-  );
+  const hexColors = useMemo(() => {
+    const seriesColors = chartModel.seriesModels
+      .map(seriesModel => seriesModel.color)
+      .filter(isNotNull);
+
+    const settingColors = [
+      settings["waterfall.increase_color"],
+      settings["waterfall.decrease_color"],
+      settings["waterfall.total_color"],
+    ].filter(isNotNull);
+
+    return [...seriesColors, ...settingColors];
+  }, [chartModel, settings]);
 
   return useInjectSeriesColorsClasses(hexColors);
 };
 
+function getColorsFromSlices(slices: SliceTreeNode[]) {
+  const colors = slices.map(s => s.color);
+  slices.forEach(s =>
+    colors.push(...getColorsFromSlices(getArrayFromMapValues(s.children))),
+  );
+  return colors;
+}
+
 export const usePieChartValuesColorsClasses = (chartModel: PieChartModel) => {
   const hexColors = useMemo(() => {
-    return chartModel.slices.map(slice => slice.data.color);
-  }, [chartModel.slices]);
+    return getColorsFromSlices(getArrayFromMapValues(chartModel.sliceTree));
+  }, [chartModel]);
 
   return useInjectSeriesColorsClasses(hexColors);
 };

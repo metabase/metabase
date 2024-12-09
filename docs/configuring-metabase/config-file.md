@@ -192,7 +192,7 @@ But you can set any of the Admin settings with the config file (for a list of se
 Since loading from a config file is a Pro/Enterprise feature: for new installations, you'll need to supply Metabase with a token using the `MB_PREMIUM_EMBEDDING_TOKEN` environment variable.
 
 ```sh
-MB_PREMIUM_EMBEDDING_TOKEN="[your token]" java -jar metabase.jar
+MB_PREMIUM_EMBEDDING_TOKEN="[your token]" java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 ## Further reading

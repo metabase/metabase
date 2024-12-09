@@ -21,9 +21,6 @@ export const getSegmentedControlOverrides =
             padding: fullWidth
               ? `${theme.spacing.sm} ${theme.spacing.md}`
               : theme.spacing.sm,
-            fontSize: theme.fontSizes.md,
-            fontWeight: "normal",
-            lineHeight: "1rem",
             "&:hover": {
               color: theme.fn.themeColor("brand"),
             },
@@ -54,10 +51,12 @@ export const getSegmentedControlOverrides =
             backgroundColor: theme.fn.themeColor("bg-medium"),
           },
           controlActive: {
-            backgroundColor: shouldAnimate ? theme.white : undefined,
+            backgroundColor: shouldAnimate
+              ? theme.fn.themeColor("bg-white")
+              : undefined,
           },
           indicator: {
-            backgroundColor: theme.white,
+            backgroundColor: theme.fn.themeColor("bg-white"),
           },
         };
       },

@@ -11,9 +11,11 @@ import type { DashboardId } from "metabase-types/api";
 export const useRefreshDashboard = ({
   dashboardId,
   parameterQueryParams,
+  refetchData = true,
 }: {
-  dashboardId: DashboardId;
+  dashboardId: DashboardId | null;
   parameterQueryParams: Record<string, unknown>;
+  refetchData?: boolean;
 }): {
   refreshDashboard: () => Promise<void>;
 } => {
@@ -28,15 +30,17 @@ export const useRefreshDashboard = ({
           options: { preserveParameters: true },
         }),
       );
-      dispatch(
-        fetchDashboardCardData({
-          isRefreshing: true,
-          reload: true,
-          clearCache: false,
-        }),
-      );
+      if (refetchData) {
+        dispatch(
+          fetchDashboardCardData({
+            isRefreshing: true,
+            reload: true,
+            clearCache: false,
+          }),
+        );
+      }
     }
-  }, [dashboardId, dispatch, parameterQueryParams]);
+  }, [dashboardId, dispatch, parameterQueryParams, refetchData]);
 
   return { refreshDashboard };
 };

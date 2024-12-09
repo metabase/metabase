@@ -7,7 +7,7 @@ import { EChartsRenderer } from "metabase/visualizations/components/EChartsRende
 import { ResponsiveEChartsRendererStyled } from "metabase/visualizations/components/EChartsRenderer/ResponsiveEChartsRenderer.styled";
 
 export interface ResponsiveEChartsRendererProps extends EChartsRendererProps {
-  onResize: (width: number, height: number) => void;
+  onResize?: (width: number, height: number) => void;
 }
 
 const _ResponsiveEChartsRenderer = forwardRef<
@@ -24,7 +24,7 @@ const _ResponsiveEChartsRenderer = forwardRef<
 ) {
   useEffect(() => {
     if (isNumber(width) && isNumber(height)) {
-      onResize(width, height);
+      onResize?.(width, height);
     }
   }, [width, height, onResize]);
 
@@ -44,7 +44,7 @@ const _ResponsiveEChartsRenderer = forwardRef<
   );
 });
 
-export const ResponsiveEChartsRenderer =
+export const ResponsiveEChartsRendererExplicitSize =
   ExplicitSize<ResponsiveEChartsRendererProps>({
     wrapped: true,
     refreshMode: "debounceLeading",

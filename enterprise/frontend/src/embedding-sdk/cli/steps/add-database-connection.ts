@@ -1,11 +1,10 @@
-import { select } from "@inquirer/prompts";
-import toggle from "inquirer-toggle";
+import { search } from "@inquirer/prompts";
 import ora from "ora";
 
 import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 import type { Settings } from "metabase-types/api/settings";
 
-import { CLI_SHOWN_DB_ENGINES } from "../constants/database";
+import { CLI_SHOWN_DB_ENGINES, SAMPLE_DB_ID } from "../constants/database";
 import { addDatabaseConnection } from "../utils/add-database-connection";
 import { askForDatabaseConnectionInfo } from "../utils/ask-for-db-connection-info";
 import { fetchInstanceSettings } from "../utils/fetch-instance-settings";
@@ -15,21 +14,28 @@ export const addDatabaseConnectionStep: CliStepMethod = async state => {
     instanceUrl: state.instanceUrl ?? "",
   });
 
-  const hasDatabase = await toggle({
-    message:
-      "Do you have a database to connect to? This will be used to embed your data.",
-    default: true,
-  });
-
-  if (!hasDatabase || !settings || !settings.engines) {
+  if (!settings || !settings.engines) {
     return [{ type: "error", message: "Aborted." }, state];
   }
 
+  if (state.useSampleDatabase) {
+    return [{ type: "success" }, { ...state, databaseId: SAMPLE_DB_ID }];
+  }
+
+  const engineChoices = getEngineChoices(settings);
+
   // eslint-disable-next-line no-constant-condition -- keep asking until the user enters a valid connection.
   while (true) {
-    const engineKey = await select({
+    const engineKey = await search({
+      pageSize: 10,
       message: "What database are you connecting to?",
-      choices: getEngineChoices(settings),
+      source(term) {
+        return term
+          ? engineChoices.filter(choice =>
+              choice.name.toLowerCase().includes(term.toLowerCase()),
+            )
+          : engineChoices;
+      },
     });
 
     const engine = settings.engines[engineKey];

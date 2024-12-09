@@ -112,23 +112,28 @@
 ;;; ----------------------------------------------- DYNAMIC VARIABLES ------------------------------------------------
 ;; These get bound by middleware for each HTTP request.
 
+;;; TODO -- move this to [[metabase.request.current]]
 (def ^:dynamic ^Integer *current-user-id*
   "Int ID or `nil` of user associated with current API call."
   nil)
 
+;;; TODO -- move this to [[metabase.request.current]]
 (def ^:dynamic *current-user*
   "Delay that returns the `User` (or nil) associated with the current API call.
    ex. `@*current-user*`"
   (atom nil)) ; default binding is just something that will return nil when dereferenced
 
+;;; TODO -- move this to [[metabase.request.current]]
 (def ^:dynamic ^Boolean *is-superuser?*
   "Is the current user a superuser?"
   false)
 
+;;; TODO -- move this to [[metabase.request.current]]
 (def ^:dynamic ^Boolean *is-group-manager?*
   "Is the current user a group manager of at least one group?"
   false)
 
+;;; TODO -- move this to [[metabase.request.current]]
 (def ^:dynamic *current-user-permissions-set*
   "Delay to the set of permissions granted to the current user. See documentation in [[metabase.models.permissions]] for
   more information about the Metabase permissions system."
@@ -291,6 +296,8 @@
   [arg]
   (check arg generic-500))
 
+;;; TODO -- why does this live here but other 'generic' responses live in [[metabase.request.util]]. We should move this
+;;; so it lives with its friends
 (def generic-204-no-content
   "A 'No Content' response for `DELETE` endpoints to return."
   {:status 204, :body nil})
@@ -470,18 +477,20 @@
 
     (api/+check-superuser routes)"
   [handler]
-  (fn
-    ([request]
-     (check-superuser)
-     (handler request))
-    ([request respond raise]
-     (if-let [e (try
-                  (check-superuser)
-                  nil
-                  (catch Throwable e
-                    e))]
-       (raise e)
-       (handler request respond raise)))))
+  (with-meta
+   (fn
+     ([request]
+      (check-superuser)
+      (handler request))
+     ([request respond raise]
+      (if-let [e (try
+                   (check-superuser)
+                   nil
+                   (catch Throwable e
+                     e))]
+        (raise e)
+        (handler request respond raise))))
+   (meta handler)))
 
 ;;; ---------------------------------------- PERMISSIONS CHECKING HELPER FNS -----------------------------------------
 
@@ -730,3 +739,29 @@
                    (map #(assoc % ::model model) (f model items))))
          (sort-by (comp id+model->order (juxt :id ::model)))
          (map #(dissoc % ::model)))))
+
+(def model->db-model
+  ;; NOTE search is decoupling itself from this mapping, favoring a self-contained spec in search.spec/define-spec
+  ;; Once search.legacy is gone, this dependency should be gone as well.
+  "A mapping from the name of a model used in the API to information about it. This is reused in search, and entity_id
+  translation."
+  {"action"            {:db-model :model/Action             :alias :action}
+   "card"              {:db-model :model/Card               :alias :card}
+   "collection"        {:db-model :model/Collection         :alias :collection}
+   "dashboard"         {:db-model :model/Dashboard          :alias :dashboard}
+   "database"          {:db-model :model/Database           :alias :database}
+   "dataset"           {:db-model :model/Card               :alias :card}
+   "indexed-entity"    {:db-model :model/ModelIndexValue    :alias :model-index-value}
+   "metric"            {:db-model :model/Card               :alias :card}
+   "segment"           {:db-model :model/Segment            :alias :segment}
+   "snippet"           {:db-model :model/NativeQuerySnippet :alias :snippet}
+   "table"             {:db-model :model/Table              :alias :table}
+   "dashboard-card"    {:db-model :model/DashboardCard      :alias :dashboard-card}
+   "dashboard-tab"     {:db-model :model/DashboardTab       :alias :dashboard-tab}
+   "dimension"         {:db-model :model/Dimension          :alias :dimension}
+   "permissions-group" {:db-model :model/PermissionsGroup   :alias :permissions-group}
+   "pulse"             {:db-model :model/Pulse              :alias :pulse}
+   "pulse-card"        {:db-model :model/PulseCard          :alias :pulse-card}
+   "pulse-channel"     {:db-model :model/PulseChannel       :alias :pulse-channel}
+   "timeline"          {:db-model :model/Timeline           :alias :timeline}
+   "user"              {:db-model :model/User               :alias :user}})

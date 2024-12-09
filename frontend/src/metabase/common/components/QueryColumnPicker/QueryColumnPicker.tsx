@@ -1,10 +1,7 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 
-import {
-  getColumnGroupIcon,
-  getColumnGroupName,
-} from "metabase/common/utils/column-groups";
+import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import {
   HoverParent,
   QueryColumnInfoIcon,
@@ -78,7 +75,7 @@ export function QueryColumnPicker({
         }));
 
         return {
-          name: getColumnGroupName(groupInfo),
+          name: groupInfo.displayName,
           icon: getColumnGroupIcon(groupInfo),
           items,
         };

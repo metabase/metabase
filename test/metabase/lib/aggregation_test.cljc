@@ -12,7 +12,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util :as lib.util]))
+   [metabase.lib.util :as lib.util]
+   [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -167,7 +168,8 @@
              (lib.tu/venues-query-with-last-stage
               {:expressions [[:*
                               {:lib/uuid (str (random-uuid))
-                               :lib/expression-name "double-price"}
+                               :lib/expression-name "double-price"
+                               :ident (u/generate-nano-id)}
                               (lib.tu/field-clause :venues :price {:base-type :type/Integer})
                               2]]})
              [:sum
@@ -809,7 +811,8 @@
                        (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))
         price      (m/find-first #(= (:name %) "PRICE") (lib/visible-columns query))
         aggs       (lib/aggregations query)]
-    (is (= (count aggs) 2))
+    (is (= 2
+           (count aggs)))
     (testing "aggregations like COUNT have no column"
       (is (nil? (lib.aggregation/aggregation-column query -1 (first aggs)))))
     (testing "aggregations like SUM return the column of interest"

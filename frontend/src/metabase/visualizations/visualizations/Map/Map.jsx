@@ -201,10 +201,10 @@ export class Map extends Component {
         vizSettings["map.type"] === "heat"
           ? "heat"
           : vizSettings["map.type"] === "grid"
-          ? "grid"
-          : data.rows.length >= 1000
-          ? "tiles"
-          : "markers",
+            ? "grid"
+            : data.rows.length >= 1000
+              ? "tiles"
+              : "markers",
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
     },

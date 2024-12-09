@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { useListApiKeysQuery } from "metabase/api";
 import { ClientSortableTable } from "metabase/common/components/Table";
+import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
@@ -49,7 +50,7 @@ const columns = [
   { key: "masked_key", name: t`Key` },
   { key: "updated_by_name", name: t`Last modified by` },
   { key: "updated_at", name: t`Last modified on` },
-  { key: "actions", name: "" },
+  { key: "actions", name: "", sortable: false },
 ];
 
 function ApiKeysTable({
@@ -66,6 +67,7 @@ function ApiKeysTable({
   error?: unknown;
 }) {
   const flatApiKeys = useMemo(() => apiKeys?.map(flattenApiKey), [apiKeys]);
+  const locale = useLocale();
 
   if (loading || error) {
     return <DelayedLoadingAndErrorWrapper loading={loading} error={error} />;
@@ -80,6 +82,7 @@ function ApiKeysTable({
       data-testid="api-keys-table"
       columns={columns}
       rows={flatApiKeys}
+      locale={locale}
       rowRenderer={row => (
         <ApiKeyRow
           apiKey={row}

@@ -54,10 +54,9 @@ describe("QueryDownloadWidget", () => {
     setup();
 
     await userEvent.click(getIcon("download"));
-    await userEvent.unhover(getIcon("download"));
 
     expect(
-      await screen.findByText("Download full results"),
+      await screen.findByRole("heading", { name: /download/i }),
     ).toBeInTheDocument();
   });
 });

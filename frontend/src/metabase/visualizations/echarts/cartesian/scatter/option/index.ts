@@ -40,15 +40,16 @@ export function getScatterPlotOption(
       )
     : null;
 
-  const dataSeriesOptions: EChartsSeriesOption[] = chartModel.seriesModels.map(
-    seriesModel =>
+  const dataSeriesOptions: EChartsSeriesOption[] = chartModel.seriesModels
+    .filter(seriesModel => seriesModel.visible)
+    .map(seriesModel =>
       buildEChartsScatterSeries(
         seriesModel,
         chartModel.bubbleSizeDomain,
         getSeriesYAxisIndex(seriesModel.dataKey, chartModel),
         renderingContext,
       ),
-  );
+    );
   const goalSeriesOption = getGoalLineSeriesOption(
     chartModel,
     settings,

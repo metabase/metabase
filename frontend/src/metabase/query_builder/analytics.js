@@ -6,7 +6,7 @@ export const trackNewQuestionSaved = (
   createdQuestion,
   isBasedOnExistingQuestion,
 ) => {
-  trackSchemaEvent("question", "1-0-2", {
+  trackSchemaEvent("question", {
     event: "new_question_saved",
     question_id: createdQuestion.id(),
     database_id: createdQuestion.databaseId(),
@@ -17,14 +17,14 @@ export const trackNewQuestionSaved = (
 };
 
 export const trackTurnIntoModelClicked = question => {
-  trackSchemaEvent("question", "1-0-2", {
+  trackSchemaEvent("question", {
     event: "turn_into_model_clicked",
     question_id: question.id(),
   });
 };
 
 export const trackNotebookNativePreviewShown = (question, isShown) => {
-  trackSchemaEvent("question", "1-0-3", {
+  trackSchemaEvent("question", {
     event: isShown
       ? "notebook_native_preview_shown"
       : "notebook_native_preview_hidden",
@@ -34,7 +34,7 @@ export const trackNotebookNativePreviewShown = (question, isShown) => {
 };
 
 export const trackColumnCombineViaShortcut = (query, question) => {
-  trackSchemaEvent("question", "1-0-4", {
+  trackSchemaEvent("question", {
     event: "column_combine_via_shortcut",
     custom_expressions_used: ["concat"],
     database_id: Lib.databaseID(query),
@@ -43,7 +43,7 @@ export const trackColumnCombineViaShortcut = (query, question) => {
 };
 
 export const trackColumnCombineViaPlusModal = (query, question) => {
-  trackSchemaEvent("question", "1-0-5", {
+  trackSchemaEvent("question", {
     event: "column_combine_via_plus_modal",
     custom_expressions_used: ["concat"],
     database_id: Lib.databaseID(query),
@@ -57,7 +57,7 @@ export const trackColumnExtractViaShortcut = (
   extraction,
   question,
 ) => {
-  trackSchemaEvent("question", "1-0-4", {
+  trackSchemaEvent("question", {
     event: "column_extract_via_shortcut",
     custom_expressions_used: Lib.functionsUsedByExtraction(
       query,
@@ -75,7 +75,7 @@ export const trackColumnExtractViaPlusModal = (
   extraction,
   question,
 ) => {
-  trackSchemaEvent("question", "1-0-5", {
+  trackSchemaEvent("question", {
     event: "column_extract_via_plus_modal",
     custom_expressions_used: Lib.functionsUsedByExtraction(
       query,

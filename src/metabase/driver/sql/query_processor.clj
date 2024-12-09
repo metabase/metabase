@@ -7,6 +7,7 @@
    [honey.sql.helpers :as sql.helpers]
    [honey.sql.protocols]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
@@ -322,6 +323,12 @@
 (defmethod date [:sql :week-of-year-instance]
   [driver _ honeysql-expr]
   (week-of-year driver honeysql-expr :instance))
+
+(defmethod date
+  [:sql :day-of-week-iso]
+  [driver _ honeysql-expr]
+  (binding [driver.common/*start-of-week* :monday]
+    (date driver :day-of-week honeysql-expr)))
 
 (defmulti add-interval-honeysql-form
   "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
@@ -701,11 +708,22 @@
       (when (integer? id-or-name)
         (:name (lib.metadata/field (qp.store/metadata-provider) id-or-name)))))
 
+(defn- field-nfc-path
+  [[_field id-or-name {::add/keys [nfc-path]}]]
+  (or nfc-path
+      (when (integer? id-or-name)
+        (:nfc-path (lib.metadata/field (qp.store/metadata-provider) id-or-name)))))
+
+(defmethod ->honeysql [:sql ::nfc-path]
+  [_driver [_ _nfc-path]]
+  nil)
+
 (defmethod ->honeysql [:sql :field]
   [driver [_ id-or-name {:keys [database-type] :as options}
            :as field-clause]]
   (try
     (let [source-table-aliases (field-source-table-aliases field-clause)
+          source-nfc-path      (field-nfc-path field-clause)
           source-alias         (field-source-alias field-clause)
           field                (when (integer? id-or-name)
                                  (lib.metadata/field (qp.store/metadata-provider) id-or-name))
@@ -715,7 +733,7 @@
                                    (:database-type field))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field
-                                          (concat source-table-aliases [source-alias]))
+                                          (concat source-table-aliases (->honeysql driver [::nfc-path source-nfc-path]) [source-alias]))
                                    (with-meta (meta field-clause)))
           identifier           (->honeysql driver identifier)
           maybe-add-db-type    (fn [expr]
@@ -776,21 +794,51 @@
    (->honeysql driver mbql-expr)
    (->honeysql driver power)])
 
+(defn- aggregation?
+  [expr]
+  (and (vector? expr)
+       (> (count expr) 1)
+       (= (first expr) :aggregation)
+       (int? (second expr))))
+
+(defn- unwrap-aggregation-option
+  [agg]
+  (cond-> agg
+    (and (vector? agg) (= (first agg) :aggregation-options)) second))
+
+(defn- over-order-bys
+  "Returns a vector containing the `aggregations` specified by `order-bys` compiled to
+  honeysql expressions for `driver` suitable for ordering in the over clause of a window function."
+  [driver aggregations order-bys]
+  (let [aggregations (vec aggregations)]
+    (into []
+          (keep (fn [[direction expr]]
+                  (if (aggregation? expr)
+                    (let [[_aggregation index] expr
+                          agg (unwrap-aggregation-option (aggregations index))]
+                      (when-not (#{:cum-count :cum-sum :offset} (first agg))
+                        [(->honeysql driver agg) direction]))
+                    [(->honeysql driver expr) direction])))
+          order-bys)))
+
 (defn- window-aggregation-over-expr-for-query-with-breakouts
   "Order by the first breakout, then partition by all the other ones. See #42003 and
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
   [driver inner-query]
-  (let [num-breakouts   (count (:breakout inner-query))
-        group-bys       (:group-by (apply-top-level-clause driver :breakout {} inner-query))
-        partition-exprs (when (> num-breakouts 1)
-                          (rest group-bys))
-        order-expr      (first group-bys)]
+  (let [breakouts (:breakout inner-query)
+        group-bys (:group-by (apply-top-level-clause driver :breakout {} inner-query))
+        finest-temp-breakout (qp.util.transformations.nest-breakouts/finest-temporal-breakout-index breakouts 2)
+        partition-exprs (when (> (count breakouts) 1)
+                          (if finest-temp-breakout
+                            (m/remove-nth finest-temp-breakout group-bys)
+                            (butlast group-bys)))
+        order-bys (over-order-bys driver (:aggregation inner-query) (:order-by inner-query))]
     (merge
      (when (seq partition-exprs)
        {:partition-by (mapv (fn [expr]
                               [expr])
                             partition-exprs)})
-     {:order-by [[order-expr :asc]]})))
+     {:order-by order-bys})))
 
 (defn- window-aggregation-over-expr-for-query-without-breakouts [driver inner-query]
   (when-let [order-bys (not-empty (:order-by (apply-top-level-clause driver :order-by {} inner-query)))]
@@ -828,7 +876,7 @@
 (defn- cumulative-aggregation-over-rows
   "Generate an OVER (...) expression for stuff like cumulative sum or cumulative count.
 
-  For a single breakout the generate SQL will look something like:
+  For a single breakout the generated SQL will look something like:
 
     OVER (
       ORDER BY created_at
@@ -1321,7 +1369,7 @@
            (not (uuid? (->honeysql driver arg)))
              ;; Check for inlined values
            (not (= (:database-type (h2x/type-info (->honeysql driver arg))) "uuid")))
-    [::cast field "varchar"]
+    [::cast-to-text field]
     field))
 
 (mu/defn- maybe-cast-uuid-for-text-compare
@@ -1329,12 +1377,19 @@
    Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
   [field]
   (if (uuid-field? field)
-    [::cast field "varchar"]
+    [::cast-to-text field]
     field))
 
 (defmethod ->honeysql [:sql ::cast]
   [driver [_ expr database-type]]
   (h2x/maybe-cast database-type (->honeysql driver expr)))
+
+(defmethod ->honeysql [:sql ::cast-to-text]
+  [driver [_ expr]]
+  ;; Oracle does not support text type,
+  ;; sqlserver limits varchar to 30 in casts,
+  ;; athena cannot cast uuid to bounded varchars
+  (->honeysql driver [::cast expr "text"]))
 
 (defmethod ->honeysql [:sql :starts-with]
   [driver [_ field arg options]]
@@ -1351,30 +1406,46 @@
   (like-clause (->honeysql driver (maybe-cast-uuid-for-text-compare field))
                (generate-pattern driver "%" arg nil options) options))
 
+(defn- parent-honeysql-col-base-type-map
+  [field]
+  (when (and (vector? field)
+             (= 3 (count field))
+             (= :field (first field))
+             (map? (field 2)))
+    (select-keys (field 2) [:base-type])))
+
+(def ^:dynamic *parent-honeysql-col-type-info*
+  "To be bound in `->honeysql <driver> <op>` where op is on of {:>, :>=, :<, :<=, :=, :between}`. Its value should be
+  `{:base-type keyword? :database-type string?}`. The value is used in `->honeysql <driver> :relative-datetime`,
+  the :snowflake implementation at the time of writing, and later in the [[metabase.query-processor.util.relative-datetime/maybe-cacheable-relative-datetime-honeysql]]
+  to determine (1) format of server-side generated sql temporal string and (2) the database type it should be cast to."
+  nil)
+
 (defmethod ->honeysql [:sql :between]
   [driver [_ field min-val max-val]]
-  [:between (->honeysql driver field) (->honeysql driver min-val) (->honeysql driver max-val)])
+  (let [field-honeysql (->honeysql driver field)]
+    (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
+                                                       {:database-type database-type})
+                                                     (parent-honeysql-col-base-type-map field))]
+      [:between field-honeysql (->honeysql driver min-val) (->honeysql driver max-val)])))
 
-(defmethod ->honeysql [:sql :>]
-  [driver [_ field value]]
-  [:> (->honeysql driver field) (->honeysql driver value)])
-
-(defmethod ->honeysql [:sql :<]
-  [driver [_ field value]]
-  [:< (->honeysql driver field) (->honeysql driver value)])
-
-(defmethod ->honeysql [:sql :>=]
-  [driver [_ field value]]
-  [:>= (->honeysql driver field) (->honeysql driver value)])
-
-(defmethod ->honeysql [:sql :<=]
-  [driver [_ field value]]
-  [:<= (->honeysql driver field) (->honeysql driver value)])
+(doseq [operator [:> :>= :< :<=]]
+  (defmethod ->honeysql [:sql operator] ; [:> :>= :< :<=] -- For grep.
+    [driver [_ field value]]
+    (let [field-honeysql (->honeysql driver field)]
+      (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
+                                                         {:database-type database-type})
+                                                       (parent-honeysql-col-base-type-map field))]
+        [operator field-honeysql (->honeysql driver value)]))))
 
 (defmethod ->honeysql [:sql :=]
   [driver [_ field value]]
   (assert field)
-  [:= (->honeysql driver (maybe-cast-uuid-for-equality driver field value)) (->honeysql driver value)])
+  (let [field-honeysql (->honeysql driver (maybe-cast-uuid-for-equality driver field value))]
+    (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
+                                                       {:database-type database-type})
+                                                     (parent-honeysql-col-base-type-map field))]
+      [:= field-honeysql (->honeysql driver value)])))
 
 (defn- correct-null-behaviour
   [driver [op & args :as clause]]
@@ -1741,9 +1812,11 @@
       (when-let [source-query (:source-query inner-query)]
         (has-window-function-aggregations? source-query))))
 
-(defn- maybe-nest-breakouts-in-queries-with-window-fn-aggregations [inner-query]
+(defn- maybe-nest-breakouts-in-queries-with-window-fn-aggregations
+  [inner-query]
   (cond-> inner-query
-    (has-window-function-aggregations? inner-query) nest-breakouts-in-queries-with-window-fn-aggregations))
+    (has-window-function-aggregations? inner-query)
+    nest-breakouts-in-queries-with-window-fn-aggregations))
 
 (defmethod preprocess :sql
   [_driver inner-query]

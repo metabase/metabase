@@ -22,17 +22,45 @@
    [metabase.api.embed.common :as api.embed.common]
    [metabase.api.public :as api.public]
    [metabase.events :as events]
-   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private ResourceId [:or ms/PositiveInt ms/NanoIdString])
+(def ^:private Token [:map
+                      [:resource [:map
+                                  [:question  {:optional true} ResourceId]
+                                  [:dashboard {:optional true} ResourceId]]]
+                      [:params :any]])
+
+(defn- conditional-update-in
+  "If there's a value at `path`, apply `f`, otherwise return `m`."
+  [m path f]
+  (if-let [value (get-in m path)]
+    (assoc-in m path (f value))
+    m))
+
+(mu/defn translate-token-ids :- Token
+  "Translate `entity_id` keys to `card_id` and `dashboard_id` respectively."
+  [unsigned :- Token]
+  (-> unsigned
+      (conditional-update-in [:resource :question]  #(api.embed.common/->id :model/Card %))
+      (conditional-update-in [:resource :dashboard] #(api.embed.common/->id :model/Dashboard %))))
+
+(defn unsign-and-translate-ids
+  "Unsign a JWT and translate `entity_id` keys to `card_id` and `dashboard_id` respectively. If they are already
+   sequential ids, they are left as is."
+  [message]
+  (translate-token-ids (embed/unsign message)))
 
 ;;; ------------------------------------------- /api/embed/card endpoints --------------------------------------------
 
@@ -43,7 +71,7 @@
 
      {:resource {:question <card-id>}}"
   [token]
-  (let [unsigned (embed/unsign token)]
+  (let [unsigned (unsign-and-translate-ids token)]
     (api.embed.common/check-embedding-enabled-for-card (embed/get-in-unsigned-token-or-throw unsigned [:resource :question]))
     (u/prog1 (api.embed.common/card-for-unsigned-token unsigned, :constraints [:enable_embedding true])
       (events/publish-event! :event/card-read {:object-id (:id <>), :user-id api/*current-user-id*, :context :question}))))
@@ -62,7 +90,7 @@
      :card-id           card-id
      :token-params      (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
      :embedding-params  (t2/select-one-fn :embedding_params Card :id card-id)
-     :query-params      (api.embed.common/parse-query-params query-params)
+     :query-params      (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
      :qp                qp
      :constraints       constraints
      :options           options)))
@@ -75,21 +103,23 @@
      {:resource {:question <card-id>}
       :params   <parameters>}"
   [token & query-params]
-  (run-query-for-unsigned-token-async (embed/unsign token) :api (api.embed.common/parse-query-params query-params)))
+  (run-query-for-unsigned-token-async (unsign-and-translate-ids token) :api (api.embed.common/parse-query-params query-params)))
 
 (api/defendpoint GET ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
-  [token export-format format_rows :as {:keys [query-params]}]
+  [token export-format format_rows pivot_results :as {:keys [query-params]}]
   {export-format (into [:enum] api.dataset/export-formats)
-   format_rows   [:maybe :boolean]}
+   format_rows   [:maybe :boolean]
+   pivot_results [:maybe :boolean]}
   (run-query-for-unsigned-token-async
-   (embed/unsign token)
+   (unsign-and-translate-ids token)
    export-format
-   (api.embed.common/parse-query-params (dissoc (m/map-keys keyword query-params) :format_rows))
+   (api.embed.common/parse-query-params (dissoc (m/map-keys keyword query-params) :format_rows :pivot_results))
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
-                :format-rows?          format_rows}))
+                :format-rows?          (or format_rows false)
+                :pivot?                (or pivot_results false)}))
 
 ;;; ----------------------------------------- /api/embed/dashboard endpoints -----------------------------------------
 
@@ -100,7 +130,7 @@
 
      {:resource {:dashboard <dashboard-id>}}"
   [token]
-  (let [unsigned (embed/unsign token)]
+  (let [unsigned (unsign-and-translate-ids token)]
     (api.embed.common/check-embedding-enabled-for-dashboard (embed/get-in-unsigned-token-or-throw unsigned [:resource :dashboard]))
     (u/prog1 (api.embed.common/dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])
       (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*}))))
@@ -109,7 +139,7 @@
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
    `embedding-secret-key`.
 
-   Token should have the following format:
+   [[Token]] should have the following format:
 
      {:resource {:dashboard <dashboard-id>}
       :params   <parameters>}
@@ -121,7 +151,7 @@
    & {:keys [constraints qp middleware]
       :or   {constraints (qp.constraints/default-query-constraints)
              qp          qp.card/process-query-for-card-default-qp}}]
-  (let [unsigned-token (embed/unsign token)
+  (let [unsigned-token (unsign-and-translate-ids token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
     (api.embed.common/process-query-for-dashcard
@@ -131,7 +161,7 @@
      :card-id          card-id
      :embedding-params (t2/select-one-fn :embedding_params Dashboard :id dashboard-id)
      :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-     :query-params     (api.embed.common/parse-query-params (dissoc query-params :format_rows))
+     :query-params     (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
      :constraints      constraints
      :qp               qp
      :middleware       middleware)))
@@ -156,7 +186,7 @@
   "Fetch FieldValues for a Field that is referenced by an embedded Card."
   [token field-id]
   {field-id ms/PositiveInt}
-  (let [unsigned-token (embed/unsign token)
+  (let [unsigned-token (unsign-and-translate-ids token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.public/card-and-field-id->values card-id field-id)))
@@ -165,7 +195,7 @@
   "Fetch FieldValues for a Field that is used as a param in an embedded Dashboard."
   [token field-id]
   {field-id ms/PositiveInt}
-  (let [unsigned-token (embed/unsign token)
+  (let [unsigned-token (unsign-and-translate-ids token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
     (api.public/dashboard-and-field-id->values dashboard-id field-id)))
@@ -179,7 +209,7 @@
    search-field-id ms/PositiveInt
    value           ms/NonBlankString
    limit           [:maybe ms/PositiveInt]}
-  (let [unsigned-token (embed/unsign token)
+  (let [unsigned-token (unsign-and-translate-ids token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.public/search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
@@ -191,7 +221,7 @@
    search-field-id ms/PositiveInt
    value           ms/NonBlankString
    limit           [:maybe ms/PositiveInt]}
-  (let [unsigned-token (embed/unsign token)
+  (let [unsigned-token (unsign-and-translate-ids token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
     (api.public/search-dashboard-fields dashboard-id field-id search-field-id value (when limit
@@ -206,7 +236,7 @@
   {field-id    ms/PositiveInt
    remapped-id ms/PositiveInt
    value       ms/NonBlankString}
-  (let [unsigned-token (embed/unsign token)
+  (let [unsigned-token (unsign-and-translate-ids token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.public/card-field-remapped-values card-id field-id remapped-id value)))
@@ -218,7 +248,7 @@
   {field-id    ms/PositiveInt
    remapped-id ms/PositiveInt
    value       ms/NonBlankString}
-  (let [unsigned-token (embed/unsign token)
+  (let [unsigned-token (unsign-and-translate-ids token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
     (api.public/dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
@@ -227,10 +257,11 @@
                       :export-format api.dataset/export-format-regex]
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
-  [token export-format dashcard-id card-id format_rows :as {:keys [query-params]}]
+  [token export-format dashcard-id card-id format_rows pivot_results :as {:keys [query-params]}]
   {dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
    format_rows   [:maybe :boolean]
+   pivot_results [:maybe :boolean]
    export-format (into [:enum] api.dataset/export-formats)}
   (process-query-for-dashcard-with-signed-token token
                                                 dashcard-id
@@ -240,7 +271,8 @@
                                                 :constraints nil
                                                 :middleware {:process-viz-settings? true
                                                              :js-int-to-string?     false
-                                                             :format-rows?          format_rows}))
+                                                             :format-rows?          (or format_rows false)
+                                                             :pivot?                (or pivot_results false)}))
 
 ;;; ----------------------------------------------- Param values -------------------------------------------------
 
@@ -265,7 +297,7 @@
 (api/defendpoint GET "/card/:token/params/:param-key/values"
   "Embedded version of api.card filter values endpoint."
   [token param-key]
-  (let [unsigned (embed/unsign token)
+  (let [unsigned (unsign-and-translate-ids token)
         card-id  (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
         card     (t2/select-one Card :id card-id)]
     (api.embed.common/check-embedding-enabled-for-card card-id)
@@ -276,7 +308,7 @@
 (api/defendpoint GET "/card/:token/params/:param-key/search/:prefix"
   "Embedded version of chain filter search endpoint."
   [token param-key prefix]
-  (let [unsigned (embed/unsign token)
+  (let [unsigned (unsign-and-translate-ids token)
         card-id  (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
         card     (t2/select-one Card :id card-id)]
     (api.embed.common/check-embedding-enabled-for-card card-id)
@@ -293,7 +325,7 @@
      {:resource {:question <card-id>}
       :params   <parameters>}"
   [token & query-params]
-  (run-query-for-unsigned-token-async (embed/unsign token)
+  (run-query-for-unsigned-token-async (unsign-and-translate-ids token)
                                       :api (api.embed.common/parse-query-params query-params)
                                       :qp qp.pivot/run-pivot-query))
 

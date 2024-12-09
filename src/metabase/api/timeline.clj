@@ -5,7 +5,7 @@
    [metabase.api.common :as api]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
-   [metabase.models.timeline :as timeline :refer [Timeline]]
+   [metabase.models.timeline :refer [Timeline]]
    [metabase.models.timeline-event
     :as timeline-event
     :refer [TimelineEvent]]
@@ -46,8 +46,7 @@
         timelines (->> (t2/select Timeline
                                   {:where    [:and
                                               [:= :archived archived?]
-                                              (collection/visible-collection-ids->honeysql-filter-clause
-                                               (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                                              (collection/visible-collection-filter-clause)]
                                    :order-by [[:%lower.name :asc]]})
                        (map collection.root/hydrate-root-collection))]
     (cond->> (t2/hydrate timelines :creator [:collection :can_write])

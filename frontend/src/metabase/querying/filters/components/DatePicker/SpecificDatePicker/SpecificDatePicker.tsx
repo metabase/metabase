@@ -2,7 +2,11 @@ import { useMemo, useState } from "react";
 
 import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
 
-import type { DatePickerOperator, SpecificDatePickerValue } from "../types";
+import type {
+  DatePickerOperator,
+  DatePickerUnit,
+  SpecificDatePickerValue,
+} from "../types";
 
 import { DateRangePicker, type DateRangePickerValue } from "./DateRangePicker";
 import {
@@ -11,6 +15,7 @@ import {
 } from "./SingleDatePicker";
 import { TabList } from "./SpecificDatePicker.styled";
 import {
+  canSetTime,
   coerceValue,
   getDate,
   getDefaultValue,
@@ -24,6 +29,7 @@ import {
 interface SpecificDatePickerProps {
   value?: SpecificDatePickerValue;
   availableOperators: ReadonlyArray<DatePickerOperator>;
+  availableUnits: ReadonlyArray<DatePickerUnit>;
   isNew: boolean;
   onChange: (value: SpecificDatePickerValue) => void;
   onBack: () => void;
@@ -32,15 +38,14 @@ interface SpecificDatePickerProps {
 export function SpecificDatePicker({
   value: initialValue,
   availableOperators,
+  availableUnits,
   isNew,
   onChange,
   onBack,
 }: SpecificDatePickerProps) {
-  const tabs = useMemo(() => {
-    return getTabs(availableOperators);
-  }, [availableOperators]);
-
+  const tabs = useMemo(() => getTabs(availableOperators), [availableOperators]);
   const [value, setValue] = useState(() => initialValue ?? getDefaultValue());
+  const hasTimeToggle = canSetTime(value, availableUnits);
 
   const handleTabChange = (tabValue: string | null) => {
     const tab = tabs.find(tab => tab.operator === tabValue);
@@ -83,6 +88,7 @@ export function SpecificDatePicker({
             <DateRangePicker
               value={{ dateRange: value.values, hasTime: value.hasTime }}
               isNew={isNew}
+              hasTimeToggle={hasTimeToggle}
               onChange={handleDateRangeChange}
               onSubmit={handleSubmit}
             />
@@ -90,6 +96,7 @@ export function SpecificDatePicker({
             <SingleDatePicker
               value={{ date: getDate(value), hasTime: value.hasTime }}
               isNew={isNew}
+              hasTimeToggle={hasTimeToggle}
               onChange={handleDateChange}
               onSubmit={handleSubmit}
             />

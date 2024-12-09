@@ -37,6 +37,11 @@
 (defonce ^:private ^{:tag 'bytes} default-secret-key
   (validate-and-hash-secret-key (env/env :mb-encryption-secret-key)))
 
+(defn default-encryption-enabled?
+  "Is the `MB_ENCRYPTION_SECRET_KEY` set, enabling encryption?"
+  []
+  (boolean default-secret-key))
+
 ;; log a nice message letting people know whether DB details encryption is enabled
 (when-not *compile-files*
   (log/info

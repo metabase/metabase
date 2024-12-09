@@ -3,7 +3,7 @@ import type {
   NavigateToNewCardParams,
   SdkQuestionState,
 } from "embedding-sdk/types/question";
-import { loadCard } from "metabase/lib/card";
+import { loadCard } from "metabase/query_builder/actions/core/card";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
@@ -14,6 +14,7 @@ import type { Dispatch, GetState } from "metabase-types/store";
 interface RunQuestionOnNavigateParams extends NavigateToNewCardParams {
   originalQuestion?: Question;
   onQuestionChange: (question: Question) => void;
+  onClearQueryResults: () => void;
 }
 
 export const runQuestionOnNavigateSdk =
@@ -28,6 +29,7 @@ export const runQuestionOnNavigateSdk =
       originalQuestion,
       cancelDeferred,
       onQuestionChange,
+      onClearQueryResults,
     } = params;
 
     // Do not reload questions with breakouts when clicking on a legend item
@@ -40,6 +42,7 @@ export const runQuestionOnNavigateSdk =
       nextCard = await loadCard(nextCard.id, { dispatch, getState });
     } else {
       nextCard = getCardAfterVisualizationClick(nextCard, previousCard);
+      onClearQueryResults();
     }
 
     // Optimistic update the UI before we re-fetch the query metadata.

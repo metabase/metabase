@@ -195,15 +195,11 @@ describe("UserForm", () => {
       await userEvent.click(await screen.findByText("Add an attribute"));
 
       await userEvent.type(
-        (
-          await screen.findAllByPlaceholderText("Key")
-        )[1],
+        (await screen.findAllByPlaceholderText("Key"))[1],
         "exp",
       );
       await userEvent.type(
-        (
-          await screen.findAllByPlaceholderText("Value")
-        )[1],
+        (await screen.findAllByPlaceholderText("Value"))[1],
         "1234",
       );
 
@@ -257,9 +253,7 @@ describe("UserForm", () => {
       await userEvent.click(await screen.findByText("Add an attribute"));
 
       await userEvent.type(
-        (
-          await screen.findAllByPlaceholderText("Key")
-        )[1],
+        (await screen.findAllByPlaceholderText("Key"))[1],
         "1",
       );
 
@@ -281,9 +275,7 @@ describe("UserForm", () => {
       // setValue, so we need to ensure that no other setValue calls are in
       // flight before typing the letter can causes the error.
       await userEvent.type(
-        (
-          await screen.findAllByPlaceholderText("Key")
-        )[1],
+        (await screen.findAllByPlaceholderText("Key"))[1],
         "team",
         { delay: 100 },
       );

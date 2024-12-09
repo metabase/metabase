@@ -10,7 +10,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
-   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
    [metabase.models.dashboard-tab :as dashboard-tab]
@@ -19,13 +19,14 @@
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.pulse-card :as pulse-card]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
@@ -72,7 +73,7 @@
    (mi/can-read? (t2/select-one :model/Dashboard :id pk))))
 
 (t2/deftransforms :model/Dashboard
-  {:parameters       mi/transform-parameters-list
+  {:parameters       mi/transform-card-parameters-list
    :embedding_params mi/transform-json})
 
 (t2/define-before-delete :model/Dashboard
@@ -141,7 +142,7 @@
                                     :dashboard_card_id dashcard-id
                                     :position          position})]
         (t2/with-transaction [_conn]
-          (binding [pulse/*allow-moving-dashboard-subscriptions* true]
+          (binding [models.pulse/*allow-moving-dashboard-subscriptions* true]
             (t2/update! :model/Pulse {:dashboard_id dashboard-id}
                         ;; TODO we probably don't need this anymore
                         ;; pulse.name is no longer used for generating title.
@@ -195,7 +196,7 @@
    dashboards k
    #(group-by :dashboard_id (t2/select :model/DashboardTab
                                        :dashboard_id [:in (map :id dashboards)]
-                                       {:order-by [[:dashboard_id :asc] [:position :asc]]}))
+                                       {:order-by [[:dashboard_id :asc] [:position :asc] [:id :asc]]}))
    :id
    {:default []}))
 
@@ -578,11 +579,13 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod serdes/make-spec "Dashboard" [_model-name opts]
-  {:copy      [:archived :archived_directly :auto_apply_filters :cache_ttl :caveats :collection_position
+  {:copy      [:archived :archived_directly :auto_apply_filters :caveats :collection_position
                :description :embedding_params :enable_embedding :entity_id :name
                :points_of_interest :position :public_uuid :show_in_getting_started :width]
    :skip      [;; those stats are inherently local state
-               :view_count :last_viewed_at]
+               :view_count :last_viewed_at
+               ;; this is deprecated
+               :cache_ttl]
    :transform {:created_at             (serdes/date)
                :initially_published_at (serdes/date)
                :collection_id          (serdes/fk :model/Collection)
@@ -612,28 +615,34 @@
 (defmethod serdes/descendants "Dashboard" [_model-name id]
   (let [dashcards (t2/select ['DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
                              :dashboard_id id)
-        dashboard (t2/select-one Dashboard :id id)]
-    (set/union
-      ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
-      ;; here. So their actions, and their cards both direct, mentioned in their parameters viz settings, and related
-      ;; via dashboard card series.
-     (set (for [{:keys [card_id parameter_mappings]} dashcards
-                ;; Capture all card_ids in the parameters, plus this dashcard's card_id if non-nil.
-                card-id (cond-> (set (keep :card_id parameter_mappings))
-                          card_id (conj card_id))]
-            ["Card" card-id]))
+        dashboard (t2/select-one Dashboard :id id)
+        dash-id   id]
+    (merge-with
+     merge
+     ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
+     ;; here. So their actions, and their cards both direct, mentioned in their parameters viz settings, and related
+     ;; via dashboard card series.
+     (into {} (for [{:keys [id card_id parameter_mappings]} dashcards
+                    ;; Capture all card_ids in the parameters, plus this dashcard's card_id if non-nil.
+                    card-id (cond-> (set (keep :card_id parameter_mappings))
+                              card_id (conj card_id))]
+                {["Card" card-id] {"DashboardCard" id "Dashboard" dash-id}}))
      (when (not-empty dashcards)
-       (set (for [card-id (t2/select-fn-set :card_id :model/DashboardCardSeries :dashboardcard_id [:in (map :id dashcards)])]
-              ["Card" card-id])))
-     (set (for [{:keys [action_id]} dashcards
-                :when action_id]
-            ["Action" action_id]))
-     (reduce set/union #{}
-             (for [dc dashcards]
-               (serdes/visualization-settings-descendants (:visualization_settings dc))))
-      ;; parameter with values_source_type = "card" will depend on a card
-     (set (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
-            ["Card" card-id])))))
+       (into {} (for [{:keys [id card_id dashboardcard_id]} (t2/select [:model/DashboardCardSeries :id :card_id :dashboardcard_id]
+                                                                       :dashboardcard_id [:in (map :id dashcards)])]
+                  {["Card" card_id] {"DashboardCardSeries" id
+                                     "DashboardCard"       dashboardcard_id
+                                     "Dashboard"           dash-id}})))
+     (into {} (for [{:keys [id action_id]} dashcards
+                    :when action_id]
+                {["Action" action_id] {"DashboardCard" id
+                                       "Dashboard"     dash-id}}))
+     (into {} (for [dc dashcards]
+                (serdes/visualization-settings-descendants (:visualization_settings dc) {"DashboardCard" id
+                                                                                         "Dashboard"     dash-id})))
+     ;; parameter with values_source_type = "card" will depend on a card
+     (into {} (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
+                {["Card" card-id] {"Dashboard" dash-id}})))))
 
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------
 
@@ -652,3 +661,38 @@
                                    (assoc :card_id card_id))))))
 
     {}))
+
+;;;; ------------------------------------------------- Search ----------------------------------------------------------
+
+(search/define-spec "dashboard"
+  {:model        :model/Dashboard
+   :attrs        {:archived       true
+                  :collection-id  true
+                  :creator-id     true
+                  :database-id    false
+                  :last-editor-id :r.user_id
+                  :last-edited-at :r.timestamp
+                  :last-viewed-at true
+                  :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
+                  :view-count     true
+                  :created-at     true
+                  :updated-at     true}
+   :search-terms [:name :description]
+   :render-terms {:archived-directly          true
+                  :collection-authority_level :collection.authority_level
+                  :collection-name            :collection.name
+                  ;; This is used for legacy ranking, in future it will be replaced by :pinned
+                  :collection-position        true
+                  :collection-type            :collection.type}
+   :where        []
+   :bookmark     [:model/DashboardBookmark [:and
+                                            [:= :bookmark.dashboard_id :this.id]
+                                            ;; a magical alias, or perhaps this clause can be implicit
+                                            [:= :bookmark.user_id :current_user/id]]]
+   :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
+                  :r          [:model/Revision [:and
+                                                [:= :r.model_id :this.id]
+                                                ;; Interesting for inversion, another condition on whether to update.
+                                                ;; For now, let's just swallow the extra update (2x amplification)
+                                                [:= :r.most_recent true]
+                                                [:= :r.model "Dashboard"]]]}})

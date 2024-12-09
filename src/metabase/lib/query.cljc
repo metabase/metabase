@@ -17,10 +17,13 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -66,8 +69,18 @@
 (defmethod can-run-method :mbql.stage/mbql
   [query card-type]
   (or (not= card-type :metric)
-      (and (= (stage-count query) 1)
-           (= (-> (lib.util/query-stage query 0) :aggregation count) 1))))
+      (let [stage        (lib.util/query-stage query 0)
+            aggregations (:aggregation stage)
+            breakouts    (:breakout stage)]
+        (and (= (stage-count query) 1)
+             (= (count aggregations) 1)
+             (or (empty? breakouts)
+                 (and (= (count breakouts) 1)
+                      (-> (lib.metadata.calculation/metadata query (first breakouts))
+                          ;; extraction units change `:effective-type` to `:type/Integer`, so remove temporal bucketing
+                          ;; before doing type checks
+                          (lib.temporal-bucket/with-temporal-bucket nil)
+                          lib.types.isa/date-or-datetime?)))))))
 
 (mu/defn can-run :- :boolean
   "Returns whether the query is runnable. Manually validate schema for cljs."
@@ -75,6 +88,7 @@
    card-type :- ::lib.schema.metadata/card.type]
   (and (binding [lib.schema.expression/*suppress-expression-type-check?* true]
          (mr/validate ::lib.schema/query query))
+       (:database query)
        (boolean (can-run-method query card-type))))
 
 (defmulti can-save-method
@@ -375,3 +389,45 @@
     (-> a-query
         (update :stages #(vec (take (inc stage-number) %)))
         (update-in [:stages stage-number] preview-stage clause-type clause-index))))
+
+(mu/defn wrap-native-query-with-mbql :- [:map
+                                         [:query ::lib.schema/query]
+                                         [:stage-number :int]]
+  "Given a query and stage number, return a possibly-updated query and stage number which is guaranteed to be MBQL and
+  so to support drill-thru and similar logic. Such a query must be saved, hence the `card-id`.
+
+  If the provided query is already MBQL, this is transparent.
+
+  Returns `{:query query', :stage-number stage-number'}`.
+
+  You might find it more convenient to call [[with-wrapped-native-query]]."
+  [a-query      :- ::lib.schema/query
+   stage-number :- :int
+   card-id      :- [:maybe ::lib.schema.id/card]]
+  (or (and (lib.util/native-stage? a-query stage-number)
+           card-id
+           (if-let [card (lib.metadata/card a-query card-id)]
+             {:query        (query a-query card)
+              :stage-number -1}
+             (do
+               (log/warn "Failed to wrap native query with MBQL; card not found" {:query   a-query
+                                                                                  :card-id card-id})
+               nil)))
+      {:query        a-query
+       :stage-number stage-number}))
+
+(defn with-wrapped-native-query
+  "Calls [[wrap-native-query-with-mbql]] on the given `a-query`, `stage-number` and `card-id`, then calls
+  `(f a-query' stage-number' args...)` using the query and stage number for the wrapper."
+  [a-query stage-number card-id f & args]
+  (let [{q :query, n :stage-number} (wrap-native-query-with-mbql a-query stage-number card-id)]
+    (apply f q n args)))
+
+(defn serializable
+  "Given a query, ensure it doesn't have any keys or structures that aren't safe for serialization.
+
+  For example, any Atoms or Delays or should be removed."
+  [a-query]
+  (-> a-query
+      (dissoc a-query :lib/metadata)
+      lib.cache/discard-query-cache))

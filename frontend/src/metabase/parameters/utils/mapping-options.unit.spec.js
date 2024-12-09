@@ -54,6 +54,7 @@ describe("parameters/utils/mapping-options", () => {
     describe("structured model", () => {
       let dataset;
       let virtualCardTable;
+
       beforeEach(() => {
         const question = ordersTable.question();
         dataset = question.setCard({
@@ -94,10 +95,11 @@ describe("parameters/utils/mapping-options", () => {
             icon: "calendar",
             isForeign: false,
             name: "~*~Created At~*~",
-            sectionName: "Order",
+            sectionName: "Orders",
             target: [
               "dimension",
               ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+              { "stage-number": 0 },
             ],
           },
         ]);
@@ -148,12 +150,13 @@ describe("parameters/utils/mapping-options", () => {
         );
         expect(options).toEqual([
           {
-            sectionName: "Review",
+            sectionName: "Reviews",
             icon: "calendar",
             name: "Created At",
             target: [
               "dimension",
               ["field", REVIEWS.CREATED_AT, { "base-type": "type/DateTime" }],
+              { "stage-number": 0 },
             ],
             isForeign: false,
           },
@@ -171,11 +174,13 @@ describe("parameters/utils/mapping-options", () => {
                   "source-field": REVIEWS.PRODUCT_ID,
                 },
               ],
+              { "stage-number": 0 },
             ],
             isForeign: true,
           },
         ]);
       });
+
       it("should also return fields from explicitly joined tables", () => {
         const card = structured({
           "source-table": ORDERS_ID,
@@ -203,17 +208,18 @@ describe("parameters/utils/mapping-options", () => {
         );
         expect(options).toEqual([
           {
-            sectionName: "Order",
+            sectionName: "Orders",
             name: "Created At",
             icon: "calendar",
             target: [
               "dimension",
               ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+              { "stage-number": 0 },
             ],
             isForeign: false,
           },
           {
-            sectionName: "Product",
+            sectionName: "Products",
             name: "Created At",
             icon: "calendar",
             target: [
@@ -223,6 +229,7 @@ describe("parameters/utils/mapping-options", () => {
                 PRODUCTS.CREATED_AT,
                 { "base-type": "type/DateTime", "join-alias": "Product" },
               ],
+              { "stage-number": 0 },
             ],
             isForeign: true,
           },
@@ -240,6 +247,7 @@ describe("parameters/utils/mapping-options", () => {
                   "source-field": ORDERS.USER_ID,
                 },
               ],
+              { "stage-number": 0 },
             ],
             isForeign: true,
           },
@@ -257,11 +265,13 @@ describe("parameters/utils/mapping-options", () => {
                   "source-field": ORDERS.USER_ID,
                 },
               ],
+              { "stage-number": 0 },
             ],
             isForeign: true,
           },
         ]);
       });
+
       it("should return fields in nested query", () => {
         const card = structured({
           "source-query": {
@@ -275,13 +285,24 @@ describe("parameters/utils/mapping-options", () => {
         );
         expect(options).toEqual([
           {
-            // this is a source query, and tables for source queries do not have a display_name
-            sectionName: "",
+            sectionName: "Products",
+            name: "Created At",
+            icon: "calendar",
+            target: [
+              "dimension",
+              ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
+              { "stage-number": 0 },
+            ],
+            isForeign: false,
+          },
+          {
+            sectionName: "Summaries",
             name: "Created At",
             icon: "calendar",
             target: [
               "dimension",
               ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+              { "stage-number": 1 },
             ],
             isForeign: false,
           },
@@ -336,7 +357,11 @@ describe("parameters/utils/mapping-options", () => {
         {
           name: "Created At",
           icon: "calendar",
-          target: ["dimension", ["template-tag", "created"]],
+          target: [
+            "dimension",
+            ["template-tag", "created"],
+            { "stage-number": 0 },
+          ],
           isForeign: false,
         },
       ]);

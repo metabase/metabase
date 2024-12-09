@@ -1,4 +1,5 @@
-import type { Card, DatasetColumn } from "metabase-types/api";
+import type { PivotTableColumnSplitSetting } from "metabase-types/api";
+import { createMockColumn } from "metabase-types/api/mocks";
 
 import {
   CELL_PADDING,
@@ -6,7 +7,7 @@ import {
   MIN_HEADER_CELL_WIDTH,
   ROW_TOGGLE_ICON_WIDTH,
 } from "./constants";
-import type { HeaderItem, PivotSetting } from "./types";
+import type { HeaderItem } from "./types";
 import {
   addMissingCardBreakouts,
   getColumnValues,
@@ -18,69 +19,67 @@ import {
 
 describe("Visualizations > Visualizations > PivotTable > utils", () => {
   const cols = [
-    { source: "field", field_ref: ["field", 123, null], name: "field-123" },
-    { source: "field", field_ref: ["field", 456, null], name: "field-456" },
-    { source: "field", field_ref: ["field", 789, null], name: "field-789" },
-    {
-      source: "aggregation",
-      field_ref: ["aggregation", 1],
-      name: "aggregation-1",
-    },
-    {
-      source: "aggregation",
-      field_ref: ["aggregation", 2],
-      name: "aggregation-2",
-    },
-  ] as DatasetColumn[];
+    createMockColumn({ source: "breakout", name: "field-123" }),
+    createMockColumn({ source: "breakout", name: "field-456" }),
+    createMockColumn({ source: "breakout", name: "field-789" }),
+    createMockColumn({ source: "aggregation", name: "aggregation-1" }),
+    createMockColumn({ source: "aggregation", name: "aggregation-2" }),
+  ];
 
   describe("isColumnValid", () => {
     it("should return true if a column is an aggregation", () => {
-      const result = isColumnValid({ source: "aggregation" } as DatasetColumn);
+      const result = isColumnValid(createMockColumn({ source: "aggregation" }));
       expect(result).toBe(true);
     });
 
     it("should return true if a column is a breakout", () => {
-      const result = isColumnValid({ source: "breakout" } as DatasetColumn);
+      const result = isColumnValid(createMockColumn({ source: "breakout" }));
       expect(result).toBe(true);
     });
 
     it("should return true if a column is a pivot grouping", () => {
-      const result = isColumnValid({
-        source: "fields",
-        name: "pivot-grouping",
-      } as DatasetColumn);
+      const result = isColumnValid(
+        createMockColumn({
+          source: "fields",
+          name: "pivot-grouping",
+        }),
+      );
       expect(result).toBe(true);
     });
 
     it("should return false if a column is a field", () => {
-      const result = isColumnValid({ source: "fields" } as DatasetColumn);
+      const result = isColumnValid(createMockColumn({ source: "fields" }));
       expect(result).toBe(false);
     });
   });
 
   describe("isFormattablePivotColumn", () => {
     it("should return true if a column is an aggregation", () => {
-      const result = isFormattablePivotColumn({
-        source: "aggregation",
-      } as DatasetColumn);
+      const result = isFormattablePivotColumn(
+        createMockColumn({
+          source: "aggregation",
+        }),
+      );
       expect(result).toBe(true);
     });
 
     it("should return false if a column is a breakout", () => {
-      const result = isFormattablePivotColumn({
-        source: "breakout",
-      } as DatasetColumn);
+      const result = isFormattablePivotColumn(
+        createMockColumn({
+          source: "breakout",
+        }),
+      );
       expect(result).toBe(false);
     });
   });
 
   describe("updateValueWithCurrentColumns", () => {
     it("should not update settings when no columns have changed", () => {
-      const pivotSettings = {
-        columns: [cols[0].field_ref],
-        rows: [cols[1].field_ref, cols[2].field_ref],
-        values: [cols[3].field_ref, cols[4].field_ref],
-      } as unknown as PivotSetting;
+      const pivotSettings: PivotTableColumnSplitSetting = {
+        columns: [cols[0].name],
+        rows: [cols[1].name, cols[2].name],
+        values: [cols[3].name, cols[4].name],
+      };
 
       const result = updateValueWithCurrentColumns(pivotSettings, cols);
 
@@ -88,21 +87,21 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     });
 
     it("should add a newly-added field to rows", () => {
-      const oldPivotSettings = {
+      const oldPivotSettings: PivotTableColumnSplitSetting = {
         columns: [],
-        rows: [cols[0].field_ref, cols[1].field_ref],
-        values: [cols[3].field_ref, cols[4].field_ref],
-      } as unknown as PivotSetting;
+        rows: [cols[0].name, cols[1].name],
+        values: [cols[3].name, cols[4].name],
+      };
 
-      const newPivotSettings = {
+      const newPivotSettings: PivotTableColumnSplitSetting = {
         columns: [],
         rows: [
-          cols[0].field_ref,
-          cols[1].field_ref,
-          cols[2].field_ref, // <-- new column
+          cols[0].name,
+          cols[1].name,
+          cols[2].name, // <-- new column
         ],
-        values: [cols[3].field_ref, cols[4].field_ref],
-      } as unknown as PivotSetting;
+        values: [cols[3].name, cols[4].name],
+      };
 
       const result = updateValueWithCurrentColumns(oldPivotSettings, cols);
 
@@ -110,20 +109,20 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     });
 
     it("should add a newly-added aggregation to values", () => {
-      const oldPivotSettings = {
+      const oldPivotSettings: PivotTableColumnSplitSetting = {
         columns: [],
-        rows: [cols[0].field_ref, cols[1].field_ref, cols[2].field_ref],
-        values: [cols[3].field_ref],
-      } as unknown as PivotSetting;
+        rows: [cols[0].name, cols[1].name, cols[2].name],
+        values: [cols[3].name],
+      };
 
-      const newPivotSettings = {
+      const newPivotSettings: PivotTableColumnSplitSetting = {
         columns: [],
-        rows: [cols[0].field_ref, cols[1].field_ref, cols[2].field_ref],
+        rows: [cols[0].name, cols[1].name, cols[2].name],
         values: [
-          cols[3].field_ref,
-          cols[4].field_ref, // <-- new aggregation
+          cols[3].name,
+          cols[4].name, // <-- new aggregation
         ],
-      } as unknown as PivotSetting;
+      };
 
       const result = updateValueWithCurrentColumns(oldPivotSettings, cols);
 
@@ -131,22 +130,17 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     });
 
     it("should remove a removed field from rows", () => {
-      const oldPivotSettings = {
+      const oldPivotSettings: PivotTableColumnSplitSetting = {
         columns: [],
-        rows: [
-          cols[0].field_ref,
-          cols[1].field_ref,
-          cols[2].field_ref,
-          ["field", 999, null], // <-- removed column
-        ],
-        values: [cols[3].field_ref],
-      } as unknown as PivotSetting;
+        rows: [cols[0].name, cols[1].name, cols[2].name, "removed_column"],
+        values: [cols[3].name],
+      };
 
-      const newPivotSettings = {
+      const newPivotSettings: PivotTableColumnSplitSetting = {
         columns: [],
-        rows: [cols[0].field_ref, cols[1].field_ref, cols[2].field_ref],
-        values: [cols[3].field_ref, cols[4].field_ref],
-      } as unknown as PivotSetting;
+        rows: [cols[0].name, cols[1].name, cols[2].name],
+        values: [cols[3].name, cols[4].name],
+      };
 
       const result = updateValueWithCurrentColumns(oldPivotSettings, cols);
 
@@ -154,21 +148,17 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     });
 
     it("should remove a removed aggregation from values", () => {
-      const oldPivotSettings = {
+      const oldPivotSettings: PivotTableColumnSplitSetting = {
         columns: [],
-        rows: [cols[0].field_ref, cols[1].field_ref, cols[2].field_ref],
-        values: [
-          cols[3].field_ref,
-          cols[4].field_ref,
-          ["aggregation", 999], // <-- removed aggregation
-        ],
-      } as unknown as PivotSetting;
+        rows: [cols[0].name, cols[1].name, cols[2].name],
+        values: [cols[3].name, cols[4].name, "removed_aggregation"],
+      };
 
-      const newPivotSettings = {
+      const newPivotSettings: PivotTableColumnSplitSetting = {
         columns: [],
-        rows: [cols[0].field_ref, cols[1].field_ref, cols[2].field_ref],
-        values: [cols[3].field_ref, cols[4].field_ref],
-      } as unknown as PivotSetting;
+        rows: [cols[0].name, cols[1].name, cols[2].name],
+        values: [cols[3].name, cols[4].name],
+      };
 
       const result = updateValueWithCurrentColumns(oldPivotSettings, cols);
 
@@ -178,60 +168,38 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
 
   describe("addMissingCardBreakouts", () => {
     it("should not mess with pivot settings that aren't misssing breakouts", () => {
-      const oldPivotSettings = {
-        columns: [cols[0].field_ref],
-        rows: [cols[1].field_ref, cols[2].field_ref],
-        values: [cols[3].field_ref, cols[4].field_ref],
-      } as unknown as PivotSetting;
+      const oldPivotSettings: PivotTableColumnSplitSetting = {
+        columns: [cols[0].name],
+        rows: [cols[1].name, cols[2].name],
+        values: [cols[3].name, cols[4].name],
+      };
 
-      const card = {
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": 1,
-            aggregation: [["count"]],
-            breakout: [...cols.map(col => col.field_ref)],
-          },
-        },
-      } as unknown as Card;
-
-      const result = addMissingCardBreakouts(oldPivotSettings, card);
+      const result = addMissingCardBreakouts(oldPivotSettings, cols);
 
       expect(result).toEqual(oldPivotSettings);
     });
 
     it("should add a missing breakout to pivot settings", () => {
-      const oldPivotSettings = {
-        columns: [cols[0].field_ref],
-        rows: [cols[1].field_ref, cols[2].field_ref],
-        values: [cols[3].field_ref, cols[4].field_ref],
-      } as unknown as PivotSetting;
+      const oldPivotSettings: PivotTableColumnSplitSetting = {
+        columns: [cols[0].name],
+        rows: [cols[1].name, cols[2].name],
+        values: [cols[3].name, cols[4].name],
+      };
 
-      const newPivotSettings = {
-        columns: [cols[0].field_ref],
-        rows: [
-          cols[1].field_ref,
-          cols[2].field_ref,
-          ["field", 999, null], // <-- new breakout
-        ],
-        values: [cols[3].field_ref, cols[4].field_ref],
-      } as unknown as PivotSetting;
+      const newColumn = createMockColumn({
+        name: "new_breakout",
+        source: "breakout",
+      });
+      const newPivotSettings: PivotTableColumnSplitSetting = {
+        columns: [cols[0].name],
+        rows: [cols[1].name, cols[2].name, newColumn.name],
+        values: [cols[3].name, cols[4].name],
+      };
 
-      const card = {
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": 1,
-            aggregation: [["count", 1]],
-            breakout: [
-              ...cols.map(col => col.field_ref),
-              ["field", 999, null], // <-- new breakout
-            ],
-          },
-        },
-      } as unknown as Card;
-
-      const result = addMissingCardBreakouts(oldPivotSettings, card);
+      const result = addMissingCardBreakouts(oldPivotSettings, [
+        ...cols,
+        newColumn,
+      ]);
 
       expect(result).toEqual(newPivotSettings);
     });

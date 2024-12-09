@@ -1,7 +1,11 @@
-import type { DatePickerOperator, DatePickerShortcut } from "../types";
+import type {
+  DatePickerOperator,
+  DatePickerShortcut,
+  ShortcutOption,
+} from "../types";
 
 import { SHORTCUT_OPTION_GROUPS, TYPE_OPTIONS } from "./constants";
-import type { ShortcutOption, TypeOption } from "./types";
+import type { TypeOption } from "./types";
 
 export function getShortcutOptions(
   availableShortcuts: ReadonlyArray<DatePickerShortcut>,

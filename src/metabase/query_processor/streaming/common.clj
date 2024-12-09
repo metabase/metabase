@@ -3,11 +3,11 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.shared.util.currency :as currency]
+   [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date])
   (:import
    (clojure.lang ISeq)
@@ -198,7 +198,10 @@
                             (get all-cols-settings {::mb.viz/column-name field-id-or-name}))]
     (merge
      ;; The default global settings based on the type of the column
-     (global-type-settings col viz-settings)
+     (try
+       (global-type-settings col viz-settings)
+       (catch Exception _e
+         (global-type-settings (dissoc col :base_type :effective_type) viz-settings)))
      ;; Generally, we want to look up the default global settings based on semantic or effective type. However, if
      ;; a user has specified other settings, we should look up the base type of those settings and combine them.
      (column-setting-defaults global-column-settings column-settings)

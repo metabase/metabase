@@ -84,7 +84,7 @@ function setup({
       onRemove={jest.fn()}
       markNewCardSeen={jest.fn()}
       navigateToNewCardFromDashboard={jest.fn()}
-      onReplaceAllVisualizationSettings={jest.fn()}
+      onReplaceAllDashCardVisualizationSettings={jest.fn()}
       onUpdateVisualizationSettings={jest.fn()}
       showClickBehaviorSidebar={jest.fn()}
       onChangeLocation={jest.fn()}

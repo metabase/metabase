@@ -14,7 +14,7 @@
       "type": "string",
       "enum": [
         "new_user_created",
-        "new_instance_created",
+        "new_instance_created"
       ],
       "maxLength": 1024
     },

@@ -1,0 +1,11 @@
+.EmbeddingOptionIcon {
+  --mb-color-embedding-option-primary: var(--mb-color-icon-primary);
+  --mb-color-embedding-option-secondary: var(--mb-color-icon-secondary);
+}
+
+.EmbeddingOptionIcon.Disabled {
+  --mb-color-embedding-option-primary: var(--mb-color-icon-primary-disabled);
+  --mb-color-embedding-option-secondary: var(
+    --mb-color-icon-secondary-disabled
+  );
+}

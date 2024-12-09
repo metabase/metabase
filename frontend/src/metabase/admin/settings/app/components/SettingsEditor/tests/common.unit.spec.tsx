@@ -1,43 +1,12 @@
-import userEvent from "@testing-library/user-event";
-
 import { screen } from "__support__/ui";
 import {
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
 
-import { EMAIL_URL, FULL_APP_EMBEDDING_URL, setup } from "./setup";
+import { EMAIL_URL, setup } from "./setup";
 
 describe("SettingsEditor", () => {
-  describe("full-app embedding", () => {
-    it("should show info about interactive embedding", async () => {
-      await setup({
-        settings: [createMockSettingDefinition({ key: "enable-embedding" })],
-        settingValues: createMockSettings({ "enable-embedding": true }),
-      });
-
-      await userEvent.click(screen.getByText("Embedding"));
-      await userEvent.click(screen.getByText("Interactive embedding"));
-      expect(screen.queryByText("Authorized origins")).not.toBeInTheDocument();
-      expect(
-        screen.queryByText("SameSite cookie setting"),
-      ).not.toBeInTheDocument();
-    });
-
-    it("should allow visiting the full-app embedding page even if embedding is not enabled", async () => {
-      await setup({
-        settings: [createMockSettingDefinition({ key: "enable-embedding" })],
-        settingValues: createMockSettings({ "enable-embedding": false }),
-        initialRoute: FULL_APP_EMBEDDING_URL,
-      });
-
-      expect(
-        screen.getByText(/Embed dashboards, questions/),
-      ).toBeInTheDocument();
-      expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
-    });
-  });
-
   describe("subscription allowed domains", () => {
     it("should not be visible", async () => {
       await setup({

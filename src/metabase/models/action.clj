@@ -1,13 +1,14 @@
 (ns metabase.models.action
   (:require
-   [cheshire.core :as json]
    [medley.core :as m]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.query :as query]
    [metabase.models.serialization :as serdes]
+   [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -38,6 +39,8 @@
 (doseq [model action-sub-models]
   (derive model :metabase/model))
 
+(derive :model/QueryAction :hook/search-index)
+
 (methodical/defmethod t2/primary-keys :model/QueryAction    [_model] [:action_id])
 (methodical/defmethod t2/primary-keys :model/HTTPAction     [_model] [:action_id])
 (methodical/defmethod t2/primary-keys :model/ImplicitAction [_model] [:action_id])
@@ -52,7 +55,7 @@
 (t2/deftransforms :model/Action
   {:type                   mi/transform-keyword
    :parameter_mappings     mi/transform-parameters-list
-   :parameters             mi/transform-parameters-list
+   :parameters             mi/transform-card-parameters-list
    :visualization_settings transform-action-visualization-settings})
 
 (t2/deftransforms :model/QueryAction
@@ -365,9 +368,10 @@
    :transform {:action_id (serdes/parent-ref)}})
 
 (defmethod serdes/make-spec "Action" [_model-name opts]
-  {:copy      [:archived :description :entity_id :name :public_uuid :type]
+  {:copy      [:archived :description :entity_id :name :public_uuid]
    :skip      []
    :transform {:created_at             (serdes/date)
+               :type                   (serdes/kw)
                :creator_id             (serdes/fk :model/User)
                :made_public_by_id      (serdes/fk :model/User)
                :model_id               (serdes/fk :model/Card)
@@ -381,12 +385,38 @@
                                         :import serdes/import-visualization-settings}}})
 
 (defmethod serdes/dependencies "Action" [action]
-  (concat
-   ;; other stuff is implicitly referenced through a Card
-   [[{:model "Card" :id (:model_id action)}]]
-   (when (= (:type action) :query)
-     [[{:model "Database" :id (-> action :query first :database_id)}]])))
+  (set
+   (concat
+    ;; other stuff is implicitly referenced through a Card
+    [[{:model "Card" :id (:model_id action)}]]
+    ;; this method is called on ingested data before transformation, and so here it always will be a string
+    (when (= (:type action) "query")
+      (let [{:keys [database_id dataset_query]} (first (:query action))]
+        (concat
+         [[{:model "Database" :id database_id}]]
+         (serdes/mbql-deps dataset_query)))))))
 
 (defmethod serdes/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes/path last)]
     ["actions" (serdes/storage-leaf-file-name id label)]))
+
+;;;; ------------------------------------------------- Search ----------------------------------------------------------
+
+(search/define-spec "action"
+  {:model        :model/Action
+   :attrs        {:archived       true
+                  :collection-id  :model.collection_id
+                  :creator-id     true
+                  :database-id    :query_action.database_id
+                  :native-query   :query_action.dataset_query
+                  ;; workaround for actions not having revisions (yet)
+                  :last-edited-at :updated_at
+                  :created-at     true
+                  :updated-at     true}
+   :search-terms [:name :description]
+   :render-terms {:model-id   :model.id
+                  :model-name :model.name}
+   :where        [:= :collection.namespace nil]
+   :joins        {:model        [:model/Card [:= :model.id :this.model_id]]
+                  :query_action [:model/QueryAction [:= :query_action.action_id :this.id]]
+                  :collection   [:model/Collection [:= :collection.id :model.collection_id]]}})

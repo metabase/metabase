@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "master"
+      - metabot-v3-second-try
     paths-ignore:
       # config files
       - ".**"
@@ -41,6 +42,9 @@ jobs:
       uses: ./.github/actions/prepare-backend
       with:
         m2-cache-key: uberjar
+        # Build with Java 11 so they compiled code doesn't try to use Java >11 classes... see
+        # https://metaboat.slack.com/archives/C5XHN8GLW/p1731517744549619?thread_ts=1731504670.951389&cid=C5XHN8GLW
+        java-version: 11
     - name: Build
       run: ./bin/build.sh
     - name: Prepare uberjar artifact
@@ -56,7 +60,7 @@ jobs:
     strategy:
       matrix:
         edition: [ee, oss]
-        java-version: [11, 17]
+        java-version: [11, 17, 21]
     steps:
     - name: Prepare JRE (Java Run-time Environment)
       uses: actions/setup-java@v4
@@ -70,7 +74,8 @@ jobs:
       with:
         name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
     - name: Launch uberjar
-      run: java -jar ./target/uberjar/metabase.jar &
+      run: >-
+        java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./target/uberjar/metabase.jar &
     - name: Wait for Metabase to start
       run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 
@@ -80,12 +85,16 @@ jobs:
     needs: check_jar_health
     strategy:
       matrix:
-        edition: [ee, oss]
+        edition: [ee, oss, ee-extra]
     services:
       registry:
         image: registry:2
         ports:
           - 5000:5000
+    permissions:
+      id-token: write
+      contents: read
+      security-events: write
     steps:
     - name: Extract and clean branch name
       shell: bash
@@ -98,12 +107,24 @@ jobs:
       with:
         ref: ${{ github.event.inputs.commit }}
     - name: Download uploaded artifacts to insert into container
+      if: ${{ matrix.edition != 'ee-extra' }}
       uses: actions/download-artifact@v4
       with:
         name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
         path: bin/docker/
+    - name: Download uploaded artifacts to insert into container
+      if: ${{ matrix.edition == 'ee-extra' }}
+      uses: actions/download-artifact@v4
+      with:
+        name: metabase-ee-${{ github.sha }}-uberjar
+        path: bin/docker/
     - name: Move the ${{ matrix.edition }} uberjar to the context dir
       run: mv bin/docker/target/uberjar/metabase.jar bin/docker/.
+    - name: Add partner drivers to the container
+      if: ${{ matrix.edition == 'ee-extra' }}
+      uses: ./.github/actions/build-ee-extra
+      with:
+        iam-role: ${{ secrets.METABASE_EE_EXTRA_IAM_ROLE }}
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v2.5.0
@@ -133,13 +154,23 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
+
     - name: Retag and push images if master (ee)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
       run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee ${{ github.repository_owner }}/metabase-enterprise-head:latest && docker push ${{ github.repository_owner }}/metabase-enterprise-head:latest
 
+    # TODO: remove when we're done testing metabot
+    - name: Retag and push images if metabot-v3-second-try (ee)
+      if: ${{ (github.ref_name == 'metabot-v3-second-try') && matrix.edition == 'ee' }}
+      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee ${{ github.repository_owner }}/metabase-enterprise-head:metabot && docker push ${{ github.repository_owner }}/metabase-enterprise-head:metabot
+
     - name: Retag and push images if master (oss)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
       run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-oss ${{ github.repository_owner }}/metabase-head:latest && docker push ${{ github.repository_owner }}/metabase-head:latest
+
+    - name: Retag and push images if master (ee-extra)
+      if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee-extra' }}
+      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee-extra ${{ secrets.METABASE_EE_EXTRA_CONTAINER_REGISTRY }}/metabase-enterprise-head:latest && docker push ${{ secrets.METABASE_EE_EXTRA_CONTAINER_REGISTRY }}/metabase-enterprise-head:latest
 
     - name: Retag and push images if dev branch
       if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
@@ -147,30 +178,33 @@ jobs:
 
     - name: Run Trivy vulnerability scanner if master (ee)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@0.28.0
       env:
         TRIVY_OFFLINE_SCAN: true
       with:
         image-ref: docker.io/${{ github.repository_owner }}/metabase-enterprise-head:latest
         format: sarif
         output: trivy-results.sarif
+        version: "v0.57.1"
 
     - name: Run Trivy vulnerability scanner if master (oss)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@0.28.0
       env:
         TRIVY_OFFLINE_SCAN: true
       with:
         image-ref: docker.io/${{ github.repository_owner }}/metabase-head:latest
         format: sarif
         output: trivy-results.sarif
+        version: "v0.57.1"
 
     - name: Run Trivy vulnerability scanner if dev branch
       if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@0.28.0
       env:
         TRIVY_OFFLINE_SCAN: true
       with:
+        version: "v0.57.1"
         image-ref: docker.io/${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }}
         format: sarif
         output: trivy-results.sarif

@@ -1,10 +1,11 @@
 (ns metabase.lib.binning-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
+   [metabase.lib.stage :as lib.stage]
    [metabase.lib.test-metadata :as meta]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -65,3 +66,55 @@
       (is (=?
            {:metabase.lib.field/temporal-unit :minute}
            (m/find-first (comp #{"CREATED_AT"} :name) (lib/returned-columns query)))))))
+
+(deftest ^:parallel binning-equality-test
+  (testing "should compare 'default' binning values"
+    (are [expected x y] (= expected (lib.binning/binning= x y) (lib.binning/binning= y x))
+      true  {:strategy :default} {:strategy :default}
+      false {:strategy :default} {:strategy :num-bins, :num-bins 10}
+      false {:strategy :default} {:strategy :bin-width, :bin-width 10}))
+  (testing "should compare 'num-bins' binning values"
+    (are [expected x y] (= expected (lib.binning/binning= x y) (lib.binning/binning= y x))
+      true  {:strategy :num-bins, :num-bins 10}               {:strategy :num-bins, :num-bins 10}
+      true  {:strategy :num-bins, :num-bins 10, :bin-width 3} {:strategy :num-bins, :num-bins 10}
+      true  {:strategy :num-bins, :num-bins 10, :bin-width 3} {:strategy :num-bins, :num-bins 10, :bin-width 4}
+      true  {:strategy :num-bins, :num-bins 10}               {:strategy :num-bins, :num-bins 10, :metadata-fn (fn [] nil)}
+      false {:strategy :num-bins, :num-bins 10}               {:strategy :num-bins, :num-bins 20}))
+  (testing "should compare 'bin-width' binning values"
+    (are [expected x y] (= expected (lib.binning/binning= x y) (lib.binning/binning= y x))
+      true  {:strategy :bin-width, :bin-width 10}              {:strategy :bin-width, :bin-width 10}
+      true  {:strategy :bin-width, :bin-width 10, :num-bins 3} {:strategy :bin-width, :bin-width 10}
+      true  {:strategy :bin-width, :bin-width 10, :num-bins 3} {:strategy :bin-width, :bin-width 10, :num-bins 4}
+      true  {:strategy :bin-width, :bin-width 10}              {:strategy :bin-width, :bin-width 10, :metadata-fn (fn [] nil)}
+      false {:strategy :bin-width, :bin-width 10}              {:strategy :bin-width, :bin-width 20})))
+
+(deftest ^:parallel binning-is-propagated-into-next-stage-display-name
+  (doseq [[binning-name expected-display-name table-kw field-kw]
+          [["50 bins" "Total: 50 bins" :orders :total]
+           ["Bin every 10 degrees" "Latitude: 10°" :venues :latitude]]]
+    (let [query (as-> meta/metadata-provider $
+                  (lib/query $ (meta/table-metadata table-kw))
+                  (lib/aggregate $ (lib/count))
+                  (lib/breakout $ (lib/with-binning
+                                   (meta/field-metadata table-kw field-kw)
+                                   (m/find-first (comp #{binning-name} :display-name)
+                                                 (lib/available-binning-strategies $ (meta/field-metadata table-kw field-kw)))))
+                  (lib.stage/append-stage $))]
+      (testing "Binning is present in next stage display-name"
+        (is (some? (m/find-first (comp #{expected-display-name} :display-name)
+                                 (lib/visible-columns query)))))
+      (testing "Binning is present in `nnext` stage display-name"
+        (is (some? (m/find-first (comp #{expected-display-name} :display-name)
+                                 (lib/visible-columns
+                                  (lib.stage/append-stage query))))))
+      (testing "Application of same binning on next stage does not modify display name"
+        (is (some? (m/find-first (comp #{expected-display-name} :display-name)
+                                 (let [first-stage-binned-column (m/find-first (comp #{expected-display-name} :display-name)
+                                                                               (lib/visible-columns query))]
+                                   (lib/visible-columns
+                                    (as-> query $
+                                      (lib/breakout $ (lib/with-binning
+                                                       first-stage-binned-column
+                                                       (m/find-first (comp #{binning-name} :display-name)
+                                                                     (lib/available-binning-strategies
+                                                                      $ first-stage-binned-column))))))))))))))

@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import { SdkVisualizationWrapper } from "__support__/storybook";
 import { color } from "metabase/lib/colors";
@@ -7,14 +7,14 @@ import { getStaticChartTheme } from "metabase/static-viz/components/RowChart/the
 import { Box } from "metabase/ui";
 import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
 
-import { RowChart } from "./RowChart";
+import { RowChart, type RowChartProps } from "./RowChart";
 
 export default {
   title: "Visualizations/shared/RowChart",
   component: RowChart,
 };
 
-const Template: ComponentStory<typeof RowChart> = args => {
+const Template: StoryFn<RowChartProps<any>> = args => {
   return (
     <Box h={600} bg="white" p="8px">
       <RowChart {...args} />
@@ -81,8 +81,10 @@ const DEFAULT_ROW_CHART_ARGS = {
   style: { fontFamily: "Lato" },
 };
 
-export const Default = Template.bind({});
-Default.args = DEFAULT_ROW_CHART_ARGS;
+export const Default = {
+  render: Template,
+  args: DEFAULT_ROW_CHART_ARGS,
+};
 
 const ThemedRowChart = () => {
   const theme = useRowChartTheme("Lato", false, false);

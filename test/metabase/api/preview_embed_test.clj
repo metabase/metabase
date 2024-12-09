@@ -1,7 +1,6 @@
-(ns metabase.api.preview-embed-test
+(ns ^:mb/driver-tests metabase.api.preview-embed-test
   (:require
    [buddy.sign.jwt :as jwt]
-   [cheshire.core :as json]
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
    [metabase.api.dashboard-test :as api.dashboard-test]
@@ -13,6 +12,7 @@
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -35,7 +35,7 @@
                  (mt/user-http-request :rasta :get 403 (card-url card)))))
 
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-          (mt/with-temporary-setting-values [enable-embedding false]
+          (mt/with-temporary-setting-values [enable-embedding-static false]
             (is (= "Embedding is not enabled."
                    (embed-test/with-temp-card [card]
                      (mt/user-http-request :crowberto :get 400 (card-url card)))))))
@@ -87,7 +87,7 @@
                  (mt/user-http-request :rasta :get 403 (card-query-url card)))))
 
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-          (mt/with-temporary-setting-values [enable-embedding false]
+          (mt/with-temporary-setting-values [enable-embedding-static false]
             (is (= "Embedding is not enabled."
                    (mt/user-http-request :crowberto :get 400 (card-query-url card))))))
 
@@ -238,7 +238,7 @@
                  (mt/user-http-request :rasta :get 403 (dashboard-url dash)))))
 
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-          (mt/with-temporary-setting-values [enable-embedding false]
+          (mt/with-temporary-setting-values [enable-embedding-static false]
             (is (= "Embedding is not enabled."
                    (mt/user-http-request :crowberto :get 400 (dashboard-url dash))))))
 
@@ -284,7 +284,7 @@
 
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
           (is (= "Embedding is not enabled."
-                 (mt/with-temporary-setting-values [enable-embedding false]
+                 (mt/with-temporary-setting-values [enable-embedding-static false]
                    (mt/user-http-request :crowberto :get 400 (dashcard-url dashcard))))))
 
         (testing "check that if embedding is enabled globally requests fail if they are signed with the wrong key"
@@ -488,7 +488,7 @@
 
             (testing "should fail if embedding is disabled"
               (is (= "Embedding is not enabled."
-                     (mt/with-temporary-setting-values [enable-embedding false]
+                     (mt/with-temporary-setting-values [enable-embedding-static false]
                        (embed-test/with-new-secret-key!
                          (mt/user-http-request :crowberto :get 400 (pivot-dashcard-url dashcard)))))))
 
@@ -616,26 +616,26 @@
             (let [url (card-query-url card {:_embedding_params {:LIKED "enabled"}})]
               (is (= [[3 "The Dentist" false]]
                      (-> (mt/user-http-request :crowberto :get 202 url
-                                               :parameters (json/generate-string {:LIKED false}))
+                                               :parameters (json/encode {:LIKED false}))
                          :data
                          :rows)))
               (is (= [[1 "Tempest" true]
                       [2 "Bullit" true]]
                      (-> (mt/user-http-request :crowberto :get 202 url
-                                               :parameters (json/generate-string {:LIKED true}))
+                                               :parameters (json/encode {:LIKED true}))
                          :data
                          :rows)))))
           (testing "for dashboard embeds"
             (let [url (dashcard-url dashcard {:_embedding_params {:LIKED "enabled"}})]
               (is (= [[3 "The Dentist" false]]
                      (-> (mt/user-http-request :crowberto :get 202 url
-                                               :parameters (json/generate-string {:LIKED false}))
+                                               :parameters (json/encode {:LIKED false}))
                          :data
                          :rows)))
               (is (= [[1 "Tempest" true]
                       [2 "Bullit" true]]
                      (-> (mt/user-http-request :crowberto :get 202 url
-                                               :parameters (json/generate-string {:LIKED true}))
+                                               :parameters (json/encode {:LIKED true}))
                          :data
                          :rows))))))))))
 
@@ -665,6 +665,6 @@
             (let [url (dashcard-url dashcard {:_embedding_params {:NAME "enabled"}})]
               (is (= [["Cheongju International Airport/Cheongju Air Base (K-59/G-513)"]]
                      (-> (mt/user-http-request :crowberto :get 202 url
-                                               :parameters (json/generate-string {:NAME "513"}))
+                                               :parameters (json/encode {:NAME "513"}))
                          :data
                          :rows))))))))))

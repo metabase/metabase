@@ -1,3 +1,4 @@
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   CardId,
   DatabaseId,
@@ -19,6 +20,7 @@ export interface StructuredDatasetQuery {
 
   // Database is null when missing data permissions to the database
   database: DatabaseId | null;
+  parameters?: UiParameter[];
 }
 
 export interface NativeDatasetQuery {
@@ -27,7 +29,7 @@ export interface NativeDatasetQuery {
 
   // Database is null when missing data permissions to the database
   database: DatabaseId | null;
-  parameters?: unknown[];
+  parameters?: UiParameter[];
 }
 
 export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
@@ -73,8 +75,8 @@ export const dateTimeUnits = [
   ...dateTimeRelativeUnits,
 ] as const;
 
-export type DateTimeAbsoluteUnit = typeof dateTimeAbsoluteUnits[number];
-export type DateTimeRelativeUnit = typeof dateTimeRelativeUnits[number];
+export type DateTimeAbsoluteUnit = (typeof dateTimeAbsoluteUnits)[number];
+export type DateTimeRelativeUnit = (typeof dateTimeRelativeUnits)[number];
 export type DatetimeUnit =
   | "default"
   | DateTimeAbsoluteUnit
@@ -195,8 +197,8 @@ export type Breakout = ConcreteFieldReference;
 type FilterClause = Filter;
 export type Filter = FieldFilter | CompoundFilter | NotFilter | SegmentFilter;
 
-type AndFilter = ["and", Filter, Filter];
-type OrFilter = ["or", Filter, Filter];
+type AndFilter = ["and", ...Filter[]];
+type OrFilter = ["or", ...Filter[]];
 type CompoundFilter = AndFilter | OrFilter;
 
 export type FieldFilter =

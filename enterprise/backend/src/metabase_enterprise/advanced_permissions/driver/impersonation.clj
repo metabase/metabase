@@ -48,19 +48,31 @@
    (when (and db-or-id (premium-features/enable-advanced-permissions?))
      (t2/exists? :model/ConnectionImpersonation :db_id (u/id db-or-id)))))
 
+(defn enforced-impersonations-for-db
+  "Returns the connection impersonation policies which should be enforced for the provided DB for the current user, if one
+  exists. Returns `nil` if no policies exist, or none should be enforced for the current user.
+
+  Note: this returns a list of policies. Typically a user should only be in one group with an impersonation policy at a time,
+  but there may be policies in multiple groups if they use the same user attribute."
+  [db-or-id]
+  (let [group-ids           (t2/select-fn-set :group_id PermissionsGroupMembership :user_id api/*current-user-id*)
+        conn-impersonations (when (seq group-ids)
+                              (t2/select :model/ConnectionImpersonation
+                                         :group_id [:in group-ids]
+                                         :db_id (u/the-id db-or-id)))]
+    (when (and (seq conn-impersonations)
+               (enforce-impersonations? db-or-id conn-impersonations group-ids))
+      conn-impersonations)))
+
 (defn connection-impersonation-role
   "Fetches the database role that should be used for the current user, if connection impersonation is in effect.
   Returns `nil` if connection impersonation should not be used for the current user. Throws an exception if multiple
-  conflicting connection impersonation policies are found."
+  conflicting connection impersonation policies are found, or the role is not a single string."
   [database-or-id]
   (when (and database-or-id (not api/*is-superuser?*))
-    (let [group-ids           (t2/select-fn-set :group_id PermissionsGroupMembership :user_id api/*current-user-id*)
-          conn-impersonations (when (seq group-ids)
-                                (t2/select :model/ConnectionImpersonation
-                                           :group_id [:in group-ids]
-                                           :db_id (u/the-id database-or-id)))
+    (let [conn-impersonations (enforced-impersonations-for-db database-or-id)
           role-attributes     (set (map :attribute conn-impersonations))]
-      (when (enforce-impersonations? database-or-id conn-impersonations group-ids)
+      (when conn-impersonations
         (when (> (count role-attributes) 1)
           (throw (ex-info (tru "Multiple conflicting connection impersonation policies found for current user")
                           {:user-id api/*current-user-id*
@@ -70,10 +82,18 @@
                 role-attribute     (:attribute conn-impersonation)
                 user-attributes    (:login_attributes @api/*current-user*)
                 role               (get user-attributes role-attribute)]
-            (if (str/blank? role)
+            (cond
+              (nil? role)
               (throw (ex-info (tru "User does not have attribute required for connection impersonation.")
                               {:user-id api/*current-user-id*
                                :conn-impersonations conn-impersonations}))
+
+              (or (not (string? role))
+                  (str/blank? role))
+              (throw (ex-info (tru "Connection impersonation attribute is invalid: role must be a single non-empty string.")
+                              {:user-id api/*current-user-id*
+                               :conn-impersonations conn-impersonations}))
+              :else
               role)))))))
 
 (defenterprise hash-key-for-impersonation

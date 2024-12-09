@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.scim.api :as scim]
    [metabase-enterprise.scim.v2.api :as scim-api]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.http-client :as client]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -63,6 +64,28 @@
 
     (testing "A SCIM API key cannot be passed via the x-api-key header"
       (client/client :get 401 "ee/scim/v2/Users" {:request-options {:headers {"x-api-key" *scim-api-key*}}}))))
+
+(deftest prometheus-metrics-test
+  (testing "Prometheus counters get incremented for success responses and errors"
+    (with-scim-setup!
+      (let [calls (atom nil)]
+        (with-redefs [prometheus/inc! #(swap! calls conj %)]
+          (testing "Success response"
+            (scim-client :get 200 "ee/scim/v2/Users")
+            (is (= 1 (count (filter #{:metabase-scim/response-ok} @calls))))
+            (is (= 0 (count (filter #{:metabase-scim/response-error} @calls)))))
+
+          (testing "Bad request (400)"
+            (scim-client :get 400 (format "ee/scim/v2/Users?filter=%s"
+                                          (codec/url-encode "id ne \"newuser@metabase.com\"")))
+            (is (= 1 (count (filter #{:metabase-scim/response-ok} @calls))))
+            (is (= 1 (count (filter #{:metabase-scim/response-error} @calls)))))
+
+          (testing "Unexpected server error (500)"
+            (with-redefs [scim-api/scim-response #(throw (Exception.))]
+              (scim-client :get 500 "ee/scim/v2/Users")
+              (is (= 1 (count (filter #{:metabase-scim/response-ok} @calls))))
+              (is (= 2 (count (filter #{:metabase-scim/response-error} @calls)))))))))))
 
 (deftest fetch-user-test
   (with-scim-setup!
@@ -142,8 +165,9 @@
                           :active true}
                 response (scim-client :post 201 "ee/scim/v2/Users" new-user)]
             (is (malli= scim-api/SCIMUser response))
-            (is (=? (select-keys user [:email :first_name :last_name :is_active])
-                    (t2/select-one [:model/User :email :first_name :last_name :is_active]
+            (is (=? (assoc (select-keys user [:email :first_name :last_name :is_active])
+                           :sso_source :scim)
+                    (t2/select-one [:model/User :email :first_name :last_name :is_active :sso_source]
                                    :entity_id (:id response)))))
           (finally (t2/delete! :model/User :email (:email user))))))
 
@@ -154,8 +178,10 @@
                            :emails [{:value "rasta@metabase.com"}]
                            :active true}
             response      (scim-client :post 409 "ee/scim/v2/Users" existing-user)]
-        (is (= (get response :schemas) ["urn:ietf:params:scim:api:messages:2.0:Error"]))
-        (is (= (get response :detail) "Email address is already in use"))))))
+        (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"]
+               (get response :schemas)))
+        (is (= "Email address is already in use"
+               (get response :detail)))))))
 
 (deftest update-user-test
   (with-scim-setup!
@@ -362,3 +388,22 @@
             (is (= new-group-name (:name group)))
             (is (= 1 (count (:members group))))
             (is (= (mt/user->id :crowberto) (-> group :members first :user_id)))))))))
+
+(deftest delete-group-test
+  (with-scim-setup!
+    (testing "An existing group & memberships can be deleted via SCIM APIs"
+      (mt/with-temp [:model/PermissionsGroup group {:name (format "Test SCIM group %s" (random-uuid))}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (:id group)}]
+        (let [entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))]
+          (scim-client :delete 204 (format "ee/scim/v2/Groups/%s" entity-id))
+          (is (not (t2/exists? :model/PermissionsGroup :id (:id group))))
+          (is (not (t2/exists? :model/PermissionsGroupMembership :group_id (:id group)))))))
+
+    (testing "404 is returned when trying to delete a non-existent group"
+      (scim-client :delete 404 (format "ee/scim/v2/Groups/%s" (random-uuid))))
+
+    (testing "404 is returned when trying to delete the Admin or All Users group as they are not visible to SCIM"
+      (let [entity-ids (t2/select-fn-set :entity_id :model/PermissionsGroup
+                                         {:where [:in :id #{(:id (perms-group/admin)) (:id (perms-group/all-users))}]})]
+        (doseq [entity-id entity-ids]
+          (scim-client :delete 404 (format "ee/scim/v2/Groups/%s" entity-id)))))))

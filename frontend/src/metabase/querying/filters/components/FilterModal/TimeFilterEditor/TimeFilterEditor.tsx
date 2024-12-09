@@ -41,7 +41,7 @@ export function TimeFilterEditor({
     filter,
   });
 
-  const handleOperatorChange = (newOperator: Lib.TimeFilterOperatorName) => {
+  const handleOperatorChange = (newOperator: Lib.TimeFilterOperator) => {
     const newValues = getDefaultValues(newOperator, values);
     setOperator(newOperator);
     setValues(newValues);
@@ -67,7 +67,7 @@ export function TimeFilterEditor({
   };
 
   return (
-    <HoverParent>
+    <HoverParent data-testid="time-filter-editor">
       <Grid grow>
         <Grid.Col span="auto">
           <FilterTitle

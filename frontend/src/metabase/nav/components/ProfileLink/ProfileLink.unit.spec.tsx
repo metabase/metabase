@@ -73,6 +73,7 @@ describe("ProfileLink", () => {
   beforeEach(() => {
     fetchMock.get("path:/api/util/bug_report_details", "mockBugReportDetails");
   });
+
   describe("self-hosted", () => {
     it("should show the proper set of items for normal users", async () => {
       setup({ isAdmin: false });

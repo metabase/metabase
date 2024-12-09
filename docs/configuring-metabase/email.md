@@ -12,7 +12,8 @@ To edit email settings:
 
 1. Click on the **gear** icon in the upper right.
 2. Select **Admin Settings**.
-3. From the default **Settings** tab, click on **Email** in the left sidebar.
+3. From the default **Settings** tab, click on **Notification channels** in the left sidebar.
+4. Select **Email**.
 
 ## Metabase Cloud
 
@@ -20,8 +21,8 @@ Metabase Cloud manages an email server for you, so you don't need to set up emai
 
 If you like, you can still set up:
 
-- a name for your Cloud email account (from name)
-- an email address to recieve email replies (reply-to address)
+- A name for your Cloud email account (from name)
+- An email address to receive email replies (reply-to address)
 
 ## Configuring your email account
 

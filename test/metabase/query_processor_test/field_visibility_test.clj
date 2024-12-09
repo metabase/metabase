@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.field-visibility-test
+(ns ^:mb/driver-tests metabase.query-processor-test.field-visibility-test
   "Tests for behavior of fields with different visibility settings."
   (:require
    [clojure.test :refer :all]

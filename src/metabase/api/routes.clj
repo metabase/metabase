@@ -1,4 +1,5 @@
 (ns metabase.api.routes
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [compojure.core :refer [GET]]
    [compojure.route :as route]
@@ -10,6 +11,7 @@
    [metabase.api.bookmark :as api.bookmark]
    [metabase.api.cache :as api.cache]
    [metabase.api.card :as api.card]
+   [metabase.api.channel :as api.channel]
    [metabase.api.cloud-migration :as api.cloud-migration]
    [metabase.api.collection :as api.collection]
    [metabase.api.common :as api :refer [defroutes context]]
@@ -33,6 +35,7 @@
    [metabase.api.preview-embed :as api.preview-embed]
    [metabase.api.public :as api.public]
    [metabase.api.pulse :as api.pulse]
+   [metabase.api.pulse.unsubscribe :as api.pulse.unsubscribe]
    [metabase.api.revision :as api.revision]
    [metabase.api.routes.common
     :refer [+auth +message-only-exceptions +public-exceptions +static-apikey]]
@@ -86,9 +89,8 @@
                          :body    ""}
       "/"               (-> (respond "index.html")
                             ;; Better would be to append this to our CSP, but there is no good way right now and it's
-                            ;; just a single page. Necessary for rapidoc to work, script injects styles in runtime.
-                            (assoc-in [:headers "Content-Security-Policy"] "script-src 'self' 'unsafe-inline'"))
-      "/rapidoc-min.js" (respond "rapidoc-min.js")
+                            ;; just a single page. Necessary for Scalar to work, script injects styles in runtime.
+                            (assoc-in [:headers "Content-Security-Policy"] "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net"))
       "/openapi.json"   (merge
                          (api/openapi-object (resolve 'metabase.api.routes/routes))
                          {:openapi "3.1.0"
@@ -109,6 +111,7 @@
   (context "/card"                 [] (+auth api.card/routes))
   (context "/cloud-migration"      [] (+auth api.cloud-migration/routes))
   (context "/collection"           [] (+auth api.collection/routes))
+  (context "/channel"              [] (+auth api.channel/routes))
   (context "/dashboard"            [] (+auth api.dashboard/routes))
   (context "/database"             [] (+auth api.database/routes))
   (context "/dataset"              [] (+auth api.dataset/routes))
@@ -128,6 +131,7 @@
   (context "/premium-features"     [] (+auth api.premium-features/routes))
   (context "/preview_embed"        [] (+auth api.preview-embed/routes))
   (context "/public"               [] (+public-exceptions api.public/routes))
+  (context "/pulse/unsubscribe"    [] api.pulse.unsubscribe/routes)
   (context "/pulse"                [] (+auth api.pulse/routes))
   (context "/revision"             [] (+auth api.revision/routes))
   (context "/search"               [] (+auth api.search/routes))

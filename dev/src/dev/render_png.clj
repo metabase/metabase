@@ -2,53 +2,58 @@
   "Improve feedback loop for dealing with png rendering code. Will create images using the rendering that underpins
   pulses and subscriptions and open those images without needing to send them to slack or email."
   (:require
-    [clojure.data.csv :as csv]
-    [clojure.java.io :as io]
-    [dev.util :as dev.u]
-    [hiccup.core :as hiccup]
-    [metabase.email.messages :as messages]
-    [metabase.models :refer [Card]]
-    [metabase.models.card :as card]
-    [metabase.pulse :as pulse]
-    [metabase.pulse.markdown :as markdown]
-    [metabase.pulse.render :as render]
-    [metabase.pulse.render.image-bundle :as img]
-    [metabase.pulse.render.png :as png]
-    [metabase.pulse.render.style :as style]
-    [metabase.query-processor :as qp]
-    [metabase.test :as mt]
-    [toucan2.core :as t2])
-  (:import (java.io File)))
+   [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
+   [dev.util :as dev.u]
+   [hiccup.core :as hiccup]
+   [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.image-bundle :as img]
+   [metabase.channel.render.png :as png]
+   [metabase.channel.render.style :as style]
+   [metabase.email.result-attachment :as email.result-attachment]
+   [metabase.models :refer [Card]]
+   [metabase.models.card :as card]
+   [metabase.notification.payload.execute :as notification.payload.execute]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util.markdown :as markdown]
+   [toucan2.core :as t2])
+  (:import
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 
-;; taken from https://github.com/aysylu/loom/blob/master/src/loom/io.clj
+(defn open-png-bytes
+  "Given a byte array, writes it to a temporary file, then opens that file in the default application for png files."
+  [bytes]
+  (let [tmp-file (File/createTempFile "card-png" ".png")]
+    (with-open [w (java.io.FileOutputStream. tmp-file)]
+      (.write w ^bytes bytes))
+    (.deleteOnExit tmp-file)
+    (dev.u/os-open tmp-file)))
+
 (defn render-card-to-png
   "Given a card ID, renders the card to a png and opens it. Be aware that the png rendered on a dev machine may not
   match what's rendered on another system, like a docker container."
   [card-id]
   (let [{:keys [dataset_query result_metadata], card-type :type, :as card} (t2/select-one card/Card :id card-id)
         query-results (qp/process-query
-                        (cond-> dataset_query
-                          (= card-type :model)
-                          (assoc-in [:info :metadata/model-metadata] result_metadata)))
-        png-bytes     (render/render-pulse-card-to-png (pulse/defaulted-timezone card)
-                                                       card
-                                                       query-results
-                                                       1000)
-        tmp-file      (File/createTempFile "card-png" ".png")]
-    (with-open [w (java.io.FileOutputStream. tmp-file)]
-      (.write w ^bytes png-bytes))
-    (.deleteOnExit tmp-file)
-    (dev.u/os-open tmp-file)))
+                       (cond-> dataset_query
+                         (= card-type :model)
+                         (assoc-in [:info :metadata/model-metadata] result_metadata)))
+        png-bytes     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
+                                                               card
+                                                               query-results
+                                                               1000)]
+    (open-png-bytes png-bytes)))
 
 (defn render-pulse-card
   "Render a pulse card as a data structure"
   [card-id]
   (let [{:keys [dataset_query] :as card} (t2/select-one card/Card :id card-id)
         query-results (qp/process-query dataset_query)]
-    (render/render-pulse-card
-     :inline (pulse/defaulted-timezone card)
+    (channel.render/render-pulse-card
+     :inline (channel.render/defaulted-timezone card)
      card
      nil
      query-results)))
@@ -67,17 +72,15 @@
   [hiccup]
   (open-html (hiccup/html hiccup)))
 
-(def ^:private execute-dashboard #'pulse/execute-dashboard)
-
 (defn render-dashboard-to-pngs
   "Given a dashboard ID, renders each dashcard, including Markdown, to its own temporary png image, and opens each one."
   [dashboard-id]
   (let [user              (t2/select-one :model/User)
         dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
-        dashboard-results (execute-dashboard {:creator_id (:id user)} dashboard)]
+        dashboard-results (notification.payload.execute/execute-dashboard (:id dashboard) (:id user) nil)]
     (doseq [{:keys [card dashcard result] :as dashboard-result} dashboard-results]
       (let [render    (if card
-                        (render/render-pulse-card :inline (pulse/defaulted-timezone card) card dashcard result)
+                        (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
                         {:content     [:div {:style (style/style {:font-family             "Lato"
                                                                   :font-size               "0.875em"
                                                                   :font-weight             "400"
@@ -111,7 +114,7 @@
         (for [cell row]
           [:td {:style table-style} cell])])]))
 
-(def ^:private result-attachment #'messages/result-attachment)
+(def ^:private result-attachment #'email.result-attachment/result-attachment)
 
 (defn- render-csv-for-dashcard
   [part]
@@ -129,7 +132,7 @@
             [:td {:style (style/style (merge table-style-map {:max-width "400px"}))}
              content])]
     (if card
-      (let [base-render (render/render-pulse-card :inline (pulse/defaulted-timezone card) card dashcard result)
+      (let [base-render (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
             html-src    (-> base-render :content)
             img-src     (-> base-render
                             (png/render-html-to-png 1200)
@@ -144,7 +147,7 @@
        (cellfn nil)
        (cellfn
         [:div {:style (style/style {:font-family             "Lato"
-                                    :font-size               "13px" #_ "0.875em"
+                                    :font-size               "13px" #_"0.875em"
                                     :font-weight             "400"
                                     :font-style              "normal"
                                     :color                   "#4c5773"
@@ -157,7 +160,7 @@
   [dashboard-id]
   (let [user              (t2/select-one :model/User)
         dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
-        dashboard-results (execute-dashboard {:creator_id (:id user)} dashboard)
+        dashboard-results (notification.payload.execute/execute-dashboard (:id dashboard) (:id user) nil)
         render            (->> (map render-one-dashcard (map #(assoc % :dashboard-id dashboard-id) dashboard-results))
                                (into [[:tr
                                        [:th {:style (style/style table-style-map)} "Card Name"]
@@ -171,7 +174,6 @@
   "Given a dashboard ID, renders all of the dashcards into an html document."
   [dashboard-id]
   (hiccup/html (render-dashboard-to-hiccup dashboard-id)))
-
 
 (defn render-dashboard-to-html-and-open
   "Given a dashboard ID, renders all of the dashcards to an html file and opens it."

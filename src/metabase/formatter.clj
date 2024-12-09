@@ -7,11 +7,12 @@
    [clojure.string :as str]
    [hiccup.util]
    [metabase.formatter.datetime :as datetime]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.streaming.common :as common]
-   [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.shared.util.currency :as currency]
    [metabase.types :as types]
+   [metabase.util.currency :as currency]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.ui-logic :as ui-logic]
@@ -19,7 +20,6 @@
    [potemkin.types :as p.types])
   (:import
    (java.math RoundingMode)
-   (java.net URL)
    (java.text DecimalFormat DecimalFormatSymbols)))
 
 (set! *warn-on-reflection* true)
@@ -29,15 +29,8 @@
 
 (p/import-vars
  [datetime
-  format-temporal-str
+  make-temporal-str-formatter
   temporal-string?])
-
-(def RenderedPulseCard
-  "Schema used for functions that operate on pulse card contents and their attachments"
-  [:map
-   [:attachments [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
-   [:content     [:sequential :any]]
-   [:render/text {:optional true} [:maybe :string]]])
 
 (p.types/defrecord+ NumericWrapper [^String num-str ^Number num-value]
   hiccup.util/ToString
@@ -89,7 +82,7 @@
 (defn- qualify-keys
   [m]
   (update-keys m (fn [k] (keyword
-                          "metabase.shared.models.visualization-settings"
+                          "metabase.models.visualization-settings"
                           (name k)))))
 
 ;; TODO: use `metabase.query-processor.streaming.common/viz-settings-for-col` here, it's
@@ -98,39 +91,44 @@
 (defn number-formatter
   "Return a function that will take a number and format it according to its column viz settings. Useful to compute the
   format string once and then apply it over many values."
-  [{:keys [semantic_type effective_type base_type]
+  [{:keys  [semantic_type effective_type base_type]
     col-id :id field-ref :field_ref col-name :name col-settings :settings :as col}
    viz-settings]
-  (let [global-type-settings (common/global-type-settings col viz-settings)
-        col-id (or col-id (second field-ref))
-        column-settings (-> (get viz-settings ::mb.viz/column-settings)
-                            (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
-        column-settings (merge
-                         (or (get column-settings {::mb.viz/field-id col-id})
-                             (get column-settings {::mb.viz/column-name col-name}))
-                         (qualify-keys col-settings)
-                         global-type-settings)
-        global-settings (merge
-                         global-type-settings
-                         (::mb.viz/global-column-settings viz-settings))
-        currency?       (boolean (or (= (::mb.viz/number-style column-settings) "currency")
-                                     (= (::mb.viz/number-style viz-settings) "currency")
-                                     (and (nil? (::mb.viz/number-style column-settings))
-                                          (or
-                                           (::mb.viz/currency-style column-settings)
-                                           (::mb.viz/currency column-settings)))))
+  (let [global-type-settings (try
+                               (common/global-type-settings col viz-settings)
+                               (catch Exception _e
+                                 (common/global-type-settings (dissoc col :base_type :effective_type) viz-settings)))
+        col-id               (or col-id (second field-ref))
+        column-settings      (-> (get viz-settings ::mb.viz/column-settings)
+                                 (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
+        column-settings      (merge
+                              (or (get column-settings {::mb.viz/field-id col-id})
+                                  (get column-settings {::mb.viz/column-name col-name}))
+                              (qualify-keys col-settings)
+                              global-type-settings)
+        global-settings      (merge
+                              global-type-settings
+                              (::mb.viz/global-column-settings viz-settings))
+        currency?            (boolean (or (= (::mb.viz/number-style column-settings) "currency")
+                                          (= (::mb.viz/number-style viz-settings) "currency")
+                                          (and (nil? (::mb.viz/number-style column-settings))
+                                               (or
+                                                (::mb.viz/currency-style column-settings)
+                                                (::mb.viz/currency column-settings)))))
+
         {::mb.viz/keys [number-separators decimals scale number-style
                         prefix suffix currency-style currency]} (merge
                                                                  (when currency?
                                                                    (:type/Currency global-settings))
                                                                  (:type/Number global-settings)
                                                                  column-settings)
-        currency        (when currency?
-                          (keyword (or currency "USD")))
-        integral?       (isa? (or effective_type base_type) :type/Integer)
-        relation?       (isa? semantic_type :Relation/*)
-        percent?        (or (isa? semantic_type :type/Percentage) (= number-style "percent"))
-        scientific?     (= number-style "scientific")
+
+        currency           (when currency?
+                             (keyword (or currency "USD")))
+        integral?          (isa? (or effective_type base_type) :type/Integer)
+        relation?          (isa? semantic_type :Relation/*)
+        percent?           (or (isa? semantic_type :type/Percentage) (= number-style "percent"))
+        scientific?        (= number-style "scientific")
         [decimal grouping] (or number-separators
                                (get-in (public-settings/custom-formatting) [:type/Number :number_separators])
                                ".,")
@@ -148,33 +146,33 @@
                                   percent?
                                   (* 100))
               decimals-in-value (digits-after-decimal scaled-value)
-              decimal-digits (cond
-                               decimals decimals ;; if user ever specifies # of decimals, use that
-                               integral? 0
-                               scientific? (min 2 (max decimals-in-value
-                                                       ;; Scientific representation can introduce its own decimal
-                                                       ;; digits even in integer numbers. Count how many integer
-                                                       ;; digits are in the number (but limit to 2).
-                                                       (int (Math/log10 (abs scaled-value)))))
-                               currency? (get-in currency/currency [currency :decimal_digits])
-                               percent?  (min 2 decimals-in-value) ;; 5.5432 -> %554.32
-                               :else (if (>= (abs scaled-value) 1)
-                                       (min 2 decimals-in-value) ;; values greater than 1 round to 2 decimal places
-                                       (let [n-figs (sig-figs-after-decimal scaled-value decimal)]
-                                         (if (> n-figs 2)
-                                           (max 2 (- decimals-in-value (- n-figs 2))) ;; values less than 1 round to 2 sig-dig
-                                           decimals-in-value))))
-              fmtr (or (@fmtr-cache decimal-digits)
-                       (let [fmt-str (cond-> base
-                                       (not (zero? decimal-digits)) (str "." (apply str (repeat decimal-digits "0")))
-                                       scientific? (str "E0"))
-                             fmtr (doto (DecimalFormat. fmt-str symbols) (.setRoundingMode RoundingMode/HALF_UP))]
-                         (vswap! fmtr-cache assoc decimal-digits fmtr)
-                         fmtr))]
+              decimal-digits    (cond
+                                  decimals    decimals ;; if user ever specifies # of decimals, use that
+                                  integral?   0
+                                  scientific? (min 2 (max decimals-in-value
+                                                          ;; Scientific representation can introduce its own decimal
+                                                          ;; digits even in integer numbers. Count how many integer
+                                                          ;; digits are in the number (but limit to 2).
+                                                          (int (Math/log10 (abs scaled-value)))))
+                                  currency?   (get-in currency/currency [currency :decimal_digits])
+                                  percent?    (min 2 decimals-in-value) ;; 5.5432 -> %554.32
+                                  :else       (if (>= (abs scaled-value) 1)
+                                                (min 2 decimals-in-value) ;; values greater than 1 round to 2 decimal places
+                                                (let [n-figs (sig-figs-after-decimal scaled-value decimal)]
+                                                  (if (> n-figs 2)
+                                                    (max 2 (- decimals-in-value (- n-figs 2))) ;; values less than 1 round to 2 sig-dig
+                                                    decimals-in-value))))
+              fmtr              (or (@fmtr-cache decimal-digits)
+                                    (let [fmt-str (cond-> base
+                                                    (not (zero? decimal-digits)) (str "." (apply str (repeat decimal-digits "0")))
+                                                    scientific?                  (str "E0"))
+                                          fmtr    (doto (DecimalFormat. fmt-str symbols) (.setRoundingMode RoundingMode/HALF_UP))]
+                                      (vswap! fmtr-cache assoc decimal-digits fmtr)
+                                      fmtr))]
           (->NumericWrapper
            (let [inline-currency? (and currency?
                                        (false? (::mb.viz/currency-in-header column-settings)))
-                 sb (StringBuilder.)]
+                 sb               (StringBuilder.)]
              ;; Using explicit StringBuilder to avoid touching the slow `clojure.core/str` multi-arity.
              (when prefix (.append sb prefix))
              (when (and inline-currency? (or (nil? currency-style)
@@ -260,22 +258,37 @@
              (format "%.8f° %s" (Math/abs v) dir)
              v)))))
 
+(defn- dictionary-formatter
+  "Format dictionaries as json.
+  The value if a dictionary is Clojure edn on the backend, but displays as JSON in
+  When exporting, the map must be encoded as json so that exports match the app's output."
+  [value]
+  (cond-> value
+    (not (string? value)) json/encode))
+
 (mu/defn create-formatter
   "Create a formatter for a column based on its timezone, column metadata, and visualization-settings"
-  [timezone-id :- [:maybe :string] col visualization-settings]
-  (cond
-    ;; for numbers, return a format function that has already computed the differences.
-    ;; todo: do the same for temporal strings
-    (types/temporal-field? col)
-    #(datetime/format-temporal-str timezone-id % col visualization-settings)
+  ([timezone-id :- [:maybe :string] col visualization-settings]
+   (create-formatter timezone-id col visualization-settings true))
+  ([timezone-id :- [:maybe :string] col visualization-settings apply-formatting?]
+   (cond
+     ;; for numbers, return a format function that has already computed the differences.
+     ;; todo: do the same for temporal strings
+     (and apply-formatting? (types/temporal-field? col))
+     (datetime/make-temporal-str-formatter timezone-id col visualization-settings)
 
-    (isa? (:semantic_type col) :type/Coordinate)
-    (partial format-geographic-coordinates (:semantic_type col))
+     (and apply-formatting? (isa? (:semantic_type col) :type/Coordinate))
+     (partial format-geographic-coordinates (:semantic_type col))
 
-    ;; todo integer columns with a unit
-    (or (isa? (:effective_type col) :type/Number)
-        (isa? (:base_type col) :type/Number))
-    (number-formatter col visualization-settings)
+     ;; todo integer columns with a unit
+     (and apply-formatting?
+          (or (isa? (:effective_type col) :type/Number)
+              (isa? (:base_type col) :type/Number)))
+     (number-formatter col visualization-settings)
 
-    :else
-    str))
+     (or (isa? (:semantic_type col) :type/SerializedJSON)
+         (isa? ((some-fn :effective_type :base_type) col) :type/Dictionary))
+     dictionary-formatter
+
+     :else
+     (if apply-formatting? str identity))))

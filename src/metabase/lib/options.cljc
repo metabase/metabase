@@ -2,8 +2,8 @@
   (:refer-clojure :exclude [uuid])
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 ;;; TODO -- not 100% sure we actually need all of this stuff anymore.

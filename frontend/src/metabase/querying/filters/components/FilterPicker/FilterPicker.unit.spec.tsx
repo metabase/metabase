@@ -10,7 +10,6 @@ import {
 } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import * as Lib_ColumnTypes from "metabase-lib/column_types";
 import {
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
@@ -114,13 +113,13 @@ const WIDGET_TEST_CASES: WidgetTestCase[] = [
     {
       section: "User",
       columnName: "Birth Date",
-      pickerId: "datetime-filter-picker",
+      pickerId: "date-filter-picker",
     },
   ],
   [
     "datetime",
     createQueryWithSpecificDateFilter(),
-    { columnName: "Created At", pickerId: "datetime-filter-picker" },
+    { columnName: "Created At", pickerId: "date-filter-picker" },
   ],
   [
     "number",
@@ -190,7 +189,7 @@ describe("FilterPicker", () => {
     it("should list filterable columns", async () => {
       setup();
 
-      expect(screen.getByText("Order")).toBeInTheDocument();
+      expect(screen.getByText("Orders")).toBeInTheDocument();
       expect(screen.getByText("Discount")).toBeInTheDocument();
 
       await userEvent.click(screen.getByText("Product"));
@@ -338,20 +337,19 @@ describe("FilterPicker", () => {
         ["exclude", createQueryWithExcludeDateFilter()],
       ])(`should open the date picker for a %s date filter`, (type, opts) => {
         setup(opts);
-        expect(
-          screen.getByTestId("datetime-filter-picker"),
-        ).toBeInTheDocument();
+        expect(screen.getByTestId("date-filter-picker")).toBeInTheDocument();
       });
 
       it("should open the expression editor when column type isn't supported", () => {
-        const spy = jest
-          .spyOn(Lib_ColumnTypes, "isNumeric")
-          .mockReturnValue(false);
+        const query = Lib.filter(
+          createQuery(),
+          -1,
+          Lib.expressionClause("between", [1, 2, 3]),
+        );
+        const [filter] = Lib.filters(query, -1);
 
-        setup(createQueryWithNumberFilter());
+        setup({ query, filter });
         expect(screen.getByText(/Custom expression/i)).toBeInTheDocument();
-
-        spy.mockRestore();
       });
     });
 
@@ -363,7 +361,9 @@ describe("FilterPicker", () => {
       await userEvent.click(screen.getByLabelText("Back"));
       await userEvent.click(screen.getByText("Time"));
 
-      expect(screen.getByLabelText("Filter operator")).toHaveValue("Before");
+      expect(screen.getByLabelText("Filter operator")).toHaveTextContent(
+        "Before",
+      );
       expect(screen.getByDisplayValue("00:00")).toBeInTheDocument();
 
       await userEvent.click(screen.getByText("Update filter"));
@@ -390,7 +390,7 @@ describe("FilterPicker", () => {
       );
 
       await userEvent.click(screen.getByText("Total"));
-      await userEvent.click(screen.getByDisplayValue("Between"));
+      await userEvent.click(screen.getByText("Between"));
       await userEvent.click(screen.getByText("Equal to"));
       const input = screen.getByPlaceholderText("Enter a number");
       await userEvent.type(input, "100");

@@ -4,8 +4,8 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.shared.util.i18n :refer [tru]]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [potemkin.types :as p.types]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.hydrate :refer [hydrate]]))

@@ -1,14 +1,14 @@
-import { useArgs } from "@storybook/addons";
-import type { ComponentStory } from "@storybook/react";
+import { useArgs } from "@storybook/preview-api";
+import type { StoryFn } from "@storybook/react";
 
-import { TextWidget } from "./TextWidget";
+import { TextWidget, type TextWidgetProps } from "./TextWidget";
 
 export default {
   title: "Parameters/TextWidget",
   component: TextWidget,
 };
 
-const Template: ComponentStory<typeof TextWidget> = args => {
+const Template: StoryFn<TextWidgetProps> = args => {
   const [{ value }, updateArgs] = useArgs();
 
   const setValue = (value: string | number | null) => {
@@ -18,18 +18,27 @@ const Template: ComponentStory<typeof TextWidget> = args => {
   return <TextWidget {...args} value={value} setValue={setValue} />;
 };
 
-export const Default = Template.bind({});
-Default.args = {
-  value: "",
+export const Default = {
+  render: Template,
+
+  args: {
+    value: "",
+  },
 };
 
-export const InitialValue = Template.bind({});
-InitialValue.args = {
-  value: "Toucan McBird",
+export const InitialValue = {
+  render: Template,
+
+  args: {
+    value: "Toucan McBird",
+  },
 };
 
-export const Placeholder = Template.bind({});
-Placeholder.args = {
-  value: "",
-  placeholder: "What's your wish?",
+export const Placeholder = {
+  render: Template,
+
+  args: {
+    value: "",
+    placeholder: "What's your wish?",
+  },
 };

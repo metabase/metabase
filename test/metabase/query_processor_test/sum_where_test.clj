@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.sum-where-test
+(ns ^:mb/driver-tests metabase.query-processor-test.sum-where-test
   (:require
    [clojure.test :refer :all]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]

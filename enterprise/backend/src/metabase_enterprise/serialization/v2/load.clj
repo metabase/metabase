@@ -53,8 +53,8 @@
 
 (defn- path-error-data [error-type expanding path]
   (let [last-model (:model (last path))]
-    {:path       path
-     :deps-chain expanding
+    {:path       (mapv (partial into {}) path)
+     :deps-chain (set (map #(mapv (partial into {}) %) expanding))
      :model      last-model
      :table      (some->> last-model (keyword "model") t2/table-name)
      :error      error-type}))
@@ -75,7 +75,7 @@
   [{:keys [expanding ingestion seen] :as ctx} path & [modfn]]
   (log/infof "Loading %s" (serdes/log-path-str path))
   (cond
-    (expanding path) (throw (ex-info (format "Circular dependency on %s" (pr-str path))
+    (expanding path) (throw (ex-info (format "Circular dependency on %s" (serdes/log-path-str path))
                                      (path-error-data ::circular expanding path)))
     (seen path) ctx ; Already been done, can skip it.
     :else (let [ingested (try
@@ -100,7 +100,8 @@
               (serdes/load-one! ingested local-or-nil)
               ctx
               (catch Exception e
-                (throw (ex-info (format "Failed to load into database for %s" (pr-str path))
+                ;; ugly mapv here to convered #ordered/map into normal map so it's readable in the logs
+                (throw (ex-info (format "Failed to load into database for %s" (serdes/log-path-str path))
                                 (path-error-data ::load-failure expanding path)
                                 e)))))))
 

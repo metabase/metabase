@@ -5,7 +5,6 @@ import _ from "underscore";
 
 import { coercions_for_type, is_coerceable } from "cljs/metabase.types";
 import { formatField, stripId } from "metabase/lib/formatting";
-import { getFilterOperators } from "metabase-lib/v1/operators/utils";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import {
@@ -14,35 +13,26 @@ import {
 } from "metabase-lib/v1/queries/utils/field";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
-  isAddress,
   isBoolean,
   isCategory,
-  isCity,
-  isComment,
   isCoordinate,
-  isCountry,
   isCurrency,
   isDate,
   isDateWithoutTime,
-  isDescription,
   isDimension,
-  isEntityName,
   isFK,
   isLocation,
   isMetric,
   isNumber,
   isNumeric,
   isPK,
-  isScope,
-  isState,
   isString,
+  isStringLike,
   isSummable,
   isTime,
   isTypeFK,
-  isZipCode,
   isa,
 } from "metabase-lib/v1/types/utils/isa";
-import { createLookupByProperty, memoizeClass } from "metabase-lib/v1/utils";
 import type {
   DatasetColumn,
   FieldFingerprint,
@@ -60,8 +50,6 @@ import type Metadata from "./Metadata";
 import type Table from "./Table";
 import { getIconForField, getUniqueFieldId } from "./utils/fields";
 
-const LONG_TEXT_MIN = 80;
-
 /**
  * @typedef { import("./Metadata").FieldValues } FieldValues
  */
@@ -73,7 +61,8 @@ const LONG_TEXT_MIN = 80;
 /**
  * @deprecated use RTK Query endpoints and plain api objects from metabase-types/api
  */
-class FieldInner extends Base {
+// eslint-disable-next-line import/no-default-export
+export default class Field extends Base {
   id: FieldId | FieldReference;
   name: string;
   display_name: string;
@@ -209,24 +198,8 @@ class FieldInner extends Base {
     return isString(this);
   }
 
-  isAddress() {
-    return isAddress(this);
-  }
-
-  isCity() {
-    return isCity(this);
-  }
-
-  isZipCode() {
-    return isZipCode(this);
-  }
-
-  isState() {
-    return isState(this);
-  }
-
-  isCountry() {
-    return isCountry(this);
+  isStringLike() {
+    return isStringLike(this);
   }
 
   isCoordinate() {
@@ -239,10 +212,6 @@ class FieldInner extends Base {
 
   isSummable() {
     return isSummable(this);
-  }
-
-  isScope() {
-    return isScope(this);
   }
 
   isCategory() {
@@ -273,29 +242,18 @@ class FieldInner extends Base {
     return isFK(this);
   }
 
-  isEntityName() {
-    return isEntityName(this);
-  }
-
-  isLongText() {
-    return (
-      isString(this) &&
-      (isComment(this) ||
-        isDescription(this) ||
-        this?.fingerprint?.type?.["type/Text"]?.["average-length"] >=
-          LONG_TEXT_MIN)
-    );
-  }
-
   /**
-   * @param {Field} field
+   * Predicate to decide whether `this` is comparable with `field`.
+   *
+   * Currently only the MongoBSONID erroneous case is ruled out to fix the issue #49149. To the best of my knowledge
+   * there's no logic on FE to reliably decide whether two columns are comparable. Trying to come up with that in ad-hoc
+   * manner could disable some cases that users may depend on.
    */
-  isCompatibleWith(field) {
-    return (
-      this.isDate() === field.isDate() ||
-      this.isNumeric() === field.isNumeric() ||
-      this.id === field.id
-    );
+  isComparableWith(field) {
+    return this.effective_type === "type/MongoBSONID" ||
+      field.effective_type === "type/MongoBSONID"
+      ? this.effective_type === field.effective_type
+      : true;
   }
 
   /**
@@ -347,53 +305,7 @@ class FieldInner extends Base {
     return fieldDimension;
   }
 
-  sourceField() {
-    const d = this.dimension().sourceDimension();
-    return d && d.field();
-  }
-
-  // FILTERS
-  filterOperators(selected) {
-    return getFilterOperators(this, this.table, selected);
-  }
-
-  filterOperatorsLookup = _.once(() => {
-    return createLookupByProperty(this.filterOperators(), "name");
-  });
-
-  filterOperator(operatorName) {
-    return this.filterOperatorsLookup()[operatorName];
-  }
-
-  // AGGREGATIONS
-  aggregationOperators = _.once(() => {
-    return this.table
-      ? this.table
-          .aggregationOperators()
-          .filter(
-            aggregation =>
-              aggregation.validFieldsFilters[0] &&
-              aggregation.validFieldsFilters[0]([this]).length === 1,
-          )
-      : null;
-  });
-
-  aggregationOperatorsLookup = _.once(() => {
-    return createLookupByProperty(this.aggregationOperators(), "short");
-  });
-
-  aggregationOperator(short) {
-    return this.aggregationOperatorsLookup()[short];
-  }
-
   // BREAKOUTS
-
-  /**
-   * Returns a default breakout MBQL clause for this field
-   */
-  getDefaultBreakout() {
-    return this.dimension().defaultBreakout();
-  }
 
   /**
    * Returns a default date/time unit for this field
@@ -501,24 +413,6 @@ class FieldInner extends Base {
     });
   }
 
-  remappingOptions = () => {
-    const table = this.table;
-    if (!table) {
-      return [];
-    }
-
-    const { fks } = table
-      .legacyQuery({ useStructuredQuery: true })
-      .fieldOptions();
-    return fks
-      .filter(({ field }) => field.id === this.id)
-      .map(({ field, dimension, dimensions }) => ({
-        field,
-        dimension,
-        dimensions: dimensions.filter(d => d.isValidFKRemappingTarget()),
-      }));
-  };
-
   clone(fieldMetadata?: FieldMetadata) {
     if (fieldMetadata instanceof Field) {
       throw new Error("`fieldMetadata` arg must be a plain object");
@@ -546,7 +440,7 @@ class FieldInner extends Base {
 
   isJsonUnfolded() {
     const database = this.table?.database;
-    return this.json_unfolding ?? database?.details["json-unfolding"] ?? true;
+    return this.json_unfolding ?? database?.details?.["json-unfolding"] ?? true;
   }
 
   canUnfoldJson() {
@@ -597,8 +491,3 @@ class FieldInner extends Base {
     this.metadata = metadata;
   }
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class Field extends memoizeClass<FieldInner>("filterOperators")(
-  FieldInner,
-) {}

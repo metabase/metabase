@@ -92,14 +92,23 @@
      (mbql.u/wrap-field-id-if-needed field)
      (parse-param-value-for-type query param-type param-value (mbql.u/unwrap-field-or-expression-clause field))]))
 
+(defn- update-breakout-unit-in [query path target-field-id temporal-unit new-unit]
+  (lib.util.match/replace-in
+    query path
+    [(tag :guard #{:field :expression})
+     (_ :guard #(= target-field-id %))
+     (opts :guard #(= temporal-unit (:temporal-unit %)))]
+    [tag target-field-id (assoc opts :temporal-unit new-unit)]))
+
 (defn- update-breakout-unit
   [query
-   {[_dimension [_field target-field-id {:keys [base-type temporal-unit]}]] :target
+   {[_dimension [_field target-field-id {:keys [base-type temporal-unit]}] dim-opts] :target
     :keys [value] :as _param}]
   (let [new-unit (keyword value)
         base-type (or base-type
                       (when (integer? target-field-id)
-                        (:base-type (lib.metadata/field (qp.store/metadata-provider) target-field-id))))]
+                        (:base-type (lib.metadata/field (qp.store/metadata-provider) target-field-id))))
+        stage-path (into [:query] (mbql.u/stage-path (:query query) (:stage-number dim-opts)))]
     (assert (some? base-type) "`base-type` is not set.")
     (when-not (qp.u.temporal-bucket/compatible-temporal-unit? base-type new-unit)
       (throw (ex-info (tru "This chart can not be broken out by the selected unit of time: {0}." value)
@@ -107,10 +116,9 @@
                        :is-curated true
                        :base-type  base-type
                        :unit       new-unit})))
-    (lib.util.match/replace-in
-      query [:query :breakout]
-      [:field (_ :guard #(= target-field-id %)) (opts :guard #(= temporal-unit (:temporal-unit %)))]
-      [:field target-field-id (assoc opts :temporal-unit new-unit)])))
+    (-> query
+        (update-breakout-unit-in (conj stage-path :breakout) target-field-id temporal-unit new-unit)
+        (update-breakout-unit-in (conj stage-path :order-by) target-field-id temporal-unit new-unit))))
 
 (defn expand
   "Expand parameters for MBQL queries in `query` (replacing Dashboard or Card-supplied params with the appropriate
@@ -131,5 +139,6 @@
 
       :else
       (let [filter-clause (build-filter-clause query (assoc param :value param-value))
-            query         (mbql.u/add-filter-clause query filter-clause)]
+            [_ _ opts]    target
+            query         (mbql.u/add-filter-clause query (:stage-number opts) filter-clause)]
         (recur query rest)))))

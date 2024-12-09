@@ -1,7 +1,6 @@
 (ns metabase.driver.druid
   "Druid driver."
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [metabase.driver :as driver]
    [metabase.driver.druid.client :as druid.client]
@@ -9,13 +8,15 @@
    [metabase.driver.druid.query-processor :as druid.qp]
    [metabase.driver.druid.sync :as druid.sync]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.util.json :as json]
    [metabase.util.ssh :as ssh]))
 
 (driver/register! :druid)
 
-(doseq [[feature supported?] {:expression-aggregations true
-                              :schemas                 false
-                              :set-timezone            true}]
+(doseq [[feature supported?] {:expression-aggregations        true
+                              :schemas                        false
+                              :set-timezone                   true
+                              :temporal/requires-default-unit true}]
   (defmethod driver/database-supports? [:druid feature] [_driver _feature _db] supported?))
 
 (defmethod driver/can-connect? :druid
@@ -45,7 +46,7 @@
 
 (defn- add-timeout-to-query [query timeout]
   (let [parsed (if (string? query)
-                 (json/parse-string query keyword)
+                 (json/decode+kw query)
                  query)]
     (assoc-in parsed [:context :timeout] timeout)))
 

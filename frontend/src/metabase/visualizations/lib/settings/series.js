@@ -2,6 +2,7 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
+import { OTHER_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   SERIES_COLORS_SETTING_KEY,
   SERIES_SETTING_KEY,
@@ -26,11 +27,7 @@ export function keyForSingleSeries(single) {
 
 const LINE_DISPLAY_TYPES = new Set(["line", "area"]);
 
-export function seriesSetting({
-  readDependencies = [],
-  noPadding,
-  ...def
-} = {}) {
+export function seriesSetting({ readDependencies = [], def } = {}) {
   const COMMON_SETTINGS = {
     // title, and color don't need widgets because they're handled directly in ChartNestedSettingSeries
     title: {
@@ -63,6 +60,10 @@ export function seriesSetting({
       },
 
       getDefault: (single, settings, { series }) => {
+        if (keyForSingleSeries(single) === OTHER_DATA_KEY) {
+          return "bar"; // "other" series is always a bar chart now
+        }
+
         // FIXME: will move to Cartesian series model further, but now this code is used by other legacy charts
         const transformedSeriesIndex = series.findIndex(
           s => keyForSingleSeries(s) === keyForSingleSeries(single),

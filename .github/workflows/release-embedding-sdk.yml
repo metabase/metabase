@@ -1,35 +1,96 @@
 name: Release Metabase Embedding SDK for React
+run-name: Release SDK from ${{ inputs.branch }}
 
 on:
   workflow_dispatch:
     inputs:
-      # TODO: Add a version validation, so the workflow won't fail when publishing to npm
-      sdk_version:
-        description: 'SDK version (e.g. 0.1.3)'
-        type: string
+      branch:
+        description: "Branch we want to release the SDK from"
+        type: choice
         required: true
-      git_ref:
-        description: 'A git commit hash that will be used to build the SDK'
-        type: string
-        required: true
+        default: "master"
+        options:
+          - master
+          - release-x.51.x
 
 concurrency:
-  # We want to ensure only one job is running at a time because
+  # We want to ensure only one job is running at a time per branch because
   # there could be a conflict when updating the readme file.
-  group: ${{ github.workflow }}
+  group: ${{ github.workflow }}-${{ inputs.branch }}
   cancel-in-progress: true
 
 jobs:
+  workflow-summary:
+    name: Log inputs
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Generate workflow summary
+        run: |
+          tee -a $GITHUB_STEP_SUMMARY << EOF
+          **Inputs:**
+
+          - \`branch\`: ${{ inputs.branch }}
+
+          triggered by: @${{ github.event.sender.login }}
+          EOF
+
+  determine-version:
+    name: Determine SDK version
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    outputs:
+      sdk_version: ${{ steps.new-sdk-version.outputs.result }}
+    steps:
+      - name: Check out the code using the provided branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Get current SDK version
+        id: current-sdk-version
+        run: |
+          VERSION=$(jq -r .version ./enterprise/frontend/src/embedding-sdk/package.template.json)
+          echo "sdk_current_version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Get next SDK patch version
+        id: new-sdk-version
+        uses: actions/github-script@v7
+        with:
+          result-encoding: string
+          script: |
+            const currentVersion = "${{ steps.current-sdk-version.outputs.sdk_current_version }}";
+            const [currentVersionWithoutSuffix, suffix] = currentVersion.split("-");
+            const versionParts = currentVersionWithoutSuffix.split(".");
+            versionParts[versionParts.length - 1] = parseInt(versionParts.at(-1)) + 1;
+            const newVersion = versionParts.join(".");
+
+            if (!suffix) {
+              return newVersion;
+            }
+
+            return `${newVersion}-${suffix}`
+
+      - name: Append workflow summary
+        run: |
+          tee -a $GITHUB_STEP_SUMMARY << EOF
+          **Derived inputs:**
+
+          - \`current_version\`: "${{ steps.current-sdk-version.outputs.sdk_current_version }}"
+          - \`next_version\`: "${{ steps.new-sdk-version.outputs.result }}"
+          EOF
+
   check-git-tag:
+    needs: determine-version
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
-      tag: embedding-sdk-${{ inputs.sdk_version }}
+      tag: embedding-sdk-${{ needs.determine-version.outputs.sdk_version }}
     steps:
-      - name: Check out the code using the provided ref
+      - name: Check out the code using the provided branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.git_ref }}
+          ref: ${{ inputs.branch }}
           fetch-depth: 0
           fetch-tags: true
 
@@ -48,10 +109,10 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-      - name: Check out the code using the provided ref
+      - name: Check out the code using the provided branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.git_ref }}
+          ref: ${{ inputs.branch }}
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -65,14 +126,14 @@ jobs:
         run: yarn embedding-sdk:test-unit
 
   build-sdk:
-    needs: test
+    needs: [test, determine-version]
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-      - name: Check out the code using the provided ref
+      - name: Check out the code using the provided branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.git_ref }}
+          ref: ${{ inputs.branch }}
           fetch-depth: 0
           fetch-tags: true
 
@@ -84,14 +145,10 @@ jobs:
         with:
           m2-cache-key: "release-sdk"
 
-      - name: Update readme
-        run: |
-          ./bin/embedding-sdk/release_utils.bash update_readme ${{ inputs.sdk_version }}
-
       - name: Bump published npm package version
         # NOTE: this should happen before "Build SDK bundle" as we inject SDK version into the code during build step
         run: |
-          ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
+          ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ needs.determine-version.outputs.sdk_version }}
 
       - name: Update changelog
         run: |
@@ -115,50 +172,18 @@ jobs:
           name: sdk-changelog-diff
           path: ./changelog-diff
 
-  build-jar:
-    needs: test
-    uses: ./.github/workflows/uberjar-sdk.yml
-    with:
-      git_ref: ${{ inputs.git_ref }}
-      image_name: embedding-sdk-${{ inputs.sdk_version }}
-    secrets: inherit
-
-  upload-jar:
-    needs: build-jar
-    runs-on: ubuntu-22.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/download-artifact@v4
-        name: Retrieve uberjar artifact
-        with:
-          name: metabase-ee-uberjar
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION }}
-
-      - name: Upload uberjar to S3
-        env:
-          BUCKET: ${{ vars.AWS_S3_DOWNLOADS_BUCKET }}
-          BUCKET_PATH: sdk/v${{ inputs.sdk_version }}/metabase.jar
-          FILE: ./target/uberjar/metabase.jar
-        shell: bash
-        run: |
-          aws s3 cp $FILE s3://$BUCKET/$BUCKET_PATH
-
   publish-npm:
-    needs: [build-sdk, upload-jar]
+    needs: [build-sdk, determine-version]
     runs-on: ubuntu-22.04
     timeout-minutes: 20
+    env:
+      sdk_version: ${{ needs.determine-version.outputs.sdk_version }}
     steps:
-      - name: Check out master to prepare for a SDK version bump PR
+      - name: Check out branch to prepare for a SDK version bump PR
         uses: actions/checkout@v4
         with:
           # when we created version update PR, it would only have diff from 2 files SDK readme and SDK package.json template
-          ref: master
+          ref: ${{ inputs.branch}}
 
       - name: Setup git user
         run: |
@@ -167,11 +192,11 @@ jobs:
 
       - name: Update readme
         run: |
-          bash ./bin/embedding-sdk/release_utils.bash update_readme ${{ inputs.sdk_version }}
+          bash ./bin/embedding-sdk/release_utils.bash update_readme ${{ env.sdk_version }}
 
       - name: Bump published npm package version
         run: |
-          bash ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
+          bash ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ env.sdk_version }}
 
       - name: Retrieve SDK changelog diff
         uses: actions/download-artifact@v4
@@ -185,13 +210,13 @@ jobs:
 
       - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
         run: |
-          git checkout -b update-sdk-version-${{ inputs.sdk_version }}
-          git commit -a -m 'Update Readme version references and published npm version to ${{ inputs.sdk_version }}'
+          git checkout -b update-sdk-version-${{ env.sdk_version }}
+          git commit -a -m 'Update Readme version references and published npm version to ${{ env.sdk_version }}'
           git push origin HEAD
-          gh pr create --base master\
+          gh pr create --base ${{ inputs.branch }}\
                        --assignee "${GITHUB_ACTOR}"\
-                       --title "Update SDK version to ${{ inputs.sdk_version }}"\
-                       --body "Update Readme version references and published npm package version to ${{ inputs.sdk_version }}"
+                       --title "Update SDK version to ${{ env.sdk_version }}"\
+                       --body "Update Readme version references and published npm package version to ${{ env.sdk_version }}"
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
@@ -203,7 +228,7 @@ jobs:
 
       - name: Edit PR adding useful information (using Metabase bot app)
         run: |
-          gh pr edit --add-reviewer @metabase/embedding --add-label no-backport
+          gh pr edit --add-reviewer @metabase/embedding,albertoperdomo --add-label no-backport
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
@@ -226,22 +251,29 @@ jobs:
           path: sdk
 
       - name: Publish to NPM
+        working-directory: sdk
         run: |
-          cd sdk
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
-          npm publish
+          # Please keep the value in sync with `inputs.branch`'s release branch
+          npm publish --tag ${{fromJson('{"master": "nightly", "release-x.51.x": "51-stable"}')[inputs.branch]}}
+
+      - name: Add `latest` tag to the latest release branch (`release-x.51.x`) deployment
+        if: ${{ inputs.branch == 'release-x.51.x' }}
+        working-directory: sdk
+        run: |
+          npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
 
   git-tag:
-    needs: publish-npm
+    needs: [publish-npm, determine-version]
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
-      tag: embedding-sdk-${{ inputs.sdk_version }}
+      tag: embedding-sdk-${{ needs.determine-version.outputs.sdk_version }}
     steps:
-      - name: Check out the code using the provided ref
+      - name: Check out the code using the provided branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.git_ref }}
+          ref: ${{ inputs.branch }}
 
       # Lightweight tags don't need committer name and email
       - name: Create a new git tag
@@ -249,6 +281,6 @@ jobs:
           git tag ${{ env.tag }}
 
       - name: Push the new tag
-        id : push-tag
+        id: push-tag
         run: |
           git push origin ${{ env.tag }}

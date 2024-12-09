@@ -1,15 +1,4 @@
-import type {
-  DatePickerOperator,
-  DatePickerShortcut,
-  DatePickerValueType,
-  RelativeDatePickerValue,
-} from "../types";
-
-export interface ShortcutOption {
-  label: string;
-  shortcut: DatePickerShortcut;
-  value: RelativeDatePickerValue;
-}
+import type { DatePickerOperator, DatePickerValueType } from "../types";
 
 export interface TypeOption {
   label: string;

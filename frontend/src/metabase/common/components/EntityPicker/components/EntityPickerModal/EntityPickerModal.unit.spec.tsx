@@ -18,45 +18,54 @@ import {
   createMockSearchResults,
 } from "metabase-types/api/mocks";
 
-import type { EntityTab, TypeWithModel } from "../../types";
+import type { EntityPickerTab, TypeWithModel } from "../../types";
 
 import type { EntityPickerModalOptions } from "./EntityPickerModal";
 import { EntityPickerModal } from "./EntityPickerModal";
 
-type SampleModelType = "card" | "table";
+type SampleId = number;
+type SampleModel = "card" | "table" | "collection";
+type SampleItem = TypeWithModel<SampleId, SampleModel>;
+type SampleTab = EntityPickerTab<SampleId, SampleModel, SampleItem>;
 
 interface SetupOpts {
   title?: string;
   onItemSelect?: () => void;
   onClose?: () => void;
   onConfirm?: () => void;
-  tabs?: EntityTab<SampleModelType>[];
+  tabs?: SampleTab[];
   options?: EntityPickerModalOptions;
-  selectedItem?: null | TypeWithModel<number, SampleModelType>;
+  selectedItem?: SampleItem | null;
   actionButtons?: JSX.Element[];
   recentFilter?: (item: RecentItem[]) => RecentItem[];
   recentItems?: RecentItem[];
   defaultToRecentTab?: boolean;
-  initialValue?: { model: SampleModelType };
+  initialValue?: { model: SampleModel };
   searchDelay?: number;
+  recentsDelay?: number;
+  isLoadingTabs?: boolean;
 }
 
 const TestPicker = ({ name }: { name: string }) => (
   <p>{`Test picker ${name}`}</p>
 );
 
-const TEST_CARD_TAB: EntityTab<SampleModelType> = {
+const TEST_CARD_TAB: SampleTab = {
+  id: "cards-tab",
   icon: "audit",
   displayName: "All the foo",
   model: "card",
-  element: <TestPicker name="foo" />,
+  folderModels: ["collection" as const],
+  render: () => <TestPicker name="foo" />,
 };
 
-const TEST_TABLE_TAB: EntityTab<SampleModelType> = {
+const TEST_TABLE_TAB: SampleTab = {
+  id: "tables-tab",
   icon: "audit",
   displayName: "All the bar",
   model: "table",
-  element: <TestPicker name="bar" />,
+  folderModels: ["collection" as const],
+  render: () => <TestPicker name="bar" />,
 };
 
 const mockSearchResults = createMockSearchResults({
@@ -86,11 +95,14 @@ const setup = ({
   recentItems = [],
   recentFilter,
   searchDelay = 0,
+  recentsDelay = 0,
   ...rest
 }: SetupOpts = {}) => {
   mockGetBoundingClientRect();
   mockScrollBy();
-  setupRecentViewsAndSelectionsEndpoints(recentItems);
+  setupRecentViewsAndSelectionsEndpoints(recentItems, ["selections", "views"], {
+    delay: recentsDelay,
+  });
 
   fetchMock.get("path:/api/search", mockSearchResults, { delay: searchDelay });
 
@@ -116,6 +128,15 @@ describe("EntityPickerModal", () => {
     jest.restoreAllMocks();
   });
 
+  it("should show a loading state when isLoadingTabs is true", async () => {
+    setup({
+      isLoadingTabs: true,
+    });
+
+    expect(await screen.findByTestId("loading-indicator")).toBeInTheDocument();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+  });
+
   it("should throw when options.hasConfirmButtons is true but onConfirm prop is missing", async () => {
     expect(() => {
       setup({
@@ -136,15 +157,7 @@ describe("EntityPickerModal", () => {
 
   it("should show a tab list when more than 1 tab is supplied", async () => {
     setup({
-      tabs: [
-        TEST_CARD_TAB,
-        {
-          icon: "folder",
-          displayName: "All the bar",
-          model: "table",
-          element: <TestPicker name="bar" />,
-        },
-      ],
+      tabs: [TEST_CARD_TAB, TEST_TABLE_TAB],
     });
 
     const tabList = await screen.findByRole("tablist");
@@ -197,9 +210,7 @@ describe("EntityPickerModal", () => {
       await userEvent.type(
         await screen.findByPlaceholderText("Search…"),
         "My ",
-        {
-          delay: 50,
-        },
+        { delay: 50 },
       );
 
       expect(await screen.findByRole("tablist")).toBeInTheDocument();
@@ -214,6 +225,66 @@ describe("EntityPickerModal", () => {
       expect(onItemSelect).toHaveBeenCalledTimes(1);
     });
 
+    it("should return to previous tab when clearing the search input while search tab is open", async () => {
+      setup({
+        tabs: [TEST_CARD_TAB, TEST_TABLE_TAB],
+      });
+
+      expect(
+        await screen.findByRole("tab", { name: /All the foo/ }),
+      ).toHaveAttribute("data-active", "true");
+
+      await userEvent.click(
+        await screen.findByRole("tab", { name: /All the bar/ }),
+      );
+
+      expect(
+        await screen.findByRole("tab", { name: /All the bar/ }),
+      ).toHaveAttribute("data-active", "true");
+
+      await userEvent.type(await screen.findByPlaceholderText("Search…"), "M");
+
+      expect(
+        await screen.findByRole("tab", { name: /results for "M"/ }),
+      ).toHaveAttribute("data-active", "true");
+
+      await userEvent.clear(await screen.findByPlaceholderText("Search…"));
+
+      expect(
+        await screen.findByRole("tab", { name: /All the bar/ }),
+      ).toHaveAttribute("data-active", "true");
+    });
+
+    it("should not switch tab when clearing the search input while search tab is closed", async () => {
+      setup({
+        tabs: [TEST_CARD_TAB, TEST_TABLE_TAB],
+      });
+
+      await userEvent.type(await screen.findByPlaceholderText("Search…"), "M");
+
+      expect(
+        await screen.findByRole("tab", { name: /results for "M"/ }),
+      ).toHaveAttribute("data-active", "true");
+
+      await userEvent.click(
+        await screen.findByRole("tab", { name: /All the foo/ }),
+      );
+
+      await userEvent.click(
+        await screen.findByRole("tab", { name: /All the bar/ }),
+      );
+
+      expect(
+        await screen.findByRole("tab", { name: /All the bar/ }),
+      ).toHaveAttribute("data-active", "true");
+
+      await userEvent.clear(await screen.findByPlaceholderText("Search…"));
+
+      expect(
+        await screen.findByRole("tab", { name: /All the bar/ }),
+      ).toHaveAttribute("data-active", "true");
+    });
+
     it("should show a loading state while search is happening", async () => {
       setup({
         searchDelay: 2000,
@@ -222,9 +293,7 @@ describe("EntityPickerModal", () => {
       await userEvent.type(
         await screen.findByPlaceholderText("Search…"),
         "My ",
-        {
-          delay: 50,
-        },
+        { delay: 50 },
       );
       expect(await screen.findByRole("tablist")).toBeInTheDocument();
       expect(
@@ -273,9 +342,7 @@ describe("EntityPickerModal", () => {
       await userEvent.type(
         await screen.findByPlaceholderText("Search…"),
         "caterpie",
-        {
-          delay: 50,
-        },
+        { delay: 50 },
       );
 
       await userEvent.click(await screen.findByRole("tab", { name: /Search/ }));
@@ -407,6 +474,25 @@ describe("EntityPickerModal", () => {
 
       expect(
         await screen.findByRole("button", { name: "Click Me" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should wait until all tabs are determined before rendering", async () => {
+      setup({
+        recentsDelay: 500,
+        recentItems,
+      });
+
+      expect(
+        await screen.findByTestId("loading-indicator"),
+      ).toBeInTheDocument();
+
+      expect(
+        screen.queryByRole("tab", { name: /Recents/ }),
+      ).not.toBeInTheDocument();
+
+      expect(
+        await screen.findByRole("tab", { name: /Recents/ }),
       ).toBeInTheDocument();
     });
   });

@@ -19,7 +19,7 @@
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-   [metabase.models.database :as database :refer [Database]]
+   [metabase.models.database :refer [Database]]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.models.field-values :refer [FieldValues]]
@@ -30,8 +30,8 @@
    [metabase.models.segment :refer [Segment]]
    [metabase.models.setting :as setting]
    [metabase.models.table :refer [Table]]
-   [metabase.models.user :as user :refer [User]]
-   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.models.user :refer [User]]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -148,7 +148,7 @@
   [entity]
   (lib.util.match/replace entity
     ;; handle legacy `:field-id` forms encoded prior to 0.39.0
-    ;; and also *current* expresion forms used in parameter mapping dimensions
+    ;; and also *current* expression forms used in parameter mapping dimensions
     ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
     [:field-id (fully-qualified-name :guard string?)]
     (mbql-fully-qualified-names->ids* [:field fully-qualified-name nil])
@@ -395,14 +395,18 @@
     [f-type f-str f-md]))
 
 (defn- resolve-pivot-table-settings
-  "Resolve the entries in a :pivot_table.column_split map (which is under a :visualization_settings map). These map entries
-  may contain fully qualified field names, or even other cards. In case of an unresolved name (i.e. a card that hasn't
-  yet been loaded), we will track it under ::unresolved-names and revisit on the next pass."
+  "Resolve the entries in a :pivot_table.column_split map (which is under a :visualization_settings map). Modern map
+  entries contain column names that should be preserved as is. Legacy map entries may contain fully qualified field
+  names, or even other cards. In case of an unresolved name (i.e. a card that hasn't yet been loaded), we will track it
+  under ::unresolved-names and revisit on the next pass."
   [vs-norm]
   (if (:pivot_table.column_split vs-norm)
     (letfn [(resolve-vec [pivot vec-type]
-              (update-in pivot [:pivot_table.column_split vec-type] (fn [tbl-vecs]
-                                                                      (mapv resolve-table-column-field-ref tbl-vecs))))]
+              (update-in pivot [:pivot_table.column_split vec-type]
+                         (fn [tbl-vecs]
+                           (if (every? string? tbl-vecs)
+                             tbl-vecs
+                             (mapv resolve-table-column-field-ref tbl-vecs)))))]
       (-> vs-norm
           (resolve-vec :rows)
           (resolve-vec :columns)))

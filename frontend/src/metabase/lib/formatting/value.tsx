@@ -80,7 +80,7 @@ export function formatValue(value: unknown, _options: OptionsType = {}) {
       return formatted;
     }
   }
-  if (prefix || suffix) {
+  if ((prefix || suffix) && formatted != null) {
     if (options.jsx && typeof formatted !== "string") {
       return (
         <span>

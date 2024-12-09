@@ -1,0 +1,33 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Grid, Text } from "metabase/ui";
+import { Loader } from "./";
+import * as LoaderStories from "./Loader.stories";
+
+<Meta of={LoaderStories} />
+
+# Loader
+
+Our themed wrapper around [Mantine Loader](https://v6.mantine.dev/core/loader/).
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/NUXRUa9Ot3HvgC1WwIA4UH/Loader?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
+- [Mantine Loader Docs](https://v6.mantine.dev/core/loader/)
+
+## Caveats
+
+- Only use the `oval` variant unless otherwise called out
+- Prefer usage of loader sizes less than `xl` unless specifically called out
+
+## Examples
+
+<Canvas>
+  <Story of={LoaderStories.Default} />
+</Canvas>
+
+### Sizes
+
+<Canvas>
+  <Story of={LoaderStories.Sizes} />
+</Canvas>

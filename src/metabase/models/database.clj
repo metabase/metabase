@@ -20,6 +20,8 @@
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
+   ;; Trying to use metabase.search would cause a circular reference ;_;
+   [metabase.search.spec :as search.spec]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -87,12 +89,20 @@
   [_db-id]
   (mi/superuser?))
 
+(defn- can-write?
+  [db-id]
+  (and (not= db-id audit/audit-db-id)
+       (current-user-can-write-db? db-id)))
+
 (defmethod mi/can-write? :model/Database
-  ([instance]
-   (mi/can-write? :model/Database (u/the-id instance)))
+  ;; Lack of permission to change database details will also exclude the `details` field from the HTTP response,
+  ;; cf. the implementation of [[metabase.models.interface/to-json]] for `:model/Database`.
+  ([{:keys [is_attached_dwh] :as instance}]
+   (and (can-write? (u/the-id instance))
+        (not is_attached_dwh)))
   ([_model pk]
-   (and (not= pk audit/audit-db-id)
-        (current-user-can-write-db? pk))))
+   (and (can-write? pk)
+        (not (:is_attached_dwh (t2/select-one :model/Database :id pk))))))
 
 (defn- infer-db-schedules
   "Infer database schedule settings based on its options."
@@ -128,6 +138,12 @@
     (catch Throwable e
       (log/error e "Error scheduling tasks for DB"))))
 
+(defn check-and-schedule-tasks!
+  "(Re)schedule sync operation tasks for any database which is not yet being synced regularly."
+  []
+  (doseq [database (t2/select :model/Database)]
+    (check-and-schedule-tasks-for-db! database)))
+
 ;; TODO - something like NSNotificationCenter in Objective-C would be really really useful here so things that want to
 ;; implement behavior when an object is deleted can do it without having to put code here
 
@@ -161,6 +177,9 @@
   (u/prog1 database
     (set-new-database-permissions! database)
     ;; schedule the Database sync & analyze tasks
+    ;; This will not do anything when coming from [[metabase-enterprise.advanced-config.file/initialize!]],
+    ;; since the scheduler will not be up yet.
+    ;; Thus, we call [[metabase.task.sync-databases/check-and-schedule-tasks!]] from [[metabase.core/init!]] to self-heal.
     (check-and-schedule-tasks-for-db! (t2.realize/realize database))))
 
 (def ^:private ^:dynamic *normalizing-details*
@@ -311,6 +330,9 @@
 
 (t2/define-after-update :model/Database
   [database]
+  ;; This will not do anything when coming from [[metabase-enterprise.advanced-config.file/initialize!]],
+  ;; since the scheduler will not be up yet.
+  ;; Thus, we call [[metabase.task.sync-databases/check-and-schedule-tasks!]] from [[metabase.core/init!]] to self-heal.
   (check-and-schedule-tasks-for-db! (t2.realize/realize database)))
 
 (t2/define-before-insert :model/Database
@@ -433,14 +455,21 @@
 
 (defmethod serdes/make-spec "Database"
   [_model-name {:keys [include-database-secrets]}]
-  {:copy      [:auto_run_queries :cache_field_values_schedule :cache_ttl :caveats :dbms_version
-               :description :engine :is_audit :is_full_sync :is_on_demand :is_sample :metadata_sync_schedule :name
+  {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
+               :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample :metadata_sync_schedule :name
                :points_of_interest :refingerprint :settings :timezone :uploads_enabled :uploads_schema_name
                :uploads_table_prefix]
-   :skip      []
+   :skip      [;; deprecated field
+               :cache_ttl]
    :transform {:created_at          (serdes/date)
                ;; details should be imported if available regardless of options
-               :details             {:export #(if include-database-secrets % ::serdes/skip) :import identity}
+               :details             {:export-with-context
+                                     (fn [current _ details]
+                                       (if (and include-database-secrets
+                                                (not (:is_attached_dwh current)))
+                                         details
+                                         ::serdes/skip))
+                                     :import identity}
                :creator_id          (serdes/fk :model/User)
                :initial_sync_status {:export identity :import (constantly "complete")}}})
 
@@ -470,3 +499,17 @@
    (fn [table-id]
      {:pre [(integer? table-id)]}
      (t2/select-one-fn :db_id :model/Table, :id table-id))))
+
+;;;; ------------------------------------------------- Search ----------------------------------------------------------
+
+(search.spec/define-spec "database"
+  {:model        :model/Database
+   :attrs        {:archived      false
+                  :collection-id false
+                  :creator-id    false
+                  ;; not sure if this is another bug
+                  :database-id   false
+                  :created-at    true
+                  :updated-at    true}
+   :search-terms [:name :description]
+   :render-terms {:initial-sync-status true}})

@@ -129,7 +129,7 @@
                                           {}
                                           [:field {:binning {:strategy :default}} (meta/id :orders :quantity)]
                                           32.5]]}]}
-                (lib/drill-thru query -1 drill)))))))
+                (lib/drill-thru query -1 nil drill)))))))
 
 ;; TODO: Add a test for clicking on pivot column cells (and headers?) - but that's broken on master. See #38265.
 (deftest ^:parallel cell-click-filters-and-updates-only-one-dimension-test
@@ -187,7 +187,7 @@
                                :value      4.5}]}
         drills  (lib/available-drill-thrus query -1 context)
         zoom-in (m/find-first #(= (:type %) :drill-thru/zoom-in.binning) drills)
-        drilled (lib/drill-thru query -1 zoom-in)]
+        drilled (lib/drill-thru query -1 nil zoom-in)]
     (testing "zoom-in.binning is available"
       (is (some? zoom-in)))
 
@@ -217,7 +217,7 @@
                                 :value      30}]}
         drills   (lib/available-drill-thrus query -1 context)
         zoom-in  (m/find-first #(= (:type %) :drill-thru/zoom-in.binning) drills)
-        drilled  (lib/drill-thru query -1 zoom-in)]
+        drilled  (lib/drill-thru query -1 nil zoom-in)]
     (testing "zoom-in.binning is available"
       (is (some? zoom-in)))
 

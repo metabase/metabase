@@ -1,11 +1,6 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  assertEChartsTooltip,
-  cartesianChartCircle,
-  restore,
-  visitQuestionAdhoc,
-} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -25,14 +20,28 @@ const testQuery = {
   type: "query",
 };
 
+const testQueryBreakout = {
+  database: SAMPLE_DB_ID,
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+      ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+      ["field", PRODUCTS.RATING, null],
+    ],
+  },
+  type: "query",
+};
+
 describe("scenarios > visualizations > scatter", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
   });
 
   it("should show correct labels in tooltip (metabase#15150)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "scatter",
       visualization_settings: {
@@ -42,12 +51,9 @@ describe("scenarios > visualizations > scatter", () => {
     });
 
     triggerPopoverForBubble();
-    assertEChartsTooltip({
+    H.assertEChartsTooltip({
+      header: "May 2023",
       rows: [
-        {
-          name: "Created At",
-          value: "May 2023",
-        },
         {
           name: "Count",
           value: "271",
@@ -61,7 +67,7 @@ describe("scenarios > visualizations > scatter", () => {
   });
 
   it("should show correct labels in tooltip when display name has manually set (metabase#11395)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "scatter",
       visualization_settings: {
@@ -79,12 +85,9 @@ describe("scenarios > visualizations > scatter", () => {
     });
 
     triggerPopoverForBubble();
-    assertEChartsTooltip({
+    H.assertEChartsTooltip({
+      header: "May 2023",
       rows: [
-        {
-          name: "Created At",
-          value: "May 2023",
-        },
         {
           name: "Orders count",
           value: "271",
@@ -97,8 +100,33 @@ describe("scenarios > visualizations > scatter", () => {
     });
   });
 
+  it("should not show non-hovered breakout series in the tooltip (metabase#50630)", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: testQueryBreakout,
+      display: "scatter",
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+        "graph.metrics": ["count"],
+      },
+    });
+
+    // Use force=true because this chart has too many bubbles that overlap with each other
+    triggerPopoverForBubble(300, true);
+    H.assertEChartsTooltip({
+      header: "2025",
+      rows: [
+        {
+          name: "Widget",
+          value: "173",
+        },
+      ],
+    });
+
+    H.assertEChartsTooltipNotContain(["Gizmo", "Gadget", "Doohickey"]);
+  });
+
   it("should not display data points even when enabled in settings (metabase#13247)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       display: "scatter",
       dataset_query: testQuery,
       visualization_settings: {
@@ -114,7 +142,7 @@ describe("scenarios > visualizations > scatter", () => {
   });
 
   it("should respect circle size in a visualization (metabase#22929)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         type: "native",
         native: {
@@ -131,7 +159,7 @@ select 10 as size, 2 as x, 5 as y`,
       },
     });
 
-    cartesianChartCircle().each(([circle], index) => {
+    H.cartesianChartCircle().each(([circle], index) => {
       const { width, height } = circle.getBoundingClientRect();
       const TOLERANCE = 0.1;
       expect(width).to.be.greaterThan(0);
@@ -145,9 +173,66 @@ select 10 as size, 2 as x, 5 as y`,
       });
     });
   });
+
+  it("should allow adding non-series columns to the tooltip", () => {
+    const additionalColumns = [
+      "Total",
+      "Discount",
+      "Created At",
+      "ID",
+      "User ID",
+      "Product ID",
+    ];
+
+    H.visitQuestionAdhoc({
+      display: "scatter",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: { "source-table": ORDERS_ID },
+      },
+      visualization_settings: {
+        "graph.metrics": ["TAX"],
+        "graph.dimensions": ["SUBTOTAL"],
+      },
+    });
+
+    H.cartesianChartCircle().first().realHover();
+    H.assertEChartsTooltip({
+      header: "15.69",
+      rows: [{ name: "Tax", value: "0.86" }],
+    });
+
+    H.assertEChartsTooltipNotContain(additionalColumns);
+
+    cy.findByTestId("viz-settings-button").click();
+
+    H.leftSidebar().within(() => {
+      cy.findByText("Display").click();
+      cy.findByPlaceholderText("Enter metric names").click();
+    });
+
+    additionalColumns.forEach(name =>
+      cy.findByRole("option", { name }).click(),
+    );
+
+    // Close the popover
+    cy.get("body").type("{esc}");
+
+    H.cartesianChartCircle().first().realHover();
+    H.assertEChartsTooltip({
+      header: "15.69",
+      rows: [
+        { name: "Tax", value: "0.86" },
+        { name: "Total", value: "16.55" },
+        { name: "Discount", value: "(empty)" },
+      ],
+    });
+    H.assertEChartsTooltipNotContain(["Quantity"]);
+  });
 });
 
-function triggerPopoverForBubble(index = 13) {
+function triggerPopoverForBubble(index = 13, force = false) {
   // Hack that is needed because of the flakiness caused by adding throttle to the ExplicitSize component
   // See: https://github.com/metabase/metabase/pull/15235
   cy.findByTestId("view-footer").within(() => {
@@ -155,7 +240,7 @@ function triggerPopoverForBubble(index = 13) {
     cy.findByLabelText("Switch to visualization").click(); // ... and then back to the scatter visualization (that now seems to be stable enough to make assertions about)
   });
 
-  cartesianChartCircle()
+  H.cartesianChartCircle()
     .eq(index) // Random bubble
-    .trigger("mousemove");
+    .trigger("mousemove", { force });
 }

@@ -7,7 +7,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { getIsPaidPlan, getUpgradeUrl } from "./settings";
+import { getDocsUrl, getIsPaidPlan, getUpgradeUrl } from "./settings";
 
 describe("getUpgradeUrl", () => {
   it.each([
@@ -81,5 +81,54 @@ describe("getIsPaidPlan", () => {
     });
 
     expect(getIsPaidPlan(state)).toEqual(true);
+  });
+});
+
+// function withTempSetting(settingName, settingValue, thunk) {
+//   const origVal = MetabaseSettings.get(settingName);
+//   MetabaseSettings.set(settingName, settingValue);
+//   try {
+//     thunk();
+//   } finally {
+//     MetabaseSettings.set(settingName, origVal);
+//   }
+// }
+
+describe("getDocsUrl", () => {
+  // all of these should point to the same doc URL
+  [
+    ["v0.41.0", "v0.41"],
+    [undefined, "latest"],
+    ["v0.41.1-SNAPSHOT", "latest"],
+    ["v0.41.2-rc1", "v0.41"],
+    ["v0.41.3-RC2", "v0.41"],
+    ["v1.41.4", "v0.41"],
+    ["v1.41.3-snapshot", "latest"],
+    ["v1.41.2-rc1", "v0.41"],
+    ["v1.41.1-RANDOM-SUFFIX", "v0.41"],
+  ].forEach(v => {
+    it("handles version " + v[0] + " by pointing it to " + v[1], () => {
+      const state = createMockState({
+        settings: createMockSettingsState({
+          version: { tag: v[0] },
+        }),
+      });
+
+      expect(getDocsUrl(state, { page: "foo/bar" })).toBe(
+        "https://www.metabase.com/docs/" + v[1] + "/foo/bar.html",
+      );
+    });
+  });
+
+  it("handles anchor", () => {
+    const state = createMockState({
+      settings: createMockSettingsState({
+        version: { tag: "v0.41.0" },
+      }),
+    });
+
+    expect(getDocsUrl(state, { page: "foo/bar", anchor: "baz" })).toBe(
+      "https://www.metabase.com/docs/v0.41/foo/bar.html#baz",
+    );
   });
 });

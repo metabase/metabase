@@ -1,0 +1,27 @@
+name: My Database
+description: null
+engine: h2
+dbms_version: null
+created_at: '2024-08-28T14:38:42.753121Z'
+creator_id: null
+timezone: null
+auto_run_queries: true
+refingerprint: null
+is_full_sync: true
+is_on_demand: false
+is_sample: false
+is_audit: false
+is_attached_dwh: false
+metadata_sync_schedule: 0 9 * * * ? *
+cache_field_values_schedule: 0 0 12 * * ? *
+settings:
+  database-source-dataset-name: test-data
+caveats: null
+points_of_interest: null
+initial_sync_status: complete
+serdes/meta:
+- id: My Database
+  model: Database
+uploads_enabled: false
+uploads_schema_name: null
+uploads_table_prefix: null

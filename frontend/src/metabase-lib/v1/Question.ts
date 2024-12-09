@@ -1,25 +1,41 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
-import _ from "underscore";
-/* eslint-disable import/order */
-// NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
+import _ from "underscore";
+
+import { utf8_to_b64url } from "metabase/lib/encoding";
 import * as Lib from "metabase-lib";
-import StructuredQuery, {
-  STRUCTURED_QUERY_TEMPLATE,
-} from "metabase-lib/v1/queries/StructuredQuery";
+import {
+  ALERT_TYPE_PROGRESS_BAR_GOAL,
+  ALERT_TYPE_ROWS,
+  ALERT_TYPE_TIMESERIES_GOAL,
+} from "metabase-lib/v1/Alert";
+import type Database from "metabase-lib/v1/metadata/Database";
+import Metadata from "metabase-lib/v1/metadata/Metadata";
+import type Table from "metabase-lib/v1/metadata/Table";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import {
+  applyFilterParameter,
+  applyTemporalUnitParameter,
+} from "metabase-lib/v1/parameters/utils/mbql";
+import {
+  isFilterParameter,
+  isTemporalUnitParameter,
+} from "metabase-lib/v1/parameters/utils/parameter-type";
+import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
+import type AtomicQuery from "metabase-lib/v1/queries/AtomicQuery";
+import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
 import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/v1/queries/NativeQuery";
-import type AtomicQuery from "metabase-lib/v1/queries/AtomicQuery";
-import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
 import type BaseQuery from "metabase-lib/v1/queries/Query";
-import Metadata from "metabase-lib/v1/metadata/Metadata";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Table from "metabase-lib/v1/metadata/Table";
+import StructuredQuery, {
+  STRUCTURED_QUERY_TEMPLATE,
+} from "metabase-lib/v1/queries/StructuredQuery";
+import { isTransientId } from "metabase-lib/v1/queries/utils/card";
 import { sortObject } from "metabase-lib/v1/utils";
-
 import type {
   CardDisplayType,
   Card as CardObject,
@@ -31,35 +47,18 @@ import type {
   DatasetData,
   DatasetQuery,
   Field,
+  LastEditInfo,
+  ParameterDimensionTarget,
   ParameterId,
   Parameter as ParameterObject,
-  ParameterValues,
+  ParameterValuesMap,
   TableId,
+  UserInfo,
   VisualizationSettings,
 } from "metabase-types/api";
-
-// TODO: remove these dependencies
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
-import { utf8_to_b64url } from "metabase/lib/encoding";
-
-import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
-import {
-  applyFilterParameter,
-  applyTemporalUnitParameter,
-} from "metabase-lib/v1/parameters/utils/mbql";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import { isTransientId } from "metabase-lib/v1/queries/utils/card";
-import {
-  ALERT_TYPE_PROGRESS_BAR_GOAL,
-  ALERT_TYPE_ROWS,
-  ALERT_TYPE_TIMESERIES_GOAL,
-} from "metabase-lib/v1/Alert";
+import { isDimensionTarget } from "metabase-types/guards";
 
 import type { Query } from "../types";
-import {
-  isFilterParameter,
-  isTemporalUnitParameter,
-} from "metabase-lib/v1/parameters/utils/parameter-type";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -67,7 +66,7 @@ export type QuestionCreatorOpts = {
   tableId?: TableId;
   collectionId?: CollectionId;
   metadata?: Metadata;
-  parameterValues?: ParameterValues;
+  parameterValues?: ParameterValuesMap;
   type?: "query" | "native";
   name?: string;
   display?: CardDisplayType;
@@ -96,7 +95,7 @@ class Question {
    * Parameter values mean either the current values of dashboard filters or SQL editor template parameters.
    * They are in the grey area between UI state and question state, but having them in Question wrapper is convenient.
    */
-  _parameterValues: ParameterValues;
+  _parameterValues: ParameterValuesMap;
 
   private __mlv2Query: Lib.Query | undefined;
 
@@ -108,7 +107,7 @@ class Question {
   constructor(
     card: any,
     metadata?: Metadata,
-    parameterValues?: ParameterValues,
+    parameterValues?: ParameterValuesMap,
   ) {
     this._card = card;
     this._metadata =
@@ -232,20 +231,12 @@ class Question {
   /**
    * The visualization type of the question
    */
-  display(): string {
+  display(): CardDisplayType {
     return this._card && this._card.display;
   }
 
-  setDisplay(display) {
+  setDisplay(display: CardDisplayType) {
     return this.setCard(assoc(this.card(), "display", display));
-  }
-
-  cacheTTL(): number | null {
-    return this._card?.cache_ttl;
-  }
-
-  setCacheTTL(cache) {
-    return this.setCard(assoc(this.card(), "cache_ttl", cache));
   }
 
   type(): CardType {
@@ -539,7 +530,7 @@ class Question {
     return this.setCard(assoc(this.card(), "description", description));
   }
 
-  lastEditInfo() {
+  lastEditInfo(): LastEditInfo {
     return this._card && this._card["last-edit-info"];
   }
 
@@ -756,9 +747,8 @@ class Question {
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 
-  _convertParametersToMbql(): Question {
+  _convertParametersToMbql({ isComposed }: { isComposed: boolean }): Question {
     const query = this.query();
-    const stageIndex = -1;
     const { isNative } = Lib.queryDisplayInfo(query);
 
     if (isNative) {
@@ -767,8 +757,17 @@ class Question {
 
     const newQuery = this.parameters().reduce((query, parameter) => {
       if (isFilterParameter(parameter)) {
+        const stageIndex =
+          isDimensionTarget(parameter.target) && !isComposed
+            ? getParameterDimensionTargetStageIndex(parameter.target)
+            : -1;
         return applyFilterParameter(query, stageIndex, parameter);
       } else if (isTemporalUnitParameter(parameter)) {
+        const stageIndex =
+          isDimensionTarget(parameter.target) && !isComposed
+            ? getParameterDimensionTargetStageIndex(parameter.target)
+            : -1;
+
         return applyTemporalUnitParameter(query, stageIndex, parameter);
       } else {
         return query;
@@ -780,6 +779,13 @@ class Question {
 
     const hasQueryBeenAltered = query !== newQuery;
     return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
+
+    function getParameterDimensionTargetStageIndex(
+      target: ParameterDimensionTarget,
+    ) {
+      const [_type, _variableTarget, options] = target;
+      return options?.["stage-number"] ?? -1;
+    }
   }
 
   query(): Query {
@@ -824,12 +830,27 @@ class Question {
     return getIn(this, ["_card", "moderation_reviews"]) || [];
   }
 
-  getCreator(): string {
+  getCreator(): UserInfo {
     return getIn(this, ["_card", "creator"]) || "";
   }
 
   getCreatedAt(): string {
     return getIn(this, ["_card", "created_at"]) || "";
+  }
+
+  canManageDB(): boolean {
+    return this.card().can_manage_db || false;
+  }
+
+  /** Applies the template tag parameters from the card to the question. */
+  applyTemplateTagParameters(): Question {
+    const { isNative } = Lib.queryDisplayInfo(this.query());
+
+    if (!isNative) {
+      return this;
+    }
+
+    return this.setParameters(getTemplateTagParametersFromCard(this.card()));
   }
 
   /**

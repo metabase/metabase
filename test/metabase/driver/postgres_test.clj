@@ -37,6 +37,7 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -96,17 +97,18 @@
 
 (defn drop-if-exists-and-create-db!
   "Drop a Postgres database named `db-name` if it already exists; then create a new empty one with that name."
-  [db-name]
+  [db-name & [just-drop]]
   (let [spec (sql-jdbc.conn/connection-details->spec :postgres (mt/dbdef->connection-details :postgres :server nil))]
     ;; kill any open connections
     (jdbc/query spec ["SELECT pg_terminate_backend(pg_stat_activity.pid)
                        FROM pg_stat_activity
                        WHERE pg_stat_activity.datname = ?;" db-name])
     ;; create the DB
-    (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";
-                                  CREATE DATABASE \"%s\";"
-                                 db-name db-name)]
-                   {:transaction? false})))
+    (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\"" db-name)]
+                   {:transaction? false})
+    (when (not= just-drop :pg/just-drop)
+      (jdbc/execute! spec [(format "CREATE DATABASE \"%s\";" db-name)]
+                     {:transaction? false}))))
 
 (defn- exec!
   "Execute a sequence of statements against the database whose spec is passed as the first param."
@@ -193,11 +195,11 @@
   (mt/test-driver :postgres
     (testing "Make sure that Tables / Fields with dots in their names get escaped properly"
       (mt/dataset dots-in-names
-        (= {:columns ["id" "dotted.name"]
-            :rows    [[1 "toucan_cage"]
-                      [2 "four_loko"]
-                      [3 "ouija_board"]]}
-           (mt/rows+column-names (mt/run-mbql-query objects.stuff)))))
+        (is (= {:columns ["id" "dotted.name"]
+                :rows    [[1 "toucan_cage"]
+                          [2 "four_loko"]
+                          [3 "ouija_board"]]}
+               (mt/rows+column-names (mt/run-mbql-query objects.stuff))))))
     (testing "make sure schema/table/field names with hyphens in them work correctly (#8766)"
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "hyphen-names-test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
@@ -389,13 +391,13 @@
 (deftest ^:parallel json-query-test
   (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
     (testing "Transforming MBQL query with JSON in it to postgres query works"
-      (let [boop-field {:nfc-path [:bleh :meh] :database-type "bigint"}]
+      (let [boop-field {:nfc-path [:bleh :meh] :database-type "decimal"}]
         (is (= [::postgres/json-query
                 [::h2x/identifier :field ["boop" "bleh"]]
-                "bigint"
+                "decimal"
                 [:meh]]
                (#'sql.qp/json-query :postgres boop-identifier boop-field)))
-        (is (= ["(boop.bleh#>> array[?]::text[])::bigint" "meh"]
+        (is (= ["(boop.bleh#>> array[?]::text[])::decimal" "meh"]
                (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
       (let [weird-field {:nfc-path [:bleh "meh" :foobar 1234] :database-type "bigint"}]
@@ -561,7 +563,7 @@
           (mt/with-db database
             (sync-tables/sync-tables-and-database! database)
             (is (= #{{:name              "trivial_json → a",
-                      :database-type     "bigint",
+                      :database-type     "decimal",
                       :base-type         :type/Integer,
                       :database-position 0,
                       :json-unfolding    false,
@@ -586,7 +588,7 @@
           (mt/with-db database
             (sync-tables/sync-tables-and-database! database)
             (is (= #{{:name              "trivial_json → a",
-                      :database-type     "bigint",
+                      :database-type     "decimal",
                       :base-type         :type/Integer,
                       :database-position 0,
                       :json-unfolding    false,
@@ -790,19 +792,22 @@
 (def ^:private enums-db-sql
   (str/join
    \newline
-   ["CREATE TYPE \"bird type\" AS ENUM ('toucan', 'pigeon', 'turkey');"
+   ["CREATE SCHEMA bird_schema;"
+    "CREATE TYPE \"bird type\" AS ENUM ('toucan', 'pigeon', 'turkey');"
     "CREATE TYPE bird_status AS ENUM ('good bird', 'angry bird', 'delicious bird');"
+    "CREATE TYPE bird_schema.bird_status AS ENUM ('sad bird', 'baby bird', 'big bird');"
     "CREATE TABLE birds ("
     "  name varchar PRIMARY KEY NOT NULL,"
     "  status bird_status NOT NULL,"
+    "  other_status bird_schema.bird_status NOT NULL,"
     "  type \"bird type\" NOT NULL"
     ");"
     "INSERT INTO"
-    "  birds (\"name\", status, \"type\")"
+    "  birds (\"name\", status, other_status, \"type\")"
     "VALUES"
-    "  ('Rasta', 'good bird', 'toucan'),"
-    "  ('Lucky', 'angry bird', 'pigeon'),"
-    "  ('Theodore', 'delicious bird', 'turkey');"]))
+    "  ('Rasta', 'good bird', 'sad bird', 'toucan'),"
+    "  ('Lucky', 'angry bird', 'baby bird', 'pigeon'),"
+    "  ('Theodore', 'delicious bird', 'big bird', 'turkey');"]))
 
 (defn- create-enums-db!
   "Create a Postgres database called `enums_test` that has a couple of enum types and a couple columns of those types.
@@ -832,52 +837,149 @@
     (do-with-enums-db!
      (fn [db]
        (testing "check that we can actually fetch the enum types from a DB"
-         (is (= #{(keyword "bird type") :bird_status}
-                (#'postgres/enum-types :postgres db))))
+         (is (= #{"\"bird_schema\".\"bird_status\"" "bird type" "bird_status"}
+                (#'postgres/enum-types db))))
 
        (testing "check that describe-table properly describes the database & base types of the enum fields"
-         (is (= {:name   "birds"
-                 :fields #{{:name                       "name"
-                            :database-type              "varchar"
-                            :base-type                  :type/Text
-                            :pk?                        true
-                            :database-position          0
-                            :database-required          true
-                            :database-is-auto-increment false
-                            :json-unfolding             false}
-                           {:name                       "status"
-                            :database-type              "bird_status"
-                            :base-type                  :type/PostgresEnum
-                            :database-position          1
-                            :database-required          true
-                            :database-is-auto-increment false
-                            :json-unfolding             false}
-                           {:name                       "type"
-                            :database-type              "bird type"
-                            :base-type                  :type/PostgresEnum
-                            :database-position          2
-                            :database-required          true
-                            :database-is-auto-increment false
-                            :json-unfolding             false}}}
-                (driver/describe-table :postgres db {:name "birds"}))))
+         (is (=? [{:table-schema               "public"
+                   :table-name                 "birds"
+                   :name                       "name"
+                   :database-type              "varchar"
+                   :base-type                  :type/Text
+                   :pk?                        true
+                   :database-position          0
+                   :database-required          true
+                   :database-is-auto-increment false
+                   :json-unfolding             false}
+                  {:table-schema               "public"
+                   :table-name                 "birds"
+                   :name                       "status"
+                   :database-type              "bird_status"
+                   :base-type                  :type/PostgresEnum
+                   :database-position          1
+                   :database-required          true
+                   :database-is-auto-increment false
+                   :json-unfolding             false}
+                  {:table-schema               "public"
+                   :table-name                 "birds"
+                   :name                       "other_status"
+                   :database-type              "\"bird_schema\".\"bird_status\""
+                   :base-type                  :type/PostgresEnum
+                   :database-position          2
+                   :database-required          true
+                   :database-is-auto-increment false
+                   :json-unfolding             false}
+                  {:table-schema               "public"
+                   :table-name                 "birds"
+                   :name                       "type"
+                   :database-type              "bird type"
+                   :base-type                  :type/PostgresEnum
+                   :database-position          3
+                   :database-required          true
+                   :database-is-auto-increment false
+                   :json-unfolding             false}]
+                 (->> (driver/describe-fields :postgres db {:table-names ["birds"]})
+                      (into #{})
+                      (sort-by :database-position)))))
 
        (testing "check that when syncing the DB the enum types get recorded appropriately"
          (let [table-id (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")]
            (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
                     {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
-                    {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
+                    {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}
+                    {:name "other_status", :database_type "\"bird_schema\".\"bird_status\"", :base_type :type/PostgresEnum}}
                   (set (map (partial into {})
                             (t2/select [Field :name :database_type :base_type] :table_id table-id)))))))
 
        (testing "End-to-end check: make sure everything works as expected when we run an actual query"
          (let [table-id           (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")
                bird-type-field-id (t2/select-one-pk Field :table_id table-id, :name "type")]
-           (is (= {:rows        [["Rasta" "good bird" "toucan"]]
+           (is (= {:rows        [["Rasta" "good bird" "sad bird" "toucan"]]
                    :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
                                               " \"public\".\"birds\".\"status\" AS \"status\","
+                                              " \"public\".\"birds\".\"other_status\" AS \"other_status\","
                                               " \"public\".\"birds\".\"type\" AS \"type\" "
                                               "FROM \"public\".\"birds\" "
                                               "WHERE \"public\".\"birds\".\"type\" = CAST('toucan' AS \"bird type\") "
+                                              "LIMIT 10")
+                                 :params nil}}
+                  (-> (qp/process-query
+                       {:database (u/the-id db)
+                        :type     :query
+                        :query    {:source-table table-id
+                                   :filter       [:= [:field (u/the-id bird-type-field-id) nil] "toucan"]
+                                   :limit        10}})
+                      :data
+                      (select-keys [:rows :native_form]))))))))))
+
+(deftest enums-test-3
+  (mt/test-driver :postgres
+    (do-with-enums-db!
+     (fn [db]
+       (tx/create-view-of-table! driver/*driver* db "birds_m" "birds" true)
+       (sync/sync-database! db)
+
+       (testing "check that describe-table properly describes the database & base types of the enum fields"
+         (is (=? [{:table-schema               "public"
+                   :table-name                 "birds_m"
+                   :name                       "name"
+                   :database-type              "varchar"
+                   :base-type                  :type/Text
+                   :pk?                        false
+                   :database-position          0
+                   :database-required          false
+                   :database-is-auto-increment false
+                   :json-unfolding             false}
+                  {:table-schema               "public"
+                   :table-name                 "birds_m"
+                   :name                       "status"
+                   :database-type              "bird_status"
+                   :base-type                  :type/PostgresEnum
+                   :database-position          1
+                   :database-required          false
+                   :database-is-auto-increment false
+                   :json-unfolding             false}
+                  {:table-schema               "public"
+                   :table-name                 "birds_m"
+                   :name                       "other_status"
+                   :database-type              "\"bird_schema\".\"bird_status\""
+                   :base-type                  :type/PostgresEnum
+                   :database-position          2
+                   :database-required          false
+                   :database-is-auto-increment false
+                   :json-unfolding             false}
+                  {:table-schema               "public"
+                   :table-name                 "birds_m"
+                   :name                       "type"
+                   :database-type              "bird type"
+                   :base-type                  :type/PostgresEnum
+                   :database-position          3
+                   :database-required          false
+                   :database-is-auto-increment false
+                   :json-unfolding             false}]
+                 (->> (driver/describe-fields :postgres db {:table-names ["birds_m"]})
+                      (into #{})
+                      (sort-by :database-position)))))
+
+       (testing "check that when syncing the DB the enum types get recorded appropriately"
+         (let [table-id (t2/select-one-pk Table :db_id (u/the-id db), :name "birds_m")]
+           (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
+                    {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
+                    {:name "other_status", :database_type "\"bird_schema\".\"bird_status\"", :base_type :type/PostgresEnum}
+                    {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
+                  (set (map (partial into {})
+                            (t2/select [Field :name :database_type :base_type] :table_id table-id)))))))
+
+       (testing "End-to-end check: make sure everything works as expected when we run an actual query"
+         (let [table-id           (t2/select-one-pk Table :db_id (u/the-id db), :name "birds_m")
+               bird-type-field-id (t2/select-one-pk Field :table_id table-id, :name "type")]
+           (is (= {:rows        [["Rasta" "good bird" "sad bird" "toucan"]]
+                   :native_form {:query  (str "SELECT \"public\".\"birds_m\".\"name\" AS \"name\","
+                                              " \"public\".\"birds_m\".\"status\" AS \"status\","
+                                              " \"public\".\"birds_m\".\"other_status\" AS \"other_status\","
+                                              " \"public\".\"birds_m\".\"type\" AS \"type\" "
+                                              "FROM \"public\".\"birds_m\" "
+                                              "WHERE \"public\".\"birds_m\".\"type\" = CAST('toucan' AS \"bird type\") "
                                               "LIMIT 10")
                                  :params nil}}
                   (-> (qp/process-query
@@ -910,13 +1012,14 @@
                    (is (= columns action-targets))))
                (testing "Can create new records with an enum value"
                  (is (= {:created-row
-                         {:name "new bird", :status "good bird", :type "turkey"}}
+                         {:name "new bird", :status "good bird", :other_status "sad bird" :type "turkey"}}
                         (mt/user-http-request :crowberto
                                               :post 200
                                               (format "action/%s/execute" action-id)
-                                              {:parameters {"name"   "new bird"
-                                                            "status" "good bird"
-                                                            "type"   "turkey"}}))))))))))))
+                                              {:parameters {"name"         "new bird"
+                                                            "status"       "good bird"
+                                                            "other_status" "sad bird"
+                                                            "type"         "turkey"}}))))))))))))
 
 ;; API tests are in [[metabase.api.action-test]]
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test
@@ -1251,7 +1354,7 @@
 
 (deftest postgres-ssl-connectivity-test
   (mt/test-driver :postgres
-    (if (System/getenv "MB_POSTGRES_SSL_TEST_SSL")
+    (if (config/config-bool :mb-postgres-ssl-test-ssl)
       (testing "We should be able to connect to a Postgres instance, providing our own root CA via a secret property"
         (mt/with-env-keys-renamed-by #(str/replace-first % "mb-postgres-ssl-test" "mb-postgres-test")
           (id-field-parameter-test)))

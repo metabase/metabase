@@ -2,7 +2,6 @@ export * from "./cards-typed";
 export * from "./cards";
 export * from "./core";
 export * from "./data-fetching";
-export * from "./data-fetching-typed";
 export * from "./navigation";
 export * from "./parameters";
 export * from "./revisions";

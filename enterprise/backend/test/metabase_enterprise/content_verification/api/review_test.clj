@@ -15,12 +15,11 @@
   (testing "POST /api/moderation-review"
     (testing "Should require a token with `:content-verification`"
       (mt/with-premium-features #{}
-        (is (= "Content verification is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-               (mt/user-http-request :rasta :post 402 "moderation-review"
-                                     {:text                "review"
-                                      :status              "verified"
-                                      :moderated_item_id   1
-                                      :moderated_item_type "card"})))))
+        (mt/assert-has-premium-feature-error "Content verification" (mt/user-http-request :rasta :post 402 "moderation-review"
+                                                                                          {:text                "review"
+                                                                                           :status              "verified"
+                                                                                           :moderated_item_id   1
+                                                                                           :moderated_item_type "card"}))))
 
     (mt/with-premium-features #{:content-verification}
       (mt/with-temp [Card {card-id :id} {:name "Test Card"}]

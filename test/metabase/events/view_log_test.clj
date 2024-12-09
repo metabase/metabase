@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.api.common :as api]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.embed-test :as embed-test]
    [metabase.api.public-test :as public-test]
@@ -62,7 +61,12 @@
              (latest-view (mt/user->id :crowberto) (u/id coll))))))))
 
 (deftest update-view-dashboard-timestamp-test
-  (let [now           (t/offset-date-time)
+  ;; the DB might save `last_used_at` with a different level of precision than the JVM does, on some machines
+  ;; `offset-date-time` returns nanosecond precision (9 decimal places) but `last_viewed_at` is coming back with
+  ;; microsecond precision (6 decimal places). We don't care about such a small difference, just strip it off of the
+  ;; times we're comparing.
+  (let [now           (-> (t/offset-date-time)
+                          (.withNano 0))
         one-hour-ago  (t/minus now (t/hours 1))
         two-hours-ago (t/minus now (t/hours 2))]
     (testing "update with multiple dashboards of the same ids will set timestamp to the latest"
@@ -70,13 +74,19 @@
         [:model/Dashboard {dashboard-id-1 :id} {:last_viewed_at two-hours-ago}]
         (#'events.view-log/update-dashboard-last-viewed-at!* [{:id dashboard-id-1 :timestamp one-hour-ago}
                                                               {:id dashboard-id-1 :timestamp two-hours-ago}])
-        (is (= one-hour-ago (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id-1)))))
+        (is (= one-hour-ago
+               (-> (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id-1)
+                   t/offset-date-time
+                   (.withNano 0))))))
 
     (testing "if the existing last_viewed_at is greater than the updating values, do not override it"
       (mt/with-temp
         [:model/Dashboard {dashboard-id-2 :id} {:last_viewed_at now}]
         (#'events.view-log/update-dashboard-last-viewed-at!* [{:id dashboard-id-2 :timestamp one-hour-ago}])
-        (is (= now (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id-2)))))))
+        (is (= now
+               (-> (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id-2)
+                   t/offset-date-time
+                   (.withNano 0))))))))
 
 (deftest table-read-ee-test
   (mt/with-premium-features #{:audit-app}
@@ -94,10 +104,12 @@
 
         (testing "If a user is bound, has_access is recorded in EE based on the user's current permissions"
           (mt/with-full-data-perms-for-all-users!
-            (binding [api/*current-user-id* (u/id user)]
+            (mt/with-current-user (u/id user)
               (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
-              (is (true? (:has_access (latest-view (u/id user) (u/id table)))))
+              (is (true? (:has_access (latest-view (u/id user) (u/id table))))))
 
+            ;; Bind the user again to flush the perms cache
+            (mt/with-current-user (u/id user)
               (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/create-queries :no)
               (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
               (is (false? (:has_access (latest-view (u/id user) (u/id table))))))))))))

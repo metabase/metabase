@@ -1,10 +1,8 @@
 (ns metabase.models.card-test
   (:require
-   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.lib.core :as lib]
@@ -20,6 +18,7 @@
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -303,8 +302,8 @@
               ;; also check that normalization of already-normalized refs is idempotent
               original [original expected]
               ;; frontend uses JSON-serialized versions of the MBQL clauses as keys
-              :let     [original (json/generate-string original)
-                        expected (json/generate-string expected)]]
+              :let     [original (json/encode original)
+                        expected (json/encode expected)]]
         (testing (format "Viz settings field ref key %s should get normalized to %s"
                          (pr-str original)
                          (pr-str expected))
@@ -663,7 +662,7 @@
                    :model/Card card2 {:name "derived card"
                                       :dataset_query {:query {:source-table (str "card__" (:id card1))}}}]
       (is (empty? (serdes/descendants "Card" (:id card1))))
-      (is (= #{["Card" (:id card1)]}
+      (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
              (serdes/descendants "Card" (:id card2)))))))
 
 (deftest ^:parallel descendants-test-3
@@ -677,7 +676,7 @@
                                                                :snippet-name "snippet"
                                                                :snippet-id   (:id snippet)}}
                                      :query "select * from products where {{snippet}}"}}}]
-      (is (= #{["NativeQuerySnippet" (:id snippet)]}
+      (is (= {["NativeQuerySnippet" (:id snippet)] {"Card" (:id card)}}
              (serdes/descendants "Card" (:id card)))))))
 
 (deftest ^:parallel descendants-test-4
@@ -688,7 +687,7 @@
                                                     :type                 "id"
                                                     :values_source_type   "card"
                                                     :values_source_config {:card_id (:id card1)}}]}]
-      (is (= #{["Card" (:id card1)]}
+      (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
              (serdes/descendants "Card" (:id card2)))))))
 
 (deftest ^:parallel extract-test
@@ -729,7 +728,7 @@
               :pie.percent_visibility "inside"}
              (-> (t2/select-one (t2/table-name :model/Card) {:where [:= :id card-id]})
                  :visualization_settings
-                 (json/parse-string keyword)))))))
+                 json/decode+kw))))))
 
 ;;; -------------------------------------------- Revision tests  --------------------------------------------
 
@@ -986,7 +985,7 @@
                   "database" (mt/id)
                   "stages"   [{"lib/type"     "mbql.stage/mbql"
                                "source-table" (mt/id :venues)}]}
-                 (json/parse-string (t2/select-one-fn :dataset_query (t2/table-name :model/Card) :id (u/the-id card))))))
+                 (json/decode (t2/select-one-fn :dataset_query (t2/table-name :model/Card) :id (u/the-id card))))))
         (testing "fetch from app DB"
           (is (=? {:dataset_query {:lib/type     :mbql/query
                                    :database     (mt/id)
@@ -1014,7 +1013,7 @@
   (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         venues            (lib.metadata/table metadata-provider (mt/id :venues))
         query             (lib/query metadata-provider venues)]
-    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+    (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card card {:dataset_query query}
                      :model/Card no-query {}]
         (is (=? {:can_run_adhoc_query true}
@@ -1038,3 +1037,69 @@
           (mt/with-test-user :crowberto
             (is (false? (mi/can-read? card)))
             (is (false? (mi/can-write? card)))))))))
+
+(deftest breakouts-->identifier->action-fn-test
+  (are [b1 b2 expected--identifier->action] (= expected--identifier->action
+                                               (#'card/breakouts-->identifier->action b1 b2))
+    [[:field 10 {:temporal-unit :day}]]
+    nil
+    nil
+
+    [[:expression "x" {:temporal-unit :day}]]
+    nil
+    nil
+
+    [[:expression "x" {:temporal-unit :day}]]
+    [[:expression "x" {:temporal-unit :month}]]
+    {[:expression "x"] [:update [:expression "x" {:temporal-unit :month}]]}
+
+    [[:expression "x" {:temporal-unit :day}]]
+    [[:expression "x" {:temporal-unit :day}]]
+    nil
+
+    [[:field 10 {:temporal-unit :day}] [:expression "x" {:temporal-unit :day}]]
+    [[:expression "x" {:temporal-unit :day}] [:field 10 {:temporal-unit :month}]]
+    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+
+    [[:field 10 {:temporal-unit :year}] [:field 10 {:temporal-unit :day-of-week}]]
+    [[:field 10 {:temporal-unit :year}]]
+    nil))
+
+(deftest update-for-dashcard-fn-test
+  (are [indetifier->action quasi-dashcards expected-quasi-dashcards]
+       (= expected-quasi-dashcards
+          (#'card/updates-for-dashcards indetifier->action quasi-dashcards))
+
+    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    [{:parameter_mappings []}]
+    nil
+
+    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 nil]]}]}]
+    [[1 {:parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :month}]]}]}]]
+
+    {[:field 10] [:noop]}
+    [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 nil]]}]}]
+    nil
+
+    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :year}]]}
+                                 {:target [:dimension [:field 33 {:temporal-unit :month}]]}
+                                 {:target [:dimension [:field 10 {:temporal-unit :day}]]}]}]
+    [[1 {:parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :month}]]}
+                              {:target [:dimension [:field 33 {:temporal-unit :month}]]}
+                              {:target [:dimension [:field 10 {:temporal-unit :month}]]}]}]]))
+
+(deftest update-does-not-break
+  ;; There's currently a footgun in Toucan2 - if 1) the result of `before-update` doesn't have an ID, 2) part of your
+  ;; `update` would change a subset of selected rows, and 3) part of your `update` would change *every* selected row
+  ;; (in this case, that's the `updated_at` we automatically set), then it emits an update without a `WHERE` clause.
+  ;;
+  ;;This can be removed after https://github.com/camsaul/toucan2/pull/196 is merged.
+  (mt/with-temp [:model/Card {card-1-id :id} {:name "Flippy"}
+                 :model/Card {card-2-id :id} {:name "Dog Man"}
+                 :model/Card {card-3-id :id} {:name "Petey"}]
+    (testing "only the two cards specified get updated"
+      (t2/update! :model/Card :id [:in [card-1-id card-2-id]]
+                  {:name "Flippy"})
+      (is (= "Petey" (t2/select-one-fn :name :model/Card :id card-3-id))))))

@@ -20,7 +20,10 @@ describe("LastEditInfoLabel", () => {
     email: "john@metabase.test",
   });
 
-  function setup({ isLastEditedByCurrentUser = false } = {}) {
+  function setup({
+    isLastEditedByCurrentUser = false,
+    onClick = jest.fn(),
+  } = {}) {
     const testItem = {
       "last-edit-info": {
         ...TEST_USER,
@@ -32,11 +35,14 @@ describe("LastEditInfoLabel", () => {
       ? TEST_USER
       : { ...TEST_USER, id: TEST_USER.id + 1 };
 
-    return renderWithProviders(<LastEditInfoLabel item={testItem} />, {
-      storeInitialState: {
-        currentUser,
+    return renderWithProviders(
+      <LastEditInfoLabel item={testItem} onClick={onClick} />,
+      {
+        storeInitialState: {
+          currentUser,
+        },
       },
-    });
+    );
   }
 
   const A_FEW_SECONDS_AGO = moment().add(5, "seconds");
@@ -92,5 +98,24 @@ describe("LastEditInfoLabel", () => {
     expect(screen.getByTestId("revision-history-button")).toHaveTextContent(
       new RegExp(`Edited .* by you`),
     );
+  });
+
+  it("should not be clickable when `onClick` is not passed (currently only in SDK context) (metabase#48354)", () => {
+    setup({ onClick: null });
+    expect(screen.getByText(/Edited .* by .*/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: /Edited .* by .*/,
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should be clickable when `onClick` is passed (metabase#48354)", () => {
+    setup();
+    expect(
+      screen.getByRole("button", {
+        name: /Edited .* by .*/,
+      }),
+    ).toBeInTheDocument();
   });
 });

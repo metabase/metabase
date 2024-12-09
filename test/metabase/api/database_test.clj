@@ -1,4 +1,4 @@
-(ns metabase.api.database-test
+(ns ^:mb/driver-tests metabase.api.database-test
   "Tests for /api/database endpoints."
   (:require
    [clojure.string :as str]
@@ -18,14 +18,14 @@
     :refer [Card Collection Database Field FieldValues Segment Table]]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.database :as database :refer [protected-password]]
+   [metabase.models.database :refer [protected-password]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.sync :as sync]
    [metabase.sync.analyze :as analyze]
-   [metabase.sync.field-values :as field-values]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.task :as task]
    [metabase.task.sync-databases :as task.sync-databases]
@@ -83,7 +83,7 @@
    (merge
     (mt/object-defaults Database)
     (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version
-                     :metadata_sync_schedule :cache_field_values_schedule])
+                     :metadata_sync_schedule :cache_field_values_schedule :uploads_enabled])
     {:engine               (u/qualified-name (:engine db))
      :settings             {}
      :features             (map u/qualified-name (driver.u/features driver db))
@@ -408,7 +408,8 @@
 (deftest create-db-succesful-track-snowplow-test
   ;; h2 is no longer supported as a db source
   ;; the rests are disj because it's timeouted when adding it as a DB for some reasons
-  (mt/test-drivers (disj (mt/normal-drivers) :h2 :bigquery-cloud-sdk :athena :snowflake)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+                         :h2 :bigquery-cloud-sdk :snowflake)
     (snowplow-test/with-fake-snowplow-collector
       (let [dataset-def (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'avian-singles))]
         ;; trigger this to make sure the database exists before we add them
@@ -925,8 +926,10 @@
                                      :uploads_enabled uploads-enabled?
                                      :uploads_schema_name "public"}]
             (let [result (get-all :crowberto "database" old-ids)]
-              (is (= (:total result) 1))
-              (is (= uploads-enabled? (-> result :data first :can_upload))))))))))
+              (is (= 1
+                     (:total result)))
+              (is (= uploads-enabled?
+                     (-> result :data first :can_upload))))))))))
 
 (deftest ^:parallel databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
@@ -952,7 +955,7 @@
       (tu/with-temporary-setting-values [enable-nested-queries false]
         (is (every? some? (:data (mt/user-http-request :lucky :get 200 "database?saved=true"))))))))
 
-(deftest ^:parallel fetch-databases-with-invalid-driver-test
+(deftest fetch-databases-with-invalid-driver-test
   (testing "GET /api/database"
     (testing "\nEndpoint should still work even if there is a Database saved with a invalid driver"
       (t2.with-temp/with-temp [Database {db-id :id} {:engine "my-invalid-driver"}]
@@ -1268,7 +1271,6 @@
                       (:metadata_sync_schedule db)))
             (is (not= (-> schedule-map-for-last-friday-at-11pm u.cron/schedule-map->cron-string)
                       (:cache_field_values_schedule db)))))))))
-
 (deftest update-db-to-never-scan-values-on-demand-test
   (with-db-scheduler-setup!
     (with-test-driver-available!
@@ -1277,7 +1279,11 @@
         (testing "update db setting to never scan should remove scan field values trigger"
           (testing "sanity check that it has all triggers to begin with"
             (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
-                   (task.sync-databases-test/query-all-db-sync-triggers-name db))))
+                   ;; this is flaking and I suspect it's because the triggers is created async in
+                   ;; post-insert hook of Database
+                   (u/poll {:thunk     #(task.sync-databases-test/query-all-db-sync-triggers-name db)
+                            :done?      not-empty
+                            :timeout-ms 300}))))
           (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
                                 {:details     {:let-user-control-scheduling true}
                                  :schedules   {:metadata_sync      schedule-map-for-weekly
@@ -1378,9 +1384,9 @@
     (mt/with-premium-features #{:audit-app}
       (let [update-field-values-called? (promise)]
         (t2.with-temp/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
-          (with-redefs [field-values/update-field-values! (fn [synced-db]
-                                                            (when (= (u/the-id synced-db) (u/the-id db))
-                                                              (deliver update-field-values-called? :sync-called)))]
+          (with-redefs [sync.field-values/update-field-values! (fn [synced-db]
+                                                                 (when (= (u/the-id synced-db) (u/the-id db))
+                                                                   (deliver update-field-values-called? :sync-called)))]
             (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
             (is (= :sync-called
                    (deref update-field-values-called? long-timeout :sync-never-called)))

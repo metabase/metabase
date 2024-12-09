@@ -1,0 +1,62 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Viewing or archiving stale collection items",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "cleanup",
+    "format": "jsonschema",
+    "version": "1-0-1"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": [
+        "stale_items_read",
+        "stale_items_archived"
+      ],
+      "maxLength": 1024
+    },
+    "collection_id": {
+      "description": "Unique identifier for the Collection where we looked for stale items",
+      "type": [
+        "null",
+        "integer"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "total_stale_items_found": {
+      "description": "The total number of stale items that were found",
+      "type": [
+        "null",
+        "integer"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "total_items_archived": {
+      "description": "The total number of stale items that were archived",
+      "type": [
+        "null",
+        "integer"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "cutoff_date": {
+      "description": "The date before which unused items are considered 'stale'",
+      "type": [
+        "null",
+        "string"
+      ],
+      "format": "date-time",
+      "maxLength": 1024
+    }
+  },
+  "required": [
+    "event"
+  ],
+  "additionalProperties": true
+}

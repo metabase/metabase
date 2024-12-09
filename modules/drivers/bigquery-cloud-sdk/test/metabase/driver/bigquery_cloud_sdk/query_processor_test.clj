@@ -1,4 +1,4 @@
-(ns metabase.driver.bigquery-cloud-sdk.query-processor-test
+(ns ^:mb/driver-tests metabase.driver.bigquery-cloud-sdk.query-processor-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -618,6 +618,23 @@
                 (mt/with-native-query-testing-context query
                   (is (= [[0]]
                          (mt/rows (qp/process-query query)))))))))))))
+
+(deftest ^:parallel date-parameterized-sql-test
+  (mt/test-driver
+    :bigquery-cloud-sdk
+    (let [query {:database (mt/id)
+                 :type :native
+                 :native {:query "select * from (select date('2024-08-29') as y) as x where x.y = {{d}}"
+                          :template-tags {"d" {:name "d"
+                                               :display-name "Date"
+                                               :type :date}}}
+                 :parameters [{:type "date"
+                               :name "d"
+                               :target [:variable [:template-tag "d"]]
+                               :value "2024-08-29"}]}]
+      (is (= 1
+             (count
+              (mt/rows (qp/process-query query))))))))
 
 (deftest datetime-timezone-parameter-test
   (testing "Date Field Filter not includes Timezone (#43597)"
@@ -1245,3 +1262,18 @@
                  (->> (driver/prettify-native-form :bigquery-cloud-sdk))
                  (str/replace #"v4_test_data__transient_\d+" "test_data")
                  str/split-lines))))))
+
+(deftest ^:parallel case-expression-with-default-Date-case-DateTime-test
+  (mt/test-driver
+    :bigquery-cloud-sdk
+    ;; Testing only whether query executes correctly, without underlying jdbc driver throwing an exception. This
+    ;; specific case was erroneous.
+    (testing "Query with case expression with default Date and case DateTime is executable (#47888)"
+      (is (=? {:status :completed}
+              (mt/run-mbql-query
+                people
+                {:expressions {"asdfdsa"
+                               [:case
+                                [[[:= $name "Won"] [:datetime-add $created_at 0 :month]]]
+                                {:default [:datetime-add $birth_date 0 :month]}]}
+                 :filter [:time-interval [:expression "asdfdsa"] -12 :month]}))))))

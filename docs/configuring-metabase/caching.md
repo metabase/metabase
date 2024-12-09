@@ -64,26 +64,26 @@ Use a query’s average execution time to determine how long to cache the query'
 
 Metabase will recalculate a query's average execution time whenever it runs the query against the database to refresh the cached results. So if the first time Metabase runs the query against the database, it takes 5 minutes to return results, the average execution time will be 5 minutes. If the next query against the database takes 7 minutes to return, Metabase will update the average to 6 minutes (the average of 5 and 7 is 6).
 
-On [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans, you can view querying and caching stats in the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection.
+On [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans, you can view querying and caching stats in the [Usage analytics](../usage-and-performance-tools/usage-analytics.md) collection.
 
 ### Don’t cache results
 
-Metabase will never cache results. It will always run the query against the database to refresh results.
+If you select "Don't cache results" for a question, dashboard, or database, Metabase won't cache its results; it'll always run the query against the database to refresh results.
 
 ## Set caching policies for dashboards, questions, and databases
 
 You can set caching policies for different entities.
 
 - [Setting a default caching policy](#default-caching-policy)
-- [Database caching policy (specific to each connected database)](#database-caching-policy)*
-- [Dashboard caching](#dashboard-caching-policy)*
-- [Question caching](#question-caching-policy)*
+- [Database caching policy (specific to each connected database)](#database-caching-policy)\*
+- [Dashboard caching](#dashboard-caching-policy)\*
+- [Question caching](#question-caching-policy)\*
 
-_* Denotes [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) features._
+_\* Denotes [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) features._
 
 ### Default caching policy
 
-To set a default caching policy for your Metabase: Hit Cmd/Ctrl + k to bring up the command palette and search for **Performance**. Or, click through **Gear** settings icon > **Admin settings** > **Performance** > **Database caching settings**.
+To set a default caching policy for your Metabase: Hit Cmd/Ctrl + k to bring up the command palette and search for **Performance**. Or, click through **Gear** settings icon > **Admin settings** > **Performance** > **Database caching**.
 
 Click on the button next to **Default policy**, and select a [cache invalidation policy](#cache-invalidation-policies).
 
@@ -137,7 +137,7 @@ A question policy overrides a dashboard policy, which overrides a database polic
 To clear the cache and refresh the results:
 
 - **Questions and dashboards**: Visit the item and click through the **Info > Caching policy > Clear cache** (the "Clear cache" button is at the bottom of the sidebar).
-- **Database**: Click the **Gear** icon and click through **Admin settings** > **Performance** > **Database caching settings**. Select your database and click the **Clear cache** button (at the bottom of the page).
+- **Database**: Click the **Gear** icon and click through **Admin settings** > **Performance** > **Database caching**. Select your database and click the **Clear cache** button (at the bottom of the page).
 
 ## Caching location
 

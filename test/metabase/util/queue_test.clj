@@ -83,3 +83,36 @@
 
     (testing "The realtime events are processed in order"
       (mt/ordered-subset? realtime-events processed))))
+
+(deftest ^:synchronized delay-queue-test
+  (let [q           (queue/delay-queue)
+        n           5
+        batch-size  3
+        first-delay 300
+        extra-delay 200
+        buffer      50
+        msg-delay   #(+ first-delay (* extra-delay %))]
+    (dotimes [i n]
+      (queue/put-with-delay! q (msg-delay i) i))
+    ;; queue an outlier
+    (queue/put-with-delay! q (msg-delay 10) 10)
+    (let [started-roughly (u/start-timer)
+          since-start     #(u/since-ms started-roughly)
+          time-until-nth  #(max 0 (+ buffer (- (msg-delay %) (since-start))))
+          additional-wait (+ extra-delay buffer)]
+      (testing "Initially none of the messages are ready"
+        (is (nil? (queue/take-delayed-batch! q batch-size))))
+      (testing "Polling for a short time will also return before any messages are ready"
+        (is (nil? (queue/take-delayed-batch! q batch-size (quot first-delay 2) additional-wait))))
+      (testing "Waiting a bit longer, we will retrieve a batch"
+        (is (= [0 1 2] (queue/take-delayed-batch! q batch-size (time-until-nth 0) additional-wait))))
+      ;; Wait until all items have matured
+      (Thread/sleep ^long (time-until-nth n))
+      (testing "Some time later we can read an additional batch of messages without any polling delay"
+        (is (= [3 4] (queue/take-delayed-batch! q batch-size))))
+      (testing "But the outlier is not yet ready"
+        (is (nil? (queue/take-delayed-batch! q batch-size))))
+      (testing "Eventually the outlier is ready"
+        (is (= [10] (queue/take-delayed-batch! q batch-size (time-until-nth 10) additional-wait))))
+      (testing "Afterwards the queue is empty"
+        (is (nil? (queue/take-delayed-batch! q batch-size)))))))

@@ -54,7 +54,7 @@ You can refer to columns in the current table, or to columns that are linked via
 
 ## Referencing Segments and Metrics
 
-You can refer to saved [Segments or Metrics](../../data-modeling/segments-and-metrics.md) that are present in the currently selected table. You write these out the same as with columns, like this: `[Valid User Sessions]`.
+You can refer to saved [metrics](../../data-modeling/metrics.md) and [segments](../../data-modeling/segments.md) that are present in the currently selected table. You write these out the same as with columns, like this: `[Valid User Sessions]`.
 
 ## Filter expressions and conditionals
 
@@ -80,6 +80,6 @@ See a full list of [expressions][expression-list].
 For a tutorial on expressions, see [Custom expressions in the query builder][custom-expressions].
 
 [aggregations]: ./expressions-list.md#aggregations
-[custom-expressions]: https://www.metabase.com/learn/questions/custom-expressions
+[custom-expressions]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions
 [expression-list]: ./expressions-list.md
 [functions]: ./expressions-list.md#functions

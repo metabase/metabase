@@ -6,8 +6,6 @@ import type {
   ListCollectionItemsResponse,
   ListCollectionsRequest,
   ListCollectionsTreeRequest,
-  ListStaleCollectionItemsRequest,
-  ListStaleCollectionItemsResponse,
   UpdateCollectionRequest,
   getCollectionRequest,
 } from "metabase-types/api";
@@ -61,27 +59,12 @@ export const collectionApi = Api.injectEndpoints({
       providesTags: (response, error, { models }) =>
         provideCollectionItemListTags(response?.data ?? [], models),
     }),
-    listStaleCollectionItems: builder.query<
-      ListStaleCollectionItemsResponse,
-      ListStaleCollectionItemsRequest
-    >({
-      query: ({ id, ...params }) => ({
-        method: "GET",
-        url: `/api/collection/${id}/stale`,
-        params,
-      }),
-      providesTags: response =>
-        provideCollectionItemListTags(response?.data ?? [], [
-          "card",
-          "dashboard",
-        ]),
-    }),
     getCollection: builder.query<Collection, getCollectionRequest>({
-      query: ({ id, ...body }) => {
+      query: ({ id, ...params }) => {
         return {
           method: "GET",
           url: `/api/collection/${id}`,
-          body,
+          params,
         };
       },
       providesTags: collection =>
@@ -128,7 +111,6 @@ export const {
   useListCollectionsQuery,
   useListCollectionsTreeQuery,
   useListCollectionItemsQuery,
-  useListStaleCollectionItemsQuery,
   useGetCollectionQuery,
   useCreateCollectionMutation,
   useUpdateCollectionMutation,

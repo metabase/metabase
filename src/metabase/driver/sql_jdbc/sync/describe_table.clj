@@ -179,8 +179,7 @@
                semantic-type  (calculated-semantic-type driver (:name col) (:database-type col))
                json?          (isa? base-type :type/JSON)]
            (merge
-            (u/select-non-nil-keys col [:table-schema
-                                        :table-name
+            (u/select-non-nil-keys col [:table-name
                                         :pk?
                                         :name
                                         :database-type
@@ -188,7 +187,8 @@
                                         :field-comment
                                         :database-required
                                         :database-is-auto-increment])
-            {:base-type         base-type
+            {:table-schema      (:table-schema col) ;; can be nil
+             :base-type         base-type
              ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
              :json-unfolding    json?}
             (when semantic-type
@@ -201,7 +201,7 @@
   [driver db]
   (comp
    (describe-fields-xf driver db)
-   (map-indexed (fn [i col] (assoc col :database-position i)))))
+   (map-indexed (fn [i col] (dissoc (assoc col :database-position i) :table-schema)))))
 
 (defmulti describe-table-fields
   "Returns a set of column metadata for `table` using JDBC Connection `conn`."
@@ -298,7 +298,7 @@
   "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fields]],
  i.e. [[describe-fields]]."
   {:added    "0.49.1"
-   :arglists '([driver & {:keys [schema-names table-names]}])}
+   :arglists '([driver & {:keys [schema-names table-names details]}])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -310,7 +310,25 @@
     []
     (eduction
      (describe-fields-xf driver db)
-     (sql-jdbc.execute/reducible-query db (describe-fields-sql driver args)))))
+     (sql-jdbc.execute/reducible-query db (describe-fields-sql driver (assoc args :details (:details db)))))))
+
+(defmulti describe-indexes-sql
+  "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-indexes]],
+ i.e. [[describe-indexes]]."
+  {:added    "0.51.4"
+   :arglists '([driver & {:keys [schema-names table-names details]}])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defn describe-indexes
+  "Default implementation of [[metabase.driver/describe-indexes]] for JDBC drivers."
+  [driver db & {:keys [schema-names table-names] :as args}]
+  (if (or (and schema-names (empty? schema-names))
+          (and table-names (empty? table-names)))
+    []
+    (eduction
+     (map (fn [col] (select-keys col [:table-schema :table-name :field-name])))
+     (sql-jdbc.execute/reducible-query db (describe-indexes-sql driver (assoc args :details (:details db)))))))
 
 (defn- describe-table-fks*
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
@@ -404,13 +422,13 @@
 
 (defn- number-type [t]
   (u/case-enum t
-               JsonParser$NumberType/INT         Long
-               JsonParser$NumberType/LONG        Long
-               JsonParser$NumberType/FLOAT       Double
-               JsonParser$NumberType/DOUBLE      Double
-               JsonParser$NumberType/BIG_INTEGER clojure.lang.BigInt
+    JsonParser$NumberType/INT         Long
+    JsonParser$NumberType/LONG        Long
+    JsonParser$NumberType/FLOAT       Double
+    JsonParser$NumberType/DOUBLE      Double
+    JsonParser$NumberType/BIG_INTEGER clojure.lang.BigInt
     ;; there seem to be no way to encounter this, search in tests for `BigDecimal`
-               JsonParser$NumberType/BIG_DECIMAL BigDecimal))
+    JsonParser$NumberType/BIG_DECIMAL BigDecimal))
 
 (defn- json-object?
   "Return true if the string `s` is a JSON where value is an object.
@@ -447,22 +465,22 @@
 
             :else
             (u/case-enum token
-                         JsonToken/VALUE_NUMBER_INT   (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
-                         JsonToken/VALUE_NUMBER_FLOAT (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
-                         JsonToken/VALUE_TRUE         (recur path field (assoc! res (conj path field) Boolean))
-                         JsonToken/VALUE_FALSE        (recur path field (assoc! res (conj path field) Boolean))
-                         JsonToken/VALUE_NULL         (recur path field (assoc! res (conj path field) nil))
-                         JsonToken/VALUE_STRING       (recur path field (assoc! res (conj path field)
-                                                                                (type-by-parsing-string (.getText p))))
-                         JsonToken/FIELD_NAME         (recur path (.getText p) res)
-                         JsonToken/START_OBJECT       (recur (cond-> path field  (conj field)) field res)
-                         JsonToken/END_OBJECT         (recur (cond-> path (seq path) pop) field res)
-             ;; We put top-level array row type semantics on JSON roadmap but skip for now
-                         JsonToken/START_ARRAY        (do (.skipChildren p)
-                                                          (if field
-                                                            (recur path field (assoc! res (conj path field) clojure.lang.PersistentVector))
-                                                            (recur path field res)))
-                         JsonToken/END_ARRAY          (recur path field res))))))))
+              JsonToken/VALUE_NUMBER_INT   (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
+              JsonToken/VALUE_NUMBER_FLOAT (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
+              JsonToken/VALUE_TRUE         (recur path field (assoc! res (conj path field) Boolean))
+              JsonToken/VALUE_FALSE        (recur path field (assoc! res (conj path field) Boolean))
+              JsonToken/VALUE_NULL         (recur path field (assoc! res (conj path field) nil))
+              JsonToken/VALUE_STRING       (recur path field (assoc! res (conj path field)
+                                                                     (type-by-parsing-string (.getText p))))
+              JsonToken/FIELD_NAME         (recur path (.getText p) res)
+              JsonToken/START_OBJECT       (recur (cond-> path field  (conj field)) field res)
+              JsonToken/END_OBJECT         (recur (cond-> path (seq path) pop) field res)
+                         ;; We put top-level array row type semantics on JSON roadmap but skip for now
+              JsonToken/START_ARRAY        (do (.skipChildren p)
+                                               (if field
+                                                 (recur path field (assoc! res (conj path field) clojure.lang.PersistentVector))
+                                                 (recur path field res)))
+              JsonToken/END_ARRAY          (recur path field res))))))))
 
 (defn- json-map->types [json-map]
   (apply merge (map #(json->types (second %) [(first %)]) json-map)))
@@ -531,18 +549,11 @@
   This is the lowest common denominator of types, hopefully,
   although as of writing this is just geared towards Postgres types"
   {:type/Text       "text"
-   :type/Integer    "bigint"
-   ;; You might think that the ordinary 'bigint' type in Postgres and MySQL should be this.
-   ;; However, Bigint in those DB's maxes out at 2 ^ 64.
-   ;; JSON, like Javascript itself, will happily represent 1.8 * (10^308),
-   ;; Losing digits merrily along the way.
-   ;; We can't really trust anyone to use MAX_SAFE_INTEGER, in JSON-land..
-   ;; So really without forcing arbitrary precision ('decimal' type),
-   ;; we have too many numerical regimes to test.
-   ;; (#22732) was basically the consequence of missing one.
+   ;; Store db type as decimal so we always cast to the least constrained type
+   :type/Integer    "decimal"
    :type/BigInteger "decimal"
-   :type/Float      "double precision"
-   :type/Number     "double precision"
+   :type/Float      "decimal"
+   :type/Number     "decimal"
    :type/Decimal    "decimal"
    :type/Boolean    "boolean"
    :type/DateTime   "timestamp"
@@ -657,18 +668,19 @@
 ;; was JSON so what they're getting is JSON.
 (defmethod sql-jdbc.sync.interface/describe-nested-field-columns :sql-jdbc
   [driver database table]
-  (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     jdbc-spec
-     nil
-     (fn [^Connection conn]
-       (let [unfold-json-fields (table->unfold-json-fields driver conn table)
-              ;; Just pass in `nil` here, that's what we do in the normal sync process and it seems to work correctly.
-              ;; We don't currently have a driver-agnostic way to get the physical database name. `(:name database)` is
-              ;; wrong, because it's a human-friendly name rather than a physical name. `(get-in
-              ;; database [:details :db])` works for most drivers but not H2.
-             pks                (get-table-pks driver conn nil table)]
-         (if (empty? unfold-json-fields)
-           #{}
-           (describe-json-fields driver jdbc-spec table unfold-json-fields pks)))))))
+  (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec database)
+        [unfold-json-fields pks] (sql-jdbc.execute/do-with-connection-with-options
+                                  driver
+                                  jdbc-spec
+                                  nil
+                                  (fn [^Connection conn]
+                                    (let [unfold-json-fields (table->unfold-json-fields driver conn table)
+                                           ;; Just pass in `nil` here, that's what we do in the normal sync process and it seems to work correctly.
+                                           ;; We don't currently have a driver-agnostic way to get the physical database name. `(:name database)` is
+                                           ;; wrong, because it's a human-friendly name rather than a physical name. `(get-in
+                                           ;; database [:details :db])` works for most drivers but not H2.
+                                          pks                (get-table-pks driver conn nil table)]
+                                      [unfold-json-fields pks])))]
+    (if (empty? unfold-json-fields)
+      #{}
+      (describe-json-fields driver jdbc-spec table unfold-json-fields pks))))

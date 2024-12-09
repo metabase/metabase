@@ -1,4 +1,4 @@
-(ns metabase.driver.oracle-test
+(ns ^:mb/driver-tests metabase.driver.oracle-test
   "Tests for specific behavior of the Oracle driver."
   (:require
    [clojure.java.jdbc :as jdbc]
@@ -23,6 +23,7 @@
    [metabase.sync :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
+   [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.env :as te]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.oracle :as oracle.tx]
@@ -282,28 +283,34 @@
             execute! (fn [format-string & args]
                        (jdbc/execute! spec (apply format format-string args)))
             pk-type  (sql.tx/pk-sql-type :oracle)]
-        (with-temp-user
-          #_:clj-kondo/ignore
-          [username]
-          (execute! "CREATE TABLE \"%s\".\"messages\" (\"id\" %s, \"message\" CLOB)"            username pk-type)
-          (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (1, 'Hello')" username)
-          (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (2, NULL)"    username)
-          (sync/sync-database! (mt/db) {:scan :schema})
-          (let [table    (t2/select-one :model/Table :schema username, :name "messages", :db_id (mt/id))
-                id-field (t2/select-one :model/Field :table_id (u/the-id table), :name "id")]
-            (testing "The CLOB is synced as a text field"
-              (let [base-type (t2/select-one-fn :base_type :model/Field :table_id (u/the-id table), :name "message")]
-                ;; type/OracleCLOB is important for skipping fingerprinting and field values scanning #44109
-                (is (= :type/OracleCLOB base-type))
-                (is (isa? base-type :type/Text))))
-            (is (= [[1M "Hello"]
-                    [2M nil]]
-                   (mt/rows
-                    (qp/process-query
-                     {:database (mt/id)
-                      :type     :query
-                      :query    {:source-table (u/the-id table)
-                                 :order-by     [[:asc [:field (u/the-id id-field) nil]]]}}))))))))))
+        (mt/with-temp [:model/Database db {:engine  :oracle
+                                           :name    "clobs-test-db"
+                                           :details (tx/dbdef->connection-details
+                                                     :oracle
+                                                     :server
+                                                     (tx/get-dataset-definition defs/test-data))}]
+          (mt/with-db db
+            (with-temp-user [username]
+              (execute! "CREATE TABLE \"%s\".\"messages\" (\"id\" %s, \"message\" CLOB)"            username pk-type)
+              (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (1, 'Hello')" username)
+              (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (2, NULL)"    username)
+              (binding [oracle.tx/*override-describe-database-to-filter-by-db-name?* false]
+                (sync/sync-database! (mt/db) {:scan :schema}))
+              (let [table    (t2/select-one :model/Table :schema username, :name "messages", :db_id (mt/id))
+                    id-field (t2/select-one :model/Field :table_id (u/the-id table), :name "id")]
+                (testing "The CLOB is synced as a text field"
+                  (let [base-type (t2/select-one-fn :base_type :model/Field :table_id (u/the-id table), :name "message")]
+                    ;; type/OracleCLOB is important for skipping fingerprinting and field values scanning #44109
+                    (is (= :type/OracleCLOB base-type))
+                    (is (isa? base-type :type/Text))))
+                (is (= [[1M "Hello"]
+                        [2M nil]]
+                       (mt/rows
+                        (qp/process-query
+                         {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table (u/the-id table)
+                                     :order-by     [[:asc [:field (u/the-id id-field) nil]]]}}))))))))))))
 
 (deftest handle-slashes-test
   (mt/test-driver :oracle
@@ -324,7 +331,7 @@
 
 ;; let's make sure we're actually attempting to generate the correctl HoneySQL for joins and source queries so we
 ;; don't sit around scratching our heads wondering why the queries themselves aren't working
-(deftest honeysql-test
+(deftest ^:parallel honeysql-test
   (mt/test-driver :oracle
     (testing "Correct HoneySQL form should be generated"
       (mt/with-metadata-provider (mt/id)
@@ -478,8 +485,8 @@
           (mt/with-temporary-setting-values [report-timezone report-tz]
             (mt/with-native-query-testing-context query
               (testing "The value should come back from driver with original zone info, regardless of report timezone"
-                (= (t/offset-date-time (u.date/parse test-date) "US/Eastern")
-                   (ffirst (mt/rows (qp/process-query query))))))))))))
+                (is (= (t/offset-date-time (u.date/parse test-date) "US/Eastern")
+                       (ffirst (mt/rows (qp/process-query query)))))))))))))
 
 (deftest read-timestamp-with-local-tz-test
   (mt/test-driver :oracle
@@ -504,3 +511,36 @@
                (mt/with-native-query-testing-context query
                  (is (= (t/zoned-date-time (u.date/parse test-date) report-tz)
                         (ffirst (mt/rows (qp/process-query query))))))))))))))
+
+(mt/defdataset date-cols-with-datetime-values
+  [["dates_with_time" [{:field-name "date_with_time"
+                        :base-type {:native "DATE"}}]
+    [[(t/offset-date-time 2024 11 5 12 12 12)]
+     [(t/offset-date-time 2024 11 6 13 13 13)]]]])
+
+(deftest date-column-filtering-test
+  (mt/test-driver
+    :oracle
+    (mt/dataset
+      date-cols-with-datetime-values
+      (testing "Oracle's DATE columns are mapped to type/DateTime (#49440)"
+        (testing "Synced field is correctly mapped"
+          (let [date-field (t2/select-one :model/Field
+                                          {:where [:and
+                                                   [:= :table_id (t2/select-one-fn :id :model/Table :db_id (mt/id))]
+                                                   [:= :name "date_with_time"]]})]
+            (are [key* expected-type] (= expected-type (key* date-field))
+              :base_type :type/DateTime
+              :database_type "DATE")))
+        (testing "Filtering with day temporal unit returns expected resutls"
+          (is (= [[2M "2024-11-06T13:13:13Z"]]
+                 (mt/rows
+                  (mt/run-mbql-query
+                    dates_with_time
+                    {:filter [:= [:field %date_with_time {:base-type :type/Date :temporal-unit :day}] "2024-11-06"]})))))
+        (testing "Filtering by datetime retuns expected results"
+          (is (= [[1M "2024-11-05T12:12:12Z"]]
+                 (mt/rows
+                  (mt/run-mbql-query
+                    dates_with_time
+                    {:filter [:= [:field %date_with_time {:base-type :type/Date}] "2024-11-05T12:12:12"]})))))))))

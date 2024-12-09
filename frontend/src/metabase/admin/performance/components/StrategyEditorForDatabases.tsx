@@ -127,7 +127,7 @@ const StrategyEditorForDatabases_Base = ({
   }
 
   return (
-    <TabWrapper aria-label={t`Database caching settings`}>
+    <TabWrapper role="region" aria-label={t`Data caching settings`}>
       <Stack spacing="xl" lh="1.5rem" maw="32rem" mb="1.5rem">
         <aside>
           {t`Speed up queries by caching their results.`}
@@ -152,7 +152,7 @@ const StrategyEditorForDatabases_Base = ({
             {targetId !== null && (
               <StrategyForm
                 targetId={targetId}
-                targetModel="database"
+                targetModel={targetId === rootId ? "root" : "database"}
                 targetName={targetDatabase?.name || t`Untitled database`}
                 setIsDirty={setIsStrategyFormDirty}
                 saveStrategy={saveStrategy}

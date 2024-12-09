@@ -48,7 +48,7 @@ export function expectSearchResultContent({
           });
         }
         if (expectedSearchResult.timestamp) {
-          cy.findByTestId("revision-history-button").findByText(
+          cy.findByTestId("revision-history-text").findByText(
             expectedSearchResult.timestamp,
           );
         }

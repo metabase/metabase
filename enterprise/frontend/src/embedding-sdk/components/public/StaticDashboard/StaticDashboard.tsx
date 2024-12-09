@@ -1,6 +1,11 @@
+import cx from "classnames";
 import _ from "underscore";
 
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import {
+  SdkError,
+  SdkLoader,
+  withPublicComponentWrapper,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -9,6 +14,7 @@ import CS from "metabase/css/core/index.css";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
+import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { Box } from "metabase/ui";
@@ -18,13 +24,15 @@ export type StaticDashboardProps = SdkDashboardDisplayProps &
 
 export const StaticDashboardInner = ({
   dashboardId,
-  initialParameterValues = {},
+  initialParameters = {},
   withTitle = true,
   withCardTitle = true,
-  withDownloads = true,
+  withDownloads = false,
   hiddenParameters = [],
   onLoad,
   onLoadWithoutCards,
+  style,
+  className,
 }: StaticDashboardProps) => {
   const {
     displayOptions,
@@ -36,7 +44,7 @@ export const StaticDashboardInner = ({
     setRefreshElapsedHook,
   } = useSdkDashboardParams({
     dashboardId,
-    initialParameterValues,
+    initialParameters,
     withTitle,
     withDownloads,
     hiddenParameters,
@@ -47,10 +55,15 @@ export const StaticDashboardInner = ({
   const { font } = useEmbedFont();
 
   return (
-    <Box w="100%" ref={ref} className={CS.overflowAuto}>
+    <Box
+      w="100%"
+      ref={ref}
+      className={cx(CS.overflowAuto, className)}
+      style={style}
+    >
       <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
-        parameterQueryParams={initialParameterValues}
+        parameterQueryParams={initialParameters}
         hideParameters={displayOptions.hideParameters}
         background={displayOptions.background}
         titled={displayOptions.titled}
@@ -74,6 +87,19 @@ export const StaticDashboardInner = ({
   );
 };
 
-const StaticDashboard = withPublicComponentWrapper(StaticDashboardInner);
+const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
+  ({ dashboardId, ...rest }) => {
+    const { isLoading, id } = useValidatedEntityId({
+      type: "dashboard",
+      id: dashboardId,
+    });
+
+    if (!id) {
+      return isLoading ? <SdkLoader /> : <SdkError message="ID not found" />;
+    }
+
+    return <StaticDashboardInner dashboardId={id} {...rest} />;
+  },
+);
 
 export { EmbedDisplayParams, StaticDashboard };

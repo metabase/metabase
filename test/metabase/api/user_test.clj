@@ -14,7 +14,7 @@
    [metabase.models.user :as user]
    [metabase.models.user-test :as user-test]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -53,10 +53,10 @@
 (deftest user-list-authentication-test
   (testing "authentication"
     (testing "GET /api/user"
-      (is (= (get req.util/response-unauthentic :body)
+      (is (= (get request/response-unauthentic :body)
              (client/client :get 401 "user"))))
     (testing "GET /api/user/current"
-      (is (= (get req.util/response-unauthentic :body)
+      (is (= (get request/response-unauthentic :body)
              (client/client :get 401 "user/current"))))))
 
 (deftest user-list-test
@@ -418,10 +418,11 @@
                    (dissoc :is_qbnewb :last_login))
                (-> (mt/user-http-request :rasta :get 200 "user/current")
                    mt/boolean-ids-and-timestamps
-                   (dissoc :is_qbnewb :has_question_and_dashboard :last_login))))))
+                   (dissoc :is_qbnewb :has_question_and_dashboard :last_login :has_model))))))
     (testing "check that `has_question_and_dashboard` is `true`."
       (mt/with-temp [Dashboard _ {:name "dash1" :creator_id (mt/user->id :rasta)}
-                     Card      _ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]
+                     Card      _ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}
+                     Card      _ {:name "model" :creator_id (mt/user->id :rasta) :type "model"}]
         (is (= (-> (merge
                     @user-defaults
                     {:email                      "rasta@metabase.com"
@@ -431,6 +432,7 @@
                      :group_ids                  [(u/the-id (perms-group/all-users))]
                      :personal_collection_id     true
                      :has_question_and_dashboard true
+                     :has_model                  true
                      :custom_homepage            nil
                      :is_installer               (= 1 (mt/user->id :rasta))
                      :has_invited_second_user    (= 1 (mt/user->id :rasta))})
@@ -442,6 +444,10 @@
       (mt/with-empty-h2-app-db
         (is (false? (-> (mt/user-http-request :rasta :get 200 "user/current")
                         :has_question_and_dashboard)))))
+    (testing "on a fresh instance, `has_model` is `false`"
+      (mt/with-empty-h2-app-db
+        (is (false? (-> (mt/user-http-request :rasta :get 200 "user/current")
+                        :has_model)))))
     (testing "Custom homepage"
       (testing "If id is set but not enabled it is not included"
         (mt/with-temporary-setting-values [custom-homepage false
@@ -538,13 +544,11 @@
                                                 :email            email
                                                 :login_attributes {:test "value"}})]
                 (is (= (merge @user-defaults
-                              (merge
-                               @user-defaults
-                               {:email                  email
-                                :first_name             user-name
-                                :last_name              user-name
-                                :common_name            (str user-name " " user-name)
-                                :login_attributes       {:test "value"}}))
+                              {:email                  email
+                               :first_name             user-name
+                               :last_name              user-name
+                               :common_name            (str user-name " " user-name)
+                               :login_attributes       {:test "value"}})
                        (-> resp
                            mt/boolean-ids-and-timestamps
                            (dissoc :user_group_memberships))))
@@ -1198,7 +1202,7 @@
              (mt/user-http-request :rasta :delete 403 (format "user/%d" (mt/user->id :rasta)) {}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                  Other Endpoints -- PUT /api/user/:id/qpnewb, POST /api/user/:id/send_invite                   |
+;;; |                                             Other Endpoints                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest update-user-modal-test
@@ -1226,12 +1230,6 @@
                                      (format "user/%d/modal/%s"
                                              (mt/user->id :trashbird)
                                              endpoint))))))))
-
-(deftest send-invite-test
-  (testing "POST /api/user/:id/send_invite"
-    (testing "Check that non-superusers are denied access to resending invites"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 (format "user/%d/send_invite" (mt/user->id :crowberto))))))))
 
 (deftest user-activate-deactivate-event-test
   (testing "User Deactivate/Reactivate events via the API are recorded in the audit log"

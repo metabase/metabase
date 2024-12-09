@@ -217,24 +217,28 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: `contains`,
     type: "boolean",
     args: ["string", "string"],
+    multiple: true,
     hasOptions: true,
   },
   "does-not-contain": {
     displayName: `doesNotContain`,
     type: "boolean",
     args: ["string", "string"],
+    multiple: true,
     hasOptions: true,
   },
   "starts-with": {
     displayName: `startsWith`,
     type: "boolean",
     args: ["string", "string"],
+    multiple: true,
     hasOptions: true,
   },
   "ends-with": {
     displayName: `endsWith`,
     type: "boolean",
     args: ["string", "string"],
+    multiple: true,
     hasOptions: true,
   },
   between: {
@@ -399,6 +403,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: `weekday`,
     type: "number",
     args: ["datetime"],
+    hasOptions: true, // optional mode parameter
   },
   "get-hour": {
     displayName: `hour`,

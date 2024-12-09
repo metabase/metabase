@@ -30,6 +30,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]
    [potemkin :as p])
   (:import
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLFeatureNotSupportedException
@@ -313,8 +314,8 @@
 (defn recursive-connection?
   "Whether or not we are in a recursive call to [[do-with-connection-with-options]]. If we are, you shouldn't set
   Connection options AGAIN, as that may override previous options that we don't want to override."
-  []
   {:added "0.47.0"}
+  []
   (pos? *connection-recursion-depth*))
 
 (mu/defn do-with-resolved-connection
@@ -634,11 +635,11 @@
   "Returns a thunk that can be called repeatedly to get the next row in the result set, using appropriate methods to
   fetch each value in the row. Returns `nil` when the result set has no more rows."
   [driver ^ResultSet rs ^ResultSetMetaData rsmeta]
-  (let [fns (for [i (column-range rsmeta)]
-              (read-column-thunk driver rs rsmeta (long i)))]
+  (let [fns (mapv #(read-column-thunk driver rs rsmeta (long %))
+                  (column-range rsmeta))]
     (log-readers driver rsmeta fns)
     (let [thunk (if (seq fns)
-                  (apply juxt fns)
+                  (perf/juxt* fns)
                   (constantly []))]
       (fn row-thunk* []
         (when (.next rs)

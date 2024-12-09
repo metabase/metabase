@@ -1,0 +1,12 @@
+.BorderedButton {
+  border: var(--border-size) var(--border-style) var(--mb-color-border) !important;
+}
+
+.SettingsButton {
+  opacity: 0;
+}
+
+.VisualizationButton:hover + .SettingsButton,
+.SettingsButton:hover {
+  opacity: 1;
+}

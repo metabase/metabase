@@ -260,7 +260,7 @@
                         "If you want to include them, run the command with"
                         \newline
                         \newline
-                        "clojure -M:ee:run api-documentation"))))
+                        "clojure -M:ee:doc api-documentation"))))
   (let [endpoint-map (map-endpoints)]
     (reset-dir (io/file "docs/api"))
     (generate-index-page! endpoint-map)

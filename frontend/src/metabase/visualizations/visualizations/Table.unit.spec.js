@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import ChartSettings from "metabase/visualizations/components/ChartSettings";
+import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
 import Question from "metabase-lib/v1/Question";
 import { createMockVisualizationSettings } from "metabase-types/api/mocks";
@@ -52,7 +52,7 @@ const setup = ({ display, visualization_settings = {} }) => {
     };
 
     return (
-      <ChartSettings
+      <QuestionChartSettings
         onChange={handleChange}
         series={[
           {

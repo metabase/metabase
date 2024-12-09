@@ -9,7 +9,8 @@
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize])
   (:import
    (org.quartz DisallowConcurrentExecution)))
 
@@ -22,24 +23,30 @@
 ;; This number has not been chosen scientifically.
 (def ^:private max-delete-batch-size 1000)
 
-(defn- analyze-cards-without-query-fields!
+(defn- run-realized! [f reducible]
+  (run! (comp f t2.realize/realize) reducible))
+
+(defn- analyze-cards-without-complete-analysis!
   ([]
-   (analyze-cards-without-query-fields! query-analysis/analyze-sync!))
+   (analyze-cards-without-complete-analysis! query-analysis/queue-analysis!))
   ([analyze-fn]
    (let [cards (t2/reducible-select [:model/Card :id]
-                                    {:left-join [[:query_field :qf] [:= :qf.card_id :report_card.id]]
+                                    {:left-join [[:query_analysis :qa]
+                                                 [:and
+                                                  [:= :qa.card_id :report_card.id]
+                                                  [:= :qa.status "complete"]]]
                                      :where     [:and
                                                  [:not :report_card.archived]
-                                                 [:= :qf.id nil]]})]
-     (run! analyze-fn cards))))
+                                                 [:= :qa.id nil]]})]
+     (run-realized! analyze-fn cards))))
 
 (defn- analyze-stale-cards!
   ([]
-   (analyze-cards-without-query-fields! query-analysis/analyze-sync!))
+   (analyze-cards-without-complete-analysis! query-analysis/queue-analysis!))
   ([analyze-fn]
    ;; TODO once we are storing the hash of the query used for analysis, we'll be able to filter this properly.
    (let [cards (t2/reducible-select [:model/Card :id])]
-     (run! analyze-fn cards))))
+     (run-realized!  analyze-fn cards))))
 
 (defn- delete-orphan-analysis! []
   (transduce
@@ -63,11 +70,11 @@
    (sweep-query-analysis-loop! first-time?
                                (fn [card-or-id]
                                  (log/debugf "Queueing card %s for query analysis" (u/the-id card-or-id))
-                                 (query-analysis/analyze-sync! card-or-id))))
+                                 (query-analysis/queue-analysis! card-or-id))))
   ([first-time? analyze-fn]
    ;; prioritize cards that are missing analysis
    (log/info "Calculating analysis for cards without any")
-   (analyze-cards-without-query-fields! analyze-fn)
+   (analyze-cards-without-complete-analysis! analyze-fn)
 
    ;; we run through all the existing analysis on our first run, as it may be stale due to an old macaw version, etc.
    (when first-time?
@@ -91,18 +98,14 @@
         job     (jobs/build
                  (jobs/of-type SweepQueryAnalysis)
                  (jobs/with-identity job-key)
-                 (jobs/store-durably)
-                 (jobs/request-recovery))
+                 (jobs/store-durably))
         trigger (triggers/build
                  (triggers/with-identity (triggers/key "metabase.task.backfill-query-fields.trigger"))
-                 (triggers/start-now)
                  (triggers/with-schedule
                   (cron/schedule
                    (cron/cron-schedule
-                       ;; run every 4 hours at a random minute:
+                    ;; run every 4 hours at a random minute:
                     (format "0 %d 0/4 1/1 * ? *" (rand-int 60)))
-                   (cron/with-misfire-handling-instruction-ignore-misfires))))]
-    ;; Schedule the repeats
+                   (cron/with-misfire-handling-instruction-do-nothing))))]
     (task/schedule-task! job trigger)
-    ;; Don't wait, try to kick it off immediately
     (task/trigger-now! job-key)))

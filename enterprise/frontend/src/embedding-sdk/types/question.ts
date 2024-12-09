@@ -1,3 +1,4 @@
+import type { ParameterValues } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import type { Deferred } from "metabase/lib/promise";
 import type { QueryParams } from "metabase/query_builder/actions";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
@@ -6,14 +7,16 @@ import type { Card, CardId } from "metabase-types/api";
 
 export interface SdkQuestionState {
   question?: Question;
+  originalQuestion?: Question;
   queryResults?: any[];
 }
 
 export interface LoadSdkQuestionParams {
   options?: QueryParams;
   deserializedCard?: Card;
-  cardId?: CardId;
+  cardId?: CardId | null;
   cancelDeferred?: Deferred;
+  initialSqlParameters?: ParameterValues;
 }
 
 export interface NavigateToNewCardParams {

@@ -9,13 +9,16 @@ export const getSeriesColors = <TDatum, TSeriesInfo>(
 ): Record<string, string> => {
   const settingsColorMapping = Object.entries(
     settings.series_settings ?? {},
-  ).reduce((mapping, [seriesName, seriesSettings]) => {
-    if (typeof seriesSettings.color === "string") {
-      mapping[seriesName] = seriesSettings.color;
-    }
+  ).reduce(
+    (mapping, [seriesName, seriesSettings]) => {
+      if (typeof seriesSettings.color === "string") {
+        mapping[seriesName] = seriesSettings.color;
+      }
 
-    return mapping;
-  }, {} as Record<string, string>);
+      return mapping;
+    },
+    {} as Record<string, string>,
+  );
 
   return getColorsForValues(
     series.map(series => series.seriesKey),

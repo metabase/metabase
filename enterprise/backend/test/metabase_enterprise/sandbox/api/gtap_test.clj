@@ -7,7 +7,7 @@
    [metabase.models :refer [Card Field PermissionsGroup Table]]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -15,11 +15,11 @@
 (deftest require-auth-test
   (testing "Must be authenticated to query for GTAPs"
     (mt/with-premium-features #{:sandboxes}
-      (is (= (get req.util/response-unauthentic :body)
+      (is (= (get request/response-unauthentic :body)
              (client/client :get 401 "mt/gtap")))
 
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 (str "mt/gtap")))))))
+             (mt/user-http-request :rasta :get 403 "mt/gtap"))))))
 
 (def ^:private default-gtap-results
   {:id                   true
@@ -49,12 +49,11 @@
           (mt/with-temp [Table            {table-id :id} {}
                          PermissionsGroup {group-id :id} {}
                          Card             {card-id :id}  {}]
-            (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                   (mt/user-http-request :crowberto :post 402 "mt/gtap"
-                                         {:table_id             table-id
-                                          :group_id             group-id
-                                          :card_id              card-id
-                                          :attribute_remappings {"foo" 1}})))))))))
+            (mt/assert-has-premium-feature-error "Sandboxes" (mt/user-http-request :crowberto :post 402 "mt/gtap"
+                                                                                   {:table_id             table-id
+                                                                                    :group_id             group-id
+                                                                                    :card_id              card-id
+                                                                                    :attribute_remappings {"foo" 1}}))))))))
 
 (deftest fetch-gtap-test
   (testing "GET /api/mt/gtap/"
@@ -304,6 +303,5 @@
              is not enabled"
       (with-redefs [premium-features/enable-sandboxes? (constantly false)]
         (mt/with-temporary-setting-values [premium-embedding-token nil]
-          (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                 (mt/user-http-request :crowberto :put 402 "permissions/graph"
-                                       (assoc (data-perms.graph/api-graph) :sandboxes [{:card_id 1}])))))))))
+          (mt/assert-has-premium-feature-error "Sandboxes" (mt/user-http-request :crowberto :put 402 "permissions/graph"
+                                                                                 (assoc (data-perms.graph/api-graph) :sandboxes [{:card_id 1}]))))))))

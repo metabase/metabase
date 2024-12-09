@@ -173,6 +173,12 @@
   [column]
   (clojure.core/isa? (:effective-type column) :type/Number))
 
+(defn ^:export date-or-datetime?
+  "Is `column` a date or datetime?"
+  [column]
+  (or (clojure.core/isa? (:effective-type column) :type/Date)
+      (clojure.core/isa? (:effective-type column) :type/DateTime)))
+
 (defn ^:export date-without-time?
   "Is `column` a date without time?"
   [column]

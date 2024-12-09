@@ -4,9 +4,9 @@
 (defn with-testing-against-standard-queries [{{[_ & args] :children} :node}]
   (let [[query-sym & body] args
         node* (hooks/list-node
-                (list*
-                  (hooks/token-node 'let)
-                  (hooks/vector-node
-                    [query-sym (hooks/token-node 'nil)])
-                  body))]
+               (list*
+                (hooks/token-node 'let)
+                (hooks/vector-node
+                 [query-sym (hooks/token-node 'nil)])
+                body))]
     {:node node*}))

@@ -2,7 +2,8 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
-import type { RelativeIntervalDirection } from "../../types";
+import { DATE_PICKER_UNITS } from "../../constants";
+import type { DatePickerUnit, RelativeIntervalDirection } from "../../types";
 import type { DateIntervalValue } from "../types";
 
 import { DateIntervalPicker } from "./DateIntervalPicker";
@@ -19,12 +20,14 @@ function getDefaultValue(
 
 interface SetupOpts {
   value: DateIntervalValue;
+  availableUnits?: ReadonlyArray<DatePickerUnit>;
   isNew?: boolean;
   canUseRelativeOffsets?: boolean;
 }
 
 function setup({
   value,
+  availableUnits = DATE_PICKER_UNITS,
   isNew = false,
   canUseRelativeOffsets = false,
 }: SetupOpts) {
@@ -34,6 +37,7 @@ function setup({
   renderWithProviders(
     <DateIntervalPicker
       value={value}
+      availableUnits={availableUnits}
       isNew={isNew}
       canUseRelativeOffsets={canUseRelativeOffsets}
       onChange={onChange}
@@ -151,6 +155,17 @@ describe("DateIntervalPicker", () => {
         expect(onSubmit).not.toHaveBeenCalled();
       });
 
+      it("should allow to set only available units", async () => {
+        setup({
+          value: defaultValue,
+          availableUnits: ["day", "month"],
+        });
+        await userEvent.click(screen.getByLabelText("Unit"));
+        expect(screen.getByText("days")).toBeInTheDocument();
+        expect(screen.getByText("months")).toBeInTheDocument();
+        expect(screen.queryByText("years")).not.toBeInTheDocument();
+      });
+
       it("should allow to include the current unit", async () => {
         const { onChange, onSubmit } = setup({
           value: defaultValue,
@@ -161,7 +176,7 @@ describe("DateIntervalPicker", () => {
         expect(onChange).toHaveBeenCalledWith({
           ...defaultValue,
           options: {
-            "include-current": true,
+            includeCurrent: true,
           },
         });
         expect(onSubmit).not.toHaveBeenCalled();
@@ -198,7 +213,7 @@ describe("DateIntervalPicker", () => {
         setup({
           value: {
             ...defaultValue,
-            options: { "include-current": true },
+            options: { includeCurrent: true },
           },
         });
 

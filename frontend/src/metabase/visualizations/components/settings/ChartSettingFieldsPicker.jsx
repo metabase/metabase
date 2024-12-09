@@ -17,6 +17,7 @@ const ChartSettingFieldsPicker = ({
   addAnother,
   showColumnSetting,
   showColumnSettingForIndicies,
+  fieldSettingWidgets = [],
   ...props
 }) => {
   const handleDragEnd = ({ source, destination }) => {
@@ -93,6 +94,7 @@ const ChartSettingFieldsPicker = ({
                                 : null
                             }
                             showDragHandle={fields.length > 1}
+                            fieldSettingWidget={fieldSettingWidgets[fieldIndex]}
                           />
                         </div>
                       )}

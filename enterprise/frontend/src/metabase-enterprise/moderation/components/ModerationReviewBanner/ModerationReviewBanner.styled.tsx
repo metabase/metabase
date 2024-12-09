@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import Button from "metabase/core/components/Button";
 
 export const Container = styled.div`
-  padding: 1rem 0;
+  padding: 1rem;
   display: flex;
   justify-content: space-between;
   align-items: start;

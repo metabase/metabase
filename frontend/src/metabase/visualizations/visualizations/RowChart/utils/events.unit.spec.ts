@@ -1,10 +1,20 @@
 import type { MultipleMetricsChartColumns } from "metabase/visualizations/lib/graph/columns";
-import type { BarData } from "metabase/visualizations/shared/components/RowChart/types";
-import type { GroupedDatum } from "metabase/visualizations/shared/types/data";
-import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
+import type {
+  BarData,
+  Series,
+} from "metabase/visualizations/shared/components/RowChart/types";
+import type {
+  GroupedDatum,
+  SeriesInfo,
+} from "metabase/visualizations/shared/types/data";
+import type {
+  RemappingHydratedDatasetColumn,
+  TooltipRowModel,
+} from "metabase/visualizations/types";
 import type { SeriesSettings, VisualizationSettings } from "metabase-types/api";
+import { createMockColumn } from "metabase-types/api/mocks";
 
-import { getHoverData } from "./events";
+import { getHoverData, getStackedTooltipRows } from "./events";
 
 const datasetColumns = [
   { name: "y", display_name: "Y" } as RemappingHydratedDatasetColumn,
@@ -165,5 +175,69 @@ describe("events utils", () => {
 
       expect(tooltipModel).not.toBeDefined();
     });
+  });
+});
+
+describe("getStackedTooltipRows", () => {
+  const settings: VisualizationSettings = {};
+  const seriesColors = {
+    metric1: "red",
+    metric2: "blue",
+    metric3: "green",
+  };
+
+  const createMockSeries = (
+    metricKey: string,
+    metricName: string,
+  ): Series<Record<string, number | null>, SeriesInfo> => ({
+    seriesKey: metricKey,
+    seriesName: metricName,
+    xAccessor: (datum: Record<string, number | null>) => datum[metricKey],
+    yAccessor: () => "Category A",
+    seriesInfo: {
+      metricColumn: createMockColumn({
+        name: metricKey,
+        display_name: metricName,
+      }),
+      dimensionColumn: createMockColumn({
+        name: "dimension",
+        display_name: "Dimension column",
+      }),
+    },
+  });
+
+  const series = [
+    createMockSeries("metric1", "Metric 1"),
+    createMockSeries("metric2", "Metric 2"),
+    createMockSeries("metric3", "Metric 3"),
+  ];
+
+  const bar: BarData<Record<string, number | null>, SeriesInfo> = {
+    datum: { metric1: 10, metric2: null, metric3: 30 },
+    xStartValue: 0,
+    xEndValue: 40,
+    yValue: "Category A",
+    isNegative: false,
+    datumIndex: 0,
+    seriesIndex: 0,
+    series: series[0],
+  };
+
+  it("should filter out null values and return formatted rows", () => {
+    const result = getStackedTooltipRows(bar, settings, series, seriesColors);
+
+    expect(result).toHaveLength(2);
+    expect(result).toEqual([
+      expect.objectContaining<Partial<TooltipRowModel>>({
+        name: "Metric 1",
+        value: 10,
+        color: "red",
+      }),
+      expect.objectContaining<Partial<TooltipRowModel>>({
+        name: "Metric 3",
+        value: 30,
+        color: "green",
+      }),
+    ]);
   });
 });

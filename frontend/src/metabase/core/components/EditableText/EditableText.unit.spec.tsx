@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen, waitFor } from "__support__/ui";
+import { fireEvent, render, screen, waitFor } from "__support__/ui";
 
 import type { EditableTextProps } from "./EditableText";
 import EditableText from "./EditableText";
@@ -80,5 +80,31 @@ describe("EditableText", () => {
 
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.getByTestId("editable-text")).toHaveTextContent("bold link");
+  });
+
+  it("should become editable when a key is pressed", async () => {
+    setup({
+      initialValue: "original description",
+      isMarkdown: true,
+    });
+    const description = await screen.findByTestId("editable-text");
+    description.focus();
+    fireEvent.keyDown(description, { key: "b" });
+    const textarea = await screen.findByRole("textbox");
+    expect(textarea).toHaveFocus();
+  });
+
+  it("should become editable when enter key is pressed, without a line break being added to the description", async () => {
+    setup({
+      initialValue: "original description",
+      isMarkdown: true,
+    });
+
+    const description = await screen.findByTestId("editable-text");
+    description.focus();
+    fireEvent.keyUp(description, { key: "Enter" });
+    const textarea = await screen.findByRole("textbox");
+    expect(textarea).toHaveFocus();
+    expect(textarea).toHaveTextContent(/^original description$/);
   });
 });

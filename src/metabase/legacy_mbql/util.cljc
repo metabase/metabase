@@ -4,19 +4,25 @@
   (:require
    #?@(:clj
        [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
-        [metabase.models.dispatch :as models.dispatch]
-        [metabase.util.i18n]])
+        [metabase.models.dispatch :as models.dispatch]])
    [clojure.string :as str]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.shared.util.i18n :as i18n]
-   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.namespaces :as shared.ns]
+   [metabase.util.time :as u.time]))
+
+(shared.ns/import-fns
+ [schema.helpers
+  mbql-clause?
+  is-clause?
+  check-clause])
 
 (mu/defn normalize-token :- :keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
@@ -27,36 +33,6 @@
       str/lower-case
       (str/replace #"_" "-")
       keyword))
-
-(defn mbql-clause?
-  "True if `x` is an MBQL clause (a sequence with a keyword as its first arg). (Since this is used by the code in
-  `normalize` this handles pre-normalized clauses as well.)"
-  [x]
-  (and (sequential? x)
-       (not (map-entry? x))
-       (keyword? (first x))))
-
-(defn is-clause?
-  "If `x` is an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
-
-    (is-clause? :count [:count 10])        ; -> true
-    (is-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> true"
-  [k-or-ks x]
-  (and
-   (mbql-clause? x)
-   (if (coll? k-or-ks)
-     ((set k-or-ks) (first x))
-     (= k-or-ks (first x)))))
-
-(defn check-clause
-  "Returns `x` if it's an instance of a clause defined by keyword(s) `k-or-ks`
-
-    (check-clause :count [:count 10]) ; => [:count 10]
-    (check-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> [:+ 10 20]
-    (check-clause :sum [:count 10]) ; => nil"
-  [k-or-ks x]
-  (when (is-clause? k-or-ks x)
-    x))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Functions for manipulating queries                                       |
@@ -126,19 +102,50 @@
   [filter-clause & more-filter-clauses]
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
 
+(defn legacy-last-stage-number
+  "Returns the canonical stage number of the last stage of the legacy `inner-query`."
+  [inner-query]
+  (loop [{:keys [source-query qp/stage-had-source-card]} inner-query, n 0]
+    (if (or (nil? source-query)
+            stage-had-source-card)
+      n
+      (recur source-query (inc n)))))
+
+(defn stage-path
+  "Returns a vector consisting of :source-query elements that address the stage of `inner-query`
+  specified by `stage-number`.
+
+  Stage numbers are used as described in [[add-filter-clause]]."
+  [inner-query stage-number]
+  (if-not stage-number
+    []
+    (let [elements (if (neg? stage-number)
+                     (dec (- stage-number))
+                     (- (legacy-last-stage-number inner-query) stage-number))]
+      (into [] (repeat elements :source-query)))))
+
 (mu/defn add-filter-clause-to-inner-query :- mbql.s/MBQLQuery
   "Add a additional filter clause to an *inner* MBQL query, merging with the existing filter clause with `:and` if
-  needed."
-  [inner-query :- mbql.s/MBQLQuery
-   new-clause  :- [:maybe mbql.s/Filter]]
-  (if-not new-clause
+  needed.
+
+  Stage numbers work as in [[add-filter-clause]]."
+  [inner-query  :- mbql.s/MBQLQuery
+   stage-number :- [:maybe number?]
+   new-clause   :- [:maybe mbql.s/Filter]]
+  (if (not new-clause)
     inner-query
-    (update inner-query :filter combine-filter-clauses new-clause)))
+    (let [path (stage-path inner-query stage-number)]
+      (update-in inner-query (conj path :filter) combine-filter-clauses new-clause))))
 
 (mu/defn add-filter-clause :- mbql.s/Query
-  "Add an additional filter clause to an `outer-query`. If `new-clause` is `nil` this is a no-op."
-  [outer-query :- mbql.s/Query new-clause :- [:maybe mbql.s/Filter]]
-  (update outer-query :query add-filter-clause-to-inner-query new-clause))
+  "Add an additional filter clause to an `outer-query` at stage `stage-number`
+  or at the last stage if `stage-number` is `nil`. If `new-clause` is `nil` this is a no-op.
+
+  Stage numbers can be negative: `-1` refers to the last stage, `-2` to the penultimate stage, etc."
+  [outer-query  :- mbql.s/Query
+   stage-number :- [:maybe number?]
+   new-clause   :- [:maybe mbql.s/Filter]]
+  (update outer-query :query add-filter-clause-to-inner-query stage-number new-clause))
 
 (defn desugar-inside
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."
@@ -255,6 +262,21 @@
        [:>= col-default-bucket lower-with-offset]
        [:<  col-default-bucket upper-with-offset]])))
 
+(defn desugar-during
+  "Transform a `:during` expression to an `:and` expression."
+  [m]
+  (lib.util.match/replace
+    m
+    [:during col value unit]
+    (let [col-default-bucket (cond-> col
+                               (and (vector? col) (= 3 (count col)))
+                               (update 2 assoc :temporal-unit :default))
+          lower-bound (u.time/truncate value unit)
+          upper-bound (u.time/add lower-bound unit 1)]
+      [:and
+       [:>= col-default-bucket lower-bound]
+       [:<  col-default-bucket upper-bound]])))
+
 (defn desugar-does-not-contain
   "Rewrite `:does-not-contain` filter clauses as simpler `[:not [:contains ...]]` clauses.
 
@@ -321,6 +343,7 @@
    [:get-week        :instance] :week-of-year-instance
    [:get-day         nil]       :day-of-month
    [:get-day-of-week nil]       :day-of-week
+   [:get-day-of-week :iso]      :day-of-week-iso
    [:get-hour        nil]       :hour-of-day
    [:get-minute      nil]       :minute-of-hour
    [:get-second      nil]       :second-of-minute})
@@ -345,11 +368,11 @@
 (defn- temporal-case-expression
   "Creates a `:case` expression with a condition for each value of the given unit."
   [column unit n]
-  (let [user-locale #?(:clj  (metabase.util.i18n/user-locale)
+  (let [user-locale #?(:clj  (i18n/user-locale)
                        :cljs nil)]
     [:case
      (vec (for [raw-value (range 1 (inc n))]
-            [[:= column raw-value] (shared.ut/format-unit raw-value unit user-locale)]))
+            [[:= column raw-value] (u.time/format-unit raw-value unit user-locale)]))
      {:default ""}]))
 
 (defn- desugar-temporal-names
@@ -403,6 +426,7 @@
       desugar-inside
       simplify-compound-filter
       desugar-temporal-extract
+      desugar-during
       maybe-desugar-expression))
 
 (defmulti ^:private negate* first)
@@ -818,6 +842,16 @@
          (lib.util.match/match coll
            [:field (id :guard integer?) opts]
            [id (:source-field opts)]))))
+
+(defn pred-matches-form?
+  "Check if `form` or any of its children forms match `pred`. This function is used for validation; during normal
+  operation it will never match, so calling this function before `matching-locations` is more efficient."
+  [form pred]
+  (cond
+    (pred form)        true
+    (map? form)        (reduce-kv (fn [b _ v] (or b (pred-matches-form? v pred))) false form)
+    (sequential? form) (reduce (fn [b x] (or b (pred-matches-form? x pred))) false form)
+    :else              false))
 
 (defn matching-locations
   "Find the forms matching pred, returns a list of tuples of location (as used in get-in) and the match."

@@ -139,7 +139,7 @@ type OwnProps = {
   mode?: QueryClickActionsMode | Mode;
   // public dashboard passes it explicitly
   width?: number;
-  // public dashboard passes it as noop
+  // public or embedded dashboard passes it as noop
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
@@ -489,7 +489,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   };
 
   renderDashCard(
-    dc: DashboardCard,
+    dashcard: DashboardCard,
     {
       isMobile,
       gridItemWidth,
@@ -504,7 +504,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   ) {
     return (
       <DashCard
-        dashcard={dc}
+        dashcard={dashcard}
         slowCards={this.props.slowCards}
         gridItemWidth={gridItemWidth}
         totalNumGridCols={totalNumGridCols}
@@ -523,7 +523,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         onUpdateVisualizationSettings={
           this.props.onUpdateDashCardVisualizationSettings
         }
-        onReplaceAllVisualizationSettings={
+        onReplaceAllDashCardVisualizationSettings={
           this.props.onReplaceAllDashCardVisualizationSettings
         }
         mode={this.props.mode}

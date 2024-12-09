@@ -3,8 +3,7 @@ import type { HTMLAttributes } from "react";
 import { t } from "ttag";
 
 import FormField from "metabase/core/components/FormField";
-
-import { MappingEditor } from "./MappingEditor";
+import { MappingEditor } from "metabase/core/components/MappingEditor";
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   name: string;

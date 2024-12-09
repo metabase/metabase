@@ -7,12 +7,14 @@
 
 (def moderated-item-types
   "Schema enum of the acceptable values for the `moderated_item_type` column"
-  [:enum "card" :card])
+  [:enum "card" :card "dashboard" :dashboard])
 
 (def moderated-item-type->model
   "Maps DB name of the moderated item type to the model symbol (used for t2/select and such)"
   {"card" :model/Card
-   :card  :model/Card})
+   :card  :model/Card
+   "dashboard" :model/Dashboard
+   :dashboard :model/Dashboard})
 
 (defn- object->type
   "Convert a moderated item instance to the keyword stored in the database"
@@ -34,7 +36,6 @@
           all-reviews (when item-ids
                         (group-by (juxt :moderated_item_type :moderated_item_id)
                                   (t2/select 'ModerationReview
-                                             :moderated_item_type "card"
                                              :moderated_item_id [:in item-ids]
                                              {:order-by [[:id :desc]]})))]
       (for [item items]

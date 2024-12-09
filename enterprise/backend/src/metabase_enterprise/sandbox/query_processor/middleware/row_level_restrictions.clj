@@ -23,7 +23,9 @@
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.middleware.fetch-source-query-legacy :as fetch-source-query-legacy]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -123,7 +125,7 @@
     (let [query        {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                         :type     :query
                         :query    source-query}
-          preprocessed (binding [*current-user-id* nil]
+          preprocessed (request/as-admin
                          ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query))]
       (select-keys (:query preprocessed) [:source-query :source-metadata]))
     (catch Throwable e
@@ -143,7 +145,7 @@
 
 (mu/defn- mbql-query-metadata :- [:+ :map]
   [inner-query]
-  (binding [*current-user-id* nil]
+  (request/as-admin
     ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
      {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
       :type     :query
@@ -172,12 +174,16 @@
 
 (mu/defn- native-query-metadata :- [:+ :map]
   [source-query :- [:map [:source-query :any]]]
-  (let [result (binding [*current-user-id* nil]
-                 ((requiring-resolve 'metabase.query-processor/process-query)
-                  {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
-                   :type     :query
-                   :query    {:source-query source-query
-                              :limit        0}}))]
+  (let [result
+        ;; Rebind *result* in case the outer query is being streamed back to the client. The streaming code binds this
+        ;; to a custom handler, and we don't want to accidentally terminate the stream here!
+        (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
+          (request/as-admin
+            ((requiring-resolve 'metabase.query-processor/process-query)
+             {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
+              :type     :query
+              :query    {:source-query source-query
+                         :limit        0}})))]
     (or (-> result :data :results_metadata :columns not-empty)
         (throw (ex-info (tru "Error running query to determine metadata")
                         {:source-query source-query
@@ -195,17 +201,17 @@
   (let [table-metadata   (original-table-metadata table-id)
         ;; make sure source query has `:source-metadata`; add it if needed
         [metadata save?] (cond
-                          ;; if it already has `:source-metadata`, we're good to go.
+                           ;; if it already has `:source-metadata`, we're good to go.
                            (seq source-metadata)
                            [source-metadata false]
 
-                          ;; if it doesn't have source metadata, but it's an MBQL query, we can preprocess the query to
-                          ;; get the expected metadata.
+                           ;; if it doesn't have source metadata, but it's an MBQL query, we can preprocess the query to
+                           ;; get the expected metadata.
                            (not (get-in source-query [:source-query :native]))
                            [(mbql-query-metadata source-query) true]
 
-                          ;; otherwise if it's a native query we'll have to run the query really quickly to get the
-                          ;; expected metadata.
+                           ;; otherwise if it's a native query we'll have to run the query really quickly to get the
+                           ;; expected metadata.
                            :else
                            [(native-query-metadata source-query) true])
         metadata (reconcile-metadata metadata table-metadata)]
@@ -347,7 +353,7 @@
         (assoc &match ::gtap? true)))))
 
 (defn- expected-cols [query]
-  (binding [*current-user-id* nil]
+  (request/as-admin
     ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols) query)))
 
 (defn- gtapped-query

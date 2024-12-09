@@ -17,15 +17,15 @@ import {
   useSdkDispatch,
   useSdkSelector,
 } from "embedding-sdk/store";
-import { refreshTokenAsync } from "embedding-sdk/store/reducer";
+import { refreshTokenAsync } from "embedding-sdk/store/auth";
 import { getIsLoggedIn, getLoginStatus } from "embedding-sdk/store/selectors";
 import type { LoginStatusError } from "embedding-sdk/store/types";
-import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
+import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk/test/mocks/state";
-import type { SDKConfig, SDKConfigWithJWT } from "embedding-sdk/types";
+import type { SDKConfig, SDKConfigWithAuthProvider } from "embedding-sdk/types";
 import { GET } from "metabase/lib/api";
 import {
   createMockSettings,
@@ -79,7 +79,7 @@ const setup = ({
 }: {
   isValidConfig?: boolean;
   isValidUser?: boolean;
-} & Partial<SDKConfigWithJWT>) => {
+} & Partial<SDKConfigWithAuthProvider>) => {
   fetchMock.get("http://TEST_URI/sso/metabase", {
     id: "TEST_JWT_TOKEN",
     exp: 1965805007,
@@ -119,8 +119,8 @@ const setup = ({
   setupSettingsEndpoints([]);
   setupPropertiesEndpoints(settingValuesWithToken);
 
-  const config = createMockJwtConfig({
-    jwtProviderUri: isValidConfig ? "http://TEST_URI/sso/metabase" : "",
+  const config = createMockAuthProviderUriConfig({
+    authProviderUri: isValidConfig ? "http://TEST_URI/sso/metabase" : "",
     ...configOpts,
   });
 
@@ -132,19 +132,6 @@ const setup = ({
 
 describe("useInitData hook", () => {
   describe("before authentication", () => {
-    it("should have an error if JWT URI is not provided", async () => {
-      setup({ isValidConfig: false });
-      expect(screen.getByTestId("test-component")).toHaveAttribute(
-        "data-login-status",
-        "error",
-      );
-
-      expect(screen.getByTestId("test-component")).toHaveAttribute(
-        "data-error-message",
-        "No JWT URI or API key provided.",
-      );
-    });
-
     it("should set a context for all API requests", async () => {
       jest
         .spyOn(sdkConfigModule, "getEmbeddingSdkVersion")
@@ -169,8 +156,8 @@ describe("useInitData hook", () => {
     });
   });
 
-  describe("JWT authentication", () => {
-    it("start loading data if JWT URI and auth type are valid", async () => {
+  describe("authProviderUri authentication", () => {
+    it("start loading data if authProviderUri and auth type are valid", async () => {
       setup({ isValidConfig: true });
       expect(screen.getByTestId("test-component")).toHaveAttribute(
         "data-login-status",
@@ -204,7 +191,7 @@ describe("useInitData hook", () => {
 
       expect(screen.getByTestId("test-component")).toHaveAttribute(
         "data-error-message",
-        "Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token",
+        "Failed to fetch the user, the session might be invalid.",
       );
     });
 
@@ -222,7 +209,10 @@ describe("useInitData hook", () => {
     });
 
     it("should use a custom fetchRefreshToken function when specified", async () => {
-      let fetchRequestToken = jest.fn(async () => ({ id: "foo", exp: 10 }));
+      let fetchRequestToken = jest.fn(async () => ({
+        id: "foo",
+        exp: Number.MAX_SAFE_INTEGER,
+      }));
 
       const { rerender } = setup({ isValidConfig: true, fetchRequestToken });
 
@@ -231,10 +221,13 @@ describe("useInitData hook", () => {
 
       // Pass in a new fetchRequestToken function
       // We expect the new function to be called when the "Refresh Token" button is clicked
-      fetchRequestToken = jest.fn(async () => ({ id: "bar", exp: 10 }));
+      fetchRequestToken = jest.fn(async () => ({
+        id: "bar",
+        exp: Number.MAX_SAFE_INTEGER,
+      }));
 
-      const config = createMockJwtConfig({
-        jwtProviderUri: "http://TEST_URI/sso/metabase",
+      const config = createMockAuthProviderUriConfig({
+        authProviderUri: "http://TEST_URI/sso/metabase",
         fetchRequestToken,
       });
 

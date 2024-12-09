@@ -2,7 +2,6 @@
   "Random utilty endpoints for things that don't belong anywhere else in particular, e.g. endpoints for certain admin
   page tasks."
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [compojure.core :refer [GET POST]]
    [crypto.random :as crypto-random]
@@ -11,10 +10,12 @@
    [metabase.analytics.stats :as stats]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.api.embed.common :as api.embed.common]
    [metabase.config :as config]
    [metabase.logger :as logger]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.troubleshooting :as troubleshooting]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -37,7 +38,7 @@
   what is being phoned home."
   []
   (validation/check-has-application-permission :monitoring)
-  (stats/anonymous-usage-stats))
+  (stats/legacy-anonymous-usage-stats))
 
 (api/defendpoint GET "/random_token"
   "Return a cryptographically secure random 32-byte token, encoded as a hexadecimal string.
@@ -60,9 +61,9 @@
    email :- [:maybe ms/NonBlankString]]
   (try (http/post (product-feedback-url)
                   {:content-type :json
-                   :body         (json/generate-string {:comments comments
-                                                        :source   source
-                                                        :email    email})})
+                   :body         (json/encode {:comments comments
+                                               :source   source
+                                               :email    email})})
        (catch Exception e
          (log/warn e)
          (throw e))))
@@ -91,5 +92,11 @@
   (let [pool-info (prometheus/connection-pool-info)
         headers   {"Content-Disposition" "attachment; filename=\"connection_pool_info.json\""}]
     (assoc (response/response {:connection-pools pool-info}) :headers headers, :status 200)))
+
+(api/defendpoint POST "/entity_id"
+  "Translate entity IDs to model IDs."
+  [:as {{:keys [entity_ids]} :body}]
+  {entity_ids :map}
+  {:entity_ids (api.embed.common/model->entity-ids->ids entity_ids)})
 
 (api/define-routes)

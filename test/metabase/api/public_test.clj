@@ -1,7 +1,6 @@
-(ns metabase.api.public-test
+(ns ^:mb/driver-tests metabase.api.public-test
   "Tests for `api/public/` (public links) endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.data.csv :as csv]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -18,11 +17,15 @@
     :refer [Card Collection Dashboard DashboardCard DashboardCardSeries
             Database Dimension Field FieldValues]]
    [metabase.models.interface :as mi]
+   [metabase.models.params :as params]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [throttle.core :as throttle]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -311,16 +314,16 @@
 
         (testing ":json download response format"
           (is (= [{:Count "100"}]
-                 (client/client :get 200 (str "public/card/" uuid "/query/json")))))
+                 (client/client :get 200 (str "public/card/" uuid "/query/json?format_rows=true")))))
 
         (testing ":csv download response format"
           (is (= "Count\n100\n"
-                 (client/client :get 200 (str "public/card/" uuid "/query/csv"), :format :csv))))
+                 (client/client :get 200 (str "public/card/" uuid "/query/csv?format_rows=true"), :format :csv))))
 
         (testing ":xlsx download response format"
           (is (= [{:col "Count"} {:col 100.0}]
                  (parse-xlsx-response
-                  (client/client :get 200 (str "public/card/" uuid "/query/xlsx"))))))))))
+                  (client/client :get 200 (str "public/card/" uuid "/query/xlsx?format_rows=true"))))))))))
 
 (deftest execute-public-card-as-user-without-perms-test
   (testing "A user that doesn't have permissions to run the query normally should still be able to run a public Card as if they weren't logged in"
@@ -506,6 +509,35 @@
                  :data
                  keys
                  set))))))
+
+(deftest query-execution-context test
+  (testing "Make sure we record the correct context for each export format (#45147)"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [query (merge (mt/mbql-query venues)
+                         ;; Add these constraints for the API query so that the query hash matches in `with-query-execution!`
+                         {:constraints {:max-results 10000, :max-results-bare-rows 2000}})]
+        (with-temp-public-card [{uuid :public_uuid} {:dataset_query query}]
+          (testing "Default :api response format"
+            (process-userland-query-test/with-query-execution! [qe query]
+              (client/client :get 202 (str "public/card/" uuid "/query"))
+              (is (= :public-question (:context (qe))))))))
+
+      (let [query (mt/mbql-query venues)]
+        (with-temp-public-card [{uuid :public_uuid} {:dataset_query query}]
+          (testing ":json download response format"
+            (process-userland-query-test/with-query-execution! [qe query]
+              (client/client :get 200 (str "public/card/" uuid "/query/json"))
+              (is (= :public-json-download (:context (qe))))))
+
+          (testing ":xlsx download response format"
+            (process-userland-query-test/with-query-execution! [qe query]
+              (client/client :get 200 (str "public/card/" uuid "/query/xlsx"))
+              (is (= :public-xlsx-download (:context (qe))))))
+
+          (testing ":csv download response format"
+            (process-userland-query-test/with-query-execution! [qe query]
+              (client/client :get 200 (str "public/card/" uuid "/query/csv"), :format :csv)
+              (is (= :public-csv-download (:context (qe)))))))))))
 
 ;;; ---------------------------------------- GET /api/public/dashboard/:uuid -----------------------------------------
 
@@ -786,7 +818,7 @@
                 (is (= [[50]]
                        (-> (mt/user-http-request :crowberto
                                                  :get (dashcard-url dash card dashcard)
-                                                 :parameters (json/generate-string
+                                                 :parameters (json/encode
                                                               [{:type   :category
                                                                 :target [:variable [:template-tag :num]]
                                                                 :value  "50"
@@ -812,7 +844,7 @@
                   (is (= [[1]]
                          (-> (mt/user-http-request :crowberto
                                                    :get (dashcard-url dash card dashcard)
-                                                   :parameters (json/generate-string
+                                                   :parameters (json/encode
                                                                 [{:type   :id
                                                                   :target [:dimension [:field (mt/id :venues :id) nil]]
                                                                   :value  "50"
@@ -840,7 +872,7 @@
                     (is (= [[733]]
                            (-> (mt/user-http-request :crowberto
                                                      :get (dashcard-url dash card dashcard)
-                                                     :parameters (json/generate-string
+                                                     :parameters (json/encode
                                                                   [{:type   "date/all-options"
                                                                     :target [:dimension [:field (mt/id :checkins :date) nil]]
                                                                     :value  "~2015-01-01"
@@ -873,7 +905,7 @@
               (is (= [["World"]]
                      (-> (mt/user-http-request :crowberto
                                                :get (dashcard-url dash card dashcard)
-                                               :parameters (json/generate-string
+                                               :parameters (json/encode
                                                             [{:type    :category
                                                               :target  [:variable [:template-tag :msg]]
                                                               :value   "World"
@@ -1727,68 +1759,70 @@
 ;;; --------------------------------- POST /api/public/action/:uuid/execute ----------------------------------
 
 (deftest execute-public-action-test
-  (mt/with-actions-test-data-and-actions-enabled
-    (mt/with-temporary-setting-values [enable-public-sharing true]
-      (let [{:keys [public_uuid] :as action-opts} (shared-obj)]
-        (mt/with-actions [{} action-opts]
-          ;; Decrease the throttle threshold to 1 so we can test the throttle,
-          ;; and set the throttle delay high enough the throttle will definitely trigger
-          (with-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1 :initial-delay-ms 20000)]
-            (testing "Happy path - we can execute a public action"
-              (is (=? {:rows-affected 1}
-                      (client/client
-                       :post 200
-                       (format "public/action/%s/execute" public_uuid)
-                       {:parameters {:id 1 :name "European"}}))))
-            (testing "Test throttle"
-              (let [throttled-response (client/client-full-response
-                                        :post 429
-                                        (format "public/action/%s/execute" public_uuid)
-                                        {:parameters {:id 1 :name "European"}})]
-                (is (str/starts-with? (:body throttled-response) "Too many attempts!"))
-                (is (contains? (:headers throttled-response) "Retry-After"))))))
-        ;; Lift the throttle attempts threshold so we don't have to wait between requests
-        (with-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1000)]
-          (mt/with-actions [{} (assoc action-opts :archived true)]
-            (testing "Check that we get a 400 if the action is archived"
-              (is (= "Not found."
-                     (client/client
-                      :post 404
-                      (format "public/action/%s/execute" (str (random-uuid)))
-                      {:parameters {:id 1 :name "European"}})))))
-          (mt/with-actions [{} action-opts]
-            (testing "Check that we get a 400 if the action doesn't exist"
-              (is (= "Not found."
-                     (client/client
-                      :post 404
-                      (format "public/action/%s/execute" (str (random-uuid)))
-                      {:parameters {:id 1 :name "European"}}))))
-            (testing "Check that we get a 400 if sharing is disabled."
-              (mt/with-temporary-setting-values [enable-public-sharing false]
-                (is (= "An error occurred."
-                       (client/client
-                        :post 400
-                        (format "public/action/%s/execute" public_uuid)
-                        {:parameters {:id 1 :name "European"}})))))
-            (testing "Check that we get a 400 if actions are disabled for the database."
-              (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
-                (is (= "An error occurred."
-                       (client/client
-                        :post 400
-                        (format "public/action/%s/execute" public_uuid)
-                        {:parameters {:id 1 :name "European"}})))))
-            (testing "Check that we send a snowplow event when execute an action"
-              (snowplow-test/with-fake-snowplow-collector
-                (client/client
-                 :post 200
-                 (format "public/action/%s/execute" public_uuid)
-                 {:parameters {:id 1 :name "European"}})
-                (is (= {:data   {"action_id" (t2/select-one-pk 'Action :public_uuid public_uuid)
-                                 "event"     "action_executed"
-                                 "source"    "public_form"
-                                 "type"      "query"}
-                        :user-id nil}
-                       (last (snowplow-test/pop-event-data-and-user-id!))))))))))))
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (let [{:keys [public_uuid] :as action-opts} (shared-obj)]
+            (mt/with-actions [{} action-opts]
+              ;; Decrease the throttle threshold to 1 so we can test the throttle,
+              ;; and set the throttle delay high enough the throttle will definitely trigger
+              (with-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1 :initial-delay-ms 20000)]
+                (testing "Happy path - we can execute a public action"
+                  (is (=? {:rows-affected 1}
+                          (client/client
+                           :post 200
+                           (format "public/action/%s/execute" public_uuid)
+                           {:parameters {:id 1 :name "European"}}))))
+                (testing "Test throttle"
+                  (let [throttled-response (client/client-full-response
+                                            :post 429
+                                            (format "public/action/%s/execute" public_uuid)
+                                            {:parameters {:id 1 :name "European"}})]
+                    (is (str/starts-with? (:body throttled-response) "Too many attempts!"))
+                    (is (contains? (:headers throttled-response) "Retry-After"))))))
+            ;; Lift the throttle attempts threshold so we don't have to wait between requests
+            (with-redefs [api.public/action-execution-throttle (throttle/make-throttler :action-uuid :attempts-threshold 1000)]
+              (mt/with-actions [{} (assoc action-opts :archived true)]
+                (testing "Check that we get a 400 if the action is archived"
+                  (is (= "Not found."
+                         (client/client
+                          :post 404
+                          (format "public/action/%s/execute" (str (random-uuid)))
+                          {:parameters {:id 1 :name "European"}})))))
+              (mt/with-actions [{} action-opts]
+                (testing "Check that we get a 400 if the action doesn't exist"
+                  (is (= "Not found."
+                         (client/client
+                          :post 404
+                          (format "public/action/%s/execute" (str (random-uuid)))
+                          {:parameters {:id 1 :name "European"}}))))
+                (testing "Check that we get a 400 if sharing is disabled."
+                  (mt/with-temporary-setting-values [enable-public-sharing false]
+                    (is (= "An error occurred."
+                           (client/client
+                            :post 400
+                            (format "public/action/%s/execute" public_uuid)
+                            {:parameters {:id 1 :name "European"}})))))
+                (testing "Check that we get a 400 if actions are disabled for the database."
+                  (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
+                    (is (= "An error occurred."
+                           (client/client
+                            :post 400
+                            (format "public/action/%s/execute" public_uuid)
+                            {:parameters {:id 1 :name "European"}})))))
+                (testing "Check that we send a snowplow event when execute an action"
+                  (snowplow-test/with-fake-snowplow-collector
+                    (client/client
+                     :post 200
+                     (format "public/action/%s/execute" public_uuid)
+                     {:parameters {:id 1 :name "European"}})
+                    (is (= {:data   {"action_id" (t2/select-one-pk 'Action :public_uuid public_uuid)
+                                     "event"     "action_executed"
+                                     "source"    "public_form"
+                                     "type"      "query"}
+                            :user-id nil}
+                           (last (snowplow-test/pop-event-data-and-user-id!))))))))))))))
 
 (deftest format-export-middleware-test
   (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -1809,3 +1843,90 @@
                            :crowberto :get 200
                            (format "public/card/%s/query/%s?format_rows=%s" uuid (name export-format) apply-formatting?))
                           ((get output-helper export-format))))))))))))
+
+;; This test is same as [[metabase.api.dashboard-test/dashboard-param-values-param-fields-hydration-test]]
+;; adjusted to run with PUBLIC dashboard.
+(deftest ^:synchronized public-dashboard-param-values-param-fields-hydration-test
+  (let [public-dashboard-uuid (str (random-uuid))]
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp
+        [:model/Dashboard     d   {:name "D"
+                                   :public_uuid public-dashboard-uuid
+                                   :parameters [{:name      "State filter param 1"
+                                                 :slug      "p1"
+                                                 :id        "p1"
+                                                 :type      "location"}
+                                                {:name      "State filter param 2"
+                                                 :slug      "p2"
+                                                 :id        "p2"
+                                                 :type      "text"}
+                                                {:name      "State filter param 3"
+                                                 :slug      "p3"
+                                                 :id        "p3"
+                                                 :type      "text"}]}
+         :model/Card          c1  (let [query {:database (mt/id)
+                                               :type     :native
+                                               :native   {:query "select * from people"}}]
+                                    {:name "C1"
+                                     :type :model
+                                     :database_id (mt/id)
+                                     :dataset_query query
+                                     :result_metadata
+                                     (mapv (fn [{col-name :name :as meta}]
+                                             ;; Map model's metadata to corresponding field id
+                                             (assoc meta :id  (mt/id :people (keyword (u/lower-case-en col-name)))))
+                                           (-> (qp/process-query query)
+                                               :data :results_metadata :columns))})
+
+         :model/Card          c2 (let [query {:database (mt/id)
+                                              :type :query
+                                              :query {:source-table (str "card__" (:id c1))
+                                                      :aggregation
+                                                      [[:distinct [:field "STATE" {:base-type :type/Text}]]]}}]
+                                   {:name "C2"
+                                    :database_id (mt/id)
+                                    :dataset_query query
+                                    :result_metadata (-> (qp/process-query query)
+                                                         :data :results_metadata :columns)})
+         :model/DashboardCard _dc1 {:dashboard_id       (:id d)
+                                    :card_id            (:id c2)
+                                    :parameter_mappings
+                                    [{:parameter_id "p1"
+                                      :target [:dimension [:field "STATE" {:base-type :type/Text}]]}
+                                     {:parameter_id "p2"
+                                      :target [:dimension [:field "NAME" {:base-type :type/Text}]]}
+                                     {:parameter_id "p3"
+                                      :target [:dimension [:field "CITY" {:base-type :type/Text}]]}]}
+         :model/DashboardCard _dc2 {:dashboard_id       (:id d)
+                                    :card_id            (:id c2)
+                                    :parameter_mappings
+                                    [{:parameter_id "p1"
+                                      :target [:dimension [:field "STATE" {:base-type :type/Text}]]}
+                                     {:parameter_id "p2"
+                                      :target [:dimension [:field "NAME" {:base-type :type/Text}]]}
+                                     {:parameter_id "p3"
+                                      :target [:dimension [:field "CITY" {:base-type :type/Text}]]}]}]
+        (let [call-count (volatile! 0)
+              orig-filterable-columns-for-query params/filterable-columns-for-query]
+          (with-redefs [params/filterable-columns-for-query
+                        (fn [& args]
+                          (vswap! call-count inc)
+                          (apply orig-filterable-columns-for-query args))]
+            (let [response (client/client :get 200 (format "public/dashboard/%s" (:public_uuid d)))]
+              (testing "Baseline: expected :param_fields(#42829)"
+                (is (=? {(mt/id :people :name)  {:name "NAME"}
+                         (mt/id :people :state) {:name "STATE"}
+                         (mt/id :people :city)  {:name "CITY"}}
+                        (get response :param_fields))))
+              (testing "Baseline: expected :param_values (#42829)"
+                (is (=? {(mt/id :people :state) {:values ["AK" "AL"]}}
+                        (-> (get response :param_values)
+                            ;; Take just first 2 values for testing purposes
+                            (update-in [(mt/id :people :state) :values] (partial take 2))))))
+              (testing "Reasonable amount of `filterable-columns` calls performed during dashboard load"
+                ;; Current implementation of [[metabase.models.params/dashcards->param-field-ids]] is supposed
+                ;; to compute `filterable-columns` only once per card per dashboard load, thanks to use of (1) context
+                ;; sharing of it between :param_fields and :param_values hydration. This test defines multiple
+                ;; dashcards and parameters for each dashcard, linked to a single card. Following is the proof
+                ;; of things working as described.
+                (is (= 1 @call-count))))))))))

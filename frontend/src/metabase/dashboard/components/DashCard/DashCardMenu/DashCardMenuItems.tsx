@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import type { DashCardCustomMenuItem } from "embedding-sdk";
 import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
+import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { editQuestion } from "metabase/dashboard/actions";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import { useDispatch } from "metabase/lib/redux";
@@ -28,7 +29,8 @@ export const DashCardMenuItems = ({
 
   const {
     plugins,
-    onEditQuestion = question => dispatch(editQuestion(question)),
+    onEditQuestion = (question, mode = "notebook") =>
+      dispatch(editQuestion(question, mode)),
   } = useInteractiveDashboardContext();
 
   const dashcardMenuItems = plugins?.dashboard?.dashcardMenu as
@@ -47,12 +49,31 @@ export const DashCardMenuItems = ({
     })[] = [];
 
     if (withEditLink && canEditQuestion(question)) {
-      items.push({
-        key: "MB_EDIT_QUESTION",
-        iconName: "pencil",
-        label: t`Edit question`,
-        onClick: () => onEditQuestion(question),
-      });
+      const type = question.type();
+      if (type === "question") {
+        items.push({
+          key: "MB_EDIT_QUESTION",
+          iconName: "pencil",
+          label: t`Edit question`,
+          onClick: () => onEditQuestion(question),
+        });
+      }
+      if (type === "model") {
+        items.push({
+          key: "MB_EDIT_MODEL",
+          iconName: "pencil",
+          label: t`Edit model`,
+          onClick: () => onEditQuestion(question, "query"),
+        });
+      }
+      if (type === "metric") {
+        items.push({
+          key: "MB_EDIT_METRIC",
+          iconName: "pencil",
+          label: t`Edit metric`,
+          onClick: () => onEditQuestion(question, "query"),
+        });
+      }
     }
 
     if (withDownloads && canDownloadResults(result)) {
@@ -71,7 +92,7 @@ export const DashCardMenuItems = ({
         ...customItems.map(item => {
           const customItem =
             typeof item === "function"
-              ? item({ question: question.card() })
+              ? item({ question: transformSdkQuestion(question) })
               : item;
 
           return {

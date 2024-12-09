@@ -233,11 +233,11 @@
       "viz-settings": {
         "graph.dimensions": ["category"],
         "graph.metrics": ["change"],
-        "metabase.shared.models.visualization-settings/column-settings": {
-          "{:metabase.shared.models.visualization-settings/field-id 1553}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1554}": {}
+        "metabase.models.visualization-settings/column-settings": {
+          "{:metabase.models.visualization-settings/field-id 1553}": {},
+          "{:metabase.models.visualization-settings/field-id 1554}": {}
         },
-        "metabase.shared.models.visualization-settings/global-column-settings": {}
+        "metabase.models.visualization-settings/global-column-settings": {}
       },
       "native_form": {
         "query": "SELECT \"source\".\"category\" AS \"category\", \"source\".\"change\" AS \"change\" FROM (SELECT \"csv_upload_data\".\"csv_upload_waterfall_starts_above_crosses_0_ends_20231216140607\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_waterfall_starts_above_crosses_0_ends_20231216140607\".\"category\" AS \"category\", \"csv_upload_data\".\"csv_upload_waterfall_starts_above_crosses_0_ends_20231216140607\".\"change\" AS \"change\" FROM \"csv_upload_data\".\"csv_upload_waterfall_starts_above_crosses_0_ends_20231216140607\") AS \"source\" LIMIT 2000",

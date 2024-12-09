@@ -186,7 +186,7 @@ export function LinkedEntityPicker({
   const dashboardTabs = targetDashboard?.tabs ?? NO_DASHBOARD_TABS;
   const defaultDashboardTabId: number | undefined = dashboardTabs[0]?.id;
   const dashboardTabId = isDashboard
-    ? clickBehavior.tabId ?? defaultDashboardTabId
+    ? (clickBehavior.tabId ?? defaultDashboardTabId)
     : undefined;
   const dashboardTabExists = dashboardTabs.some(
     tab => tab.id === dashboardTabId,

@@ -161,6 +161,7 @@
      token-features
      token-status
      toucan-name
+     trial-banner-dismissal-timestamp
      uncached-setting
      user-visibility
      version
@@ -181,12 +182,13 @@
         setter-node (-> (list
                          (hooks/token-node 'defn)
                          (with-meta
-                           (hooks/token-node (symbol (str (hooks/sexpr setting-name) \!)))
-                           (meta setting-name))
+                          (hooks/token-node (symbol (str (hooks/sexpr setting-name) \!)))
+                          (meta setting-name))
                          (hooks/string-node "Docstring.")
                          (hooks/vector-node [(hooks/token-node '_value-or-nil)]))
                         hooks/list-node
-                        (with-meta (update (meta node) :clj-kondo/ignore #(hooks/vector-node (cons :clojure-lsp/unused-public-var (:children %))))))]
+                        (with-meta (meta node))
+                        common/add-lsp-ignore-unused-public-var-metadata)]
 
     (when (nil? (second (drop-while (comp not #{[:k :export?]} first) options-list)))
       (when-not (contains? ignored-implicit-export? (:value setting-name))
@@ -242,14 +244,14 @@
 (comment
   (defn- defsetting* [form]
     (hooks/sexpr
-      (:node
-        (defsetting
-          {:node
-           (hooks/parse-string
-             (with-out-str
-               #_{:clj-kondo/ignore [:unresolved-namespace]}
-               (clojure.pprint/pprint
-                form)))}))))
+     (:node
+      (defsetting
+        {:node
+         (hooks/parse-string
+          (with-out-str
+            #_{:clj-kondo/ignore [:unresolved-namespace]}
+            (clojure.pprint/pprint
+             form)))}))))
 
   (defn x []
     (defsetting*

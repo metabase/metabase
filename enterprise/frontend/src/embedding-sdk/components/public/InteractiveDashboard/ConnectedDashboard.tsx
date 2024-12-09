@@ -1,9 +1,13 @@
 import type { Query } from "history";
-import type React from "react";
+import type { ComponentType, FC } from "react";
 import { type ConnectedProps, connect } from "react-redux";
 import _ from "underscore";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
+import {
+  SdkError,
+  SdkLoader,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
 import * as dashboardActions from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
@@ -31,8 +35,10 @@ import {
 } from "metabase/dashboard/selectors";
 import type {
   DashboardFullscreenControls,
+  DashboardLoaderWrapperProps,
   DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
+import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { closeNavbar, setErrorPage } from "metabase/redux/app";
@@ -90,11 +96,11 @@ type ConnectedDashboardProps = {
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
 
-  questionHeight?: number;
   plugins?: SdkPluginsConfig;
   className?: string;
 } & DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
+  DashboardLoaderWrapperProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
 const ConnectedDashboardInner = ({
@@ -118,6 +124,21 @@ const ConnectedDashboardInner = ({
   );
 };
 
-export const ConnectedDashboard = connector(
-  ConnectedDashboardInner,
-) as React.FC<ConnectedDashboardProps>;
+export const ConnectedDashboard = connector<
+  ComponentType<ConnectedDashboardProps & ReduxProps>
+>(({ dashboardId: initId, ...rest }) => {
+  const { id: dashboardId, isLoading } = useValidatedEntityId({
+    type: "dashboard",
+    id: initId,
+  });
+
+  if (isLoading) {
+    return <SdkLoader />;
+  }
+
+  if (!dashboardId) {
+    return <SdkError message="ID not found" />;
+  }
+
+  return <ConnectedDashboardInner dashboardId={dashboardId} {...rest} />;
+}) as FC<ConnectedDashboardProps>;

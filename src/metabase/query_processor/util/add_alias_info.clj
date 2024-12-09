@@ -230,9 +230,13 @@
         ;; if still no match try looking based for a matching Field based on ID.
         (let [[_field id-or-name _opts] field-clause]
           (when (integer? id-or-name)
-            (m/find-first (fn [[_field an-id-or-name _opts]]
-                            (= an-id-or-name id-or-name))
-                          field-exports)))
+            (or (m/find-first (fn [[_field an-id-or-name _opts]]
+                                (= an-id-or-name id-or-name))
+                              field-exports)
+                ;; look for a field referenced by the ID in source-metadata
+                (when-let [column (m/find-first #(= (:id %) id-or-name) source-metadata)]
+                  (let [signature (field-signature (:field_ref column))]
+                    (m/find-first #(= (field-signature %) signature) field-exports))))))
         ;; otherwise if this is a nominal field literal ref then look for matches based on the string name used
         (when-let [field-name (let [[_ id-or-name] field-clause]
                                 (when (string? id-or-name)
@@ -331,10 +335,15 @@
                        (qp.store/->legacy-metadata field)))
     (:name field)))
 
+(defn- field-nfc-path
+  "Nested field components path for field, so drivers can use in identifiers."
+  [field-clause]
+  (some-> field-clause field-instance :nfc-path not-empty vec))
+
 (defn- field-requires-original-field-name
   "JSON extraction fields need to be named with their outer `field-name`, not use any existing `::desired-alias`."
   [field-clause]
-  (boolean (some-> field-clause field-instance :nfc-path)))
+  (boolean (field-nfc-path field-clause)))
 
 (defn- field-name
   "*Actual* name of a `:field` from the database or source query (for Field literals)."
@@ -349,11 +358,14 @@
   "Calculate extra stuff about `field-clause` that's a little expensive to calculate. This is done once so we can pass
   it around instead of recalculating it a bunch of times."
   [inner-query field-clause]
-  {:field-name              (field-name inner-query field-clause)
-   :override-alias?         (field-requires-original-field-name field-clause)
-   :join-is-this-level?     (field-is-from-join-in-this-level? inner-query field-clause)
-   :alias-from-join         (field-alias-in-join-at-this-level inner-query field-clause)
-   :alias-from-source-query (field-alias-in-source-query inner-query field-clause)})
+  (merge
+   {:field-name              (field-name inner-query field-clause)
+    :override-alias?         (field-requires-original-field-name field-clause)
+    :join-is-this-level?     (field-is-from-join-in-this-level? inner-query field-clause)
+    :alias-from-join         (field-alias-in-join-at-this-level inner-query field-clause)
+    :alias-from-source-query (field-alias-in-source-query inner-query field-clause)}
+   (when-let [nfc-path (field-nfc-path field-clause)]
+     {:nfc-path nfc-path})))
 
 (defn- field-source-alias
   "Determine the appropriate `::source-alias` for a `field-clause`."
@@ -402,6 +414,8 @@
   (let [expensive-info (expensive-field-info inner-query field-clause)]
     (merge {::source-table (field-source-table-alias inner-query field-clause)
             ::source-alias (field-source-alias inner-query field-clause expensive-info)}
+           (when-let [nfc-path (:nfc-path expensive-info)]
+             {::nfc-path nfc-path})
            (when-let [position (clause->position inner-query field-clause)]
              {::desired-alias (unique-alias-fn position (field-desired-alias inner-query field-clause expensive-info))
               ::position      position}))))

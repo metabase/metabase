@@ -6,7 +6,7 @@ import type {
 } from "metabase-types/api";
 
 import { visitDashboard } from "./e2e-misc-helpers";
-import { menu, popover, sidebar } from "./e2e-ui-elements-helpers";
+import { menu, popover, sidebar, sidesheet } from "./e2e-ui-elements-helpers";
 
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(
@@ -84,16 +84,18 @@ export function saveDashboard({
   waitMs = 1,
   awaitRequest = true,
 } = {}) {
-  cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
+  cy.intercept("PUT", "/api/dashboard/*").as(
+    "saveDashboard-saveDashboardCards",
+  );
+  cy.intercept("GET", "/api/dashboard/*").as("saveDashboard-getDashboard");
   cy.button(buttonLabel).click();
 
   if (awaitRequest) {
-    cy.wait("@saveDashboardCards").then(() => {
-      cy.findByText(editBarText).should("not.exist");
-    });
-  } else {
-    cy.findByText(editBarText).should("not.exist");
+    cy.wait("@saveDashboard-saveDashboardCards");
+    cy.wait("@saveDashboard-getDashboard");
   }
+
+  cy.findByText(editBarText).should("not.exist");
   cy.wait(waitMs); // this is stupid but necessary to due to the dashboard resizing and detaching elements
 }
 
@@ -135,30 +137,54 @@ export function createEmptyTextBox() {
 }
 
 export function addTextBox(
-  string: string,
+  text: string,
   options: Partial<Cypress.TypeOptions> = {},
 ) {
   cy.findByLabelText("Edit dashboard").click();
-  addTextBoxWhileEditing(string, options);
+  addTextBoxWhileEditing(text, options);
 }
 
 export function addLinkWhileEditing(
-  string: string,
+  url: string,
   options: Partial<Cypress.TypeOptions> = {},
 ) {
-  cy.findByLabelText("Add link card").click();
-  cy.findByPlaceholderText("https://example.com").type(string, options);
+  cy.findByLabelText("Add a link or iframe").click();
+  popover().findByText("Link").click();
+  cy.findByPlaceholderText("https://example.com").type(url, options);
+}
+
+export function addIFrameWhileEditing(
+  embed: string,
+  options: Partial<Cypress.TypeOptions> = {},
+) {
+  cy.findByLabelText("Add a link or iframe").click();
+  popover().findByText("Iframe").click();
+  cy.findByTestId("iframe-card-input").type(embed, options);
+}
+
+export function editIFrameWhileEditing(
+  dashcardIndex = 0,
+  embed: string,
+  options: Partial<Cypress.TypeOptions> = {},
+) {
+  getDashboardCard(dashcardIndex)
+    .realHover()
+    .findByTestId("dashboardcard-actions-panel")
+    .should("be.visible")
+    .icon("pencil")
+    .click();
+  cy.findByTestId("iframe-card-input").type(`{selectall}${embed}`, options);
 }
 
 export function addTextBoxWhileEditing(
-  string: string,
+  text: string,
   options: Partial<Cypress.TypeOptions> = {},
 ) {
   cy.findByLabelText("Add a heading or text box").click();
   popover().findByText("Text").click();
   cy.findByPlaceholderText(
     "You can use Markdown here, and include variables {{like_this}}",
-  ).type(string, options);
+  ).type(text, options);
 }
 
 export function createEmptyHeading() {
@@ -208,6 +234,14 @@ export function duplicateTab(tabName: string) {
 
 export function goToTab(tabName: string) {
   cy.findByRole("tab", { name: tabName }).click();
+}
+
+export function assertTabSelected(tabName: string) {
+  cy.findByRole("tab", { name: tabName }).should(
+    "have.attr",
+    "aria-selected",
+    "true",
+  );
 }
 
 export function moveDashCardToTab({
@@ -260,9 +294,22 @@ export function resizeDashboardCard({
   });
 }
 
-export function toggleDashboardInfoSidebar() {
+/** Opens the dashboard info sidesheet */
+export function openDashboardInfoSidebar() {
   dashboardHeader().icon("info").click();
+  return sidesheet();
 }
+/** Closes the dashboard info sidesheet */
+export function closeDashboardInfoSidebar() {
+  sidesheet().findByLabelText("Close").click();
+}
+export const openDashboardSettingsSidebar = () => {
+  dashboardHeader().icon("ellipsis").click();
+  popover().findByText("Edit settings").click();
+};
+export const closeDashboardSettingsSidebar = () => {
+  sidesheet().findByLabelText("Close").click();
+};
 
 export function openDashboardMenu() {
   dashboardHeader().findByLabelText("Move, trash, and more…").click();

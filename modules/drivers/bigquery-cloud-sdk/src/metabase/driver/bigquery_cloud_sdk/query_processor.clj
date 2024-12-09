@@ -3,10 +3,10 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common :as driver.common]
-   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
@@ -25,8 +25,18 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
-   (com.google.cloud.bigquery Field$Mode FieldValue)
-   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (com.google.cloud.bigquery
+    Field
+    Field$Mode
+    FieldValue
+    FieldValueList)
+   (java.time
+    LocalDate
+    LocalDateTime
+    LocalTime
+    OffsetDateTime
+    OffsetTime
+    ZonedDateTime)
    (metabase.driver.common.parameters FieldFilter)))
 
 (set! *warn-on-reflection* true)
@@ -74,52 +84,83 @@
 
 (defmulti parse-result-of-type
   "Parse the values that come back in results of a BigQuery query based on their column type."
-  {:added "0.41.0" :arglists '([column-type column-mode timezone-id v])}
-  (fn [column-type _ _ _] column-type))
+  {:added "0.41.0" :arglists '([column-type column-mode timezone-id field v])}
+  (fn [column-type _ _ _ _] column-type))
+
+(defn- repeated-values [column-mode v]
+  (cond
+    (= "REPEATED" column-mode) ; legacy API
+    (for [result v
+          ^java.util.Map$Entry entry result]
+      (.getValue entry))
+
+    (= Field$Mode/REPEATED column-mode) ; newer API
+    (for [^FieldValue arr-v v]
+      (.getValue arr-v))))
 
 (defn- parse-value
   [column-mode v parse-fn]
   ;; For results from a query like `SELECT [1,2]`, BigQuery sets the column-mode to `REPEATED` and wraps the column in an ArrayList,
   ;; with ArrayMap entries, like: `ArrayList(ArrayMap("v", 1), ArrayMap("v", 2))`
-  (cond
-    (= "REPEATED" column-mode) ; legacy API
-    (for [result v
-          ^java.util.Map$Entry entry result]
-      (parse-fn (.getValue entry)))
-
-    (= Field$Mode/REPEATED column-mode) ; newer API
-    (for [^FieldValue arr-v v]
-      (parse-fn (.getValue arr-v)))
-
-    :else
+  (if-let [values (repeated-values column-mode v)]
+    (for [v values]
+      (parse-fn v))
     (parse-fn v)))
 
 (defmethod parse-result-of-type :default
-  [_column-type column-mode _ v]
+  [_column-type column-mode _ _ v]
   (parse-value column-mode v identity))
 
+(defmethod parse-result-of-type "RECORD"
+  [column-type column-mode timezone-id ^Field field ^FieldValueList v]
+  (if-let [values (repeated-values column-mode v)]
+    (for [v values]
+      (parse-result-of-type
+       column-type
+       nil
+       timezone-id
+       field
+       v))
+    (let [subfields (.getSubFields field)]
+      (into
+       {}
+       (keep (fn [[^Long idx ^Field subfield]]
+               (let [subname (.getName subfield)
+                     result (let [parsed-value (when-let [subvalue (some-> v (.get idx) .getValue)]
+                                                 (parse-result-of-type
+                                                  (.. subfield getType name)
+                                                  (.getMode subfield)
+                                                  timezone-id
+                                                  subfield
+                                                  subvalue))]
+                              (cond-> parsed-value
+                                (seq? parsed-value) not-empty))]
+                 (when result
+                   [(keyword subname) result]))))
+       (m/indexed subfields)))))
+
 (defmethod parse-result-of-type "STRING"
-  [_a column-mode _b v]
+  [_a column-mode _b _ v]
   (parse-value column-mode v identity))
 
 (defmethod parse-result-of-type "BOOLEAN"
-  [_ column-mode _ v]
+  [_ column-mode _ _ v]
   (parse-value column-mode v #(Boolean/parseBoolean %)))
 
 (defmethod parse-result-of-type "FLOAT"
-  [_ column-mode _ v]
+  [_ column-mode _ _ v]
   (parse-value column-mode v #(Double/parseDouble %)))
 
 (defmethod parse-result-of-type "INTEGER"
-  [_ column-mode _ v]
+  [_ column-mode _ _ v]
   (parse-value column-mode v #(Long/parseLong %)))
 
 (defmethod parse-result-of-type "NUMERIC"
-  [_ column-mode _ v]
+  [_ column-mode _ _ v]
   (parse-value column-mode v bigdec))
 
 (defmethod parse-result-of-type "BIGNUMERIC"
-  [_column-type column-mode _timezone-id v]
+  [_column-type column-mode _timezone-id _ v]
   (parse-value column-mode v bigdec))
 
 (defn- parse-timestamp-str [timezone-id s]
@@ -130,19 +171,19 @@
     (u.date/parse s timezone-id)))
 
 (defmethod parse-result-of-type "DATE"
-  [_ column-mode _timezone-id v]
+  [_ column-mode _timezone-id _ v]
   (parse-value column-mode v u.date/parse))
 
 (defmethod parse-result-of-type "DATETIME"
-  [_ column-mode _timezone-id v]
+  [_ column-mode _timezone-id _ v]
   (parse-value column-mode v u.date/parse))
 
 (defmethod parse-result-of-type "TIMESTAMP"
-  [_ column-mode timezone-id v]
+  [_ column-mode timezone-id _ v]
   (parse-value column-mode v (partial parse-timestamp-str timezone-id)))
 
 (defmethod parse-result-of-type "TIME"
-  [_ column-mode timezone-id v]
+  [_ column-mode timezone-id _ v]
   (parse-value column-mode v (fn [v] (u.date/parse v timezone-id))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -237,6 +278,16 @@
 
     base-type
     (base-type->temporal-type base-type)))
+
+(defmethod temporal-type :case
+  [[_case & rezt]]
+  ;; Following logic for picking a type is taken from
+  ;; the [[metabase.query-processor.middleware.annotate/infer-expression-type]].
+  (loop [[cond-or-else expr & rezt*] rezt]
+    (when (and expr (not= :else cond-or-else))
+      (if-some [t (temporal-type expr)]
+        t
+        (recur rezt*)))))
 
 (defmethod temporal-type :default
   [x]
@@ -593,6 +644,10 @@
       (should-qualify-identifier? identifier) update-identifier-prefix-components
       true                                    (vary-meta assoc ::do-not-qualify? true))))
 
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk ::sql.qp/nfc-path]
+  [_driver [_ nfc-path]]
+  nfc-path)
+
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
   [driver [_field _id-or-name {::add/keys [source-table], :as _opts} :as field-clause]]
   (let [parent-method (get-method sql.qp/->honeysql [:sql :field])]
@@ -937,11 +992,6 @@
 (defmethod sql.qp/quote-style :bigquery-cloud-sdk
   [_driver]
   :mysql)
-
-;; convert LocalDate to an OffsetDateTime in UTC since BigQuery doesn't handle LocalDates as we'd like
-(defmethod driver.sql/->prepared-substitution [:bigquery-cloud-sdk LocalDate]
-  [driver t]
-  (driver.sql/->prepared-substitution driver (t/offset-date-time t (t/local-time 0) (t/zone-offset 0))))
 
 (mu/defmethod sql.params.substitution/->replacement-snippet-info [:bigquery-cloud-sdk FieldFilter]
   [driver                            :- :keyword

@@ -1,21 +1,17 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useMount } from "react-use";
 import _ from "underscore";
 
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
-import { getAuthConfiguration } from "embedding-sdk/hooks/private/get-auth-configuration";
-import { getErrorMessage } from "embedding-sdk/lib/user-warnings/constants";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import { initAuth } from "embedding-sdk/store/auth";
+import { setFetchRefreshTokenFn } from "embedding-sdk/store/reducer";
 import {
-  setFetchRefreshTokenFn,
-  setLoginStatus,
-} from "embedding-sdk/store/reducer";
-import { getLoginStatus } from "embedding-sdk/store/selectors";
+  getFetchRefreshTokenFn,
+  getLoginStatus,
+} from "embedding-sdk/store/selectors";
 import type { SDKConfig } from "embedding-sdk/types";
 import api from "metabase/lib/api";
-import { useSelector } from "metabase/lib/redux";
-import { refreshSiteSettings } from "metabase/redux/settings";
-import { refreshCurrentUser } from "metabase/redux/user";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import registerVisualizations from "metabase/visualizations/register";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
@@ -25,13 +21,43 @@ interface InitDataLoaderParameters {
 }
 
 export const useInitData = ({ config }: InitDataLoaderParameters) => {
+  const { allowConsoleLog = true } = config;
+
+  // react calls some lifecycle hooks twice in dev mode, the auth init fires some http requests and when it's called twice,
+  // it fires them twice as well, making debugging harder as they show up twice in the network tab and in the logs
+  const hasBeenInitialized = useRef(false);
+
   const dispatch = useSdkDispatch();
 
   const loginStatus = useSdkSelector(getLoginStatus);
-  const appName = useSelector(getApplicationName);
+  const fetchRefreshTokenFnFromStore = useSdkSelector(getFetchRefreshTokenFn);
+
+  // This is outside of a useEffect otherwise calls done on the first render could use the wrong value
+  // This is the case for example for the locale json files
+  if (api.basename !== config.metabaseInstanceUrl) {
+    api.basename = config.metabaseInstanceUrl;
+  }
 
   useEffect(() => {
+    if (config.fetchRequestToken !== fetchRefreshTokenFnFromStore) {
+      // This needs to be a useEffect to avoid the `Cannot update a component XX while rendering a different component` error
+      dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));
+    }
+  }, [config.fetchRequestToken, fetchRefreshTokenFnFromStore, dispatch]);
+
+  useMount(() => {
+    if (hasBeenInitialized.current) {
+      return;
+    }
+    hasBeenInitialized.current = true;
+
     registerVisualizationsOnce();
+
+    // Note: this check is not actually needed in prod, but some of our tests start with a loginStatus already initialized
+    // and they don't mock the network requests so the tests fail
+    if (loginStatus.status === "uninitialized") {
+      dispatch(initAuth(config));
+    }
 
     const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
     api.requestClient = {
@@ -39,72 +65,12 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
       version: EMBEDDING_SDK_VERSION,
     };
 
-    // eslint-disable-next-line no-console
-    console.log(
-      // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-      `Using Metabase Embedding SDK, version ${EMBEDDING_SDK_VERSION}`,
-    );
-  }, []);
-
-  useEffect(() => {
-    dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));
-  }, [dispatch, config.fetchRequestToken]);
-
-  useEffect(() => {
-    if (loginStatus.status !== "uninitialized") {
-      return;
-    }
-
-    api.basename = config.metabaseInstanceUrl;
-
-    const authErrorMessage = getAuthConfiguration(config, dispatch, appName);
-
-    if (authErrorMessage) {
-      dispatch(
-        setLoginStatus({
-          status: "error",
-          error: new Error(authErrorMessage),
-        }),
+    if (allowConsoleLog) {
+      // eslint-disable-next-line no-console
+      console.log(
+        // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+        `Using Metabase Embedding SDK, version ${EMBEDDING_SDK_VERSION}`,
       );
     }
-  }, [appName, config, dispatch, loginStatus.status]);
-
-  useEffect(() => {
-    if (loginStatus.status === "validated") {
-      const fetchData = async () => {
-        dispatch(setLoginStatus({ status: "loading" }));
-
-        try {
-          const [userResponse, siteSettingsResponse] = await Promise.all([
-            dispatch(refreshCurrentUser()),
-            dispatch(refreshSiteSettings({})),
-          ]);
-
-          if (
-            userResponse.meta.requestStatus === "rejected" ||
-            siteSettingsResponse.meta.requestStatus === "rejected"
-          ) {
-            dispatch(
-              setLoginStatus({
-                status: "error",
-                error: new Error(getErrorMessage("COULD_NOT_AUTHENTICATE")),
-              }),
-            );
-            return;
-          }
-
-          dispatch(setLoginStatus({ status: "success" }));
-        } catch (error) {
-          dispatch(
-            setLoginStatus({
-              status: "error",
-              error: new Error(getErrorMessage("COULD_NOT_AUTHENTICATE")),
-            }),
-          );
-        }
-      };
-
-      fetchData();
-    }
-  }, [dispatch, loginStatus.status]);
+  });
 };

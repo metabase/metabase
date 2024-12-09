@@ -19,8 +19,8 @@ import {
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-const { NativeQueryEditor } = jest.requireActual(
-  "metabase/query_builder/components/NativeQueryEditor",
+const { AceEditorInner } = jest.requireActual(
+  "metabase/query_builder/components/NativeQueryEditor/AceEditor/AceEditor.tsx",
 );
 
 const TEST_DB = createSampleDatabase();
@@ -63,6 +63,7 @@ const setup = async ({
   });
   const metadata = getMetadata(storeInitialState);
   const question = checkNotNull(metadata.question(card.id));
+  // eslint-disable-next-line no-restricted-syntax
   const query = question.legacyQuery({ useStructuredQuery: true });
   const DatasetQueryEditor = await importDatasetQueryEditor();
   const onSetDatabaseId = jest.fn();
@@ -109,7 +110,7 @@ describe("DatasetQueryEditor", () => {
     jest.unmock("metabase/query_builder/components/NativeQueryEditor");
 
     jest
-      .spyOn(NativeQueryEditor.prototype, "loadAceEditor")
+      .spyOn(AceEditorInner.prototype, "loadAceEditor")
       .mockImplementation(_.noop);
   });
 

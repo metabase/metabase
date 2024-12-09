@@ -10,7 +10,6 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import * as domUtils from "metabase/lib/dom";
 import type { VersionInfoRecord } from "metabase-types/api";
 import {
-  createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
   createMockVersion,
@@ -53,7 +52,7 @@ const setup = ({
   const [latest, ...older] = versions;
 
   setupPropertiesEndpoints(createMockSettings());
-  setupSettingsEndpoints([createMockSettingDefinition()]);
+  setupSettingsEndpoints([]);
 
   const mockState = createMockState({
     settings: mockSettings({

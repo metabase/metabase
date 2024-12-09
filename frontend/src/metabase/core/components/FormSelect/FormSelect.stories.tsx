@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import { Form, FormProvider } from "metabase/forms";
 
@@ -15,7 +15,7 @@ export default {
   component: FormSelect,
 };
 
-const Template: ComponentStory<typeof FormSelect> = args => {
+const Template: StoryFn<typeof FormSelect> = args => {
   const initialValues = { value: undefined };
   const handleSubmit = () => undefined;
 
@@ -28,15 +28,21 @@ const Template: ComponentStory<typeof FormSelect> = args => {
   );
 };
 
-export const Default = Template.bind({});
-Default.args = {
-  title: "Title",
-  placeholder: "Use default",
+export const Default = {
+  render: Template,
+
+  args: {
+    title: "Title",
+    placeholder: "Use default",
+  },
 };
 
-export const WithDescription = Template.bind({});
-WithDescription.args = {
-  title: "Title",
-  placeholder: "Use default",
-  description: "Description",
+export const WithDescription = {
+  render: Template,
+
+  args: {
+    title: "Title",
+    placeholder: "Use default",
+    description: "Description",
+  },
 };

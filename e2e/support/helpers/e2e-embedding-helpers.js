@@ -15,8 +15,9 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  * {@link QuestionResource} or {@link DashboardResource}
  * @property {object} params
  *
- * @typedef {object} HiddenFilters
- * @property {string} hide_parameters
+ * @typedef {import("metabase/public/lib/types").EmbeddingAdditionalHashOptions} EmbeddingAdditionalHashOptions
+ *
+ * @typedef {EmbeddingAdditionalHashOptions['hide_parameters']} HiddenFilters
  *
  * @typedef {object} PageStyle
  * @property {boolean} [bordered]
@@ -29,7 +30,13 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  * Programmatically generate token and visit the embedded page for a question or a dashboard
  *
  * @param {EmbedPayload} payload - The {@link EmbedPayload} we pass to this function
- * @param {{[setFilters]: object, pageStyle: PageStyle, [hideFilters]: string[]}} options
+ * @param {object=} options
+ * @param {object} [options.setFilters]
+ * @param {PageStyle} options.pageStyle
+ * @param {object} options.additionalHashOptions
+ * @param {string} [options.additionalHashOptions.locale]
+ * @param {string[]} [options.additionalHashOptions.hideFilters]
+ * @param {object} [options.qs]
  *
  * @example
  * visitEmbeddedPage(payload, {
@@ -38,9 +45,43 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  *   hideFilters: ["id", "source"]
  * });
  */
-export function visitEmbeddedPage(
+export function visitEmbeddedPage(payload, options) {
+  getEmbeddedPageUrl(payload, options).then(urlOptions => {
+    // Always visit embedded page logged out
+    cy.signOut();
+
+    cy.visit(urlOptions);
+  });
+}
+
+/**
+ * Programmatically generate token for the embedded page for a question or a dashboard
+ *
+ * @param {EmbedPayload} payload - The {@link EmbedPayload} we pass to this function
+ * @param {object} options
+ * @param {object} [options.setFilters]
+ * @param {PageStyle} options.pageStyle
+ * @param {object} options.additionalHashOptions
+ * @param {string} [options.additionalHashOptions.locale]
+ * @param {string[]} [options.additionalHashOptions.hideFilters]
+ * @param {object} [options.qs]
+ *
+ * @example
+ * getEmbeddedPageUrl(payload, {
+ *   setFilters: {id: 92, source: "Organic"},
+ *   pageStyle: {titled: true},
+ *   hideFilters: ["id", "source"]
+ * });
+ */
+export function getEmbeddedPageUrl(
   payload,
-  { setFilters = {}, hideFilters = [], pageStyle = {}, onBeforeLoad } = {},
+  {
+    setFilters = {},
+    additionalHashOptions: { hideFilters = [], locale } = {},
+    pageStyle = {},
+    onBeforeLoad,
+    qs,
+  } = {},
 ) {
   const jwtSignLocation = "e2e/support/external/e2e-jwt-sign.js";
 
@@ -52,25 +93,28 @@ export function visitEmbeddedPage(
   const stringifiedPayload = JSON.stringify(payloadWithExpiration);
   const signTransaction = `node  ${jwtSignLocation} '${stringifiedPayload}' ${METABASE_SECRET_KEY}`;
 
-  cy.exec(signTransaction).then(({ stdout: tokenizedQuery }) => {
+  return cy.exec(signTransaction).then(({ stdout: tokenizedQuery }) => {
     const embeddableObject = getEmbeddableObject(payload);
     const hiddenFilters = getHiddenFilters(hideFilters);
     const urlRoot = `/embed/${embeddableObject}/${tokenizedQuery}`;
-    const urlHash = getHash(pageStyle, hiddenFilters);
+    const urlHash = getHash(
+      {
+        ...pageStyle,
+        ...(locale ? { locale } : {}),
+      },
+      hiddenFilters,
+    );
 
-    // Always visit embedded page logged out
-    cy.signOut();
-
-    cy.visit({
+    return {
       url: urlRoot,
-      qs: setFilters,
+      qs: { ...setFilters, ...qs },
       onBeforeLoad: window => {
         onBeforeLoad?.(window);
         if (urlHash) {
           window.location.hash = urlHash;
         }
       },
-    });
+    };
   });
 
   /**
@@ -87,13 +131,13 @@ export function visitEmbeddedPage(
   /**
    * Get the URL hash from the page style and/or hidden filters parameters
    *
-   * @param {PageStyle} pageStyle
+   * @param {PageStyle & EmbeddingAdditionalHashOptions['locale']} hashOptions
    * @param {HiddenFilters} hiddenFilters
    *
    * @returns string
    */
-  function getHash(pageStyle, hiddenFilters) {
-    return new URLSearchParams({ ...pageStyle, ...hiddenFilters }).toString();
+  function getHash(hashOptions, hiddenFilters) {
+    return new URLSearchParams({ ...hashOptions, ...hiddenFilters }).toString();
   }
 
   /**
@@ -107,16 +151,6 @@ export function visitEmbeddedPage(
   }
 }
 
-export function getIframeUrl() {
-  modal().findByText("Preview").click();
-
-  return cy.document().then(doc => {
-    const iframe = doc.querySelector("iframe");
-
-    return iframe.src;
-  });
-}
-
 /**
  * Grab an iframe `src` via UI and open it,
  * but make sure user is signed out.
@@ -125,6 +159,16 @@ export function visitIframe() {
   getIframeUrl().then(iframeUrl => {
     cy.signOut();
     cy.visit(iframeUrl);
+  });
+}
+
+function getIframeUrl() {
+  modal().findByText("Preview").click();
+
+  return cy.document().then(doc => {
+    const iframe = doc.querySelector("iframe");
+
+    return iframe.src;
   });
 }
 
@@ -165,7 +209,7 @@ export function openStaticEmbeddingModal({
     cy.findByRole("button", { name: "Save" }).click();
   }
 
-  cy.findByTestId("sharing-pane-static-embed-button").click();
+  cy.findByText("Static embedding").click();
 
   if (acceptTerms) {
     cy.findByTestId("accept-legalese-terms-button").click();
@@ -258,6 +302,12 @@ export function createPublicDashboardLink(dashboardId) {
   return cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
 }
 
+/**
+ * @param {Object} options
+ * @param {string} options.url
+ * @param {Object} options.qs
+ * @param {Function} [options.onBeforeLoad]
+ */
 export const visitFullAppEmbeddingUrl = ({ url, qs, onBeforeLoad }) => {
   cy.visit({
     url,

@@ -1,6 +1,6 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
-import type { ComponentStory, Story } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 import { type ComponentProps, useEffect } from "react";
 import { Provider } from "react-redux";
 
@@ -9,7 +9,6 @@ import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { waitTimeContext } from "metabase/context/wait-time";
 import LegacyTooltip from "metabase/core/components/Tooltip";
 import { publicReducers } from "metabase/reducers-public";
 import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
@@ -32,14 +31,16 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
+import {
+  PublicOrEmbeddedDashboardView,
+  type PublicOrEmbeddedDashboardViewProps,
+} from "./PublicOrEmbeddedDashboardView";
 
 export default {
   title: "embed/PublicOrEmbeddedDashboardView",
   component: PublicOrEmbeddedDashboardView,
   decorators: [
     ReduxDecorator,
-    FasterExplicitSizeUpdateDecorator,
     WaitForResizeToStopDecorator,
     MockIsEmbeddingDecorator,
   ],
@@ -48,7 +49,7 @@ export default {
   },
 };
 
-function ReduxDecorator(Story: Story) {
+function ReduxDecorator(Story: StoryFn) {
   return (
     <Provider store={store}>
       <Story />
@@ -56,21 +57,12 @@ function ReduxDecorator(Story: Story) {
   );
 }
 
-function FasterExplicitSizeUpdateDecorator(Story: Story) {
-  return (
-    <waitTimeContext.Provider value={0}>
-      <Story />
-    </waitTimeContext.Provider>
-  );
-}
-
 /**
  * This is an arbitrary number, it should be big enough to pass CI tests.
- * This value works together with FasterExplicitSizeUpdateDecorator which
- * make sure we finish resizing any ExplicitSize components the fastest.
+ * This works because we set delays for ExplicitSize to 0 in storybook.
  */
 const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1000;
-function WaitForResizeToStopDecorator(Story: Story) {
+function WaitForResizeToStopDecorator(Story: StoryFn) {
   const asyncCallback = createAsyncCallback();
   useEffect(() => {
     setTimeout(asyncCallback, TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING);
@@ -84,7 +76,7 @@ declare global {
     overrideIsWithinIframe?: boolean;
   }
 }
-function MockIsEmbeddingDecorator(Story: Story) {
+function MockIsEmbeddingDecorator(Story: StoryFn) {
   window.overrideIsWithinIframe = true;
   return <Story />;
 }
@@ -167,7 +159,7 @@ function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
+const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
   return <PublicOrEmbeddedDashboardView {...args} />;
 };
 
@@ -188,102 +180,138 @@ const defaultArgs: Partial<
   ],
 };
 
-// Light theme
-export const LightThemeDefault = Template.bind({});
-LightThemeDefault.args = defaultArgs;
-
-export const LightThemeScroll = Template.bind({});
-LightThemeScroll.args = {
-  ...defaultArgs,
-  dashboard: createDashboard({ hasScroll: true }),
-};
-LightThemeScroll.decorators = [ScrollDecorator];
-
-export const LightThemeNoBackgroundDefault = Template.bind({});
-LightThemeNoBackgroundDefault.args = {
-  ...defaultArgs,
-  background: false,
+export const LightThemeDefault = {
+  render: Template,
+  args: defaultArgs,
 };
 
-export const LightThemeNoBackgroundScroll = Template.bind({});
-LightThemeNoBackgroundScroll.args = {
-  ...defaultArgs,
-  background: false,
-  dashboard: createDashboard({ hasScroll: true }),
-};
-LightThemeNoBackgroundScroll.decorators = [ScrollDecorator];
+export const LightThemeScroll = {
+  render: Template,
 
-// Dark theme
-export const DarkThemeDefault = Template.bind({});
-DarkThemeDefault.args = {
-  ...defaultArgs,
-  theme: "night",
-};
-DarkThemeDefault.decorators = [DarkBackgroundDecorator];
+  args: {
+    ...defaultArgs,
+    dashboard: createDashboard({ hasScroll: true }),
+  },
 
-export const DarkThemeScroll = Template.bind({});
-DarkThemeScroll.args = {
-  ...defaultArgs,
-  theme: "night",
-  dashboard: createDashboard({ hasScroll: true }),
+  decorators: [ScrollDecorator],
 };
-DarkThemeScroll.decorators = [DarkBackgroundDecorator, ScrollDecorator];
 
-export const DarkThemeNoBackgroundDefault = Template.bind({});
-DarkThemeNoBackgroundDefault.args = {
-  ...defaultArgs,
-  theme: "night",
-  background: false,
-};
-DarkThemeNoBackgroundDefault.decorators = [DarkBackgroundDecorator];
+export const LightThemeNoBackgroundDefault = {
+  render: Template,
 
-export const DarkThemeNoBackgroundScroll = Template.bind({});
-DarkThemeNoBackgroundScroll.args = {
-  ...defaultArgs,
-  theme: "night",
-  background: false,
-  dashboard: createDashboard({ hasScroll: true }),
+  args: {
+    ...defaultArgs,
+    background: false,
+  },
 };
-DarkThemeNoBackgroundScroll.decorators = [
-  DarkBackgroundDecorator,
-  ScrollDecorator,
-];
 
-// Transparent theme
-export const TransparentThemeDefault = Template.bind({});
-TransparentThemeDefault.args = {
-  ...defaultArgs,
-  theme: "transparent",
-};
-TransparentThemeDefault.decorators = [LightBackgroundDecorator];
+export const LightThemeNoBackgroundScroll = {
+  render: Template,
 
-export const TransparentThemeScroll = Template.bind({});
-TransparentThemeScroll.args = {
-  ...defaultArgs,
-  theme: "transparent",
-  dashboard: createDashboard({ hasScroll: true }),
-};
-TransparentThemeScroll.decorators = [LightBackgroundDecorator, ScrollDecorator];
+  args: {
+    ...defaultArgs,
+    background: false,
+    dashboard: createDashboard({ hasScroll: true }),
+  },
 
-export const TransparentThemeNoBackgroundDefault = Template.bind({});
-TransparentThemeNoBackgroundDefault.args = {
-  ...defaultArgs,
-  theme: "transparent",
-  background: false,
+  decorators: [ScrollDecorator],
 };
-TransparentThemeNoBackgroundDefault.decorators = [LightBackgroundDecorator];
 
-export const TransparentThemeNoBackgroundScroll = Template.bind({});
-TransparentThemeNoBackgroundScroll.args = {
-  ...defaultArgs,
-  theme: "transparent",
-  background: false,
-  dashboard: createDashboard({ hasScroll: true }),
+export const DarkThemeDefault = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    theme: "night",
+  },
+
+  decorators: [DarkBackgroundDecorator],
 };
-TransparentThemeNoBackgroundScroll.decorators = [
-  LightBackgroundDecorator,
-  ScrollDecorator,
-];
+
+export const DarkThemeScroll = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    theme: "night",
+    dashboard: createDashboard({ hasScroll: true }),
+  },
+
+  decorators: [DarkBackgroundDecorator, ScrollDecorator],
+};
+
+export const DarkThemeNoBackgroundDefault = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    theme: "night",
+    background: false,
+  },
+
+  decorators: [DarkBackgroundDecorator],
+};
+
+export const DarkThemeNoBackgroundScroll = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    theme: "night",
+    background: false,
+    dashboard: createDashboard({ hasScroll: true }),
+  },
+
+  decorators: [DarkBackgroundDecorator, ScrollDecorator],
+};
+
+export const TransparentThemeDefault = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    theme: "transparent",
+  },
+
+  decorators: [LightBackgroundDecorator],
+};
+
+export const TransparentThemeScroll = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    theme: "transparent",
+    dashboard: createDashboard({ hasScroll: true }),
+  },
+
+  decorators: [LightBackgroundDecorator, ScrollDecorator],
+};
+
+export const TransparentThemeNoBackgroundDefault = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    theme: "transparent",
+    background: false,
+  },
+
+  decorators: [LightBackgroundDecorator],
+};
+
+export const TransparentThemeNoBackgroundScroll = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    theme: "transparent",
+    background: false,
+    dashboard: createDashboard({ hasScroll: true }),
+  },
+
+  decorators: [LightBackgroundDecorator, ScrollDecorator],
+};
 
 // Other components compatibility test
 export function ComponentCompatibility() {
@@ -367,43 +395,57 @@ export function ComponentCompatibility() {
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(ObjectDetail);
 
-export const CardVisualizationsLightTheme = Template.bind({});
-CardVisualizationsLightTheme.args = {
-  ...defaultArgs,
-  dashboard: createDashboard({
-    dashcards: [
-      createMockDashboardCard({
-        id: DASHCARD_TABLE_ID,
-        dashboard_tab_id: TAB_ID,
-        card: createMockCard({
-          id: CARD_TABLE_ID,
-          name: "Table detail",
-          display: "object",
+export const CardVisualizationsLightTheme = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    dashboard: createDashboard({
+      dashcards: [
+        createMockDashboardCard({
+          id: DASHCARD_TABLE_ID,
+          dashboard_tab_id: TAB_ID,
+          card: createMockCard({
+            id: CARD_TABLE_ID,
+            name: "Table detail",
+            display: "object",
+          }),
+          size_x: 12,
+          size_y: 8,
         }),
-        size_x: 12,
-        size_y: 8,
-      }),
-    ],
-  }),
+      ],
+    }),
+  },
 };
 
-export const CardVisualizationsDarkTheme = Template.bind({});
-CardVisualizationsDarkTheme.args = {
-  ...CardVisualizationsLightTheme.args,
-  theme: "night",
+export const CardVisualizationsDarkTheme = {
+  render: Template,
+
+  args: {
+    ...CardVisualizationsLightTheme.args,
+    theme: "night",
+  },
 };
 
-const EXPLICIT_SIZE_WAIT_TIME = 300;
-function ScrollDecorator(Story: Story) {
+function ScrollDecorator(Story: StoryFn) {
+  const asyncCallback = createAsyncCallback();
+
   useEffect(() => {
-    setTimeout(() => {
-      document.querySelector("[data-testid=embed-frame]")?.scrollBy(0, 9999);
-    }, EXPLICIT_SIZE_WAIT_TIME);
-  }, []);
+    const scrollContainer = document.querySelector("[data-testid=embed-frame]");
+    const intervalId = setInterval(() => {
+      const contentHeight = scrollContainer?.scrollHeight ?? 0;
+      if (contentHeight > 1000) {
+        scrollContainer?.scrollBy(0, 9999);
+        clearInterval(intervalId);
+        asyncCallback();
+      }
+    }, 100);
+  }, [asyncCallback]);
+
   return <Story />;
 }
 
-function DarkBackgroundDecorator(Story: Story) {
+function DarkBackgroundDecorator(Story: StoryFn) {
   return (
     <Box bg="#434e56" mih="100vh">
       <Story />
@@ -411,7 +453,7 @@ function DarkBackgroundDecorator(Story: Story) {
   );
 }
 
-function LightBackgroundDecorator(Story: Story) {
+function LightBackgroundDecorator(Story: StoryFn) {
   return (
     <Box bg="#ddd" mih="100vh">
       <Story />

@@ -18,14 +18,14 @@ const DatabaseClientIdDescription = (): JSX.Element | null => {
     return null;
   }
 
-  const projectId = details["project-id"] ?? "";
+  const projectId = details?.["project-id"] ?? "";
   const projectUrl = new URL(CREDENTIAL_URLS[engine]);
   projectUrl.searchParams.set("project", String(projectId));
 
   return (
     <span>
       {jt`${(
-        <ExternalLink className={CS.link} href={projectUrl.href}>
+        <ExternalLink key="link" className={CS.link} href={projectUrl.href}>
           {t`Click here`}
         </ExternalLink>
       )} to generate a Client ID and Client Secret for your project.`}{" "}

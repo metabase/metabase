@@ -40,6 +40,7 @@
 
 (defsetting database-source-dataset-name
   "The name of the test dataset this Database was created from, if any."
+  :encryption     :no
   :visibility     :internal
   :type           :string
   :database-local :only)
@@ -78,7 +79,8 @@
    [:coercion-strategy {:optional true} [:maybe ms/CoercionStrategy]]
    [:visibility-type   {:optional true} [:maybe (into [:enum] field/visibility-types)]]
    [:fk                {:optional true} [:maybe ms/KeywordOrString]]
-   [:field-comment     {:optional true} [:maybe ms/NonBlankString]]])
+   [:field-comment     {:optional true} [:maybe ms/NonBlankString]]
+   [:nested-fields     {:optional true} [:maybe [:sequential :any]]]])
 
 (def ^:private ValidFieldDefinition
   [:and FieldDefinitionSchema (ms/InstanceOfClass FieldDefinition)])
@@ -239,7 +241,7 @@
   (assert-database-name-does-not-include-driver db-name)
   (str/starts-with? table-name (db-qualified-table-name-prefix db-name)))
 
-(mu/defn db-qualified-table-name :- [:string]
+(mu/defn db-qualified-table-name :- :string
   "Return a combined table name qualified with the name of its database, suitable for use as an identifier.
   Provided for drivers where testing wackiness makes it hard to actually create separate Databases, such as Oracle,
   where this is disallowed on RDS. (Since Oracle can't create seperate DBs, we just create various tables in the same
@@ -811,5 +813,25 @@
 
     \"SELECT * FROM {{%s}}\""
   {:arglists '([driver card-template-tag-name])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti create-view-of-table!
+  "Create a new view in database.
+   The view should be a simple view of the table, like `select * from table`
+   `view-name` is the name of the new view
+   `table-name` is the name of the table.
+   `options` can have these keys
+    - `:materialized?` will be true if it should create a materialized view."
+  {:arglists '([driver database view-name table-name options])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti drop-view!
+  "Drop a view in database if it exists.
+   `view-name` is the name of the new view
+   `options` can have these keys
+    - `:materialized?` will be true if it should create a materialized view."
+  {:arglists '([driver database view-name options])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)

@@ -1,7 +1,6 @@
-import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, queryIcon } from "__support__/ui";
+import { getIcon, queryIcon, render, screen, within } from "__support__/ui";
 
 import { ClientSortableTable } from "./ClientSortableTable";
 import { Table } from "./Table";
@@ -94,6 +93,7 @@ describe("common > components > ClientSortableTable", () => {
         columns={sampleColumns}
         rows={sampleData}
         rowRenderer={renderRow}
+        locale="en-US"
       />,
     );
     expect(screen.getByText("Name")).toBeInTheDocument();
@@ -108,6 +108,7 @@ describe("common > components > ClientSortableTable", () => {
         columns={sampleColumns}
         rows={sampleData}
         rowRenderer={renderRow}
+        locale="en-US"
       />,
     );
     expect(screen.getByText("Bulbasaur")).toBeInTheDocument();
@@ -125,6 +126,7 @@ describe("common > components > ClientSortableTable", () => {
         columns={sampleColumns}
         rows={sampleData}
         rowRenderer={renderRow}
+        locale="en-US"
       />,
     );
     const sortButton = screen.getByText("Name");
@@ -188,6 +190,7 @@ describe("common > components > ClientSortableTable", () => {
         columns={sampleColumns}
         rows={sampleData}
         rowRenderer={renderRow}
+        locale="en-US"
       />,
     );
     const sortNameButton = screen.getByText("Name");
@@ -221,6 +224,7 @@ describe("common > components > ClientSortableTable", () => {
             <td colSpan={3}>No Results</td>
           </tr>
         }
+        locale="en-US"
       />,
     );
     expect(screen.getByText("Name")).toBeInTheDocument();
@@ -229,12 +233,13 @@ describe("common > components > ClientSortableTable", () => {
     expect(screen.getByText("No Results")).toBeInTheDocument();
   });
 
-  it("should allow you provide a format values when sorting", async () => {
+  it("should let you provide format values when sorting", async () => {
     render(
       <ClientSortableTable
         columns={sampleColumns}
         rows={sampleData}
         rowRenderer={renderRow}
+        locale="en-US"
         formatValueForSorting={(row, colName) => {
           if (colName === "type") {
             if (row.type === "Water") {
@@ -280,7 +285,7 @@ describe("common > components > Table", () => {
     expect(onSort).toHaveBeenCalledWith("type", "asc");
   });
 
-  it("if pageination props are passed, it should render the pagination controller.", async () => {
+  it("should render the pagination controller if pagination props are passed", async () => {
     const onPageChange = jest.fn();
 
     render(

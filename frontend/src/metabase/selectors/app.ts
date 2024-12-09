@@ -224,3 +224,6 @@ export const getCustomHomePageDashboardId = createSelector(
 export const getHasDismissedCustomHomePageToast = (state: State) => {
   return getSetting(state, "dismissed-custom-dashboard-toast");
 };
+
+export const getIsErrorDiagnosticModalOpen = (state: State) =>
+  state.app.isErrorDiagnosticsOpen;

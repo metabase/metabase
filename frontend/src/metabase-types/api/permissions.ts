@@ -69,6 +69,10 @@ export type DatabaseAccessPermissions = {
 };
 
 export type NativePermissions =
+  | NativePermissionValues
+  | { [key: SchemaName]: { [key: TableId]: NativePermissionValues } };
+
+export type NativePermissionValues =
   | DataPermissionValue.QUERY_BUILDER_AND_NATIVE
   | DataPermissionValue.QUERY_BUILDER
   | DataPermissionValue.NO

@@ -66,7 +66,7 @@ You can specify additional options via a string, e.g. `UseResultsetStreaming=0;L
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/introduction.md#grouping-your-metrics) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when Metabase syncs and scans
 
@@ -112,7 +112,6 @@ Most issues that we see when people attempt to connect to AWS Athena involve per
 This policy provides read-only permissions for data in S3. You'll need to specify any S3 buckets that you want Metabase to be able to query from _as well as_ the S3 bucket provided as part of the configuration where results are written to.
 
 There may be additional permissions required for other Athena functionality, like federated queries. For details, check out the [Athena docs](https://docs.aws.amazon.com/athena/latest/ug/security-iam-athena).
-
 
 ```json
 {
@@ -208,14 +207,14 @@ If Metabase also needs to create tables, you'll need additional AWS Glue permiss
         "glue:DeleteTable",
         "glue:CreatePartition",
         "glue:DeletePartition",
-        "glue:UpdatePartition"
+        "glue:UpdatePartition",
+        "glue:GetCatalogImportStatus"
       ],
       "Resource": "*"
     }
   ]
 }
 ```
-
 
 ## Further reading
 

@@ -1,4 +1,4 @@
-(ns metabase.driver.sql.parameters.substitute-test
+(ns ^:mb/driver-tests metabase.driver.sql.parameters.substitute-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -474,7 +474,7 @@
 ;;; ------------------------------------------- expansion tests: variables -------------------------------------------
 
 (defn- expand**
-  "Expand parameters inside a top-level native `query`. Not recursive. "
+  "Expand parameters inside a top-level native `query`. Not recursive."
   [{:keys [parameters], inner :native, :as query}]
   (driver/with-driver :h2
     (mt/with-metadata-provider meta/metadata-provider
@@ -552,7 +552,7 @@
          expand*
          (dissoc :template-tags)))))
 
-(deftest expand-field-filters-test
+(deftest expand-field-filters-for-date-field-test
   (mt/with-temporary-setting-values [start-of-week :sunday]
     (testing "dimension (date/single)"
       (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?;"
@@ -642,6 +642,146 @@
       (is (= {:query  "SELECT * FROM ORDERS WHERE TOTAL > 100  AND CREATED_AT < now()"
               :params []}
              (expand-with-field-filter-param
+              "SELECT * FROM ORDERS WHERE TOTAL > 100 [[AND {{created}} #]] AND CREATED_AT < now()"
+              nil))))))
+
+(defn- expand-with-field-filter-param-on-datetime-field
+  ([field-filter-param]
+   (expand-with-field-filter-param-on-datetime-field "SELECT * FROM orders WHERE {{date}};" field-filter-param))
+
+  ([sql field-filter-param]
+   ;; TIMEZONE FIXME
+   (mt/with-clock (t/mock-clock #t "2016-06-07T12:00-00:00" (t/zone-id "UTC"))
+     (-> {:native     {:query
+                       sql
+                       :template-tags {"date" {:name         "date"
+                                               :display-name "Created At"
+                                               :type         :dimension
+                                               :widget-type  :date/all-options
+                                               :dimension    [:field (meta/id :orders :created-at) nil]}}}
+          :parameters (when field-filter-param
+                        [(merge {:target [:dimension [:template-tag "date"]]}
+                                field-filter-param)])}
+         expand*
+         (dissoc :template-tags)))))
+
+;;;; The following test is [[expand-field-filters-for-date-field-test]] adjusted to datetime field.
+(deftest expand-field-filters-for-datetime-field-test
+  (mt/with-temporary-setting-values [start-of-week :sunday]
+    (testing "dimension (date/all-options) (`on` filter with with time)"
+      (is (= {:query "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2024-08-20T10:20Z[UTC]"
+                       #t "2024-08-20T10:21Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/all-options, :value "2024-08-20T10:20:00"}))))
+    (testing "dimension (date/all-options) (`before` filter with with time)"
+      (is (= {:query "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2024-08-20T10:20Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/all-options, :value "~2024-08-20T10:20:00"}))))
+    (testing "dimension (date/all-options) (`after` filter with with time)"
+      (is (= {:query "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ?;",
+              :params [#t "2024-08-20T10:21Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/all-options, :value "2024-08-20T10:20:00~"}))))
+    (testing "dimension (date/single)"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-07-01T00:00Z[UTC]"
+                       #t "2016-07-02T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/single, :value "2016-07-01"}))))
+    (testing "dimension (date/range)"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-07-01T00:00Z[UTC]"
+                       #t "2016-08-02T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "2016-07-01~2016-08-01"}))))
+    (testing "dimension (date/month-year)"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-07-01T00:00Z[UTC]"
+                       #t "2016-08-01T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/month-year, :value "2016-07"}))))
+    (testing "dimension (date/quarter-year)"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-01-01T00:00Z[UTC]"
+                       #t "2016-04-01T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/quarter-year, :value "Q1-2016"}))))
+    (testing "dimension (date/all-options, before)"
+      (is (= {:query "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;", :params [#t "2016-07-01T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/all-options, :value "~2016-07-01"}))))
+    (testing "dimension (date/all-options, after)"
+      (is (= {:query "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ?;", :params [#t "2016-07-02T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/all-options, :value "2016-07-01~"}))))
+    (testing "relative date — 'yesterday'"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-06-06T00:00Z[UTC]"
+                       #t "2016-06-07T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "yesterday"}))))
+    (testing "relative date — 'past7days'"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-05-31T00:00Z[UTC]"
+                       #t "2016-06-07T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "past7days"}))))
+    (testing "relative date — 'past30days'"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-05-08T00:00Z[UTC]"
+                       #t "2016-06-07T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "past30days"}))))
+    (testing "relative date — 'thisweek'"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-06-05T00:00Z[UTC]"
+                       #t "2016-06-12T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "thisweek"}))))
+    (testing "relative date — 'thismonth'"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-06-01T00:00Z[UTC]"
+                       #t "2016-07-01T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "thismonth"}))))
+    (testing "relative date — 'thisyear'"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-01-01T00:00Z[UTC]"
+                       #t "2017-01-01T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "thisyear"}))))
+    (testing "relative date — 'lastweek'"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-05-29T00:00Z[UTC]"
+                       #t "2016-06-05T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "lastweek"}))))
+    (testing "relative date — 'lastmonth'"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-05-01T00:00Z[UTC]"
+                       #t "2016-06-01T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "lastmonth"}))))
+    (testing "relative date — 'lastyear'"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2015-01-01T00:00Z[UTC]"
+                       #t "2016-01-01T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "lastyear"}))))
+    (testing "dimension with no value — just replace with an always true clause (e.g. 'WHERE 1 = 1')"
+      (is (= {:query  "SELECT * FROM orders WHERE 1 = 1;"
+              :params []}
+             (expand-with-field-filter-param-on-datetime-field nil))))
+    (testing "dimension — number — should get parsed to Number"
+      (is (= {:query  "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" = 100;"
+              :params []}
+             (expand-with-field-filter-param-on-datetime-field {:type :number, :value "100"}))))
+    (testing "dimension — text"
+      (is (= {:query  "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" = ?;"
+              :params ["100"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :text, :value "100"}))))
+    (testing (str "*OPTIONAL* Field Filter params should not get replaced with 1 = 1 if the param is not present "
+                  "(#5541, #9489). *Optional params should be emitted entirely.")
+      (is (= {:query  "SELECT * FROM ORDERS WHERE TOTAL > 100  AND CREATED_AT < now()"
+              :params []}
+             (expand-with-field-filter-param-on-datetime-field
               "SELECT * FROM ORDERS WHERE TOTAL > 100 [[AND {{created}} #]] AND CREATED_AT < now()"
               nil))))))
 

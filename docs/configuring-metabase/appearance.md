@@ -58,7 +58,7 @@ You can customize the colors that Metabase uses throughout the app:
 
 ![Chart colors](./images/chart-colors.png)
 
-You can choose up to 24 hex values. If you choose fewer than 24 colors, Metabase will auto-generate colors to fill in the rest of the values.
+You can choose up to 24 hex values. If you choose fewer than 24 colors, Metabase will auto-generate colors to fill in the rest of the values. And don't bother ordering the colors here, as their order doesn't apply to the order of colors for series on charts. When building a chart, Metabase will select colors to make each series easy to distinguish.
 
 Custom colors are unavailable for:
 
@@ -167,6 +167,6 @@ Metabase will display this illustration when searches don't return any results.
 
 ## Further reading
 
-- [Customer-facing analytics](https://www.metabase.com/learn/customer-facing-analytics).
+- [Customer-facing analytics](https://www.metabase.com/learn/metabase-basics/embedding).
 - [Embedding introduction](../embedding/start.md).
-- [Brand your Metabase](https://www.metabase.com/learn/embedding/brand).
+- [Brand your Metabase](https://www.metabase.com/learn/metabase-basics/embedding/brand).

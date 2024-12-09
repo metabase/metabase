@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.email-test :as et]
    [metabase.http-client :as client]
    [metabase.models
@@ -10,14 +11,17 @@
             User]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.pulse-test :as pulse-test]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(use-fixtures :once (fixtures/initialize :notifications))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Helper Fns & Macros                                               |
@@ -31,11 +35,13 @@
 
 (defn- pulse-card-details [card]
   (-> card
-      (select-keys [:name :description :display])
+      (select-keys [:name :description :display :pivot_results])
       (update :display name)
       (update :collection_id boolean)
-      (assoc :id true, :include_csv false, :include_xls false, :format_rows true, :dashboard_card_id false,
-             :dashboard_id false, :parameter_mappings nil)))
+      (assoc :id true :include_csv false :include_xls false
+             :format_rows true :pivot_results false
+             :dashboard_card_id false
+             :dashboard_id false :parameter_mappings nil)))
 
 (defn- recipient-details [user-kwd]
   (-> user-kwd
@@ -81,7 +87,7 @@
     ;; Make this Alert actually be an alert
     (t2/update! Pulse (u/the-id alert) {:alert_condition "rows"})
     (let [alert (t2/select-one Pulse :id (u/the-id alert))]
-      (assert (pulse/is-alert? alert))
+      (assert (models.pulse/is-alert? alert))
       ;; Since Alerts do not actually go in Collections, but rather their Cards do, put the Card in the Collection
       (t2/update! Card (u/the-id card) {:collection_id (u/the-id collection)})
       (let [card (t2/select-one Card :id (u/the-id card))]
@@ -115,7 +121,7 @@
       ;; Go ahead and put all the Cards for all of the Alerts in the temp Collection
       (when (seq alerts-or-ids)
         (doseq [alert (t2/select Pulse :id [:in (set (map u/the-id alerts-or-ids))])
-                :let  [card (#'pulse/alert->card alert)]]
+                :let  [card (#'models.pulse/alert->card alert)]]
           (t2/update! Card (u/the-id card) {:collection_id (u/the-id collection)})))
       (f))))
 
@@ -133,10 +139,10 @@
 ;; authentication test on every single individual endpoint
 
 (deftest auth-tests
-  (is (= (get req.util/response-unauthentic :body)
+  (is (= (get request/response-unauthentic :body)
          (client/client :get 401 "alert")))
 
-  (is (= (get req.util/response-unauthentic :body)
+  (is (= (get request/response-unauthentic :body)
          (client/client :put 401 "alert/13"))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -286,7 +292,8 @@
                                  :updated_at    true
                                  :pulse_id      true
                                  :id            true
-                                 :created_at    true})]
+                                 :created_at    true
+                                 :channel_id    false})]
    :skip_if_empty       true
    :collection_id       false
    :collection_position nil
@@ -410,6 +417,34 @@
                (et/regex-email-bodies #"https://metabase.com/testmb"
                                       #"meets its goal"
                                       #"My question")))))))
+
+(defn- default-http-channel
+  [id]
+  {:enabled       true
+   :channel_type  "http"
+   :channel_id    id
+   :details       {}
+   :schedule_type "daily"
+   :schedule_hour 12
+   :schedule_day  nil})
+
+(deftest create-alert-with-http-channel-test
+  (testing "Creating an alert with a HTTP channel"
+    (mt/with-model-cleanup [:model/Pulse]
+      (channel.http-test/with-server [url [channel.http-test/get-200]]
+        (mt/with-temp [:model/Channel channel {:type    :channel/http
+                                               :details {:auth-method "none"
+                                                         :url         (str url (:path channel.http-test/get-200))}}
+                       :model/Card    {card-id :id} {}]
+          (let [pulse (mt/user-http-request :crowberto :post 200 "alert"
+                                            {:alert_condition  "rows"
+                                             :alert_first_only false
+                                             :card             {:id card-id, :include_csv false, :include_xls false, :dashboard_card_id nil}
+                                             :channels         [(default-http-channel (:id channel))]})]
+            (is (=? {:pulse_id     (:id pulse)
+                     :channel_type :http
+                     :channel_id   (:id channel)}
+                    (t2/select-one :model/PulseChannel :pulse_id (:id pulse))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               PUT /api/alert/:id                                               |
@@ -626,6 +661,26 @@
           (testing "but not allowed to edit the card"
             (mt/user-http-request :rasta :put 403 (alert-url alert)
                                   (dissoc (default-alert-req card pc {} []) :channels))))))))
+
+(deftest update-alert-enable-http-channel-test
+  (mt/with-temp [:model/Pulse     alert (basic-alert)
+                 :model/Card      card  {}
+                 :model/PulseCard _     (pulse-card alert card)
+                 :model/Channel   {channel-id :id} {:type    :channel/http
+                                                    :details {:auth-method "none"
+                                                              :url         "https://metabasetest.com"}}]
+    (testing "PUT /api/channel/:id can enable a HTTP channel for an alert"
+      (is (=? {:channels [{:channel_type "http"
+                           :channel_id   channel-id
+                           :enabled true}]}
+              (mt/user-http-request :crowberto :put 200 (alert-url alert)
+                                    (default-alert-req card (u/the-id alert) {:channels [(default-http-channel channel-id)]} nil))))
+
+      (testing "make sure it's in the database"
+        (is (=? {:pulse_id     (:id alert)
+                 :channel_type :http
+                 :channel_id   channel-id}
+                (t2/select-one :model/PulseChannel :pulse_id (:id alert))))))))
 
 (deftest alert-event-test
   (mt/with-premium-features #{:audit-app}

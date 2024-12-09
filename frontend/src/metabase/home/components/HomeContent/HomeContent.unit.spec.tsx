@@ -191,7 +191,6 @@ describe("HomeContent", () => {
       });
 
       expect(screen.getByText("Embedding Metabase")).toBeInTheDocument();
-      expect(screen.getByText("The TL;DR:")).toBeInTheDocument();
     });
 
     it("should not show it for non-admins even if 'embedding-homepage' is visible", async () => {
@@ -201,7 +200,6 @@ describe("HomeContent", () => {
       });
 
       expect(screen.queryByText("Embedding Metabase")).not.toBeInTheDocument();
-      expect(screen.queryByText("The TL;DR:")).not.toBeInTheDocument();
     });
 
     it("should not show it if 'embedding-homepage' is not 'visible'", async () => {
@@ -211,7 +209,6 @@ describe("HomeContent", () => {
       });
 
       expect(screen.queryByText("Embedding Metabase")).not.toBeInTheDocument();
-      expect(screen.queryByText("The TL;DR:")).not.toBeInTheDocument();
     });
   });
 });

@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.results-metadata-test
+(ns ^:mb/driver-tests metabase.query-processor.middleware.results-metadata-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -98,7 +98,11 @@
         (when-not (= :completed (:status result))
           (throw (ex-info "Query failed." result))))
       (is (= (round-to-2-decimals (default-card-results-native))
-             (-> card card-metadata round-to-2-decimals))))))
+             (-> card card-metadata round-to-2-decimals)))
+
+      ;; updated_at should not be modified when saving result metadata
+      (is (= (:updated_at card)
+             (t2/select-one-fn :updated_at :model/Card :id (u/the-id card)))))))
 
 (deftest save-result-metadata-test-2
   (testing "check that using a Card as your source doesn't overwrite the results metadata..."
@@ -204,7 +208,7 @@
                 :effective_type    :type/Date
                 :visibility_type :normal
                 :coercion_strategy nil
-                :display_name "Date"
+                :display_name "Date: Year"
                 :name         "DATE"
                 :unit         :year
                 :settings     nil

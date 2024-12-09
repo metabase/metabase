@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import HelpCard from "metabase/components/HelpCard";
 import { useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
+import { migrateToCloudGuideUrl } from "metabase/selectors/settings";
 
 import { getIsHosted } from "../../selectors";
 import { useStep } from "../../useStep";
@@ -18,7 +18,7 @@ export const CloudMigrationHelp = () => {
     <SetupCardContainer isVisible={isVisible}>
       <HelpCard
         title={t`Migrating from self-hosted?`}
-        helpUrl={MetabaseSettings.migrateToCloudGuideUrl()}
+        helpUrl={migrateToCloudGuideUrl()}
       >{t`Check out our docs for how to migrate your self-hosted instance to Cloud.`}</HelpCard>
     </SetupCardContainer>
   );

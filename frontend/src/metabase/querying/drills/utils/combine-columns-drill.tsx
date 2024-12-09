@@ -14,20 +14,13 @@ import * as Lib from "metabase-lib";
 
 export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
   question,
-  query: originalQuery,
-  stageIndex: originalStageIndex,
-  clicked,
+  drill,
 }) => {
-  const { query, stageIndex } = Lib.asReturned(
-    originalQuery,
-    originalStageIndex,
-  );
-
-  if (!clicked.column || !hasCombinations(query, stageIndex)) {
+  const { query, stageIndex, column } = Lib.combineColumnDrillDetails(drill);
+  if (!hasCombinations(query, stageIndex)) {
     return [];
   }
 
-  const column = Lib.fromLegacyColumn(query, stageIndex, clicked.column);
   const columnInfo = Lib.displayInfo(query, stageIndex, column);
 
   const DrillPopover = ({

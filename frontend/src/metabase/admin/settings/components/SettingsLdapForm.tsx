@@ -234,7 +234,7 @@ const getAttributeValues = (
     ldapAttributes.map(key => [
       key,
       defaultableAttrs.has(key)
-        ? values[key] ?? settings[key]?.default
+        ? (values[key] ?? settings[key]?.default)
         : values[key],
     ]),
   );

@@ -96,6 +96,57 @@
               (lib/order-by (meta/field-metadata :venues :id))
               lib/order-bys))))
 
+(deftest ^:parallel multiple-distinct-order-bys-test
+  (testing "Should be able to order by two distinct fields"
+    (is (=? [[:asc
+              {:lib/uuid string?}
+              [:field {:lib/uuid string?} (meta/id :venues :id)]]
+             [:asc
+              {:lib/uuid string?}
+              [:field {:lib/uuid string?} (meta/id :venues :price)]]]
+            (-> lib.tu/venues-query
+                (lib/order-by (meta/field-metadata :venues :id))
+                (lib/order-by (meta/field-metadata :venues :price))
+                lib/order-bys))))
+
+  (testing "Should be able to order by two distinct expressions"
+    (is (=? [[:asc
+              {:lib/uuid string?}
+              [:expression
+               {:lib/uuid string?
+                :base-type :type/Date
+                :effective-type :type/Date}
+               "expr"]]
+             [:asc
+              {:lib/uuid string?}
+              [:expression
+               {:lib/uuid string?
+                :base-type :type/Date
+                :effective-type :type/Date}
+               "expr2"]]]
+            (as-> lib.tu/query-with-expression $q
+              (lib/expression $q "expr2" (lib/absolute-datetime "2020" :month))
+              (lib/order-by $q (lib/expression-ref $q "expr"))
+              (lib/order-by $q (lib/expression-ref $q "expr2"))
+              (lib/order-bys $q))))))
+
+;; malli schemas for funcs are not enforced on cljs
+#?(:clj
+   (deftest ^:parallel duplicate-order-bys-test
+     (are [query] (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"Invalid output:.*Duplicate values ignoring uuids"
+                   query)
+       (-> lib.tu/venues-query
+           (lib/order-by (meta/field-metadata :venues :id))
+           (lib/order-by (meta/field-metadata :venues :id))
+           lib/order-bys)
+
+       (as-> lib.tu/query-with-expression $q
+         (lib/order-by $q (lib/expression-ref $q "expr"))
+         (lib/order-by $q (lib/expression-ref $q "expr"))
+         (lib/order-bys $q)))))
+
 ;;; the following tests use raw legacy MBQL because they're direct ports of JavaScript tests from MLv1 and I wanted to
 ;;; make sure that given an existing query the expected description was generated correctly.
 

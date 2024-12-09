@@ -14,7 +14,7 @@ set -euo pipefail
 script_dir=`dirname "${BASH_SOURCE[0]}"`
 cd "$script_dir/.."
 
-if [ -v 1 ]; then
+if [ -n "${1:-}" ]; then
     diff_target="$1"
 else
     diff_target="HEAD"

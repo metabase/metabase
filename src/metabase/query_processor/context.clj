@@ -9,6 +9,6 @@
 
 (defn timeout
   "DEPRECATED: use [[metabase.query-processor.pipeline/*query-timeout-ms*]] directly instead."
-  [_context]
   {:deprecated "0.50.0"}
+  [_context]
   qp.pipeline/*query-timeout-ms*)

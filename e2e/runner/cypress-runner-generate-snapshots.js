@@ -13,7 +13,7 @@ const getConfig = baseUrl => {
 };
 
 const generateSnapshots = async (baseUrl, exitFunction) => {
-  // We only ever care about a broswer out of all possible user arguments,
+  // We only ever care about a browser out of all possible user arguments,
   // when it comes to the snapshot generation.
   // Anything else could result either in a failure or in a wrong database snapshot!
   const { browser } = await parseArguments(args);
@@ -23,9 +23,8 @@ const generateSnapshots = async (baseUrl, exitFunction) => {
   const snapshotConfig = Object.assign({}, baseConfig, customBrowser);
 
   try {
-    const { status, message, totalFailed, failures } = await cypress.run(
-      snapshotConfig,
-    );
+    const { status, message, totalFailed, failures } =
+      await cypress.run(snapshotConfig);
 
     // At least one test failed. We can't continue to the next step.
     // Cypress tests rely on snapshots correctly generated at this stage.

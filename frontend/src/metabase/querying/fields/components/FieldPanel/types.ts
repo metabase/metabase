@@ -12,5 +12,5 @@ export type ColumnGroupItem = {
   displayName: string;
   isSelected: boolean;
   isDisabled: boolean;
-  isSourceGroup: boolean;
+  isMainGroup: boolean;
 };

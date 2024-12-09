@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.explicit-joins-test
+(ns ^:mb/driver-tests metabase.query-processor-test.explicit-joins-test
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -593,7 +593,8 @@
         (is (= [["2019-11-01T07:23:18Z" "2019-11-01T07:23:18Z"]]
                (mt/formatted-rows
                 [u.date/temporal-str->iso8601-str u.date/temporal-str->iso8601-str]
-                (mt/run-mbql-query attempts
+                (mt/run-mbql-query
+                  attempts
                   {:fields [$datetime_tz]
                    :filter [:and
                             [:between $datetime_tz "2019-11-01" "2019-11-01"]

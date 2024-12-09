@@ -6,10 +6,7 @@ import { promisify } from "util";
 
 import { CONTAINER_NAME, SITE_NAME } from "../constants/config";
 import { EMBEDDING_DEMO_SETUP_TOKEN } from "../constants/env";
-import {
-  EMBEDDING_FAILED_MESSAGE,
-  INSTANCE_CONFIGURED_MESSAGE,
-} from "../constants/messages";
+import { INSTANCE_CONFIGURED_MESSAGE } from "../constants/messages";
 import type { CliOutput, CliStepMethod } from "../types/cli";
 import { OUTPUT_STYLES, printEmptyLines } from "../utils/print";
 import { retry } from "../utils/retry";
@@ -60,7 +57,7 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
   try {
     spinner.start("Creating an admin user (~2 mins)");
 
-    let res = await retry(
+    const res = await retry(
       () =>
         fetch(`${state.instanceUrl}/api/setup`, {
           method: "POST",
@@ -142,37 +139,6 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
     const cookie = res.headers.get("set-cookie") ?? "";
 
     spinner.succeed();
-    spinner.start("Enabling embedding features...");
-
-    res = await fetch(`${state.instanceUrl}/api/setting`, {
-      method: "PUT",
-      body: JSON.stringify({
-        "embedding-homepage": "visible",
-        "enable-embedding": true,
-        "setup-license-active-at-setup": false,
-        "setup-embedding-autoenabled": true,
-      }),
-      headers: { "content-type": "application/json", cookie },
-    });
-
-    if (!res.ok) {
-      const errorMessage = await res.text();
-      spinner.fail();
-
-      if (errorMessage.includes("Unauthenticated")) {
-        return onInstanceConfigured();
-      }
-
-      return [
-        {
-          type: "error",
-          message: EMBEDDING_FAILED_MESSAGE,
-        },
-        state,
-      ];
-    }
-
-    spinner.succeed();
 
     return [
       {
@@ -181,17 +147,15 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
       { ...state, cookie },
     ];
   } catch (error) {
-    spinner.fail("Failed to setup Metabase instance.");
+    spinner.fail();
 
-    return [
-      {
-        type: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to setup Metabase instance.",
-      },
-      state,
-    ];
+    const reason = error instanceof Error ? error.message : String(error);
+    const message = `Failed to setup Metabase instance. Reason: ${reason}`;
+
+    if (reason.includes("Unauthenticated")) {
+      return onInstanceConfigured();
+    }
+
+    return [{ type: "error", message }, state];
   }
 };

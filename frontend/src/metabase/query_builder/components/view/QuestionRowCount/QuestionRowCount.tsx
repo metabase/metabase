@@ -191,13 +191,12 @@ const ConnectedQuestionRowCount = _.compose(
   }),
 )(QuestionRowCount);
 
-function shouldRender({
-  result,
-  isObjectDetail,
-}: {
+export type QuestionRowCountOpts = {
   result?: Dataset;
   isObjectDetail: boolean;
-}) {
+};
+
+function shouldRender({ result, isObjectDetail }: QuestionRowCountOpts) {
   return result?.data && !isObjectDetail;
 }
 

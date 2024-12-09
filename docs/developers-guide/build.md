@@ -76,8 +76,7 @@ Once you've installed all the build tools, you'll need to clone the [Metabase re
 cd ~/workspace
 ```
 
-{:start="3"}
-3. Run the following command to “clone” Metabase into this folder, using the URL of the Metabase repository on GitHub:
+{:start="3"} 3. Run the following command to “clone” Metabase into this folder, using the URL of the Metabase repository on GitHub:
 
 ```
 git clone https://github.com/metabase/metabase
@@ -89,8 +88,7 @@ This is the part that you’ll use over and over.
 
 The “official” branch of Metabase is called `master`, and other feature development branches get merged into it when they’re approved. So if you want to try out a feature before then, you’ll need to know the name of that branch so you can switch over to it. Here’s what to do:
 
-{:start="4"}
-4. Open up your terminal app
+{:start="4"} 4. Open up your terminal app
 
 5. Navigate to where you're storing the Metabase code. If you followed this guide exactly, you'd get there by entering this command:
 
@@ -107,7 +105,7 @@ The “official” branch of Metabase is called `master`, and other feature deve
    You should do this every time to make sure that you have all the latest Metabase branches and code on your computer. It’s also how you’ll get updates on a feature branch someone make changes to it.
 
 7. Find the name of the branch you want to run by going to the “pull request” page for that feature on GitHub and copying the branch name from there. Here’s [an example PR page](https://github.com/metabase/metabase/pull/19138), with the branch name
-`fix-native-dataset-drill-popover`.
+   `fix-native-dataset-drill-popover`.
 
 8. Switch to, or “check out,” that branch by running:
 
@@ -129,27 +127,25 @@ The “official” branch of Metabase is called `master`, and other feature deve
 
 ## Run Metabase
 
-{:start="9"}
-9. Now we’ll start up the backend server of Metabase with:
+{:start="9"} 9. Now we’ll start up the backend server of Metabase with:
 
-   ```
-   clojure -M:run
-   ```
+```
+clojure -M:run
+```
 
-   When it’s done, you should see a message that says something like “Metabase initialization complete.” Keep this tab in your terminal app running, otherwise it’ll stop Metabase.
+When it’s done, you should see a message that says something like “Metabase initialization complete.” Keep this tab in your terminal app running, otherwise it’ll stop Metabase.
 
 10. Open up another tab or window of your terminal app, and then “build” the frontend (all the UI) with this command:
 
-   ```
-   yarn build-hot
-   ```
+```
+yarn build-hot
+```
 
 If you're having trouble with this step, make sure you are using the LTS version of [Node.js (http://nodejs.org/)](http://nodejs.org/).
 
-{:start="11"}
-11. In your web browser of choice, navigate to `http://localhost:3000`, where you should see Metabase!
+{:start="11"} 11. In your web browser of choice, navigate to `http://localhost:3000`, where you should see Metabase!
 
-   This is the local “server” on your computer, and 3000 is the “port” that Metabase is running on. You can have multiple different apps running on different ports on your own computer. Note that if you share any URLs with others that begin with `localhost`, they won’t be able to access them because your computer by default isn’t open up to the whole world, for security.
+This is the local “server” on your computer, and 3000 is the “port” that Metabase is running on. You can have multiple different apps running on different ports on your own computer. Note that if you share any URLs with others that begin with `localhost`, they won’t be able to access them because your computer by default isn’t open up to the whole world, for security.
 
 To switch to a different branch or back to `master`, open up another Terminal tab, and repeat steps 6, 7, and 8. If Metabase wasn’t already running, you'll need to complete steps 9 and 10 again too. If it was already running, the frontend will automatically rebuild itself. You can check its progress by switching to that tab in your Terminal — it usually takes something like 15 seconds, but will depend on your hardware.
 
@@ -165,10 +161,12 @@ The entire Metabase application is compiled and assembled into a single .jar fil
 
 After running the build script simply look in `target/uberjar` for the output .jar file and you are ready to go.
 
-### Build  a Metabase Uberjar in a containerized environment
+### Build a Metabase Uberjar in a containerized environment
 
 If you want to build Metabase without installing Clojure, Java, and Node.js on your host machine, you can build the Uberjar inside a container by running:
+
 ```
 DOCKER_BUILDKIT=1 docker build --output container-output/ .
 ```
+
 Make sure that your Docker Daemon is running before executing the command. After running the command, you'll find the Metabase JAR file at `./container-output/app/metabase.jar`.

@@ -53,7 +53,7 @@
                                     ")"))
         "\n  Return: " (str/replace (u/pprint-to-str (:schema return :any))
                                     "\n"
-                                    (str "\n          "))
+                                    "\n          ")
         (when (not-empty original-docstring)
           (str "\n\n  " original-docstring)))))
 
@@ -90,7 +90,7 @@
         {attr-map :meta} parsed
         attr-map         (merge
                           {:arglists (list 'quote (deparameterized-arglists parsed))
-                           :schema   (mu.fn/fn-schema parsed)}
+                           :schema   (mu.fn/fn-schema parsed {:target :target/metadata})}
                           attr-map)
         docstring        (annotated-docstring parsed)
         instrument?      (mu.fn/instrument-ns? *ns*)]

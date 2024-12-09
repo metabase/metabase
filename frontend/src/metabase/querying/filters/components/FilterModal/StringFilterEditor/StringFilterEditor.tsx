@@ -43,7 +43,7 @@ export function StringFilterEditor({
     filter,
   });
 
-  const handleOperatorChange = (newOperator: Lib.StringFilterOperatorName) => {
+  const handleOperatorChange = (newOperator: Lib.StringFilterOperator) => {
     const newValues = getDefaultValues(newOperator, values);
     setOperator(newOperator);
     setValues(newValues);
@@ -69,7 +69,7 @@ export function StringFilterEditor({
   };
 
   return (
-    <HoverParent>
+    <HoverParent data-testid="string-filter-editor">
       <Grid grow>
         <Grid.Col span="auto">
           <FilterTitle

@@ -2,10 +2,8 @@ import type { RefObject } from "react";
 import { Fragment } from "react";
 import { t } from "ttag";
 
+import { useDocsUrl } from "metabase/common/hooks";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { DEFAULT_POPOVER_Z_INDEX } from "metabase/ui";
 import { getHelpDocsUrl } from "metabase-lib/v1/expressions/helper-text-strings";
 import type { HelpText } from "metabase-lib/v1/expressions/types";
@@ -36,7 +34,9 @@ export type ExpressionEditorHelpTextProps =
 export const ExpressionEditorHelpTextContent = ({
   helpText,
 }: ExpressionEditorHelpTextContentProps) => {
-  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+  const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
+    helpText ? getHelpDocsUrl(helpText) : "",
+  );
 
   if (!helpText) {
     return null;
@@ -84,10 +84,7 @@ export const ExpressionEditorHelpTextContent = ({
         <BlockSubtitleText>{t`Example`}</BlockSubtitleText>
         <ExampleCode>{helpText.example}</ExampleCode>
         {showMetabaseLinks && (
-          <DocumentationLink
-            href={MetabaseSettings.docsUrl(getHelpDocsUrl(helpText))}
-            target="_blank"
-          >
+          <DocumentationLink href={docsUrl} target="_blank">
             <LearnMoreIcon name="reference" size={12} />
             {t`Learn more`}
           </DocumentationLink>

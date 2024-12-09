@@ -1,0 +1,12 @@
+info:
+  name: Metabase Hive Like Abstract Driver
+  version: 1.0.0
+  description: Parent of hive like drivers as SparkSQL or Databricks
+driver:
+  - name: hive-like
+    lazy-load: true
+    abstract: true
+    parent: sql-jdbc
+init:
+  - step: load-namespace
+    namespace: metabase.driver.hive-like

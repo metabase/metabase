@@ -11,6 +11,7 @@ import {
 
 describe("schema entity", () => {
   let store;
+
   beforeEach(() => {
     store = getStore(
       {

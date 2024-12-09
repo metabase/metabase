@@ -1,5 +1,6 @@
 import {
   canonicalCollectionId,
+  getCollectionPathAsString,
   isItemCollection,
   isReadOnlyCollection,
   isRootCollection,
@@ -30,10 +31,12 @@ describe("Collections > utils", () => {
       expect(canonicalCollectionId(1337)).toBe(1337);
       expect(canonicalCollectionId(1)).toBe(1);
     });
+
     it("handles string id inputs", () => {
       expect(canonicalCollectionId("1337")).toBe(1337);
       expect(canonicalCollectionId("1")).toBe(1);
     });
+
     it('returns null if the collection id is "root"', () => {
       expect(canonicalCollectionId("root")).toBe(null);
     });
@@ -123,6 +126,32 @@ describe("Collections > utils", () => {
           createMockCollectionItem({ model: "card", can_write: false }),
         ),
       ).toBe(false);
+    });
+  });
+
+  describe("getCollectionPathAsString", () => {
+    it("should return path for collection without ancestors", () => {
+      const collection = createMockCollection({
+        id: 0,
+        name: "Documents",
+        effective_ancestors: [],
+      });
+      const pathString = getCollectionPathAsString(collection);
+      expect(pathString).toBe("Documents");
+    });
+
+    it("should return path for collection with multiple ancestors", () => {
+      const ancestors = [
+        createMockCollection({ name: "Home" }),
+        createMockCollection({ name: "User" }),
+        createMockCollection({ name: "Files" }),
+      ];
+      const collection = createMockCollection({
+        name: "Documents",
+        effective_ancestors: ancestors,
+      });
+      const pathString = getCollectionPathAsString(collection);
+      expect(pathString).toBe("Home / User / Files / Documents");
     });
   });
 });

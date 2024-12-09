@@ -1,10 +1,7 @@
 import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
-import {
-  ORIGINAL_INDEX_DATA_KEY,
-  X_AXIS_DATA_KEY,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   AxisFormatter,
@@ -17,6 +14,7 @@ import type {
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
+  Padding,
   RenderingContext,
 } from "metabase/visualizations/types";
 import { isCategory, isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
@@ -26,7 +24,6 @@ import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
 import type {
   ChartBoundsCoords,
   ChartMeasurements,
-  Padding,
   TicksDimensions,
 } from "./types";
 
@@ -636,13 +633,9 @@ const countFittingLabels = (
         return fitCounts;
       }
 
-      const seriesFitCounts = chartModel.transformedDataset.reduce(
-        (fitCounts, datum, index) => {
-          const datumIndex = datum[ORIGINAL_INDEX_DATA_KEY] ?? index;
-          const value =
-            datumIndex != null
-              ? chartModel.dataset[datumIndex][seriesKey]
-              : null;
+      const seriesFitCounts = chartModel.dataset.reduce(
+        (fitCounts, datum) => {
+          const value = datum[seriesKey];
 
           // Nulls and zeros should not be considered because they can't have labels
           if (value == null || value === 0) {

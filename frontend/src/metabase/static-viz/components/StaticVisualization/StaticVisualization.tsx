@@ -1,19 +1,32 @@
-import { extractRemappings } from "metabase/visualizations";
+import { registerStaticVisualizations } from "metabase/static-viz/register";
+import { getVisualizationTransformed } from "metabase/visualizations";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { StaticVisualizationProps } from "metabase/visualizations/types";
 
 import { ComboChart } from "../ComboChart";
 import { FunnelBarChart } from "../FunnelBarChart";
 import { PieChart } from "../PieChart/PieChart";
+import { SankeyChart } from "../SankeyChart";
 import { ScalarChart } from "../ScalarChart";
 import { ScatterPlot } from "../ScatterPlot/ScatterPlot";
 import { SmartScalar } from "../SmartScalar";
 import { WaterfallChart } from "../WaterfallChart/WaterfallChart";
 
-export const StaticVisualization = (props: StaticVisualizationProps) => {
-  const display = props.rawSeries[0].card.display;
-  const staticVisualizationProps = {
-    ...props,
-    rawSeries: extractRemappings(props.rawSeries),
+registerStaticVisualizations();
+
+export const StaticVisualization = ({
+  rawSeries,
+  renderingContext,
+  isStorybook,
+}: StaticVisualizationProps) => {
+  const display = rawSeries[0].card.display;
+  const transformedSeries = getVisualizationTransformed(rawSeries).series;
+  const settings = getComputedSettingsForSeries(transformedSeries);
+  const props = {
+    rawSeries,
+    settings,
+    renderingContext,
+    isStorybook,
   };
 
   switch (display) {
@@ -21,19 +34,21 @@ export const StaticVisualization = (props: StaticVisualizationProps) => {
     case "area":
     case "bar":
     case "combo":
-      return <ComboChart {...staticVisualizationProps} />;
+      return <ComboChart {...props} />;
     case "scatter":
-      return <ScatterPlot {...staticVisualizationProps} />;
+      return <ScatterPlot {...props} />;
     case "waterfall":
-      return <WaterfallChart {...staticVisualizationProps} />;
+      return <WaterfallChart {...props} />;
     case "funnel":
-      return <FunnelBarChart {...staticVisualizationProps} />;
+      return <FunnelBarChart {...props} />;
     case "scalar":
-      return <ScalarChart {...staticVisualizationProps} />;
+      return <ScalarChart {...props} />;
     case "smartscalar":
-      return <SmartScalar {...staticVisualizationProps} />;
+      return <SmartScalar {...props} />;
     case "pie":
-      return <PieChart {...staticVisualizationProps} />;
+      return <PieChart {...props} />;
+    case "sankey":
+      return <SankeyChart {...props} />;
   }
 
   throw new Error(`Unsupported display type: ${display}`);

@@ -13,13 +13,14 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import {
   adjustCase,
+  adjustMultiArgOptions,
   adjustOffset,
   adjustOptions,
   useShorthands,
 } from "./recursive-parser";
-import { COMPARISON_OPS, LOGICAL_OPS, resolve } from "./resolver";
+import { resolve } from "./resolver";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
-import type { ErrorWithMessage } from "./types";
+import type { ErrorWithMessage, Token } from "./types";
 
 import {
   MBQL_CLAUSES,
@@ -28,13 +29,6 @@ import {
   parseMetric,
   parseSegment,
 } from "./index";
-
-type Token = {
-  type: number;
-  op: string;
-  start: number;
-  end: number;
-};
 
 // e.g. "COUNTIF(([Total]-[Tax] <5" returns 2 (missing parentheses)
 export function countMatchingParentheses(tokens: Token[]) {
@@ -93,12 +87,12 @@ export function diagnose({
     mismatchedParentheses === 1
       ? t`Expecting a closing parenthesis`
       : mismatchedParentheses > 1
-      ? t`Expecting ${mismatchedParentheses} closing parentheses`
-      : mismatchedParentheses === -1
-      ? t`Expecting an opening parenthesis`
-      : mismatchedParentheses < -1
-      ? t`Expecting ${-mismatchedParentheses} opening parentheses`
-      : null;
+        ? t`Expecting ${mismatchedParentheses} closing parentheses`
+        : mismatchedParentheses === -1
+          ? t`Expecting an opening parenthesis`
+          : mismatchedParentheses < -1
+            ? t`Expecting ${-mismatchedParentheses} opening parentheses`
+            : null;
 
   if (message) {
     return { message };
@@ -121,13 +115,6 @@ export function diagnose({
 
     if (isErrorWithMessage(mbqlOrError)) {
       return mbqlOrError;
-    }
-
-    if (startRule === "expression" && isBooleanExpression(mbqlOrError)) {
-      throw new ResolverError(
-        t`Custom columns do not support boolean expressions`,
-        mbqlOrError.node,
-      );
     }
   } catch (err) {
     if (isErrorWithMessage(err)) {
@@ -245,6 +232,7 @@ function prattCompiler({
       useShorthands,
       adjustOffset,
       adjustCase,
+      adjustMultiArgOptions,
       expression =>
         resolve({
           expression,
@@ -257,15 +245,6 @@ function prattCompiler({
   });
 
   return mbql;
-}
-
-function isBooleanExpression(
-  expr: unknown,
-): expr is [string, ...Expr[]] & { node?: Node } {
-  return (
-    Array.isArray(expr) &&
-    (LOGICAL_OPS.includes(expr[0]) || COMPARISON_OPS.includes(expr[0]))
-  );
 }
 
 function isErrorWithMessage(err: unknown): err is ErrorWithMessage {

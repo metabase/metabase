@@ -6726,6 +6726,165 @@ databaseChangeLog:
       rollback: # No rollback needed since this is backward compatible
 
   - changeSet:
+      id: v49.2024-08-21T08:33:06
+      author: johnswanson
+      comment: Add permissions.perm_value
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: permissions
+                columnName: perm_value
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: perm_value
+                  type: varchar(64)
+                  remarks: The value of the permission
+                  constraints:
+                    nullable: true
+            tableName: permissions
+
+  - changeSet:
+      id: v49.2024-08-21T08:33:07
+      author: johnswanson
+      comment: Add permissions.perm_type
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: permissions
+                columnName: perm_type
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: perm_type
+                  type: varchar(64)
+                  remarks: The type of the permission
+                  constraints:
+                    nullable: true
+            tableName: permissions
+
+  - changeSet:
+      id: v49.2024-08-21T08:33:08
+      author: johnswanson
+      comment: Add permissions.collection_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: permissions
+                columnName: collection_id
+      changes:
+        - addColumn:
+            tableName: permissions
+            columns:
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The linked collection, if applicable
+                  constraints:
+                    nullable: true
+
+  # FK constraint is added separately because deleteCascade doesn't work in addColumn -- see #14321
+  - changeSet:
+      id: v49.2024-08-21T08:33:09
+      author: johnswanson
+      comment: Add `permissions.collection_id` foreign key constraint
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                - foreignKeyName: fk_permissions_ref_collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: permissions
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_permissions_ref_collection_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v49.2024-08-21T08:33:10
+      author: johnswanson
+      comment: Populate `perm_value`, `perm_type`, and `collection_id` on permissions
+      rollback: # not needed.
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: permissions/collection-access.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/collection-access-mariadb.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: permissions/collection-access-h2.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v49.2024-08-21T08:33:11
+      author: johnswanson
+      comment: Create index on `permissions.collection_id`
+      rollback: # deleted with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: permissions
+                indexName: idx_permissions_collection_id
+      changes:
+        - createIndex:
+            tableName: permissions
+            columns:
+              - column:
+                  name: collection_id
+            indexName: idx_permissions_collection_id
+
+
+  - changeSet:
+      id: v49.2024-08-21T08:33:12
+      author: johnswanson
+      comment: Index on `permissions.perm_type`
+      rollback: # deleted with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: permissions
+                indexName: idx_permissions_perm_type
+      changes:
+        - createIndex:
+            tableName: permissions
+            columns:
+              - column:
+                  name: perm_type
+            indexName: idx_permissions_perm_type
+
+  - changeSet:
+      id: v49.2024-08-21T08:33:13
+      author: johnswanson
+      comment: Index on `permissions.perm_value`
+      rollback: # deleted with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: permissions
+                indexName: idx_permissions_perm_value
+      changes:
+        - createIndex:
+            tableName: permissions
+            columns:
+              - column:
+                  name: perm_value
+            indexName: idx_permissions_perm_value
+
+  - changeSet:
       id: v50.2024-01-04T13:52:51
       author: noahmoss
       comment: Data permissions table
@@ -8055,9 +8214,7 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateUploadsSettings"
 
-  # This migration should be moved whenever the sample content is updated, so that it
-  # matches when the version that the sample content was updated from. See metabase#43200
-  # for an example where the content was updated.
+  # This migration has been moved.
   - changeSet:
       id: v50.2024-05-27T15:55:22
       author: calherries
@@ -8154,6 +8311,7 @@ databaseChangeLog:
       id: v50.2024-05-29T18:42:14
       author: johnswanson
       comment: Populate `archived_directly` and `archive_operation_id` (MySQL)
+      validCheckSum: ANY
       changes:
         - sqlFile:
             dbms: mysql
@@ -8171,6 +8329,28 @@ databaseChangeLog:
             path: trash/mariadb.sql
             relativeToChangelogFile: true
       rollback: # not needed, columns will be deleted
+
+  - changeSet:
+      id: v50.2024-05-30T16:04:20
+      author: escherize
+      comment: Add context to recent views table
+      changes:
+        - addColumn:
+            tableName: recent_views
+            columns:
+              - column:
+                  name: context
+                  remarks: The contextual action that netted a recent view.
+                  type: varchar(256)
+                  defaultValue: "view"
+                  constraints:
+                    nullable: false
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: recent_views
+              columnName: context
 
   - changeSet:
       id: v50.2024-06-12T12:33:07
@@ -8351,6 +8531,28 @@ databaseChangeLog:
                   name: parameter_id
 
   - changeSet:
+      id: v50.2024-08-27T00:00:00
+      author: devurandom
+      comment: Add is_attached_dwh to metabase_database
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: is_attached_dwh
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_attached_dwh
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: 'This is an attached data warehouse, do not serialize it and hide its details from the UI'
+                  constraints:
+                    nullable: false
+
+  - changeSet:
       id: v51.2024-05-13T15:30:57
       author: metamben
       comment: Backup of dataset_query rewritten by the metrics v2 migration
@@ -8371,23 +8573,6 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateMetricsToV2"
-
-  - changeSet:
-      id: v51.2024-05-30T16:04:20
-      author: escherize
-      comment: Add context to recent views table
-      changes:
-        - addColumn:
-            tableName: recent_views
-            columns:
-              - column:
-                  name: context
-                  remarks: The contextual action that netted a recent view.
-                  type: varchar(256)
-                  defaultValue: "view"
-                  constraints:
-                    nullable: false
-      preConditions:
 
   - changeSet:
       id: v51.2024-06-07T12:37:36
@@ -8437,6 +8622,113 @@ databaseChangeLog:
             tableName: login_history
             indexName: idx_user_id_device_id
       preConditions:
+
+  - changeSet:
+      id: v51.2024-07-08T10:00:00
+      author: qnkhuat
+      comment: Create channel table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: channel
+      changes:
+        - createTable:
+            tableName: channel
+            remarks: Channel configurations
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  remarks: channel name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: description
+                  remarks: channel description
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: type
+                  remarks: Channel type
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  remarks: Channel details, used to store authentication information or channel-specific settings
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  remarks: whether the channel is active
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  remarks: Timestamp when the channel was inserted
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: Timestamp when the channel was updated
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-07-08T10:00:01
+      author: qnkhuat
+      comment: Create pulse_channel.channel_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: pulse_channel
+                columnName: channel_id
+      changes:
+        - addColumn:
+            tableName: pulse_channel
+            columns:
+              - column:
+                  name: channel_id
+                  type: integer
+                  remarks: The channel ID
+
+  - changeSet:
+      id: v51.2024-07-08T10:00:02
+      author: qnkhuat
+      comment: Add fk constraint to pulse_channel.channel_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_pulse_channel_channel_id
+                foreignKeyTableName: pulse_channel
+
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse_channel
+            baseColumnNames: channel_id
+            referencedTableName: channel
+            referencedColumnNames: id
+            constraintName: fk_pulse_channel_channel_id
+            nullable: true
+            deleteCascade: true
 
   - changeSet:
       id: v51.2024-07-09T17:15:43
@@ -8607,8 +8899,14 @@ databaseChangeLog:
 
   - changeSet:
       id: v51.2024-07-25T12:02:21
+      validCheckSum: ANY
       author: crisptrutski
       comment: Make `field_id` nullable on query fields
+      rollback:
+        - delete:
+            tableName: query_field
+            where: query_field.field_id is NULL
+            remarks: remove stale analysis, so the fields can be non-nullable
       changes:
         - dropNotNullConstraint:
             tableName: query_field
@@ -8882,8 +9180,10 @@ databaseChangeLog:
 
   - changeSet:
       id: v51.2024-08-02T12:02:21
+      validCheckSum: ANY
       author: crisptrutski
       comment: Make `table` nullable on query fields
+      rollback: # we don't need one, the column will be dropped
       changes:
         - dropNotNullConstraint:
             tableName: query_field
@@ -8959,7 +9259,827 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInDashboardCardVizSettings"
 
-  # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+  - changeSet:
+      id: v51.2024-08-26T08:53:46
+      author: crisptrutski
+      comment: Add a status column to track the progress and outcome of query analysis
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: query_analysis
+              columnName: status
+      changes:
+        - addColumn:
+            tableName: query_analysis
+            columns:
+              - column:
+                  name: status
+                  type: ${text.type}
+                  remarks: running, failed, or completed
+
+  - changeSet:
+      id: v51.2024-09-03T16:54:18
+      author: adam-james
+      comment: Add pivot_results to pulse_card
+      preConditions:
+        - not:
+            - columnExists:
+                tableName: pulse_card
+                columnName: pivot_results
+      changes:
+        - addColumn:
+            tableName: pulse_card
+            columns:
+              - column:
+                  name: pivot_results
+                  type: ${boolean.type}
+                  defaultValue: false
+                  remarks: Whether or not to apply pivot processing to the rows of the export
+
+  - changeSet:
+      id: v51.2024-09-09T15:11:16
+      author: johnswanson
+      comment: add an index for `collection.type`
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: collection
+                indexName: idx_collection_type
+      changes:
+        - createIndex:
+            tableName: collection
+            columns:
+              - column:
+                  name: type
+            indexName: idx_collection_type
+
+  - changeSet:
+      id: v51.2024-09-26T03:01:00
+      author: escherize
+      comment: iff enable-embedding is set, copy -> enable-embedding-interactive
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE key = 'enable-embedding';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'enable-embedding';
+            - and:
+                - dbms:
+                    type: h2
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE "KEY" = 'enable-embedding';
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO setting (key, value)
+              SELECT 'enable-embedding-interactive', value
+              FROM setting
+              WHERE key = 'enable-embedding';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT INTO setting (`key`, `value`)
+              SELECT 'enable-embedding-interactive', value
+              FROM setting
+              WHERE `key` = 'enable-embedding';
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO setting ("KEY", "VALUE")
+              SELECT 'enable-embedding-interactive', "VALUE"
+              FROM setting
+              WHERE "KEY" = 'enable-embedding';
+      rollback: # not needed
+
+  - changeSet:
+      id: v51.2024-09-26T03:02:00
+      author: escherize
+      comment: iff enable-embedding is set, copy -> enable-embedding-static
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE key = 'enable-embedding';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'enable-embedding';
+            - and:
+                - dbms:
+                    type: h2
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE "KEY" = 'enable-embedding';
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO setting (key, value)
+              SELECT 'enable-embedding-static', value
+              FROM setting
+              WHERE key = 'enable-embedding';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT INTO setting (`key`, `value`)
+              SELECT 'enable-embedding-static', value
+              FROM setting
+              WHERE `key` = 'enable-embedding';
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO setting ("KEY", "VALUE")
+              SELECT 'enable-embedding-static', "VALUE"
+              FROM setting
+              WHERE "KEY" = 'enable-embedding';
+      rollback: # not needed
+
+  - changeSet:
+      id: v51.2024-09-26T03:03:00
+      author: escherize
+      comment: iff enable-embedding is set, copy -> enable-embedding-sdk
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE key = 'enable-embedding';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'enable-embedding';
+            - and:
+                - dbms:
+                    type: h2
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE "KEY" = 'enable-embedding';
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO setting (key, value)
+              SELECT 'enable-embedding-sdk', value
+              FROM setting
+              WHERE key = 'enable-embedding';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT INTO setting (`key`, `value`)
+              SELECT 'enable-embedding-sdk', value
+              FROM setting
+              WHERE `key` = 'enable-embedding';
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO setting ("KEY", "VALUE")
+              SELECT 'enable-embedding-sdk', "VALUE"
+              FROM setting
+              WHERE "KEY" = 'enable-embedding';
+      rollback: # not needed
+
+  - changeSet:
+      id: v51.2024-09-26T03:04:00
+      author: escherize
+      comment: iff embedding-app-origin is set, copy -> embedding-app-origins-interactive
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE key = 'embedding-app-origin';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'embedding-app-origin';
+            - and:
+                - dbms:
+                    type: h2
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE "KEY" = 'embedding-app-origin';
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO setting (key, value)
+              SELECT 'embedding-app-origins-interactive', value
+              FROM setting
+              WHERE key = 'embedding-app-origin';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT INTO setting (`key`, `value`)
+              SELECT 'embedding-app-origins-interactive', value
+              FROM setting
+              WHERE `key` = 'embedding-app-origin';
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO setting ("KEY", "VALUE")
+              SELECT 'embedding-app-origins-interactive', "VALUE"
+              FROM setting
+              WHERE "KEY" = 'embedding-app-origin';
+      rollback: # not needed
+
+  - changeSet:
+      id: v51.2024-10-24T14:23:58
+      author: noahmoss
+      comment: Drop not null constraint on persisted_info.card_id
+      changes:
+        - dropNotNullConstraint:
+            tableName: persisted_info
+            columnName: card_id
+            columnDataType: int
+      rollback:
+        - addNotNullConstraint:
+            tableName: persisted_info
+            columnName: card_id
+            columnDataType: int
+
+  - changeSet:
+      id: v51.2024-10-24T14:24:59
+      author: noahmoss
+      comment: Drop foreign key constraint on persisted_info.card_id
+      preConditions:
+        - foreignKeyConstraintExists:
+            foreignKeyName: fk_persisted_info_card_id
+            foreignKeyTableName: persisted_info
+      changes:
+        - dropForeignKeyConstraint:
+            constraintName: fk_persisted_info_card_id
+            baseTableName: persisted_info
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: persisted_info
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_persisted_info_card_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v51.2024-10-24T14:25:01
+      author: noahmoss
+      comment: Re-add nullable foreign key constraint on persisted_info.card_id
+      preConditions:
+        - not:
+            - foreignKeyConstraintExists:
+              foreignKeyName: fk_persisted_info_card_id
+              foreignKeyTableName: persisted_info
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: persisted_info
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_persisted_info_card_id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            constraintName: fk_persisted_info_card_id
+            baseTableName: persisted_info
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:00
+      author: qnkhuat
+      comment: Create the notification table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification
+      changes:
+        - createTable:
+            tableName: notification
+            remarks: join table that connect notification subscriptions and notification handlers
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: payload_type
+                  remarks: the type of the payload
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  remarks: whether the notification is active
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: false
+                  defaultValueBoolean: true
+              - column:
+                  remarks: The timestamp of when the notification was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: The timestamp of when the notification was updated
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:01
+      author: qnkhuat
+      comment: Create the notification_subscription table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification_subscription
+      changes:
+        - createTable:
+            remarks: which type of trigger a notification is subscribed to
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: notification_id
+                  remarks: the notification that the subscription is connected to
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: notification
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_subscription_notification_id
+                    deleteCascade: true
+              - column:
+                  name: type
+                  remarks: the type of the subscription
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: event_name
+                  remarks: the event name of subscriptions with type :notification-subscription/system-event
+                  type: varchar(64)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  remarks: The timestamp of when the subscription was created
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:02
+      author: qnkhuat
+      comment: index on notification_subscription.notification_id
+      rollback: # no need, will be dropped with the table
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: notification_subscription
+                indexName: idx_notification_subscription_notification_id
+      changes:
+        - createIndex:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: notification_id
+            indexName: idx_notification_subscription_notification_id
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:03
+      author: qnkhuat
+      comment: Create the channel_template table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: channel_template
+      changes:
+        - createTable:
+            tableName: channel_template
+            remarks: custom template for the channel
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(64)
+                  remarks: the name of the template
+                  constraints:
+                    nullable: false
+              - column:
+                  name: channel_type
+                  type: varchar(64)
+                  remarks: the channel type of the template
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  type: ${text.type}
+                  remarks: the details of the template
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the template was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the template was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:04
+      author: qnkhuat
+      comment: Create the notification_handler table
+      validCheckSum: ANY
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification_handler
+      changes:
+        - createTable:
+            tableName: notification_handler
+            remarks: which channel to send the notification to
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              # TODO: can be removed once emails and slack configuration are fully migrated to be stored in channel table.
+              - column:
+                  name: channel_type
+                  type: varchar(64)
+                  remarks: the type of the channel, like :channel/email, :channel/slack
+                  constraints:
+                    nullable: false
+              - column:
+                  name: notification_id
+                  type: int
+                  remarks: the notification that the handler is connected to
+                  constraints:
+                    nullable: false
+                    referencedTableName: notification
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_handler_notification_id
+                    deleteCascade: true
+              - column:
+                  name: channel_id
+                  type: int
+                  remarks: the channel that the handler is connected to
+                  constraints:
+                    nullable: true # temporarily nullable, because we need to support email and slack channels as global configuration
+                    referencedTableName: channel
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_handler_channel_id
+                    deleteCascade: true
+              - column:
+                  name: template_id
+                  type: int
+                  remarks: the template that the handler is connected to
+                  constraints:
+                    nullable: true
+              - column:
+                  name: active
+                  type: ${boolean.type}
+                  remarks: whether the handler is active
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the handler was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the handler was updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v52.2024-09-05T08:00:05
+      author: qnkhuat
+      comment: Add fk constraint to notification_handler.template_id
+      preConditions:
+        - not:
+          - foreignKeyConstraintExists:
+              foreignKeyName: fk_notification_handler_template_id
+              foreignKeyTableName: notification_handler
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: notification_handler
+            baseColumnNames: template_id
+            referencedTableName: channel_template
+            referencedColumnNames: id
+            constraintName: fk_notification_handler_template_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:06
+      author: qnkhuat
+      comment: index on notification_handler.notification_id
+      rollback: # not necessary, will be removed with the table
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: notification_handler
+                indexName: idx_notification_handler_notification_id
+      changes:
+        - createIndex:
+            tableName: notification_handler
+            columns:
+              - column:
+                  name: notification_id
+            indexName: idx_notification_handler_notification_id
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:07
+      author: qnkhuat
+      comment: index on notification_handler.channel_id
+      rollback: # not necessary, will be removed with the table
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: notification_handler
+                indexName: idx_notification_handler_channel_id
+      changes:
+        - createIndex:
+            tableName: notification_handler
+            columns:
+              - column:
+                  name: channel_id
+            indexName: idx_notification_handler_channel_id
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:08
+      author: qnkhuat
+      comment: index on notification_handler.template_id
+      rollback: # not necessary, will be removed with the table
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: notification_handler
+                indexName: idx_notification_handler_template_id
+      changes:
+        - createIndex:
+            tableName: notification_handler
+            columns:
+              - column:
+                  name: template_id
+            indexName: idx_notification_handler_template_id
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:09
+      author: qnkhuat
+      comment: Create the notification_recipient table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification_recipient
+      changes:
+        - createTable:
+            tableName: notification_recipient
+            remarks: who should receive the notification
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: notification_handler_id
+                  type: int
+                  remarks: the handler that the recipient is connected to
+                  constraints:
+                    nullable: false
+                    referencedTableName: notification_handler
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_recipient_notification_handler_id
+                    deleteCascade: true
+              - column:
+                  name: type
+                  type: varchar(64)
+                  remarks: the type of the recipient
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: a user if the recipient has type user
+                  constraints:
+                    nullable: true
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_recipient_user_id
+                    deleteCascade: true
+              - column:
+                  name: permissions_group_id
+                  type: int
+                  remarks: a permissions group if the recipient has type permissions_group
+                  constraints:
+                    nullable: true
+                    referencedTableName: permissions_group
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_recipient_permissions_group_id
+                    deleteCascade: true
+              - column:
+                  name: details
+                  type: ${text.type}
+                  remarks: custom details for the recipient
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the recipient was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the recipient was updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:10
+      author: qnkhuat
+      comment: index on notification_recipient.notification_handler_id
+      rollback: # not necessary, will be removed with the table
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: notification_recipient
+                indexName: idx_notification_recipient_notification_handler_id
+      changes:
+        - createIndex:
+            tableName: notification_recipient
+            columns:
+              - column:
+                  name: notification_handler_id
+            indexName: idx_notification_recipient_notification_handler_id
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:11
+      author: qnkhuat
+      comment: index on notification_recipient.user_id
+      rollback: # not necessary, will be removed with the table
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: notification_recipient
+                indexName: idx_notification_recipient_user_id
+      changes:
+        - createIndex:
+            tableName: notification_recipient
+            columns:
+              - column:
+                  name: user_id
+            indexName: idx_notification_recipient_user_id
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:12
+      author: qnkhuat
+      comment: index on notification_recipient.permissions_group_id
+      rollback: # not necessary, will be removed with the table
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: notification_recipient
+                indexName: idx_notification_recipient_permissions_group_id
+      changes:
+        - createIndex:
+            tableName: notification_recipient
+            columns:
+              - column:
+                  name: permissions_group_id
+            indexName: idx_notification_recipient_permissions_group_id
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:13
+      author: qnkhuat
+      comment: Drop the channel_template.entity_id column
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: metabase_database
+            columnName: is_attached_dwh
+      changes:
+        - dropColumn:
+            tableName: channel_template
+            columnName: entity_id
+      rollback: # not necessary, will be removed with the table
+
+  - changeSet:
+      id: v52.2024-10-15T08:00:00
+      author: qnkhuat
+      comment: add notification_subscription.cron_schedule
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: notification_subscription
+              columnName: cron_schedule
+      changes:
+        - addColumn:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: cron_schedule
+                  type: varchar(128)
+                  remarks: the cron schedule for the subscription
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v52.2024-10-26T18:42:42
+      author: metamben
+      comment: Add stage-number to dimension targets in parameter_mappings
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.AddStageNumberToParameterMappingTargets"
+
+  - changeSet:
+      id: v52.2024-11-12T15:13:18
+      author: metamben
+      comment: Add stage-number to dimension targets in visualization_settings
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.AddStageNumberToVizSettingsParameterMappingTargets"
+
+  # This migration should be changed to a no-op and a new migration inserted that does the load from edn whenever the
+  # sample content is updated, so that it matches when the version that the sample content was updated from. See
+  # metabase#50829 for an example where the content was updated.
+  - changeSet:
+      id: v52.2024-12-03T15:55:22
+      author: escherize
+      comment: Create New and improved Sample Content
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateSampleContentV2"
+
+ # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
 #
@@ -8968,25 +10088,27 @@ databaseChangeLog:
 # 1) Think through some of these points when writing a migration, learn from our past mistakes:
 #    - Do you really need a migration? Could the feature work without it? Prefer not to if possible.
 #      Data in the wild can be vastly different from what you expect, and it's hard to get right.
-#    - If you still need to, make sure it works when Metabase is encrypted. Fields like `metabase_database.details`
-#      or `setting.value` can be encrypted, so you need to decrypt them in your migration. See #42617, #44048.
-#    - Prefer SQL migrations over custom migrations.
-#    - Still, make sure your migration is backward compatible: it might not be possible to add a constraint back
-#      if you are dropping it in a migration.
+#    - Make sure your migration is backward compatible: it might not be possible to add a constraint back
+#      if you drop it in a migration.
 #    - Postgres, MySQL and H2 have their differences. Make sure your migration works for all.
-#    - Custom migrations and their tests demand a high level of reliability. They should only use code from the standard library.
-#      Requiring code from the Metabase codebase is a bad idea because it can change and break your migration.
-#      More in `metabase.db.custom_migrations` namespace doc.
-#    - Custom migrations shouldn't use Toucan models; work directly with the table names.
+#    - Database encryption is a major issue:
+#      - Fields like `metabase_database.details` or `setting.value` can be encrypted, so you need to decrypt them in
+#        your migration. See #42617, #44048.
+#      - Database could be partially encrypted, see https://www.notion.so/72575933ef2a446bafd16909e05a7387
+#    - Custom migrations:
+#      - Prefer SQL migrations when possible.
+#      - Never use application code: it can change and *will* break your migration.
+#      - Do not use Toucan models - refer table names directly.
+#      - If it's a big change, consider using Quartz, see #42279
+#      - More in `metabase.db.custom_migrations` namespace doc.
+#    - Never delete a migration: users won't be able to downgrade. If you really need to, see #44908
+#    - Migration id (`vXX.<date>`) must match its earliest released version:
+#      - Do not backport `v51....` to version 50, Metabase will try to downgrade it.
+#      - Instead, write a migration with an oldest target you plan to backport to in mind.
 #
 # 2) Run ./bin/lint-migrations-file.sh to run core.spec checks against any changes you make here. Liquibase is pretty
 #    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
 #    this check but it's nicer to know now instead of waiting for CI.
-#
-#   1a) Ensure your changes are compatible with Liquibase rollback. See comments starting with
-#       0.45 migrations for more notes. Rollback to 0.44 and forwards to the latest migration is tested
-#       automatically and the migrations linter will check for the presence of rollback where required as
-#       much as possible.
 #
 # 3) Migration IDs should follow the format
 #

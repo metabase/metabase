@@ -236,8 +236,8 @@
         "graph.dimensions": ["date"],
         "graph.y_axis.scale": "pow",
         "graph.metrics": ["Total Accident Inverted"],
-        "metabase.shared.models.visualization-settings/column-settings": {},
-        "metabase.shared.models.visualization-settings/global-column-settings": {}
+        "metabase.models.visualization-settings/column-settings": {},
+        "metabase.models.visualization-settings/global-column-settings": {}
       },
       "native_form": {
         "query": "SELECT \"source\".\"date\" AS \"date\", \"source\".\"Total Accident Inverted\" AS \"Total Accident Inverted\" FROM (SELECT \"source\".\"date\" AS \"date\", \"source\".\"total_accident\" AS \"total_accident\", 0 - \"source\".\"total_accident\" AS \"Total Accident Inverted\" FROM (SELECT \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"date\" AS \"date\", \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"total_accident\" AS \"total_accident\" FROM \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\") AS \"source\" WHERE (\"source\".\"date\" >= timestamp with time zone '2017-06-01 00:00:00.000-07:00') AND (\"source\".\"date\" < timestamp with time zone '2017-07-01 00:00:00.000-07:00')) AS \"source\" LIMIT 2000",

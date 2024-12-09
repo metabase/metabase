@@ -4,6 +4,7 @@
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
@@ -20,18 +21,27 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log])
   (:import
    (java.sql Connection ResultSet Time)
-   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
-   (java.time.format DateTimeFormatter)))
+   (java.time
+    LocalDate
+    LocalDateTime
+    LocalTime
+    OffsetDateTime
+    OffsetTime
+    ZonedDateTime)
+   (java.time.format DateTimeFormatter)
+   [java.util UUID]))
 
 (set! *warn-on-reflection* true)
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
+                              :uuid-type                              true
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :index-info                             true
@@ -186,6 +196,18 @@
             [year month day hour minute second fraction precision])
       (h2x/with-database-type-info "datetime2")))
 
+(defn- from-date-expression
+  "When truncating to date-sized chunks (year, quarter, month, week, day) we use the `:DateFromParts` function, which
+  returns a `:date` (Metabase `:type/Date`). But truncation is not supposed to change the type of the column!
+
+  This returns the `:DateFromParts` expression if the original field is `:type/Date`; otherwise (eg. `:type/DateTime`)
+  it casts to `:datetime2`."
+  [base-expr day-expr]
+  (if (or (= (:base-type *field-options*) :type/Date)
+          (lib.util.match/match-one base-expr [::h2x/typed _ {:database-type (_ :guard #{:date "date"})}]))
+    day-expr
+    (h2x/cast :datetime2 day-expr)))
+
 (defmethod sql.qp/date [:sqlserver :hour]
   [_driver _unit expr]
   (if (= (h2x/database-type expr) "time")
@@ -202,7 +224,7 @@
   ;; SQL functions like `day()` that don't return a full DATE. See `optimized-temporal-buckets` below for more info.
   (if (::optimized-bucketing? *field-options*)
     (h2x/day expr)
-    [:DateFromParts (h2x/year expr) (h2x/month expr) (h2x/day expr)]))
+    (from-date-expression expr [:DateFromParts (h2x/year expr) (h2x/month expr) (h2x/day expr)])))
 
 (defmethod sql.qp/date [:sqlserver :day-of-week]
   [_driver _unit expr]
@@ -239,7 +261,7 @@
   [_ _ expr]
   (if (::optimized-bucketing? *field-options*)
     (h2x/month expr)
-    [:DateFromParts (h2x/year expr) (h2x/month expr) [:inline 1]]))
+    (from-date-expression expr [:DateFromParts (h2x/year expr) (h2x/month expr) [:inline 1]])))
 
 (defmethod sql.qp/date [:sqlserver :month-of-year]
   [_driver _unit expr]
@@ -250,9 +272,9 @@
 ;;     DATEADD(quarter, DATEPART(quarter, %s) - 1, FORMAT(%s, 'yyyy-01-01'))
 (defmethod sql.qp/date [:sqlserver :quarter]
   [_driver _unit expr]
-  (date-add :quarter
-            (h2x/dec (date-part :quarter expr))
-            [:DateFromParts (h2x/year expr) [:inline 1] [:inline 1]]))
+  (->> [:DateFromParts (h2x/year expr) [:inline 1] [:inline 1]]
+       (date-add :quarter (h2x/dec (date-part :quarter expr)))
+       (from-date-expression expr)))
 
 (defmethod sql.qp/date [:sqlserver :quarter-of-year]
   [_driver _unit expr]
@@ -262,7 +284,7 @@
   [_driver _unit expr]
   (if (::optimized-bucketing? *field-options*)
     (h2x/year expr)
-    [:DateFromParts (h2x/year expr) [:inline 1] [:inline 1]]))
+    (from-date-expression expr [:DateFromParts (h2x/year expr) [:inline 1] [:inline 1]])))
 
 (defmethod sql.qp/date [:sqlserver :year-of-era]
   [_driver _unit expr]
@@ -279,19 +301,29 @@
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
   (date-add :minute (h2x// expr 60) (h2x/literal "1970-01-01")))
 
+(defn- sanitize-contents
+  "Parsed xml may contain whitespace elements as `\"\n\n\t\t\"` in its contents. Leave only maps in content for
+  purposes of [[zone-id->windows-zone]]."
+  [parsed]
+  (walk/postwalk
+   (fn [x]
+     (if (and (map? x)
+              (contains? x :content)
+              (seq (:content x)))
+       (update x :content (partial filter map?))
+       x))
+   parsed))
+
 (defonce
   ^{:private true
     :doc     "A map of all zone-id to the corresponding windows-zone.
              I.e {\"Asia/Tokyo\" \"Tokyo Standard Time\"}"}
   zone-id->windows-zone
-  (let [data (-> (io/resource "timezones/windowsZones.xml")
-                 io/reader
-                 xml/parse
-                 :content
-                 second
-                 :content
-                 first
-                 :content)]
+  (let [parsed (-> (io/resource "timezones/windowsZones.xml")
+                   io/reader
+                   xml/parse)
+        sanitized (sanitize-contents parsed)
+        data (-> sanitized :content second :content first :content)]
     (->> (for [mapZone data
                :let [attrs       (:attrs mapZone)
                      window-zone (:other attrs)
@@ -608,6 +640,10 @@
                          args)]
         ((get-method sql.qp/->honeysql [:sql-jdbc op]) driver clause)))))
 
+(defmethod sql.qp/->honeysql [:sqlserver ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar(256)"]))
+
 (defmethod driver/db-default-timezone :sqlserver
   [driver database]
   (sql-jdbc.execute/do-with-connection-with-options
@@ -769,6 +805,18 @@
 (defmethod sql-jdbc.execute/set-parameter [:sqlserver OffsetTime]
   [driver ps i t]
   (sql-jdbc.execute/set-parameter driver ps i (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:sqlserver java.sql.Types/CHAR]
+  [driver ^java.sql.ResultSet rs ^java.sql.ResultSetMetaData rsmeta ^Integer i]
+  (condp = (u/lower-case-en (.getColumnTypeName rsmeta i))
+    "uniqueidentifier"
+    (fn read-column-as-UUID []
+      (when-let [s (.getObject rs i)]
+        (try
+          (UUID/fromString s)
+          (catch IllegalArgumentException _
+            s))))
+    ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc java.sql.Types/CHAR]) driver rs rsmeta i)))
 
 ;; instead of default `microsoft.sql.DateTimeOffset`
 (defmethod sql-jdbc.execute/read-column-thunk [:sqlserver microsoft.sql.Types/DATETIMEOFFSET]

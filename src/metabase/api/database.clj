@@ -20,9 +20,7 @@
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.database
-    :as database
-    :refer [Database protected-password]]
+   [metabase.models.database :as database :refer [Database protected-password]]
    [metabase.models.field :refer [Field readable-fields-only]]
    [metabase.models.interface :as mi]
    [metabase.models.persisted-info :as persisted-info]
@@ -31,13 +29,11 @@
    [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features
-    :as premium-features
-    :refer [defenterprise]]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.request.core :as request]
    [metabase.sample-data :as sample-data]
-   [metabase.server.middleware.session :as mw.session]
    [metabase.sync.analyze :as analyze]
-   [metabase.sync.field-values :as field-values]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
@@ -177,9 +173,7 @@
                                            ;; always return metrics for now
                                            [:in :type [(u/qualified-name card-type) "metric"]]
                                            [:in :database_id ids-of-dbs-that-support-source-queries]
-                                           (collection/visible-collection-ids->honeysql-filter-clause
-                                            (collection/permissions-set->visible-collection-ids
-                                             @api/*current-user-permissions-set*))]
+                                           (collection/visible-collection-filter-clause)]
                                           additional-constraints)
                           :order-by [[:%lower.name :asc]]}))))
 
@@ -271,7 +265,7 @@
       include-tables?              add-tables
       true                         add-can-upload-to-dbs
       include-editable-data-model? filter-databases-by-data-model-perms
-      exclude-uneditable-details?  (#(filter mi/can-write? %))
+      exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) %))
       filter-by-data-access?       (#(filter mi/can-read? %))
       include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?)
       ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
@@ -291,7 +285,12 @@
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
     effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.
 
-  * `include_only_uploadable` will only include DBs into which Metabase can insert new data."
+  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.
+
+  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in
+  [[metabase.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
+  in [[metabase.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
+  database details."
   [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics]
   {include                       (mu/with-api-error-message
                                   [:maybe [:= "tables"]]
@@ -372,7 +371,12 @@
    Passing include_editable_data_model will only return tables for which the current user has data model editing
    permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
    In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
-   and tables, with no additional metadata."
+   and tables, with no additional metadata.
+
+   Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in
+   [[metabase.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
+   in [[metabase.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
+   database details."
   [id include include_editable_data_model exclude_uneditable_details]
   {id      ms/PositiveInt
    include [:maybe [:enum "tables" "tables.fields"]]}
@@ -679,13 +683,14 @@
                                                    :table_id        [:in (t2/select-fn-set :id Table, :db_id id)]
                                                    :visibility_type [:not-in ["sensitive" "retired"]])
                                         (t2/hydrate :table)))]
-    (for [{:keys [id name display_name table base_type semantic_type]} fields]
+    (for [{:keys [id name display_name table table_id base_type semantic_type]} fields]
       {:id            id
        :name          name
        :display_name  display_name
        :base_type     base_type
        :semantic_type semantic_type
        :table_name    (:name table)
+       :table_id      table_id
        :schema        (:schema table "")})))
 
 ;;; ----------------------------------------- GET /api/database/:id/idfields -----------------------------------------
@@ -809,17 +814,18 @@
                                        (when (some? auto_run_queries)
                                          {:auto_run_queries auto_run_queries})))))
         (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
-        (snowplow/track-event! ::snowplow/database-connection-successful
-                               api/*current-user-id*
-                               {:database     engine
+        (snowplow/track-event! ::snowplow/database
+                               {:event        :database-connection-successful
+                                :database     engine
                                 :database-id  (u/the-id <>)
                                 :source       connection_source
                                 :dbms-version (:version (driver/dbms-version (keyword engine) <>))}))
       ;; failed to connect, return error
       (do
-        (snowplow/track-event! ::snowplow/database-connection-failed
-                               api/*current-user-id*
-                               {:database engine :source connection_source})
+        (snowplow/track-event! ::snowplow/database
+                               {:event    :database-connection-failed
+                                :database engine
+                                :source   connection_source})
         {:status 400
          :body   (dissoc details-or-error :valid)}))))
 
@@ -1042,24 +1048,19 @@
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
-    (mw.session/as-admin
+    (request/as-admin
       (if *rescan-values-async*
-        (future (field-values/update-field-values! db))
-        (field-values/update-field-values! db))))
+        (future (sync.field-values/update-field-values! db))
+        (sync.field-values/update-field-values! db))))
   {:status :ok})
 
-;; "Discard saved field values" action in db UI
-(defn- database->field-values-ids [database-or-id]
-  (map :id (mdb.query/query {:select    [[:fv.id :id]]
-                             :from      [[:metabase_fieldvalues :fv]]
-                             :left-join [[:metabase_field :f] [:= :fv.field_id :f.id]
-                                         [:metabase_table :t] [:= :f.table_id :t.id]]
-                             :where     [:= :t.db_id (u/the-id database-or-id)]})))
-
 (defn- delete-all-field-values-for-database! [database-or-id]
-  (when-let [field-values-ids (seq (database->field-values-ids database-or-id))]
-    (t2/query-one {:delete-from :metabase_fieldvalues
-                   :where       [:in :id field-values-ids]})))
+  (t2/query-one {:delete-from :metabase_fieldvalues
+                 :where      [:in :field_id
+                              {:select     [:f.id]
+                               :from       [[:metabase_field :f]]
+                               :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
+                               :where      [:= :t.db_id (u/the-id database-or-id)]}]}))
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
 (api/defendpoint POST "/:id/discard_values"

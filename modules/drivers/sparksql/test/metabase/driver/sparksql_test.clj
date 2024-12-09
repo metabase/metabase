@@ -1,4 +1,4 @@
-(ns metabase.driver.sparksql-test
+(ns ^:mb/driver-tests metabase.driver.sparksql-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

@@ -12,15 +12,6 @@ import {
   ViewHeaderIconButtonContainer,
   ViewRunButtonWithTooltip,
 } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
-import {
-  ExploreResultsLink,
-  FilterHeaderButton,
-  QuestionActions,
-  QuestionFiltersHeaderToggle,
-  QuestionNotebookButton,
-  QuestionSummarizeWidget,
-  ToggleNativeQueryPreview,
-} from "metabase/query_builder/components/view/ViewHeader/components";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -30,6 +21,13 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
+
+import { ExploreResultsLink } from "../ExploreResultsLink";
+import { FilterHeaderButton } from "../FilterHeaderButton";
+import { QuestionActions } from "../QuestionActions";
+import { QuestionNotebookButton } from "../QuestionNotebookButton";
+import { QuestionSummarizeWidget } from "../QuestionSummarizeWidget";
+import { ToggleNativeQueryPreview } from "../ToggleNativeQueryPreview";
 
 interface ViewTitleHeaderRightSideProps {
   question: Question;
@@ -132,10 +130,16 @@ export function ViewTitleHeaderRightSide({
     }
   }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
 
-  const getRunButtonLabel = useCallback(
-    () => (isRunning ? t`Cancel` : t`Refresh`),
-    [isRunning],
-  );
+  const cacheStrategyType = result?.json_query?.["cache-strategy"]?.type;
+  const getRunButtonLabel = useCallback(() => {
+    if (isRunning) {
+      return t`Cancel`;
+    }
+    if ([undefined, "nocache"].includes(cacheStrategyType)) {
+      return `Refresh`;
+    }
+    return t`Clear cache and refresh`;
+  }, [isRunning, cacheStrategyType]);
 
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
@@ -144,19 +148,6 @@ export function ViewTitleHeaderRightSide({
 
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
-      {QuestionFiltersHeaderToggle.shouldRender({
-        question,
-        queryBuilderMode,
-        isObjectDetail,
-      }) && (
-        <QuestionFiltersHeaderToggle
-          className={cx(CS.ml2, CS.mr1)}
-          query={question.query()}
-          isExpanded={areFiltersExpanded}
-          onExpand={onExpandFilters}
-          onCollapse={onCollapseFilters}
-        />
-      )}
       {FilterHeaderButton.shouldRender({
         question,
         queryBuilderMode,
@@ -166,6 +157,10 @@ export function ViewTitleHeaderRightSide({
         <FilterHeaderButton
           className={cx(CS.hide, CS.smShow)}
           onOpenModal={onOpenModal}
+          query={question.query()}
+          isExpanded={areFiltersExpanded}
+          onExpand={onExpandFilters}
+          onCollapse={onCollapseFilters}
         />
       )}
       {QuestionSummarizeWidget.shouldRender({

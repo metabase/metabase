@@ -23,10 +23,10 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.shared.util.i18n :as i18n]
-   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]
+   [metabase.util.time :as u.time]))
 
 (doseq [tag [:and :or]]
   (lib.hierarchy/derive tag ::compound))
@@ -85,13 +85,64 @@
                            second
                            :temporal-unit
                            lib.temporal-bucket/describe-temporal-unit
-                           u/lower-case-en)]
+                           u/lower-case-en)
+
+        ->unit {:get-hour :hour-of-day
+                :get-month :month-of-year
+                :get-quarter :quarter-of-year}]
     (lib.util.match/match-one expr
+      [:= _ [:get-hour _ (a :guard temporal?)] (b :guard int?)]
+      (i18n/tru "{0} is at {1}" (->unbucketed-display-name a) (u.time/format-unit b :hour-of-day))
+
+      [:!= _ [:get-hour _ (a :guard temporal?)] (b :guard int?)]
+      (i18n/tru "{0} excludes the hour of {1}" (->unbucketed-display-name a) (u.time/format-unit b :hour-of-day))
+
+      [:= _ [:get-day-of-week _ (a :guard temporal?) :iso] (b :guard int?)]
+      (i18n/tru "{0} is on {1}" (->display-name a) (u.time/format-unit b :day-of-week-iso))
+
+      [:!= _ [:get-day-of-week _ (a :guard temporal?) :iso] (b :guard int?)]
+      (i18n/tru "{0} excludes {1}"
+                (->unbucketed-display-name a)
+                (inflections/plural (u.time/format-unit b :day-of-week-iso)))
+
+      [:= _ [:get-day-of-week _ (a :guard temporal?) :iso] & (args :guard #(every? int? %))]
+      (i18n/tru "{0} is one of {1} {2} selections"
+                (->display-name a)
+                (count args)
+                (-> :day-of-week lib.temporal-bucket/describe-temporal-unit u/lower-case-en))
+
+      [:!= _ [:get-day-of-week _ (a :guard temporal?) :iso] & (args :guard #(every? int? %))]
+      (i18n/tru "{0} excludes {1} {2} selections"
+                (->unbucketed-display-name a)
+                (count args)
+                (-> :day-of-week lib.temporal-bucket/describe-temporal-unit u/lower-case-en))
+
+      [:= _ [(f :guard #{:get-month :get-quarter}) _ (a :guard temporal?)] (b :guard int?)]
+      (i18n/tru "{0} is in {1}" (->unbucketed-display-name a) (u.time/format-unit b (->unit f)))
+
+      [:!= _ [:get-month _ (a :guard temporal?)] (b :guard int?)]
+      (i18n/tru "{0} excludes each {1}" (->unbucketed-display-name a) (u.time/format-unit b :month-of-year))
+
+      [:!= _ [:get-quarter _ (a :guard temporal?)] (b :guard int?)]
+      (i18n/tru "{0} excludes {1} each year" (->unbucketed-display-name a) (u.time/format-unit b :quarter-of-year))
+
+      [:= _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (a :guard temporal?)] & (args :guard #(every? int? %))]
+      (i18n/tru "{0} is one of {1} {2} selections"
+                (->unbucketed-display-name a)
+                (count args)
+                (-> f ->unit lib.temporal-bucket/describe-temporal-unit u/lower-case-en))
+
+      [:!= _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (a :guard temporal?)] & (args :guard #(every? int? %))]
+      (i18n/tru "{0} excludes {1} {2} selections"
+                (->unbucketed-display-name a)
+                (count args)
+                (-> f ->unit lib.temporal-bucket/describe-temporal-unit u/lower-case-en))
+
       [:= _ (a :guard numeric?) b]
       (i18n/tru "{0} is equal to {1}" (->display-name a) (->display-name b))
 
       [:= _ (a :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (b :guard string?)]
-      (i18n/tru "{0} is {1}" (->unbucketed-display-name a) (shared.ut/format-relative-date-range b 0 (:temporal-unit (second a)) nil nil {:include-current true}))
+      (i18n/tru "{0} is {1}" (->unbucketed-display-name a) (u.time/format-relative-date-range b 0 (:temporal-unit (second a)) nil nil {:include-current true}))
 
       [:= _ (a :guard (unit-is :day-of-week)) (b :guard (some-fn int? string?))]
       (i18n/tru "{0} is {1}" (->display-name a) (->temporal-name a b))
@@ -183,7 +234,7 @@
 (defmethod lib.metadata.calculation/display-name-method ::binary
   [query stage-number expr style]
   (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
-        ->temporal-name #(shared.ut/format-unit % nil)
+        ->temporal-name #(u.time/format-unit % nil)
         temporal? #(lib.util/original-isa? % :type/Temporal)]
     (lib.util.match/match-one expr
       [:< _ (x :guard temporal?) (y :guard string?)]
@@ -214,7 +265,7 @@
       [:between _ x (y :guard string?) (z :guard string?)]
       (i18n/tru "{0} is {1}"
                 (->unbucketed-display-name x)
-                (shared.ut/format-diff y z))
+                (u.time/format-diff y z))
 
       [:between _
        [:+ _ x [:interval _ n unit]]
@@ -239,6 +290,13 @@
                 (->display-name x)
                 (->display-name y)
                 (->display-name z)))))
+
+(defmethod lib.metadata.calculation/display-name-method :during
+  [query stage-number [_tag _opts expr value unit] style]
+  (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)]
+    (i18n/tru "{0} is {1}"
+              (->display-name expr)
+              (u.time/format-relative-date-range value 1 unit -1 unit {}))))
 
 (defmethod lib.metadata.calculation/display-name-method :inside
   [query stage-number [_tag opts lat-expr lon-expr lat-max lon-min lat-min lon-max] style]
@@ -310,12 +368,13 @@
 (lib.common/defop not-null [x])
 (lib.common/defop is-empty [x])
 (lib.common/defop not-empty [x])
-(lib.common/defop starts-with [whole part])
-(lib.common/defop ends-with [whole part])
-(lib.common/defop contains [whole part])
-(lib.common/defop does-not-contain [whole part])
+(lib.common/defop starts-with [whole & parts])
+(lib.common/defop ends-with [whole & parts])
+(lib.common/defop contains [whole & parts])
+(lib.common/defop does-not-contain [whole & parts])
 (lib.common/defop relative-time-interval [x value bucket offset-value offset-bucket])
 (lib.common/defop time-interval [x amount unit])
+(lib.common/defop during [t v unit])
 (lib.common/defop segment [segment-id])
 
 (mu/defn- add-filter-to-stage

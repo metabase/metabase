@@ -8,7 +8,7 @@ import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
+import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -115,9 +115,7 @@ export function VisualizationError({
           </QueryErrorHeader>
           <QueryErrorMessage>{processedError}</QueryErrorMessage>
           {isSql && showMetabaseLinks && (
-            <QueryErrorLink
-              href={MetabaseSettings.learnUrl("debugging-sql/sql-syntax")}
-            >
+            <QueryErrorLink href={getLearnUrl("debugging-sql/sql-syntax")}>
               {t`Learn how to debug SQL errors`}
             </QueryErrorLink>
           )}

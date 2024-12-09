@@ -1,7 +1,6 @@
 (ns metabase.api.dashboard
   "/api/dashboard endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.core.cache :as cache]
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
@@ -34,8 +33,8 @@
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
-   [metabase.models.pulse :as pulse]
-   [metabase.models.query :as query :refer [Query]]
+   [metabase.models.pulse :as models.pulse]
+   [metabase.models.query :refer [Query]]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
    [metabase.models.revision.last-edit :as last-edit]
@@ -49,6 +48,7 @@
    [metabase.related :as related]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -95,21 +95,23 @@
   (span/with-span!
     {:name       "hydrate-dashboard-details"
      :attributes {:dashboard/id dashboard-id}}
-    (t2/hydrate dashboard [:dashcards
-                           ;; disabled :can_run_adhoc_query for performance reasons in 50 release
-                           [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
-                           [:series :can_write #_:can_run_adhoc_query]
-                           :dashcard/action
-                           :dashcard/linkcard-info]
-                :can_restore
-                :can_delete
-                :last_used_param_values
-                :tabs
-                :collection_authority_level
-                :can_write
-                :param_fields
-                :param_values
-                [:collection :is_personal])))
+    (binding [params/*field-id-context* (atom params/empty-field-id-context)]
+      (t2/hydrate dashboard [:dashcards
+                             ;; disabled :can_run_adhoc_query for performance reasons in 50 release
+                             [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
+                             [:series :can_write #_:can_run_adhoc_query]
+                             :dashcard/action
+                             :dashcard/linkcard-info]
+                  :can_restore
+                  :can_delete
+                  :last_used_param_values
+                  :tabs
+                  :collection_authority_level
+                  :can_write
+                  :param_fields
+                  :param_values
+                  [:moderation_reviews :moderator_details]
+                  [:collection :is_personal]))))
 
 (api/defendpoint POST "/"
   "Create a new Dashboard."
@@ -136,7 +138,9 @@
                         ;; Ok, now save the Dashboard
                          (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
-    (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
+    (snowplow/track-event! ::snowplow/dashboard
+                           {:event        :dashboard-created
+                            :dashboard-id (u/the-id dash)})
     (-> dash
         hydrate-dashboard-details
         collection.root/hydrate-root-collection
@@ -469,7 +473,9 @@
                            (cond-> dash
                              (seq uncopied)
                              (assoc :uncopied uncopied))))]
-    (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dashboard)})
+    (snowplow/track-event! ::snowplow/dashboard
+                           {:event        :dashboard-created
+                            :dashboard-id (u/the-id dashboard)})
     ;; must signal event outside of tx so cards are visible from other threads
     (when-let [newly-created-cards (seq @new-cards)]
       (doseq [card newly-created-cards]
@@ -649,20 +655,21 @@
                            {:object dashboard :user-id api/*current-user-id* :dashcards created-dashcards})
     (for [{:keys [card_id]} created-dashcards
           :when             (pos-int? card_id)]
-      (snowplow/track-event! ::snowplow/question-added-to-dashboard
-                             api/*current-user-id*
-                             {:dashboard-id dashboard-id :question-id card_id :user-id api/*current-user-id*})))
+      (snowplow/track-event! ::snowplow/dashboard
+                             {:event        :question-added-to-dashboard
+                              :dashboard-id dashboard-id
+                              :question-id  card_id})))
   ;; Tabs events
   (when (seq deleted-tab-ids)
-    (snowplow/track-event! ::snowplow/dashboard-tab-deleted
-                           api/*current-user-id*
-                           {:dashboard-id   dashboard-id
+    (snowplow/track-event! ::snowplow/dashboard
+                           {:event          :dashboard-tab-deleted
+                            :dashboard-id   dashboard-id
                             :num-tabs       (count deleted-tab-ids)
                             :total-num-tabs total-num-tabs}))
   (when (seq created-tab-ids)
-    (snowplow/track-event! ::snowplow/dashboard-tab-created
-                           api/*current-user-id*
-                           {:dashboard-id   dashboard-id
+    (snowplow/track-event! ::snowplow/dashboard
+                           {:event          :dashboard-tab-created
+                            :dashboard-id   dashboard-id
                             :num-tabs       (count created-tab-ids)
                             :total-num-tabs total-num-tabs})))
 
@@ -746,7 +753,7 @@
   [dashboard-id original-dashboard-params]
   (doseq [{:keys [pulse-id] :as broken-subscription} (broken-subscription-data dashboard-id original-dashboard-params)]
     ;; Archive the pulse
-    (pulse/update-pulse! {:id pulse-id :archived true})
+    (models.pulse/update-pulse! {:id pulse-id :archived true})
     ;; Let the pulse and subscription creator know about the broken pulse
     (messages/send-broken-subscription-notification! broken-subscription)))
 
@@ -1048,10 +1055,10 @@
   (let [dashboard       (t2/hydrate dashboard :resolved-params)
         param           (get-in dashboard [:resolved-params param-key])
         results         (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
-                              :let [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
-                                                       (mbql.u/check-clause :dimension))]
-                              :when dimension]
-                          (custom-values/values-from-card card dimension))]
+                              :let [[_ field-ref opts] (->> (mbql.normalize/normalize-tokens target :ignore-path)
+                                                            (mbql.u/check-clause :dimension))]
+                              :when field-ref]
+                          (custom-values/values-from-card card field-ref opts))]
     (when-some [values (seq (distinct (mapcat :values results)))]
       (let [has_more_values (boolean (some true? (map :has_more_values results)))]
         {:values          (cond->> values
@@ -1217,7 +1224,7 @@
   (api/read-check :model/Dashboard dashboard-id)
   (actions/fetch-values
    (api/check-404 (action/dashcard->action dashcard-id))
-   (json/parse-string parameters)))
+   (json/decode parameters)))
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
@@ -1257,13 +1264,14 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  [dashboard-id dashcard-id card-id export-format :as {{:keys [parameters format_rows], :as request-parameters} :params}]
+  [dashboard-id dashcard-id card-id export-format :as {{:keys [parameters format_rows pivot_results] :as request-parameters} :params}]
   {dashboard-id  ms/PositiveInt
    dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
    parameters    [:maybe ms/JSONString]
    export-format api.dataset/ExportFormat
-   format_rows   [:maybe :boolean]}
+   format_rows   [:maybe ms/BooleanValue]
+   pivot_results [:maybe ms/BooleanValue]}
   (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              request-parameters
@@ -1271,7 +1279,7 @@
               :card-id       card-id
               :dashcard-id   dashcard-id
               :export-format export-format
-              :parameters    (json/parse-string parameters keyword)
+              :parameters    (json/decode+kw parameters)
               :context       (api.dataset/export-format->context export-format)
               :constraints   nil
               ;; TODO -- passing this `:middleware` map is a little repetitive, need to think of a way to not have to
@@ -1280,7 +1288,8 @@
               :middleware    {:process-viz-settings?  true
                               :skip-results-metadata? true
                               :ignore-cached-results? true
-                              :format-rows?           format_rows
+                              :format-rows?           (or format_rows false)
+                              :pivot?                 (or pivot_results false)
                               :js-int-to-string?      false}})))
 
 (api/defendpoint POST "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"

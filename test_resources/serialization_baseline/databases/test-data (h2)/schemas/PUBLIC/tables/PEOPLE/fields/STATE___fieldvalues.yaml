@@ -1,0 +1,67 @@
+created_at: '2024-08-28T14:38:42.774331Z'
+has_more_values: false
+hash_key: null
+human_readable_values: []
+last_used_at: '2024-08-28T14:38:42.774331Z'
+type: full
+values:
+- AK
+- AL
+- AR
+- AZ
+- CA
+- CO
+- CT
+- DE
+- FL
+- GA
+- IA
+- ID
+- IL
+- IN
+- KS
+- KY
+- LA
+- MA
+- MD
+- ME
+- MI
+- MN
+- MO
+- MS
+- MT
+- NC
+- ND
+- NE
+- NH
+- NJ
+- NM
+- NV
+- NY
+- OH
+- OK
+- OR
+- PA
+- RI
+- SC
+- SD
+- TN
+- TX
+- UT
+- VA
+- VT
+- WA
+- WI
+- WV
+- WY
+serdes/meta:
+- id: test-data (h2)
+  model: Database
+- id: PUBLIC
+  model: Schema
+- id: PEOPLE
+  model: Table
+- id: STATE
+  model: Field
+- id: '0'
+  model: FieldValues

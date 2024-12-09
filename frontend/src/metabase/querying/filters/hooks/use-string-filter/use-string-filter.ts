@@ -37,7 +37,7 @@ export function useStringFilter({
   const [operator, setOperator] = useState(() =>
     filterParts
       ? filterParts.operator
-      : getDefaultOperator(column, availableOptions),
+      : getDefaultOperator(query, column, availableOptions),
   );
 
   const [values, setValues] = useState(() =>
@@ -45,7 +45,7 @@ export function useStringFilter({
   );
 
   const [options, setOptions] = useState(
-    filterParts ? filterParts.options : {},
+    filterParts ? filterParts.options : { caseSensitive: false },
   );
 
   const { type } = getOptionByOperator(operator);
@@ -60,7 +60,7 @@ export function useStringFilter({
     isValid,
     getDefaultValues,
     getFilterClause: (
-      operator: Lib.StringFilterOperatorName,
+      operator: Lib.StringFilterOperator,
       values: string[],
       options: Lib.StringFilterOptions,
     ) => getFilterClause(operator, column, values, options),

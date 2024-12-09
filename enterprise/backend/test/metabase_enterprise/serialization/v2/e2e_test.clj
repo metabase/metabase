@@ -638,7 +638,7 @@
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
-         ;; preparation
+          ;; preparation
           (t2.with-temp/with-temp
             [Dashboard           {dashboard-id :id
                                   dashboard-eid :entity_id} {:name "Dashboard with tab"}
@@ -667,7 +667,7 @@
 
             (testing "ingest and load"
               (ts/with-db dest-db
-               ;; ingest
+                ;; ingest
                 (testing "doing ingestion"
                   (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                       "successful"))
@@ -762,11 +762,9 @@
                                                                          :breakout     [[:field %orders.user_id nil]]}}
                                               :visualization_settings
                                               {:pivot_table.column_split
-                                               {:rows    [[:field %people.name {:base-type    :type/Text
-                                                                                :source-field %orders.user_id}]]
-                                                :columns [[:field %products.title {:base-type    :type/Text
-                                                                                   :source-field %orders.product_id}]]
-                                                :values  [[:aggregation 0]]}
+                                               {:rows    ["NAME"]
+                                                :columns ["TITLE"]
+                                                :values  ["sum"]}
                                                :column_settings
                                                {(format "[\"ref\",[\"field\",%s,null]]" %people.name)
                                                 {:pivot_table.column_sort_order "descending"}}}}]
@@ -796,12 +794,10 @@
                 (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))
 
                 (let [viz (t2/select-one-fn :visualization_settings Card :entity_id (:entity_id @card1s))]
-                  (testing "column ids inside pivot table transferred"
-                    (is (= [[:field %people.name {:base-type    :type/Text
-                                                  :source-field %orders.user_id}]]
+                  (testing "column names inside pivot table transferred"
+                    (is (= ["NAME"]
                            (get-in viz [:pivot_table.column_split :rows])))
-                    (is (= [[:field %products.title {:base-type    :type/Text
-                                                     :source-field %orders.product_id}]]
+                    (is (= ["TITLE"]
                            (get-in viz [:pivot_table.column_split :columns]))))
                   (testing "column sort order restored"
                     (is (= "descending"
@@ -832,3 +828,64 @@
               (testing ".yaml files not containing valid yaml are just logged and do not break ingestion process"
                 (is (=? [{:level :error, :e Throwable, :message "Error reading file unreadable.yaml"}]
                         (logs)))))))))))
+
+(deftest channel-test
+  (mt/test-helpers-set-global-values!
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (mt/with-temp
+            [:model/Channel _ {:name "My HTTP channel"
+                               :type :channel/http
+                               :details {:url         "http://example.com"
+                                         :auth-method :none}}]
+            (storage/store! (seq (serdes/with-cache (into [] (extract/extract {})))) dump-dir)
+            (ts/with-db dest-db
+              (testing "doing ingestion"
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                    "successful")
+                (is (=? {:name    "My HTTP channel"
+                         :type    :channel/http
+                         :details {:url         "http://example.com"
+                                   :auth-method "none"}}
+                        (t2/select-one :model/Channel :name "My HTTP channel")))))))))))
+
+(deftest metric-based-question-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (t2.with-temp/with-temp
+          [Collection {coll-id :id}   {:name "Collection"}
+           Card       {metric-id :id} {:name "Metric Card"
+                                       :collection_id coll-id
+                                       :type :metric
+                                       :dataset_query (mt/mbql-query orders
+                                                        {:aggregation [[:count]]
+                                                         :breakout    [$product_id->products.category $created_at]})}
+           Card       _card           {:name "Metric Consuming Question Card"
+                                       :collection_id coll-id
+                                       :dataset_query (mt/mbql-query orders
+                                                        {:aggregation [[:metric metric-id]]
+                                                         :breakout    [[:field %orders.user_id nil]]})}]
+          (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+            (storage/store! (seq extraction) dump-dir))
+          (testing "ingest and load"
+            (ts/with-db dest-db
+              (testing "doing ingestion"
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                    "successful")
+                (let [new-coll-id (t2/select-one-pk Collection :name "Collection")
+                      new-metric (t2/select-one Card :name "Metric Card")]
+                  (is (int? new-coll-id))
+                  (is (=? {:name "Metric Card"
+                           :collection_id new-coll-id
+                           :dataset_query (mt/mbql-query orders
+                                            {:aggregation [[:count]]
+                                             :breakout    [$product_id->products.category $created_at]})}
+                          new-metric))
+                  (is (=? {:name "Metric Consuming Question Card"
+                           :collection_id new-coll-id
+                           :dataset_query (mt/mbql-query orders
+                                            {:aggregation [[:metric (:id new-metric)]]
+                                             :breakout    [[:field %orders.user_id nil]]})}
+                          (t2/select-one Card :name "Metric Consuming Question Card"))))))))))))

@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
+import { getLearnUrl } from "metabase/selectors/settings";
 import {
   getApplicationName,
   getShowMetabaseLinks,
@@ -20,7 +20,7 @@ export const HomeHelpCard = (): JSX.Element | null => {
   }
 
   return (
-    <CardRoot href={MetabaseSettings.learnUrl()} aria-labelledby={cardTitleId}>
+    <CardRoot href={getLearnUrl()} aria-labelledby={cardTitleId}>
       <CardIcon name="reference" />
       <CardTitle id={cardTitleId}>{t`${applicationName} tips`}</CardTitle>
     </CardRoot>

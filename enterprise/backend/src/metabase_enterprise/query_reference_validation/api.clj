@@ -7,7 +7,7 @@
    [metabase.models.collection :as collection]
    [metabase.models.query-analysis :as query-analysis]
    [metabase.public-settings :as public-settings]
-   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -24,7 +24,8 @@
 (defn- present [card]
   (-> card
       (select-keys [:id :description :collection_id :name :entity_id :archived :collection_position
-                    :display :collection_preview :dataset_query :last_used_at :errors :collection])
+                    :display :collection_preview :dataset_query :last_used_at :errors :collection
+                    :creator])
       (update :collection (fn present-collection [collection]
                             {:id (:id collection)
                              :name (:name collection)
@@ -48,13 +49,19 @@
                                                 [[:not= nil [:max :coll.name]] :is_child_collection]]
                               "created_by"     [:u.first_name :u.last_name :u.email]
                               "last_edited_at" [:c.updated_at])
-        order-by-clause     (condp = sort-column
-                              "collection" [[:is_child_collection sort-dir-kw]
-                                            [[:max :coll.name] sort-dir-kw]]
-                              "created_by" [[[:coalesce [:|| :u.first_name " " :u.last_name]
-                                              :u.first_name :u.last_name :u.email]
-                                             sort-dir-kw]]
-                              [(into sorting-selects [sort-dir-kw])])
+        order-by-clause     (concat
+                             (condp = sort-column
+                               "collection" [[:is_child_collection sort-dir-kw]
+                                             [[:max :coll.name] sort-dir-kw]]
+                               "created_by" [[[:coalesce [:|| :u.first_name " " :u.last_name]
+                                               :u.first_name :u.last_name :u.email]
+                                              sort-dir-kw]]
+                               [(into sorting-selects [sort-dir-kw])])
+                             ;; fallbacks to ensure deterministic sorting:
+                             ;; - sort by card name,
+                             ;; - if even that's the same, sort by the ID
+                             [[:c.name sort-dir-kw]
+                              [:c.id sort-dir-kw]])
         card-query          (query-analysis/cards-with-reference-errors
                              (m/assoc-some
                               ;; TODO this table has a lot of fields... we should whittle down to only the ones we need.
@@ -86,10 +93,10 @@
     (merge (cards-with-reference-errors {:sort-column (or sort_column default-sort-column)
                                          :sort-direction (or sort_direction default-sort-direction)
                                          :collection-ids (set collection-ids)
-                                         :limit mw.offset-paging/*limit*
-                                         :offset mw.offset-paging/*offset*})
-           {:limit mw.offset-paging/*limit*
-            :offset mw.offset-paging/*offset*})))
+                                         :limit (request/limit)
+                                         :offset (request/offset)})
+           {:limit (request/limit)
+            :offset (request/offset)})))
 
 (api/defendpoint GET "/invalid-cards"
   "List of cards that have an invalid reference in their query. Shape of each card is standard, with the addition of an

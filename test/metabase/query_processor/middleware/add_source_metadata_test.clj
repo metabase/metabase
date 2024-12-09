@@ -282,13 +282,15 @@
                                         [count-col] (results-metadata (qp.preprocess/query->expected-cols
                                                                        (lib.tu.macros/mbql-query venues
                                                                          {:aggregation [[:count]]})))]
-                                    [(assoc lat-col :field_ref [:field
-                                                                (meta/id :venues :latitude)
-                                                                {:binning {:strategy  :bin-width
-                                                                           :min-value 10.0
-                                                                           :max-value 45.0
-                                                                           :num-bins  7
-                                                                           :bin-width 5.0}}])
+                                    [(assoc lat-col
+                                            :field_ref [:field
+                                                        (meta/id :venues :latitude)
+                                                        {:binning {:strategy  :bin-width
+                                                                   :min-value 10.0
+                                                                   :max-value 45.0
+                                                                   :num-bins  7
+                                                                   :bin-width 5.0}}]
+                                            :display_name "Latitude: 5°")
                                      ;; computed column doesn't have an effective type in middleware before query
                                      (-> count-col
                                          (dissoc :effective_type)
@@ -366,13 +368,7 @@
           ;; the actual metadata this middleware should return. Doesn't have all the columns that come back from
           ;; `qp.preprocess/query->expected-cols`
           expected-metadata (for [col metadata]
-                              (cond-> (merge (results-col col) (select-keys col [:source_alias]))
-                                ;; for some reason this middleware returns temporal fields with a `:default` unit,
-                                ;; whereas `query->expected-cols` does not return the unit. It ulimately makes zero
-                                ;; difference, so I haven't looked into why this is the case yet.
-                                (isa? (:base_type col) :type/Temporal)
-                                (update :field_ref (fn [[_ id-or-name opts]]
-                                                     [:field id-or-name (assoc opts :temporal-unit :default)]))))]
+                              (merge (results-col col) (select-keys col [:source_alias])))]
       (letfn [(added-metadata [query]
                 (get-in (add-source-metadata query) [:query :source-metadata]))]
         (testing "\nShould add source metadata if there's none already"

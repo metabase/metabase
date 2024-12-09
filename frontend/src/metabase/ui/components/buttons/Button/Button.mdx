@@ -1,0 +1,139 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Icon } from "metabase/ui";
+import { Group, Stack } from "metabase/ui";
+import { Button } from "./";
+import * as ButtonStories from "./Button.stories";
+
+<Meta of={ButtonStories} />
+
+# Button
+
+Our themed wrapper around [Mantine Button](https://v6.mantine.dev/core/button/).
+
+## When to use Button
+
+Use button in the following cases:
+
+- Buttons are widely used as actions that users can take. They are typically placed on the UI such as dialogs, forms, toolbars, config pages/panels, headers etc.
+- Use primary button for primarily intended actions.
+- Use icon in primary button for improved visual affordance.
+- Primary buttons could be colorized with our brand colors for differentiating actions and states.
+
+Not to use:
+
+- Avoid using multiple primary buttons on a form section, or a dialog for competing primarily intended actions.
+- If there is no primarily intended action for a form, use default (non-primary) button or other variations. That is, you don’t have to have a primary button on the form or dialog.
+- Not to use links to replace subtle buttons. Links are meant to navigate to another page. Subtle buttons share the characteristics of button and are mostly used in compact or inline situations.
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/Ey1rOyIxRHpmRvE9XrGyop/Buttons-%2F-Button?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
+- [Mantine Button Docs](https://v6.mantine.dev/core/button/)
+
+## Caveats
+
+- Use verb, or verb+noun for button labels. E.g., Save, Filter, Summarize, Convert this question to SQL.
+- Use sentence casing for long button labels.
+
+## Usage guidelines
+
+- Although button labels can be as long as you wish, keep it simple and concise.
+- In general, use sentence casing for menu item labels.
+- Use icon+button label when applicable for better visual affordance. E.g., + New
+
+## Examples
+
+<Canvas>
+  <Story of={ButtonStories.Default} />
+</Canvas>
+
+### Button.Group
+
+<Canvas>
+  <Story of={ButtonStories.ButtonGroup} />
+</Canvas>
+
+### Default size
+
+<Canvas>
+  <Story of={ButtonStories.DefaultSize} />
+</Canvas>
+
+#### Custom color
+
+<Canvas>
+  <Story of={ButtonStories.DefaultSizeCustomColor} />
+</Canvas>
+
+#### Disabled state
+
+<Canvas>
+  <Story of={ButtonStories.DefaultSizeDisabled} />
+</Canvas>
+
+#### Loading state
+
+<Canvas>
+  <Story of={ButtonStories.DefaultSizeLoading} />
+</Canvas>
+
+### Default size & full width
+
+<Canvas>
+  <Story of={ButtonStories.DefaultSizeFullWidth} />
+</Canvas>
+
+#### Disabled state
+
+<Canvas>
+  <Story of={ButtonStories.DefaultSizeFullWidthDisabled} />
+</Canvas>
+
+#### Loading state
+
+<Canvas>
+  <Story of={ButtonStories.DefaultSizeFullWidthLoading} />
+</Canvas>
+
+### Compact size
+
+<Canvas>
+  <Story of={ButtonStories.CompactSize} />
+</Canvas>
+
+#### Custom color
+
+<Canvas>
+  <Story of={ButtonStories.CompactSizeCustomColor} />
+</Canvas>
+
+#### Disabled state
+
+<Canvas>
+  <Story of={ButtonStories.CompactSizeDisabled} />
+</Canvas>
+
+#### Loading state
+
+<Canvas>
+  <Story of={ButtonStories.CompactSizeLoading} />
+</Canvas>
+
+### Compact size & full width
+
+<Canvas>
+  <Story of={ButtonStories.CompactSizeFullWidth} />
+</Canvas>
+
+#### Disabled state
+
+<Canvas>
+  <Story of={ButtonStories.CompactSizeFullWidthDisabled} />
+</Canvas>
+
+#### Loading state
+
+<Canvas>
+  <Story of={ButtonStories.CompactSizeFullWidthLoading} />
+</Canvas>

@@ -11,15 +11,16 @@ import { getNewCardUrl } from "./getNewCardUrl";
 export const EDIT_QUESTION = "metabase/dashboard/EDIT_QUESTION";
 export const editQuestion = createThunkAction(
   EDIT_QUESTION,
-  question => (dispatch, getState) => {
-    const dashboardId = getDashboardId(getState());
-    const { isNative } = Lib.queryDisplayInfo(question.query());
-    const mode = isNative ? "view" : "notebook";
-    const url = Urls.question(question.card(), { mode });
+  (question, mode = "notebook") =>
+    (dispatch, getState) => {
+      const dashboardId = getDashboardId(getState());
+      const { isNative } = Lib.queryDisplayInfo(question.query());
+      const finalMode = isNative ? "view" : mode;
+      const url = Urls.question(question.card(), { mode: finalMode });
 
-    dispatch(openUrl(url));
-    return { dashboardId };
-  },
+      dispatch(openUrl(url));
+      return { dashboardId };
+    },
 );
 
 /**

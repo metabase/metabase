@@ -1,30 +1,16 @@
 import { t } from "ttag";
 
-import { Stack, type StackProps } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import type { UpdateQueryHookProps } from "metabase/query_builder/hooks/types";
+import { Space, Stack, type StackProps, Title } from "metabase/ui";
 
 import { BreakoutColumnList } from "../BreakoutColumnList";
-import { SectionTitle } from "../SummarizeSidebar.styled";
 
-type SummarizeBreakoutColumnListProps = {
-  query: Lib.Query;
-  stageIndex: number;
-  onAddBreakout: (column: Lib.ColumnMetadata) => void;
-  onUpdateBreakout: (
-    clause: Lib.BreakoutClause,
-    column: Lib.ColumnMetadata,
-  ) => void;
-  onRemoveBreakout: (clause: Lib.BreakoutClause) => void;
-  onReplaceBreakouts: (column: Lib.ColumnMetadata) => void;
-} & StackProps;
+type SummarizeBreakoutColumnListProps = UpdateQueryHookProps & StackProps;
 
 export const SummarizeBreakoutColumnList = ({
   query,
+  onQueryChange,
   stageIndex,
-  onAddBreakout,
-  onUpdateBreakout,
-  onRemoveBreakout,
-  onReplaceBreakouts,
   ...containerProps
 }: SummarizeBreakoutColumnListProps) => (
   <Stack
@@ -33,14 +19,12 @@ export const SummarizeBreakoutColumnList = ({
     spacing="0"
     {...containerProps}
   >
-    <SectionTitle>{t`Group by`}</SectionTitle>
+    <Title order={5} fw={900}>{t`Group by`}</Title>
+    <Space my="sm" />
     <BreakoutColumnList
       query={query}
+      onQueryChange={onQueryChange}
       stageIndex={stageIndex}
-      onAddBreakout={onAddBreakout}
-      onUpdateBreakout={onUpdateBreakout}
-      onRemoveBreakout={onRemoveBreakout}
-      onReplaceBreakouts={onReplaceBreakouts}
     />
   </Stack>
 );

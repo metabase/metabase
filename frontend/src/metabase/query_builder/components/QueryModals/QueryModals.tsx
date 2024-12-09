@@ -12,15 +12,15 @@ import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import Questions from "metabase/entities/questions";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { CreateAlertModalContent } from "metabase/notifications/AlertModals";
 import type { UpdateQuestionOpts } from "metabase/query_builder/actions/core/updateQuestion";
-import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
 import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getQuestionWithParameters } from "metabase/query_builder/selectors";
-import { FilterModal } from "metabase/querying/filters";
+import { FilterModal } from "metabase/querying/filters/components/FilterModal";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
@@ -29,10 +29,7 @@ import NewEventModal from "metabase/timelines/questions/containers/NewEventModal
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Alert, Card, CollectionId, User } from "metabase-types/api";
-import type {
-  QueryBuilderMode,
-  QueryBuilderUIControls,
-} from "metabase-types/store";
+import type { QueryBuilderMode } from "metabase-types/store";
 
 interface QueryModalsProps {
   questionAlerts: Alert[];
@@ -42,7 +39,6 @@ interface QueryModalsProps {
   question: Question;
   updateQuestion: (question: Question, config?: UpdateQuestionOpts) => void;
   setQueryBuilderMode: (mode: QueryBuilderMode) => void;
-  setUIControls: (opts: Partial<QueryBuilderUIControls>) => void;
   originalQuestion: Question;
   card: Card;
   onCreate: (question: Question) => Promise<void>;
@@ -140,7 +136,8 @@ export function QueryModals({
           initialCollectionId={initialCollectionId}
           onSave={handleSaveAndClose}
           onCreate={handleSaveModalCreate}
-          onCancel={onCloseModal}
+          onClose={onCloseModal}
+          opened={true}
         />
       );
     case MODAL_TYPES.SAVED:
@@ -168,7 +165,8 @@ export function QueryModals({
             await onCreate(question);
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
           }}
-          onCancel={onCloseModal}
+          onClose={onCloseModal}
+          opened={true}
           multiStep
         />
       );
@@ -202,7 +200,8 @@ export function QueryModals({
             await onCreate(question);
             showAlertsAfterQuestionSaved();
           }}
-          onCancel={onCloseModal}
+          onClose={onCloseModal}
+          opened={true}
           multiStep
           initialCollectionId={initialCollectionId}
         />
@@ -214,7 +213,8 @@ export function QueryModals({
           originalQuestion={originalQuestion}
           onSave={handleSaveAndClose}
           onCreate={handleCreateAndClose}
-          onCancel={onCloseModal}
+          onClose={onCloseModal}
+          opened={true}
           multiStep
           initialCollectionId={initialCollectionId}
         />
@@ -222,7 +222,7 @@ export function QueryModals({
     case MODAL_TYPES.FILTERS:
       return (
         <FilterModal
-          query={question.query()}
+          question={question}
           onSubmit={onQueryChange}
           onClose={onCloseModal}
         />

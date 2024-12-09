@@ -13,10 +13,11 @@ class DefaultLogoIcon extends Component {
     width: PropTypes.number,
     height: PropTypes.number,
     dark: PropTypes.bool,
+    fill: PropTypes.string,
   };
 
   render() {
-    const { dark, height, width } = this.props;
+    const { dark, height, width, fill = "currentcolor" } = this.props;
     return (
       <svg
         className={cx(
@@ -27,7 +28,7 @@ class DefaultLogoIcon extends Component {
         viewBox="0 0 66 85"
         width={width}
         height={height}
-        fill="currentcolor"
+        fill={fill}
         data-testid="main-logo"
       >
         <path

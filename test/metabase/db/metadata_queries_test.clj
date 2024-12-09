@@ -1,11 +1,11 @@
-(ns metabase.db.metadata-queries-test
+(ns ^:mb/driver-tests metabase.db.metadata-queries-test
   (:require
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.util :as driver.u]
-   [metabase.models :as models :refer [Database Field Table]]
+   [metabase.models :refer [Database Field Table]]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.query-processor :as qp]

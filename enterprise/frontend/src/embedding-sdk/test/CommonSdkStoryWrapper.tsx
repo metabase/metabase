@@ -11,9 +11,12 @@ const METABASE_JWT_SHARED_SECRET =
 
 const secret = new TextEncoder().encode(METABASE_JWT_SHARED_SECRET);
 
-const DEFAULT_CONFIG: SDKConfig = {
+/**
+ * SDK config that signs the jwt on the FE
+ */
+export const storybookSdkDefaultConfig: SDKConfig = {
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
-  jwtProviderUri: `${METABASE_INSTANCE_URL}/sso/metabase`,
+  authProviderUri: `${METABASE_INSTANCE_URL}/sso/metabase`,
   fetchRequestToken: async () => {
     try {
       const signedUserData = await new jose.SignJWT({
@@ -39,7 +42,7 @@ const DEFAULT_CONFIG: SDKConfig = {
 };
 
 export const CommonSdkStoryWrapper = (Story: Story) => (
-  <MetabaseProvider config={DEFAULT_CONFIG}>
+  <MetabaseProvider config={storybookSdkDefaultConfig}>
     <Story />
   </MetabaseProvider>
 );

@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import Button from "../Button";
 
@@ -9,7 +9,7 @@ export default {
   component: ButtonGroup,
 };
 
-const Template: ComponentStory<typeof ButtonGroup> = args => {
+const Template: StoryFn<typeof ButtonGroup> = args => {
   return (
     <ButtonGroup {...args}>
       <Button>One</Button>
@@ -19,4 +19,6 @@ const Template: ComponentStory<typeof ButtonGroup> = args => {
   );
 };
 
-export const Default = Template.bind({});
+export const Default = {
+  render: Template,
+};

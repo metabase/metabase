@@ -1,10 +1,15 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.card-test :as api.card-test]
+   [metabase.api.channel-test :as api.channel-test]
    [metabase.api.pulse :as api.pulse]
+   [metabase.channel.impl.http-test :as channel.http-test]
+   [metabase.channel.render.style :as style]
    [metabase.http-client :as client]
    [metabase.integrations.slack :as slack]
    [metabase.models
@@ -20,9 +25,9 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.pulse-test :as pulse-test]
-   [metabase.pulse.render.style :as style]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.test-util :as pulse.test-util]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
@@ -44,7 +49,8 @@
       (update :collection_id boolean)
       ;; why? these fields in this last assoc are from the PulseCard model and this function takes the Card model
       ;; because PulseCard is somewhat hidden behind the scenes
-      (assoc :include_csv false, :include_xls false, :dashboard_card_id nil, :dashboard_id nil, :format_rows true
+      (assoc :include_csv false :include_xls false :dashboard_card_id nil :dashboard_id nil
+             :format_rows true :pivot_results false
              :parameter_mappings nil)))
 
 (defn- pulse-channel-details [channel]
@@ -99,8 +105,8 @@
 ;; authentication test on every single individual endpoint
 
 (deftest authentication-test
-  (is (= (:body req.util/response-unauthentic) (client/client :get 401 "pulse")))
-  (is (= (:body req.util/response-unauthentic) (client/client :put 401 "pulse/13"))))
+  (is (= (:body request/response-unauthentic) (client/client :get 401 "pulse")))
+  (is (= (:body request/response-unauthentic) (client/client :put 401 "pulse/13"))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                POST /api/pulse                                                 |
@@ -594,6 +600,86 @@
         (is (t2/exists? PulseChannel :id (u/the-id pc)))
         (is (t2/exists? PulseChannelRecipient :id (u/the-id pcr)))))))
 
+(def pulse-channel-email-default
+  {:enabled        true
+   :channel_type   "email"
+   :channel_id     nil
+   :schedule_type  "hourly"})
+
+(deftest update-channels-no-op-test
+  (testing "PUT /api/pulse/:id"
+    (testing "If we PUT a Pulse with the same Channels, it should be a no-op"
+      (mt/with-temp
+        [:model/Pulse        {pulse-id :id} {}
+         :model/PulseChannel pc             (assoc pulse-channel-email-default :pulse_id pulse-id)]
+        (is (=? [(assoc pulse-channel-email-default :id (:id pc))]
+                (:channels (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id)
+                                                 {:channels [pc]}))))))))
+
+(deftest update-channels-change-existing-channel-test
+  (testing "PUT /api/pulse/:id"
+    (testing "update the schedule of existing pulse channel"
+      (mt/with-temp
+        [:model/Pulse        {pulse-id :id} {}
+         :model/PulseChannel pc             (assoc pulse-channel-email-default :pulse_id pulse-id)]
+        (let [new-channel (assoc pulse-channel-email-default :id (:id pc) :schedule_type "daily" :schedule_hour 7)]
+          (is (=? [new-channel]
+                  (:channels (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id)
+                                                   {:channels [new-channel]})))))))))
+
+(def pulse-channel-slack-test
+  {:enabled        true
+   :channel_type   "slack"
+   :channel_id     nil
+   :schedule_type  "hourly"
+   :details        {:channels "#general"}})
+
+(deftest update-channels-add-new-channel-test
+  (testing "PUT /api/pulse/:id"
+    (testing "add a new pulse channel"
+      (mt/with-temp
+        [:model/Pulse        {pulse-id :id} {}
+         :model/PulseChannel pc             (assoc pulse-channel-email-default :pulse_id pulse-id)]
+        (is (=? [(assoc pulse-channel-email-default :id (:id pc))
+                 pulse-channel-slack-test]
+                (->> (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id)
+                                           {:channels [pulse-channel-slack-test pc]})
+                     :channels
+                     (sort-by :channel_type))))))))
+
+(deftest update-channels-add-multiple-channels-of-the-same-type-test
+  (testing "PUT /api/pulse/:id"
+    (testing "add multiple pulse channels of the same type and disable an existing channel"
+      (mt/with-temp
+        [:model/Channel      {chn-1 :id}    api.channel-test/default-test-channel
+         :model/Channel      {chn-2 :id}    (assoc api.channel-test/default-test-channel :name "Test channel 2")
+         :model/Pulse        {pulse-id :id} {}
+         :model/PulseChannel pc-email       (assoc pulse-channel-email-default :pulse_id pulse-id)
+         :model/PulseChannel pc-slack       (assoc pulse-channel-slack-test :pulse_id pulse-id)]
+        (is (=? [(assoc pulse-channel-email-default :enabled false)
+                 {:channel_type "http"
+                  :channel_id   chn-1
+                  :enabled      true
+                  :schedule_type "hourly"}
+                 {:channel_type "http"
+                  :channel_id   chn-2
+                  :enabled      true
+                  :schedule_type "hourly"}
+                 pulse-channel-slack-test]
+                (->> (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id)
+                                           {:channels [(assoc pc-email :enabled false)
+                                                       pc-slack
+                                                       {:channel_type "http"
+                                                        :channel_id   chn-1
+                                                        :enabled      true
+                                                        :schedule_type "hourly"}
+                                                       {:channel_type "http"
+                                                        :channel_id   chn-2
+                                                        :enabled      true
+                                                        :schedule_type "hourly"}]})
+                     :channels
+                     (sort-by (juxt :channel_type :channel_id)))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   UPDATING PULSE COLLECTION POSITIONS                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -909,8 +995,51 @@
                                   pulse.test-util/png-attachment]
                         :message-type :attachments,
                         :recipients #{"rasta@metabase.com"}
-                        :subject "Daily Sad Toucans"}
+                        :subject "Daily Sad Toucans"
+                        :recipient-type nil}
                        (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans")))))))))))
+
+(deftest send-test-alert-with-http-channel-test
+  (testing "POST /api/pulse/test send test alert to a http channel"
+    (notification.tu/with-send-notification-sync
+      (let [requests (atom [])
+            endpoint (channel.http-test/make-route
+                      :post "/test"
+                      (fn [req]
+                        (swap! requests conj req)
+                        {:status 200
+                         :body   "ok"}))]
+        (channel.http-test/with-server [url [endpoint]]
+          (mt/with-temp
+            [:model/Card    card    {:dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}
+             :model/Channel channel {:type    :channel/http
+                                     :details {:url         (str url "/test")
+                                               :auth-method :none}}]
+            (mt/user-http-request :rasta :post 200 "pulse/test"
+                                  {:name            (mt/random-name)
+                                   :cards           [{:id                (:id card)
+                                                      :include_csv       false
+                                                      :include_xls       false
+                                                      :dashboard_card_id nil}]
+                                   :channels        [{:enabled       true
+                                                      :channel_type  "http"
+                                                      :channel_id    (:id channel)
+                                                      :schedule_type "daily"
+                                                      :schedule_hour 12
+                                                      :schedule_day  nil
+                                                      :recipients    []}]
+                                   :alert_condition "rows"})
+            (is (=? {:body {:alert_creator_id   (mt/user->id :rasta)
+                            :alert_creator_name "Rasta Toucan"
+                            :alert_id           nil
+                            :data               {:question_id   (:id card)
+                                                 :question_name (mt/malli=? string?)
+                                                 :question_url  (mt/malli=? string?)
+                                                 :raw_data      {:cols ["count"], :rows [[18760]]},
+                                                 :type          "question"
+                                                 :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64,")])}
+                            :type               "alert"}}
+                    (first @requests)))))))))
 
 (deftest send-test-pulse-validate-emails-test
   (testing (str "POST /api/pulse/test should call " `pulse-channel/validate-email-domains)
@@ -984,7 +1113,8 @@
                             pulse.test-util/png-attachment]
                   :message-type :attachments,
                   :recipients #{"rasta@metabase.com"}
-                  :subject "Daily Sad Toucans"}
+                  :subject "Daily Sad Toucans"
+                  :recipient-type nil}
                  (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans"))))))))
 
 (deftest ^:parallel pulse-card-query-results-test
@@ -998,6 +1128,34 @@
                        [:data :viz-settings])))))
 
 (deftest form-input-test
+  (testing "GET /api/pulse/form_input"
+    (mt/with-temporary-setting-values
+      [slack/slack-app-token "test-token"]
+      (mt/with-temp [:model/Channel _ {:type :channel/http :details {:url "https://metabasetest.com" :auth-method "none"}}]
+        (is (= {:channels {:email {:allows_recipients true
+                                   :configured        false
+                                   :name              "Email"
+                                   :recipients        ["user" "email"]
+                                   :schedules         ["hourly" "daily" "weekly" "monthly"]
+                                   :type              "email"}
+                           :http  {:allows_recipients false
+                                   :configured        true
+                                   :name              "Webhook"
+                                   :schedules         ["hourly" "daily" "weekly" "monthly"]
+                                   :type              "http"}
+                           :slack {:allows_recipients false
+                                   :configured        true
+                                   :fields            [{:displayName "Post to"
+                                                        :name        "channel"
+                                                        :options     []
+                                                        :required    true
+                                                        :type        "select"}]
+                                   :name             "Slack"
+                                   :schedules        ["hourly" "daily" "weekly" "monthly"]
+                                   :type             "slack"}}}
+               (mt/user-http-request :rasta :get 200 "pulse/form_input")))))))
+
+(deftest form-input-slack-test
   (testing "GET /api/pulse/form_input"
     (testing "Check that Slack channels come back when configured"
       (mt/with-temporary-setting-values [slack/slack-channels-and-usernames-last-updated

@@ -253,7 +253,7 @@ const EditSandboxingModal = ({
             {typeof error === "string"
               ? error
               : // @ts-expect-error provide correct type for error
-                error.data.message ?? ERROR_MESSAGE}
+                (error.data.message ?? ERROR_MESSAGE)}
           </div>
         )}
       </div>

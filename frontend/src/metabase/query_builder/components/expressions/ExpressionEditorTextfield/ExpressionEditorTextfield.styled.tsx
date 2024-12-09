@@ -85,7 +85,9 @@ EditorContainer.defaultProps = {
 };
 
 export const EditorEqualsSign = styled.div`
-  font: 12px / normal Monaco, monospace;
+  font:
+    12px / normal Monaco,
+    monospace;
   height: 12px;
   font-weight: 700;
   margin: 0 3px 0 ${space(0)};

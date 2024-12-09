@@ -18,10 +18,7 @@ import {
 import type { MappableSdkColor } from "./embedding-color-palette";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "./embedding-color-palette";
 
-const getFontFamily = (theme: MetabaseTheme) =>
-  theme.fontFamily ?? DEFAULT_FONT;
-
-const SDK_BASE_FONT_SIZE = `${DEFAULT_SDK_FONT_SIZE / 16}em`;
+const SDK_BASE_FONT_SIZE = `${DEFAULT_SDK_FONT_SIZE}px`;
 
 /**
  * Transforms a public-facing Metabase theme configuration
@@ -29,6 +26,7 @@ const SDK_BASE_FONT_SIZE = `${DEFAULT_SDK_FONT_SIZE / 16}em`;
  */
 export function getEmbeddingThemeOverride(
   theme: MetabaseTheme,
+  font: string | undefined,
 ): MantineThemeOverride {
   const components: MetabaseComponentTheme = merge(
     DEFAULT_EMBEDDED_COMPONENT_THEME,
@@ -36,7 +34,9 @@ export function getEmbeddingThemeOverride(
   );
 
   const override: MantineThemeOverride = {
-    fontFamily: getFontFamily(theme),
+    // font is coming from either redux, where we store theme.fontFamily,
+    // or from the instance settings, we're adding a default to be used while loading the settings
+    fontFamily: font ?? DEFAULT_FONT,
 
     ...(theme.lineHeight && { lineHeight: theme.lineHeight }),
 
@@ -58,6 +58,15 @@ export function getEmbeddingThemeOverride(
       if (color && typeof color === "string") {
         const themeColorNames =
           SDK_TO_MAIN_APP_COLORS_MAPPING[name as MappableSdkColor];
+
+        // If the sdk color does not exist in the mapping, skip it.
+        if (!themeColorNames) {
+          console.warn(
+            `Color ${name} does not exist in the Embedding SDK. Please remove it from the theme configuration.`,
+          );
+
+          continue;
+        }
 
         for (const themeColorName of themeColorNames) {
           override.colors[themeColorName] = colorTuple(color);

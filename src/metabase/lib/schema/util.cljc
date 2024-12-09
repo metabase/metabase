@@ -1,7 +1,9 @@
 (ns metabase.lib.schema.util
   (:refer-clojure :exclude [ref])
   (:require
+   [clojure.walk :as walk]
    [metabase.lib.options :as lib.options]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
 (declare collect-uuids*)
@@ -66,8 +68,31 @@
           ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison.
           (reduce-kv (fn [acc k _]
                        (if (or (qualified-keyword? k)
-                               (= k :base-type)
-                               (= k :effective-type))
+                               (#{:base-type :effective-type :ident} k))
                          (dissoc acc k)
                          acc))
                      options options)))))))
+
+(defn remove-lib-uuids
+  "Recursively remove all uuids from x."
+  [x]
+  (walk/postwalk
+   (fn [x]
+     (if (map? x)
+       (dissoc x :lib/uuid)
+       x))
+   x))
+
+(mr/def ::distinct-ignoring-uuids
+  [:fn
+   {:error/message "values must be distinct ignoring uuids"
+    :error/fn      (fn [{:keys [value]} _]
+                     (str "Duplicate values ignoring uuids in: " (pr-str (remove-lib-uuids value))))}
+   (comp u/empty-or-distinct? remove-lib-uuids)])
+
+(defn distinct-ignoring-uuids
+  "Add an additional constraint to `schema` that requires all elements to be distinct after removing uuids."
+  [schema]
+  [:and
+   schema
+   [:ref ::distinct-ignoring-uuids]])

@@ -1,0 +1,368 @@
+[
+  {
+    "card": {
+      "original_card_id": 445,
+      "table_name": null,
+      "initial_sync_status": null,
+      "scores": [
+        {
+          "weight": 2,
+          "score": 0,
+          "name": "pinned"
+        },
+        {
+          "weight": 2,
+          "score": 0,
+          "name": "bookmarked"
+        },
+        {
+          "weight": 1.5,
+          "score": 1,
+          "name": "recency"
+        },
+        {
+          "weight": 1,
+          "score": 0.02,
+          "name": "dashboard"
+        },
+        {
+          "weight": 0.5,
+          "score": 0.5,
+          "name": "model"
+        },
+        {
+          "score": 1,
+          "name": "text-exact-match",
+          "weight": 4.444444444444444,
+          "match": "Pie - Labels  on Chart - Poke Count by Type 1",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__134420__134426$fn__134427$iter__134422__134428$fn__134429$fn__134430$fn__134433@736f3ed3",
+          "column": "name"
+        },
+        {
+          "score": 1,
+          "name": "text-consecutivity",
+          "weight": 2.222222222222222,
+          "match": "Pie - Labels  on Chart - Poke Count by Type 1",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__134420__134426$fn__134427$iter__134422__134428$fn__134429$fn__134430$fn__134433@7750b466",
+          "column": "name"
+        },
+        {
+          "score": 1,
+          "name": "text-total-occurrences",
+          "weight": 2.222222222222222,
+          "match": "Pie - Labels  on Chart - Poke Count by Type 1",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__134420__134426$fn__134427$iter__134422__134428$fn__134429$fn__134430$fn__134433@325234e8",
+          "column": "name"
+        },
+        {
+          "score": 0.2727272727272727,
+          "name": "text-fullness",
+          "weight": 1.111111111111111,
+          "match": "Pie - Labels  on Chart - Poke Count by Type 1",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__134420__134426$fn__134427$iter__134422__134428$fn__134429$fn__134430$fn__134433@9b90ddb",
+          "column": "name"
+        }
+      ],
+      "context": null,
+      "dashboardcard_count": 1,
+      "table_description": null,
+      "last_edited_at": "2024-09-13T17:43:10.364621Z",
+      "model_name": null,
+      "last_editor_id": 1,
+      "effective_location": null,
+      "model_id": null,
+      "model_index_id": null,
+      "collection_authority_level": null,
+      "creator_common_name": "Emmad Usmani",
+      "table_schema": null,
+      "pk_ref": null,
+      "database_name": null,
+      "last_editor_common_name": "Emmad Usmani",
+      "bookmark": false,
+      "model": "card",
+      "location": null,
+      "moderated_status": null,
+      "fully_parameterized": true,
+      "can_delete": false,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-09-13T17:43:10.100482Z",
+      "parameters": [],
+      "metabase_version": "v0.1.33-SNAPSHOT (8755117)",
+      "collection": {
+        "id": 23,
+        "name": "Pie",
+        "authority_level": null,
+        "type": null
+      },
+      "visualization_settings": {
+        "pie.show_labels": true
+      },
+      "last-edit-info": {
+        "id": 1,
+        "last_name": "Usmani",
+        "first_name": "Emmad",
+        "email": "emmad@metabase.com",
+        "timestamp": "2024-09-13T17:43:10.364621Z"
+      },
+      "collection_preview": true,
+      "entity_id": "TN-g0zMacqF7YzocQPJWr",
+      "archived_directly": false,
+      "display": "pie",
+      "parameter_mappings": [],
+      "id": 445,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              "type_1",
+              {
+                "base-type": "type/Text"
+              }
+            ]
+          ],
+          "source-table": "card__104"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-09-13T17:43:10.100482Z",
+      "moderation_reviews": [],
+      "can_restore": false,
+      "creator_id": 1,
+      "average_query_time": null,
+      "type": "question",
+      "last_used_at": "2024-09-13T17:43:10.100482Z",
+      "dashboard_count": 0,
+      "last_query_start": null,
+      "name": "Pie - Labels  on Chart - Poke Count by Type 1",
+      "query_type": "query",
+      "collection_id": 23,
+      "enable_embedding": false,
+      "database_id": null,
+      "trashed_from_collection_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-09-13T17:05:26.388255Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "semantic_type": "type/Category",
+          "name": "type_1",
+          "field_ref": [
+            "field",
+            "type_1",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 1475,
+          "visibility_type": "normal",
+          "display_name": "Type 1",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 18,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 5.281128404669261
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "name": "count",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 16,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 8,
+                "q1": 38,
+                "q3": 76,
+                "max": 134,
+                "sd": 32.210500459776796,
+                "avg": 57.111111111111114
+              }
+            }
+          }
+        }
+      ],
+      "can_run_adhoc_query": true,
+      "table_id": null,
+      "source_card_id": 104,
+      "collection_position": null,
+      "view_count": 0,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["Bug", 81],
+        ["Dark", 44],
+        ["Dragon", 40],
+        ["Electric", 61],
+        ["Fairy", 22],
+        ["Fighting", 38],
+        ["Fire", 65],
+        ["Flying", 8],
+        ["Ghost", 41],
+        ["Grass", 91],
+        ["Ground", 41],
+        ["Ice", 36],
+        ["Normal", 115],
+        ["Poison", 39],
+        ["Psychic", 76],
+        ["Rock", 60],
+        ["Steel", 36],
+        ["Water", 134]
+      ],
+      "cols": [
+        {
+          "database_type": "varchar",
+          "semantic_type": "type/Category",
+          "table_id": 156,
+          "name": "type_1",
+          "source": "breakout",
+          "field_ref": [
+            "field",
+            "type_1",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 1475,
+          "position": 9,
+          "visibility_type": "normal",
+          "display_name": "Type 1",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 18,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 5.281128404669261
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "database_type": "int8",
+          "semantic_type": "type/Quantity",
+          "name": "count",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "effective_type": "type/BigInteger",
+          "aggregation_index": 0,
+          "display_name": "Count",
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT \"source\".\"type_1\" AS \"type_1\", COUNT(*) AS \"count\" FROM (SELECT \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"pokedex_number\" AS \"pokedex_number\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"name\" AS \"name\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"german_name\" AS \"german_name\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"japanese_name\" AS \"japanese_name\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"generation\" AS \"generation\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"status\" AS \"status\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"species\" AS \"species\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"type_number\" AS \"type_number\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"type_1\" AS \"type_1\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"type_2\" AS \"type_2\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"height_m\" AS \"height_m\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"weight_kg\" AS \"weight_kg\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"abilities_number\" AS \"abilities_number\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"ability_1\" AS \"ability_1\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"ability_2\" AS \"ability_2\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"ability_hidden\" AS \"ability_hidden\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"total_points\" AS \"total_points\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"hp\" AS \"hp\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"attack\" AS \"attack\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"defense\" AS \"defense\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"sp_attack\" AS \"sp_attack\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"sp_defense\" AS \"sp_defense\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"speed\" AS \"speed\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"catch_rate\" AS \"catch_rate\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"base_friendship\" AS \"base_friendship\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"base_experience\" AS \"base_experience\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"growth_rate\" AS \"growth_rate\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"egg_type_number\" AS \"egg_type_number\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"egg_type_1\" AS \"egg_type_1\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"egg_type_2\" AS \"egg_type_2\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"percentage_male\" AS \"percentage_male\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"egg_cycles\" AS \"egg_cycles\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_normal\" AS \"against_normal\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_fire\" AS \"against_fire\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_water\" AS \"against_water\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_electric\" AS \"against_electric\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_grass\" AS \"against_grass\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_ice\" AS \"against_ice\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_fight\" AS \"against_fight\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_poison\" AS \"against_poison\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_ground\" AS \"against_ground\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_flying\" AS \"against_flying\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_psychic\" AS \"against_psychic\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_bug\" AS \"against_bug\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_rock\" AS \"against_rock\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_ghost\" AS \"against_ghost\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_dragon\" AS \"against_dragon\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_dark\" AS \"against_dark\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_steel\" AS \"against_steel\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_fairy\" AS \"against_fairy\" FROM \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\") AS \"source\" GROUP BY \"source\".\"type_1\" ORDER BY \"source\".\"type_1\" ASC",
+        "params": null
+      },
+      "dataset": true,
+      "model": true,
+      "format-rows?": true,
+      "results_timezone": "America/Los_Angeles",
+      "results_metadata": {
+        "columns": [
+          {
+            "semantic_type": "type/Category",
+            "name": "type_1",
+            "field_ref": [
+              "field",
+              "type_1",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 1475,
+            "visibility_type": "normal",
+            "display_name": "Type 1",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 18,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 5.281128404669261
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "name": "count",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 16,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 8,
+                  "q1": 38,
+                  "q3": 76,
+                  "max": 134,
+                  "sd": 32.210500459776796,
+                  "avg": 57.111111111111114
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

@@ -4,3 +4,5 @@ export * from "./Divider";
 export * from "./FocusTrap";
 export * from "./Paper";
 export * from "./Transition";
+export * from "./Space";
+export * from "./Portal";

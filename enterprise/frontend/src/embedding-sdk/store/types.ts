@@ -12,6 +12,7 @@ import type {
 } from "embedding-sdk";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
+import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import type { State } from "metabase-types/store";
 
 export type EmbeddingSessionTokenState = {
@@ -22,9 +23,6 @@ export type EmbeddingSessionTokenState = {
 
 type LoginStatusUninitialized = {
   status: "uninitialized";
-};
-type LoginStatusValidated = {
-  status: "validated";
 };
 type LoginStatusSuccess = {
   status: "success";
@@ -39,7 +37,6 @@ export type LoginStatusError = {
 
 export type LoginStatus =
   | LoginStatusUninitialized
-  | LoginStatusValidated
   | LoginStatusSuccess
   | LoginStatusLoading
   | LoginStatusError;
@@ -57,6 +54,7 @@ export type SdkState = {
   loginStatus: LoginStatus;
   plugins: null | SdkPluginsConfig;
   eventHandlers: null | SdkEventHandlersConfig;
+  usageProblem: null | SdkUsageProblem;
   loaderComponent: null | (() => JSX.Element);
   errorComponent: null | SdkErrorComponent;
   fetchRefreshTokenFn: null | FetchRequestTokenFn;

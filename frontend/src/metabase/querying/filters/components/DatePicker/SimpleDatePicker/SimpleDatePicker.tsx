@@ -6,21 +6,27 @@ import { Button, Stack } from "metabase/ui";
 
 import { DateOperatorPicker } from "../DateOperatorPicker";
 import { CurrentDatePicker } from "../RelativeDatePicker/CurrentDatePicker";
-import { SimpleDateIntervalPicker } from "../RelativeDatePicker/DateIntervalPicker";
+import { SimpleDateIntervalPicker } from "../RelativeDatePicker/DateIntervalPicker/SimpleDateIntervalPicker";
 import { isIntervalValue, isRelativeValue } from "../RelativeDatePicker/utils";
-import { SimpleSpecificDatePicker } from "../SpecificDatePicker";
+import { SimpleSpecificDatePicker } from "../SpecificDatePicker/SimpleSpecificDatePicker";
 import { isSpecificValue } from "../SpecificDatePicker/utils";
 import { DATE_PICKER_OPERATORS } from "../constants";
-import type { DatePickerOperator, DatePickerValue } from "../types";
+import type {
+  DatePickerOperator,
+  DatePickerUnit,
+  DatePickerValue,
+} from "../types";
 
 interface SimpleDatePickerProps {
   value?: DatePickerValue;
   availableOperators?: ReadonlyArray<DatePickerOperator>;
+  availableUnits: ReadonlyArray<DatePickerUnit>;
   onChange: (value: DatePickerValue | undefined) => void;
 }
 
 export function SimpleDatePicker({
   value: initialValue,
+  availableUnits,
   availableOperators = DATE_PICKER_OPERATORS,
   onChange,
 }: SimpleDatePickerProps) {
@@ -40,10 +46,18 @@ export function SimpleDatePicker({
           onChange={setValue}
         />
         {isRelativeValue(value) && isIntervalValue(value) && (
-          <SimpleDateIntervalPicker value={value} onChange={setValue} />
+          <SimpleDateIntervalPicker
+            value={value}
+            availableUnits={availableUnits}
+            onChange={setValue}
+          />
         )}
         {isRelativeValue(value) && !isIntervalValue(value) && (
-          <CurrentDatePicker value={value} onChange={setValue} />
+          <CurrentDatePicker
+            value={value}
+            availableUnits={availableUnits}
+            onChange={setValue}
+          />
         )}
         {isSpecificValue(value) && (
           <SimpleSpecificDatePicker value={value} onChange={setValue} />

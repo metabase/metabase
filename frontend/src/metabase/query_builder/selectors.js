@@ -1,32 +1,25 @@
-/* eslint-disable import/order */
 /*eslint no-use-before-define: "error"*/
-
 import { createSelector } from "@reduxjs/toolkit";
 import * as d3 from "d3";
 import { getIn, merge, updateIn } from "icepick";
 import _ from "underscore";
 
-import * as Lib from "metabase-lib";
-
-// Needed due to wrong dependency resolution order
-import { MetabaseApi } from "metabase/services";
+import { getDashboardById } from "metabase/dashboard/selectors";
+import Databases from "metabase/entities/databases";
+import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
+import Timelines from "metabase/entities/timelines";
+import { LOAD_COMPLETE_FAVICON } from "metabase/hooks/use-favicon";
+import { parseTimestamp } from "metabase/lib/time";
+import { getSortedTimelines } from "metabase/lib/timelines";
+import { isNotNull } from "metabase/lib/types";
+import { getAlerts } from "metabase/notifications/redux/selectors";
+import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/selectors/settings";
 import {
   extractRemappings,
   getVisualizationTransformed,
 } from "metabase/visualizations";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-
-import Databases from "metabase/entities/databases";
-import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
-import Timelines from "metabase/entities/timelines";
-
-import { getAlerts } from "metabase/alert/selectors";
-import { getDashboardById } from "metabase/dashboard/selectors";
-import { parseTimestamp } from "metabase/lib/time";
-import { getSortedTimelines } from "metabase/lib/timelines";
-import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
-import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
 import { getMode as getQuestionMode } from "metabase/visualizations/click-actions/lib/modes";
 import {
   computeTimeseriesDataInverval,
@@ -36,16 +29,17 @@ import {
   getXValues,
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
-import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import {
   normalizeParameterValue,
   normalizeParameters,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import Question from "metabase-lib/v1/Question";
 import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
-import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
-import { isNotNull } from "metabase/lib/types";
+import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
+
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 import { createRawSeries, getWritableColumnProperties } from "./utils";
 import {
@@ -702,9 +696,10 @@ export const getRawSeries = createSelector(
       datasetQuery: lastRunDatasetQuery,
     });
     if (isShowingRawTable && rawSeries?.length > 0) {
-      const [{ card, data }] = rawSeries;
+      const [{ card, ...rest }] = rawSeries;
       return [
         {
+          ...rest,
           card: {
             ...card,
             display: "table",
@@ -713,7 +708,6 @@ export const getRawSeries = createSelector(
               "table.pivot": false,
             },
           },
-          data,
         },
       ];
     }
@@ -795,7 +789,7 @@ const getTimeseriesDataInterval = createSelector(
     const columns = series[0]?.data?.cols ?? [];
     const dimensions = settings?.["graph.dimensions"] ?? [];
     const dimensionColumns = dimensions.map(dimension =>
-      columns.find(column => column.name === dimension),
+      columns.find(column => column != null && column.name === dimension),
     );
     const columnUnits = dimensionColumns
       .map(column =>
@@ -1015,51 +1009,14 @@ export const getIsAdditionalInfoVisible = createSelector(
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
 );
 
-export const getCardAutocompleteResultsFn = state => {
-  return function autocompleteResults(query) {
-    const dbId = state.qb.card?.dataset_query?.database;
-    if (!dbId) {
-      return [];
-    }
-
-    const apiCall = MetabaseApi.db_card_autocomplete_suggestions({
-      dbId,
-      query,
-    });
-    return apiCall;
-  };
-};
-
-export const getAutocompleteResultsFn = state => {
-  const matchStyle = getSetting(state, "native-query-autocomplete-match-style");
-
-  if (matchStyle === "off") {
-    return null;
-  }
-
-  return function autocompleteResults(query) {
-    const dbId = state.qb.card?.dataset_query?.database;
-    if (!dbId) {
-      return [];
-    }
-
-    const apiCall = MetabaseApi.db_autocomplete_suggestions({
-      dbId,
-      query,
-      matchStyle,
-    });
-    return apiCall;
-  };
-};
-
 export const getDataReferenceStack = createSelector(
   [getUiControls, getDatabaseId],
   (uiControls, dbId) =>
     uiControls.dataReferenceStack
       ? uiControls.dataReferenceStack
       : dbId
-      ? [{ type: "database", item: { id: dbId } }]
-      : [],
+        ? [{ type: "database", item: { id: dbId } }]
+        : [],
 );
 
 export const getDashboardId = state => {

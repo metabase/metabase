@@ -17,6 +17,7 @@ export const createMockCollection = (
   archived: false,
   is_personal: false,
   authority_level: null,
+  entity_id: "an_entity_id",
   ...opts,
 });
 

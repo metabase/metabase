@@ -370,7 +370,7 @@
                                          {:binning {:strategy :default}}
                                          (meta/id :people :longitude)]
                                         60.0]]}]}
-              (lib/drill-thru query -1 drill))))))
+              (lib/drill-thru query -1 nil drill))))))
 
 (deftest ^:parallel binned-lat-lon-nil-value-test
   (testing "Binned LatLon (default 'Auto-Bin') with nil values - no zoom-in drill"
@@ -500,4 +500,4 @@
                        :breakout [[:field {:temporal-unit :month} (meta/id :orders :created-at)]
                                   [:field {:binning {:strategy :bin-width, :bin-width 1}} (meta/id :people :latitude)]
                                   [:field {:binning {:strategy :bin-width, :bin-width 1}} (meta/id :people :longitude)]]}]}
-            (lib/drill-thru query -1 zoom-in)))))
+            (lib/drill-thru query -1 nil zoom-in)))))

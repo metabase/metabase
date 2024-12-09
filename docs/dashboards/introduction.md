@@ -60,7 +60,7 @@ You can use [Markdown](http://commonmark.org/help/) to format the text in your t
 
 ![Result](images/result.png)
 
-To learn more, see [Fun with Markdown in your dashboards](https://www.metabase.com/learn/dashboards/markdown).
+To learn more, see [Fun with Markdown in your dashboards](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/markdown).
 
 ### Including variables in text cards
 
@@ -93,6 +93,33 @@ To see how to wire up a filter to a card, see [dashboard filters](./filters.md).
 Link cards are specialized cards that let you search and link to other items in your Metabase. You can also use them for external links. Useful for pointing people to other resources relevant to your dashboard.
 
 To add a link card to a dashboard, click the **pencil** icon to enter dashboard editing mode, then click on the **link** icon. Click on the input field in the link card to search your Metabase for an item to link to, or paste an external link.
+
+## Iframe cards
+
+[Iframes](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe) allow you to nest one HTML page in another HTML page. With iframe cards in Metabase, you can embed a webpage in your dashboard. You can embed:
+
+- Spreadsheets or surveys for data entry or workflows
+- Videos or slides for contextualizing and storytelling on dashboards
+- Live charts and visualizations from other tools
+
+To add an iframe card to a dashboard, click the **pencil** icon to enter dashboard editing mode, then click on the **link** icon and select **Iframe**. Then paste the iframe URL. Here's an iframe for our video on how to create a dashboard:
+
+```html
+<iframe
+  width="560"
+  height="315"
+  src="https://www.youtube.com/embed/W-i9E5_Wjmw?si=qWeMGxEymVOIHiXo"
+  title="YouTube video player"
+  frameborder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+  referrerpolicy="strict-origin-when-cross-origin"
+  allowfullscreen
+></iframe>
+```
+
+And behold, a dashboard with an embedded video:
+
+![Dashboard with iframe of video](./images/dashboard-with-iframe.png)
 
 ## Dashboard tabs
 
@@ -266,6 +293,15 @@ For [questions](../questions/start.md), dashboards, and [models](../data-modelin
 
 See [History](../exploration-and-organization/history.md).
 
+## Verifying a dashboard
+
+See [content verification](../exploration-and-organization/content-verification.md).
+
+## Deleting a dashboard
+
+You can move a dashboard to Trash or permanently delete a dashboard that you no longer need.
+See [Archiving a dashboard](../exploration-and-organization/delete-and-restore.md).
+
 ## Tips on creating helpful dashboards
 
 To make a great dashboard, you first need to decide what you want the dashboard to tell about your data. What questions will give you insight into what you want to know? It helps to think of a topic or theme for your dashboard — something like “customer satisfaction,” or “second quarter sales goals".
@@ -283,4 +319,4 @@ Some tips:
 - [Interactive dashboards](./interactive.md)
 - [Dashboard charts with multiple series](./multiple-series.md)
 - [Dashboard subscriptions](./subscriptions.md)
-- [Making dashboards faster](https://www.metabase.com/learn/administration/making-dashboards-faster)
+- [Making dashboards faster](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster)

@@ -1,5 +1,9 @@
-(ns metabase.api.pulse
-  "/api/pulse endpoints."
+(ns ^:deprecated metabase.api.pulse
+  "`/api/pulse` endpoints. These are all authenticated. For unauthenticated `/api/pulse/unsubscribe` endpoints,
+  see [[metabase.api.pulse.unsubscribe]].
+
+  Deprecated: will soon be migrated to notification APIs."
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.set :refer [difference]]
    [compojure.core :refer [GET POST PUT]]
@@ -8,6 +12,7 @@
    [metabase.api.alert :as api.alert]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.channel.render.core :as channel.render]
    [metabase.config :as config]
    [metabase.email :as email]
    [metabase.events :as events]
@@ -16,16 +21,15 @@
    [metabase.models.collection :as collection]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse :as pulse :refer [Pulse]]
+   [metabase.models.pulse :as models.pulse :refer [Pulse]]
    [metabase.models.pulse-channel
     :as pulse-channel
     :refer [channel-types PulseChannel]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+   [metabase.notification.core :as notification]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.pulse]
-   [metabase.pulse.preview :as preview]
-   [metabase.pulse.render :as render]
+   [metabase.pulse.core :as pulse]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
@@ -88,9 +92,9 @@
    creator_or_recipient [:maybe ms/BooleanValue]}
   (let [creator-or-recipient creator_or_recipient
         archived?            archived
-        pulses               (->> (pulse/retrieve-pulses {:archived?    archived?
-                                                          :dashboard-id dashboard_id
-                                                          :user-id      (when creator-or-recipient api/*current-user-id*)})
+        pulses               (->> (models.pulse/retrieve-pulses {:archived?    archived?
+                                                                 :dashboard-id dashboard_id
+                                                                 :user-id      (when creator-or-recipient api/*current-user-id*)})
                                   (filter (if creator-or-recipient mi/can-read? mi/can-write?))
                                   maybe-filter-pulses-recipients)
         pulses               (if creator-or-recipient
@@ -110,7 +114,7 @@
   "Create a new `Pulse`."
   [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id parameters]} :body}]
   {name                ms/NonBlankString
-   cards               [:+ pulse/CoercibleToCardRef]
+   cards               [:+ models.pulse/CoercibleToCardRef]
    channels            [:+ :map]
    skip_if_empty       [:maybe :boolean]
    collection_id       [:maybe ms/PositiveInt]
@@ -140,7 +144,7 @@
       (api/maybe-reconcile-collection-position! pulse-data)
       ;; ok, now create the Pulse
       (let [pulse (api/check-500
-                   (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data))]
+                   (models.pulse/create-pulse! (map models.pulse/card->ref cards) channels pulse-data))]
         (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
         pulse))))
 
@@ -149,7 +153,7 @@
   we still return it but with some sensitive metadata removed."
   [id]
   {id ms/PositiveInt}
-  (api/let-404 [pulse (pulse/retrieve-pulse id)]
+  (api/let-404 [pulse (models.pulse/retrieve-pulse id)]
     (api/check-403 (mi/can-read? pulse))
     (-> pulse
         maybe-filter-pulse-recipients
@@ -178,7 +182,7 @@
   [id :as {{:keys [name cards channels skip_if_empty collection_id archived parameters], :as pulse-updates} :body}]
   {id            ms/PositiveInt
    name          [:maybe ms/NonBlankString]
-   cards         [:maybe [:+ pulse/CoercibleToCardRef]]
+   cards         [:maybe [:+ models.pulse/CoercibleToCardRef]]
    channels      [:maybe [:+ :map]]
    skip_if_empty [:maybe :boolean]
    collection_id [:maybe ms/PositiveInt]
@@ -190,7 +194,7 @@
     (catch clojure.lang.ExceptionInfo _e
       (validation/check-has-application-permission :subscription false)))
 
-  (let [pulse-before-update (api/write-check (pulse/retrieve-pulse id))]
+  (let [pulse-before-update (api/write-check (models.pulse/retrieve-pulse id))]
     (check-card-read-permissions cards)
     (collection/check-allowed-to-change-collection pulse-before-update pulse-updates)
 
@@ -216,12 +220,12 @@
        ;; depending on what changed.
         (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)
        ;; ok, now update the Pulse
-        (pulse/update-pulse!
+        (models.pulse/update-pulse!
          (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
                                             :archived :parameters])
                 :id id)))))
   ;; return updated Pulse
-  (pulse/retrieve-pulse id))
+  (models.pulse/retrieve-pulse id))
 
 (api/defendpoint GET "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
@@ -229,7 +233,8 @@
   (validation/check-has-application-permission :subscription false)
   (let [chan-types (-> channel-types
                        (assoc-in [:slack :configured] (slack/slack-configured?))
-                       (assoc-in [:email :configured] (email/email-configured?)))]
+                       (assoc-in [:email :configured] (email/email-configured?))
+                       (assoc-in [:http :configured] (t2/exists? :model/Channel :type :channel/http :active true)))]
     {:channels (cond
                  (premium-features/sandboxed-or-impersonated-user?)
                  (dissoc chan-types :slack)
@@ -273,14 +278,15 @@
      :body   (html5
               [:html
                [:body {:style "margin: 0;"}
-                (binding [render/*include-title*   true
-                          render/*include-buttons* true]
-                  (render/render-pulse-card-for-display (metabase.pulse/defaulted-timezone card) card result))]])}))
+                (channel.render/render-pulse-card-for-display (channel.render/defaulted-timezone card)
+                                                              card
+                                                              result
+                                                              {:channel.render/include-title? true, :channel.render/include-buttons? true})]])}))
 
 (api/defendpoint GET "/preview_dashboard/:id"
   "Get HTML rendering of a Dashboard with `id`.
 
-  This endpoint relies on a custom middleware defined in `metabase.pulse.preview/style-tag-nonce-middleware` to
+  This endpoint relies on a custom middleware defined in `metabase.channel.render.core/style-tag-nonce-middleware` to
   allow the style tag to render properly, given our Content Security Policy setup. This middleware is attached to these
   routes at the bottom of this namespace using `metabase.api.common/define-routes`."
   [id]
@@ -288,7 +294,7 @@
   (api/read-check :model/Dashboard id)
   {:status  200
    :headers {"Content-Type" "text/html"}
-   :body    (preview/style-tag-from-inline-styles
+   :body    (channel.render/style-tag-from-inline-styles
              (html5
               [:head
                [:meta {:charset "utf-8"}]
@@ -296,7 +302,7 @@
                        :rel  "stylesheet"
                        :href "https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap"}]]
               [:body [:h2 (format "Backend Artifacts Preview for Dashboard %s" id)]
-               (preview/render-dashboard-to-html id)]))})
+               (channel.render/render-dashboard-to-html id)]))})
 
 (api/defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
@@ -305,9 +311,11 @@
   (let [card      (api/read-check Card id)
         result    (pulse-card-query-results card)
         data      (:data result)
-        card-type (render/detect-pulse-chart-type card nil data)
-        card-html (html (binding [render/*include-title* true]
-                          (render/render-pulse-card-for-display (metabase.pulse/defaulted-timezone card) card result)))]
+        card-type (channel.render/detect-pulse-chart-type card nil data)
+        card-html (html (channel.render/render-pulse-card-for-display (channel.render/defaulted-timezone card)
+                                                                      card
+                                                                      result
+                                                                      {:channel.render/include-title? true}))]
     {:id              id
      :pulse_card_type card-type
      :pulse_card_html card-html
@@ -324,29 +332,34 @@
   {id ms/PositiveInt}
   (let [card   (api/read-check Card id)
         result (pulse-card-query-results card)
-        ba     (binding [render/*include-title* true]
-                 (render/render-pulse-card-to-png (metabase.pulse/defaulted-timezone card) card result preview-card-width))]
+        ba     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
+                                                        card
+                                                        result
+                                                        preview-card-width
+                                                        {:channel.render/include-title? true})]
     {:status 200, :headers {"Content-Type" "image/png"}, :body (ByteArrayInputStream. ba)}))
 
 (api/defendpoint POST "/test"
   "Test send an unsaved pulse."
   [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id] :as body} :body}]
   {name                ms/NonBlankString
-   cards               [:+ pulse/CoercibleToCardRef]
+   cards               [:+ models.pulse/CoercibleToCardRef]
    channels            [:+ :map]
    skip_if_empty       [:maybe :boolean]
    collection_id       [:maybe ms/PositiveInt]
    collection_position [:maybe ms/PositiveInt]
    dashboard_id        [:maybe ms/PositiveInt]}
-  ;; Check permissions on cards that exist. Placeholders don't matter.
+  ;; Check permissions on cards that exist. Placeholders and iframes don't matter.
   (check-card-read-permissions
    (remove (fn [{:keys [id display]}]
              (and (nil? id)
-                  (= "placeholder" display))) cards))
+                  (or (= "placeholder" display)
+                      (= "iframe" display)))) cards))
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
     (pulse-channel/validate-email-domains channel))
-  (metabase.pulse/send-pulse! (assoc body :creator_id api/*current-user-id*))
+  (binding [notification/*default-options* {:notification/sync? true}]
+    (pulse/send-pulse! (assoc body :creator_id api/*current-user-id*)))
   {:ok true})
 
 (api/defendpoint DELETE "/:id/subscription"
@@ -360,6 +373,6 @@
   api/generic-204-no-content)
 
 (def ^:private style-nonce-middleware
-  (partial preview/style-tag-nonce-middleware "/api/pulse/preview_dashboard"))
+  (partial channel.render/style-tag-nonce-middleware "/api/pulse/preview_dashboard"))
 
 (api/define-routes style-nonce-middleware)

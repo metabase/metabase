@@ -1,0 +1,12 @@
+active: true
+created_at: '2024-09-11T15:36:01.845352Z'
+description: null
+details:
+  auth-method: none
+  url: http://example.com
+name: My HTTP channel
+type: channel/http
+serdes/meta:
+- id: My HTTP channel
+  label: my_http_channel
+  model: Channel

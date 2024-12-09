@@ -88,10 +88,10 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       breakouts,
     );
 
-    const isAnyBreakoutDate = breakoutsWithColumns.some(({ column }) => {
+    const isAnyBreakoutTemporal = breakoutsWithColumns.some(({ column }) => {
       return Lib.isTemporal(column);
     });
-    if (isAnyBreakoutDate) {
+    if (isAnyBreakoutTemporal) {
       return { display: "line" };
     }
 

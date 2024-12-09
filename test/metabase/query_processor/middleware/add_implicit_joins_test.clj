@@ -274,7 +274,7 @@
                                               $tax
                                               $total
                                               $discount
-                                              !default.created-at
+                                              $created-at
                                               $quantity
                                               [:field %products.category {:source-field %product-id
                                                                           :join-alias   "PRODUCTS__via__PRODUCT_ID"}]]
@@ -374,7 +374,7 @@
     (is (= (lib.tu.macros/mbql-query checkins
              {:source-query {:source-table $$checkins
                              :fields       [$id
-                                            !default.date
+                                            $date
                                             $user-id
                                             $venue-id]
                              :filter       [:> $date "2014-01-01"]}

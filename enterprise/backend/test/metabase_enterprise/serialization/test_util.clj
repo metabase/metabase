@@ -10,7 +10,7 @@
                             Field NativeQuerySnippet Pulse PulseCard Segment Table User]]
    [metabase.models.collection :as collection]
    [metabase.models.serialization :as serdes]
-   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
@@ -111,7 +111,7 @@
 
 (defn do-with-random-dump-dir [prefix f]
   (let [dump-dir (random-dump-dir (or prefix ""))]
-    (testing (format "\nDump dir = %s" (pr-str dump-dir))
+    (testing (format "\nDump dir = %s\n" (pr-str dump-dir))
       (try
         (f dump-dir)
         (finally
@@ -409,9 +409,9 @@
                                                                                         :aggregation [:sum [:field latitude-field-id nil]]
                                                                                         :breakout [[:field category-field-id nil]]}}
                                                                 :visualization_settings
-                                                                {:pivot_table.column_split {:columns [["field" latitude-field-id nil]]
-                                                                                            :rows    [["field" latitude-field-id nil]]
-                                                                                            :values  [["aggregation" 0]]}}}]
+                                                                {:pivot_table.column_split {:columns ["LATITUDE"]
+                                                                                            :rows    ["LONGITUDE"]
+                                                                                            :values  ["sum"]}}}]
     (f {:card-arch-id                 card-arch-id
         :card-id                      card-id
         :card-id-collection-to-root   card-id-collection-to-root

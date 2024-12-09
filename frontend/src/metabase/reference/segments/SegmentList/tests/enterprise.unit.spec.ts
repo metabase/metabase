@@ -42,6 +42,7 @@ describe("SegmentList (EE without token)", () => {
 
   describe("Non-admins", () => {
     const user = createMockUser();
+
     it("should not render help link", () => {
       setup({ user });
 

@@ -21,10 +21,10 @@ import type {
   FieldId,
   ForeignKey,
   GroupListQuery,
-  ListDashboardsResponse,
   ModelCacheRefreshStatus,
   ModelIndex,
   NativeQuerySnippet,
+  NotificationChannel,
   PopularItem,
   RecentItem,
   Revision,
@@ -154,6 +154,12 @@ export function provideCardQueryMetadataTags(
   return [idTag("card", id), ...provideAdhocQueryMetadataTags(metadata)];
 }
 
+export function provideCardQueryTags(
+  cardId: CardId,
+): TagDescription<TagType>[] {
+  return [idTag("card", cardId)];
+}
+
 export function provideCloudMigrationTags(
   migration: CloudMigration,
 ): TagDescription<TagType>[] {
@@ -206,6 +212,28 @@ export function provideModelIndexListTags(
   ];
 }
 
+export function provideModeratedItemTags(
+  itemType: TagType,
+  itemId: number,
+): TagDescription<TagType>[] {
+  return [listTag(itemType), idTag(itemType, itemId)];
+}
+
+export function provideChannelTags(
+  channel: NotificationChannel,
+): TagDescription<TagType>[] {
+  return [idTag("channel", channel.id)];
+}
+
+export function provideChannelListTags(
+  channels: NotificationChannel[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("channel"),
+    ...channels.flatMap(channel => provideChannelTags(channel)),
+  ];
+}
+
 export function provideDatabaseCandidateListTags(
   candidates: DatabaseXray[],
 ): TagDescription<TagType>[] {
@@ -237,7 +265,7 @@ export function provideDatabaseTags(
 }
 
 export function provideDashboardListTags(
-  dashboards: ListDashboardsResponse,
+  dashboards: Pick<Dashboard, "id">[],
 ): TagDescription<TagType>[] {
   return [
     listTag("dashboard"),

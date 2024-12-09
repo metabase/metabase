@@ -9,3 +9,7 @@
 .cursorDefault {
   cursor: default;
 }
+
+.cursorInherit {
+  cursor: inherit;
+}

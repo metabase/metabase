@@ -41,7 +41,9 @@ import { getDefaultDisplayOptions } from "./config";
 import { EMBED_MODAL_TABS } from "./tabs";
 import type { ActivePreviewPane, EmbedCodePaneVariant } from "./types";
 
-const countEmbeddingParameterOptions = (embeddingParams: EmbeddingParameters) =>
+const countEmbeddingParameterOptions = (
+  embeddingParams: EmbeddingParameters,
+): Record<EmbeddingParameterVisibility, number> =>
   Object.values(embeddingParams).reduce(
     (acc, value) => {
       acc[value] += 1;
@@ -237,7 +239,7 @@ export const StaticEmbedSetupPane = ({
   };
 
   const [activeTab, setActiveTab] = useState<
-    typeof EMBED_MODAL_TABS[keyof typeof EMBED_MODAL_TABS]
+    (typeof EMBED_MODAL_TABS)[keyof typeof EMBED_MODAL_TABS]
   >(EMBED_MODAL_TABS.Overview);
   return (
     <Stack spacing={0}>
@@ -406,14 +408,16 @@ function getPreviewParamsBySlug({
   );
 
   return Object.fromEntries(
-    lockedParameters.map(parameter => [
-      parameter.slug,
-      getParameterValue({
+    lockedParameters.map(parameter => {
+      const value = getParameterValue({
         parameter,
         values: parameterValues,
         defaultRequired: true,
-      }),
-    ]),
+      });
+      // metabase#47570
+      const valueWithDefaultLockedParameterValue = value === null ? [] : value;
+      return [parameter.slug, valueWithDefaultLockedParameterValue];
+    }),
   );
 }
 

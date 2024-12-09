@@ -22,8 +22,9 @@ import type {
   DashboardNightModeControls,
   DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
+import { isEmbeddingSdk } from "metabase/env";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { fetchPulseFormInput } from "metabase/pulse/actions";
+import { fetchPulseFormInput } from "metabase/notifications/pulse/actions";
 import { getSetting } from "metabase/selectors/settings";
 import { Flex, Loader } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
@@ -153,8 +154,12 @@ export const DashboardHeaderInner = ({
             : "",
         )}
         editingButtons={editingButtons}
-        onLastEditInfoClick={() =>
-          dispatch(setSidebar({ name: SIDEBAR_NAME.info }))
+        onLastEditInfoClick={
+          isEmbeddingSdk
+            ? undefined
+            : () => {
+                dispatch(setSidebar({ name: SIDEBAR_NAME.info }));
+              }
         }
         refreshPeriod={refreshPeriod}
         onRefreshPeriodChange={onRefreshPeriodChange}

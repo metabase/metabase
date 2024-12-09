@@ -215,12 +215,19 @@
 
 (defmethod ->replacement-snippet-info [:sql DateTimeRange]
   [driver {:keys [start end]} & [field-identifier]]
-  (let [[start end] (map (fn [s]
-                           (->prepared-substitution driver (maybe-parse-temporal-literal s)))
-                         [start end])]
-    {:replacement-snippet     (format "%s >= %s AND %s < %s"
-                                      field-identifier (:sql-string start) field-identifier (:sql-string end))
-     :prepared-statement-args (concat (:param-values start) (:param-values end))}))
+  (let [[start end]       (map (fn [s]
+                                 (when s
+                                   (->prepared-substitution driver (maybe-parse-temporal-literal s))))
+                               [start end])
+        start-expr-native (when start
+                            (format "%s >= %s" field-identifier (:sql-string start)))
+        end-expr-native   (when end
+                            (format "%s < %s" field-identifier (:sql-string end)))]
+    {:replacement-snippet     (str/join " AND " (remove nil? [start-expr-native end-expr-native]))
+     :prepared-statement-args (into []
+                                    (comp (keep :param-values)
+                                          cat)
+                                    [start end])}))
 
 ;;; ------------------------------------- Field Filter replacement snippet info --------------------------------------
 

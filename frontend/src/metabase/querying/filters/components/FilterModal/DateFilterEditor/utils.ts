@@ -1,7 +1,5 @@
-import {
-  type DatePickerValue,
-  getShortcutOptions,
-} from "metabase/querying/filters/components/DatePicker";
+import type { DatePickerValue } from "metabase/querying/filters/components/DatePicker";
+import { getShortcutOptions } from "metabase/querying/filters/components/DatePicker/DateShortcutPicker/utils";
 import * as Lib from "metabase-lib";
 
 import { MAIN_SHORTCUTS } from "./constants";

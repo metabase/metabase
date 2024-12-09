@@ -239,9 +239,6 @@ export function getDefaultTab({
     id: tabId,
     dashboard_id: dashId,
     name,
-    entity_id: "",
-    created_at: "",
-    updated_at: "",
   };
 }
 
@@ -544,7 +541,7 @@ export const tabsReducer = createReducer<DashboardState>(
       prevDashcardIds.forEach((prevId, index) => {
         const prevDashcardData = state.dashcardData[prevId];
 
-        if (prevDashcardData) {
+        if (prevDashcardData && newDashcards[index]?.id) {
           state.dashcardData[newDashcards[index].id] = prevDashcardData;
         }
       });
@@ -587,7 +584,7 @@ export const tabsReducer = createReducer<DashboardState>(
       const tabId =
         idFromSlug && prevTabs.map(t => t.id).includes(idFromSlug)
           ? idFromSlug
-          : prevTabs[0]?.id ?? null;
+          : (prevTabs[0]?.id ?? null);
 
       state.selectedTabId = tabId;
     });

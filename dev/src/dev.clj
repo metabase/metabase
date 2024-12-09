@@ -57,6 +57,7 @@
    [dev.explain :as dev.explain]
    [dev.migrate :as dev.migrate]
    [dev.model-tracking :as model-tracking]
+   [dev.render-png :as render-png]
    [hashp.core :as hashp]
    [honey.sql :as sql]
    [java-time.api :as t]
@@ -74,8 +75,8 @@
    [metabase.models.setting :as setting]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.server :as server]
    [metabase.server.handler :as handler]
+   [metabase.server.instance :as server]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test-runner]
@@ -108,6 +109,10 @@
   migrate!
   rollback!
   migration-sql-by-id]
+ [render-png
+  open-html
+  open-png-bytes
+  open-hiccup-as-html]
  [model-tracking
   track!
   untrack!
@@ -222,7 +227,9 @@
 (defn query-jdbc-db
   "Execute a SQL query against a JDBC database. Useful for testing SQL syntax locally.
 
-    (query-jdbc-db :oracle SELECT to_date('1970-01-01', 'YYYY-MM-DD') FROM dual\")
+    (query-jdbc-db :oracle \"SELECT to_date('1970-01-01', 'YYYY-MM-DD') FROM dual\")
+
+    (query-jdbc-db :h2 \"SELECT name FROM people WHERE name LIKE '%Ken%'\")
 
   `sql-args` can be either a SQL string or a tuple with a SQL string followed by any prepared statement args. By
   default this method uses the same methods to set prepared statement args and read columns from results as used by
@@ -236,8 +243,8 @@
      [:sqlserver 'time-test-data]
      [\"SELECT * FROM dbo.users WHERE dbo.users.last_login_time > ?\" (java-time/offset-time \"16:00Z\")])"
   {:arglists '([driver sql]            [[driver dataset] sql]
-               [driver honeysql-form]  [[driver dataset] honeysql-form]
-               [driver [sql & params]] [[driver dataset] [sql & params]])}
+                                       [driver honeysql-form]  [[driver dataset] honeysql-form]
+                                       [driver [sql & params]] [[driver dataset] [sql & params]])}
   [driver-or-driver+dataset sql-args]
   (let [[driver dataset] (u/one-or-many driver-or-driver+dataset)
         [sql & params]   (if (map? sql-args)
@@ -279,7 +286,11 @@
 
     ;; use it with raw SQL
     (t2/query (t2/select-one Database :engine :postgres, :name \"test-data\")
-              \"SELECT * FROM venues;\")"
+              \"SELECT * FROM venues;\")
+
+    ;; use it with the Sample Database
+    (t2/query (t2/select-one Database :engine :h2, :name \"Sample Database\")
+              \"SELECT * FROM people LIMIT 1;\")"
   [database f]
   (t2.connection/do-with-connection (sql-jdbc.conn/db->pooled-connection-spec database) f))
 
@@ -331,8 +342,8 @@
         (let [res (maybe-realize (next-method model strategy k instances))]
           ;; only throws an exception if the simple hydration makes a DB call
           (when (pos-int? (call-count))
-              (throw (ex-info (format "N+1 hydration detected!!! Model %s, key %s]" (pr-str model) k)
-                              {:model model :strategy strategy :k k :items-count (count instances) :db-calls (call-count)})))
+            (throw (ex-info (format "N+1 hydration detected!!! Model %s, key %s]" (pr-str model) k)
+                            {:model model :strategy strategy :k k :items-count (count instances) :db-calls (call-count)})))
           res)))))
 
 (defn app-db-as-data-warehouse
@@ -367,6 +378,13 @@
   [form]
   (hashp/p* form))
 
+#_:clj-kondo/ignore
+(defn tap
+  "#tap, but to use in pipelines like `(-> 1 inc dev/tap prn inc)`."
+  [form]
+  (u/prog1 form
+    (tap> <>)))
+
 (defn- tests-in-var-ns [test-var]
   (->> test-var meta :ns ns-interns vals
        (filter (comp :test meta))))
@@ -394,7 +412,6 @@
         (when (failed?)
           (throw (ex-info (format "Test failed after running: `%s`" test)
                           {:test test})))))))
-
 
 (defn setup-email!
   "Set up email settings for sending emails from Metabase. This is useful for testing email sending in the REPL."

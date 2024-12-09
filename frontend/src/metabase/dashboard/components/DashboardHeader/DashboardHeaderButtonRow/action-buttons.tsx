@@ -10,7 +10,6 @@ import {
   AddActionElementButton,
   AddFilterParameterButton,
   AddHeadingOrTextButton,
-  AddLinkCardButton,
   AddQuestionButton,
   AddSectionButton,
   CopyAnalyticsDashboardButton,
@@ -20,8 +19,9 @@ import {
   FullscreenAnalyticsDashboard,
   FullscreenToggle,
   NightModeToggleButton,
-  getExtraButtons,
+  useGetExtraButtons,
 } from "../buttons";
+import { AddLinkOrEmbedButton } from "../buttons/AddLinkOrEmbedButton";
 
 import type {
   DashboardActionButton,
@@ -64,7 +64,7 @@ export const dashboardActionButtons: Record<
     enabled: ({ isEditing }) => isEditing,
   },
   [DASHBOARD_ACTION.ADD_LINK_CARD]: {
-    component: AddLinkCardButton,
+    component: AddLinkOrEmbedButton,
     enabled: ({ isEditing }) => isEditing,
   },
   [DASHBOARD_ACTION.ADD_SECTION]: {
@@ -161,19 +161,22 @@ export const dashboardActionButtons: Record<
         dashboard,
         canEdit,
         location,
-      }) => (
-        <DashboardActionMenu
-          items={getExtraButtons({
-            canResetFilters,
-            onResetFilters,
-            onFullscreenChange,
-            isFullscreen,
-            dashboard,
-            canEdit,
-            pathname: location?.pathname,
-          })}
-        />
-      ),
+        openSettingsSidebar,
+      }) => {
+        const { extraButtons } = useGetExtraButtons({
+          canResetFilters,
+          onResetFilters,
+          onFullscreenChange,
+          isFullscreen,
+          dashboard,
+          canEdit,
+          pathname: location?.pathname,
+          openSettingsSidebar,
+          location,
+        });
+
+        return <DashboardActionMenu items={extraButtons} />;
+      },
     ),
     enabled: ({ isFullscreen, isEditing, isAnalyticsDashboard, dashboard }) =>
       !isFullscreen &&

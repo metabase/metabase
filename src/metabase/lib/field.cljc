@@ -19,18 +19,17 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.temporal-bucketing
-    :as lib.schema.temporal-bucketing]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]
-   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.time :as u.time]))
 
 (mu/defn resolve-column-name-in-metadata :- [:maybe ::lib.schema.metadata/column]
   "Find the column with `column-name` in a sequence of `column-metadatas`."
@@ -93,11 +92,32 @@
                     {:base-type base-type})
                   (when-let [effective-type ((some-fn :effective-type :base-type) opts)]
                     {:effective-type effective-type})
+                  (when-let [original-effective-type (::original-effective-type opts)]
+                    {::original-effective-type original-effective-type})
+                  (when-let [original-temporal-unit (::original-temporal-unit opts)]
+                    {::original-temporal-unit original-temporal-unit})
+                  ;; `:inherited-temporal-unit` is transfered from `:temoral-unit` ref option only when
+                  ;; the [[lib.metadata.calculation/*propagate-binning-and-bucketing*]] is thruthy, ie. bound. Intent
+                  ;; is to pass it from ref to column only during [[returned-columns]] call. Otherwise eg.
+                  ;; [[orderable-columns]] would contain that too. That could be problematic, because original ref that
+                  ;; contained `:temporal-unit` contains no `:inherent-temporal-unit`. If the column like this was used
+                  ;; to generate ref for eg. order by it would contain the `:inherent-temporal-unit`, while
+                  ;; the original column (eg. in breakout) would not.
+                  (let [inherited-temporal-unit-keys (cond-> (list :inherited-temporal-unit)
+                                                       lib.metadata.calculation/*propagate-binning-and-bucketing*
+                                                       (conj :temporal-unit))]
+                    (when-some [inherited-temporal-unit (some opts inherited-temporal-unit-keys)]
+                      {:inherited-temporal-unit inherited-temporal-unit}))
                   ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if
                   ;; the Field is temporally bucketed, the base-type/effective-type would probably be affected, right?
                   ;; We should probably be taking that into consideration?
                   (when-let [binning (:binning opts)]
                     {::binning binning})
+                  (let [binning-keys (cond-> (list :was-binned)
+                                       lib.metadata.calculation/*propagate-binning-and-bucketing*
+                                       (conj :binning))]
+                    (when-some [was-binned (some opts binning-keys)]
+                      {:was-binned (boolean was-binned)}))
                   (when-let [unit (:temporal-unit opts)]
                     {::temporal-unit unit})
                   (cond
@@ -159,14 +179,14 @@
    metadata
    [_tag {source-uuid :lib/uuid :keys [base-type binning effective-type join-alias source-field temporal-unit], :as opts} :as field-ref]]
   (let [metadata (merge
-                  {:lib/type        :metadata/column
-                   :lib/source-uuid source-uuid}
+                  {:lib/type        :metadata/column}
                   metadata
                   {:display-name (or (:display-name opts)
                                      (lib.metadata.calculation/display-name query stage-number field-ref))})]
     (cond-> metadata
+      source-uuid    (assoc :lib/source-uuid source-uuid)
+      base-type      (assoc :base-type base-type, :effective-type base-type)
       effective-type (assoc :effective-type effective-type)
-      base-type      (assoc :base-type base-type)
       temporal-unit  (assoc ::temporal-unit temporal-unit)
       binning        (assoc ::binning binning)
       source-field   (assoc :fk-field-id source-field)
@@ -239,16 +259,13 @@
                                       lib.util/strip-id)
                                   (let [table (lib.metadata/table-or-card query table-id)]
                                     (lib.metadata.calculation/display-name query stage-number table style))))
-                              (or join-alias (lib.join.util/current-join-alias field-metadata))))
+                              join-alias
+                              (lib.join.util/current-join-alias field-metadata)))
         display-name       (if join-display-name
                              (str join-display-name " → " field-display-name)
                              field-display-name)
-        temporal-format    (fn [display-name]
-                             (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
-                                                                        (str/replace \- \space)
-                                                                        u/capitalize-en)))
-        bin-format         (fn [display-name]
-                             (lib.util/format "%s: %s" display-name (lib.binning/binning-display-name binning field-metadata)))]
+        temporal-format    #(lib.temporal-bucket/ensure-ends-with-temporal-unit % temporal-unit)
+        bin-format         #(lib.binning/ensure-ends-with-binning % binning (:semantic-type field-metadata))]
     ;; temporal unit and binning formatting are only applied if they haven't been applied yet
     (cond
       (and (not= style :long) hide-bin-bucket?) display-name
@@ -317,39 +334,21 @@
   (::temporal-unit metadata))
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :field
-  [[_tag options id-or-name] unit]
-  ;; if `unit` is an extraction unit like `:month-of-year`, then the `:effective-type` of the ref changes to
-  ;; `:type/Integer` (month of year returns an int). We need to record the ORIGINAL effective type somewhere in case
-  ;; we need to refer back to it, e.g. to see what temporal buckets are available if we want to change the unit, or if
-  ;; we want to remove it later. We will record this with the key `::original-effective-type`. Note that changing the
-  ;; unit multiple times should keep the original first value of `::original-effective-type`.
-  (if unit
-    (let [extraction-unit?        (contains? lib.schema.temporal-bucketing/datetime-extraction-units unit)
-          original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) options)
-          new-effective-type      (if extraction-unit?
-                                    :type/Integer
-                                    original-effective-type)
-          options                 (assoc options
-                                         :temporal-unit unit
-                                         :effective-type new-effective-type
-                                         ::original-effective-type original-effective-type)]
-      [:field options id-or-name])
-    ;; `unit` is `nil`: remove the temporal bucket.
-    (let [options (if-let [original-effective-type (::original-effective-type options)]
-                    (-> options
-                        (assoc :effective-type original-effective-type)
-                        (dissoc ::original-effective-type))
-                    options)
-          options (dissoc options :temporal-unit)]
-      [:field options id-or-name])))
+  [field-ref unit]
+  (lib.temporal-bucket/add-temporal-bucket-to-ref field-ref unit))
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/column
   [metadata unit]
-  (if unit
-    (assoc metadata
-           ::temporal-unit unit
-           ::original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata))
-    (dissoc metadata ::temporal-unit ::original-effective-type)))
+  (let [original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata)
+        original-temporal-unit ((some-fn ::original-temporal-unit ::temporal-unit) metadata)]
+    (if unit
+      (-> metadata
+          (assoc ::temporal-unit unit
+                 ::original-effective-type original-effective-type)
+          (m/assoc-some ::original-temporal-unit original-temporal-unit))
+      (cond-> (dissoc metadata ::temporal-unit ::original-effective-type)
+        original-effective-type (assoc :effective-type original-effective-type)
+        original-temporal-unit  (assoc ::original-temporal-unit original-temporal-unit)))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :field
   [query stage-number field-ref]
@@ -358,8 +357,8 @@
 (defn- fingerprint-based-default-unit [fingerprint]
   (u/ignore-exceptions
     (when-let [{:keys [earliest latest]} (-> fingerprint :type :type/DateTime)]
-      (let [days (shared.ut/day-diff (shared.ut/coerce-to-timestamp earliest)
-                                     (shared.ut/coerce-to-timestamp latest))]
+      (let [days (u.time/day-diff (u.time/coerce-to-timestamp earliest)
+                                  (u.time/coerce-to-timestamp latest))]
         (when-not (NaN? days)
           (condp > days
             1 :minute
@@ -367,27 +366,19 @@
             365 :week
             :month))))))
 
-(defn- mark-unit [options option-key unit]
-  (cond->> options
-    (some #(= (:unit %) unit) options)
-    (mapv (fn [option]
-            (cond-> option
-              (contains? option option-key) (dissoc option option-key)
-              (= (:unit option) unit)       (assoc option-key true))))))
-
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/column
   [_query _stage-number field-metadata]
-  (if (not= (:lib/source field-metadata) :source/expressions)
-    (let [effective-type ((some-fn :effective-type :base-type) field-metadata)
-          fingerprint-default (some-> field-metadata :fingerprint fingerprint-based-default-unit)]
-      (cond-> (cond
-                (isa? effective-type :type/DateTime) lib.temporal-bucket/datetime-bucket-options
-                (isa? effective-type :type/Date)     lib.temporal-bucket/date-bucket-options
-                (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
-                :else                                [])
-        fingerprint-default              (mark-unit :default fingerprint-default)
-        (::temporal-unit field-metadata) (mark-unit :selected (::temporal-unit field-metadata))))
-    []))
+  (lib.temporal-bucket/available-temporal-buckets-for-type
+   ((some-fn :effective-type :base-type) field-metadata)
+   ;; `:ineherited-temporal-unit` being set means field was bucketed on former stage. For this case, make the default nil
+   ;; for next bucketing attempt (of already bucketed) field eg. through BreakoutPopover on FE, by setting `:inherited`
+   ;; default unit.
+   (if (or (nil? (:inherited-temporal-unit field-metadata))
+           (= :default (:inherited-temporal-unit field-metadata)))
+     (or (some-> field-metadata :fingerprint fingerprint-based-default-unit)
+         :month)
+     :inherited)
+   (::temporal-unit field-metadata)))
 
 ;;; ---------------------------------------- Binning ---------------------------------------------
 
@@ -436,6 +427,7 @@
       ;; TODO: Include the time and date binning strategies too; see metabase.api.table/assoc-field-dimension-options.
       (for [strat strategies]
         (cond-> strat
+          (or (:was-binned field-metadata) existing) (dissoc :default)
           (lib.binning/strategy= strat existing) (assoc :selected true))))
     []))
 
@@ -465,8 +457,14 @@
                                    {:temporal-unit temporal-unit})
                                  (when-let [original-effective-type (::original-effective-type metadata)]
                                    {::original-effective-type original-effective-type})
+                                 (when-let [original-temporal-unit (::original-temporal-unit metadata)]
+                                   {::original-temporal-unit original-temporal-unit})
+                                 (when-let [inherited-temporal-unit (:inherited-temporal-unit metadata)]
+                                   {:inherited-temporal-unit inherited-temporal-unit})
                                  (when-let [binning (::binning metadata)]
                                    {:binning binning})
+                                 (when-let [was-binned (:was-binned metadata)]
+                                   {:was-binned was-binned})
                                  (when-let [source-field-id (when-not inherited-column?
                                                               (:fk-field-id metadata))]
                                    {:source-field source-field-id}))

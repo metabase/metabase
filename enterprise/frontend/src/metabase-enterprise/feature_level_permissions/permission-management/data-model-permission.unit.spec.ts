@@ -27,7 +27,7 @@ const getPermissionGraph = (value = "all"): GroupsPermissions =>
         },
       },
     },
-  } as any);
+  }) as any;
 
 const isAdmin = true;
 const isNotAdmin = false;

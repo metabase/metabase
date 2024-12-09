@@ -17,7 +17,7 @@ clojure -M:ee:run api-documentation
 
 ## API tutorial
 
-Check out an introduction to the [Metabase API](https://www.metabase.com/learn/administration/metabase-api.html).
+Check out an introduction to the [Metabase API](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//metabase-api).
 
 ## API keys
 
@@ -40,6 +40,7 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [Bookmark](api/bookmark.md)
 - [Cache](api/cache.md)
 - [Card](api/card.md)
+- [Channel](api/channel.md)
 - [Cloud migration](api/cloud-migration.md)
 - [Collection](api/collection.md)
 - [Content verification review*](api/ee/content-verification-review.md)
@@ -80,6 +81,7 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [Slack](api/slack.md)
 - [SSO*](api/ee/sso.md)
 - [SSO SAML](api/sso-saml.md)
+- [Stale](api/stale.md)
 - [Table](api/table.md)
 - [Task](api/task.md)
 - [Tiles](api/tiles.md)

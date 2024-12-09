@@ -45,9 +45,7 @@ export function CoordinateFilterEditor({
     filter,
   });
 
-  const handleOperatorChange = (
-    newOperator: Lib.CoordinateFilterOperatorName,
-  ) => {
+  const handleOperatorChange = (newOperator: Lib.CoordinateFilterOperator) => {
     const newValues = getDefaultValues(newOperator, values);
     setOperator(newOperator);
     setValues(newValues);
@@ -73,7 +71,7 @@ export function CoordinateFilterEditor({
   };
 
   return (
-    <HoverParent>
+    <HoverParent data-testid="coordinate-filter-editor">
       <Grid grow>
         <Grid.Col span="auto">
           <FilterTitle

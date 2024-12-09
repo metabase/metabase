@@ -84,16 +84,6 @@ You must be a superuser to do this.
 
 -  **`login_attributes`** nullable login attribute keys must be a keyword or string.
 
-## `POST /api/user/:id/send_invite`
-
-Resend the user invite email for a given user.
-
-You must be a superuser to do this.
-
-### PARAMS:
-
--  **`id`** value must be an integer greater than zero.
-
 ## `PUT /api/user/:id`
 
 Update an existing, active `User`.
@@ -140,7 +130,7 @@ Update a user's password.
 
 -  **`password`** password is too common.
 
--  **`old_password`** 
+-  **`old_password`**
 
 -  **`request`**
 

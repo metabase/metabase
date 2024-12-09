@@ -20,7 +20,8 @@
 
 (def ^:private entities-external-name
   "Entities with external names, so they don't need a generated entity_id."
-  #{;; Databases have external names based on their URLs; tables are nested under databases; fields under tables.
+  #{:model/Channel
+    ;; Databases have external names based on their URLs; tables are nested under databases; fields under tables.
     :model/Database
     :model/Table
     :model/Field
@@ -42,6 +43,7 @@
     :model/BookmarkOrdering
     :model/CacheConfig
     :model/CardBookmark
+    :model/ChannelTemplate
     :model/CollectionBookmark
     :model/DashboardBookmark
     :model/DataPermissions
@@ -55,6 +57,10 @@
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
+    :model/Notification
+    :model/NotificationSubscription
+    :model/NotificationHandler
+    :model/NotificationRecipient
     :model/ParameterCard
     :model/Permissions
     :model/PermissionsGroup

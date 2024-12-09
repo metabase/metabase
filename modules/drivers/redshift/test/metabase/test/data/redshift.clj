@@ -1,4 +1,4 @@
-(ns metabase.test.data.redshift
+(ns ^:mb/driver-tests metabase.test.data.redshift
   "We use a single redshift database for all test runs in CI, so to isolate test runs and test databases we:
    1. Use a unique session schema for the test run (unique-session-schema), and only sync tables in that schema.
    2. Prefix table names with the database name, and for each database we only sync tables with the matching prefix.
@@ -15,17 +15,23 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.redshift]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
+   [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
+
+;;; need to load this so we can properly override the implementation of `describe-database` below
+(comment metabase.driver.redshift/keep-me)
 
 (defmethod driver/database-supports? [:redshift :test/time-type]
   [_driver _feature _database]
@@ -223,14 +229,29 @@
   [driver database]
   (if *override-describe-database-to-filter-by-db-name?*
     (let [r                (original-describe-database driver database)
-          phyiscal-db-name (data.impl/database-source-dataset-name database)]
+          physical-db-name (data.impl/database-source-dataset-name database)]
       (update r :tables (fn [tables]
                           (into #{}
-                                (filter #(or (tx/qualified-by-db-name? phyiscal-db-name (:name %))
-                                             ;; the `extsales` table is used for testing external tables
-                                             (= (:name %) "extsales")))
+                                (filter #(or (tx/qualified-by-db-name? physical-db-name (:name %))
+                                             ;; the `extsales` table is used for testing external tables (only when
+                                             ;; using the normal test-data dataset)
+                                             (when (= physical-db-name "test-data")
+                                               (= (:name %) "extsales"))))
                                 tables))))
     (original-describe-database driver database)))
+
+(deftest ^:parallel describe-database-sanity-check-test
+  (testing "Make sure even tho tables from different datasets are all stuffed in one DB we still sync them separately"
+    (mt/test-driver :redshift
+      (mt/dataset airports
+        (is (= #{"airports_airport"
+                 "airports_continent"
+                 "airports_country"
+                 "airports_municipality"
+                 "airports_region"}
+               (into #{}
+                     (map :name)
+                     (:tables (driver/describe-database :redshift (mt/db))))))))))
 
 (defmethod ddl.i/format-name :redshift
   [_driver s]
@@ -238,22 +259,31 @@
   ;; you create the tables with upper-case characters.
   (u/lower-case-en s))
 
-(defmethod tx/dataset-already-loaded? :redshift
-  [driver dbdef]
-  ;; check and make sure the first table in the dbdef has been created.
-  (let [session-schema (unique-session-schema)
-        tabledef       (first (:table-definitions dbdef))
-        ;; table-name should be something like test_data_venues
-        table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
-     {:write? false}
-     (fn [^java.sql.Connection conn]
-       (with-open [rset (.getTables (.getMetaData conn)
-                                    #_catalog        (tx/db-test-env-var-or-throw :redshift :db)
-                                    #_schema-pattern session-schema
-                                    #_table-pattern  table-name
-                                    #_types          (into-array String ["TABLE"]))]
-         ;; if the ResultSet returns anything we know the table is already loaded.
-         (.next rset))))))
+(mu/defmethod tx/dataset-already-loaded? :redshift
+  [driver :- :keyword
+   dbdef  :- [:map
+              [:database-name     :string]
+              [:table-definitions [:sequential
+                                   [:map
+                                    [:table-name :string]]]]]]
+  (or
+   ;; if this is a dataset with no tables (for example when using [[metabase.actions.test-util/with-empty-db]]) then we
+   ;; can consider the dataset to already be loaded
+   (empty? (:table-definitions dbdef))
+   ;; otherwise, check and make sure the first table in the dbdef has been created.
+   (let [session-schema (unique-session-schema)
+         tabledef       (first (:table-definitions dbdef))
+         ;; table-name should be something like test_data_venues
+         table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))]
+     (sql-jdbc.execute/do-with-connection-with-options
+      driver
+      (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
+      {:write? false}
+      (fn [^java.sql.Connection conn]
+        (with-open [rset (.getTables (.getMetaData conn)
+                                     #_catalog        (tx/db-test-env-var-or-throw :redshift :db)
+                                     #_schema-pattern session-schema
+                                     #_table-pattern  table-name
+                                     #_types          (into-array String ["TABLE"]))]
+          ;; if the ResultSet returns anything we know the table is already loaded.
+          (.next rset)))))))

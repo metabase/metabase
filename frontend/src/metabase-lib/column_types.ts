@@ -18,6 +18,7 @@ export const isCreationTime: TypeFn = TYPES.creation_time_QMARK_;
 export const isCreationTimestamp: TypeFn = TYPES.creation_timestamp_QMARK_;
 export const isCurrency: TypeFn = TYPES.currency_QMARK_;
 export const isTemporal: TypeFn = TYPES.temporal_QMARK_;
+export const isDateOrDateTime: TypeFn = TYPES.date_or_datetime_QMARK_;
 export const isDateWithoutTime: TypeFn = TYPES.date_without_time_QMARK_;
 export const isDescription: TypeFn = TYPES.description_QMARK_;
 export const isEmail: TypeFn = TYPES.email_QMARK_;

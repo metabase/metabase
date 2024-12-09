@@ -1,12 +1,13 @@
 import type { UserId } from "metabase-types/api/user";
 
-import type { CardDisplayType, CardId } from "./card";
+import type { CardId } from "./card";
 import type { Collection, CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { FieldReference } from "./query";
 import type { TableId } from "./table";
+import type { CardDisplayType } from "./visualization";
 
 const ENABLED_SEARCH_MODELS = [
   "collection",
@@ -22,28 +23,9 @@ const ENABLED_SEARCH_MODELS = [
 
 export const SEARCH_MODELS = [...ENABLED_SEARCH_MODELS, "segment"] as const;
 
-export type EnabledSearchModel = typeof ENABLED_SEARCH_MODELS[number];
+export type EnabledSearchModel = (typeof ENABLED_SEARCH_MODELS)[number];
 
-export type SearchModel = typeof SEARCH_MODELS[number];
-
-export interface SearchScore {
-  weight: number;
-  score: number;
-  name:
-    | "pinned"
-    | "bookmarked"
-    | "recency"
-    | "dashboard"
-    | "model"
-    | "official collection score"
-    | "verified"
-    | "text-consecutivity"
-    | "text-total-occurrences"
-    | "text-fullness";
-  match?: string;
-  "match-context-thunk"?: string;
-  column?: string;
-}
+export type SearchModel = (typeof SEARCH_MODELS)[number];
 
 interface BaseSearchResult<
   Id extends SearchResultId,
@@ -107,7 +89,6 @@ export interface SearchResult<
   initial_sync_status: InitialSyncStatus | null;
   dashboard_count: number | null;
   context: any; // this might be a dead property
-  scores: SearchScore[];
   last_edited_at: string | null;
   last_editor_id: UserId | null;
   last_editor_common_name: string | null;
@@ -128,6 +109,7 @@ export type SearchRequest = {
   archived?: boolean;
   table_db_id?: DatabaseId;
   models?: SearchModel[];
+  ids?: SearchResultId[];
   filter_items_in_personal_collection?: "only" | "exclude";
   context?: SearchContext;
   created_at?: string | null;
@@ -141,4 +123,5 @@ export type SearchRequest = {
   // this should be in ListCollectionItemsRequest but legacy code expects them here
   collection?: CollectionId;
   namespace?: "snippets";
+  calculate_available_models?: true;
 } & PaginationRequest;

@@ -65,7 +65,7 @@ export const getNextCursor = (
 
     for (
       let itemIndex =
-        sectionIndex === cursor.sectionIndex ? cursor.itemIndex ?? 0 : 0;
+        sectionIndex === cursor.sectionIndex ? (cursor.itemIndex ?? 0) : 0;
       itemIndex < section.items.length;
       itemIndex++
     ) {
@@ -121,7 +121,7 @@ export const getPrevCursor = (
       for (
         let itemIndex =
           sectionIndex === cursor.sectionIndex
-            ? cursor.itemIndex ?? 0
+            ? (cursor.itemIndex ?? 0)
             : section.items.length - 1;
         itemIndex >= 0;
         itemIndex--

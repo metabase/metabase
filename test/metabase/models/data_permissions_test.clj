@@ -129,24 +129,6 @@
           (is (nil?  (create-queries-perm-value table-id-2)))
           (is (nil?  (create-queries-perm-value table-id-3))))))))
 
-(deftest native-queries-against-db-with-some-blocked-table-is-illegal-test
-  (mt/with-temp [:model/Card {card-id :id {db-id :database} :dataset_query} {:dataset_query (mt/native-query {:query "select 1"})}]
-    (mt/with-no-data-perms-for-all-users!
-      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries (data-perms/most-permissive-value :perms/create-queries))
-      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data (data-perms/most-permissive-value :perms/view-data))
-      ;; rasta has access to the database:
-      (is (= "Can Run Query"
-             (:error (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
-                     "Can Run Query")))
-
-      ;; block a single table on the db:
-      (let [tables-in-db (map :id (:tables (t2/hydrate (t2/select-one :model/Database db-id) :tables)))
-            table-id (rand-nth tables-in-db)]
-        (data-perms/set-table-permissions! (perms-group/all-users) :perms/view-data {table-id :blocked}))
-
-      (is (= "You do not have permissions to run this query."
-             (:error (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))))))))
-
 (deftest database-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
                  :model/PermissionsGroup           {group-id-2 :id}    {}
@@ -175,14 +157,19 @@
         (mt/with-restored-data-perms-for-groups! [group-id-1 group-id-2]
           (data-perms/set-database-permission! group-id-1 database-id-1 :perms/manage-database :yes)
           (data-perms/with-relevant-permissions-for-user user-id
-            ;; retrieve the cache now so it doesn't get counted in the call-count
-            @data-perms/*permissions-for-user*
+            ;; Fetch the perms once to populate the cache for this DB
+            (data-perms/database-permission-for-user user-id :perms/manage-database database-id-1)
             ;; make the cache wrong
             (data-perms/set-database-permission! group-id-1 database-id-1 :perms/manage-database :no)
             ;; the cached value is used
             (t2/with-call-count [call-count]
               (is (= :yes (data-perms/database-permission-for-user user-id :perms/manage-database database-id-1)))
-              (is (zero? (call-count))))))))))
+              (is (zero? (call-count)))))
+
+          ;; Fetching perms for a different DB is a cache miss
+          (t2/with-call-count [call-count]
+            (is (= :no (data-perms/database-permission-for-user user-id :perms/manage-database database-id-2)))
+            (is (= 1 (call-count)))))))))
 
 (deftest table-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}  {}
@@ -218,14 +205,39 @@
               (data-perms/set-table-permission! group-id-2 table-id-1 :perms/create-queries :query-builder)
               (is (= :query-builder (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-1)))
               (data-perms/with-relevant-permissions-for-user user-id
-                ;; retrieve the cache now so it doesn't get counted in the call count
-                @data-perms/*permissions-for-user*
+                ;; Fetch the perms once to populate the cache
+                (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-1)
                 ;; make the cache wrong
                 (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :no)
                 ;; the cached value is used
                 (t2/with-call-count [call-count]
                   (is (= :query-builder (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-1)))
                   (is (zero? (call-count))))))))))))
+
+(deftest inactive-table-permission-test
+  (testing "An inactive table appears as if it has no permissions, and is not cached"
+    (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}  {}
+                   :model/User                       {user-id   :id}   {}
+                   :model/PermissionsGroupMembership {}                {:user_id  user-id
+                                                                        :group_id group-id-1}
+                   :model/Database                   {database-id :id} {}
+                   :model/Table                      {table-id-1 :id}  {:db_id database-id}]
+      ;; Revoke All Users perms so that it doesn't override perms in the new groups
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! group-id-1 database-id :perms/view-data :blocked)
+        (data-perms/set-table-permission! group-id-1 table-id-1 :perms/view-data :unrestricted)
+        (is (= :unrestricted
+               (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1)))
+        (t2/update! :model/Table table-id-1 {:active false})
+        (testing "Deactivated table has minimum permissions when reading straight from DB"
+          (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1))))
+        (testing "Deactivated table has minimum permissions when reading from cache"
+          (data-perms/with-relevant-permissions-for-user user-id
+            (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1)))))
+        (testing "Reactivating the table allows the perms to be read again"
+          (t2/update! :model/Table table-id-1 {:active true})
+          (is (= :unrestricted
+                 (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1))))))))
 
 (deftest permissions-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
@@ -584,34 +596,34 @@
                                                       :group_id  group-id
                                                       :table_id  table-id
                                                       :perm_type :perms/create-queries))]
-      (mt/with-restored-data-perms-for-group! group-id
-        (testing "New table inherits DB-level permission if set"
-          (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
-          (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :query-builder)
-          (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :query-builder)
-          (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
-            (is (= :query-builder (perm-value nil)))
-            (is (nil? (perm-value table-id-4)))))
+      (testing "New table inherits DB-level permission if set"
+        (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
+        (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :query-builder)
+        (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :query-builder)
+        (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
+          ;; nil table ID is passed to check DB-level value
+          (is (= :query-builder (perm-value nil)))
+          (is (nil? (perm-value table-id-4)))))
 
-        (testing "New table inherits uniform permission value from schema"
-          (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
-          (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :query-builder)
-          (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :no)
-          (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
-            (is (= :query-builder (perm-value table-id-4))))
+      (testing "New table inherits uniform permission value from schema"
+        (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
+        (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :query-builder)
+        (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :no)
+        (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
+          (is (= :query-builder (perm-value table-id-4))))
 
-          (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :no)
-          (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
-          (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :query-builder)
-          (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
-            (is (= :no (perm-value table-id-4)))))
+        (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :no)
+        (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
+        (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :query-builder)
+        (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
+          (is (= :no (perm-value table-id-4)))))
 
-        (testing "New table uses default value when schema permissions are not uniform"
-          (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
-          (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
-          (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :no)
-          (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
-            (is (= :no (perm-value table-id-4)))))))))
+      (testing "New table uses default value when schema permissions are not uniform"
+        (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
+        (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
+        (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :no)
+        (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
+          (is (= :no (perm-value table-id-4))))))))
 
 (deftest additional-table-permissions-works
   (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}

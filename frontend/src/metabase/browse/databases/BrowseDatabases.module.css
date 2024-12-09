@@ -1,0 +1,16 @@
+.dbCard {
+  background-color: var(--mb-color-bg-white);
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}
+
+.addCard {
+  background-color: var(--mb-color-bg-medium);
+
+  &:hover {
+    background-color: var(--mb-color-brand);
+    color: var(--mb-color-text-white);
+  }
+}

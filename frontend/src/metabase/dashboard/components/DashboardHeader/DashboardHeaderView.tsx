@@ -18,6 +18,8 @@ import {
   getCanResetFilters,
   getIsEditing,
   getIsHeaderVisible,
+  getIsShowDashboardInfoSidebar,
+  getIsShowDashboardSettingsSidebar,
   getIsSidebarOpen,
 } from "metabase/dashboard/selectors";
 import type {
@@ -27,7 +29,10 @@ import type {
 } from "metabase/dashboard/types";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
+import {
+  PLUGIN_COLLECTION_COMPONENTS,
+  PLUGIN_MODERATION,
+} from "metabase/plugins";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import type { Collection, Dashboard } from "metabase-types/api";
 
@@ -53,7 +58,7 @@ type DashboardHeaderViewProps = {
   collection: Collection;
   isBadgeVisible: boolean;
   isLastEditInfoVisible: boolean;
-  onLastEditInfoClick: () => void;
+  onLastEditInfoClick?: () => void;
 } & DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
   DashboardNightModeControls;
@@ -85,6 +90,9 @@ export function DashboardHeaderView({
 
   const canResetFilters = useSelector(getCanResetFilters);
   const isSidebarOpen = useSelector(getIsSidebarOpen);
+  const isInfoSidebarOpen = useSelector(getIsShowDashboardInfoSidebar);
+  const isSettingsSidebarOpen = useSelector(getIsShowDashboardSettingsSidebar);
+
   const isDashboardHeaderVisible = useSelector(getIsHeaderVisible);
   const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);
 
@@ -163,7 +171,9 @@ export function DashboardHeaderView({
       )}
       <HeaderContainer
         isFixedWidth={dashboard?.width === "fixed"}
-        isSidebarOpen={isSidebarOpen}
+        offsetSidebar={
+          isSidebarOpen && !isInfoSidebarOpen && !isSettingsSidebarOpen
+        }
       >
         {isDashboardHeaderVisible && (
           <HeaderRow
@@ -189,6 +199,9 @@ export function DashboardHeaderView({
                     isDisabled={!dashboard.can_write}
                     data-testid="dashboard-name-heading"
                     onChange={handleUpdateCaption}
+                  />
+                  <PLUGIN_MODERATION.EntityModerationIcon
+                    dashboard={dashboard}
                   />
                   <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
                     color={color("brand")}

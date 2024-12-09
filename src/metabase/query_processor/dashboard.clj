@@ -8,7 +8,7 @@
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.dashboard :as dashboard :refer [Dashboard]]
+   [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
    [metabase.models.user-parameter-value :as user-parameter-value]
@@ -145,9 +145,7 @@
                                                request-param-id->param))]
     (when-let [user-id api/*current-user-id*]
       (when (seq request-params)
-        (user-parameter-value/batched-upsert!
-         user-id dashboard-id
-         request-params)))
+        (user-parameter-value/store! user-id dashboard-id request-params)))
     (log/tracef "Dashboard parameters:\n%s\nRequest parameters:\n%s\nMerged:\n%s"
                 (u/pprint-to-str (update-vals dashboard-param-id->param
                                               (fn [param]

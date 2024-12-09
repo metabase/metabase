@@ -28,31 +28,49 @@ export const ORDERS_BY_YEAR_QUESTION_ID = _.findWhere(
   { name: "Orders, Count, Grouped by Created At (year)" },
 ).id;
 
+/**
+ * @type number
+ */
 export const ADMIN_PERSONAL_COLLECTION_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.collections,
   { name: "Bobby Tables's Personal Collection" },
 ).id;
 
+/**
+ * @type number
+ */
 export const NORMAL_PERSONAL_COLLECTION_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.collections,
   { name: "Robert Tableton's Personal Collection" },
 ).id;
 
+/**
+ * @type number
+ */
 export const READ_ONLY_PERSONAL_COLLECTION_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.collections,
   { name: "Read Only Tableton's Personal Collection" },
 ).id;
 
+/**
+ * @type number
+ */
 export const NO_DATA_PERSONAL_COLLECTION_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.collections,
   { name: "No Data Tableton's Personal Collection" },
 ).id;
 
+/**
+ * @type number
+ */
 export const NO_COLLECTION_PERSONAL_COLLECTION_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.collections,
   { name: "No Collection Tableton's Personal Collection" },
 ).id;
 
+/**
+ * @type number
+ */
 export const FIRST_COLLECTION_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.collections,
   { name: "First collection" },

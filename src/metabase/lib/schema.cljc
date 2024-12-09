@@ -45,8 +45,9 @@
     {:decode/normalize common/normalize-map}
     [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
     ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
-    ;; Only restriction is that it is non-nil.
-    [:native some?]
+    ;; Only restriction is that, if present, it is non-nil.
+    ;; It is valid to have a blank query like `{:type :native}` in legacy.
+    [:native {:optional true} some?]
     ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
     ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
     ;; nil.
@@ -99,8 +100,8 @@
 
 (defn- bad-ref-clause? [ref-type valid-ids x]
   (and (vector? x)
-       (= ref-type (first x))
-       (not (contains? valid-ids (get x 2)))))
+       (= ref-type (nth x 0 nil))
+       (not (contains? valid-ids (nth x 2 nil)))))
 
 (defn- stage-with-joins-and-namespaced-keys-removed
   "For ref validation purposes we should ignore `:joins` and any namespaced keys that might be used to record additional
@@ -114,14 +115,18 @@
              stage stage))
 
 (defn- expression-ref-errors-for-stage [stage]
-  (let [expression-names (into #{} (map (comp :lib/expression-name second)) (:expressions stage))]
-    (mbql.u/matching-locations (stage-with-joins-and-namespaced-keys-removed stage)
-                               #(bad-ref-clause? :expression expression-names %))))
+  (let [expression-names (into #{} (map (comp :lib/expression-name second)) (:expressions stage))
+        pred #(bad-ref-clause? :expression expression-names %)
+        form (stage-with-joins-and-namespaced-keys-removed stage)]
+    (when (mbql.u/pred-matches-form? form pred)
+      (mbql.u/matching-locations form pred))))
 
 (defn- aggregation-ref-errors-for-stage [stage]
-  (let [uuids (into #{} (map (comp :lib/uuid second)) (:aggregation stage))]
-    (mbql.u/matching-locations (stage-with-joins-and-namespaced-keys-removed stage)
-                               #(bad-ref-clause? :aggregation uuids %))))
+  (let [uuids (into #{} (map (comp :lib/uuid second)) (:aggregation stage))
+        pred #(bad-ref-clause? :aggregation uuids %)
+        form (stage-with-joins-and-namespaced-keys-removed stage)]
+    (when (mbql.u/pred-matches-form? form pred)
+      (mbql.u/matching-locations form pred))))
 
 (defn ref-errors-for-stage
   "Return the locations and the clauses with dangling expression or aggregation references.
@@ -220,9 +225,7 @@
   [:multi {:dispatch      lib-type
            :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
    [:mbql.stage/native :map]
-   [:mbql.stage/mbql   [:fn
-                        {:error/message "An initial MBQL stage of a query must have :source-table or :source-card"}
-                        (some-fn :source-table :source-card)]]])
+   [:mbql.stage/mbql   :map]])
 
 (mr/def ::stage.additional
   [:multi {:dispatch      lib-type
@@ -334,9 +337,9 @@
     [:lib/type [:=
                 {:decode/normalize common/normalize-keyword}
                 :mbql/query]]
-    [:database [:multi {:dispatch (partial = id/saved-questions-virtual-database-id)}
-                [true  ::id/saved-questions-virtual-database]
-                [false ::id/database]]]
+    [:database {:optional true} [:multi {:dispatch (partial = id/saved-questions-virtual-database-id)}
+                                 [true  ::id/saved-questions-virtual-database]
+                                 [false ::id/database]]]
     [:stages   [:ref ::stages]]
     [:parameters {:optional true} [:maybe [:ref ::parameter/parameters]]]
     ;;
