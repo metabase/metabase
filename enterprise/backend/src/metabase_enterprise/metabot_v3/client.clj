@@ -7,6 +7,7 @@
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
+   [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.tools :as metabot-v3.tools]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
@@ -40,21 +41,24 @@
    :metabase-version (public-settings/version)})
 
 (defn- encode-request-body [body]
-  (mc/encode ::metabot-v3.client.schema/request body (mtx/transformer
-                                                      (mtx/default-value-transformer)
-                                                      {:name :api-request}
-                                                      (mtx/key-transformer {:encode (fn [k]
-                                                                                      (if (#{:additionalProperties :additional-properties} k)
-                                                                                        :additionalProperties
-                                                                                        (u/->snake_case_en k)))}))))
+  (mc/encode ::metabot-v3.client.schema/request
+             body
+             (mtx/transformer
+              (mtx/default-value-transformer)
+              {:name :api-request}
+              (mtx/key-transformer {:encode (fn [k]
+                                              (case k
+                                                (:additionalProperties :additional-properties) :additionalProperties
+                                                :anyOf :anyOf
+                                                (u/->snake_case_en k)))}))))
 
 (mu/defn- build-request-body
   [context :- [:maybe :map]
    messages :- [:maybe ::metabot-v3.client.schema/messages]
    session-id :- :string]
   (encode-request-body
-   {:messages      messages
-    :context       (metabot-v3.context/describe-context context)
+   {:messages      (into (metabot-v3.dummy-tools/invoke-dummy-tools context) messages)
+    :context       context
     :tools         (metabot-v3.tools/applicable-tools (metabot-v3.tools/*tools-metadata*) context)
     :session-id    session-id
     :user-id       api/*current-user-id*

@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase-enterprise.metabot-v3.tools.query]
    [metabase-enterprise.metabot-v3.tools.who-is-your-favorite]
