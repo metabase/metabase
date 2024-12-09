@@ -32,7 +32,7 @@ const ENTITY_NAME_MAP: Partial<
   model: "dataset",
 };
 
-type CollectionBrowserProps = {
+export type CollectionBrowserProps = {
   collectionId?: RegularCollectionId;
   onClick?: (item: CollectionItem) => void;
   pageSize?: number;

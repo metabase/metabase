@@ -1,32 +1,35 @@
 import { merge } from "icepick";
 
 import type {
-  SdkDashCardMenuPluginsConfig,
-  SdkPluginsConfig,
+  MetabaseDashboardPluginsConfig,
+  MetabasePluginsConfig,
 } from "embedding-sdk";
 
-const DEFAULT_DASHCARD_MENU_ITEMS: SdkDashCardMenuPluginsConfig = {
-  dashcardMenu: {
+const DEFAULT_DASHCARD_MENU_ITEMS: MetabaseDashboardPluginsConfig = {
+  dashboardCardMenu: {
     withDownloads: true,
     withEditLink: true,
     customItems: [],
   },
 } as const;
 
-const getDashcardMenu = (plugins: SdkPluginsConfig) => {
-  if (typeof plugins?.dashboard?.dashcardMenu === "function") {
-    return plugins?.dashboard?.dashcardMenu;
+const getDashcardMenu = (plugins: MetabasePluginsConfig) => {
+  if (typeof plugins?.dashboard?.dashboardCardMenu === "function") {
+    return plugins?.dashboard?.dashboardCardMenu;
   }
-  return merge(DEFAULT_DASHCARD_MENU_ITEMS, plugins?.dashboard?.dashcardMenu);
+  return merge(
+    DEFAULT_DASHCARD_MENU_ITEMS,
+    plugins?.dashboard?.dashboardCardMenu,
+  );
 };
 
 export const addDefaultDashboardPluginValues = (
-  plugins: SdkPluginsConfig = {},
-): SdkPluginsConfig => {
+  plugins: MetabasePluginsConfig = {},
+): MetabasePluginsConfig => {
   return {
     ...plugins,
     dashboard: {
-      dashcardMenu: getDashcardMenu(plugins),
+      dashboardCardMenu: getDashcardMenu(plugins),
     },
   };
 };

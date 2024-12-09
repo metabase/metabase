@@ -1,6 +1,6 @@
 import { type ReactNode, useMemo } from "react";
 
-import type { SdkPluginsConfig } from "embedding-sdk";
+import type { MetabasePluginsConfig } from "embedding-sdk";
 
 import {
   InteractiveQuestionProviderWithLocation,
@@ -14,7 +14,7 @@ interface InteractiveAdHocQuestionProps {
 
   withTitle?: boolean;
   height?: number;
-  plugins?: SdkPluginsConfig;
+  plugins?: MetabasePluginsConfig;
   children?: ReactNode;
 }
 
