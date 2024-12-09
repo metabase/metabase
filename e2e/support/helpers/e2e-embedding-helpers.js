@@ -100,7 +100,7 @@ export function getEmbeddedPageUrl(
     const urlHash = getHash(
       {
         ...pageStyle,
-        locale,
+        ...(locale ? { locale } : {}),
       },
       hiddenFilters,
     );
