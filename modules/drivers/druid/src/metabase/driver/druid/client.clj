@@ -86,7 +86,7 @@
           ;; Re-throw a new exception with `message` set to the extracted message
           (throw e'))))))
 
-(defn- cancel-query-with-id! [details query-id]
+(defn- undo-query-with-id! [details query-id]
   (if-not query-id
     (log/warn "Client closed connection, no queryId found, can't cancel query")
     (ssh/with-ssh-tunnel [details-with-tunnel details]
@@ -107,23 +107,18 @@
   [canceled-chan details query]
   {:pre [(map? details) (map? query)]}
   (let [query-id  (get-in query [:context :queryId])
-        query-fut (future
-                    (try
-                      (do-query details query)
-                      (catch Throwable e
-                        e)))
-        cancel! (delay
-                  (cancel-query-with-id! details query-id))]
+        ;; Run the query in a future so that we can interrupt it from the canceled-chan callback.
+        query-fut (future (do-query details query))
+        undo! #(undo-query-with-id! details query-id)]
     (a/go
       (when (a/<! canceled-chan)
         (future-cancel query-fut)
-        @cancel!))
-    (try
-      ;; Run the query in a future so that this thread will be interrupted, not the thread running the query (which is
-      ;; not interrupt aware)
-      (u/prog1 @query-fut
-        (when (instance? Throwable <>)
-          (throw <>)))
-      (catch InterruptedException e
-        @cancel!
-        (throw e)))))
+        (undo!)))
+    (try @query-fut
+         (catch java.util.concurrent.ExecutionException e
+           (undo!)
+           ;; Unwrap exceptions from the future.
+           (throw (.getCause e)))
+         (catch InterruptedException e
+           (undo!)
+           (throw e)))))
