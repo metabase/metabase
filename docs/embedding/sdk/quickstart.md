@@ -191,7 +191,7 @@ Your browser should automatically open the app. By default, the app runs on [htt
 In your app, you'll see an embedded `InteractiveQuestion` component.
 
 ```javascript
-<MetabaseProvider config={config} theme={theme}>
+<MetabaseProvider authConfig={authConfig} theme={theme}>
   <InteractiveQuestion questionId={questionId} />
 </MetabaseProvider>
 ```
