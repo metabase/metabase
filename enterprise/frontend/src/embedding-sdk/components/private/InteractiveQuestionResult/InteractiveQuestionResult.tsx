@@ -1,12 +1,13 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import type { ReactElement, ReactNode } from "react";
+import type { ReactElement } from "react";
 import { t } from "ttag";
 
 import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Box, Divider, Group, Stack } from "metabase/ui";
 
@@ -22,9 +23,8 @@ import InteractiveQuestionS from "./InteractiveQuestionResult.module.css";
 import { ResultTitle } from "./ResultTitle";
 
 export interface InteractiveQuestionResultProps {
+  title?: SdkQuestionTitleProps;
   withResetButton?: boolean;
-  withTitle?: boolean;
-  customTitle?: ReactNode;
   withChartTypeSelector?: boolean;
 }
 
@@ -33,8 +33,7 @@ export const InteractiveQuestionResult = ({
   width,
   className,
   style,
-  withTitle,
-  customTitle,
+  title,
   withResetButton,
   withChartTypeSelector,
 }: InteractiveQuestionResultProps & FlexibleSizeProps): ReactElement => {
@@ -82,11 +81,7 @@ export const InteractiveQuestionResult = ({
         <Group position="apart" align="flex-end">
           <Group spacing="xs">
             <InteractiveQuestion.BackButton />
-            <ResultTitle
-              withResetButton={withResetButton}
-              customTitle={customTitle}
-              withTitle={withTitle}
-            />
+            <ResultTitle title={title} withResetButton={withResetButton} />
           </Group>
           {showSaveButton && (
             <InteractiveQuestion.SaveButton onClick={openSaveModal} />

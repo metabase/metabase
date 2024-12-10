@@ -38,39 +38,50 @@ const ResultTitleText = ({
 );
 
 export const ResultTitle = ({
-  customTitle,
-  withTitle = true,
+  title,
   withResetButton = false,
 }: InteractiveQuestionResultProps) => {
   const { question, originalQuestion, onReset } =
     useInteractiveQuestionContext();
 
-  if (!withTitle) {
+  if (title === false) {
     return null;
   }
 
-  if (isValidElement(customTitle)) {
-    return customTitle;
+  if (title === undefined || title === true) {
+    const isQuestionChanged = originalQuestion
+      ? question?.isQueryDirtyComparedTo(originalQuestion)
+      : true;
+
+    const originalName = originalQuestion?.displayName();
+
+    const titleText = getQuestionTitle({ question });
+
+    return (
+      <ResultTitleText
+        text={titleText}
+        withResetButton={withResetButton}
+        isQuestionChanged={isQuestionChanged}
+        onReset={onReset}
+        originalName={originalName}
+      />
+    );
   }
 
-  const isQuestionChanged = originalQuestion
-    ? question?.isQueryDirtyComparedTo(originalQuestion)
-    : true;
+  if (typeof title === "string") {
+    return (
+      <Text fw={700} c="var(--mb-color-text-primary)" fz="xl">
+        {title}
+      </Text>
+    );
+  }
 
-  const originalName = originalQuestion?.displayName();
+  if (typeof title === "function") {
+    const CustomTitle = title;
 
-  const titleText =
-    typeof customTitle === "string"
-      ? customTitle
-      : getQuestionTitle({ question });
+    // TODO: pass in question={question} once we have the public-facing question type (metabase#50487)
+    return <CustomTitle />;
+  }
 
-  return (
-    <ResultTitleText
-      text={titleText}
-      withResetButton={withResetButton}
-      isQuestionChanged={isQuestionChanged}
-      onReset={onReset}
-      originalName={originalName}
-    />
-  );
+  return title;
 };

@@ -90,8 +90,8 @@
 
 (defn- smallest-count
   (^long [c1 c2] (min (count c1) (count c2)))
-  (^long [c1 c2 c3] (min (min (count c1) (count c2)) (count c3)))
-  (^long [c1 c2 c3 c4] (min (min (count c1) (count c2)) (min (count c3) (count c4)))))
+  (^long [c1 c2 c3] (min (count c1) (count c2) (count c3)))
+  (^long [c1 c2 c3 c4] (min (count c1) (count c2) (count c3) (count c4))))
 
 (defn mapv
   "Like `clojure.core/mapv`, but iterates multiple collections more efficiently and uses Java iterators under the hood."
