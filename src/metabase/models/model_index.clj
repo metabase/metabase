@@ -11,6 +11,7 @@
    [metabase.query-processor :as qp]
    [metabase.search.core :as search]
    [metabase.sync.schedules :as sync.schedules]
+   [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -98,6 +99,8 @@
                   :type     :query
                   :query    {:source-table (format "card__%d" (:id model))
                              :breakout     [pk-ref value-ref]
+                             :breakout-idents {0 (u/generate-nano-id)
+                                               1 (u/generate-nano-id)}
                              :limit        (inc max-indexed-values)}})
                 :data :rows (filter valid-tuples?))]
       (catch Exception e

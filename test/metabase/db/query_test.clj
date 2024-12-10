@@ -32,55 +32,51 @@
 (deftest ensure-same-queries-test
   (testing "A test with several joins and an aggregate should produce the same result in mbql or the derived native sql"
     (mt/dataset test-data
-      (let [q {:type     :query
-               :query    (mt/$ids
-                           {:source-table (mt/id :orders)
-                            :joins        [{:fields       [[:field (mt/id :people :latitude) {:join-alias "People - User"}]
-                                                           [:field (mt/id :people :longitude) {:join-alias "People - User"}]
-                                                           [:field (mt/id :people :state) {:join-alias "People - User"}]]
-                                            :source-table (mt/id :people)
-                                            :condition    [:=
-                                                           [:field (mt/id :orders :user_id) nil]
-                                                           [:field (mt/id :people :id) {:join-alias "People - User"}]]
-                                            :alias        "People - User"}
-                                           {:fields       [[:field (mt/id :products :rating) {:join-alias "Products"}]
-                                                           [:field (mt/id :products :price) {:join-alias "Products"}]]
-                                            :source-table (mt/id :products)
-                                            :condition    [:=
-                                                           [:field (mt/id :orders :product_id) nil]
-                                                           [:field (mt/id :products :id) {:join-alias "Products"}]]
-                                            :alias        "Products"}]
-                            :filter       [:>= [:field (mt/id :products :rating) {:join-alias "Products"}] 3]
-                            :aggregation  [[:count]]
-                            :breakout     [[:field (mt/id :people :source) {:join-alias "People - User"}]]})
-               :database (mt/id)}]
+      (let [q (mt/mbql-query nil
+                {:source-table (mt/id :orders)
+                 :joins        [{:fields       [[:field (mt/id :people :latitude) {:join-alias "People - User"}]
+                                                [:field (mt/id :people :longitude) {:join-alias "People - User"}]
+                                                [:field (mt/id :people :state) {:join-alias "People - User"}]]
+                                 :source-table (mt/id :people)
+                                 :condition    [:=
+                                                [:field (mt/id :orders :user_id) nil]
+                                                [:field (mt/id :people :id) {:join-alias "People - User"}]]
+                                 :alias        "People - User"}
+                                {:fields       [[:field (mt/id :products :rating) {:join-alias "Products"}]
+                                                [:field (mt/id :products :price) {:join-alias "Products"}]]
+                                 :source-table (mt/id :products)
+                                 :condition    [:=
+                                                [:field (mt/id :orders :product_id) nil]
+                                                [:field (mt/id :products :id) {:join-alias "Products"}]]
+                                 :alias        "Products"}]
+                 :filter       [:>= [:field (mt/id :products :rating) {:join-alias "Products"}] 3]
+                 :aggregation  [[:count]]
+                 :breakout     [[:field (mt/id :people :source) {:join-alias "People - User"}]]})]
         (verify-same-query q))))
   (testing "A test with several joins a custom column, and an aggregate should produce the same result in mbql or the derived native sql"
     (mt/dataset test-data
-      (let [q {:type     :query
-               :query    (mt/$ids
-                           {:source-table (mt/id :orders)
-                            :joins        [{:fields       [[:field (mt/id :people :latitude) {:join-alias "People - User"}]
-                                                           [:field (mt/id :people :longitude) {:join-alias "People - User"}]
-                                                           [:field (mt/id :people :state) {:join-alias "People - User"}]]
-                                            :source-table (mt/id :people)
-                                            :condition    [:=
-                                                           [:field (mt/id :orders :user_id) nil]
-                                                           [:field (mt/id :people :id) {:join-alias "People - User"}]]
-                                            :alias        "People - User"}
-                                           {:fields       [[:field (mt/id :products :rating) {:join-alias "Products"}]
-                                                           [:field (mt/id :products :price) {:join-alias "Products"}]]
-                                            :source-table (mt/id :products)
-                                            :condition    [:=
-                                                           [:field (mt/id :orders :product_id) nil]
-                                                           [:field (mt/id :products :id) {:join-alias "Products"}]]
-                                            :alias        "Products"}]
-                            :expressions  {"Price per Star" [:/
-                                                             [:field (mt/id :products :price) {:join-alias "Products"}]
-                                                             [:field (mt/id :products :rating) {:join-alias "Products"}]]}
-                            :aggregation  [[:avg [:expression "Price per Star"]]],
-                            :breakout     [[:field (mt/id :products :category) {:join-alias "Products"}]]})
-               :database (mt/id)}]
+      (let [q (mt/mbql-query nil
+                {:source-table (mt/id :orders)
+                 :joins        [{:fields       [[:field (mt/id :people :latitude) {:join-alias "People - User"}]
+                                                [:field (mt/id :people :longitude) {:join-alias "People - User"}]
+                                                [:field (mt/id :people :state) {:join-alias "People - User"}]]
+                                 :source-table (mt/id :people)
+                                 :condition    [:=
+                                                [:field (mt/id :orders :user_id) nil]
+                                                [:field (mt/id :people :id) {:join-alias "People - User"}]]
+                                 :alias        "People - User"}
+                                {:fields       [[:field (mt/id :products :rating) {:join-alias "Products"}]
+                                                [:field (mt/id :products :price) {:join-alias "Products"}]]
+                                 :source-table (mt/id :products)
+                                 :condition    [:=
+                                                [:field (mt/id :orders :product_id) nil]
+                                                [:field (mt/id :products :id) {:join-alias "Products"}]]
+                                 :alias        "Products"}]
+                 :expressions  {"Price per Star" [:/
+                                                  [:field (mt/id :products :price) {:join-alias "Products"}]
+                                                  [:field (mt/id :products :rating) {:join-alias "Products"}]]}
+                 :aggregation  [[:avg [:expression "Price per Star"]]],
+                 :breakout     [[:field (mt/id :products :category) {:join-alias "Products"}]]})]
         (verify-same-query q)))))
 
 (deftest select-or-insert!-test
