@@ -343,11 +343,29 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     args: ["number", "number"],
   },
   // comparison operators
+  "=": {
+    displayName: "=",
+    tokenName: "Equal",
+    type: "boolean",
+    args: ["expression", "expression"],
+  },
+  in: {
+    displayName: "in",
+    type: "boolean",
+    args: ["expression", "expression"],
+    multiple: true,
+  },
   "!=": {
     displayName: "!=",
     tokenName: "NotEqual",
     type: "boolean",
     args: ["expression", "expression"],
+  },
+  "not-in": {
+    displayName: "notIn",
+    type: "boolean",
+    args: ["expression", "expression"],
+    multiple: true,
   },
   "<=": {
     displayName: "<=",
@@ -370,12 +388,6 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
   ">": {
     displayName: ">",
     tokenName: "GreaterThan",
-    type: "boolean",
-    args: ["expression", "expression"],
-  },
-  "=": {
-    displayName: "=",
-    tokenName: "Equal",
     type: "boolean",
     args: ["expression", "expression"],
   },
@@ -548,6 +560,8 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "now",
   "convert-timezone",
   // boolean
+  "in",
+  "not-in",
   "contains",
   "ends-with",
   "starts-with",

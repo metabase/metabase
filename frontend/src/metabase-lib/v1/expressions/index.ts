@@ -353,3 +353,7 @@ export function isCaseOrIf(expr: unknown): boolean {
 export function isOffset(expr: unknown): boolean {
   return Array.isArray(expr) && expr[0] === "offset";
 }
+
+export function isEqualsOrNotEquals(expr: unknown): boolean {
+  return Array.isArray(expr) && (expr[0] === "=" || expr[0] === "!=");
+}

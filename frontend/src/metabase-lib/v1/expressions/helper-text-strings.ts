@@ -892,6 +892,23 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     ],
   },
   {
+    name: "in",
+    structure: "in",
+    description: () => t`TBD`,
+    args: [
+      {
+        name: t`arg1`,
+        description: t`TBD`,
+        example: formatIdentifier(t`ID`),
+      },
+      {
+        name: t`arg2`,
+        description: t`TBD`,
+        example: formatStringLiteral(t`1`),
+      },
+    ],
+  },
+  {
     name: "get-year",
     structure: "year",
     description: () =>

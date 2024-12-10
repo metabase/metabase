@@ -7,6 +7,7 @@ import {
 } from "metabase-lib/v1/expressions/pratt";
 import {
   adjustCaseOrIf,
+  adjustInOrNotIn,
   adjustMultiArgOptions,
   adjustOffset,
   adjustOptions,
@@ -27,6 +28,7 @@ interface Opts {
 export function compile(source: string, type: Type, opts: Opts = {}) {
   const { throwOnError } = opts;
   const passes = [
+    adjustInOrNotIn,
     adjustOptions,
     useShorthands,
     adjustOffset,

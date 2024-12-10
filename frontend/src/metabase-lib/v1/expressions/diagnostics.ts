@@ -13,6 +13,7 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import {
   adjustCaseOrIf,
+  adjustInOrNotIn,
   adjustMultiArgOptions,
   adjustOffset,
   adjustOptions,
@@ -228,6 +229,7 @@ function prattCompiler({
   // COMPILE
   const mbql = compile(root, {
     passes: [
+      adjustInOrNotIn,
       adjustOptions,
       useShorthands,
       adjustOffset,

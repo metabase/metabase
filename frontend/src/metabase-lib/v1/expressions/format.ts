@@ -15,6 +15,7 @@ import {
   isBooleanLiteral,
   isCaseOrIf,
   isDimension,
+  isEqualsOrNotEquals,
   isFunction,
   isMetric,
   isNumberLiteral,
@@ -47,6 +48,8 @@ export function format(mbql: any, options: Options): string {
     return formatBooleanLiteral(mbql);
   } else if (isStringLiteral(mbql)) {
     return formatStringLiteral(mbql, options);
+  } else if (isEqualsOrNotEquals(mbql)) {
+    return formatEqualsOrNotEquals(mbql, options);
   } else if (isOperator(mbql)) {
     return formatOperator(mbql, options);
   } else if (isOffset(mbql)) {
@@ -223,6 +226,21 @@ function formatCaseOrIf(
       ? ", " + format(caseOptions.default, options)
       : "";
   return `${formattedName}(${formattedClauses}${defaultExpression})`;
+}
+
+function formatEqualsOrNotEquals(expr: any[], options: Options) {
+  const [operator, ...operands] = expr;
+  if (operands.length <= 2) {
+    return formatOperator(expr, options);
+  }
+  switch (operator) {
+    case "=":
+      return formatFunction(["in", ...operands], options);
+    case "!=":
+      return formatFunction(["not-in", ...operands], options);
+    default:
+      return formatOperator(expr, options);
+  }
 }
 
 function formatOffset([_tag, _opts, expr, n]: any[], options: Options) {

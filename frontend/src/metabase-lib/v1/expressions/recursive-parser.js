@@ -290,6 +290,21 @@ export const adjustOptions = tree =>
     return node;
   });
 
+// "in" and "not-in" are replaced with "=" and "!="
+export const adjustInOrNotIn = tree =>
+  modify(tree, node => {
+    if (Array.isArray(node)) {
+      const [operator, ...operands] = node;
+      switch (operator) {
+        case "in":
+          return withAST(["=", ...operands], node);
+        case "not-in":
+          return withAST(["!=", ...operands], node);
+      }
+    }
+    return node;
+  });
+
 // ["case", X, Y, Z] becomes ["case", [[X, Y]], { default: Z }]
 export const adjustCaseOrIf = tree =>
   modify(tree, node => {
@@ -406,6 +421,7 @@ const pipe =
 
 export const parse = pipe(
   recursiveParse,
+  adjustInOrNotIn,
   adjustOptions,
   useShorthands,
   adjustOffset,
