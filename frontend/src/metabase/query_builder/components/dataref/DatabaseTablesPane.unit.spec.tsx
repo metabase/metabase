@@ -64,7 +64,7 @@ describe("DatabaseTablesPane", () => {
     );
 
     expect(textElement).toBeInTheDocument();
-    await expectToBeDisabled(textElement);
+    expect(textElement).toHaveAttribute("data-disabled", "true");
   });
 
   it("should show tables with initial_sync_status='aborted' as non-interactive (disabled)", async () => {
@@ -77,7 +77,7 @@ describe("DatabaseTablesPane", () => {
     );
 
     expect(textElement).toBeInTheDocument();
-    await expectToBeDisabled(textElement);
+    expect(textElement).toHaveAttribute("data-disabled", "true");
   });
 
   it("should show tables with initial_sync_status='complete' as interactive (enabled)", async () => {
@@ -102,15 +102,6 @@ describe("DatabaseTablesPane", () => {
  * Due to this "expect().toBeDisabled()" and "expect().toBeEnabled()" won't work as expected.
  *
  * Clicking the element allows us to detect interactiveness (being enabled/disabled) with certainty.
- */
-async function expectToBeDisabled(element: Element) {
-  await expect(userEvent.click(element)).rejects.toThrow(
-    /pointer-events: none/,
-  );
-}
-
-/**
- * @see expectToBeDisabled
  */
 async function expectToBeEnabled(element: Element) {
   await expect(userEvent.click(element)).resolves.not.toThrow();
