@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import type { AutocompleteMatchStyle } from "./autocomplete";
+
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
   "type/Number"?: NumberFormattingSettings;
@@ -365,7 +367,7 @@ interface PublicSettings {
   "ldap-group-membership-filter": string;
   "loading-message": LoadingMessage;
   "map-tile-server-url": string;
-  "native-query-autocomplete-match-style": "substring" | "prefix" | "off";
+  "native-query-autocomplete-match-style": AutocompleteMatchStyle;
   "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;
