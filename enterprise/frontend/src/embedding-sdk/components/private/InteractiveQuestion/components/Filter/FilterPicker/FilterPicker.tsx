@@ -1,5 +1,8 @@
 import type { UpdateQueryHookProps } from "metabase/query_builder/hooks";
-import { FilterPicker as InnerFilterPicker } from "metabase/querying/filters/components/FilterPicker";
+import {
+  FilterPicker as InnerFilterPicker,
+  type FilterPickerProps as InnerFilterPickerProps,
+} from "metabase/querying/filters/components/FilterPicker";
 import { Box } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
@@ -11,14 +14,14 @@ type Props = {
   className?: string;
   filterItem?: SDKFilterItem;
   withIcon?: boolean;
-  onClose?: () => void;
-};
+} & Pick<InnerFilterPickerProps, "onClose" | "onBack">;
 
 const FilterPickerInner = ({
   className,
   filterItem,
   withIcon = false,
   onClose,
+  onBack,
   query,
   stageIndex,
   onQueryChange,
@@ -34,6 +37,7 @@ const FilterPickerInner = ({
         query={query}
         stageIndex={stageIndex}
         onClose={onClose}
+        onBack={onBack}
         onSelect={filter =>
           filterItem ? filterItem?.onUpdateFilter(filter) : onAddFilter(filter)
         }
@@ -52,6 +56,7 @@ export const FilterPicker = ({
   className,
   withIcon,
   onClose,
+  onBack,
 }: Props) => {
   const { question, updateQuestion } = useInteractiveQuestionContext();
 
@@ -74,6 +79,7 @@ export const FilterPicker = ({
       className={className}
       withIcon={withIcon}
       onClose={onClose}
+      onBack={onBack}
       query={query}
       stageIndex={stageIndex}
       onQueryChange={onQueryChange}

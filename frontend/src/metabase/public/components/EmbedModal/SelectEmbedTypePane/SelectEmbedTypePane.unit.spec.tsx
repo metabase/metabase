@@ -13,15 +13,15 @@ const setup = ({
   isAdmin = false,
   hasPublicLink = false,
   isResourcePublished = false,
-  isApplicationEmbeddingEnabled = false,
+  isStaticEmbeddingEnabled = false,
   isPublicSharingEnabled = false,
 }: {
   isAdmin?: boolean;
   hasPublicLink?: boolean;
   isResourcePublished?: boolean;
-  isApplicationEmbeddingEnabled?: boolean;
+  isStaticEmbeddingEnabled?: boolean;
   isPublicSharingEnabled?: boolean;
-}) => {
+} = {}) => {
   const TEST_DASHBOARD = createMockDashboard({
     public_uuid: hasPublicLink ? "mock-uuid" : undefined,
     enable_embedding: isResourcePublished,
@@ -51,7 +51,7 @@ const setup = ({
         currentUser: createMockUser({ is_superuser: isAdmin }),
         settings: mockSettings({
           "enable-public-sharing": isPublicSharingEnabled,
-          "enable-embedding": isApplicationEmbeddingEnabled,
+          "enable-embedding-static": isStaticEmbeddingEnabled,
         }),
       }),
       withRouter: true,
@@ -71,7 +71,10 @@ describe("SelectEmbedTypePane", () => {
   describe("static embed button", () => {
     describe("when the resource is published", () => {
       it("should call `goToNextStep` with `application` when the static embedding option is clicked", async () => {
-        const { goToNextStep } = setup({ isResourcePublished: true });
+        const { goToNextStep } = setup({
+          isResourcePublished: true,
+          isStaticEmbeddingEnabled: true,
+        });
 
         await userEvent.click(screen.getByText("Static embedding"));
 
@@ -81,7 +84,10 @@ describe("SelectEmbedTypePane", () => {
 
     describe("when the resource is not published", () => {
       it("should call `goToNextStep` with `application` when the static embedding option is clicked", async () => {
-        const { goToNextStep } = setup({ isResourcePublished: true });
+        const { goToNextStep } = setup({
+          isResourcePublished: false,
+          isStaticEmbeddingEnabled: true,
+        });
 
         await userEvent.click(screen.getByText("Static embedding"));
 
@@ -156,6 +162,18 @@ describe("SelectEmbedTypePane", () => {
 
         expect(onCreatePublicLink).toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('"Compare options" button', () => {
+    it("should open in a new tab", () => {
+      setup();
+
+      const compareOptionsButton = screen.getByRole("link", {
+        name: "Compare options",
+      });
+
+      expect(compareOptionsButton).toHaveAttribute("target", "_blank");
     });
   });
 });
