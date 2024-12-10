@@ -22,9 +22,33 @@ export type EntityQuery = any;
 
 export type EntityQuerySelector = (state: State, props: unknown) => EntityQuery;
 
-// TODO: add more entity types
-// https://github.com/metabase/metabase/issues/50323
-export type EntityType = "database" | "table" | string;
+/**
+ * Corresponds to the "name" parameter passed to "createEntity" function.
+ * There should be an entry here for every "createEntity" function call.
+ */
+export type EntityType =
+  | "actions"
+  | "alerts"
+  | "bookmarks"
+  | "collections"
+  | "dashboards"
+  | "databases"
+  | "fields"
+  | "groups"
+  | "indexedEntities"
+  | "persistedModels"
+  | "pulses"
+  | "questions"
+  | "revisions"
+  | "schemas"
+  | "search"
+  | "segments"
+  | "snippetCollections"
+  | "snippets"
+  | "tables"
+  | "timelineEvents"
+  | "timelines"
+  | "users";
 
 export type EntityTypeSelector = (state: State, props: unknown) => EntityType;
 
@@ -40,6 +64,7 @@ export interface EntityDefinition<Entity, EntityWrapper> {
   actionTypes: Record<string, string>;
   getQueryKey: (entityQuery: EntityQuery) => string;
   getObjectStatePath: (entityId: EntityId) => string;
+  name: string;
   nameOne: string;
   normalize: (object: unknown) => {
     object: unknown;

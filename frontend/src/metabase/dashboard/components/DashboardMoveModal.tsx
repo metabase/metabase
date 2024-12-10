@@ -3,7 +3,7 @@ import { c, t } from "ttag";
 import _ from "underscore";
 
 import { MoveModal } from "metabase/containers/MoveModal";
-import Collection, { ROOT_COLLECTION } from "metabase/entities/collections";
+import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
@@ -64,7 +64,7 @@ const DashboardMoveToast = ({
     />
     {c("{0} is a location where the dashboard was moved to")
       .jt`Dashboard moved to ${(
-      <Collection.Link
+      <Collections.Link
         key="link"
         id={collectionId}
         style={{ marginInlineStart: ".25em" }}

@@ -7,11 +7,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ArchiveModal } from "metabase/components/ArchiveModal";
-import Collection from "metabase/entities/collections";
+import Collections from "metabase/entities/collections";
 import * as Urls from "metabase/lib/urls";
 
 const mapDispatchToProps = {
-  setCollectionArchived: Collection.actions.setArchived,
+  setCollectionArchived: Collections.actions.setArchived,
   push,
 };
 
@@ -37,7 +37,7 @@ class ArchiveCollectionModalInner extends Component {
 
 const ArchiveCollectionModal = _.compose(
   connect(null, mapDispatchToProps),
-  Collection.load({
+  Collections.load({
     id: (state, props) => Urls.extractCollectionId(props.params.slug),
   }),
   withRouter,
