@@ -428,8 +428,9 @@
         file-url (complete! {:channel-id (maybe-lookup-id channel-id (slack-cached-channels-and-usernames))
                              :file-id    file_id
                              :filename   filename})]
-    (u/prog1 file-url
-      (log/debug "Uploaded image" <>))))
+    (u/prog1 {:url file-url
+              :id file_id}
+      (log/debug "Uploaded image" (:url <>)))))
 
 (mu/defn post-chat-message!
   "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel. `attachments` can be either serialized JSON for notification attachments or a map containing blocks."
