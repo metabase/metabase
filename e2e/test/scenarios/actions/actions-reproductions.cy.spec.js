@@ -270,8 +270,8 @@ describe("issue 51020", () => {
     H.saveDashboard();
   });
 
-  it("should pass id attribute to execute action endpoint when it's coming from click behavior or URL (metabase#51020)", () => {
-    cy.log("check when id parameter is coming from click behavior");
+  it("should pass id attribute to execute action endpoint when it's populated with click behavior or URL (metabase#51020)", () => {
+    cy.log("check when id parameter is populated with click behavior");
     H.getDashboardCard(0).findAllByText("1").eq(0).click();
     H.getDashboardCard(1).findByText("Click Me").click();
     H.modal().findByLabelText("Discount").type("5");
@@ -280,7 +280,7 @@ describe("issue 51020", () => {
     H.modal().should("not.exist");
     H.undoToast().findByText("Successfully updated").should("be.visible");
 
-    cy.log("check when id parameter is coming from URL");
+    cy.log("check when id parameter is populated with URL");
     cy.reload();
     H.getDashboardCard(1).findByText("Click Me").click();
     H.modal().findByLabelText("Discount").type("{backspace}");
