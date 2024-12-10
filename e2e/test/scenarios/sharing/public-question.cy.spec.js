@@ -157,17 +157,33 @@ describe("scenarios > public > question", () => {
   });
 
   it("should be able to view public questions with card template tags", () => {
+    cy.intercept("/api/database/*/card_autocomplete_suggestions*").as(
+      "cardAutocompleteSuggestions",
+    );
     cy.createNativeQuestion({
       name: "Nested Question",
       native: {
         query: "SELECT * FROM PEOPLE LIMIT 5",
       },
     }).then(({ body: { id } }) => {
-      H.openNativeEditor();
-
-      cy.get("@editor")
-        .type("select * from {{#")
-        .type(`{leftarrow}{leftarrow}${id}`);
+      cy.log(
+        "Our goal is to create a native question with the SQL 'select * from {{#86-select-question}}'. Create a new question with the first part of this query (up to the '#' character) already entered in. We'll type the rest of the query.",
+      );
+      H.startNewNativeQuestion({ query: "select * from {{#" });
+      cy.log(
+        "Type the id of the native question, which triggers a dropdown containing autocomplete suggestions.",
+      );
+      H.focusNativeEditor().type(id);
+      cy.wait("@cardAutocompleteSuggestions");
+      cy.findByRole("option", { name: `${id}-nested-question` }).should(
+        "be.visible",
+      );
+      cy.log('Accept the first suggestion by pressing "Enter".');
+      cy.findByTestId("native-query-editor").realPress("Enter");
+      cy.findByTestId("native-query-editor").type("}}");
+      cy.get(".ace_templateTag")
+        .contains("-nested-question")
+        .should("be.visible");
 
       H.saveQuestion("test question", { wrapId: true });
       cy.get("@questionId").then(id => {
