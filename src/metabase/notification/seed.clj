@@ -107,7 +107,7 @@
 (defn- cleanup-notification!
   [internal-id existing-row]
   (t2/delete! :model/Notification :internal_id internal-id)
-  (when-let [template-ids (->> existing-row :handlers (map (comp :id :template)) (filter some?) not-empty)]
+  (when-let [template-ids (->> existing-row :handlers (keep (comp :id :template)) seq)]
     (t2/delete! :model/ChannelTemplate :id [:in template-ids])))
 
 (defn- create-notification!
