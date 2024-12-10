@@ -28,6 +28,7 @@
    [metabase.api.metabot :as api.metabot]
    [metabase.api.model-index :as api.model-index]
    [metabase.api.native-query-snippet :as api.native-query-snippet]
+   [metabase.api.notification :as api.notification]
    [metabase.api.notify :as api.notify]
    [metabase.api.permissions :as api.permissions]
    [metabase.api.persist :as api.persist]
@@ -125,6 +126,7 @@
   (context "/metabot"              [] (+auth api.metabot/routes))
   (context "/model-index"          [] (+auth api.model-index/routes))
   (context "/native-query-snippet" [] (+auth api.native-query-snippet/routes))
+  (context "/notification"         [] (+auth api.notification/routes))
   (context "/notify"               [] (+static-apikey api.notify/routes))
   (context "/permissions"          [] (+auth api.permissions/routes))
   (context "/persist"              [] (+auth api.persist/routes))
