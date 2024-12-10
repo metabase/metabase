@@ -134,13 +134,14 @@
               (qe))
           "QueryExecution saved in the DB should have query execution info. empty `:data` should get added to failures"))))
 
-(deftest parameters-test
-  (testing ":parameters should indicate if any parameters with values are provided to the query"
+(deftest parameterized-test
+  (testing ":parameterized should indicate if any parameters with values are provided to the query"
     (let [query (mt/query venues
                   {:query      {:aggregation [[:count]]}
                    :parameters nil})]
-      (with-query-execution! [_qe query]
-        (is (=? {:parameterized false} (process-userland-query query)))))
+      (with-query-execution! [qe query]
+        (process-userland-query query)
+        (is (=? {:parameterized false} (qe)))))
 
     (let [query (mt/query venues
                   {:query      {:aggregation [[:count]]}
@@ -148,8 +149,9 @@
                                  :type   :category
                                  :target $price
                                  :value  nil}]})]
-      (with-query-execution! [_qe query]
-        (is (=? {:parameterized false} (process-userland-query query)))))
+      (with-query-execution! [qe query]
+        (process-userland-query query)
+        (is (=? {:parameterized false} (qe)))))
 
     (let [query (mt/query venues
                   {:query      {:aggregation [[:count]]}
@@ -157,8 +159,9 @@
                                  :type   :category
                                  :target $price
                                  :value  "4"}]})]
-      (with-query-execution! [_qe query]
-        (is (=? {:parameterized true} (process-userland-query query))))))
+      (with-query-execution! [qe query]
+        (process-userland-query query)
+        (is (=? {:parameterized true} (qe))))))
 
   (def ^:private ^:dynamic *viewlog-call-count* nil))
 
