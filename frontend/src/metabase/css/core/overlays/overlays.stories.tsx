@@ -16,7 +16,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { OverlaysDemo } from "./common";
+import { OverlaysDemo } from "./OverlaysDemo";
 
 const mockCard = createMockCard();
 const storeInitialState = createMockState({
