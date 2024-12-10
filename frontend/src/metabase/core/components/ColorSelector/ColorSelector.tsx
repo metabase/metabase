@@ -1,10 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { HTMLAttributes, Ref } from "react";
-import { forwardRef } from "react";
+import type { HTMLAttributes } from "react";
 
 import type { PillSize } from "metabase/core/components/ColorPill";
 import ColorPill from "metabase/core/components/ColorPill";
-import { Popover } from "metabase/ui";
+import { Center, Popover } from "metabase/ui";
 
 import ColorSelectorPopover from "./ColorSelectorPopover";
 
@@ -20,16 +19,20 @@ export interface ColorSelectorProps extends ColorSelectorAttributes {
   onChange?: (newValue: string) => void;
 }
 
-export const ColorSelector = forwardRef(function ColorSelector(
-  { value, colors, onChange, ...props }: ColorSelectorProps,
-  ref: Ref<HTMLDivElement>,
-) {
-  const [opened, { open, close }] = useDisclosure(false);
+export const ColorSelector = ({
+  value,
+  colors,
+  onChange,
+  ...props
+}: ColorSelectorProps) => {
+  const [opened, { toggle, close }] = useDisclosure(false);
 
   return (
-    <Popover opened={opened} onClose={close} position="bottom-end">
+    <Popover opened={opened} onClose={close} position="bottom-start">
       <Popover.Target>
-        <ColorPill {...props} ref={ref} color={value} onClick={open} />
+        <Center>
+          <ColorPill {...props} color={value} onClick={toggle} />
+        </Center>
       </Popover.Target>
       <Popover.Dropdown>
         <ColorSelectorPopover
@@ -41,4 +44,4 @@ export const ColorSelector = forwardRef(function ColorSelector(
       </Popover.Dropdown>
     </Popover>
   );
-});
+};
