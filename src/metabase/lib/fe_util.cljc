@@ -549,7 +549,11 @@
                              (not (lib.util/original-isa? % :type/TextLike)))]
     (lib.util.match/match-one filter-clause
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard supported-col?)]
-      {:operator op, :column (ref->col col-ref)})))
+      {:operator op, :column (ref->col col-ref)}
+
+      ;; do not match inner clauses
+      _
+      nil)))
 
 (mu/defn filter-args-display-name :- :string
   "Provides a reasonable display name for the `filter-clause` excluding the column-name.

@@ -519,7 +519,8 @@
       (are [clause] (nil? (lib.fe-util/default-filter-parts query -1 clause))
         (lib.filter/is-null (meta/field-metadata :venues :name))
         (lib.filter/not-null (meta/field-metadata :venues :name))
-        (lib.filter/> column 10)))))
+        (lib.filter/> column 10)
+        (lib.filter/and (lib.filter/is-null column) true)))))
 
 (deftest ^:parallel date-parts-display-name-test
   (let [created-at (meta/field-metadata :products :created-at)
