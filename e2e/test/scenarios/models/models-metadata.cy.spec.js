@@ -196,7 +196,7 @@ describe("scenarios > models metadata", () => {
     H.openQuestionActions();
     H.popover().findByTextEnsureVisible("Edit query definition").click();
 
-    H.clearNativeEditor();
+    H.NativeEditor.clear();
     H.nativeEditorType("SELECT TOTAL FROM ORDERS LIMIT 5");
 
     cy.findByTestId("editor-tabs-metadata-name").click();

@@ -30,7 +30,7 @@ function nativeEditorSelectAll() {
   cy.get(".cm-selectionBackground").should("exist");
 }
 
-export function clearNativeEditor() {
+function clearNativeEditor() {
   nativeEditorSelectAll();
   cy.realPress(["Backspace"]);
 }
