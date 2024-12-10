@@ -15,10 +15,26 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
-   (com.google.cloud.bigquery BigQuery BigQuery$DatasetDeleteOption BigQuery$DatasetListOption BigQuery$DatasetOption
-                              BigQuery$TableListOption BigQuery$TableOption Dataset DatasetId DatasetInfo Field Field$Mode
-                              InsertAllRequest InsertAllRequest$RowToInsert InsertAllResponse LegacySQLTypeName Schema
-                              StandardTableDefinition TableId TableInfo)))
+   (com.google.cloud.bigquery
+    BigQuery
+    BigQuery$DatasetDeleteOption
+    BigQuery$DatasetListOption
+    BigQuery$DatasetOption
+    BigQuery$TableListOption
+    BigQuery$TableOption
+    Dataset
+    DatasetId
+    DatasetInfo
+    Field
+    Field$Mode
+    InsertAllRequest
+    InsertAllRequest$RowToInsert
+    InsertAllResponse
+    LegacySQLTypeName
+    Schema
+    StandardTableDefinition
+    TableId
+    TableInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -89,6 +105,21 @@
          :include-user-id-and-hash true))
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
+
+(mu/defmethod sql.tx/qualified-name-components :bigquery-cloud-sdk
+  ([_driver db-name]
+   [(test-dataset-id db-name)])
+
+  ([_driver
+    db-name    :- :string
+    table-name :- :string]
+   [(test-dataset-id db-name) table-name])
+
+  ([_driver
+    db-name    :- :string
+    table-name :- :string
+    field-name :- :string]
+   [(test-dataset-id db-name) table-name field-name]))
 
 (defmethod ddl.i/format-name :bigquery-cloud-sdk
   [_driver table-or-field-name]
@@ -362,3 +393,11 @@
       {:base_type :type/Float})
     (when (#{:count :cum-count} aggregation-type)
       {:base_type :type/Integer}))))
+
+(defmethod tx/create-view-of-table! :bigquery-cloud-sdk
+  [driver database view-name table-name options]
+  (apply execute! (sql.tx/create-view-of-table-sql driver database view-name table-name options)))
+
+(defmethod tx/drop-view! :bigquery-cloud-sdk
+  [driver database view-name options]
+  (apply execute! (sql.tx/drop-view-sql driver database view-name options)))
