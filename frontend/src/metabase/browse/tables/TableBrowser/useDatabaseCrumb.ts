@@ -31,7 +31,7 @@ export const useDatabaseCrumb = (id: DatabaseId) => {
 
   const database = fetchedDatabase ?? legacyDatabase;
 
-  if (database) {
+  if (!database) {
     return {
       title: null,
       to: Urls.browseDatabase({ id }),
