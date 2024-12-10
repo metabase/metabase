@@ -23,7 +23,7 @@ function nativeEditorCompletion(label: string) {
   return cy.get(".cm-completionLabel").contains(label).parent();
 }
 
-export function nativeEditorSelectAll() {
+function nativeEditorSelectAll() {
   const isMac = Cypress.platform === "darwin";
   const metaKey = isMac ? "Meta" : "Control";
   focusNativeEditor().realPress([metaKey, "A"]);

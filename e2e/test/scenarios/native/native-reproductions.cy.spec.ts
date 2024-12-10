@@ -57,7 +57,7 @@ describe("issue 16584", () => {
 
     cy.findByPlaceholderText("Country").type("NL", { delay: 0 });
 
-    H.nativeEditorSelectAll();
+    H.NativeEditor.selectAll();
     H.runNativeQuery();
 
     cy.findByTestId("query-visualization-root")
