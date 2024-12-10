@@ -372,6 +372,7 @@ function language({
     autocompletion({
       closeOnBlur: false,
       activateOnTyping: true,
+      activateOnTypingDelay: 250,
       override: [
         completeFromLanguage,
         completeIdentifiers,

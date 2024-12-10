@@ -633,15 +633,11 @@ describe("issue 34330", () => {
 
   it("should only call the autocompleter with all text typed (metabase#34330)", () => {
     H.openNativeEditor();
-    cy.realType("USER");
+    H.nativeEditorType("USER");
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
-
-      // TODO: is this a behaviour we really want?
-      // CodeMirror will not request more autocompletions if the prefix has just become
-      // more narrow since the last call, and will do filtering on the client.
-      expect(url.searchParams.get("substring")).to.equal("U", {
+      expect(url.searchParams.get("substring")).to.equal("USER", {
         delay: 0,
       });
     });
