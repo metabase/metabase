@@ -1,17 +1,6 @@
-<<<<<<< Updated upstream
 import cx from "classnames";
 import { Component, createRef } from "react";
 import { ResizableBox, type ResizableBoxProps } from "react-resizable";
-=======
-import type { Ace } from "ace-builds";
-import * as ace from "ace-builds/src-noconflict/ace";
-import cx from "classnames";
-import { Component, createRef } from "react";
-import { connect } from "react-redux";
-import { ResizableBox, type ResizableBoxProps } from "react-resizable";
-import slugg from "slugg";
-import { t } from "ttag";
->>>>>>> Stashed changes
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -21,7 +10,7 @@ import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
-import { Box, Flex } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -37,13 +26,8 @@ import type {
 import { ResponsiveParametersList } from "../ResponsiveParametersList";
 
 import DataSourceSelectors from "./DataSourceSelectors";
-<<<<<<< Updated upstream
 import { Editor, type EditorProps, type EditorRef } from "./Editor";
 import S from "./NativeQueryEditor.module.css";
-=======
-import NativeQueryEditorS from "./NativeQueryEditor.module.css";
-import { NativeQueryEditorRoot } from "./NativeQueryEditor.styled";
->>>>>>> Stashed changes
 import type { Features as SidebarFeatures } from "./NativeQueryEditorSidebar";
 import { NativeQueryEditorSidebar } from "./NativeQueryEditorSidebar";
 import { RightClickPopover } from "./RightClickPopover";
@@ -351,15 +335,9 @@ export class NativeQueryEditor extends Component<
     const parameters = query.question().parameters();
 
     const dragHandle = resizable ? (
-<<<<<<< Updated upstream
       <div className={S.dragHandleContainer}>
         <div className={S.dragHandle} />
       </div>
-=======
-      <Flex className={NativeQueryEditorS.DragHandleContainer}>
-        <Box className={NativeQueryEditorS.DragHandle} />
-      </Flex>
->>>>>>> Stashed changes
     ) : null;
 
     const canSaveSnippets = snippetCollections.some(
@@ -367,13 +345,8 @@ export class NativeQueryEditor extends Component<
     );
 
     return (
-<<<<<<< Updated upstream
       <div
         className={S.queryEditor}
-=======
-      <NativeQueryEditorRoot
-        className={NativeQueryEditorS.NativeQueryEditorRoot}
->>>>>>> Stashed changes
         data-testid="native-query-editor-container"
       >
         {hasTopBar && (
@@ -411,12 +384,6 @@ export class NativeQueryEditor extends Component<
           </Flex>
         )}
         <ResizableBox
-<<<<<<< Updated upstream
-=======
-          className={cx(NativeQueryEditorS.StyledResizableBox, {
-            [NativeQueryEditorS.isOpen]: isNativeEditorOpen,
-          })}
->>>>>>> Stashed changes
           ref={this.resizeBox}
           height={this.state.initialHeight}
           className={cx(S.resizableBox, isNativeEditorOpen && S.open)}
@@ -434,14 +401,7 @@ export class NativeQueryEditor extends Component<
           }}
         >
           <>
-<<<<<<< Updated upstream
             <Editor
-=======
-            <Box
-              className={NativeQueryEditorS.EditorRoot}
-              id={ACE_ELEMENT_ID}
-              data-testid="native-query-editor"
->>>>>>> Stashed changes
               ref={this.editor}
               query={query}
               readOnly={readOnly}
@@ -462,7 +422,6 @@ export class NativeQueryEditor extends Component<
             )}
           </>
         </ResizableBox>
-<<<<<<< Updated upstream
 
         <RightClickPopover
           isOpen={this.state.isSelectedTextPopoverOpen}
@@ -487,9 +446,6 @@ export class NativeQueryEditor extends Component<
           </Modal>
         )}
       </div>
-=======
-      </NativeQueryEditorRoot>
->>>>>>> Stashed changes
     );
   }
 }
