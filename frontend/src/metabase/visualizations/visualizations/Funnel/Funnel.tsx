@@ -112,7 +112,6 @@ Object.assign(Funnel, {
       section: t`Data`,
       title: t`Column with steps`,
       dashboard: false,
-      useRawSeries: true,
       showColumnSetting: true,
       marginBottom: "0.625rem",
     }),
@@ -181,7 +180,6 @@ Object.assign(Funnel, {
       section: t`Data`,
       title: t`Measure`,
       dashboard: false,
-      useRawSeries: true,
       showColumnSetting: true,
     }),
     "funnel.type": {
@@ -212,6 +210,7 @@ export function Funnel(props: VisualizationProps) {
     rawSeries,
     fontFamily,
     getHref,
+    series,
   } = props;
   const hasTitle = showTitle && settings["card.title"];
 
@@ -225,7 +224,7 @@ export function Funnel(props: VisualizationProps) {
   if (settings["funnel.type"] === "bar") {
     return (
       <TransformedVisualization
-        originalProps={{ ...props, rawSeries: groupedRawSeries }}
+        originalProps={{ ...props, rawSeries: series }}
         VisualizationComponent={BarChart}
         transformSeries={funnelToBarTransform}
         renderingContext={renderingContext}
