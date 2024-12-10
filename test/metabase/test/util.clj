@@ -1532,6 +1532,7 @@
 
 (defmacro poll-until
   "A macro that continues to call the given body until it returns a truthy value or the timeout is reached.
-  Returns the truthy body, or re-throws any exception raised in body. Hence, this cannot be used to return nil, false, or a Throwable."
+  Returns the truthy body, or re-throws any exception raised in body. Hence, this cannot be used to return nil, false,
+  or a Throwable. [[thunk]] can check for those instead."
   [timeout-ms & body]
   `(do-poll-until ~timeout-ms (fn [] ~@body)))
