@@ -19,7 +19,6 @@ import ScalarValue, {
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue";
 import { ScalarTitleContainer } from "metabase/visualizations/components/ScalarValue/ScalarValue.styled";
-import { NoBreakoutError } from "metabase/visualizations/lib/errors";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
@@ -72,14 +71,13 @@ export function SmartScalar({
 }) {
   const scalarRef = useRef(null);
 
-  const insights = rawSeries?.[0].data?.insights;
   const { trend, error } = useMemo(
     () =>
-      computeTrend(series, insights, settings, {
+      computeTrend(series, settings, {
         formatValue,
         getColor: color,
       }),
-    [series, insights, settings],
+    [series, settings],
   );
 
   useEffect(() => {
@@ -431,21 +429,5 @@ Object.assign(SmartScalar, {
 
   isSensible({ insights }) {
     return insights && insights.length > 0;
-  },
-
-  // Smart scalars need to have a breakout
-  checkRenderable(
-    [
-      {
-        data: { insights },
-      },
-    ],
-    settings,
-  ) {
-    if (!insights || insights.length === 0) {
-      throw new NoBreakoutError(
-        t`Group only by a time field to see how this has changed over time`,
-      );
-    }
   },
 });
