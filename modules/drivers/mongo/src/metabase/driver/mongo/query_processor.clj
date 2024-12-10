@@ -13,7 +13,8 @@
                                             $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
                                             $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min
                                             $minute $mod $month $multiply $ne $not $or $project $regexMatch $second
-                                            $size $skip $sort $strcasecmp $subtract $sum $toLower $unwind $year]]
+                                            $size $skip $sort $strcasecmp $subtract $sum $toLower $unwind $year
+                                            $setWindowFields]]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -46,21 +47,22 @@
 ;; this is just a very limited schema to make sure we're generating valid queries. We should expand it more in the
 ;; future
 
-(def ^:private $ProjectStage   [:map-of [:= $project]   [:map-of ::lib.schema.common/non-blank-string :any]])
-(def ^:private $SortStage      [:map-of [:= $sort]      [:map-of ::lib.schema.common/non-blank-string [:enum -1 1]]])
-(def ^:private $MatchStage     [:map-of [:= $match]     [:map-of
-                                                         [:and
-                                                          [:or ::lib.schema.common/non-blank-string :keyword]
-                                                          [:fn
-                                                           {:error/message "not a $not condition"}
-                                                           (complement #{:$not "$not"})]]
-                                                         :any]])
-(def ^:private $GroupStage     [:map-of [:= $group]     [:map-of ::lib.schema.common/non-blank-string :any]])
-(def ^:private $AddFieldsStage [:map-of [:= $addFields] [:map-of ::lib.schema.common/non-blank-string :any]])
-(def ^:private $LookupStage    [:map-of [:= $lookup]    [:map-of [:or :keyword :string] :any]])
-(def ^:private $UnwindStage    [:map-of [:= $unwind]    [:map-of [:or :keyword :string] :any]])
-(def ^:private $LimitStage     [:map-of [:= $limit]     pos-int?])
-(def ^:private $SkipStage      [:map-of [:= $skip]      pos-int?])
+(def ^:private $ProjectStage         [:map-of [:= $project]   [:map-of ::lib.schema.common/non-blank-string :any]])
+(def ^:private $SortStage            [:map-of [:= $sort]      [:map-of ::lib.schema.common/non-blank-string [:enum -1 1]]])
+(def ^:private $MatchStage           [:map-of [:= $match]     [:map-of
+                                                               [:and
+                                                                [:or ::lib.schema.common/non-blank-string :keyword]
+                                                                [:fn
+                                                                 {:error/message "not a $not condition"}
+                                                                 (complement #{:$not "$not"})]]
+                                                               :any]])
+(def ^:private $GroupStage           [:map-of [:= $group]     [:map-of ::lib.schema.common/non-blank-string :any]])
+(def ^:private $AddFieldsStage       [:map-of [:= $addFields] [:map-of ::lib.schema.common/non-blank-string :any]])
+(def ^:private $LookupStage          [:map-of [:= $lookup]    [:map-of [:or :keyword :string] :any]])
+(def ^:private $UnwindStage          [:map-of [:= $unwind]    [:map-of [:or :keyword :string] :any]])
+(def ^:private $LimitStage           [:map-of [:= $limit]     pos-int?])
+(def ^:private $SkipStage            [:map-of [:= $skip]      pos-int?])
+(def ^:private $SetWindowFieldsStage [:map-of [:= $setWindowFields] [:map-of ::lib.schema.common/non-blank-string :any]])
 
 (def ^:private Stage
   [:and
@@ -71,15 +73,16 @@
    [:multi
     {:dispatch (fn [m]
                  (first (keys m)))}
-    [$project   $ProjectStage]
-    [$sort      $SortStage]
-    [$group     $GroupStage]
-    [$addFields $AddFieldsStage]
-    [$lookup    $LookupStage]
-    [$unwind    $UnwindStage]
-    [$match     $MatchStage]
-    [$limit     $LimitStage]
-    [$skip      $SkipStage]]])
+    [$project         $ProjectStage]
+    [$sort            $SortStage]
+    [$group           $GroupStage]
+    [$addFields       $AddFieldsStage]
+    [$lookup          $LookupStage]
+    [$unwind          $UnwindStage]
+    [$match           $MatchStage]
+    [$limit           $LimitStage]
+    [$skip            $SkipStage]
+    [$setWindowFields $SetWindowFieldsStage]]])
 
 (def ^:private Pipeline [:sequential Stage])
 
@@ -953,7 +956,7 @@
 
 (def ^:private aggregation-op
   "The set of operators handled by [[aggregation->rvalue]] and [[expand-aggregation]]."
-  #{:avg :count :count-where :distinct :max :min :share :stddev :sum :sum-where :var})
+  #{:avg :count :count-where :distinct :max :min :share :stddev :sum :sum-where :var :cum-sum :cum-count})
 
 (defmethod ->rvalue :case [[_ cases options]]
   {:$switch {:branches (vec (for [[pred expr] cases]
@@ -1051,6 +1054,19 @@
         stddev-expr (name (gensym "$stddev-"))]
     {:group {(subs stddev-expr 1) (aggregation->rvalue [:stddev expr])}
      :post  [{(annotate/aggregation-name (:query *query*) ag) {:$pow [stddev-expr 2]}}]}))
+
+(defmethod expand-aggregation :cum-sum
+  [ag]
+  (let [[_ expr]    (unwrap-named-ag ag)
+        sum-expr (name (gensym "$sum-"))]
+    {:group {(subs sum-expr 1) (aggregation->rvalue [:sum expr])}
+     :window {(annotate/aggregation-name (:query *query*) ag) sum-expr}}))
+
+(defmethod expand-aggregation :cum-count
+  [ag]
+  (let [count-expr (name (gensym "$count-"))]
+    {:group {(subs count-expr 1) (aggregation->rvalue [:count])}
+     :window {(annotate/aggregation-name (:query *query*) ag) count-expr}}))
 
 (defmethod expand-aggregation :default
   [ag]
@@ -1166,7 +1182,8 @@
                        aggregations-seen)]
     {:group (into {} (map :group) expandeds)
      :post (cond-> [(into {} (mapcat :post) expandeds)]
-             (not= raggr-expr (str \$ aggr-name)) (conj {aggr-name raggr-expr}))}))
+             (not= raggr-expr (str \$ aggr-name)) (conj {aggr-name raggr-expr}))
+     :window (into {} (map :window) expandeds)}))
 
 (defn- order-postprocessing
   "Takes a sequence of post processing vectors (see [[expand-aggregations]]) and
@@ -1180,6 +1197,22 @@
     (for [i (range (apply max (map count posts)))]
       (into {} (map #(get % i)) posts))))
 
+(defn- generate-window-output-clause
+  "Takes a pair of [output-name input-name] and generates an output clause suitable for
+  including in a `$setWindowFields` output block."
+  [[output-name input-name]]
+  {output-name
+   {$sum input-name
+    "window" {"documents" ["unbounded" "current"]}}})
+
+(defn- generate-window-accumulators
+  "Takes a map of {output-name input-name ...} and generates a `$setWindowFields` stage that
+  produces a cumulative sum of those fields."
+  [window-vals]
+  [{$setWindowFields
+    {"sortBy" {"_id" 1}
+     "output" (into {} (map generate-window-output-clause) window-vals)}}])
+
 (defn- group-and-post-aggregations
   "Mongo is picky about which top-level aggregations it allows with groups. Eg. even
    though [:/ [:count-if ...] [:count]] is a perfectly fine reduction, it's not allowed. Therefore
@@ -1188,14 +1221,18 @@
    The groups are assumed to be independent an collapsed into a single stage, but separate
    `$addFields` stages are created for post processing so that stages can refer to the results
    of preceding stages.
-   The intermittent results accrued in `$group` stage are discarded in the final `$project` stage."
+   The intermittent results accrued in `$group` stage are discarded in the final `$project` stage.
+   Meanwhile, cumulative aggregations cannot be done in either a `$group` or a `$addFields` stage
+   and instead need their own `$setWindowFields` stage."
   [id aggregations]
   (let [expanded-ags (map expand-aggregations aggregations)
         group-ags    (mapcat :group expanded-ags)
-        post-ags     (order-postprocessing (map :post expanded-ags))]
-    (into [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}]
-          (keep (fn [p] (when (seq p) {$addFields p})))
-          post-ags)))
+        post-ags     (order-postprocessing (map :post expanded-ags))
+        window-values   (into {} (map :window) expanded-ags)]
+    (cond-> [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}]
+      true (into (keep (fn [p] (when (seq p) {$addFields p})))
+                 post-ags)
+      (seq window-values) (into (generate-window-accumulators window-values)))))
 
 (defn- projection-group-map [fields]
   (reduce
