@@ -1,0 +1,109 @@
+.TableContainer {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  flex-basis: 0;
+
+  &.isSidebarOpen {
+    display: none;
+
+    @media screen and (min-width: 40em) {
+      display: inherit;
+    }
+  }
+}
+
+.QueryEditorContainer {
+  z-index: 2;
+  width: 100%;
+
+  &.isResizable {
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--mb-color-border);
+  }
+}
+
+.FieldTypeIcon {
+  background-color: var(--mb-color-brand);
+  color: var(--mb-color-text-white);
+  border-radius: 0.3em;
+  padding: 0.2em;
+
+  &.isSelected {
+    background-color: var(--mb-color-bg-white);
+    color: var(--mb-color-brand);
+  }
+}
+
+.MainContainer {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  flex-basis: 0;
+  position: relative;
+}
+
+.TabHintToastContainer {
+  position: fixed;
+  bottom: 16px;
+  left: 24px;
+  transform: translateY(200%);
+  transition: all 0.4s;
+
+  &.isVisible {
+    transform: translateY(0);
+  }
+}
+
+.Root {
+  --edit-bar-height: 49px;
+
+  display: flex;
+  flex: 1 0 auto;
+  position: relative;
+  background-color: var(--mb-color-bg-white);
+  height: calc(100vh - var(--edit-bar-height));
+}
+
+.DatasetEditBar {
+  background-color: var(--mb-color-brand) !important;
+}
+
+.TableHeaderColumnName {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  min-width: 35px;
+  margin: 24px 0.75em;
+  padding: 3px 0.5rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow-x: hidden;
+  color: var(--mb-color-brand);
+  background-color: transparent;
+  font-weight: bold;
+  cursor: pointer;
+  border: 1px solid var(--mb-color-brand);
+  border-radius: 8px;
+  transition: all 0.25s;
+
+  &.isSelected {
+    color: var(--mb-color-text-white);
+    background-color: var(--mb-color-brand);
+  }
+
+  :global(.Icon) {
+    margin-right: 8px;
+    transition: all 0.25s;
+  }
+
+  &:hover {
+    color: var(--mb-color-text-white);
+    background-color: var(--mb-color-brand);
+
+    :global(.Icon) {
+      background-color: var(--mb-color-bg-white);
+      color: var(--mb-color-brand);
+    }
+  }
+}

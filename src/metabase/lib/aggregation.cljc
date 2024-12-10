@@ -116,6 +116,14 @@
   [_query _stage-number _case]
   "case")
 
+(defmethod lib.metadata.calculation/display-name-method :if
+  [_query _stage-number _case _style]
+  (i18n/tru "If"))
+
+(defmethod lib.metadata.calculation/column-name-method :if
+  [_query _stage-number _case]
+  "if")
+
 ;;; TODO - Should `:case` derive from `::aggregation` as well???
 
 (lib.hierarchy/derive ::unary-aggregation ::aggregation)

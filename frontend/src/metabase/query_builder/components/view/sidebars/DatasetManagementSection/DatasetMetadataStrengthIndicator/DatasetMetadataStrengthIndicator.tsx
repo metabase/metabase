@@ -50,6 +50,7 @@ function formatPercentage(percentage: number): string {
 
 type Props = {
   dataset: Question;
+  className?: string;
 };
 
 const TOOLTIP_DELAY = 700;

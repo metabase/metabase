@@ -1,0 +1,57 @@
+.TabBar {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.RadioInput {
+  cursor: inherit;
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  top: 0;
+  left: 0;
+  margin: 0;
+  padding: 0;
+  z-index: 1;
+}
+
+.Tab {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  padding: 6px 12px;
+  color: var(--mb-color-text-white);
+  font-weight: bold;
+  border: 2px solid;
+  border-radius: 8px;
+  transition: all 0.3s;
+  opacity: 1;
+  cursor: pointer;
+
+  :global(.Icon) {
+    margin-right: 10px;
+  }
+
+  &.active {
+    background-color: var(--active-tab-color);
+    border-color: var(--active-tab-color);
+  }
+
+  &.inactive {
+    border-color: var(--inactive-tab-color);
+
+    &:hover {
+      background-color: var(--inactive-tab-color);
+    }
+  }
+
+  &.disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
