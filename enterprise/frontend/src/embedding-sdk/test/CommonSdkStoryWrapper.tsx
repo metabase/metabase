@@ -37,6 +37,7 @@ export const storybookSdkAuthDefaultConfig: MetabaseAuthConfig = {
       return response.json();
     } catch (e) {
       console.error("Failed to generate JWT", e);
+      return `Failed to generate JWT for storybook: ${e}`;
     }
   },
 };
