@@ -3,17 +3,15 @@ import { useCallback } from "react";
 import slugg from "slugg";
 import { t } from "ttag";
 
-import { useLazyGetCardQuery, useListSnippetsQuery } from "metabase/api";
+import {
+  useLazyGetAutocompleteSuggestionsQuery,
+  useLazyGetCardAutocompleteSuggestionsQuery,
+  useLazyGetCardQuery,
+  useListSnippetsQuery,
+} from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { isNotNull } from "metabase/lib/types";
-import { MetabaseApi } from "metabase/services";
-import type {
-  Card,
-  CardId,
-  CardType,
-  DatabaseId,
-  Field,
-} from "metabase-types/api";
+import type { Card, CardId, DatabaseId, Field } from "metabase-types/api";
 
 import { getCardAutocompleteResultMeta, matchTagAtCursor } from "./util";
 
@@ -28,6 +26,8 @@ type SchemaCompletionOptions = {
 // Completes column and table names from the database schema
 export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
   const matchStyle = useSetting("native-query-autocomplete-match-style");
+
+  const [getAutocompleteSuggestions] = useLazyGetAutocompleteSuggestionsQuery();
 
   return useCallback(
     async function (context: CompletionContext) {
@@ -51,22 +51,24 @@ export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
         return null;
       }
 
-      const results: [string, string][] =
-        await MetabaseApi.db_autocomplete_suggestions({
-          dbId: databaseId,
-          query: word.text.trim(),
-          matchStyle,
-        });
+      const { data } = await getAutocompleteSuggestions(
+        { databaseId, matchStyle, query: word.text.trim() },
+        false,
+      );
+
+      if (!data) {
+        return null;
+      }
 
       return {
         from: word.from,
-        options: results.map(([value, meta]) => ({
+        options: data.map(([value, meta]) => ({
           label: value,
           detail: meta,
           boost: 50,
         })),
         validFor(text: string) {
-          if (results.length >= AUTOCOMPLETE_SUGGESTIONS_LIMIT) {
+          if (data.length >= AUTOCOMPLETE_SUGGESTIONS_LIMIT) {
             // If there are more suggestions than the limit, we want subsequent
             // edits to fetch more completions because we can't assume that we've seen all
             // suggestions
@@ -77,7 +79,7 @@ export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
         },
       };
     },
-    [databaseId, matchStyle],
+    [databaseId, matchStyle, getAutocompleteSuggestions],
   );
 }
 
@@ -129,6 +131,8 @@ type CardTagCompletionOptions = {
 
 // Completes card names when inside a card tag
 export function useCardTagCompletion({ databaseId }: CardTagCompletionOptions) {
+  const [getCardAutocompleteSuggestions] =
+    useLazyGetCardAutocompleteSuggestionsQuery();
   return useCallback(
     async function completeCardTags(context: CompletionContext) {
       if (databaseId == null) {
@@ -148,20 +152,19 @@ export function useCardTagCompletion({ databaseId }: CardTagCompletionOptions) {
         return null;
       }
 
-      const results: {
-        id: number;
-        name: string;
-        type: CardType;
-        collection_name: string;
-      }[] = await MetabaseApi.db_card_autocomplete_suggestions({
-        dbId: databaseId,
+      const { data } = await getCardAutocompleteSuggestions({
+        databaseId,
         query,
       });
+
+      if (!data) {
+        return null;
+      }
 
       return {
         // -1 because we want to include the # in the autocomplete
         from: tag.content.from - 1,
-        options: results.map(({ id, name, type, collection_name }) => ({
+        options: data.map(({ id, name, type, collection_name }) => ({
           label: `#${id}-${slugg(name)}`,
           detail: getCardAutocompleteResultMeta(type, collection_name),
           apply: tag.hasClosingTag
@@ -170,7 +173,7 @@ export function useCardTagCompletion({ databaseId }: CardTagCompletionOptions) {
           boost: 50,
         })),
         validFor(text: string) {
-          if (results.length >= AUTOCOMPLETE_CARD_SUGGESTIONS_LIMIT) {
+          if (data.length >= AUTOCOMPLETE_CARD_SUGGESTIONS_LIMIT) {
             // If there are more suggestions than the limit, we want subsequent
             // edits to fetch more completions because we can't assume that we've seen all
             // suggestions
@@ -180,7 +183,7 @@ export function useCardTagCompletion({ databaseId }: CardTagCompletionOptions) {
         },
       };
     },
-    [databaseId],
+    [databaseId, getCardAutocompleteSuggestions],
   );
 }
 
