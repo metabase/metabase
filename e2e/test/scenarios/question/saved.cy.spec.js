@@ -455,6 +455,12 @@ describe(
           "fe-form-type": "none",
         },
       });
+
+      cy.request({
+        failOnStatusCode: false,
+        url: `${H.WEBHOOK_TEST_HOST}/api/session/${H.WEBHOOK_TEST_SESSION_ID}/requests`,
+        method: "DELETE",
+      });
     });
 
     it("should allow you to enable a webhook alert", () => {
