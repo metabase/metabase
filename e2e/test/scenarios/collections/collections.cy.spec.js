@@ -471,7 +471,9 @@ describe("scenarios > collection defaults", () => {
         cy.findByText(revokedUsersPersonalCollectionName).click();
         H.pickEntity({ path: [revokedUsersPersonalCollectionName] });
         H.pickEntity({ path: ["Collections", "Child"] });
-        H.entityPickerModal().button("Select").should("be.enabled");
+        H.entityPickerModal()
+          .button("Select this collection")
+          .should("be.enabled");
         cy.log("Reported failing from v0.34.3");
         cy.findByTestId("entity-picker-modal")
           .findByText("Parent")
@@ -497,7 +499,7 @@ describe("scenarios > collection defaults", () => {
       });
 
       H.entityPickerModal().within(() => {
-        cy.findByRole("tab", { name: /Collections/ }).click();
+        H.entityPickerModalTab("Browse").click();
         cy.findByText("Bobby Tables's Personal Collection").click();
         cy.findByText(COLLECTION).click();
         cy.button("Move").should("not.be.disabled");
@@ -526,7 +528,7 @@ describe("scenarios > collection defaults", () => {
 
       H.entityPickerModal().within(() => {
         cy.findByTestId("loading-indicator").should("not.exist");
-        cy.findByRole("tab", { name: /Collections/ }).click();
+        H.entityPickerModalTab("Collections").click();
         cy.wait([
           "@getCollectionItems",
           "@getCollectionItems",
@@ -698,7 +700,7 @@ describe("scenarios > collection defaults", () => {
           H.popover().findByText("Move").click();
 
           H.entityPickerModal().within(() => {
-            cy.findByRole("tab", { name: /Collections/ }).click();
+            H.entityPickerModalTab("Collections").click();
             cy.log("parent collection should be selected");
             findPickerItem("First collection").should(
               "have.attr",
@@ -721,7 +723,7 @@ describe("scenarios > collection defaults", () => {
 
           H.entityPickerModal().within(() => {
             cy.log("parent collection should be selected");
-            cy.findByRole("tab", { name: /Collections/ }).click();
+            H.entityPickerModalTab("Collections").click();
             findPickerItem("Second collection").should(
               "have.attr",
               "data-active",

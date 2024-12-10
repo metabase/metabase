@@ -11,17 +11,25 @@
 
 (declare load-one!)
 
+(def ^:private model->circular-dependency-keys
+  "Sometimes models have circular dependencies. For example, a card for a Dashboard Question has a `dashboard_id`
+  pointing to the dashboard it's in. But when we try to load that dashboard, we'll create all its dashcards, and one
+  of those dashcards will point to the card we started with.
+
+  This map works around this: given a model (e.g. `Card`) that triggered a dependency loop, it provides a set of keys
+  to remove from the model so that we'll be able to successfully load it."
+  {"Dashboard" #{:dashcards}
+   "Card" #{:dashboard_id}})
+
 (defn- without-references
   "Remove references to other entities from a given one. Used to break circular dependencies when loading."
-  [entity]
-  (if (:dashcards entity)
-    (dissoc entity :dashcards)
-    (throw (ex-info "No known references found when breaking circular dependency!"
-                    (let [model (t2/model entity)]
-                      {:entity entity
-                       :model  (some-> model name)
-                       :table  (some-> model t2/table-name)
-                       :error  ::no-known-references})))))
+  [model entity]
+  (let [keys-to-remove (or (model->circular-dependency-keys model)
+                           (throw (ex-info "Don't know which keys to remove to break circular dependency!"
+                                           {:entity entity
+                                            :model model
+                                            :error ::no-known-references})))]
+    (apply dissoc entity keys-to-remove)))
 
 (defn- load-deps!
   "Given a list of `deps` (hierarchies), [[load-one]] them all.
@@ -43,9 +51,9 @@
                     ;; It's a circular dep, strip off probable cause and retry. This will store an incomplete version
                     ;; of an entity, but this is not a problem - a full version is waiting to be stored up the stack.
                     (= (:error (ex-data e)) ::circular)
-                    (do
+                    (let [model (:model (ex-data e))]
                       (log/debug "Detected circular dependency" (serdes/log-path-str dep))
-                      (load-one! (update ctx :expanding disj dep) dep without-references))
+                      (load-one! (update ctx :expanding disj dep) dep (partial without-references model)))
 
                     :else
                     (throw e)))))]

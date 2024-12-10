@@ -61,6 +61,6 @@ export type InteractiveQuestionContextType = Omit<
     mode: Mode | null | undefined;
     resetQuestion: () => void;
     onReset: () => void;
-    onCreate: (question: Question) => Promise<void>;
+    onCreate: (question: Question) => Promise<Question>;
     onSave: (question: Question) => Promise<void>;
   };

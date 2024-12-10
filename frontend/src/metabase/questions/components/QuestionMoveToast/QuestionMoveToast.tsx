@@ -1,19 +1,20 @@
-import { jt } from "ttag";
+import { jt, t } from "ttag";
 
+import type { MoveDestination } from "metabase/collections/types";
 import { coerceCollectionId } from "metabase/collections/utils";
 import type Question from "metabase-lib/v1/Question";
-import type { CollectionId } from "metabase-types/api";
 
 import {
   CollectionLink,
+  DashboardLink,
   StyledIcon,
   ToastRoot,
 } from "./QuestionMoveToast.styled";
 
-interface QuestionMoveToastProps {
-  collectionId: CollectionId;
+type QuestionMoveToastProps = {
+  destination: MoveDestination;
   question: Question;
-}
+};
 
 const getMessage = (question: Question, collectionLink: JSX.Element) => {
   const type = question.type();
@@ -33,13 +34,30 @@ const getMessage = (question: Question, collectionLink: JSX.Element) => {
   throw new Error(`Unknown question.type(): ${type}`);
 };
 
-function QuestionMoveToast({ collectionId, question }: QuestionMoveToastProps) {
-  const id = coerceCollectionId(collectionId);
-  const collectionLink = <CollectionLink key="collection-link" id={id} />;
+function QuestionMoveToast({ destination, question }: QuestionMoveToastProps) {
+  if (!destination) {
+    return (
+      <ToastRoot>
+        <StyledIcon name="warning" />
+        {t`Something went wrong`}
+      </ToastRoot>
+    );
+  }
+
+  const link =
+    destination.model === "dashboard" ? (
+      <DashboardLink key="dashboard-link" id={destination.id} />
+    ) : (
+      <CollectionLink
+        key="collection-link"
+        id={coerceCollectionId(destination.id)}
+      />
+    );
+
   return (
     <ToastRoot>
       <StyledIcon name="collection" />
-      {getMessage(question, collectionLink)}
+      {getMessage(question, link)}
     </ToastRoot>
   );
 }

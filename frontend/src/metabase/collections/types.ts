@@ -4,19 +4,30 @@ import type {
   Collection,
   CollectionId,
   CollectionItem,
+  Dashboard,
 } from "metabase-types/api";
 
 import type { CollectionOrTableIdProps } from "./components/ModelUploadModal";
 
+export type MoveCollectionDestination = Pick<Collection, "id"> & {
+  model: "collection";
+} & Partial<Collection>;
+export type MoveDashboardDestination = Pick<Dashboard, "id"> & {
+  model: "dashboard";
+} & Partial<Dashboard>;
+export type MoveDestination =
+  | MoveCollectionDestination
+  | MoveDashboardDestination;
+
 export type OnCopy = (items: CollectionItem[]) => void | null;
 export type OnCopyWithoutArguments = () => void;
 export type OnMove = (items: CollectionItem[]) => Promise<any> | void;
-export type OnMoveWithOneItem = (
-  item: Pick<Collection, "id"> & Partial<Collection>,
+export type OnMoveWithOneItem<D = MoveDestination> = (
+  destination: D,
 ) => Promise<any> | void;
 export type OnMoveWithSourceAndDestination = (
   source: Collection | CollectionItem,
-  destination: { id: CollectionId },
+  destination: MoveDestination,
 ) => Promise<any>;
 export type OnMoveById = (id: CollectionId) => void;
 export type OnPin = () => void | null;

@@ -71,7 +71,16 @@ describe("scenarios > question > joined questions", () => {
     H.assertQueryBuilderRowCount(89);
 
     // Make sure UI overlay doesn't obstruct viewing results after we save this question (metabase#13468)
-    H.saveQuestion();
+    cy.findByTestId("qb-header").button("Save").click();
+    cy.findByTestId("save-question-modal")
+      .findByLabelText(/Where do you want to save this/)
+      .click();
+    H.pickEntity({
+      tab: "Browse",
+      path: ["Our analytics"],
+    });
+    H.entityPickerModal().button("Select this collection").click();
+    cy.findByTestId("save-question-modal").button("Save").click();
 
     cy.findByTestId("qb-filters-panel").findByText(
       "Reviews - Product → Rating is equal to 2",

@@ -1,13 +1,18 @@
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import type {
   CollectionId,
+  CollectionItemModel,
   ListCollectionItemsRequest,
 } from "metabase-types/api";
 
 import type { PickerState } from "../EntityPicker";
 import type { QuestionPickerItem } from "../QuestionPicker";
 
-import type { CollectionPickerItem, CollectionPickerStatePath } from "./types";
+import type {
+  CollectionPickerItem,
+  CollectionPickerModel,
+  CollectionPickerStatePath,
+} from "./types";
 
 export const getCollectionIdPath = (
   collection: Pick<
@@ -50,9 +55,11 @@ export const getCollectionIdPath = (
 export const getStateFromIdPath = ({
   idPath,
   namespace,
+  models,
 }: {
   idPath: CollectionId[];
   namespace?: "snippets";
+  models: CollectionPickerModel[];
 }): CollectionPickerStatePath => {
   const statePath: PickerState<
     CollectionPickerItem,
@@ -75,7 +82,7 @@ export const getStateFromIdPath = ({
     statePath.push({
       query: {
         id,
-        models: ["collection"],
+        models,
         namespace,
       },
       selectedItem: nextLevelId
@@ -93,11 +100,14 @@ export const getStateFromIdPath = ({
   return statePath;
 };
 
-export const isFolder = (item: CollectionPickerItem): boolean => {
-  return Boolean(
-    item.model === "collection" && item?.here?.includes("collection"),
-  );
-};
+export const isFolderFactory =
+  (models: CollectionItemModel[]) =>
+  (item: CollectionPickerItem): boolean => {
+    return Boolean(
+      item.model === "collection" &&
+        models.some(model => item?.here?.includes(model)),
+    );
+  };
 
 export const getParentCollectionId = (
   location?: string | null,

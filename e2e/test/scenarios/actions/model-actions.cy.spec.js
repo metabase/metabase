@@ -6,6 +6,7 @@ import {
   USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
+import { IMPERSONATED_USER_ID } from "e2e/support/cypress_sample_instance_data";
 import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
 import { createMockActionParameter } from "metabase-types/api/mocks";
 
@@ -770,8 +771,7 @@ describe(
       H.setTokenFeatures("all");
       H.queryWritableDB(sql);
 
-      const impersonatedUserId = 9;
-      cy.request("PUT", `/api/user/${impersonatedUserId}`, {
+      cy.request("PUT", `/api/user/${IMPERSONATED_USER_ID}`, {
         login_attributes: { role },
       });
 

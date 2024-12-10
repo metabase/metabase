@@ -25,7 +25,8 @@
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.interface :as qp.i]
    [metabase.test :as mt]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [toucan2.core :as t2])
   (:import
    (org.apache.poi.ss.usermodel DataFormatter)
    (org.apache.poi.xssf.usermodel XSSFSheet)))
@@ -110,7 +111,7 @@
                                        :format_rows   format-rows
                                        :pivot_results pivot)
                  (process-results pivot export-format)))]
-    (if (contains? card-or-dashcard :dashboard_id)
+    (if (= (t2/model card-or-dashcard) :model/DashboardCard)
       (dashcard-download* card-or-dashcard)
       (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                      :model/DashboardCard dashcard {:dashboard_id dashboard-id
@@ -128,7 +129,7 @@
                                          :format_rows   format-rows
                                          :pivot_results pivot)
                    (process-results pivot export-format)))]
-      (if (contains? card-or-dashcard :dashboard_id)
+      (if (= :model/DashboardCard (t2/model card-or-dashcard))
         (mt/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid public-uuid}]
           (public-dashcard-download* (assoc card-or-dashcard :dashboard_id dashboard-id)))
         (mt/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid public-uuid}
@@ -181,7 +182,7 @@
   (letfn [(subscription-attachment* [pulse]
             (->> (run-pulse-and-return-attached-csv-data! pulse export-format)
                  (process-results pivot export-format)))]
-    (if (contains? card-or-dashcard :dashboard_id)
+    (if (= :model/DashboardCard (t2/model card-or-dashcard))
       ;; dashcard
       (mt/with-temp [:model/Pulse {pulse-id :id
                                    :as      pulse} {:name         "Test Pulse"
@@ -225,7 +226,7 @@
 (defn all-downloads
   [card-or-dashcard opts]
   (merge
-   (when-not (contains? card-or-dashcard :dashboard_id)
+   (when-not (= (t2/model card-or-dashcard) :model/DashboardCard)
      {:unsaved-card-download    (unsaved-card-download card-or-dashcard opts)
       :card-download            (card-download card-or-dashcard opts)
       :public-question-download (public-question-download card-or-dashcard opts)})
@@ -235,7 +236,7 @@
 (defn all-outputs!
   [card-or-dashcard opts]
   (merge
-   (when-not (contains? card-or-dashcard :dashboard_id)
+   (when-not (= (t2/model card-or-dashcard) :model/DashboardCard)
      {:unsaved-card-download    (unsaved-card-download card-or-dashcard opts)
       :public-question-download (public-question-download card-or-dashcard opts)
       :card-download            (card-download card-or-dashcard opts)

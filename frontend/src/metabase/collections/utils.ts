@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type {

@@ -204,10 +204,8 @@ describe(
       H.createDashboard().then(({ body: { id: dashId } }) => {
         H.visitDashboard(dashId);
 
-        cy.findByTestId("dashboard-header").within(() => {
-          cy.findByLabelText("Edit dashboard").click();
-          cy.findByLabelText("Add questions").click();
-        });
+        H.editDashboard();
+        H.openQuestionsSidebar();
 
         /**
          * Metabase sorts all questions in the sidebar alphabetically.

@@ -54,6 +54,7 @@
 (defmethod present-model-items :model/Card [_ cards]
   (->> (t2/hydrate (t2/select [:model/Card
                                :id
+                               :dashboard_id
                                :description
                                :collection_id
                                :name
@@ -78,13 +79,22 @@
                                  :limit    1}
                                 :moderated_status]]
                               :id [:in (set (map :id cards))])
-                   :can_write :can_delete :can_restore [:collection :effective_location])
+                   :can_write :can_delete :can_restore [:collection :effective_location] :dashboard_count [:dashboard :moderation_status])
        present-collections
        (map (fn [card]
               (-> card
                   (assoc :model (if (card/model? card) "dataset" "card"))
                   (assoc :fully_parameterized (api.collection/fully-parameterized-query? card))
                   (dissoc :dataset_query))))))
+
+(defn- annotate-dashboard-with-collection-info
+  "For dashboards, we want `here` and `location` since they can contain cards as children."
+  [dashboards]
+  (for [{parent-coll :collection
+         :as dashboard} (api.collection/annotate-dashboards dashboards)]
+    (assoc dashboard
+           :location (or (some-> parent-coll collection/children-location)
+                         "/"))))
 
 (defmethod present-model-items :model/Dashboard [_ dashboards]
   (->> (t2/hydrate (t2/select [:model/Dashboard
@@ -97,11 +107,13 @@
                                :collection_position
                                [:last_viewed_at :last_used_at]
                                ["dashboard" :model]
+                               [nil :dashboard_id]
                                [nil :location]
                                [nil :database_id]]
 
                               :id [:in (set (map :id dashboards))])
                    :can_write :can_delete :can_restore [:collection :effective_location])
+       annotate-dashboard-with-collection-info
        present-collections))
 
 (api/defendpoint GET "/:id"

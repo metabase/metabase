@@ -528,7 +528,7 @@
    If the search string contains a number like '123' we match that as a prefix against the card IDs.
    If the search string contains a number at the start AND text like '123-foo' we match do an exact match on card ID, and a substring match on the card name.
    If the search string does not start with a number, and is text like 'foo' we match that as a substring on the card name."
-  [database-id search-card-slug]
+  [database-id search-card-slug include-dashboard-questions?]
   (let [search-id   (re-find #"\d*" search-card-slug)
         search-name (-> (re-matches #"\d*-?(.*)" search-card-slug)
                         second
@@ -538,6 +538,8 @@
                {:where    [:and
                            [:= :report_card.database_id database-id]
                            [:= :report_card.archived false]
+                           (when-not include-dashboard-questions?
+                             [:= :report_card.dashboard_id nil])
                            (cond
                              ;; e.g. search-string = "123"
                              (and (not-empty search-id) (empty? search-name))
@@ -661,12 +663,13 @@
   "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
 
   This is intended for use with the ACE Editor when the User is typing in a template tag for a `Card`, e.g. {{#...}}."
-  [id query]
-  {id    ms/PositiveInt
-   query ms/NonBlankString}
+  [id query include_dashboard_questions]
+  {id                          ms/PositiveInt
+   query                       ms/NonBlankString
+   include_dashboard_questions ms/MaybeBooleanValue}
   (api/read-check Database id)
   (try
-    (->> (autocomplete-cards id query)
+    (->> (autocomplete-cards id query include_dashboard_questions)
          (filter mi/can-read?)
          (map #(select-keys % [:id :name :type :collection_name])))
     (catch Throwable e

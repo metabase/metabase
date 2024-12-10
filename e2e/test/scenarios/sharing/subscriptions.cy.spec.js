@@ -575,7 +575,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should show all users in recipients dropdown if `user-visiblity` setting is `all`", () => {
       openRecipientsWithUserVisibilitySetting("all");
 
-      H.popover().find("span").should("have.length", 9);
+      H.popover().find("span").should("have.length", 10);
     });
 
     describe("with no parameters", () => {
@@ -588,6 +588,27 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByText("Set filter values for when this gets sent").should(
           "not.exist",
         );
+      });
+    });
+
+    it("should send a dashboard with questions saved in the dashboard", () => {
+      H.createQuestion({
+        name: "Total Orders",
+        database_id: SAMPLE_DATABASE.id,
+        dashboard_id: ORDERS_DASHBOARD_ID,
+        query: {
+          "source-table": SAMPLE_DATABASE.ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+      });
+
+      assignRecipient();
+      H.sendEmailAndVisitIt();
+
+      cy.get(".container").within(() => {
+        cy.findByText("Total Orders");
+        cy.findAllByText("18,760").should("have.length", 2);
       });
     });
 

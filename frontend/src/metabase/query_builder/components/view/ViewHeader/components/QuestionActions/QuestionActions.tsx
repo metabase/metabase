@@ -1,6 +1,7 @@
 import type { ChangeEvent } from "react";
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import { UploadInput } from "metabase/components/upload";
@@ -84,6 +85,9 @@ export const QuestionActions = ({
     : undefined;
 
   const isQuestion = question.type() === "question";
+  const isDashboardQuestion = isQuestion && _.isNumber(question.dashboardId());
+  const isStandaloneQuestion =
+    isQuestion && !_.isNumber(question.dashboardId());
   const isModel = question.type() === "model";
   const isMetric = question.type() === "metric";
   const isModelOrMetric = isModel || isMetric;
@@ -117,7 +121,7 @@ export const QuestionActions = ({
 
   const extraButtons = [];
 
-  if (isQuestion || isMetric) {
+  if (isStandaloneQuestion || isMetric) {
     extraButtons.push({
       title: t`Add to dashboard`,
       icon: "add_to_dash",
@@ -155,7 +159,7 @@ export const QuestionActions = ({
   }
 
   if (hasCollectionPermissions) {
-    if (isQuestion) {
+    if (!isDashboardQuestion && !isModel) {
       extraButtons.push({
         title: t`Turn into a model`,
         icon: "model",
@@ -210,6 +214,7 @@ export const QuestionActions = ({
       separator: true,
       key: "trash-separator",
     });
+
     extraButtons.push({
       title: t`Move to trash`,
       icon: "trash",
@@ -313,10 +318,18 @@ export const QuestionActions = ({
       )}
       {extraButtons.length > 0 && !question.isArchived() && (
         <EntityMenu
-          triggerAriaLabel={t`Move, trash, and more...`}
+          triggerAriaLabel={
+            isDashboardQuestion
+              ? t`Move, duplicate, and more...`
+              : t`Move, trash, and more...`
+          }
           items={extraButtons}
           triggerIcon="ellipsis"
-          tooltip={t`Move, trash, and more...`}
+          tooltip={
+            isDashboardQuestion
+              ? t`Move, duplicate, and more...`
+              : t`Move, trash, and more...`
+          }
         />
       )}
     </>

@@ -793,9 +793,15 @@ describe("issue 23293", () => {
     cy.wait("@dataset");
 
     H.queryBuilderHeader().button("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
-      cy.findByText("Save").click();
+    cy.findByTestId("save-question-modal")
+      .findByLabelText(/Where do you want to save this/)
+      .click();
+    H.pickEntity({
+      tab: "Browse",
+      path: ["Our analytics"],
     });
+    H.entityPickerModal().findByText("Select this collection").click();
+    cy.findByTestId("save-question-modal").button("Save").click();
 
     cy.wait("@saveQuestion").then(({ response }) => {
       cy.button("Not now").click();
