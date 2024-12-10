@@ -1,0 +1,19 @@
+.ColumnItemContainer {
+  /* border: 1px solid var(--mb-color-border); */
+  border-radius: 0.5rem;
+
+  &.dragging {
+    cursor: grabbing;
+    pointer-events: auto !important;
+  }
+
+  :hover .GrabHandle {
+    color: var(--mb-color-brand);
+  }
+}
+
+.ColumnItemTitle {
+  &:not([data-specificity-hack]) {
+    flex: 1;
+  }
+}
