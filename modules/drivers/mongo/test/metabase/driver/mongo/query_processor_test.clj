@@ -628,3 +628,42 @@
            #"MongoDB does not support parsing strings as times. Try parsing to a datetime instead"
            (qp/process-query
             (mt/mbql-query times {:fields [$t]})))))))
+
+(deftest ^:parallel cumulative-aggregator-test
+  (mt/test-driver :mongo
+    ;; cumulative aggregators aren't supported until mongo 5
+    (when (driver/database-supports? :mongo :window-functions/cumulative (mt/db))
+      (testing "Should generate correct queries for `:cum-sum` and `cum-count` aggregators (#50832)"
+        (let [actual (qp.compile/compile
+                      (mt/mbql-query orders
+                        {:aggregation [[:cum-sum $total]
+                                       [:cum-count]]
+                         :breakout [$created_at]}))
+              sum-temp (get-in actual [:query 1 "$setWindowFields" "output" "sum" "$sum"])
+              count-temp (get-in actual [:query 1 "$setWindowFields" "output" "count" "$sum"])]
+          (is (string? sum-temp))
+          (is (str/starts-with? sum-temp "$"))
+          (is (string? count-temp))
+          (is (str/starts-with? count-temp "$"))
+          (is (=? {:projections ["created_at" "sum" "count"],
+                   :query
+                   [{"$group"
+                     {"_id" {"created_at" {:$dateTrunc {:date "$created_at",
+                                                        :unit "day",
+                                                        :timezone "UTC",
+                                                        :startOfWeek "sunday"}}},
+                      (subs sum-temp 1) {"$sum" "$total"},
+                      (subs count-temp 1) {"$sum" 1}}}
+                    {"$setWindowFields"
+                     {"sortBy" {"_id" 1},
+                      "output" {"sum" {"$sum" sum-temp,
+                                       "window" {"documents" ["unbounded" "current"]}},
+                                "count" {"$sum" count-temp
+                                         "window" {"documents" ["unbounded" "current"]}}}}}
+                    {"$sort" {"_id" 1}}
+                    {"$project" {"_id" false,
+                                 "created_at" "$_id.created_at",
+                                 "sum" true,
+                                 "count" true}}],
+                   :collection "orders"}
+                  actual)))))))
