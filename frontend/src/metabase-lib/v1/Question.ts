@@ -499,6 +499,10 @@ class Question {
     return this._card.dashboard_id;
   }
 
+  dashboardName(): string | undefined {
+    return this._card?.dashboard?.name ?? undefined;
+  }
+
   dashboardCount(): number {
     return this._card.dashboard_count;
   }
