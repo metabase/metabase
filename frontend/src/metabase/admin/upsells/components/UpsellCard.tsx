@@ -70,14 +70,14 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
       className={className}
     >
       {illustrationSrc && <Image src={illustrationSrc} w="100%" />}
-      <Stack className={S.MainStack} spacing={0}>
+      <Stack className={S.MainStack} gap={0}>
         <Flex align="center" gap="sm" p="1rem" pb="0.75rem">
           <UpsellGem size={gemSize} />
           <Title lh={1.25} order={2} className={S.Title}>
             {title}
           </Title>
         </Flex>
-        <Stack spacing="md">
+        <Stack gap="md">
           <Text lh="1rem" px="1rem">
             {children}
           </Text>

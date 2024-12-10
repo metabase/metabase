@@ -52,11 +52,11 @@ export const CardContentSide = styled(Box)<BoxProps>`
   display: flex;
   align-items: center;
   overflow: hidden;
-`;
+` as unknown as typeof Box;
 
 export const ControlsCardContent = styled(CardContentSide)`
   flex-shrink: 0;
-`;
+` as unknown as typeof Box;
 
 export const CardIcon = styled(Icon)`
   margin-right: ${space(1)};

@@ -2,8 +2,8 @@ import type { PopoverDropdownProps } from "@mantine/core";
 import { Popover as MantinePopover } from "@mantine/core";
 import { useEffect } from "react";
 
-export type { PopoverBaseProps, PopoverProps } from "@mantine/core";
-export { getPopoverOverrides } from "./Popover.styled";
+export type { PopoverProps } from "@mantine/core";
+export { popoverOverrides } from "./Popover.config";
 
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 
@@ -33,12 +33,12 @@ const PopoverDropdown = function PopoverDropdown(
     <MantinePopoverDropdown {...props} data-element-id="mantine-popover" />
   );
 };
+
 PopoverDropdown.displayName = MantinePopoverDropdown.displayName;
+// @ts-expect-error -- our types are better
 MantinePopover.Dropdown = PopoverDropdown;
 
-const Popover: typeof MantinePopover & {
-  Dropdown: typeof PopoverDropdown;
-} = MantinePopover;
+const Popover = MantinePopover;
 
 export { Popover };
-export { DEFAULT_POPOVER_Z_INDEX } from "./Popover.styled";
+export { DEFAULT_POPOVER_Z_INDEX } from "./Popover.config";

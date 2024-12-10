@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { ThemeProvider } from "metabase/ui";
 
 const isEmbeddingSDK = process.env.IS_EMBEDDING_SDK === "true";
@@ -13,6 +13,8 @@ if (!isEmbeddingSDK) {
   require("metabase/css/index.module.css");
   require("metabase/lib/dayjs");
 }
+import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css"
 
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
@@ -64,6 +66,10 @@ export const decorators = isEmbeddingSDK
 
 function CssVariables() {
   const theme = useTheme();
+  useEffect(() => {
+    // mantine v7 will not work correctly without this
+    document.body.dir = "ltr";
+  }, []);
   const styles = css`
     ${getMetabaseCssVariables(theme)}
 

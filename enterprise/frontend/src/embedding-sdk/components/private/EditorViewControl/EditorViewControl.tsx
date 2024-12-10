@@ -40,7 +40,7 @@ const EDITOR_VIEW_OPTIONS = [
 export const EditorViewControl = ({
   data = EDITOR_VIEW_OPTIONS,
   ...restProps
-}: Partial<SegmentedControlProps>) => (
+}: Partial<SegmentedControlProps<string>>) => (
   <SegmentedControl
     radius="xl"
     styles={{
@@ -59,9 +59,6 @@ export const EditorViewControl = ({
         // this really should be design token values
         padding: `4px 10px`,
       },
-      controlActive: {
-        color: "var(--mb-color-bg-white)",
-      },
       indicator: {
         backgroundColor: "var(--mb-color-brand)",
         color: "var(--mb-color-bg-white)",
@@ -69,6 +66,9 @@ export const EditorViewControl = ({
       control: {
         "&:not(:first-of-type)": {
           border: "none",
+        },
+        "&[data-active]": {
+          color: "var(--mb-color-bg-white)",
         },
       },
     }}

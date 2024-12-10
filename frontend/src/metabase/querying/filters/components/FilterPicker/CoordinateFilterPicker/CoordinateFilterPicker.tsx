@@ -155,7 +155,7 @@ function CoordinateValueInput({
           autoFocus
           w="100%"
           aria-label={t`Filter value`}
-          onChange={(newValue: number) => onChange([newValue])}
+          onChange={(newValue: NumberValue) => onChange([newValue])}
         />
       </Flex>
     );
@@ -168,13 +168,13 @@ function CoordinateValueInput({
           value={values[0]}
           placeholder={t`Min`}
           autoFocus
-          onChange={(newValue: number) => onChange([newValue, values[1]])}
+          onChange={(newValue: NumberValue) => onChange([newValue, values[1]])}
         />
         <Text mx="sm">{t`and`}</Text>
         <NumberInput
           value={values[1]}
           placeholder={t`Max`}
-          onChange={(newValue: number) => onChange([values[0], newValue])}
+          onChange={(newValue: NumberValue) => onChange([values[0], newValue])}
         />
       </Flex>
     );
@@ -182,13 +182,13 @@ function CoordinateValueInput({
 
   if (valueCount === 4) {
     return (
-      <Stack align="center" justify="center" spacing="sm" p="md">
+      <Stack align="center" justify="center" gap="sm" p="md">
         <NumberInput
           label={t`Upper latitude`}
           value={values[0]}
           placeholder="90"
           autoFocus
-          onChange={(newValue: number) =>
+          onChange={(newValue: NumberValue) =>
             onChange([newValue, values[1], values[2], values[3]])
           }
         />
@@ -197,7 +197,7 @@ function CoordinateValueInput({
             label={t`Left longitude`}
             value={values[1]}
             placeholder="-180"
-            onChange={(newValue: number) =>
+            onChange={(newValue: NumberValue) =>
               onChange([values[0], newValue, values[2], values[3]])
             }
           />
@@ -205,7 +205,7 @@ function CoordinateValueInput({
             label={t`Right longitude`}
             value={values[3]}
             placeholder="180"
-            onChange={(newValue: number) =>
+            onChange={(newValue: NumberValue) =>
               onChange([values[0], values[1], values[2], newValue])
             }
           />
@@ -214,7 +214,7 @@ function CoordinateValueInput({
           label={t`Lower latitude`}
           value={values[2]}
           placeholder="-90"
-          onChange={(newValue: number) =>
+          onChange={(newValue: NumberValue) =>
             onChange([values[0], values[1], newValue, values[3]])
           }
         />

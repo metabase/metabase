@@ -25,7 +25,7 @@ interface ScalarValueWrapperProps {
 export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
   display: inline;
   font-size: ${props => props.fontSize};
-  line-height: ${props => props.lineHeight};
+  line-height: ${props => props.lineHeight ?? "var(--mantine-line-height)"};
   cursor: pointer;
 
   &:hover {

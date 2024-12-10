@@ -36,7 +36,7 @@ export const ViewFooter = ({ className }: ViewFooterProps) => {
       className={cx(className, CS.textMedium, CS.borderTop, CS.fullWidth)}
       data-testid="view-footer"
     >
-      <Group position="apart" pos="relative" noWrap w="100%">
+      <Group justify="space-between" pos="relative" wrap="nowrap" w="100%">
         {!hideChartSettings && <LeftViewFooterButtonGroup />}
         {isVisualized && <CenterViewFooterButtonGroup />}
         <RightViewFooterButtonGroup />

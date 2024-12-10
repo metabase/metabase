@@ -4,8 +4,8 @@ import { Stack, Text, Title } from "metabase/ui";
 
 export const OnboardingDismissedToast = () => {
   return (
-    <Stack spacing="xs">
-      <Title order={4} color="white" fw={700}>{c(
+    <Stack gap="xs">
+      <Title order={4} c="white" fw={700}>{c(
         "Notification that shows after the user hides the page",
       ).t`Page hidden from the navigation sidebar`}</Title>
       <Text color="white">{c(

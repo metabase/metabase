@@ -114,11 +114,11 @@ const JoinColumnTarget = forwardRef(function JoinColumnTarget(
       {tableName != null && (
         <Text
           display="block"
-          size={11}
+          fz={11}
           lh={1}
           color={columnInfo ? "text-white" : "brand"}
-          align="left"
-          weight={400}
+          ta="left"
+          fw={400}
         >
           {tableName}
         </Text>
@@ -126,8 +126,8 @@ const JoinColumnTarget = forwardRef(function JoinColumnTarget(
       <Text
         display="block"
         color={columnInfo ? "text-white" : "brand"}
-        align="left"
-        weight={700}
+        ta="left"
+        fw={700}
         lh={1}
       >
         {columnInfo?.displayName ?? t`Pick a column…`}

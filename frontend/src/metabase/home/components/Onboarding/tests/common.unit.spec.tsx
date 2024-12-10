@@ -1,5 +1,6 @@
-import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+import { screen, within } from "__support__/ui";
 
 import type { ChecklistItemValue } from "../types";
 

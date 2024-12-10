@@ -77,9 +77,9 @@ export const InteractiveQuestionResult = ({
       className={cx(InteractiveQuestionS.Container, className)}
       style={style}
     >
-      <Stack className={InteractiveQuestionS.TopBar} spacing="sm" p="md">
-        <Group position="apart" align="flex-end">
-          <Group spacing="xs">
+      <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
+        <Group justify="apart" align="flex-end">
+          <Group gap="xs">
             <InteractiveQuestion.BackButton />
             <ResultTitle title={title} withResetButton={withResetButton} />
           </Group>
@@ -88,12 +88,12 @@ export const InteractiveQuestionResult = ({
           )}
         </Group>
         <Group
-          position="apart"
+          justify="apart"
           p="sm"
           bg="var(--mb-color-background-disabled)"
           style={{ borderRadius: "0.5rem" }}
         >
-          <Group spacing="xs">
+          <Group gap="xs">
             {withChartTypeSelector && (
               <>
                 <InteractiveQuestion.ChartTypeDropdown />

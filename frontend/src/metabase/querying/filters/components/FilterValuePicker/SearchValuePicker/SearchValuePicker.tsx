@@ -101,7 +101,7 @@ export function SearchValuePicker({
       aria-label={t`Filter value`}
       shouldCreate={shouldCreate}
       rightSection={isSearching ? <Loader /> : undefined}
-      nothingFound={notFoundMessage}
+      nothingFoundMessage={notFoundMessage}
       onChange={onChange}
       onSearchChange={handleSearchChange}
       onFocus={onFocus}

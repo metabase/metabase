@@ -15,7 +15,7 @@ export function EmbedMenuItem({ onClick }: { onClick: () => void }) {
     <Menu.Item
       data-testid="embed-menu-embed-modal-item"
       py="sm"
-      icon={
+      leftSection={
         <Center mr="xs">
           <Icon name="embed" aria-hidden />
         </Center>

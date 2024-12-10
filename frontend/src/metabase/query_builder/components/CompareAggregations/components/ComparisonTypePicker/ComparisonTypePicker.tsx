@@ -11,7 +11,7 @@ type Props = {
 
 export function ComparisonTypePicker({ onChange, value }: Props) {
   return (
-    <Stack spacing="sm">
+    <Stack gap="sm">
       <Input.Label>{t`How to compare`}</Input.Label>
       <Flex gap="sm">
         <Button

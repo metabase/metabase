@@ -30,7 +30,7 @@ describe("WidgetStatus", () => {
       setup({ status: "clear" });
 
       await userEvent.hover(screen.getByRole("button"));
-      expect(screen.getByRole("tooltip")).toHaveTextContent("Clear");
+      expect(await screen.findByRole("tooltip")).toHaveTextContent("Clear");
     });
 
     it("is clickable", async () => {
@@ -53,7 +53,7 @@ describe("WidgetStatus", () => {
       setup({ status: "reset" });
 
       await userEvent.hover(screen.getByRole("button"));
-      expect(screen.getByRole("tooltip")).toHaveTextContent(
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
         "Reset filter to default state",
       );
     });
@@ -78,6 +78,7 @@ describe("WidgetStatus", () => {
       setup({ status: "empty" });
 
       await userEvent.hover(screen.getByRole("img"));
+      // warning: this is't a very useful negative assertion unless we wait a few ticks to make sure the tooltip doesn't appear
       expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     });
 

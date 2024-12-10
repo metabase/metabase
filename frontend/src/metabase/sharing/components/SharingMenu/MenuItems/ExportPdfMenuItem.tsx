@@ -25,7 +25,7 @@ export const ExportPdfMenuItem = ({ dashboard }: { dashboard: Dashboard }) => {
     <Menu.Item
       data-testid="dashboard-export-pdf-button"
       my="sm"
-      icon={
+      leftSection={
         <Center mr="xs">
           <Icon name="document" />
         </Center>

@@ -1,0 +1,94 @@
+.root {
+  &[data-label-position="left"] .labelWrapper {
+    padding-right: var(--switch-padding);
+  }
+
+  &[data-label-position="right"] .labelWrapper {
+    padding-left: var(--switch-padding);
+  }
+
+  &[data-disabled] {
+    .track {
+      background-color: var(--mb-color-bg-medium);
+    }
+
+    .thumb {
+      background-color: var(--mb-color-bg-light);
+    }
+  }
+
+  &[data-error] .track {
+    border: 1px solid var(--mb-color-accent-3);
+  }
+
+  &[data-variant="stretch"] {
+    .body {
+      display: flex;
+      justify-content: space-between;
+    }
+  }
+}
+
+.labelWrapper {
+  &:empty {
+    padding: 0;
+  }
+
+  &[data-disabled] {
+    .label {
+      color: var(--mb-color-text-light);
+      cursor: default;
+    }
+
+    .description {
+      color: var(--mb-color-text-light);
+    }
+  }
+}
+
+.label {
+  font-size: var(--switch-label-font-size);
+  padding: 0;
+  color: var(--mb-color-text-dark);
+  cursor: pointer;
+}
+
+.description {
+  padding: 0;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--mb-bolor-text-medium);
+  line-height: 1rem;
+}
+
+.error {
+  padding: 0;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--mb-bolor-text-error);
+}
+
+.track {
+  border: none;
+  box-sizing: border-box;
+  cursor: pointer;
+  margin-top: var(--track-padding-top);
+
+  input:not(:checked) + & {
+    background-color: var(--mb-color-bg-medium);
+  }
+
+  input:disabled + & {
+    background-color: var(--mb-color-bg-medium);
+  }
+}
+
+.thumb {
+  background-color: var(--mb-color-text-white);
+  border: none;
+  border-radius: 1.375rem;
+
+  input:disabled + * > & {
+    background-color: var(--mb-color-bg-light);
+  }
+}

@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -49,8 +50,8 @@ import {
   scheduleSettingsToCron,
 } from "../utils";
 
+import Styles from "./PerformanceApp.module.css";
 import {
-  FormBox,
   FormWrapper,
   LoaderInButton,
   StyledForm,
@@ -214,10 +215,14 @@ const StrategyFormBody = ({
         aria-labelledby={headingId}
         data-testid={`strategy-form-for-${targetModel}-${targetId}`}
       >
-        <FormBox isInSidebar={isInSidebar}>
+        <Box
+          className={cx(Styles.FormBox, {
+            [Styles.FormBoxSidebar]: isInSidebar,
+          })}
+        >
           {shouldShowName && (
             <Box lh="1rem" pt="md" color="text-medium">
-              <Group spacing="sm">
+              <Group gap="sm">
                 {targetModel === "database" && (
                   <FixedSizeIcon name="database" color="inherit" />
                 )}
@@ -227,7 +232,7 @@ const StrategyFormBody = ({
               </Group>
             </Box>
           )}
-          <Stack maw="35rem" pt={targetId === rootId ? "xl" : 0} spacing="xl">
+          <Stack maw="35rem" pt={targetId === rootId ? "xl" : 0} gap="xl">
             <StrategySelector
               targetId={targetId}
               model={targetModel}
@@ -271,7 +276,7 @@ const StrategyFormBody = ({
               <ScheduleStrategyFormFields />
             )}
           </Stack>
-        </FormBox>
+        </Box>
         <FormButtons
           targetId={targetId}
           targetModel={targetModel}
@@ -418,7 +423,7 @@ const SaveAndDiscardButtons = ({
         h="40px"
         label={buttonLabels.save}
         successLabel={
-          <Group spacing="xs">
+          <Group gap="xs">
             <Icon name="check" /> {t`Saved`}
           </Group>
         }
@@ -452,7 +457,7 @@ const StrategySelector = ({
     <section>
       <FormRadioGroup
         label={
-          <Stack spacing="xs">
+          <Stack gap="xs">
             <Text lh="1rem" color="text-medium" id={headingId}>
               {t`Select the cache invalidation policy`}
             </Text>
@@ -463,7 +468,7 @@ const StrategySelector = ({
         }
         name="type"
       >
-        <Stack mt="md" spacing="md">
+        <Stack mt="md" gap="md">
           {_.map(availableStrategies, (option, name) => {
             const labelString = getLabelString(option.label, model);
             /** Special colon sometimes used in Asian languages */
@@ -538,7 +543,7 @@ const Field = ({
 }) => {
   return (
     <label>
-      <Stack spacing="xs">
+      <Stack gap="xs">
         <div>
           <Title order={4}>{title}</Title>
           {subtitle}

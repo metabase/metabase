@@ -44,7 +44,7 @@ const PaletteContainer = () => {
   });
 
   return (
-    <Overlay zIndex={500} opacity={0.5}>
+    <Overlay zIndex={500} backgroundOpacity={0.5}>
       <Center>
         <Card ref={ref} w="640px" mt="10vh" p="0" data-testid="command-palette">
           <Box w="100%" p="1.5rem" pb="0">

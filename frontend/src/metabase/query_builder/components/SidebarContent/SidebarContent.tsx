@@ -1,5 +1,6 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
+import type React from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -63,7 +64,7 @@ function SidebarContent({
   );
 }
 
-const PaneContent = (props: BoxProps) => {
+const PaneContent = (props: BoxProps & { children: React.ReactNode }) => {
   return <Box px="lg" {...props} />;
 };
 
