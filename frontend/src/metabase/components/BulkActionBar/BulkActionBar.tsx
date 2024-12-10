@@ -37,26 +37,43 @@ export const BulkActionBar = ({
   const isNavbarOpen = useSelector(getIsNavbarOpen);
 
   return (
-    <Transition
-      mounted={opened}
-      transition={slideIn}
-      duration={400}
-      timingFunction="ease"
+    <BulkActionBarInner
+      opened={opened}
+      message={message}
+      className={className}
+      isNavbarOpen={isNavbarOpen}
     >
-      {styles => (
-        <BulkActionsToast
-          style={styles}
-          isNavbarOpen={isNavbarOpen}
-          className={className}
-        >
-          <ToastCard dark data-testid="toast-card">
-            {message && <Text color="text-white">{message}</Text>}
-            <Flex gap="sm" align="center">
-              {children}
-            </Flex>
-          </ToastCard>
-        </BulkActionsToast>
-      )}
-    </Transition>
+      {children}
+    </BulkActionBarInner>
   );
 };
+
+export const BulkActionBarInner = ({
+  opened,
+  message,
+  children,
+  className,
+  isNavbarOpen,
+}: BulkActionsProps & { isNavbarOpen: boolean }) => (
+  <Transition
+    mounted={opened}
+    transition={slideIn}
+    duration={400}
+    timingFunction="ease"
+  >
+    {styles => (
+      <BulkActionsToast
+        style={styles}
+        isNavbarOpen={isNavbarOpen}
+        className={className}
+      >
+        <ToastCard dark data-testid="toast-card">
+          {message && <Text color="text-white">{message}</Text>}
+          <Flex gap="sm" align="center">
+            {children}
+          </Flex>
+        </ToastCard>
+      </BulkActionsToast>
+    )}
+  </Transition>
+);
