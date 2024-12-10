@@ -139,10 +139,17 @@
     :else
     :skip))
 
+(defn- hydrate-notification
+  [notification]
+  (t2/hydrate notification
+              :subscriptions
+              [:handlers :channel :template :recipients]))
+
 (defn- sync-notification!
   [{:keys [internal_id] :as row}]
   (let [existing-notification (some-> (t2/select-one :model/Notification :internal_id internal_id)
-                                      models.notification/hydrate-notification)]
+                                      hydrate-notification)]
+
     (u/prog1 (action existing-notification row)
       (case <>
         :create

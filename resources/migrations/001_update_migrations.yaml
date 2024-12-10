@@ -10083,7 +10083,7 @@ databaseChangeLog:
       id: v52.2024-12-10T10:00:00
       author: qnkhuat
       comment: Truncate the notification tables
-      rollback: # not needed)
+      rollback: # not needed
       changes:
         - sql:
             dbms: postgresql

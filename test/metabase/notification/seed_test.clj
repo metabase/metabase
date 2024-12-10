@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.models.notification :as models.notification]
    [metabase.notification.seed :as notification.seed]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -23,7 +22,7 @@
 (deftest seed-notification!-is-idempotent
   (mt/with-empty-h2-app-db
     (let [get-notifications-data #(-> (t2/select :model/Notification)
-                                      (models.notification/hydrate-notification)
+                                      @#'notification.seed/hydrate-notification
                                       nullify-timestamp)
           default-notifications-cnt (count @@#'notification.seed/default-notifications)]
       (testing "seed the first time will insert all default notifications"
