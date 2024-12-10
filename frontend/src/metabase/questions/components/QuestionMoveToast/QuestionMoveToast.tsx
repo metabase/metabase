@@ -1,6 +1,9 @@
+import { Fragment } from "react";
 import { jt } from "ttag";
 
+import { useGetCollectionQuery } from "metabase/api";
 import { coerceCollectionId } from "metabase/collections/utils";
+import * as Urls from "metabase/lib/urls";
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";
 
@@ -15,31 +18,24 @@ interface QuestionMoveToastProps {
   question: Question;
 }
 
-const getMessage = (question: Question, collectionLink: JSX.Element) => {
-  const type = question.type();
-
-  if (type === "question") {
-    return jt`Question moved to ${collectionLink}`;
-  }
-
-  if (type === "model") {
-    return jt`Model moved to ${collectionLink}`;
-  }
-
-  if (type === "metric") {
-    return jt`Metric moved to ${collectionLink}`;
-  }
-
-  throw new Error(`Unknown question.type(): ${type}`);
-};
-
 function QuestionMoveToast({ collectionId, question }: QuestionMoveToastProps) {
   const id = coerceCollectionId(collectionId);
-  const collectionLink = <CollectionLink key="collection-link" id={id} />;
+  const type = question.type();
+  const { data: collection } = useGetCollectionQuery({ id });
+  const collectionLink = collection ? (
+    <CollectionLink key="collection-link" to={Urls.collection(collection)}>
+      {collection.name}
+    </CollectionLink>
+  ) : (
+    <Fragment key="fragment" />
+  );
+
   return (
     <ToastRoot>
       <StyledIcon name="collection" />
-      {getMessage(question, collectionLink)}
+      {type === "question" && jt`Question moved to ${collectionLink}`}
+      {type === "model" && jt`Model moved to ${collectionLink}`}
+      {type === "metric" && jt`Metric moved to ${collectionLink}`}
     </ToastRoot>
   );
 }
