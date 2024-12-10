@@ -362,7 +362,8 @@
   background-color: var(--mb-color-bg-light);
 }
 
-.bgMedium {
+.bgMedium,
+.bgMediumHover:hover {
   background-color: var(--mb-color-bg-medium);
 }
 
