@@ -205,8 +205,10 @@
   relative-date-filter-parts
   exclude-date-filter-clause
   exclude-date-filter-parts
-  time-filter-parts
   time-filter-clause
+  time-filter-parts
+  default-filter-clause
+  default-filter-parts
   filter-args-display-name]
  [lib.field
   add-field

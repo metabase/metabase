@@ -497,6 +497,22 @@
         (lib.filter/> "10:20" column)
         (lib.filter/is-null (meta/field-metadata :venues :name))))))
 
+(deftest ^:parallel default-filter-parts-test
+  (let [query  lib.tu/venues-query
+        column (meta/field-metadata :venues :price)]
+    (testing "clause to parts roundtrip"
+      (doseq [[clause parts] {(lib.filter/is-null column)       {:operator :is-null, :column column}
+                              (lib.filter/not-null column)      {:operator :not-null, :column column}}]
+        (let [{:keys [operator column]} parts]
+          (is (=? parts (lib.fe-util/default-filter-parts query -1 clause)))
+          (is (=? parts (lib.fe-util/default-filter-parts query -1 (lib.fe-util/default-filter-clause operator
+                                                                                                      column)))))))
+    (testing "unsupported clauses"
+      (are [clause] (nil? (lib.fe-util/default-filter-parts query -1 clause))
+        (lib.filter/is-null (meta/field-metadata :venues :name))
+        (lib.filter/not-null (meta/field-metadata :venues :name))
+        (lib.filter/> column 10)))))
+
 (deftest ^:parallel date-parts-display-name-test
   (let [created-at (meta/field-metadata :products :created-at)
         date-arg-1 "2023-11-02"

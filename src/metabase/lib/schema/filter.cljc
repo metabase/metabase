@@ -27,6 +27,11 @@
                                    (expression/comparable-expressions? (get argv i) (get argv j)))
                                  compared-position-pairs)))))]]))
 
+(mr/def ::default-filter-operator
+  "Filter operators that should be supported by any column type. Note that the FE allows only `:is-empty` and
+  `:not-empty` for string columns."
+  [:enum :is-null :not-null])
+
 (mr/def ::string-filter-operator
   "String filter operators supported by the FE. Note that the FE does not support `:is-null` and `:not-null` with string
   columns; `:is-empty` and `:not-empty` should be used instead."

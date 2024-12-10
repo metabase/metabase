@@ -3,19 +3,12 @@ import moment, { type Moment } from "moment-timezone"; // eslint-disable-line no
 import * as ML from "cljs/metabase.lib.js";
 import type { CardId, DatasetColumn, TemporalUnit } from "metabase-types/api";
 
+import { isDateOrDateTime } from "./column_types";
 import {
-  isBoolean,
-  isDateOrDateTime,
-  isNumeric,
-  isStringOrStringLike,
-  isTime,
-} from "./column_types";
-import {
-  DEFAULT_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
 } from "./constants";
-import { expressionClause, expressionParts } from "./expression";
+import { expressionParts } from "./expression";
 import { isColumnMetadata } from "./internal";
 import { displayInfo } from "./metadata";
 import { removeClause } from "./query";
@@ -24,7 +17,6 @@ import type {
   BooleanFilterParts,
   ColumnMetadata,
   CoordinateFilterParts,
-  DefaultFilterOperatorName,
   DefaultFilterParts,
   ExcludeDateFilterOperator,
   ExcludeDateFilterParts,
@@ -310,7 +302,7 @@ export function defaultFilterClause({
   operator,
   column,
 }: DefaultFilterParts): ExpressionClause {
-  return expressionClause(operator, [column]);
+  return ML.default_filter_clause(operator, column);
 }
 
 export function defaultFilterParts(
@@ -318,28 +310,7 @@ export function defaultFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): DefaultFilterParts | null {
-  const { operator, args } = expressionParts(query, stageIndex, filterClause);
-  if (!isDefaultOperator(operator) || args.length !== 1) {
-    return null;
-  }
-
-  const [column] = args;
-  if (
-    !isColumnMetadata(column) ||
-    // these types have their own filterParts
-    isStringOrStringLike(column) ||
-    isNumeric(column) ||
-    isBoolean(column) ||
-    isDateOrDateTime(column) ||
-    isTime(column)
-  ) {
-    return null;
-  }
-
-  return {
-    operator,
-    column,
-  };
+  return ML.default_filter_parts(query, stageIndex, filterClause);
 }
 
 export function filterParts(
@@ -397,13 +368,6 @@ function isExcludeDateOperator(
   operator: ExpressionOperatorName,
 ): operator is ExcludeDateFilterOperator {
   const operators: ReadonlyArray<string> = EXCLUDE_DATE_FILTER_OPERATORS;
-  return operators.includes(operator);
-}
-
-function isDefaultOperator(
-  operator: ExpressionOperatorName,
-): operator is DefaultFilterOperatorName {
-  const operators: ReadonlyArray<string> = DEFAULT_FILTER_OPERATORS;
   return operators.includes(operator);
 }
 
