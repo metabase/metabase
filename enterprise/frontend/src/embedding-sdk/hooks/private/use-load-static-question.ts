@@ -15,7 +15,7 @@ type QuestionState = {
 
 export function useLoadStaticQuestion(
   questionId: number | null,
-  parameterValues?: Record<string, string | number>,
+  initialSqlParameters?: Record<string, string | number>,
 ) {
   const [questionState, setQuestionState] = useState<QuestionState>({
     loading: false,
@@ -46,7 +46,7 @@ export function useLoadStaticQuestion(
       try {
         const { card, result } = await loadStaticQuestion({
           questionId,
-          parameterValues,
+          sqlParameters: initialSqlParameters,
           cancelDeferred,
         });
 
@@ -81,7 +81,7 @@ export function useLoadStaticQuestion(
       cancelDeferred.resolve();
       ignore = true;
     };
-  }, [questionId, parameterValues]);
+  }, [questionId, initialSqlParameters]);
 
   return { ...questionState, updateQuestion };
 }

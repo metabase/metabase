@@ -238,7 +238,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
 
           {isSaveModalOpen && (
             <Modal data-testid="modal" opened={isSaveModalOpen} onClose={close}>
-              <InteractiveQuestion.SaveQuestionForm onClose={close} />
+              <InteractiveQuestion.SaveQuestionForm onCancel={close} />
             </Modal>
           )}
 

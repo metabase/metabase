@@ -96,7 +96,6 @@ type ConnectedDashboardProps = {
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
 
-  questionHeight?: number;
   plugins?: SdkPluginsConfig;
   className?: string;
 } & DashboardFullscreenControls &
