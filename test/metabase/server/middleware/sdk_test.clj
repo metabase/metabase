@@ -24,7 +24,8 @@
              handler (sdk/embedding-mw
                       (fn [_ respond _] (respond {:status 200 :body client})))
              response (handler request identity identity)]
-         (is (= (:body response "no-body") client)))
+         (is (= client
+                (:body response "no-body"))))
     nil
     "embedding-iframe"))
 
@@ -34,7 +35,8 @@
              handler (sdk/embedding-mw
                       (fn [_ respond _] (respond {:status 200 :body version})))
              response (handler request identity identity)]
-         (is (= (:body response "no-body") version)))
+         (is (= version
+                (:body response "no-body"))))
     nil
     "1.1.1"))
 

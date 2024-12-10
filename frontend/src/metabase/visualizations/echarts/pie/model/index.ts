@@ -126,8 +126,8 @@ function createOrUpdateNode(
     dimensionNode = {
       key: dimensionKey,
       name: formatter(dimensionValue),
-      value: metricValue,
-      displayValue: metricValue,
+      value: Math.abs(metricValue),
+      rawValue: metricValue,
       normalizedPercentage: 0, // placeholder
       color,
       visible: true,
@@ -143,7 +143,7 @@ function createOrUpdateNode(
     // If the node already exists, add the metric value from the current row
     // to it.
     dimensionNode.value += metricValue;
-    dimensionNode.displayValue += metricValue;
+    dimensionNode.rawValue += metricValue;
 
     showWarning?.(unaggregatedDataWarningPie(colDesc.column).text);
   }
@@ -156,7 +156,7 @@ function calculatePercentageAndIsOther(
   parent: SliceTreeNode,
   settings: ComputedVisualizationSettings,
 ) {
-  const relativePercentage = node.displayValue / parent.displayValue;
+  const relativePercentage = Math.abs(node.rawValue / parent.rawValue);
 
   node.normalizedPercentage = relativePercentage;
   node.isOther =
@@ -180,7 +180,7 @@ function aggregateChildrenSlices(
     others.forEach(otherChildSlice => {
       otherSliceChildren.set(String(otherChildSlice.key), {
         ...otherChildSlice,
-        normalizedPercentage: otherChildSlice.value / otherTotal,
+        normalizedPercentage: Math.abs(otherChildSlice.value / otherTotal),
         color: "",
       });
       node.children.delete(String(otherChildSlice.key));
@@ -190,8 +190,8 @@ function aggregateChildrenSlices(
       key: OTHER_SLICE_KEY,
       name: getOtherSliceName(),
       value: otherTotal,
-      displayValue: otherTotal,
-      normalizedPercentage: otherTotal / node.value,
+      rawValue: otherTotal,
+      normalizedPercentage: Math.abs(otherTotal / node.value),
       color: renderingContext.getColor("text-light"),
       children: otherSliceChildren,
       visible: true,
@@ -261,6 +261,10 @@ export function getPieChartModel(
   ] = rawSeries;
   const colDescs = getPieColumns(rawSeries, settings);
 
+  const areAllNegative = dataRows.every(
+    row => getNumberOr(row[colDescs.metricDesc.index], 0) < 0,
+  );
+
   const rowIndiciesByKey = new Map<string | number, number>();
   dataRows.forEach((row, index) => {
     const key = getKeyFromDimensionValue(row[colDescs.dimensionDesc.index]);
@@ -312,7 +316,7 @@ export function getPieChartModel(
   );
 
   const total = visiblePieRows.reduce((currTotal, { value }) => {
-    if (value < 0) {
+    if (value < 0 && !areAllNegative) {
       showWarning?.(pieNegativesWarning().text);
       return currTotal;
     }
@@ -348,8 +352,8 @@ export function getPieChartModel(
       return {
         key,
         name,
-        value,
-        displayValue: value,
+        value: Math.abs(value),
+        rawValue: value,
         normalizedPercentage: visible ? value / total : 0, // slice percentage values are normalized to 0-1 scale
         color: getColorForRing(
           color,
@@ -367,7 +371,9 @@ export function getPieChartModel(
         endAngle: 0,
       };
     })
-    .filter(slice => slice.value > 0)
+    .filter(
+      slice => slice.rawValue !== 0 && (areAllNegative || slice.rawValue > 0),
+    )
     .partition(slice => slice != null && !slice.isOther)
     .value();
 
@@ -410,10 +416,11 @@ export function getPieChartModel(
       if (dimensionIsOther) {
         return;
       }
-      const metricValue = getNumberOr(row[colDescs.metricDesc.index], 0);
-      if (metricValue < 0) {
+      let metricValue = getNumberOr(row[colDescs.metricDesc.index], 0);
+      if (metricValue < 0 && !areAllNegative) {
         return;
       }
+      metricValue = Math.abs(metricValue);
 
       // Create or update node for middle dimension
       const middleDimensionNode = createOrUpdateNode(
@@ -457,14 +464,14 @@ export function getPieChartModel(
   );
 
   // Only add "other" slice if there are slices below threshold with non-zero total
-  const otherTotal = others.reduce((currTotal, o) => currTotal + o.value, 0);
-  if (otherTotal > 0) {
+  const otherTotal = others.reduce((currTotal, o) => currTotal + o.rawValue, 0);
+  if (otherTotal !== 0) {
     const children: SliceTree = new Map();
     others.forEach(otherChildSlice => {
       children.set(String(otherChildSlice.key), {
         ...otherChildSlice,
         color: "",
-        normalizedPercentage: otherChildSlice.value / otherTotal,
+        normalizedPercentage: Math.abs(otherChildSlice.value / otherTotal),
       });
     });
     const visible = !hiddenSlices.includes(OTHER_SLICE_KEY);
@@ -472,9 +479,9 @@ export function getPieChartModel(
     sliceTree.set(OTHER_SLICE_KEY, {
       key: OTHER_SLICE_KEY,
       name: getOtherSliceName(),
-      value: otherTotal,
-      displayValue: otherTotal,
-      normalizedPercentage: visible ? otherTotal / total : 0,
+      value: Math.abs(otherTotal),
+      rawValue: otherTotal,
+      normalizedPercentage: visible ? Math.abs(otherTotal / total) : 0,
       color: renderingContext.getColor("text-light"),
       column: colDescs.dimensionDesc.column,
       visible,
@@ -511,7 +518,7 @@ export function getPieChartModel(
       key: OTHER_SLICE_KEY,
       name: getOtherSliceName(),
       value: 1,
-      displayValue: 0,
+      rawValue: 0,
       normalizedPercentage: 0,
       color: renderingContext.getColor("text-light"),
       visible: true,

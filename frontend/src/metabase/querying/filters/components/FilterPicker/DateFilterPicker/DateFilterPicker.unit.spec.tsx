@@ -199,7 +199,7 @@ describe("DateFilterPicker", () => {
       column: expect.anything(),
       operator: "!=",
       values: [1],
-      bucket: "day-of-week",
+      unit: "day-of-week",
     });
   });
 
@@ -223,7 +223,7 @@ describe("DateFilterPicker", () => {
       column: expect.anything(),
       operator: "!=",
       values: [3, 5],
-      bucket: "day-of-week",
+      unit: "day-of-week",
     });
   });
 
