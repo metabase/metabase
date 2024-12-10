@@ -10101,7 +10101,7 @@ databaseChangeLog:
                     unique: true
 
   # Prior to this, we used to truncate then insert notifications on startup (#50127)
-  # But we can't do that anymore because pulses are migated to notificaiton, so moving forward
+  # But we can't do that anymore because pulses are migated to notification, so moving forward
   # we'll insert/replace notifications on startup (see metabase.notification.seed)
   # We need to do another truncate here so we have a clean slate for the new notifications
   - changeSet:
