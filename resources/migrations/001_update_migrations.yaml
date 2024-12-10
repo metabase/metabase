@@ -10147,7 +10147,7 @@ databaseChangeLog:
               ALTER TABLE channel_template ALTER COLUMN id RESTART WITH 1;
 
   - changeSet:
-      id: v52.2024-12-10T09:30:30
+      id: v52.2024-12-10T10:28:16
       author: johnswanson
       comment: Add `report_card.dashboard_id`
       preConditions:
@@ -10168,7 +10168,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v52.2024-12-10T09:30:34
+      id: v52.2024-12-10T10:28:21
       author: johnswanson
       comment: Make `report_card.dashboard_id` a foreign key
       preConditions:
@@ -10186,7 +10186,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v52.2024-12-10T09:30:42
+      id: v52.2024-12-10T10:28:24
       author: johnswanson
       comment: Add an index for `report_card.dashboard_id`
       rollback: # will be removed with the column
