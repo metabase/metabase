@@ -3,3 +3,23 @@
   border-radius: 0.25rem;
   user-select: none;
 }
+
+.StyledLastEditInfoLabel {
+  /* LastEditInfoLabel uses emotion with higher specificity */
+  color: var(--mb-color-text-light) !important;
+
+  @media screen and (max-width: 40em) {
+    margin-left: 0;
+    margin-top: 2px;
+    margin-bottom: 4px;
+  }
+}
+
+.StyledQuestionDataSource {
+  padding-right: 1rem;
+
+  @media screen and (max-width: 40em) {
+    margin-left: 0;
+    padding-right: 0;
+  }
+}

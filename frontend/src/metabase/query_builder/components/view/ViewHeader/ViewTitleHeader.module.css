@@ -63,3 +63,166 @@
     background-color: color-mix(in srgb, var(--mb-color-summarize) 15%, white);
   }
 }
+
+.BackButton {
+  color: var(--mb-color-brand);
+  padding: 0.75rem;
+}
+
+.HeaderDivider {
+  font-size: 1.25rem;
+  line-height: 1.5rem;
+  font-weight: 700;
+  color: var(--mb-color-text-medium);
+  padding-left: 0.5rem;
+  padding-right: 0.25rem;
+}
+
+.AdHocViewHeading {
+  margin-bottom: 0.25rem;
+  margin-top: 0.25rem;
+  margin-right: 1rem;
+}
+
+.SaveButton {
+  border-radius: 8px;
+
+  &[data-disabled="true"] {
+    pointer-events: all;
+  }
+
+  &:hover {
+    background-color: var(--mb-color-bg-light);
+  }
+}
+
+.ViewHeaderActionPanel {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  gap: 0.5rem;
+
+  @media screen and (max-width: 40em) {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+    border-top: 1px solid var(--mb-color-border);
+    margin-top: 1rem;
+    padding: 0.5rem 2.5rem 0 2rem;
+  }
+
+  /* increase specificity */
+  .SaveButton {
+    &[data-disabled="true"] {
+      pointer-events: all;
+    }
+  }
+}
+
+.ViewRunButtonWithTooltip {
+  color: var(--mb-color-text-dark);
+
+  &:hover {
+    color: var(--mb-color-brand);
+
+    &.isDirty {
+      color: var(--mb-color-text-white);
+    }
+  }
+}
+
+.ViewHeaderContainer {
+  --app-subheader-height: 48px;
+
+  border-bottom: 1px solid var(--mb-color-border);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+
+  @media screen and (max-width: 40em) {
+    flex-direction: column;
+    align-items: start;
+    padding: 0.5rem 0;
+
+    &.isNavBarOpen {
+      margin-top: var(--app-subheader-height);
+    }
+  }
+}
+
+.ViewHeaderIconButtonContainer {
+  .ViewHeaderIconButton {
+    padding: 0.25rem 0.5rem;
+    height: 2rem;
+    width: 2rem;
+
+    &:hover {
+      color: var(--mb-color-brand);
+      background-color: var(--mb-color-bg-medium);
+    }
+  }
+}
+
+.SavedQuestionHeaderButtonContainer {
+  right: 0.38rem;
+
+  &.isModelOrMetric {
+    right: 0;
+  }
+}
+
+.SavedQuestionLeftSideRoot {
+  .SavedQuestionHeaderButtonContainer {
+    transition: all 400ms ease;
+    position: relative;
+    top: 0.5rem;
+  }
+
+  .ViewHeaderLeftSubHeading {
+    opacity: 0;
+    transition: all 400ms ease;
+  }
+
+  &.showSubHeader {
+    .SavedQuestionHeaderButtonContainer {
+      top: 0;
+    }
+
+    .ViewHeaderLeftSubHeading {
+      opacity: 1;
+    }
+  }
+
+  &:hover,
+  &:focus-within {
+    .SavedQuestionHeaderButtonContainer {
+      top: 0;
+    }
+
+    .ViewHeaderLeftSubHeading {
+      opacity: 1;
+    }
+  }
+
+  @media screen and (max-width: 40em) {
+    padding: 0 1.25rem;
+
+    .SavedQuestionHeaderButtonContainer {
+      top: 0;
+    }
+
+    .ViewHeaderLeftSubHeading {
+      opacity: 1;
+    }
+  }
+}
+
+.ViewHeaderLeftSubHeading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+
+  @media screen and (max-width: 40em) {
+    flex-direction: column;
+    align-items: start;
+  }
+}

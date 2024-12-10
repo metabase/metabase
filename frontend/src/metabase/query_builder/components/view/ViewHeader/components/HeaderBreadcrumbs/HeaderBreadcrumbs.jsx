@@ -1,7 +1,23 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Fragment, isValidElement } from "react";
 
-import { Container, Divider, HeaderBadge } from "./HeaderBreadcrumbs.styled";
+import { Badge } from "metabase/components/Badge";
+import { Box, Flex } from "metabase/ui";
+
+import HeaderBreadcrumbsS from "./HeaderBreadcrumbs.module.css";
+
+const HeaderBadge = props => (
+  <Badge className={HeaderBreadcrumbsS.HeaderBadge} {...props} />
+);
+
+HeaderBadge.propTypes = {
+  variant: PropTypes.oneOf(["head", "subhead"]),
+  children: PropTypes.node,
+  icon: PropTypes.string,
+  to: PropTypes.string,
+  inactiveColor: PropTypes.string,
+};
 
 const crumbShape = PropTypes.shape({
   name: PropTypes.string.isRequired,
@@ -30,7 +46,15 @@ export function HeadBreadcrumbs({
   ...props
 }) {
   return (
-    <Container data-testid="head-crumbs-container" {...props} variant={variant}>
+    <Flex
+      align="center"
+      wrap="wrap"
+      data-testid="head-crumbs-container"
+      className={cx(HeaderBreadcrumbsS.Container, {
+        [HeaderBreadcrumbsS.headVariant]: variant === "head",
+      })}
+      {...props}
+    >
       {parts.map((part, index) => {
         const isLast = index === parts.length - 1;
         const badgeInactiveColor =
@@ -53,9 +77,20 @@ export function HeadBreadcrumbs({
           </Fragment>
         );
       })}
-    </Container>
+    </Flex>
+  );
+}
+
+Divider.propTypes = {
+  char: PropTypes.string,
+};
+
+function Divider({ char = "/" }) {
+  return (
+    <Box component="span" className={HeaderBreadcrumbsS.HeaderBreadcrumbs}>
+      {char}
+    </Box>
   );
 }
 
 HeadBreadcrumbs.Badge = HeaderBadge;
-HeadBreadcrumbs.Divider = Divider;

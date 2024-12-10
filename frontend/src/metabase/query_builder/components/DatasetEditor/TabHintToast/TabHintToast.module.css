@@ -1,0 +1,24 @@
+.ToastCard {
+  align-items: center;
+  padding: 12px 16px;
+}
+
+.ToastMessage {
+  color: var(--mb-color-text-dark);
+  font-weight: bold;
+}
+
+.TabIcon {
+  color: var(--mb-color-text-dark);
+  margin-right: 0.5rem;
+}
+
+.CloseIcon {
+  margin-left: 1rem;
+  color: var(--mb-color-bg-dark);
+  cursor: pointer;
+
+  &:hover {
+    color: color-mix(in srgb, var(--mb-color-bg-dark), white 30%);
+  }
+}

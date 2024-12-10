@@ -1,8 +1,9 @@
 (ns metabase.util.connection
-  (:require [metabase.util :as u]
+  (:require [clojure.set :as set]
+            [metabase.util :as u]
             [toucan2.core :as t2])
   (:import
-   (java.sql Connection ResultSet ResultSetMetaData)))
+   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData)))
 
 (set! *warn-on-reflection* true)
 
@@ -37,3 +38,27 @@
                                                      ResultSetMetaData/columnNoNulls)
                                          :pk      (get pks col)
                                          :fk      (get fks col)}])))))))))
+
+(defn- group-rset [^ResultSet rset cb]
+  (u/group-by first some? second (constantly true) conj #{}
+              (iteration (fn [_]
+                           (when (.next rset)
+                             (or (cb rset) []))))))
+
+(defn app-db-cascading-deletes
+  "Returns a map of the downstream relations that will have deletes cascade to them, for the given table."
+  [app-db table-names]
+  (t2/with-connection [^Connection conn]
+    (let [md (.getMetaData conn)]
+      (reduce (partial merge-with set/union)
+              nil
+              (for [table-name' table-names]
+                (let [table-name (cond-> (name table-name')
+                                   (= (:db-type app-db) :h2) u/upper-case-en)]
+                  (with-open [fks (.getImportedKeys md nil nil table-name)]
+                    (group-rset fks (fn [^ResultSet fks]
+                                      (when (= (.getInt fks "DELETE_RULE") DatabaseMetaData/importedKeyCascade)
+                                        [(u/lower-case-en (.getString fks "PKTABLE_NAME"))
+                                         {:child-table   (name table-name')
+                                          :child-column  (u/lower-case-en (.getString fks "FKCOLUMN_NAME"))
+                                          :parent-column (u/lower-case-en (.getString fks "PKCOLUMN_NAME"))}]))))))))))

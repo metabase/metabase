@@ -388,7 +388,7 @@
 
 (def string-functions
   "Functions that return string values. Should match [[StringExpression]]."
-  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case
+  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case :if
     :host :domain :subdomain :month-name :quarter-name :day-name})
 
 (def ^:private StringExpression
@@ -413,7 +413,7 @@
 
 (def numeric-functions
   "Functions that return numeric values. Should match [[NumericExpression]]."
-  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :datetime-diff
+  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :if :datetime-diff
     ;; extraction functions (get some component of a given temporal value/column)
     :temporal-extract
     ;; SUGAR drivers do not need to implement
@@ -925,14 +925,17 @@
 (defclause ^{:requires-features #{:basic-aggregations}} case
   clauses CaseClauses, options (optional CaseOptions))
 
+(defclause ^:sugar ^{:requires-features #{:basic-aggregations}} [case:if if]
+  clauses CaseClauses, options (optional CaseOptions))
+
 (mr/def ::NumericExpression
-  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case datetime-diff
+  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff
           temporal-extract get-year get-quarter get-month get-week get-day get-day-of-week
           get-hour get-minute get-second))
 
 (mr/def ::StringExpression
-  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case host domain subdomain
-          month-name quarter-name day-name))
+  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case case:if host domain
+          subdomain month-name quarter-name day-name))
 
 (mr/def ::FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
@@ -947,6 +950,7 @@
                        (is-clause? boolean-functions x)  :boolean
                        (is-clause? datetime-functions x) :datetime
                        (is-clause? :case x)              :case
+                       (is-clause? :if   x)              :if
                        (is-clause? :offset x)            :offset
                        :else                             :else))}
    [:numeric  NumericExpression]
@@ -954,6 +958,7 @@
    [:boolean  BooleanExpression]
    [:datetime DatetimeExpression]
    [:case     case]
+   [:if       case:if]
    [:offset   offset]
    [:else     Field]])
 
@@ -1020,7 +1025,7 @@
                        :else))}
    [:numeric-expression NumericExpression]
    [:else (one-of avg cum-sum distinct stddev sum min max metric share count-where
-                  sum-where case median percentile ag:var cum-count count offset)]])
+                  sum-where case case:if median percentile ag:var cum-count count offset)]])
 
 (def ^:private UnnamedAggregation
   ::UnnamedAggregation)

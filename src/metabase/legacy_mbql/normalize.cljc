@@ -676,13 +676,14 @@
   [[_ field filter-subclause]]
   [:sum-where (canonicalize-mbql-clause field) (canonicalize-mbql-clause filter-subclause)])
 
-(defmethod canonicalize-mbql-clause :case
-  [[_ clauses options]]
-  (if options
-    (conj (canonicalize-mbql-clause [:case clauses])
-          (normalize-tokens options :ignore-path))
-    [:case (vec (for [[pred expr] clauses]
-                  [(canonicalize-mbql-clause pred) (canonicalize-mbql-clause expr)]))]))
+(doseq [tag [:case :if]]
+  (defmethod canonicalize-mbql-clause tag
+    [[_ clauses options]]
+    (if options
+      (conj (canonicalize-mbql-clause [tag clauses])
+            (normalize-tokens options :ignore-path))
+      [tag (vec (for [[pred expr] clauses]
+                  [(canonicalize-mbql-clause pred) (canonicalize-mbql-clause expr)]))])))
 
 (defmethod canonicalize-mbql-clause :substring
   [[_ arg start & more]]
