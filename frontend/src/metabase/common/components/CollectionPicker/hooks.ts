@@ -51,10 +51,12 @@ export const useRootCollectionPickerItems = (
     currentUser?.personal_collection_id
       ? {
           id: currentUser?.personal_collection_id,
-          models: ["collection"],
+          models: ["collection", "dashboard"],
+          limit: 0, // we only want total number of items
         }
       : skipToken,
   );
+  const totalPersonalCollectionItems = personalCollectionItems?.total ?? 0;
 
   const {
     data: rootCollection,
@@ -98,7 +100,7 @@ export const useRootCollectionPickerItems = (
     ) {
       collectionItems.push({
         ...personalCollection,
-        here: personalCollectionItems?.data.length ? ["collection"] : [],
+        here: totalPersonalCollectionItems ? ["collection"] : [],
         model: "collection",
         can_write: true,
       });
@@ -116,7 +118,7 @@ export const useRootCollectionPickerItems = (
     isAdmin,
     options,
     rootCollectionError,
-    personalCollectionItems,
+    totalPersonalCollectionItems,
   ]);
 
   const isLoading =
