@@ -4,6 +4,7 @@ import {
   type SetStateAction,
   memo,
   useState,
+  useEffect,
 } from "react";
 import _ from "underscore";
 
@@ -190,7 +191,33 @@ const _Launchers = ({
   );
 };
 
-export const OverlaysDemo = ({ enableNesting }: { enableNesting: boolean }) => {
+enum OverlayType {
+  "legacyModal",
+  "mantineModal",
+  "mantineModalWithTitleProp",
+  "toast",
+  "actionToast",
+  "sidesheet",
+  "entityPicker",
+  "commandPalette",
+  "undo",
+  "mantinePopover",
+  "mantineTooltip",
+  "mantineMenu",
+  "mantineSelect",
+  "hoverCard",
+  "legacySelect",
+  "legacyTooltip",
+  "legacyPopover",
+}
+
+export const OverlaysDemo = ({
+  enableNesting,
+  overlaysToOpen = [],
+}: {
+  enableNesting: boolean;
+  overlaysToOpen: OverlayType[];
+}) => {
   const [legacyModalCount, setLegacyModalCount] = useState(0);
   const [mantineModalCount, setMantineModalCount] = useState(0);
   const [mantineModalWithTitlePropCount, setMantineModalWithTitlePropCount] =
@@ -201,6 +228,42 @@ export const OverlaysDemo = ({ enableNesting }: { enableNesting: boolean }) => {
   const [entityPickerCount, setEntityPickerCount] = useState(0);
   const [commandPaletteCount, setCommandPaletteCount] = useState(0);
   const [undoCount, setUndoCount] = useState(0);
+
+  const setters: Record<OverlayType, Dispatch<SetStateAction<number>>> = {
+    [OverlayType.legacyModal]: setLegacyModalCount,
+    [OverlayType.mantineModal]: setMantineModalCount,
+    [OverlayType.mantineModalWithTitleProp]: setMantineModalWithTitlePropCount,
+    [OverlayType.toast]: setToastCount,
+    [OverlayType.actionToast]: setActionToastCount,
+    [OverlayType.sidesheet]: setSidesheetCount,
+    [OverlayType.entityPicker]: setEntityPickerCount,
+    [OverlayType.commandPalette]: setCommandPaletteCount,
+    [OverlayType.undo]: setUndoCount,
+  };
+
+  useEffect(() => {
+    overlaysToOpen.forEach(overlay => {
+      const setter = setters[overlay];
+      setter(c => c + 1);
+    });
+    // I also need to ensure that tooltips open. For that we can just use a boolean setter function, I believe.
+
+    // FIXME: I might need something like this to ensure that the overlays open in a specific order
+    // const updateOverlaysSequentially = async () => {
+    //   for (const overlay of overlaysToOpen) {
+    //     // Ensuring each setter updates state after the previous one
+    //     await new Promise(resolve => {
+    //       const setter = setters[overlay];
+
+    //       setter(c => {
+    //         resolve(c + 1);
+    //         return c + 1;  // Returning the new state
+    //       });
+    //     });
+    //   }
+    // };
+  }, []);
+
   const Launchers = () => (
     <_Launchers
       setToastCount={setToastCount}

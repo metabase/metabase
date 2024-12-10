@@ -73,7 +73,7 @@ export const Default = {
   },
 };
 
-const overlays: OverlayData[] = [
+const overlays: any[] = [
   {
     name: "Mantine Tooltip",
     targetEvent: "hover",
@@ -207,5 +207,4 @@ const overlays: OverlayData[] = [
   //   textContent: "Mantine HoverCard text content",
   //   canLaunchOverlays: false,
   // },
-  // FIXME:
-].filter(({ name }) => name === "Legacy modal");
+];
