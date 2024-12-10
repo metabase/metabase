@@ -201,6 +201,8 @@ For global appearance settings, such as the colors and fonts used across your en
 
 ## Setting the language for a static embed
 
+{% include plans-blockquote.html feature="Locales for static embeds" %}
+
 To change the UI language for a static embed, you can set its [locale](../configuring-metabase/localization.md#supported-languages). For example, to set a public link's language to Korean, you could append `#locale=ko`.
 
 ```
