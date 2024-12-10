@@ -21,6 +21,7 @@ export type SdkDashboardDisplayProps = {
   hiddenParameters?: string[];
   className?: string;
   style?: CSSProperties;
+  initialTab?: number;
 };
 
 export const useSdkDashboardParams = ({
