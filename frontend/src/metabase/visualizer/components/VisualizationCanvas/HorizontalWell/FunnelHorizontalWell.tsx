@@ -82,7 +82,6 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
           "transform 0.2s ease-in-out 0.2s, border-color 0.2s ease-in-out 0.2s, background 0.2s ease-in-out 0.2s",
         outline: isOver ? "1px solid var(--mb-color-brand)" : "none",
       }}
-      maw="80%"
       ref={setNodeRef}
     >
       <DndContext

@@ -204,6 +204,28 @@ export const getVisualizerComputedSettings = createSelector(
     rawSeries.length > 0 ? getComputedSettingsForSeries(rawSeries) : {},
 );
 
+export const getTabularPreviewSeries = createSelector(
+  [getVisualizerRawSeries],
+  rawSeries => {
+    if (rawSeries.length === 0) {
+      return [];
+    }
+    const [{ card, ...rest }] = rawSeries;
+    if (card.display === "table") {
+      return rawSeries;
+    }
+    return [
+      {
+        ...rest,
+        card: {
+          display: "table",
+          visualization_settings: {},
+        },
+      },
+    ];
+  },
+);
+
 export const getVisualizerUrlHash = createSelector(
   [getCurrentHistoryItem],
   state => getStateHash(state),
