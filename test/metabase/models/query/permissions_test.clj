@@ -278,6 +278,7 @@
                             :query    {:source-query {:native                           "SELECT * FROM (SELECT * FROM whatever);"
                                                       ::query-perms/referenced-card-ids #{card-1-id}}
                                        :joins        [{:alias        "J"
+                                                       :ident        (u/generate-nano-id)
                                                        :source-query {:native                           "SELECT * FROM (SELECT * FROM whatever);"
                                                                       ::query-perms/referenced-card-ids #{card-2-id}}
                                                        :condition    [:= true false]}]}}]

@@ -513,11 +513,9 @@
 
 (defn- card-with-trendline []
   (assoc (shared-obj)
-         :dataset_query {:database (mt/id)
-                         :type     :query
-                         :query   {:source-table (mt/id :checkins)
-                                   :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :month}]]
-                                   :aggregation  [[:count]]}}))
+         :dataset_query (mt/mbql-query checkins
+                          {:breakout    [!month.date]
+                           :aggregation [[:count]]})))
 
 (deftest make-sure-we-include-all-the-relevant-fields-like-insights
   (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -845,10 +843,8 @@
 
         (testing "with MBQL queries"
           (testing "`:id` parameters"
-            (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
-                                                                :type     :query
-                                                                :query    {:source-table (mt/id :venues)
-                                                                           :aggregation  [:count]}}}]
+            (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues
+                                                                 {:aggregation [:count]})}]
               (with-temp-public-dashboard [dash {:parameters [{:name "venue_id"
                                                                :slug "venue_id"
                                                                :id   "_VENUE_ID_"
@@ -871,10 +867,8 @@
 
           (testing "temporal parameters"
             (mt/with-temporary-setting-values [enable-public-sharing true]
-              (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
-                                                                  :type     :query
-                                                                  :query    {:source-table (mt/id :checkins)
-                                                                             :aggregation  [:count]}}}]
+              (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query checkins
+                                                                   {:aggregation [:count]})}]
                 (with-temp-public-dashboard [dash {:parameters [{:name "Date Filter"
                                                                  :slug "date_filter"
                                                                  :id   "_DATE_"
@@ -1896,11 +1890,10 @@
                                            (-> (qp/process-query query)
                                                :data :results_metadata :columns))})
 
-         :model/Card          c2 (let [query {:database (mt/id)
-                                              :type :query
-                                              :query {:source-table (str "card__" (:id c1))
-                                                      :aggregation
-                                                      [[:distinct [:field "STATE" {:base-type :type/Text}]]]}}]
+         :model/Card          c2 (let [query (mt/mbql-query nil
+                                               {:source-table (str "card__" (:id c1))
+                                                :aggregation
+                                                [[:distinct [:field "STATE" {:base-type :type/Text}]]]})]
                                    {:name "C2"
                                     :database_id (mt/id)
                                     :dataset_query query

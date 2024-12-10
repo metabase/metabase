@@ -1397,6 +1397,13 @@
   Driver implementations: This is guaranteed to be present after pre-processing."}
      ::lib.schema.common/non-blank-string]
 
+    [:ident
+     {:optional true
+      :description
+      "An opaque string used as a unique identifier for this join clause, even if it evolves. This string is randomly
+      generated when a join clause is created, so it can never be confused with another join of the same table."}
+     ::Ident]
+
     [:fk-field-id
      {:optional true
       :description "Mostly used only internally. When a join is implicitly generated via a `:field` clause with
@@ -1446,20 +1453,48 @@
    [:page  PositiveInt]
    [:items PositiveInt]])
 
+(mr/def ::Ident
+  "Unique identifier string for new `:column` refs. The new refs aren't used in legacy MBQL (currently) but the
+  idents for column-introducing new clauses (joins, aggregations, breakouts, expressions) are randomly generated when
+  the clauses are created, so the idents must be preserved in legacy MBQL.
+
+  These are opaque strings under the initial design; I've made them a separate schema for documentation and
+  future-proofing."
+  [:or ::lib.schema.common/non-blank-string :keyword])
+
+(mr/def ::IndexedIdents
+  "Aggregations and breakouts get their `:ident` in legacy MBQL from a separate map, which maps the index of the
+  aggregation or breakout to its ident.
+
+  (That's super unstable, but legacy MBQL is never manipulated anymore. We just need a clean round trip through
+  legacy, so indexes work fine. Idents are stored directly on the clauses in pMBQL.)"
+  ;; TODO: Make the ::Ident values strict once idents are always-populated? That only works for post-normalization
+  ;; queries, but I think we don't apply this schema until normalization.
+  [:map-of ::lib.schema.common/int-greater-than-or-equal-to-zero [:maybe ::Ident]])
+
+(mr/def ::ExpressionIdents
+  "Expressions get their `:ident` in legacy MBQL from a separate map, which maps expression names to idents."
+  ;; TODO: Make the ::Ident values strict once idents are always-populated? That only works for post-normalization
+  ;; queries, but I think we don't apply this schema until normalization.
+  [:map-of ::lib.schema.common/non-blank-string [:maybe ::Ident]])
+
 (mr/def ::MBQLQuery
   [:and
    [:map
-    [:source-query    {:optional true} SourceQuery]
-    [:source-table    {:optional true} SourceTable]
-    [:aggregation     {:optional true} [:sequential {:min 1} Aggregation]]
-    [:breakout        {:optional true} [:sequential {:min 1} Field]]
-    [:expressions     {:optional true} [:map-of ::lib.schema.common/non-blank-string [:ref ::FieldOrExpressionDef]]]
-    [:fields          {:optional true} Fields]
-    [:filter          {:optional true} Filter]
-    [:limit           {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
-    [:order-by        {:optional true} (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]])]
-    [:page            {:optional true} [:ref ::Page]]
-    [:joins           {:optional true} [:ref ::Joins]]
+    [:source-query       {:optional true} SourceQuery]
+    [:source-table       {:optional true} SourceTable]
+    [:aggregation        {:optional true} [:sequential {:min 1} Aggregation]]
+    [:aggregation-idents {:optional true} [:ref ::IndexedIdents]]
+    [:breakout           {:optional true} [:sequential {:min 1} Field]]
+    [:breakout-idents    {:optional true} [:ref ::IndexedIdents]]
+    [:expressions        {:optional true} [:map-of ::lib.schema.common/non-blank-string [:ref ::FieldOrExpressionDef]]]
+    [:expression-idents  {:optional true} [:ref ::ExpressionIdents]]
+    [:fields             {:optional true} Fields]
+    [:filter             {:optional true} Filter]
+    [:limit              {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
+    [:order-by           {:optional true} (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]])]
+    [:page               {:optional true} [:ref ::Page]]
+    [:joins              {:optional true} [:ref ::Joins]]
 
     [:source-metadata
      {:optional true
@@ -1476,7 +1511,16 @@
    [:fn
     {:error/message "Fields specified in `:breakout` should not be specified in `:fields`; this is implied."}
     (fn [{:keys [breakout fields]}]
-      (empty? (set/intersection (set breakout) (set fields))))]])
+      (empty? (set/intersection (set breakout) (set fields))))]
+   ;; TODO: Re-enable this - it's a useful check but it currently breaks a pile of too-literal legacy tests.
+   #_[:fn
+      {:error/message ":expressions must have the same keys as :expression-idents"}
+      (fn [{:keys [expressions expression-idents]}]
+        (core/or (core/= nil expressions expression-idents)
+                 (core/and (map? expressions)
+                           (map? expression-idents)
+                           (core/= (set (keys expressions))
+                                   (set (keys expression-idents))))))]])
 
 ;;; ----------------------------------------------------- Params -----------------------------------------------------
 

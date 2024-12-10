@@ -187,6 +187,7 @@ describe("parameters/utils/mapping-options", () => {
           joins: [
             {
               alias: "Product",
+              ident: "Y_wEKVMtSNd3v5I4vYs05",
               fields: "all",
               "source-table": PRODUCTS_ID,
               condition: [

@@ -38,10 +38,19 @@
   [query
    breakout-fields
    filter-clauses]
-  (cond->
-   (assoc query :breakout (mapv (partial interesting/->reference :mbql) breakout-fields))
-    (seq filter-clauses)
-    (assoc :filter (into [:and] filter-clauses))))
+  (let [breakouts  (mapv (partial interesting/->reference :mbql) breakout-fields)
+        brk-idents (into {} (for [i (range (count breakouts))]
+                              [i (u/generate-nano-id)]))]
+    (cond-> (assoc query :breakout breakouts :breakout-idents brk-idents)
+      (seq filter-clauses) (assoc :filter (into [:and] filter-clauses)))))
+
+(defn- add-aggregations
+  "Add aggregations to a query."
+  [query aggregations]
+  (assoc query
+         :aggregation aggregations
+         :aggregation-idents (into {} (for [i (range (count aggregations))]
+                                        [i (u/generate-nano-id)]))))
 
 (defn matching-types?
   "Given two seqs of types, return true of the types of the child
@@ -241,7 +250,7 @@
               ;; Update dimension-name->field to include named contributions from both metrics and dimensions
             :dimension-name->field all-names->field
             :score-components score-components)
-           (assoc-in [:metric-definition :aggregation] final-aggregate)
+           (update :metric-definition add-aggregations final-aggregate)
            (update :metric-definition add-breakouts-and-filter
                    (vals merged-dims)
                    (mapv (comp :filter simple-grounded-filters) card-filters))

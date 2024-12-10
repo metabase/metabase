@@ -465,12 +465,13 @@
                                :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis"
                                :metabase.query-processor.util.add-alias-info/position      1}]
               compile-res    (qp.compile/compile
-                              {:database 1
-                               :type     :query
-                               :query    {:source-table 1
-                                          :aggregation  [[:count]]
-                                          :breakout     [field-bucketed]
-                                          :order-by     [[:asc field-bucketed]]}})]
+                              (mt/query nil
+                                {:database 1
+                                 :type     :query
+                                 :query    {:source-table 1
+                                            :aggregation  [[:count]]
+                                            :breakout     [field-bucketed]
+                                            :order-by     [[:asc field-bucketed]]}}))]
           (is (= ["SELECT"
                   "  DATE_TRUNC("
                   "    'month',"
@@ -516,11 +517,12 @@
    {:cards [{:name          "Model with JSON"
              :id            123
              :database-id   1
-             :dataset-query {:database 1
-                             :type     :query
-                             :query    {:source-table 1
-                                        :aggregation  [[:count]]
-                                        :breakout     [[:field 1 nil]]}}}]}))
+             :dataset-query (mt/query nil
+                              {:database 1
+                               :type     :query
+                               :query    {:source-table 1
+                                          :aggregation  [[:count]]
+                                          :breakout     [[:field 1 nil]]}})}]}))
 
 (deftest ^:parallel json-breakout-in-model-test
   (mt/test-driver :postgres

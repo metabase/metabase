@@ -35,6 +35,7 @@
                                                                          :expressions  {"Tax Rate" [:/
                                                                                                     [:field (mt/id :orders :tax) {:base-type :type/Float}]
                                                                                                     [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                                                                         :expression-idents {"Tax Rate" "BDpp6yH1r645cmTpDov7e"}
                                                                          :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
                                                                                         [:field (mt/id :orders :total) {:base-type :type/Float}]
                                                                                         [:expression "Tax Rate"]]
@@ -465,17 +466,10 @@
 (deftest renamed-column-names-are-applied-test
   (testing "CSV attachments should have the same columns as displayed in Metabase (#18572)"
     (mt/with-temporary-setting-values [custom-formatting nil]
-      (let [query        {:source-table (mt/id :orders)
-                          :fields       [[:field (mt/id :orders :id) {:base-type :type/BigInteger}]
-                                         [:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                         [:field (mt/id :orders :total) {:base-type :type/Float}]
-                                         [:field (mt/id :orders :discount) {:base-type :type/Float}]
-                                         [:field (mt/id :orders :quantity) {:base-type :type/Integer}]
-                                         [:expression "Tax Rate"]],
-                          :expressions  {"Tax Rate" [:/
-                                                     [:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                     [:field (mt/id :orders :total) {:base-type :type/Float}]]},
-                          :limit        10}
+      (let [query        (mt/mbql-query orders
+                           {:fields       [$id $tax $total $discount $quantity [:expression "Tax Rate"]]
+                            :expressions  {"Tax Rate" [:/ $tax $total]},
+                            :limit        10})
             viz-settings {:table.cell_column "TAX",
                           :column_settings   {(format "[\"ref\",[\"field\",%s,null]]" (mt/id :orders :id))
                                               {:column_title "THE_ID"}
@@ -495,9 +489,7 @@
                                               {:column_title "Effective Tax Rate"}}}]
         (mt/with-temp [Card {base-card-name :name
                              base-card-id   :id} {:name                   "RENAMED"
-                                                  :dataset_query          {:database (mt/id)
-                                                                           :type     :query
-                                                                           :query    query}
+                                                  :dataset_query          query
                                                   :visualization_settings viz-settings}
                        Card {model-card-name :name
                              model-card-id   :id
