@@ -13,9 +13,6 @@
               (when (.next rset)
                 (cb rset))))))
 
-(defn- qualified-name [{:keys [table column]}]
-  (str table "." column))
-
 (defn app-db-column-types
   "Returns a map of all column names to their respective type names for the given `table-name` in the provided
   application-db."
@@ -44,13 +41,14 @@
                                          :fk      (qualified-name (get fks col))
                                          :fk-data (get fks col)}])))))))))
 
+(defn- qualified-name [{:keys [table column]}]
+  (str table "." column))
 
 (defn- group-rset [^ResultSet rset cb]
-  (u/group-by first second conj #{}
-              (iteration
-               (fn [_]
-                 (when (.next rset)
-                   (cb rset))))))
+  (u/group-by first some? second (constantly true) conj #{}
+              (iteration (fn [_]
+                           (when (.next rset)
+                             (or (cb rset) []))))))
 
 (defn app-db-cascading-deletes
   "Returns a map of the downstream relations that will have deletes cascade to them, for the given table."
@@ -63,12 +61,9 @@
                 (let [table-name (cond-> (name table-name')
                                    (= (:db-type app-db) :h2) u/upper-case-en)]
                   (with-open [fks (.getImportedKeys md nil nil table-name)]
-                    (dissoc
-                     (group-rset fks (fn [^ResultSet fks]
-                                       (if (= (.getInt fks "DELETE_RULE") DatabaseMetaData/importedKeyCascade)
-                                         [(u/lower-case-en (.getString fks "PKTABLE_NAME"))
-                                          {:child-table   (name table-name')
-                                           :child-column  (u/lower-case-en (.getString fks "FKCOLUMN_NAME"))
-                                           :parent-column (u/lower-case-en (.getString fks "PKCOLUMN_NAME"))}]
-                                         [:skip nil])))
-                     :skip))))))))
+                    (group-rset fks (fn [^ResultSet fks]
+                                      (when (= (.getInt fks "DELETE_RULE") DatabaseMetaData/importedKeyCascade)
+                                        [(u/lower-case-en (.getString fks "PKTABLE_NAME"))
+                                         {:child-table   (name table-name')
+                                          :child-column  (u/lower-case-en (.getString fks "FKCOLUMN_NAME"))
+                                          :parent-column (u/lower-case-en (.getString fks "PKCOLUMN_NAME"))}]))))))))))
