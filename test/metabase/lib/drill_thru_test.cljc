@@ -456,7 +456,7 @@
         (let [context (merge (basic-context count-column 123)
                              {:row row})]
           (testing (str "\ncontext =\n" (u/pprint-to-str context))
-            (is (=? (map expected-drills [:pivot :underlying-records :zoom-in.timeseries])
+            (is (=? (map expected-drills [:pivot :underlying-records])
                     (lib/available-drill-thrus query -1 context)))
             (test-drill-applications query context)))
         (testing "with :dimensions"
