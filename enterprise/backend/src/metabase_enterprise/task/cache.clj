@@ -155,8 +155,8 @@
     (let [refresh-defs (->> queries
                             (group-by :card-id)
                             (map (fn [[card-id queries]]
-                                  {:card-id card-id
-                                   :queries (map :query queries)})))
+                                   {:card-id card-id
+                                    :queries (map :query queries)})))
           task         (refresh-task refresh-defs)]
       (if *run-cache-refresh-async*
         (submit-refresh-task-async! task)
