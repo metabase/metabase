@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import type { IconName } from "metabase/ui";
+import { Box, type BoxProps, type IconName } from "metabase/ui";
 
 import SidebarHeader from "../SidebarHeader";
 
@@ -63,9 +63,14 @@ function SidebarContent({
   );
 }
 
+const PaneContent = (props: BoxProps) => {
+  return <Box px="lg" {...props} />;
+};
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(SidebarContent, {
   Root: SidebarContentRoot,
   Header: SidebarHeader,
   Content: SidebarContentMain,
+  Pane: PaneContent,
 });

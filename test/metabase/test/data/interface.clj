@@ -464,7 +464,8 @@
     (first (qp.preprocess/query->expected-cols {:database (t2/select-one-fn :db_id Table :id table-id)
                                                 :type     :query
                                                 :query    {:source-table table-id
-                                                           :aggregation  [[aggregation-type [:field-id field-id]]]}}))
+                                                           :aggregation  [[aggregation-type [:field-id field-id]]]
+                                                           :aggregation-idents {0 (u/generate-nano-id)}}}))
     (when (= aggregation-type :cum-count)
       {:base_type     :type/Decimal
        :semantic_type :type/Quantity}))))
