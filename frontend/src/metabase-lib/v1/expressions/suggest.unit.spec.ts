@@ -171,6 +171,7 @@ describe("metabase/lib/expression/suggest", () => {
       it("should suggest joined fields", () => {
         const JOIN_CLAUSE: Join = {
           alias: "Foo",
+          ident: "pbHOWTxjodLToOUnFJe_k",
           "source-table": REVIEWS_ID,
           condition: [
             "=",

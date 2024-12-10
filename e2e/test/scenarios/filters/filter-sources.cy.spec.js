@@ -19,12 +19,12 @@ const tableQuestionWithExpression = {
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
-    query: {
+    query: H.mbqlQuery({
       "source-table": ORDERS_ID,
       expressions: {
         Total100: ["+", ["field", ORDERS.TOTAL, null], 100],
       },
-    },
+    }),
   },
   visualization_settings: {},
 };
@@ -34,7 +34,7 @@ const tableQuestionWithJoin = {
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
-    query: {
+    query: H.mbqlQuery({
       "source-table": ORDERS_ID,
       joins: [
         {
@@ -48,7 +48,7 @@ const tableQuestionWithJoin = {
           alias: "Products",
         },
       ],
-    },
+    }),
   },
   visualization_settings: {},
 };
@@ -58,7 +58,7 @@ const tableQuestionWithJoinAndFields = {
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
-    query: {
+    query: H.mbqlQuery({
       "source-table": ORDERS_ID,
       joins: [
         {
@@ -72,7 +72,7 @@ const tableQuestionWithJoinAndFields = {
           alias: "Products",
         },
       ],
-    },
+    }),
   },
 };
 
@@ -81,14 +81,14 @@ const tableWithAggregations = {
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
-    query: {
+    query: H.mbqlQuery({
       "source-table": ORDERS_ID,
       aggregation: [
         ["count"],
         ["sum", ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }]],
       ],
       breakout: [["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }]],
-    },
+    }),
   },
   visualization_settings: {},
 };
@@ -126,12 +126,12 @@ const nestedQuestionWithExpression = card => ({
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
-    query: {
+    query: H.mbqlQuery({
       "source-table": `card__${card.id}`,
       expressions: {
         Total100: ["+", ["field", "TOTAL", { "base-type": "type/Float" }], 100],
       },
-    },
+    }),
   },
   visualization_settings: {},
 });
@@ -141,7 +141,7 @@ const nestedQuestionWithJoin = card => ({
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
-    query: {
+    query: H.mbqlQuery({
       "source-table": `card__${card.id}`,
       joins: [
         {
@@ -163,7 +163,7 @@ const nestedQuestionWithJoin = card => ({
           "source-table": PRODUCTS_ID,
         },
       ],
-    },
+    }),
   },
   visualization_settings: {},
 });
@@ -173,7 +173,7 @@ const nestedQuestionWithJoinAndFields = card => ({
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
-    query: {
+    query: H.mbqlQuery({
       "source-table": `card__${card.id}`,
       joins: [
         {
@@ -195,7 +195,7 @@ const nestedQuestionWithJoinAndFields = card => ({
           "source-table": PRODUCTS_ID,
         },
       ],
-    },
+    }),
   },
   visualization_settings: {},
 });
@@ -205,14 +205,14 @@ const nestedQuestionWithAggregations = card => ({
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
-    query: {
+    query: H.mbqlQuery({
       "source-table": `card__${card.id}`,
       aggregation: [
         ["count"],
         ["sum", ["field", "QUANTITY", { "base-type": "type/Integer" }]],
       ],
       breakout: [["field", "PRODUCT_ID", { "base-type": "type/Integer" }]],
-    },
+    }),
   },
   visualization_settings: {},
 });

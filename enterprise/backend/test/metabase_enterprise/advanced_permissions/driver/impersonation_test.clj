@@ -213,10 +213,9 @@
                   (let [persisted-info (t2/select-one :model/PersistedInfo
                                                       :database_id (mt/id)
                                                       :card_id (:id model))
-                        query          {:type     :query
-                                        :query    {:aggregation  [:count]
-                                                   :source-table (str "card__" (:id model))}
-                                        :database (mt/id)}]
+                        query          (mt/mbql-query nil
+                                         {:aggregation  [:count]
+                                          :source-table (str "card__" (:id model))})]
                     (let [impersonated-result (mt/with-test-user :rasta (qp/process-query query))
                           ;; Make sure we run admin query second to reset the DB role on the connection for other tests!
                           admin-result        (mt/as-admin (qp/process-query query))]

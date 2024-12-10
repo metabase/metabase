@@ -33,11 +33,13 @@
   (testing "no Segment should yield exact same query"
     (is (= (mbql-query
             {:filter   [:> [:field 4 nil] 1]
-             :breakout [[:field 17 nil]]})
+             :breakout [[:field 17 nil]]
+             :breakout-idents {0 "jnTPEtySlo9dp0rsXIZjy"}})
            (expand-macros
             (mbql-query
              {:filter   [:> [:field 4 nil] 1]
-              :breakout [[:field 17 nil]]}))))))
+              :breakout [[:field 17 nil]]
+              :breakout-idents {0 "jnTPEtySlo9dp0rsXIZjy"}}))))))
 
 (def ^:private mock-metadata-provider
   (lib.tu/mock-metadata-provider
@@ -59,7 +61,8 @@
                         [:or
                          [:is-null [:field 7 nil]]
                          [:> [:field 4 nil] 1]]]
-             :breakout [[:field 17 nil]]})
+             :breakout [[:field 17 nil]]
+             :breakout-idents {0 "tSQXJ8zkCoNrXgc4tkaPo"}})
            (expand-macros
             (mbql-query
              {:filter   [:and
@@ -67,7 +70,8 @@
                          [:or
                           [:segment 2]
                           [:> [:field 4 nil] 1]]]
-              :breakout [[:field 17 nil]]}))))))
+              :breakout [[:field 17 nil]]
+              :breakout-idents {0 "tSQXJ8zkCoNrXgc4tkaPo"}}))))))
 
 (deftest ^:parallel nested-segments-test
   (let [metadata-provider (lib.tu/mock-metadata-provider
@@ -109,14 +113,16 @@
                                       [:= [:field 5 nil] "abc"]
                                       [:or
                                        [:is-null [:field 7 nil]]
-                                       [:> [:field 4 nil] 1]]]]]})
+                                       [:> [:field 4 nil] 1]]]]]
+               :aggregation-idents {0 "Sg7Gx3EJV-axMhMWsBeFR"}})
              (expand-macros
               (mbql-query
                {:aggregation [[:share [:and
                                        [:segment 1]
                                        [:or
                                         [:segment 2]
-                                        [:> [:field 4 nil] 1]]]]]})))))))
+                                        [:> [:field 4 nil] 1]]]]]
+                :aggregation-idents {0 "Sg7Gx3EJV-axMhMWsBeFR"}})))))))
 
 (deftest ^:parallel expand-macros-in-nested-queries-test
   (testing "expand-macros should expand things in the correct nested level (#12507)"
@@ -128,55 +134,55 @@
                                       :after  {:source-table $$checkins
                                                :filter       [:is-null [:field 7 nil]]}})]
         (testing "nested 1 level"
-          (is (= (lib.tu.macros/mbql-query nil
-                   {:source-query after})
-                 (expand-macros
-                  (lib.tu.macros/mbql-query nil
-                    {:source-query before})))))
+          (is (=? (lib.tu.macros/mbql-query nil
+                    {:source-query after})
+                  (expand-macros
+                   (lib.tu.macros/mbql-query nil
+                     {:source-query before})))))
         (testing "nested 2 levels"
-          (is (= (lib.tu.macros/mbql-query nil
-                   {:source-query {:source-query after}})
-                 (expand-macros
-                  (lib.tu.macros/mbql-query nil
-                    {:source-query {:source-query before}})))))
+          (is (=? (lib.tu.macros/mbql-query nil
+                    {:source-query {:source-query after}})
+                  (expand-macros
+                   (lib.tu.macros/mbql-query nil
+                     {:source-query {:source-query before}})))))
         (testing "nested 3 levels"
-          (is (= (lib.tu.macros/mbql-query nil
-                   {:source-query {:source-query {:source-query after}}})
-                 (expand-macros
-                  (lib.tu.macros/mbql-query nil
-                    {:source-query {:source-query {:source-query before}}})))))
+          (is (=? (lib.tu.macros/mbql-query nil
+                    {:source-query {:source-query {:source-query after}}})
+                  (expand-macros
+                   (lib.tu.macros/mbql-query nil
+                     {:source-query {:source-query {:source-query before}}})))))
         (testing "nested at different levels"
-          (is (= (lib.tu.macros/mbql-query nil
-                   {:source-query (-> after
-                                      (dissoc :source-table)
-                                      (assoc :source-query after))})
-                 (expand-macros
-                  (lib.tu.macros/mbql-query nil
-                    {:source-query (-> before
+          (is (=? (lib.tu.macros/mbql-query nil
+                    {:source-query (-> after
                                        (dissoc :source-table)
-                                       (assoc :source-query before))})))))
+                                       (assoc :source-query after))})
+                  (expand-macros
+                   (lib.tu.macros/mbql-query nil
+                     {:source-query (-> before
+                                        (dissoc :source-table)
+                                        (assoc :source-query before))})))))
         (testing "inside :source-query inside :joins"
-          (is (= (lib.tu.macros/mbql-query checkins
-                   {:joins [{:condition    [:= [:field 1 nil] 2]
-                             :source-query after}]})
-                 (expand-macros
-                  (lib.tu.macros/mbql-query checkins
+          (is (=? (lib.tu.macros/mbql-query checkins
                     {:joins [{:condition    [:= [:field 1 nil] 2]
-                              :source-query before}]})))))
+                              :source-query after}]})
+                  (expand-macros
+                   (lib.tu.macros/mbql-query checkins
+                     {:joins [{:condition    [:= [:field 1 nil] 2]
+                               :source-query before}]})))))
         (testing "inside join condition"
-          (is (= (lib.tu.macros/mbql-query checkins
-                   {:joins [{:source-table $$checkins
-                             :condition    (:filter after)}]})
-                 (expand-macros
-                  (lib.tu.macros/mbql-query checkins
+          (is (=? (lib.tu.macros/mbql-query checkins
                     {:joins [{:source-table $$checkins
-                              :condition    (:filter before)}]})))))
+                              :condition    (:filter after)}]})
+                  (expand-macros
+                   (lib.tu.macros/mbql-query checkins
+                     {:joins [{:source-table $$checkins
+                               :condition    (:filter before)}]})))))
         (testing "inside :joins inside :source-query"
-          (is (= (lib.tu.macros/mbql-query nil
-                   {:source-query {:source-table $$checkins
-                                   :joins        [{:condition    [:= [:field 1 nil] 2]
-                                                   :source-query after}]}})
-                 (expand-macros (lib.tu.macros/mbql-query nil
-                                  {:source-query {:source-table $$checkins
-                                                  :joins        [{:condition    [:= [:field 1 nil] 2]
-                                                                  :source-query before}]}})))))))))
+          (is (=? (lib.tu.macros/mbql-query nil
+                    {:source-query {:source-table $$checkins
+                                    :joins        [{:condition    [:= [:field 1 nil] 2]
+                                                    :source-query after}]}})
+                  (expand-macros (lib.tu.macros/mbql-query nil
+                                   {:source-query {:source-table $$checkins
+                                                   :joins        [{:condition    [:= [:field 1 nil] 2]
+                                                                   :source-query before}]}})))))))))

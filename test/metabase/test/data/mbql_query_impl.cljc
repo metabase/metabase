@@ -1,22 +1,23 @@
 (ns metabase.test.data.mbql-query-impl
   "Internal implementation of [[metabase.test.data/$ids]] and [[metabase.test.data/$ids]] and related macros."
   (:require
+   #?@(:clj ([toucan2.core :as t2]))
    [clojure.string :as str]
-   [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
-(set! *warn-on-reflection* true)
+#?(:clj (set! *warn-on-reflection* true))
 
 #_:clj-kondo/ignore
-(defn druid-id-fn
-  "I have a strong feeling this should be handled differently! Let's discuss that during review!"
-  [& args]
-  (if (and (> (count args) 1)
-           (= :druid-jdbc @(requiring-resolve 'metabase.driver/*driver*))
-           (= "timestamp" (name (last args))))
-    (apply (requiring-resolve 'metabase.test.data/id) (conj (vec (butlast args)) :__time))
-    (apply (requiring-resolve 'metabase.test.data/id) args)))
+#?(:clj
+   (defn druid-id-fn
+     "I have a strong feeling this should be handled differently! Let's discuss that during review!"
+     [& args]
+     (if (and (> (count args) 1)
+              (= :druid-jdbc @(requiring-resolve 'metabase.driver/*driver*))
+              (= "timestamp" (name (last args))))
+       (apply (requiring-resolve 'metabase.test.data/id) (conj (vec (butlast args)) :__time))
+       (apply (requiring-resolve 'metabase.test.data/id) args))))
 
 ;; TODO: druid-id-fn is just temporary until I figure out proper solution for rebinding that symb.
 (def ^:dynamic *id-fn-symb*              `druid-id-fn #_'metabase.test.data/id)
@@ -82,11 +83,13 @@
                    :source-token-str  source-token-str
                    :dest-token-str    dest-token-str})))
 
-(defn field-name [field-id]
-  (t2/select-one-fn :name :model/Field :id field-id))
+#?(:clj
+   (defn field-name [field-id]
+     (t2/select-one-fn :name :model/Field :id field-id)))
 
-(defn field-base-type [field-id]
-  (t2/select-one-fn :base_type :model/Field :id field-id))
+#?(:clj
+   (defn field-base-type [field-id]
+     (t2/select-one-fn :base_type :model/Field :id field-id)))
 
 (defn- field-literal [source-table-symb token-str]
   (if (str/includes? token-str "/")
@@ -162,12 +165,66 @@
   [source-table-symb-or-nil body]
   (walk/postwalk (partial parse-token-by-sigil source-table-symb-or-nil) body))
 
+(declare populate-idents)
+
+(defn- populate-idents-join [join-clause]
+  (-> join-clause
+      (u/assoc-default :ident (u/generate-nano-id))
+      populate-idents))
+
+(defn populate-idents
+  "Internal impl fn for `data/mbql-query` macro.
+
+  Fills in `:aggregation-idents`, `:breakout-idents`, `:expression-idents`, and `:ident` on joins where missing."
+  [{:keys [aggregation aggregation-idents
+           breakout    breakout-idents
+           expressions expression-idents
+           joins source-query] :as inner-query}]
+  (let [fresh-expr-idents (into {} (map (juxt name (fn [_] (u/generate-nano-id))))
+                                (keys expressions))
+        agg-idents        (into {} (map-indexed (fn [i _agg]
+                                                  [i (or (get aggregation-idents i)
+                                                         (u/generate-nano-id))]))
+                                (cond-> aggregation
+                                  (not (seqable? aggregation)) vector))
+        brk-idents        (into {} (map-indexed (fn [i _brk]
+                                                  [i (or (get breakout-idents i)
+                                                         (u/generate-nano-id))]))
+                                (cond-> breakout
+                                  (not (seqable? breakout)) vector))
+        populated-joins   (mapv populate-idents-join joins)]
+    (cond-> inner-query
+      source-query (update :source-query populate-idents)
+      joins        (assoc :joins populated-joins)
+      expressions  (assoc :expression-idents (merge fresh-expr-idents expression-idents))
+      aggregation  (assoc :aggregation-idents agg-idents)
+      breakout     (assoc :breakout-idents brk-idents)
+      ;; This metadata is used by query= and similar to ignore mismatches if the mbql-query macro generated idents on
+      ;; the expectation side. It includes only the *new*, macro-generated idents.
+      true         (vary-meta assoc :generated-idents
+                              {:generated-paths/expression-idents  (set (keys fresh-expr-idents))
+                               :generated-paths/aggregation-idents (set (remove (set (keys aggregation-idents)) (keys agg-idents)))
+                               :generated-paths/breakout-idents    (set (remove (set (keys breakout-idents))    (keys brk-idents)))
+                               :generated-paths/join-idents        (set (keep-indexed (fn [i join]
+                                                                                        (when-not (:ident join)
+                                                                                          i))
+                                                                                      joins))}))))
+
+(defn wrap-populate-idents
+  "Internal impl fn for `data/mbql-query` macro.
+
+  Wraps with a call to [[populate-idents]] to ensure `:aggregation-idents` and `:expression-idents` exist when there
+  are aggregations or expressions on a stage."
+  [inner-query]
+  `(populate-idents ~inner-query))
+
 (defn wrap-inner-query
   "Internal impl fn of `data/mbql-query` macro."
   [inner-query]
-  {:database (list *id-fn-symb*)
-   :type     :query
-   :query    inner-query})
+  (-> {:database (list *id-fn-symb*)
+       :type     :query
+       :query    inner-query}
+      (vary-meta assoc :type  :metabase.lib.test-util.macros/mbql-query)))
 
 (defn maybe-add-source-table
   "Internal impl fn of `data/mbql-query` macro. Add `:source-table` to `inner-query` unless it already has a
