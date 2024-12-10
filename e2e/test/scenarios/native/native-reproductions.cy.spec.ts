@@ -173,9 +173,9 @@ describe("issue 49454", () => {
   it("should be possible to use metrics in native queries (metabase#49454)", () => {
     H.openNativeEditor().realType("select * from {{ #test");
 
-    H.nativeEditorCompletions().within(() => {
-      H.nativeEditorCompletion("-question-49454").should("be.visible");
-      H.nativeEditorCompletion("-metric-49454").should("be.visible");
+    H.NativeEditor.completions().within(() => {
+      H.NativeEditor.completion("-question-49454").should("be.visible");
+      H.NativeEditor.completion("-metric-49454").should("be.visible");
     });
   });
 });

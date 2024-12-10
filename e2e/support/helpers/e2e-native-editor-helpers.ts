@@ -11,15 +11,15 @@ function focusNativeEditor() {
   return nativeEditor();
 }
 
-export function blurNativeEditor() {
+function blurNativeEditor() {
   nativeEditor().get(".cm-editor").blur();
 }
 
-export function nativeEditorCompletions() {
+function nativeEditorCompletions() {
   return cy.get(".cm-tooltip-autocomplete").should("be.visible");
 }
 
-export function nativeEditorCompletion(label: string) {
+function nativeEditorCompletion(label: string) {
   return cy.get(".cm-completionLabel").contains(label).parent();
 }
 
