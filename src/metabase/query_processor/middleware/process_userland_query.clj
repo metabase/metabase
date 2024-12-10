@@ -149,6 +149,7 @@
      :pivot/keys [original-query]} :info
     database-id                    :database
     query-type                     :type
+    parameters                     :parameters
     :as                            query}]
   {:pre [(bytes? query-hash)]}
   (let [json-query (if original-query
@@ -165,6 +166,8 @@
      :pulse_id          pulse-id
      :context           context
      :hash              query-hash
+     :parameterized     (and (boolean (seq parameters))
+                             (every? #(some? (:value %)) parameters))
      :native            (= (keyword query-type) :native)
      :json_query        json-query
      :started_at        (t/zoned-date-time)
