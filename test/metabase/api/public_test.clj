@@ -155,10 +155,12 @@
                                                          [:query-executions "public_link"]))
                 qe-count-before (get-qe-count)]
             (client/client :get 202 (str "public/card/" uuid "/query"))
-            ;; The count gets incremented asynchronously, so we need to poll until it's updated:
+            ;; The qe-count gets incremented asynchronously, so we need to poll until it's updated.
+            ;; We poll for 300ms, which should be enough time for the count to be updated.
+            ;; Once the qe-count is updated the test will pass, and stop polling.
+            ;; If it's not updated within 300ms, the test will fail.
             (testing "the count should be incremented within 300 ms:"
-              (is (true?
-                   (tu/poll-until 300 (> (get-qe-count) qe-count-before)))))))))))
+              (is (tu/poll-until 300 (> (get-qe-count) qe-count-before))))))))))
 
 (deftest make-sure-param-values-get-returned-as-expected
   (let [category-name-id (mt/id :categories :name)]
