@@ -40,6 +40,9 @@
                                             :recipients (set (mapv #(sanitize-model :model/NotificationRecipient %) recipients))))
                                    handlers))))
 
+;; use json to compare to avoid any difference like keywordizing vs string
+(def ^:private serialize-notification (comp json/encode sanitize-notification))
+
 (def ^:private default-notifications
   "List of notifications that are seeded into the database on startup.
   This list should only be modified or appended, never removed.
@@ -133,8 +136,7 @@
   (cond
     (nil? existing-row)
     :create
-    ;; use json to compare to avoid any difference like keyword vs string
-    (not= (json/encode (sanitize-notification existing-row)) (json/encode (sanitize-notification new-row)))
+    (not= (serialize-notification existing-row) (serialize-notification new-row))
     :replace
     :else
     :skip))
@@ -161,9 +163,7 @@
           (log/debugf "Replacing notification %s" internal_id)
           (replace-notification! existing-notification row))
         :skip
-        (do
-          (log/debugf "Skipping notification %s" internal_id)
-          nil)))))
+        (log/debugf "Skipping notification %s" internal_id)))))
 
 (defn seed-notification!
   "Seed default notifications into the database.

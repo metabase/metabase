@@ -10100,6 +10100,10 @@ databaseChangeLog:
                     nullable: true
                     unique: true
 
+  # Prior to this, we used to truncate then insert notifications on startup (#50127)
+  # But we can't do that anymore because pulses are migated to notificaiton, so moving forward
+  # we'll insert/replace notifications on startup (see metabase.notification.seed)
+  # We need to do another truncate here so we have a clean slate for the new notifications
   - changeSet:
       id: v52.2024-12-10T10:00:10
       author: qnkhuat
@@ -10131,6 +10135,11 @@ databaseChangeLog:
         - sql:
             dbms: h2
             sql: >-
+              DELETE FROM notification;
+              DELETE FROM notification_handler;
+              DELETE FROM notification_subscription;
+              DELETE FROM notification_recipient;
+              DELETE FROM channel_template;
               ALTER TABLE notification ALTER COLUMN id RESTART WITH 1;
               ALTER TABLE notification_handler ALTER COLUMN id RESTART WITH 1;
               ALTER TABLE notification_subscription ALTER COLUMN id RESTART WITH 1;
