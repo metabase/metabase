@@ -4,7 +4,6 @@
    [medley.core :as m]
    [metabase.models.permissions-group :as perms-group]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.sync.sync-metadata]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
