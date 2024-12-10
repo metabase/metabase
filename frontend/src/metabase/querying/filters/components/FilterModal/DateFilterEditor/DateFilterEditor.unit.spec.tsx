@@ -183,11 +183,11 @@ describe("DateFilterEditor", () => {
     const { query, filter } = createQueryWithFilter(
       defaultQuery,
       stageIndex,
-      Lib.excludeDateFilterClause(defaultQuery, stageIndex, {
+      Lib.excludeDateFilterClause({
         operator: "!=",
         column,
         values: [17],
-        bucket: "hour-of-day",
+        unit: "hour-of-day",
       }),
     );
     const { getNextFilterName } = setup({

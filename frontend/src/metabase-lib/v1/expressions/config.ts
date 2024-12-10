@@ -295,6 +295,12 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     args: ["expression", "expression"], // ideally we'd alternate boolean/expression
     multiple: true,
   },
+  if: {
+    displayName: `if`,
+    type: "expression",
+    args: ["expression", "expression"],
+    multiple: true,
+  },
   offset: {
     displayName: `Offset`,
     type: "any", // ideally we'd dynamically infer it from the first argument
@@ -403,6 +409,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: `weekday`,
     type: "number",
     args: ["datetime"],
+    hasOptions: true, // optional mode parameter
   },
   "get-hour": {
     displayName: `hour`,
@@ -554,6 +561,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "not-empty",
   "does-not-contain",
   // other
+  "if",
   "coalesce",
 ]);
 

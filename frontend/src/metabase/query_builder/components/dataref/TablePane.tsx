@@ -17,13 +17,12 @@ import FieldList from "./FieldList";
 import {
   NodeListIcon,
   NodeListItemIcon,
+  NodeListItemId,
   NodeListItemLink,
   NodeListItemName,
   NodeListTitle,
   NodeListTitleText,
-  QuestionId,
-} from "./NodeList.styled";
-import { PaneContent } from "./Pane.styled";
+} from "./NodeList";
 import TableInfoLoader from "./TableInfoLoader";
 
 interface TablePaneProps {
@@ -45,7 +44,7 @@ function TablePane({ table, onItemClick, onBack, onClose }: TablePaneProps) {
       onBack={onBack}
       onClose={onClose}
     >
-      <PaneContent>
+      <SidebarContent.Pane>
         <TableInfoLoader table={table}>
           <div className={CS.ml1}>
             {table.description ? (
@@ -91,7 +90,7 @@ function TablePane({ table, onItemClick, onBack, onClose }: TablePaneProps) {
                         <NodeListItemName>
                           {metric.card().name}
                         </NodeListItemName>
-                        <QuestionId>{`#${metric.id()}`}</QuestionId>
+                        <NodeListItemId>{`#${metric.id()}`}</NodeListItemId>
                       </NodeListItemLink>
                     </li>
                   ))}
@@ -101,7 +100,7 @@ function TablePane({ table, onItemClick, onBack, onClose }: TablePaneProps) {
             ) : null}
           </div>
         </TableInfoLoader>
-      </PaneContent>
+      </SidebarContent.Pane>
     </SidebarContent>
   );
 }

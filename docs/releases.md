@@ -19,6 +19,7 @@ To see what's new, check out all the [major release announcements](https://www.m
 
 ## Metabase Enterprise Edition releases
 
+- [v1.52.2](https://github.com/metabase/metabase/releases/tag/v1.52.2)
 - [v1.52.1](https://github.com/metabase/metabase/releases/tag/v1.52.1)
 - [v1.51.7](https://github.com/metabase/metabase/releases/tag/v1.51.7)
 - [v1.51.6](https://github.com/metabase/metabase/releases/tag/v1.51.6)
@@ -27,6 +28,7 @@ To see what's new, check out all the [major release announcements](https://www.m
 - [v1.51.3](https://github.com/metabase/metabase/releases/tag/v1.51.3)
 - [v1.51.2](https://github.com/metabase/metabase/releases/tag/v1.51.2)
 - [v1.51.1](https://github.com/metabase/metabase/releases/tag/v1.51.1)
+- [v1.50.35](https://github.com/metabase/metabase/releases/tag/v1.50.35)
 - [v1.50.34](https://github.com/metabase/metabase/releases/tag/v1.50.34)
 - [v1.50.33](https://github.com/metabase/metabase/releases/tag/v1.50.33)
 - [v1.50.32](https://github.com/metabase/metabase/releases/tag/v1.50.32)
@@ -221,6 +223,7 @@ To see what's new, check out all the [major release announcements](https://www.m
 
 ## Metabase Open Source Edition releases
 
+- [v0.52.2](https://github.com/metabase/metabase/releases/tag/v0.52.2)
 - [v0.52.1](https://github.com/metabase/metabase/releases/tag/v0.52.1)
 - [v0.51.7](https://github.com/metabase/metabase/releases/tag/v0.51.7)
 - [v0.51.6](https://github.com/metabase/metabase/releases/tag/v0.51.6)
@@ -229,6 +232,7 @@ To see what's new, check out all the [major release announcements](https://www.m
 - [v0.51.3](https://github.com/metabase/metabase/releases/tag/v0.51.3)
 - [v0.51.2](https://github.com/metabase/metabase/releases/tag/v0.51.2)
 - [v0.51.1](https://github.com/metabase/metabase/releases/tag/v0.51.1)
+- [v0.50.35](https://github.com/metabase/metabase/releases/tag/v0.50.35)
 - [v0.50.34](https://github.com/metabase/metabase/releases/tag/v0.50.34)
 - [v0.50.33](https://github.com/metabase/metabase/releases/tag/v0.50.33)
 - [v0.50.32](https://github.com/metabase/metabase/releases/tag/v0.50.32)

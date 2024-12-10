@@ -7,6 +7,7 @@
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.task :as task]
+   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    (org.quartz.spi MutableTrigger)))
@@ -44,7 +45,9 @@
   (let [query       {:database db-id
                      :type     :query
                      :query    {:source-table table-id
-                                :aggregation  [(:aggregation config) [:field field-id nil]]}}
+                                :aggregation  [(:aggregation config) [:field field-id nil]]
+                                :aggregation-idents {0 (u/generate-nano-id)
+                                                     1 (u/generate-nano-id)}}}
         result      (-> (qp/process-query query) :data :rows ffirst)
         now         (t/offset-date-time)
         next-run-at (calc-next-run (:schedule config) now)
@@ -85,9 +88,7 @@
    (triggers/with-identity (triggers/key "metabase-enterprise.cache.trigger"))
    (triggers/start-now)
    (triggers/with-schedule
-    (cron/schedule
-      ;; run every minute
-     (cron/cron-schedule "0 * * * * ? *")))))
+    (cron/cron-schedule "0 * * * * ? *"))))
 
 (defenterprise init-cache-task!
   "Inits periodical task checking for cache expiration"

@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analyze.classifiers.text-fingerprint :as classifiers.text-fingerprint]
-   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]))
 
 (def ^:private ^{:arglists '([field])} can-edit?

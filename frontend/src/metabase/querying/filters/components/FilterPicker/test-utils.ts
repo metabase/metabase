@@ -298,13 +298,13 @@ export function createQueryWithExcludeDateFilter({
   column = findDateTimeColumn(query),
   operator = "!=",
   values = [1],
-  bucket = "day-of-week",
+  unit = "day-of-week",
 }: ExcludeDateFilterOpts = {}) {
-  const clause = Lib.excludeDateFilterClause(query, 0, {
+  const clause = Lib.excludeDateFilterClause({
     column,
     operator,
     values,
-    bucket,
+    unit,
   });
   return createFilteredQuery(query, clause);
 }

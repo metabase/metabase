@@ -291,6 +291,13 @@
                 (->display-name y)
                 (->display-name z)))))
 
+(defmethod lib.metadata.calculation/display-name-method :during
+  [query stage-number [_tag _opts expr value unit] style]
+  (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)]
+    (i18n/tru "{0} is {1}"
+              (->display-name expr)
+              (u.time/format-relative-date-range value 1 unit -1 unit {}))))
+
 (defmethod lib.metadata.calculation/display-name-method :inside
   [query stage-number [_tag opts lat-expr lon-expr lat-max lon-min lat-min lon-max] style]
   (lib.metadata.calculation/display-name query stage-number
@@ -367,6 +374,7 @@
 (lib.common/defop does-not-contain [whole & parts])
 (lib.common/defop relative-time-interval [x value bucket offset-value offset-bucket])
 (lib.common/defop time-interval [x amount unit])
+(lib.common/defop during [t v unit])
 (lib.common/defop segment [segment-id])
 
 (mu/defn- add-filter-to-stage

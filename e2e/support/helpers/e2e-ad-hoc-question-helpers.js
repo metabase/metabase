@@ -1,4 +1,5 @@
 import { SAMPLE_DB_ID, SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
+import { mbqlQuery } from "e2e/support/helpers/api";
 
 import { runNativeQuery } from "./e2e-misc-helpers";
 import { nativeEditor } from "./e2e-native-editor-helpers";
@@ -115,6 +116,16 @@ export function visitQuestionAdhoc(
   { callback, mode, autorun = true, skipWaiting = false } = {},
 ) {
   const questionMode = mode === "notebook" ? "/notebook" : "";
+
+  if (question.dataset_query.query) {
+    question = {
+      ...question,
+      dataset_query: {
+        ...question.dataset_query,
+        query: mbqlQuery(question.dataset_query.query),
+      },
+    };
+  }
 
   const [url, alias] = getInterceptDetails(question, mode, autorun);
 

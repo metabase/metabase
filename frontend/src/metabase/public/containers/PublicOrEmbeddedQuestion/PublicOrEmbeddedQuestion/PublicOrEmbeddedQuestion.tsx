@@ -173,7 +173,10 @@ export const PublicOrEmbeddedQuestion = ({
   };
 
   return (
-    <LocaleProvider locale={canWhitelabel ? locale : undefined}>
+    <LocaleProvider
+      locale={canWhitelabel ? locale : undefined}
+      shouldWaitForLocale
+    >
       <PublicOrEmbeddedQuestionView
         initialized={initialized}
         card={card}

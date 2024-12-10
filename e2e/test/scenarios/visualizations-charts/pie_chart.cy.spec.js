@@ -570,6 +570,69 @@ describe("scenarios > visualizations > pie chart", () => {
       ],
     });
   });
+
+  it("should handle datasets with all negative values correctly (metabase#50692)", () => {
+    const query = `select 'foo' x, -100 y
+      union all select 'bar', -100
+      union all select 'baz', -200
+      union all select 'qux', -200`;
+
+    H.visitQuestionAdhoc({
+      display: "pie",
+      dataset_query: {
+        type: "native",
+        native: {
+          query,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      visualization_settings: {
+        "pie.show_labels": true,
+      },
+    });
+
+    // Percentages should be positive
+    cy.findByTestId("chart-legend")
+      .findByTestId("legend-item-foo")
+      .findByText("16.7%");
+
+    H.echartsContainer().within(() => {
+      // Negative Total
+      cy.findByText("-600");
+      cy.findByText("qux").realHover();
+    });
+
+    H.assertEChartsTooltip({
+      header: "X",
+      rows: [
+        {
+          name: "foo",
+          value: "-100",
+          secondaryValue: "16.67 %",
+        },
+        {
+          name: "bar",
+          value: "-100",
+          secondaryValue: "16.67 %",
+        },
+        {
+          name: "baz",
+          value: "-200",
+          secondaryValue: "33.33 %",
+        },
+        {
+          name: "qux",
+          value: "-200",
+          secondaryValue: "33.33 %",
+        },
+      ],
+      footer: {
+        name: "Total",
+        value: "-600",
+        secondaryValue: "100 %",
+      },
+    });
+  });
 });
 
 function ensurePieChartRendered(rows, middleRows, outerRows, totalValue) {

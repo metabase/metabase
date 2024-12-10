@@ -7,7 +7,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
@@ -219,7 +218,8 @@
                                                                                   :min-value 10.0
                                                                                   :max-value 50.0
                                                                                   :num-bins  4
-                                                                                  :bin-width 10.0}}])
+                                                                                  :bin-width 10.0}}]
+                       :display_name "Latitude: 10°")
                 (-> (mt/run-mbql-query venues
                       {:aggregation [[:count]]
                        :breakout    [[:field %latitude {:binning {:strategy :default}}]]})
@@ -234,7 +234,8 @@
                                                                                   :min-value 7.5
                                                                                   :max-value 45.0
                                                                                   :num-bins  5
-                                                                                  :bin-width 7.5}}])
+                                                                                  :bin-width 7.5}}]
+                       :display_name "Latitude: 5 bins")
                 (-> (mt/run-mbql-query venues
                       {:aggregation [[:count]]
                        :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 5}}]]})
@@ -258,13 +259,12 @@
                    :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))))))))
 
 (defn- nested-venues-query [card-or-card-id]
-  {:database lib.schema.id/saved-questions-virtual-database-id
-   :type     :query
-   :query    {:source-table (str "card__" (u/the-id card-or-card-id))
-              :aggregation  [[:count]]
-              :breakout     [[:field
-                              (mt/format-name :latitude)
-                              {:base-type :type/Float, :binning {:strategy :num-bins, :num-bins 20}}]]}})
+  (mt/mbql-query nil
+    {:source-table (str "card__" (u/the-id card-or-card-id))
+     :aggregation  [[:count]]
+     :breakout     [[:field
+                     (mt/format-name :latitude)
+                     {:base-type :type/Float, :binning {:strategy :num-bins, :num-bins 20}}]]}))
 
 (deftest ^:parallel bin-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)

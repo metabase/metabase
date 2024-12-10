@@ -35,12 +35,13 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.task :as task]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
+   [metabase.test.util :as tu]
    [metabase.upload-test :as upload-test]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -101,7 +102,9 @@
   ([db-or-id table-or-id]
    {:database (u/the-id db-or-id)
     :type     :query
-    :query    {:source-table (u/the-id table-or-id), :aggregation [[:count]]}}))
+    :query    {:source-table       (u/the-id table-or-id)
+               :aggregation        [[:count]]
+               :aggregation-idents {0 (u/generate-nano-id)}}}))
 
 (defn pmbql-count-query
   ([]
@@ -258,8 +261,8 @@
              (card-returned? :database db      card-2))))))
 
 (deftest ^:parallel authentication-test
-  (is (= (get req.util/response-unauthentic :body) (client/client :get 401 "card")))
-  (is (= (get req.util/response-unauthentic :body) (client/client :put 401 "card/13"))))
+  (is (= (get request/response-unauthentic :body) (client/client :get 401 "card")))
+  (is (= (get request/response-unauthentic :body) (client/client :put 401 "card/13"))))
 
 (deftest ^:parallel model-id-requied-when-f-is-database-test
   (is (= {:errors {:model_id "model_id is a required parameter when filter mode is 'database'"}}
@@ -311,25 +314,6 @@
         (is (= {:embedding_client client-string, :embedding_version version-string}
                (t2/select-one [:model/ViewLog :embedding_client :embedding_version] :model "card" :model_id (u/the-id card-1))))))))
 
-(defn- do-poll-until [^Long timeout-ms thunk]
-  (let [result-prom (promise)
-        _timeouter (future (Thread/sleep timeout-ms) (deliver result-prom ::timeout))
-        _runner (future (loop []
-                          (if-let [thunk-return (try (thunk) (catch Exception e e))]
-                            (deliver result-prom thunk-return)
-                            (recur))))
-        result @result-prom]
-    (cond (= result ::timeout) (throw (ex-info (str "Timeout after " timeout-ms "ms")
-                                               {:timeout-ms timeout-ms}))
-          (instance? Throwable result) (throw result)
-          :else result)))
-
-(defmacro ^:private poll-until
-  "A macro that continues to call the given body until it returns a truthy value or the timeout is reached.
-  Returns the truthy body, or re-throws any exception raised in body. Hence, this cannot be used to return nil, false, or a Throwable."
-  [timeout-ms & body]
-  `(do-poll-until ~timeout-ms (fn [] ~@body)))
-
 (deftest embedding-sdk-info-saves-query-execution
   (testing "GET /api/card with embedding headers set"
     (mt/with-temp [:model/Card card-1 {:name "Card 1"
@@ -343,9 +327,9 @@
                                                          "x-metabase-client-version" "2"}}})
       (is (=? {:embedding_client "client-B", :embedding_version "2"}
               ;; The query metadata is handled asynchronously, so we need to poll until it's available:
-              (poll-until 100
-                          (t2/select-one [:model/QueryExecution :embedding_client :embedding_version]
-                                         :card_id (u/the-id card-1))))))))
+              (tu/poll-until 100
+                             (t2/select-one [:model/QueryExecution :embedding_client :embedding_version]
+                                            :card_id (u/the-id card-1))))))))
 
 (deftest filter-by-bookmarked-test
   (testing "Filter by `bookmarked`"
@@ -377,36 +361,34 @@
                  :model/Card {other-card-id :id} {}
                  ;; source-table doesn't match
                  :model/Card card-2 {:name "Card 2"
-                                     :dataset_query {:query {:source-table (str "card__" other-card-id)
-                                                             :filter [:= [:field 5 nil] (str "card__" model-id)]
-                                                             :aggregation [[:metric metric-id]]}
-                                                     :database (mt/id)
-                                                     :type :query}}
+                                     :dataset_query (mt/mbql-query nil
+                                                      {:source-table (str "card__" other-card-id)
+                                                       :filter [:= [:field 5 nil] (str "card__" model-id)]
+                                                       :aggregation [[:metric metric-id]]})}
                  ;; matching join
                  :model/Card card-3 {:name "Card 3"
                                      :dataset_query (let [alias (str "Question " model-id)]
-                                                      {:type :query
-                                                       :query {:joins [{:fields [[:field 35 {:join-alias alias}]]
-                                                                        :source-table (str "card__" model-id)
-                                                                        :condition [:=
-                                                                                    [:field 5 nil]
-                                                                                    [:field 33 {:join-alias alias}]]
-                                                                        :alias alias
-                                                                        :strategy :inner-join}
-                                                                       {:fields       :all
-                                                                        :alias        "__alias__"
-                                                                        :condition    [:=
-                                                                                       [:field 1 nil]
-                                                                                       [:field 2 {:join-alias "__alias__"}]]
-                                                                        :source-query {:source-table 1
-                                                                                       :filter [:or
-                                                                                                [:> [:field 1 nil] 3]
-                                                                                                [:segment segment-id]]
-                                                                                       :aggregation  [[:+ [:metric metric-id] 1]]
-                                                                                       :breakout     [[:field 4 nil]]}}]
-                                                               :fields [[:field 9 nil]]
-                                                               :source-table (str "card__" other-card-id)}
-                                                       :database (mt/id)})}
+                                                      (mt/mbql-query nil
+                                                        {:joins [{:fields [[:field 35 {:join-alias alias}]]
+                                                                  :source-table (str "card__" model-id)
+                                                                  :condition [:=
+                                                                              [:field 5 nil]
+                                                                              [:field 33 {:join-alias alias}]]
+                                                                  :alias alias
+                                                                  :strategy :inner-join}
+                                                                 {:fields       :all
+                                                                  :alias        "__alias__"
+                                                                  :condition    [:=
+                                                                                 [:field 1 nil]
+                                                                                 [:field 2 {:join-alias "__alias__"}]]
+                                                                  :source-query {:source-table 1
+                                                                                 :filter [:or
+                                                                                          [:> [:field 1 nil] 3]
+                                                                                          [:segment segment-id]]
+                                                                                 :aggregation  [[:+ [:metric metric-id] 1]]
+                                                                                 :breakout     [[:field 4 nil]]}}]
+                                                         :fields [[:field 9 nil]]
+                                                         :source-table (str "card__" other-card-id)}))}
                  ;; matching native query
                  :model/Card card-4 {:name "Card 4"
                                      :dataset_query {:type :native
@@ -1035,7 +1017,8 @@
             (let [card (mt/user-http-request :crowberto :post 200 "card"
                                              (card-with-name-and-query "card-name"
                                                                        query))]
-              (is (= @called 1))
+              (is (= 1
+                     @called))
               (is (=? {:result_metadata #(= ["ID" "NAME"] (map norm %))}
                       card))
               (mt/user-http-request
@@ -1046,7 +1029,8 @@
                       :cache_ttl 20000
                       :display "table"
                       :collection_position 1))
-              (is (= @called 1)))))))))
+              (is (= 1
+                     @called)))))))))
 
 (deftest updating-card-updates-metadata-3
   (let [query (updating-card-updates-metadata-query)]
@@ -3445,11 +3429,10 @@
         (t2.with-temp/with-temp [:model/Card model {:dataset_query (mt/mbql-query orders)
                                                     :type :model}
                                  :model/Card card {:dataset_query
-                                                   {:database (mt/id)
-                                                    :type :query
-                                                    :query {:source-table (str "card__" (u/the-id model))
-                                                            :breakout [[:field "USER_ID" {:base-type :type/Integer}]]
-                                                            :aggregation [[:sum [:field "TOTAL" {:base-type :type/Float}]]]}}
+                                                   (mt/mbql-query nil
+                                                     {:source-table (str "card__" (u/the-id model))
+                                                      :breakout [[:field "USER_ID" {:base-type :type/Integer}]]
+                                                      :aggregation [[:sum [:field "TOTAL" {:base-type :type/Float}]]]})
                                                    ;; The FE sometimes used a field id instead of field by name - we need
                                                    ;; to handle this
                                                    :visualization_settings {:pivot_table.column_split {:rows    ["USER_ID"],
@@ -3465,11 +3448,10 @@
         (t2.with-temp/with-temp [:model/Card model {:dataset_query (mt/mbql-query orders)
                                                     :type :model}
                                  :model/Card card {:dataset_query
-                                                   {:database (mt/id)
-                                                    :type :query
-                                                    :query {:source-table (str "card__" (u/the-id model))
-                                                            :breakout [[:field "USER_ID" {:base-type :type/Integer}]]
-                                                            :aggregation [[:sum [:field "TOTAL" {:base-type :type/Float}]]]}}
+                                                   (mt/mbql-query nil
+                                                     {:source-table (str "card__" (u/the-id model))
+                                                      :breakout [[:field "USER_ID" {:base-type :type/Integer}]]
+                                                      :aggregation [[:sum [:field "TOTAL" {:base-type :type/Float}]]]})
                                                    :visualization_settings {:pivot_table.column_split {:rows    ["USER_ID"],
                                                                                                        :columns [],
                                                                                                        :values  ["sum"]},
@@ -3515,6 +3497,7 @@
                                                                     :joins [{:fields       :all
                                                                              :source-table table-id
                                                                              :condition    [:= 1 2] ; field-ids don't matter
+                                                                             :ident        "DqJ2fSIeMkc31Hx_B1Ees"
                                                                              :alias        "SomeAlias"}]}})]
                   (is (nil? (:based_on_upload (request card'))))))
               (testing "\nIf the table is not based on uploads, based_on_upload should be nil"
@@ -3805,31 +3788,26 @@
   (testing "Pivot Tables with a model source will return row totals (#46575)"
     (mt/with-temp [:model/Card {model-id :id} {:type :model
                                                :dataset_query
-                                               {:database (mt/id)
-                                                :type     :query
-                                                :query
-                                                {:source-table (mt/id :orders)
-                                                 :joins
-                                                 [{:fields       :all
-                                                   :strategy     :left-join
-                                                   :alias        "People - User"
-                                                   :condition
-                                                   [:=
-                                                    [:field (mt/id :orders :user_id) {:base-type :type/Integer}]
-                                                    [:field (mt/id :people :id) {:base-type :type/BigInteger :join-alias "People - User"}]]
-                                                   :source-table (mt/id :people)}]}}}
+                                               (mt/mbql-query orders
+                                                 {:joins
+                                                  [{:fields       :all
+                                                    :strategy     :left-join
+                                                    :alias        "People - User"
+                                                    :condition
+                                                    [:=
+                                                     [:field (mt/id :orders :user_id) {:base-type :type/Integer}]
+                                                     [:field (mt/id :people :id) {:base-type :type/BigInteger :join-alias "People - User"}]]
+                                                    :source-table (mt/id :people)}]})}
                    :model/Card {pivot-id :id} {:display :pivot
                                                :dataset_query
-                                               {:database (mt/id)
-                                                :type     :query
-                                                :query
-                                                {:aggregation  [[:sum [:field "TOTAL" {:base-type :type/Float}]]]
-                                                 :breakout
-                                                 [[:field "CREATED_AT" {:base-type :type/DateTime, :temporal-unit :month}]
-                                                  [:field "NAME" {:base-type :type/Text}]
-                                                  [:field (mt/id :products :category) {:base-type    :type/Text
-                                                                                       :source-field (mt/id :orders :product_id)}]]
-                                                 :source-table (format "card__%s" model-id)}}
+                                               (mt/mbql-query nil
+                                                 {:aggregation  [[:sum [:field "TOTAL" {:base-type :type/Float}]]]
+                                                  :breakout
+                                                  [[:field "CREATED_AT" {:base-type :type/DateTime, :temporal-unit :month}]
+                                                   [:field "NAME" {:base-type :type/Text}]
+                                                   [:field (mt/id :products :category) {:base-type    :type/Text
+                                                                                        :source-field (mt/id :orders :product_id)}]]
+                                                  :source-table (format "card__%s" model-id)})
                                                :visualization_settings
                                                {:pivot_table.column_split
                                                 {:rows    ["NAME" "CREATED_AT"]
