@@ -409,6 +409,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: `weekday`,
     type: "number",
     args: ["datetime"],
+    hasOptions: true, // optional mode parameter
   },
   "get-hour": {
     displayName: `hour`,

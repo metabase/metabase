@@ -32,7 +32,7 @@ export const Default = {
         onBeforeSave={async () => setBeforeSaveCalled(true)}
         onSave={(question, context) => {
           if (context.isNewQuestion) {
-            setNewQuestionTitle(question?.displayName() ?? "");
+            setNewQuestionTitle(question?.name ?? "");
           }
 
           close();
@@ -45,7 +45,7 @@ export const Default = {
 
         {isSaveModalOpen && (
           <Modal opened={isSaveModalOpen} onClose={close}>
-            <InteractiveQuestion.SaveQuestionForm onClose={close} />
+            <InteractiveQuestion.SaveQuestionForm onCancel={close} />
           </Modal>
         )}
 

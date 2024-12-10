@@ -37,14 +37,14 @@
                         :model/Database {db-id# :id} {:name "Indexed Database"}
                         :model/Table    {}           {:name "Indexed Table", :db_id db-id#}]
            (search.index/reset-index!)
-           (search.ingestion/populate-index! :search.engine/fulltext)
+           (search.ingestion/populate-index! :search.engine/appdb)
            ~@body)))))
 
 (deftest idempotent-test
   (with-index
     (let [count-rows  (fn [] (t2/count (search.index/active-table)))
           rows-before (count-rows)]
-      (search.ingestion/populate-index! :search.engine/fulltext)
+      (search.ingestion/populate-index! :search.engine/appdb)
       (is (= rows-before (count-rows))))))
 
 ;; Disabled due to CI issue
@@ -134,7 +134,7 @@
 (defn ingest!
   [model where-clause]
   (#'search.engine/consume!
-   :search.engine/fulltext
+   :search.engine/appdb
    (#'search.ingestion/query->documents
     (#'search.ingestion/spec-index-reducible model where-clause))))
 
@@ -480,11 +480,13 @@
         (testing "Given various obsolete search indexes"
           (is (every? #'search.index/exists? (cons related-table obsolete-tables))))
         (search.index/reset-index!)
-        (testing "We can create new one"
+        (testing "We can create new index"
           (is (#'search.index/exists? (search.index/active-table))))
         (testing "... without destroying any related non-index tables"
           (is (#'search.index/exists? related-table)))
         (testing "... and we clear out all the obsolete tables"
           (is (every? (comp not #'search.index/exists?) obsolete-tables)))
+        (testing "... and there is no more pending table"
+          (is (not (#'search.index/exists? (#'search.index/pending-table)))))
         (finally
           (#'search.index/drop-table! related-table))))))

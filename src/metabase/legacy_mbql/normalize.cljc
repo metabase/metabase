@@ -212,6 +212,10 @@
    (normalize-tokens y :ignore-path)
    (maybe-normalize-token unit)])
 
+(defmethod normalize-mbql-clause-tokens :during
+  [[_ field value unit]]
+  [:during (normalize-tokens field :ignore-path) value (maybe-normalize-token unit)])
+
 (defmethod normalize-mbql-clause-tokens :value
   ;; The args of a `value` clause shouldn't be normalized.
   ;; See https://github.com/metabase/metabase/issues/23354 for details
@@ -372,7 +376,8 @@
   {:pre [(map? metadata)]}
   (-> (reduce #(m/update-existing %1 %2 keyword) metadata [:base_type :effective_type :semantic_type :visibility_type :source :unit])
       (m/update-existing :field_ref normalize-field-ref)
-      (m/update-existing :fingerprint walk/keywordize-keys)))
+      (m/update-existing :fingerprint walk/keywordize-keys)
+      (m/update-existing-in [:binning_info :binning_strategy] keyword)))
 
 (defn- normalize-native-query
   "For native queries, normalize the top-level keys, and template tags, but nothing else."
@@ -671,13 +676,14 @@
   [[_ field filter-subclause]]
   [:sum-where (canonicalize-mbql-clause field) (canonicalize-mbql-clause filter-subclause)])
 
-(defmethod canonicalize-mbql-clause :case
-  [[_ clauses options]]
-  (if options
-    (conj (canonicalize-mbql-clause [:case clauses])
-          (normalize-tokens options :ignore-path))
-    [:case (vec (for [[pred expr] clauses]
-                  [(canonicalize-mbql-clause pred) (canonicalize-mbql-clause expr)]))]))
+(doseq [tag [:case :if]]
+  (defmethod canonicalize-mbql-clause tag
+    [[_ clauses options]]
+    (if options
+      (conj (canonicalize-mbql-clause [tag clauses])
+            (normalize-tokens options :ignore-path))
+      [tag (vec (for [[pred expr] clauses]
+                  [(canonicalize-mbql-clause pred) (canonicalize-mbql-clause expr)]))])))
 
 (defmethod canonicalize-mbql-clause :substring
   [[_ arg start & more]]
@@ -994,20 +1000,20 @@
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^{:arglists '([outer-query])} normalize
+(defn normalize
   "Normalize the tokens in a Metabase query (i.e., make them all `lisp-case` keywords), rewrite deprecated clauses as
   up-to-date MBQL 2000, and remove empty clauses."
-  (let [normalize* (comp remove-empty-clauses
-                         perform-whole-query-transformations
-                         canonicalize
-                         normalize-tokens)]
-    (fn [query]
-      (try
-        (normalize* query)
-        (catch #?(:clj Throwable :cljs js/Error) e
-          (throw (ex-info (i18n/tru "Error normalizing query: {0}" (ex-message e))
-                          {:query query}
-                          e)))))))
+  [query]
+  (try
+    (-> query
+        normalize-tokens
+        canonicalize
+        perform-whole-query-transformations
+        remove-empty-clauses)
+    (catch #?(:clj Throwable :cljs js/Error) e
+      (throw (ex-info (i18n/tru "Error normalizing query: {0}" (ex-message e))
+                      {:query query}
+                      e)))))
 
 (mu/defn normalize-or-throw :- ::mbql.s/Query
   "Like [[normalize]], but checks the result against the Malli schema for a legacy query, which will cause it to throw

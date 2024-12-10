@@ -3,7 +3,7 @@ import type { ComponentType, FC } from "react";
 import { type ConnectedProps, connect } from "react-redux";
 import _ from "underscore";
 
-import type { SdkPluginsConfig } from "embedding-sdk";
+import type { MetabasePluginsConfig } from "embedding-sdk";
 import {
   SdkError,
   SdkLoader,
@@ -96,8 +96,7 @@ type ConnectedDashboardProps = {
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
 
-  questionHeight?: number;
-  plugins?: SdkPluginsConfig;
+  plugins?: MetabasePluginsConfig;
   className?: string;
 } & DashboardFullscreenControls &
   DashboardRefreshPeriodControls &

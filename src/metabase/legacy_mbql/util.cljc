@@ -262,6 +262,29 @@
        [:>= col-default-bucket lower-with-offset]
        [:<  col-default-bucket upper-with-offset]])))
 
+(defn desugar-during
+  "Transform a `:during` expression to an `:and` expression."
+  [m]
+  (lib.util.match/replace
+    m
+    [:during col value unit]
+    (let [col-default-bucket (cond-> col
+                               (and (vector? col) (= 3 (count col)))
+                               (update 2 assoc :temporal-unit :default))
+          lower-bound (u.time/truncate value unit)
+          upper-bound (u.time/add lower-bound unit 1)]
+      [:and
+       [:>= col-default-bucket lower-bound]
+       [:<  col-default-bucket upper-bound]])))
+
+(defn desugar-if
+  "Transform a `:if` expression to an `:case` expression."
+  [m]
+  (lib.util.match/replace
+    m
+    [:if & args]
+    (into [:case] args)))
+
 (defn desugar-does-not-contain
   "Rewrite `:does-not-contain` filter clauses as simpler `[:not [:contains ...]]` clauses.
 
@@ -345,13 +368,6 @@
     [(op :guard temporal-extract-ops) field & args]
     [:temporal-extract field (temporal-extract-ops->unit [op (first args)])]))
 
-(defn desugar-if
-  "Rewrite `:if` filter clauses as `:case` clauses. `:if` is an alias to `:case` with the same semantics."
-  [m]
-  (lib.util.match/replace m
-    [:if & args]
-    (into [:case] args)))
-
 (defn- desugar-divide-with-extra-args [expression]
   (lib.util.match/replace expression
     [:/ x y z & more]
@@ -418,6 +434,7 @@
       desugar-inside
       simplify-compound-filter
       desugar-temporal-extract
+      desugar-during
       desugar-if
       maybe-desugar-expression))
 

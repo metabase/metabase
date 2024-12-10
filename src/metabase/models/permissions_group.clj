@@ -140,23 +140,23 @@
   [_model k groups]
   (mi/instances-with-hydrated-data
    groups k
-   #(group-by :group_id (cond-> (t2/select :model/User {:select    [:u.id
-                                                                    ;; user_id is for legacy reasons, we should remove it
-                                                                    [:u.id :user_id]
-                                                                    :u.first_name
-                                                                    :u.last_name
-                                                                    :u.email
-                                                                    :pgm.group_id
-                                                                    [:pgm.id :membership_id]
-                                                                    (when (premium-features/enable-advanced-permissions?)
-                                                                      [:pgm.is_group_manager :is_group_manager])]
-                                                        :from      [[:core_user :u]]
-                                                        :left-join [[:permissions_group_membership :pgm] [:= :u.id :pgm.user_id]]
-                                                        :where     [:and
-                                                                    [:= :u.is_active true]
-                                                                    [:in :pgm.group_id (map :id groups)]]
-                                                        :order-by  [[[:lower :u.first_name] :asc]
-                                                                    [[:lower :u.last_name] :asc]]})))
+   #(group-by :group_id (t2/select :model/User {:select    [:u.id
+                                                            ;; user_id is for legacy reasons, we should remove it
+                                                            [:u.id :user_id]
+                                                            :u.first_name
+                                                            :u.last_name
+                                                            :u.email
+                                                            :pgm.group_id
+                                                            [:pgm.id :membership_id]
+                                                            (when (premium-features/enable-advanced-permissions?)
+                                                              [:pgm.is_group_manager :is_group_manager])]
+                                                :from      [[:core_user :u]]
+                                                :left-join [[:permissions_group_membership :pgm] [:= :u.id :pgm.user_id]]
+                                                :where     [:and
+                                                            [:= :u.is_active true]
+                                                            [:in :pgm.group_id (map :id groups)]]
+                                                :order-by  [[[:lower :u.first_name] :asc]
+                                                            [[:lower :u.last_name] :asc]]}))
    :id
    {:default []}))
 

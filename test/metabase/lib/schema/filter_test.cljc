@@ -81,7 +81,8 @@
       (doseq [filter-clause (rest filter-expr)
               :let          [filter-clause (ensure-uuids filter-clause)]]
         (testing (pr-str filter-clause)
-          (is (= (expression/type-of filter-clause) :type/Boolean))
+          (is (= :type/Boolean
+                 (expression/type-of filter-clause)))
           (is (not (me/humanize (mc/explain ::expression/boolean filter-clause))))))
       ;; now test the entire thing
       (is (mc/validate ::expression/boolean (ensure-uuids filter-expr))))))

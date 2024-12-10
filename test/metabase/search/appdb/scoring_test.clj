@@ -33,7 +33,7 @@
   [search-string & {:as raw-ctx}]
   (memoize/memo-clear! #'scoring/view-count-percentiles)
   (mapv (juxt :model :id :name)
-        (search.tu/search-results search-string (assoc raw-ctx :search-engine "fulltext"))))
+        (search.tu/search-results search-string (assoc raw-ctx :search-engine "appdb"))))
 
 (defmacro with-weights [weight-map & body]
   `(mt/with-dynamic-redefs [search.config/weights (constantly ~weight-map)]
@@ -57,6 +57,12 @@
 
 ;; ---- index-ony rankers ----
 ;; These are the easiest to test, as they don't depend on other appdb state.
+
+(deftest ^:parallel no-search-string-test
+  (with-index-contents
+    [{:model "card" :id 1 :name "orders"}]
+    (testing "For better or worse, we can omit a search query"
+      (is [{:model "card" 1 "orders"}] (search-results* nil)))))
 
 (deftest ^:parallel text-test
   (with-index-contents

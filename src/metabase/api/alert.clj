@@ -1,5 +1,7 @@
-(ns metabase.api.alert
-  "/api/alert endpoints"
+(ns ^:deprecated metabase.api.alert
+  "/api/alert endpoints.
+
+  Deprecated: will soon be migrated to notification APIs."
   (:require
    [clojure.data :as data]
    [clojure.set :refer [difference]]

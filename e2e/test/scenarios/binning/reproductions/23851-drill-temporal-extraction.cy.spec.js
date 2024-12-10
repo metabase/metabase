@@ -1,11 +1,5 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  chartPathWithFillColor,
-  getNotebookStep,
-  openNotebook,
-  popover,
-  restore,
-} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -20,7 +14,7 @@ const CREATED_AT_BREAKOUT = [
 
 describe("issue 23851", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
@@ -41,9 +35,9 @@ describe("issue 23851", () => {
       { visitQuestion: true },
     );
 
-    chartPathWithFillColor("#509EE3").should("have.length", 7);
-    chartPathWithFillColor("#509EE3").eq(5).click();
-    popover().findByText("See these Orders").click();
+    H.chartPathWithFillColor("#509EE3").should("have.length", 7);
+    H.chartPathWithFillColor("#509EE3").eq(5).click();
+    H.popover().findByText("See these Orders").click();
 
     cy.wait("@dataset");
 
@@ -52,8 +46,8 @@ describe("issue 23851", () => {
       "Created At: Day of week is equal to 6",
     );
     cy.get("[data-testid=cell-data]").should("contain", "109.22");
-    openNotebook();
-    getNotebookStep("filter")
+    H.openNotebook();
+    H.getNotebookStep("filter")
       .findByText("Created At: Day of week is equal to 6")
       .should("exist");
   });

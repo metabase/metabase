@@ -1,15 +1,14 @@
 (ns metabase.search.test-util
   (:require
-   [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.request.core :as request]
    ;; For now, this is specialized to the appdb engine, but we should be able to generalize it to all engines.
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.impl :as search.impl]
-   [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -20,14 +19,17 @@
   "Create a temporary index table for the duration of the body."
   [& body]
   `(when (search/supports-index?)
-     (search.index/with-temp-index-table ~@body)))
+     (search.index/with-temp-index-table
+      ;; We need ingestion to happen on the same thread so that it uses the right search index.
+       (binding [metabase.search.ingestion/*force-sync* true]
+         ~@body))))
 
 (defmacro with-api-user [raw-ctx & body]
   `(let [raw-ctx# ~raw-ctx]
      (if-let [user-id# (:current-user-id raw-ctx#)]
        ;; for brevity in some tests, we don't require that the user really exists
        (if (t2/exists? :model/User user-id#)
-         (mw.session/with-current-user user-id# ~@body)
+         (request/with-current-user user-id# ~@body)
          (binding [*user-ctx* (merge {:current-user-id       user-id#
                                       :current-user-perms    #{"/"}
                                       :is-superuser?         true
