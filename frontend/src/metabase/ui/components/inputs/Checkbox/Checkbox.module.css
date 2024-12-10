@@ -22,15 +22,15 @@
     .input {
       &:after {
         content: "";
-        border: 1px solid var(--mb-color-bg-dark);
+        border: rem(1) solid var(--mb-color-bg-dark);
         position: absolute;
-        top: -0.125rem;
-        left: 0.125rem;
+        top: rem(-2);
+        left: rem(2);
         height: 100%;
         width: 100%;
         border-radius: var(--checkbox-radius);
         z-index: -1;
-        background-color: var(--mb-color-text-white);
+        background-color: var(--mb-color-bg-white);
         box-sizing: "border-box";
       }
 

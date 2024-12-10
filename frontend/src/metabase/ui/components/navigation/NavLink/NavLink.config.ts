@@ -9,6 +9,7 @@ export const navLinkOverrides: MantineThemeOverride["components"] = {
       root: S.NavLink,
       label: S.NavLinkLabel,
       chevron: S.NavLinkChevron,
+      section: S.NavLinkSection,
     },
   }),
 };

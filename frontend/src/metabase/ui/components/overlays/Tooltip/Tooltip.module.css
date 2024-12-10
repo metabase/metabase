@@ -1,6 +1,6 @@
 .tooltip {
-  background-color: var(--mb-color-bg-black);
-  color: var(--mb-color-text-white);
+  background-color: var(--mb-color-tooltip-background);
+  color: var(--mb-color-tooltip-text);
   font-size: var(--mantine-font-size-sm);
   font-weight: bold;
   padding: 0.6rem 0.75rem;

@@ -22,6 +22,13 @@
         color: var(--mb-color-text-white);
       }
     }
+
+    &:not([data-active]) {
+      /* apply default icon color for section icons when inactive */
+      .NavLinkSection {
+        color: var(--mb-color-text-primary);
+      }
+    }
   }
 
   &[data-variant="mb-light"] {
@@ -46,4 +53,14 @@
 
 .NavLinkChevron {
   color: var(--mb-color-text-dark);
+}
+
+.NavLinkSection {
+  &[data-position="left"] {
+    margin-right: var(--mantine-spacing-sm);
+  }
+
+  &[data-position="right"] {
+    margin-left: var(--mantine-spacing-sm);
+  }
 }

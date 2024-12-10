@@ -16,6 +16,7 @@ export const modalOverrides = {
       title: Styles.title,
       overlay: Styles.overlay,
       content: Styles.content,
+      header: Styles.header,
       close: Styles.ModalCloseButton,
     },
   }),

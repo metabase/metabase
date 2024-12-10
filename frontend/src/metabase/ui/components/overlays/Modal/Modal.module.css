@@ -20,6 +20,10 @@
   background-color: var(--mb-color-background);
 }
 
+.header {
+  background-color: var(--mb-color-background);
+}
+
 .ModalCloseButton {
   color: var(--mb-color-text-tertiary) !important;
   padding: 0;
