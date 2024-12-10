@@ -350,74 +350,73 @@ describe("issue 20044", () => {
 
 describe("issue 20625", { tags: "@quarantine" }, () => {
   beforeEach(() => {
-    const body = [
-      // This result has 50 items, which is the limit
-      // as set by the backend.
-      // This is needed to trigger the second autocomplete.
-      ["ORDERS", "Table"],
-      ["PEOPLE", "Table"],
-      ["REVIEWS", "Table"],
-      ["ACTIVE_SUBSCRIPTION", "ACCOUNTS :type/Boolean :type/Category"],
-      ["ADDRESS", "PEOPLE :type/Text"],
-      ["BIRTH_DATE", "PEOPLE :type/Date"],
-      ["BUTTON_LABEL", "ANALYTIC_EVENTS :type/Text :type/Category"],
-      ["CANCELED_AT", "ACCOUNTS :type/DateTime :type/CancelationTimestamp"],
-      ["CATEGORY", "PRODUCTS :type/Text :type/Category"],
-      ["CREATED_AT", "ACCOUNTS :type/DateTime :type/CreationTimestamp"],
-      ["CREATED_AT", "ORDERS :type/DateTime :type/CreationTimestamp"],
-      ["CREATED_AT", "PEOPLE :type/DateTime :type/CreationTimestamp"],
-      ["CREATED_AT", "PRODUCTS :type/DateTime :type/CreationTimestamp"],
-      ["CREATED_AT", "REVIEWS :type/DateTime :type/CreationTimestamp"],
-      ["DATE_RECEIVED", "FEEDBACK :type/DateTime"],
-      ["DATE_RECEIVED", "INVOICES :type/DateTime"],
-      ["EAN", "PRODUCTS :type/Text"],
-      ["EMAIL", "ACCOUNTS :type/Text :type/Email"],
-      ["EMAIL", "FEEDBACK :type/Text :type/Email"],
-      ["EMAIL", "PEOPLE :type/Text :type/Email"],
-      ["EVENT", "ANALYTIC_EVENTS :type/Text :type/Category"],
-      ["EXPECTED_INVOICE", "INVOICES :type/Boolean :type/Category"],
-      ["FIRST_NAME", "ACCOUNTS :type/Text :type/Name"],
-      ["LAST_NAME", "ACCOUNTS :type/Text :type/Name"],
-      ["LATITUDE", "ACCOUNTS :type/Float :type/Latitude"],
-      ["LATITUDE", "PEOPLE :type/Float :type/Latitude"],
-      ["LEGACY_PLAN", "ACCOUNTS :type/Boolean :type/Category"],
-      ["LONGITUDE", "ACCOUNTS :type/Float :type/Longitude"],
-      ["LONGITUDE", "PEOPLE :type/Float :type/Longitude"],
-      ["NAME", "PEOPLE :type/Text :type/Name"],
-      ["PAGE_URL", "ANALYTIC_EVENTS :type/Text :type/URL"],
-      ["PAYMENT", "INVOICES :type/Float"],
-      ["PRICE", "PRODUCTS :type/Float"],
-      ["RATING_MAPPED", "FEEDBACK :type/Text :type/Category"],
-      ["REVIEWER", "REVIEWS :type/Text"],
-      ["SEATS", "ACCOUNTS :type/Integer"],
-      ["SOURCE", "ACCOUNTS :type/Text :type/Source"],
-      ["SOURCE", "PEOPLE :type/Text :type/Source"],
-      ["STATE", "PEOPLE :type/Text :type/State"],
-      ["TIMESTAMP", "ANALYTIC_EVENTS :type/DateTime"],
-      ["TITLE", "PRODUCTS :type/Text :type/Title"],
-      ["TRIAL_CONVERTED", "ACCOUNTS :type/Boolean :type/Category"],
-      ["TRIAL_ENDS_AT", "ACCOUNTS :type/DateTime"],
-      ["USER_ID", "ORDERS :type/Integer :type/FK"],
-      ["VENDOR", "PRODUCTS :type/Text :type/Company"],
-      ["VENDOR_ID", "PRODUCTS :type/Integer :type/FK"],
-      ["USER_NAME", "PRODUCTS :type/Text :type/Name"],
-      ["TEST_COLUMN_1", "PRODUCTS :type/Text :type/Name"],
-      ["TEST_COLUMN_2", "PRODUCTS :type/Text :type/Name"],
-      ["TEST_COLUMN_3", "PRODUCTS :type/Text :type/Name"],
-    ];
-
     H.restore();
     cy.signInAsAdmin();
     H.updateSetting("native-query-autocomplete-match-style", "prefix");
     cy.signInAsNormalUser();
-    cy.intercept("GET", "/api/database/*/autocomplete_suggestions**", {
-      statusCode: 200,
-      body,
-    }).as("autocomplete");
   });
 
   // realpress messes with cypress 13
-  it("should continue to request more prefix matches (metabase#20625)", () => {
+  it("should continue to request more prefix matches from the server when the limit was hit (metabase#20625)", () => {
+    cy.intercept("GET", "/api/database/*/autocomplete_suggestions**", {
+      statusCode: 200,
+      body: [
+        // This result has 50 items, which is the limit
+        // as set by the backend.
+        // This is needed to trigger the second autocomplete.
+        ["ORDERS", "Table"],
+        ["PEOPLE", "Table"],
+        ["REVIEWS", "Table"],
+        ["ACTIVE_SUBSCRIPTION", "ACCOUNTS :type/Boolean :type/Category"],
+        ["ADDRESS", "PEOPLE :type/Text"],
+        ["BIRTH_DATE", "PEOPLE :type/Date"],
+        ["BUTTON_LABEL", "ANALYTIC_EVENTS :type/Text :type/Category"],
+        ["CANCELED_AT", "ACCOUNTS :type/DateTime :type/CancelationTimestamp"],
+        ["CATEGORY", "PRODUCTS :type/Text :type/Category"],
+        ["CREATED_AT", "ACCOUNTS :type/DateTime :type/CreationTimestamp"],
+        ["CREATED_AT", "ORDERS :type/DateTime :type/CreationTimestamp"],
+        ["CREATED_AT", "PEOPLE :type/DateTime :type/CreationTimestamp"],
+        ["CREATED_AT", "PRODUCTS :type/DateTime :type/CreationTimestamp"],
+        ["CREATED_AT", "REVIEWS :type/DateTime :type/CreationTimestamp"],
+        ["DATE_RECEIVED", "FEEDBACK :type/DateTime"],
+        ["DATE_RECEIVED", "INVOICES :type/DateTime"],
+        ["EAN", "PRODUCTS :type/Text"],
+        ["EMAIL", "ACCOUNTS :type/Text :type/Email"],
+        ["EMAIL", "FEEDBACK :type/Text :type/Email"],
+        ["EMAIL", "PEOPLE :type/Text :type/Email"],
+        ["EVENT", "ANALYTIC_EVENTS :type/Text :type/Category"],
+        ["EXPECTED_INVOICE", "INVOICES :type/Boolean :type/Category"],
+        ["FIRST_NAME", "ACCOUNTS :type/Text :type/Name"],
+        ["LAST_NAME", "ACCOUNTS :type/Text :type/Name"],
+        ["LATITUDE", "ACCOUNTS :type/Float :type/Latitude"],
+        ["LATITUDE", "PEOPLE :type/Float :type/Latitude"],
+        ["LEGACY_PLAN", "ACCOUNTS :type/Boolean :type/Category"],
+        ["LONGITUDE", "ACCOUNTS :type/Float :type/Longitude"],
+        ["LONGITUDE", "PEOPLE :type/Float :type/Longitude"],
+        ["NAME", "PEOPLE :type/Text :type/Name"],
+        ["PAGE_URL", "ANALYTIC_EVENTS :type/Text :type/URL"],
+        ["PAYMENT", "INVOICES :type/Float"],
+        ["PRICE", "PRODUCTS :type/Float"],
+        ["RATING_MAPPED", "FEEDBACK :type/Text :type/Category"],
+        ["REVIEWER", "REVIEWS :type/Text"],
+        ["SEATS", "ACCOUNTS :type/Integer"],
+        ["SOURCE", "ACCOUNTS :type/Text :type/Source"],
+        ["SOURCE", "PEOPLE :type/Text :type/Source"],
+        ["STATE", "PEOPLE :type/Text :type/State"],
+        ["TIMESTAMP", "ANALYTIC_EVENTS :type/DateTime"],
+        ["TITLE", "PRODUCTS :type/Text :type/Title"],
+        ["TRIAL_CONVERTED", "ACCOUNTS :type/Boolean :type/Category"],
+        ["TRIAL_ENDS_AT", "ACCOUNTS :type/DateTime"],
+        ["USER_ID", "ORDERS :type/Integer :type/FK"],
+        ["VENDOR", "PRODUCTS :type/Text :type/Company"],
+        ["VENDOR_ID", "PRODUCTS :type/Integer :type/FK"],
+        ["USER_NAME", "PRODUCTS :type/Text :type/Name"],
+        ["TEST_COLUMN_1", "PRODUCTS :type/Text :type/Name"],
+        ["TEST_COLUMN_2", "PRODUCTS :type/Text :type/Name"],
+        ["TEST_COLUMN_3", "PRODUCTS :type/Text :type/Name"],
+      ],
+    }).as("autocomplete");
+
     H.openNativeEditor();
     cy.realType("e");
 
@@ -428,6 +427,32 @@ describe("issue 20625", { tags: "@quarantine" }, () => {
 
     // autocomplete_suggestions?prefix=so
     cy.wait("@autocomplete");
+  });
+
+  it("should not continue to request more prefix matches from the server when the limit was not hit (metabase#20625)", () => {
+    cy.intercept("GET", "/api/database/*/autocomplete_suggestions**", {
+      statusCode: 200,
+      body: [
+        // This result has less 50 items, which is under the limit
+        // as set by the backend.
+        // It will not be necessary to trigger the second autocomplete.
+        ["ORDERS", "Table"],
+        ["PEOPLE", "Table"],
+        ["REVIEWS", "Table"],
+        ["ACTIVE_SUBSCRIPTION", "ACCOUNTS :type/Boolean :type/Category"],
+        ["ADDRESS", "PEOPLE :type/Text"],
+      ],
+    }).as("autocomplete");
+
+    H.openNativeEditor();
+    cy.realType("e");
+
+    // autocomplete_suggestions?prefix=s
+    cy.wait("@autocomplete");
+
+    cy.realType("o");
+
+    cy.get("@autocomplete.all").should("have.length", 1);
   });
 });
 
