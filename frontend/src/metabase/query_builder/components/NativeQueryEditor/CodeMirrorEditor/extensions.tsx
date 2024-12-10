@@ -52,6 +52,14 @@ type ExtensionOptions = {
   referencedQuestionIds?: CardId[];
 };
 
+// Keep this in sync with the limit in the backend code at
+// `autocomplete-suggestions` in src/metabase/api/database.clj
+const AUTOCOMPLETE_SUGGESTIONS_LIMIT = 50;
+
+// Keep this in sync with the limit in the backend code at
+// `autocomplete-cards` in src/metabase/api/database.clj
+const AUTOCOMPLETE_CARD_SUGGESTIONS_LIMIT = 50;
+
 export function useExtensions({
   engine,
   databaseId,
@@ -211,14 +219,21 @@ function language({
 
     return {
       from: word.from,
-      validFor(text: string) {
-        return text.startsWith(word.text);
-      },
       options: results.map(([value, meta]) => ({
         label: value,
         detail: meta,
         boost: 50,
       })),
+      validFor(text: string) {
+        if (results.length >= AUTOCOMPLETE_SUGGESTIONS_LIMIT) {
+          // If there are more suggestions than the limit, we want subsequent
+          // edits to fetch more completions because we can't assume that we've seen all
+          // suggestions
+          return false;
+        }
+
+        return text.startsWith(word.text);
+      },
     };
   }
 
@@ -298,9 +313,6 @@ function language({
     return {
       // -1 because we want to include the # in the autocomplete
       from: tag.content.from - 1,
-      validFor(text: string) {
-        return text.startsWith(`#${query}`);
-      },
       options: results.map(({ id, name, type, collection_name }) => ({
         label: `#${id}-${slugg(name)}`,
         detail: getCardAutocompleteResultMeta(type, collection_name),
@@ -309,6 +321,15 @@ function language({
           : `#${id}-${slugg(name)} }}`,
         boost: 50,
       })),
+      validFor(text: string) {
+        if (results.length >= AUTOCOMPLETE_CARD_SUGGESTIONS_LIMIT) {
+          // If there are more suggestions than the limit, we want subsequent
+          // edits to fetch more completions because we can't assume that we've seen all
+          // suggestions
+          return false;
+        }
+        return text.startsWith(`#${query}`);
+      },
     };
   }
 
