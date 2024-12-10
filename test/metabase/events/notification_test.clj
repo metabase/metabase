@@ -101,7 +101,7 @@
       (= expected (#'events.notification/hydrate! schema value)))))
 
 (deftest record-task-history-test
-  (notification.tu/with-notification-testing-setup
+  (notification.tu/with-notification-testing-setup!
     (mt/with-temp [:model/Channel chn-1 (assoc notification.tu/default-can-connect-channel :name (mt/random-name))
                    :model/Channel chn-2 (assoc notification.tu/default-can-connect-channel :name (mt/random-name))]
       (notification.tu/with-temporary-event-topics! #{:event/testing}

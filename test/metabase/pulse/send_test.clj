@@ -118,7 +118,7 @@
           :when        f]
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
-      (notification.tu/with-notification-testing-setup
+      (notification.tu/with-notification-testing-setup!
         (mt/with-temp [Card          {card-id :id} (merge {:name    pulse.test-util/card-name
                                                            :display (or display :line)}
                                                           card)]
@@ -951,7 +951,7 @@
                       (swap! requests conj req)
                       {:status 200
                        :body   "ok"}))]
-      (notification.tu/with-notification-testing-setup
+      (notification.tu/with-notification-testing-setup!
         (channel.http-test/with-server [url [endpoint]]
           (mt/with-temp
             [:model/Card         card           {:dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}

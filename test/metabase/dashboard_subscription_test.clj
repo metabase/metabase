@@ -1003,7 +1003,7 @@
 (deftest dashboard-subscription-attachments-test
   (testing "Dashboard subscription attachments respect dashcard viz settings."
     (mt/with-fake-inbox
-      (notification.tu/with-notification-testing-setup
+      (notification.tu/with-notification-testing-setup!
         (mt/with-temp [Card {card-id :id :as c} (pulse.test-util/checkins-query-card {:breakout [!day.date]})
                        Dashboard     {dash-id :id} {:name "just dash"}]
           (let [;; with the helper `metadata->field-ref` we turn column metadata into column field refs
