@@ -189,7 +189,7 @@ function language({
   }
 
   // Completes column and table names from the database schema
-  async function completeIdentifiers(context: CompletionContext) {
+  async function completeSchema(context: CompletionContext) {
     if (matchStyle === "off" || databaseId == null) {
       return null;
     }
@@ -375,7 +375,7 @@ function language({
       activateOnTypingDelay: 250,
       override: [
         completeFromLanguage,
-        completeIdentifiers,
+        completeSchema,
         completeSnippetTags,
         completeCardTags,
         completeReferencedCardIdentifiers,
