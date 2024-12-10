@@ -931,9 +931,8 @@
   [field]
   (-> field mbql.u/field-options :temporal-unit))
 
-(defn- temporal-unit-is?
-  [field units]
-  (contains? units (temporal-unit field)))
+(defn- temporal-unit-is? [units]
+  #(units (temporal-unit %)))
 
 (defn- remove-temporal-unit
   [field]
@@ -977,12 +976,12 @@
   [filter-clause :- mbql.s/Filter]
   (lib.util.match/replace filter-clause
     [:!=
-     (field :guard #(and (mbql.preds/Field? %) (temporal-unit-is? % #{:hour-of-day})))
+     (field :guard (every-pred mbql.preds/Field? (temporal-unit-is? #{:hour-of-day})))
      & (args :guard #(every? number? %))]
     (into [:!= [:get-hour (remove-temporal-unit field)]] args)
 
     [:!=
-     (field :guard #(and (mbql.preds/Field? %) (temporal-unit-is? % #{:day-of-week :month-of-year :quarter-of-year})))
+     (field :guard (every-pred mbql.preds/Field? (temporal-unit-is? #{:day-of-week :month-of-year :quarter-of-year})))
      & (args :guard #(every? u.time/timestamp-coercible? %))]
     (let [args (mapv u.time/coerce-to-timestamp args)]
       (if (every? u.time/valid? args)
