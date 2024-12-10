@@ -3,13 +3,14 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { ActionIcon, Group, Icon, Select } from "metabase/ui";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
+import { ChartSettingColorPicker } from "./ChartSettingColorPicker";
 import {
   ChartSettingFieldPickerRoot,
-  FieldPickerColorPicker,
   GrabberHandle,
 } from "./ChartSettingFieldPicker.styled";
 
@@ -104,12 +105,13 @@ const ChartSettingFieldPicker = ({
                 />
               )}
               {showColorPicker && seriesKey && (
-                <FieldPickerColorPicker
+                <ChartSettingColorPicker
                   pillSize="small"
                   value={colors[seriesKey]}
                   onChange={value => {
                     onChangeSeriesColor(seriesKey, value);
                   }}
+                  className={CS.pointerEventsAll}
                 />
               )}
             </>
@@ -149,10 +151,10 @@ const ChartSettingFieldPicker = ({
             {menuWidgetInfo && (
               <ActionIcon
                 c="text-medium"
-                style={{ pointerEvents: "all" }}
                 size="sm"
                 radius="xl"
                 data-testid={`settings-${value}`}
+                className={CS.pointerEventsAll}
                 onClick={e => {
                   onShowWidget(menuWidgetInfo, e.target);
                 }}
@@ -167,6 +169,7 @@ const ChartSettingFieldPicker = ({
                 radius="xl"
                 data-testid={`remove-${value}`}
                 onClick={onRemove}
+                className={CS.pointerEventsAll}
                 style={{ pointerEvents: "all" }}
               >
                 <Icon name="close" />
