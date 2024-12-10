@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import EntityLink from "./EntityLink";
 import EntityListLoader, { entityListLoader } from "./EntityListLoader";
 import { EntityName } from "./EntityName";
 import EntityObjectLoader, { entityObjectLoader } from "./EntityObjectLoader";
@@ -59,9 +58,4 @@ export function addEntityContainers(entity) {
     <EntityName entityType={entity.name} entityId={id} {...props} />
   );
   entity.Name.displayName = `${ObjectName}.Name`;
-
-  entity.Link = ({ id, ...props }) => (
-    <EntityLink entityType={entity.name} entityId={id} {...props} />
-  );
-  entity.Link.displayName = `${ObjectName}.Link`;
 }
