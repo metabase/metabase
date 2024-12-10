@@ -595,12 +595,9 @@ describe("issue 34330", () => {
     cy.get("@autocomplete.all").should("have.length", 1);
   });
 
-  // TODO: is this a behaviour we really want?
-  // CodeMirror will not request more autocompletions if the prefix has just become
-  // more narrow since the last call, and will do filtering on the client.
-  it.skip("should call the autocompleter eventually, even when only 1 character was typed (metabase#34330)", () => {
+  it("should call the autocompleter eventually, even when only 1 character was typed (metabase#34330)", () => {
     H.openNativeEditor();
-    cy.realType("U");
+    H.nativeEditorType("U");
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
