@@ -3,15 +3,12 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { Box, type BoxProps, type IconName } from "metabase/ui";
+import { Box, type BoxProps, Flex, type IconName } from "metabase/ui";
 
 import SidebarHeader from "../SidebarHeader";
+import ViewButton from "../view/ViewButton";
 
-import {
-  FooterButton,
-  SidebarContentMain,
-  SidebarContentRoot,
-} from "./SidebarContent.styled";
+import SidebarContentS from "./SidebarContent.module.css";
 
 type Props = {
   className?: string;
@@ -37,16 +34,30 @@ function SidebarContent({
   onDone,
   doneButtonText = t`Done`,
   footer = onDone ? (
-    <FooterButton color={color} onClick={onDone}>
+    <ViewButton
+      className={SidebarContentS.FooterButton}
+      color={color}
+      onClick={onDone}
+      active
+    >
       {doneButtonText}
-    </FooterButton>
+    </ViewButton>
   ) : null,
   children,
   "data-testid": dataTestId,
 }: Props) {
   return (
-    <SidebarContentRoot data-testid={dataTestId} className={className}>
-      <SidebarContentMain data-testid="sidebar-content">
+    <Flex
+      direction="column"
+      justify="space-between"
+      h="100%"
+      data-testid={dataTestId}
+      className={className}
+    >
+      <Box
+        className={SidebarContentS.SidebarContentMain}
+        data-testid="sidebar-content"
+      >
         {(title || icon || onBack) && (
           <SidebarHeader
             className={cx(CS.mx3, CS.my2, CS.pt1)}
@@ -57,20 +68,19 @@ function SidebarContent({
           />
         )}
         {children}
-      </SidebarContentMain>
+      </Box>
       {footer}
-    </SidebarContentRoot>
+    </Flex>
   );
 }
 
-const PaneContent = (props: BoxProps) => {
-  return <Box px="lg" {...props} />;
+export const PaneContent = (props: BoxProps) => {
+  return <Box pl="lg" pr="lg" {...props} />;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(SidebarContent, {
-  Root: SidebarContentRoot,
   Header: SidebarHeader,
-  Content: SidebarContentMain,
+  // Content: SidebarContentMain,
   Pane: PaneContent,
 });

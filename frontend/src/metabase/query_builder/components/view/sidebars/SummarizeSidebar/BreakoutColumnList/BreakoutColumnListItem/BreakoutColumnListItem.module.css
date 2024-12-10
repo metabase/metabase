@@ -1,0 +1,10 @@
+.titleContainer {
+  flex-grow: 1;
+}
+
+.title {
+  margin: 0 0.5rem;
+  word-break: break-word;
+  font-size: 0.875rem;
+  font-weight: 700;
+}

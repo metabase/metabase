@@ -19,6 +19,7 @@ import {
 } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
+import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import DatasetEditor from "../../../DatasetEditor";
@@ -31,10 +32,7 @@ import { ViewLeftSidebarContainer } from "../ViewLeftSidebarContainer";
 import { ViewMainContainer } from "../ViewMainContainer";
 import { ViewRightSidebarContainer } from "../ViewRightSidebarContainer";
 
-import {
-  QueryBuilderContentContainer,
-  QueryBuilderViewRoot,
-} from "./View.styled";
+import ViewS from "./View.module.css";
 
 const ViewInner = props => {
   const {
@@ -186,13 +184,13 @@ const ViewInner = props => {
 
   return (
     <div className={CS.fullHeight}>
-      <QueryBuilderViewRoot
-        className={QueryBuilderS.QueryBuilder}
+      <Flex
+        className={`${ViewS.QueryBuilderViewRoot} ${QueryBuilderS.QueryBuilder}`}
         data-testid="query-builder-root"
       >
         {isHeaderVisible && <ViewHeaderContainer {...props} />}
 
-        <QueryBuilderContentContainer>
+        <Flex className={ViewS.QueryBuilderContentContainer}>
           {!isNative && (
             <NotebookContainer
               isOpen={isNotebookContainerOpen}
@@ -237,8 +235,8 @@ const ViewInner = props => {
           >
             <ViewRightSidebarContainer {...props} />
           </ViewSidebar>
-        </QueryBuilderContentContainer>
-      </QueryBuilderViewRoot>
+        </Flex>
+      </Flex>
 
       {isShowingNewbModal && (
         <SavedQuestionIntroModal
