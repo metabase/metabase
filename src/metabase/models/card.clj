@@ -551,12 +551,70 @@
       (pre-update-check-sandbox-constraints changes)
       (assert-valid-type (merge old-card-info changes)))))
 
+(defn- derive-ident [prefix entity_id stage-number tail]
+  ;; XXX: Probably bring this back, though it's likely to break a load of tests because I didn't specify the joins
+  ;; and especially breakouts as aggressively as I might have done.
+  ;; Alternatively, add a dynamic var or something for ad-hoc queries, since this might happen for them?
+  (when-not entity_id
+    (throw (ex-info "derive-ident with blank entity_id" {:prefix prefix :stage-number stage-number :tail tail})))
+  (if (= entity_id ::before-insert)
+    ;; If this is a fresh insert, it's safe to generate them at random rather than deriving them!
+    (u/generate-nano-id)
+    ;; If entity_id is provided instead, then derive an opaque string based on that entity_id.
+    (str prefix "_" entity_id "@" stage-number "__" tail)))
+
+(defn- ensure-clause-idents-list [existing xs prefix stage-number {:keys [entity_id] :as _ctx}]
+  (into {} (map (fn [i]
+                  [i (or (get existing i)
+                         (derive-ident prefix entity_id stage-number i))]))
+        (range (count xs))))
+
+(defn- ensure-clause-idents-expressions [existing expressions stage-number {:keys [entity_id] :as _ctx}]
+  (m/map-kv-vals (fn [expr-name _expr-clause]
+                   (or (get existing expr-name)
+                       (derive-ident "expression" entity_id stage-number expr-name)))
+                 expressions))
+
+(defn- ensure-clause-idents-joins [joins stage-number {:keys [entity_id] :as _ctx}]
+  (mapv #(assoc % :ident (derive-ident "join" entity_id stage-number (:alias %)))
+        joins))
+
+(defn- ensure-clause-idents-inner [inner-query ctx]
+  (let [{:keys [query stage-number]} (if-let [source-query (:source-query inner-query)]
+                                       (-> (ensure-clause-idents-inner source-query ctx)
+                                           (update :query #(assoc inner-query :source-query %)))
+                                       {:query inner-query
+                                        :stage-number 0})]
+    {:stage-number (inc stage-number)
+     :query (cond-> query
+              (:aggregation query) (update :aggregation-idents
+                                           ensure-clause-idents-list (:aggregation query) "aggregation" stage-number ctx)
+              (:expressions query) (update :expression-idents
+                                           ensure-clause-idents-expressions (:expressions query) stage-number ctx)
+              (:breakout query)    (update :breakout-idents
+                                           ensure-clause-idents-list (:breakout query) "breakout" stage-number ctx)
+              (:joins query)       (update :joins       ensure-clause-idents-joins stage-number ctx))}))
+
+(defn- ensure-clause-idents-outer [{:keys [query type] :as outer-query} ctx]
+  (if-let [{inner-query :query} (when (and (= type :query) query)
+                                  (ensure-clause-idents-inner query ctx))]
+    (assoc outer-query :query inner-query)
+    outer-query))
+
+(defn- ensure-clause-idents
+  ([card]
+   (ensure-clause-idents card nil))
+  ([card default-ctx]
+   (let [ctx (merge default-ctx (select-keys card [:entity_id]))]
+     (m/update-existing card :dataset_query ensure-clause-idents-outer ctx))))
+
 (t2/define-after-select :model/Card
   [card]
   (-> card
       (dissoc :dataset_query_metrics_v2_migration_backup)
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
-      public-settings/remove-public-uuid-if-public-sharing-is-disabled))
+      public-settings/remove-public-uuid-if-public-sharing-is-disabled
+      ensure-clause-idents))
 
 (t2/define-before-insert :model/Card
   [card]
@@ -565,7 +623,8 @@
       maybe-normalize-query
       card.metadata/populate-result-metadata
       pre-insert
-      populate-query-fields))
+      populate-query-fields
+      (ensure-clause-idents {:entity_id ::before-insert})))
 
 (t2/define-after-insert :model/Card
   [card]
