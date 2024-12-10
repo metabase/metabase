@@ -3,7 +3,9 @@ import type {
   CardId,
   CardQueryMetadata,
   CardQueryRequest,
+  CollectionItem,
   CreateCardRequest,
+  DashboardId,
   Dataset,
   GetCardRequest,
   GetEmbeddableCard,
@@ -89,9 +91,13 @@ export const cardApi = Api.injectEndpoints({
         invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
       }),
       updateCard: builder.mutation<Card, UpdateCardRequest>({
-        query: ({ id, ...body }) => ({
+        query: ({ id, delete_old_dashcards, ...body }) => ({
           method: "PUT",
-          url: `/api/card/${id}`,
+          url:
+            `/api/card/${id}` +
+            (delete_old_dashcards !== undefined
+              ? `?delete_old_dashcards=${delete_old_dashcards}`
+              : ""),
           body,
         }),
         invalidatesTags: (_, error, { id }) =>
@@ -220,6 +226,30 @@ export const cardApi = Api.injectEndpoints({
         updateCardPropertyMutation<"enable_embedding">(),
       updateCardEmbeddingParams:
         updateCardPropertyMutation<"embedding_params">(),
+      getCardDashboards: builder.query<
+        { id: DashboardId; name: string }[],
+        Pick<Card, "id">
+      >({
+        query: ({ id }) => ({
+          method: "GET",
+          url: `/api/card/${id}/dashboards`,
+        }),
+        forceRefetch: () => true,
+      }),
+      getMultipleCardsDashboards: builder.query<
+        {
+          card_id: CollectionItem["id"];
+          dashboards: { id: DashboardId; name: string; error?: string }[];
+        }[],
+        { card_ids: CollectionItem["id"][] }
+      >({
+        query: body => ({
+          method: "POST",
+          url: `/api/cards/dashboards`,
+          body,
+        }),
+        forceRefetch: () => true,
+      }),
     };
   },
 });
@@ -242,10 +272,13 @@ export const {
   useDeleteCardPublicLinkMutation,
   useUpdateCardEmbeddingParamsMutation,
   useUpdateCardEnableEmbeddingMutation,
+  useGetCardDashboardsQuery,
+  useGetMultipleCardsDashboardsQuery,
   endpoints: {
     createCardPublicLink,
     deleteCardPublicLink,
     updateCardEnableEmbedding,
     updateCardEmbeddingParams,
+    getCardDashboards,
   },
 } = cardApi;

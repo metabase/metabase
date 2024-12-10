@@ -12,7 +12,7 @@ import { BannerButton } from "./BannerButton";
 type ArchivedEntityBannerProps = {
   name: string;
   entityType: string;
-  canWrite: boolean;
+  canMove: boolean;
   canRestore: boolean;
   canDelete: boolean;
   onUnarchive: () => void;
@@ -24,14 +24,14 @@ export const ArchivedEntityBanner = ({
   name,
   entityType,
   canRestore,
-  canWrite,
+  canMove,
   canDelete,
   onUnarchive,
   onMove,
   onDeletePermanently,
 }: ArchivedEntityBannerProps) => {
   const [modal, setModal] = useState<"move" | "delete" | null>(null);
-  const hasAction = canWrite || canDelete || canRestore;
+  const hasAction = canMove || canDelete || canRestore;
 
   return (
     <>
@@ -64,7 +64,7 @@ export const ArchivedEntityBanner = ({
                   {t`Restore`}
                 </BannerButton>
               )}
-              {canWrite && (
+              {canMove && (
                 <BannerButton iconName="move" onClick={() => setModal("move")}>
                   {t`Move`}
                 </BannerButton>
