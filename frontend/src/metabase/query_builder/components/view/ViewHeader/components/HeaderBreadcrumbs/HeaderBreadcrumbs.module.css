@@ -1,3 +1,11 @@
+.Container {
+  &.headVariant {
+    .HeaderBadge {
+      font-size: 1.25rem;
+    }
+  }
+}
+
 .HeaderBreadcrumbs {
   color: var(--mb-color-text-light);
   font-size: 0.8em;
@@ -11,8 +19,4 @@
   width: 1em;
   height: 1em;
   margin-right: 0.5em;
-
-  &.headVariant {
-    font-size: 1.25rem;
-  }
 }

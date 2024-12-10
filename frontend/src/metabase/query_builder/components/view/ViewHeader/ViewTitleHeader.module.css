@@ -150,7 +150,6 @@
 }
 
 .ViewHeaderIconButtonContainer {
-  /* maybe can be merged with ViewRunButtonWithTooltip */
   .ViewHeaderIconButton {
     padding: 0.25rem 0.5rem;
     height: 2rem;
@@ -176,17 +175,19 @@
     transition: all 400ms ease;
     position: relative;
     top: 0.5rem;
-
-    &.showSubHeader {
-      top: 0;
-    }
   }
 
   .ViewHeaderLeftSubHeading {
     opacity: 0;
     transition: all 400ms ease;
+  }
 
-    &.showSubHeader {
+  &.showSubHeader {
+    .SavedQuestionHeaderButtonContainer {
+      top: 0;
+    }
+
+    .ViewHeaderLeftSubHeading {
       opacity: 1;
     }
   }

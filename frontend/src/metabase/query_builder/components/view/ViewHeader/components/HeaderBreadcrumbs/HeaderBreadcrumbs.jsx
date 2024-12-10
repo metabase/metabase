@@ -11,6 +11,14 @@ const HeaderBadge = props => (
   <Badge className={HeaderBreadcrumbsS.HeaderBadge} {...props} />
 );
 
+HeaderBadge.propTypes = {
+  variant: PropTypes.oneOf(["head", "subhead"]),
+  children: PropTypes.node,
+  icon: PropTypes.string,
+  to: PropTypes.string,
+  inactiveColor: PropTypes.string,
+};
+
 const crumbShape = PropTypes.shape({
   name: PropTypes.string.isRequired,
   icon: PropTypes.string,
@@ -42,6 +50,9 @@ export function HeadBreadcrumbs({
       align="center"
       wrap="wrap"
       data-testid="head-crumbs-container"
+      className={cx(HeaderBreadcrumbsS.Container, {
+        [HeaderBreadcrumbsS.headVariant]: variant === "head",
+      })}
       {...props}
     >
       {parts.map((part, index) => {
@@ -53,16 +64,13 @@ export function HeadBreadcrumbs({
             {isValidElement(part) ? (
               part
             ) : (
-              <Badge
-                className={cx(HeaderBreadcrumbsS.HeaderBadge, {
-                  [HeaderBreadcrumbsS.headVariant]: variant === "head",
-                })}
+              <HeaderBadge
                 to={part.href}
                 icon={part.icon}
                 inactiveColor={badgeInactiveColor}
               >
                 {part.name}
-              </Badge>
+              </HeaderBadge>
             )}
             {!isLast &&
               (isValidElement(divider) ? divider : <Divider char={divider} />)}
@@ -73,7 +81,10 @@ export function HeadBreadcrumbs({
   );
 }
 
-// eslint-disable-next-line react/prop-types
+Divider.propTypes = {
+  char: PropTypes.string,
+};
+
 function Divider({ char = "/" }) {
   return (
     <Box component="span" className={HeaderBreadcrumbsS.HeaderBreadcrumbs}>
@@ -83,5 +94,3 @@ function Divider({ char = "/" }) {
 }
 
 HeadBreadcrumbs.Badge = HeaderBadge;
-// TODO: likely not used and can be removed
-HeadBreadcrumbs.Divider = Divider;

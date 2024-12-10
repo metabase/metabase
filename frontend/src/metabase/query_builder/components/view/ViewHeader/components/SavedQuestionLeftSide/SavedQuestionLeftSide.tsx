@@ -62,14 +62,15 @@ export function SavedQuestionLeftSide({
 
   return (
     <Box
-      className={ViewTitleHeaderS.SavedQuestionLeftSideRoot}
+      className={cx(ViewTitleHeaderS.SavedQuestionLeftSideRoot, {
+        [ViewTitleHeaderS.showSubHeader]: showSubHeader,
+      })}
       data-testid="qb-header-left-side"
     >
       <Flex align="center" wrap="nowrap">
         <Box
           className={cx(ViewTitleHeaderS.SavedQuestionHeaderButtonContainer, {
             [ViewTitleHeaderS.isModelOrMetric]: isModelOrMetric,
-            [ViewTitleHeaderS.showSubHeader]: showSubHeader,
           })}
         >
           <Flex align="center" gap="sm">
