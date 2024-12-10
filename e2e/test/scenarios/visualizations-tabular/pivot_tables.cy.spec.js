@@ -395,7 +395,6 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByText("Separator style");
 
     cy.log("Change the value formatting");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByDisplayValue("Normal").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Percent").click();

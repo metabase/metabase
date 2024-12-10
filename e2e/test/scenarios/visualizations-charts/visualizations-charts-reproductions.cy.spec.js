@@ -54,7 +54,7 @@ describe("issue 16170", { tags: "@mongo" }, () => {
     cy.findByText("Replace missing values with")
       .parent()
       .within(() => {
-        cy.findByTestId("select-button").click();
+        cy.findByTestId("chart-setting-select").click();
       });
 
     H.popover().contains(value).click();
@@ -379,9 +379,8 @@ describe("issue 18063", () => {
     cy.get('[id="map.type"]').click();
     H.popover().contains("Pin map").click();
 
-    // Click anywhere to close both popovers that open automatically. Need to click twice to dismiss both popovers
+    // Click on the popovers to close both popovers that open automatically.
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     ["Latitude field", "Longitude field"].map(field =>
       H.leftSidebar()
         .findByText(field)

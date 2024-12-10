@@ -314,12 +314,10 @@ describe("scenarios > question > settings", () => {
           cy.icon("ellipsis").click();
         });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByDisplayValue("Normal").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Currency").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByDisplayValue("US Dollar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Bitcoin").click();

@@ -909,7 +909,6 @@ describe("scenarios > admin > localization", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Unit of currency");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByDisplayValue("US Dollar").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Euro").click();

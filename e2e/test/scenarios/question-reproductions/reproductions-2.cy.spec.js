@@ -742,7 +742,7 @@ describe("Custom columns visualization settings", () => {
       viewAsDropdown.click();
     });
 
-    H.leftSidebar().findByText("Email link").click();
+    cy.findAllByRole("option", { name: "Email link" }).click();
 
     H.popover().within(() => {
       cy.findByDisplayValue("Email link").should("exist");
