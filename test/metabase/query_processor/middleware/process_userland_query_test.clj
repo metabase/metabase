@@ -137,26 +137,26 @@
 (deftest parameters-test
   (testing ":parameters should indicate if any parameters with values are provided to the query"
     (let [query (mt/query venues
-                 {:query      {:aggregation [[:count]]}
-                  :parameters nil})]
+                  {:query      {:aggregation [[:count]]}
+                   :parameters nil})]
       (with-query-execution! [_qe query]
         (is (=? {:parameterized false} (process-userland-query query)))))
 
     (let [query (mt/query venues
-                 {:query      {:aggregation [[:count]]}
-                  :parameters [{:name   "price"
-                                :type   :category
-                                :target $price
-                                :value  nil}]})]
+                  {:query      {:aggregation [[:count]]}
+                   :parameters [{:name   "price"
+                                 :type   :category
+                                 :target $price
+                                 :value  nil}]})]
       (with-query-execution! [_qe query]
         (is (=? {:parameterized false} (process-userland-query query)))))
 
     (let [query (mt/query venues
-                 {:query      {:aggregation [[:count]]}
-                  :parameters [{:name   "price"
-                                :type   :category
-                                :target $price
-                                :value  "4"}]})]
+                  {:query      {:aggregation [[:count]]}
+                   :parameters [{:name   "price"
+                                 :type   :category
+                                 :target $price
+                                 :value  "4"}]})]
       (with-query-execution! [_qe query]
         (is (=? {:parameterized true} (process-userland-query query))))))
 

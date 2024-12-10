@@ -157,28 +157,28 @@
 
 (deftest refresh-schedule-cache-dashboard-e2e-test
   (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}
-   (testing "Do we successfully execute a refresh query for a :schedule cache config on a dashboard?"
-     (binding [qp.util/*execute-async?*             false
-               task.cache/*run-cache-refresh-async* false]
-       (t2/delete! :model/QueryCache)
-       (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
-                      :model/Card {card-id :id} {:name "Cached card"
-                                                 :dataset_query (parameterized-native-query)}
-                      :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
-                                                              :card_id      card-id}
-                      :model/CacheConfig _ {:model "dashboard"
-                                            :model_id dashboard-id
-                                            :strategy :schedule
-                                            :refresh_automatically true
-                                            :next_run_at (t/minus (t/offset-date-time) (t/minutes 5))
-                                            :config {:schedule "0 0 * * * ?"}}]
+    (testing "Do we successfully execute a refresh query for a :schedule cache config on a dashboard?"
+      (binding [qp.util/*execute-async?*             false
+                task.cache/*run-cache-refresh-async* false]
+        (t2/delete! :model/QueryCache)
+        (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                       :model/Card {card-id :id} {:name "Cached card"
+                                                  :dataset_query (parameterized-native-query)}
+                       :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
+                                                               :card_id      card-id}
+                       :model/CacheConfig _ {:model "dashboard"
+                                             :model_id dashboard-id
+                                             :strategy :schedule
+                                             :refresh_automatically true
+                                             :next_run_at (t/minus (t/offset-date-time) (t/minutes 5))
+                                             :config {:schedule "0 0 * * * ?"}}]
          ;; Run card once to populate cache
-         (is (= [[1000]] (mt/rows (run-query-for-dashcard card-id dashboard-id dashcard-id))))
+          (is (= [[1000]] (mt/rows (run-query-for-dashcard card-id dashboard-id dashcard-id))))
 
-         (let [cache-timestamp-1 (t2/select-one-fn :updated_at :model/QueryCache)]
-           (@#'task.cache/refresh-cache-configs!)
-           (let [cache-timestamp-2 (t2/select-one-fn :updated_at :model/QueryCache)]
-             (is (t/before? cache-timestamp-1 cache-timestamp-2)))))))))
+          (let [cache-timestamp-1 (t2/select-one-fn :updated_at :model/QueryCache)]
+            (@#'task.cache/refresh-cache-configs!)
+            (let [cache-timestamp-2 (t2/select-one-fn :updated_at :model/QueryCache)]
+              (is (t/before? cache-timestamp-1 cache-timestamp-2)))))))))
 
 (deftest refresh-duration-cache-card-e2e-test
   (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}
