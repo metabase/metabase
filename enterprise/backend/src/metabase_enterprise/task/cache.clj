@@ -99,6 +99,7 @@
                      [:= :qe.error nil]
                      [:= :qe.is_sandboxed false]]})
 
+;; TODO how to limit this to 10 queries per card ID?
 (defn- duration-parameterized-queries-to-rerun-honeysql
   "HoneySQL query for selecting parameterized query definitions that should be rerun, given a list of :duration cache configs."
   [cache-configs]
