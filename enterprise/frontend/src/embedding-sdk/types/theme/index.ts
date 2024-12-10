@@ -98,6 +98,12 @@ export type MetabaseComponentTheme = {
   dashboard: {
     backgroundColor: string;
 
+    /**
+     * Border color of the dashboard grid, shown only when editing dashboards.
+     * Defaults to `colors.border`
+     **/
+    gridBorderColor?: string;
+
     card: {
       backgroundColor: string;
 
