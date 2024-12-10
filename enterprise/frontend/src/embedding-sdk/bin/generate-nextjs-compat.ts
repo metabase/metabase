@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+/* eslint-disable no-console, no-literal-metabase-strings */
 import fs from "fs";
 
 import path from "path";
@@ -148,19 +148,19 @@ const generateAllComponents = (type: "cjs" | "js") => {
 // nextjs-no-ssr.{cjs,js} => file marked as "use client" that re-exports the components wrapped in dynamic import with no ssr
 
 // we need to re-export these helpers so they can be used without importing the entire bundle, that will make next crash because window is undefined
-const defineEmbeddingSdkConfig = "config => config";
-const defineEmbeddingSdkTheme = "theme => theme";
+const defineMetabaseAuthConfig = "config => config";
+const defineMetabaseTheme = "theme => theme";
 
 const nextjs_cjs = `
-module.exports.defineEmbeddingSdkConfig = ${defineEmbeddingSdkConfig};
-module.exports.defineEmbeddingSdkTheme = ${defineEmbeddingSdkTheme};
+module.exports.defineMetabaseAuthConfig = ${defineMetabaseAuthConfig};
+module.exports.defineMetabaseTheme = ${defineMetabaseTheme};
 
 module.exports = { ...module.exports, ...require("./nextjs-no-ssr.cjs") };
 `;
 
 const nextjs_js = `
-export const defineEmbeddingSdkConfig = ${defineEmbeddingSdkConfig};
-export const defineEmbeddingSdkTheme = ${defineEmbeddingSdkTheme};
+export const defineMetabaseAuthConfig = ${defineMetabaseAuthConfig};
+export const defineMetabaseTheme = ${defineMetabaseTheme};
 
 export * from "./nextjs-no-ssr.js";
 `;
