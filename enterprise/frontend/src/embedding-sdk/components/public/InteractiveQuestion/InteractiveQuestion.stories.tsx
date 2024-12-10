@@ -18,6 +18,18 @@ export default {
     layout: "fullscreen",
   },
   decorators: [CommonSdkStoryWrapper],
+  argTypes: {
+    title: {
+      options: [
+        undefined,
+        true,
+        false,
+        "Custom Title",
+        "Long title".repeat(10),
+      ],
+      control: { type: "radio" },
+    },
+  },
 };
 
 const Template: StoryFn<InteractiveQuestionComponentProps> = args => {
@@ -31,6 +43,8 @@ export const Default = {
     questionId: QUESTION_ID,
     isSaveEnabled: true,
     saveToCollectionId: undefined,
+    title: true,
+    withResetButton: true,
   },
 };
 
