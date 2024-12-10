@@ -54,7 +54,7 @@ Cypress will use the built package, so we recommend running it together with eit
 
 To test a local build of the sdk in a local project, you can install the sdk from the resources folder.
 
-Assuming your projects are in a sibling directory the metabase core app, you can run
+Assuming your projects are in a sibling directory of the metabase core app, you can run
 
 ```
 yarn add file:../metabase/resources/embedding-sdk
