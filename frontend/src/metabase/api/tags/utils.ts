@@ -373,19 +373,23 @@ export function providePermissionsGroupListTags(
 ): TagDescription<TagType>[] {
   return [
     listTag("permissions-group"),
-    ...groups.flatMap(providePermissionsGroupTags),
+    ...groups.flatMap(providePermissionsGroupListQueryTags),
   ];
 }
 
 export function providePermissionsGroupTags(
-  group: Group | GroupListQuery,
+  group: Group,
 ): TagDescription<TagType>[] {
   return [
     idTag("permissions-group", group.id),
-    ...("members" in group
-      ? group.members.map(member => idTag("user", member.user_id))
-      : []),
+    ...group.members.map(member => idTag("user", member.user_id)),
   ];
+}
+
+export function providePermissionsGroupListQueryTags(
+  group: GroupListQuery,
+): TagDescription<TagType>[] {
+  return [idTag("permissions-group", group.id)];
 }
 
 export function providePersistedInfoListTags(
