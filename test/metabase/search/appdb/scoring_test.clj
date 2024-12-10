@@ -65,8 +65,8 @@
       (is (set/subset? (into #{}
                              (comp (mapcat #'search.spec/find-fields-expr)
                                    (filter (comp #{:this :search_index} first))
-                                  ;; Remove db-specific fields
                                    (map (comp keyword u/->kebab-case-en name second))
+                                   ;; Remove db-specific fields
                                    (remove #{:search-vector :query}))
                              (vals (scoring/scorers {:search-string ""})))
                        (set (cons :model (keys search.spec/attr-types))))))))
@@ -103,7 +103,7 @@
                 ["card" 3 "classified"]]
                (search-results :text "order"))))
       :h2
-        ;; TODO text ranking (probably in-memory
+      ;; TODO text ranking (probably in-memory
       nil)))
 
 (deftest ^:parallel exact-test
@@ -117,7 +117,7 @@
                 ["card" 2 "stop words"]]
                (search-results :exact "the any most of stop words very"))))
       :h2
-        ;; TODO text ranking (probably in-memory
+      ;; TODO text ranking (probably in-memory
       nil)))
 
 (deftest ^:parallel prefix-test
@@ -192,7 +192,7 @@
                                          :view_count %})
                ;; Flake alert - we need to insert the outlier so that it is not chosen over the card it ties with.
                 ;; NOTE: we have brought in the outlier *a lot* to compensate for h2 not calculating a real percentile.
-                outlier-card-id (t2/insert-returning-pk! :model/Card (card-with-view 88))
+                outlier-card-id (t2/insert-returning-pk! :model/Card (card-with-view 88 #_100000))
                 _               (t2/insert! :model/Card (concat (repeat 20 (card-with-view 0))
                                                                 (for [i (range 1 81)]
                                                                   (card-with-view i))))
