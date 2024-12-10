@@ -55,7 +55,6 @@ export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
         { databaseId, matchStyle, query: word.text.trim() },
         false,
       );
-
       if (!data) {
         return null;
       }
@@ -143,10 +142,10 @@ export function useCardTagCompletion({ databaseId }: CardTagCompletionOptions) {
         allowOpenEnded: true,
         position: context.pos,
       });
-
       if (tag?.type !== "card") {
         return null;
       }
+
       const query = tag.content.text.replace(/^#/, "").trim();
       if (!query) {
         return null;
@@ -156,7 +155,6 @@ export function useCardTagCompletion({ databaseId }: CardTagCompletionOptions) {
         databaseId,
         query,
       });
-
       if (!data) {
         return null;
       }
