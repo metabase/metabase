@@ -82,6 +82,21 @@
       "{}}"
       "{ {}}")))
 
+(deftest ^:parallel literal-value-test
+  (testing "Can specify literal values with {{{'s"
+    (are [input output] (= (mock-config-with-setting output)
+                           (binding [advanced-config.file/*config* (mock-config-with-setting input)]
+                             (#'advanced-config.file/config)))
+                        "{{{asdf}}}" "asdf"
+                        "{{{ asdf }}}" "asdf"
+                        "{{{ {{ asdf }}  }}}" "{{ asdf }}"
+                        "{{{ {{ asdf }}}" "{{ asdf"
+                        )))
+    ;(are [input output] (= output
+    ;            (binding [advanced-config.file/*config* (mock-config-with-setting input)]
+    ;              (#'advanced-config.file/config)))
+    ;         "{{{asdf}}}" "asdf")))
+
 (deftest ^:parallel expand-template-forms-test-2
   (testing "Invalid template forms"
     (are [template error-pattern] (thrown-with-msg?
