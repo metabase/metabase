@@ -12,16 +12,3 @@ export const FormSnippetTextArea = styled(FormTextArea)`
     line-height: 1.5em;
   }
 `;
-
-export const SnippetFormFooter = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-`;
-
-export const SnippetFormFooterContent = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem;
-`;
