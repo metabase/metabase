@@ -16,7 +16,11 @@ import type { EditorProps, EditorRef } from "../Editor";
 
 import S from "./CodeMirrorEditor.module.css";
 import { useExtensions } from "./extensions";
-import { convertIndexToPosition, matchCardIdAtCursor } from "./util";
+import {
+  convertIndexToPosition,
+  matchCardIdAtCursor,
+  useMemoized,
+} from "./util";
 
 type CodeMirrorEditorProps = EditorProps;
 
@@ -31,10 +35,12 @@ export const CodeMirrorEditor = forwardRef<EditorRef, CodeMirrorEditorProps>(
       onRightClickSelection,
       onCursorMoveOverCardTag,
     } = props;
+    const referencedQuestionIds = useMemoized(query.referencedQuestionIds());
+
     const extensions = useExtensions({
       engine: query.engine() ?? undefined,
       databaseId: query.datasetQuery()?.database ?? undefined,
-      referencedQuestionIds: query.referencedQuestionIds(),
+      referencedQuestionIds,
     });
 
     useImperativeHandle(ref, () => {
