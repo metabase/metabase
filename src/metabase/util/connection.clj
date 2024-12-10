@@ -28,21 +28,16 @@
                                         [(.getString pks "COLUMN_NAME") true]))
                 fks (consume-rset fks (fn [^ResultSet fks]
                                         [(.getString fks "FKCOLUMN_NAME")
-                                         {:table   (.getString fks "PKTABLE_NAME")
-                                          :column  (.getString fks "PKCOLUMN_NAME")
-                                          :cascade (= (.getInt fks "DELETE_RULE")
-                                                      DatabaseMetaData/importedKeyCascade)}]))]
+                                         (str (.getString fks "PKTABLE_NAME")
+                                              "."
+                                              (.getString fks "PKCOLUMN_NAME"))]))]
             (consume-rset cols (fn [^ResultSet cols]
                                  (let [col (.getString cols "COLUMN_NAME")]
                                    [col {:type    (.getString cols "TYPE_NAME")
                                          :notnull (= (.getInt cols "NULLABLE")
                                                      ResultSetMetaData/columnNoNulls)
                                          :pk      (get pks col)
-                                         :fk      (qualified-name (get fks col))
-                                         :fk-data (get fks col)}])))))))))
-
-(defn- qualified-name [{:keys [table column]}]
-  (str table "." column))
+                                         :fk      (get fks col)}])))))))))
 
 (defn- group-rset [^ResultSet rset cb]
   (u/group-by first some? second (constantly true) conj #{}
