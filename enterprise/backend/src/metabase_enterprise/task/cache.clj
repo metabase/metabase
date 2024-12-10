@@ -166,12 +166,12 @@
 (defn- scheduled-base-query-to-rerun-honeysql
   "HoneySQL query for finding the the base query definition we should run for a card ID (i.e. the unparameterized
   query)."
-  [card-ids]
+  [card-id]
   {:select [:q.query [:qe.card_id :card-id]]
    :from   [[(t2/table-name :model/Query) :q]]
    :join   [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]]
    :where  [:and
-            [:in :qe.card_id card-ids]
+            [:= :qe.card_id card-id]
             [:>= :qe.started_at (t/minus (t/offset-date-time) (t/days 30))]
             [:not= :qe.context (name :cache-refresh)]
             [:= :qe.parameterized false]
@@ -180,7 +180,7 @@
             ;; Was the query executed at least once in the last month?
             ;; This is a safety check so that we don't scan all of query_execution -- if a query has not been excuted at
             ;; all in the last month (including cache hits) we won't bother refreshing it again.
-            [:>= :qe.started_at (duration-ago {:duration 1 :unit "month"})]]
+            [:>= :qe.started_at (duration-ago {:duration 30 :unit "days"})]]
    :order-by [[:qe.started_at :desc]]
    :limit  1})
 
