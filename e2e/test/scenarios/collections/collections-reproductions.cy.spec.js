@@ -102,7 +102,7 @@ describe("issue 24660", () => {
   it("should properly show contents of different collections with the same name (metabase#24660)", () => {
     H.startNewQuestion();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findAllByText(collectionName).first().click();
 
       cy.findByText(questions[ORDERS_QUESTION_ID]).should("exist");

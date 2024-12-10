@@ -73,11 +73,13 @@ const TEST_RECENT_TABLE = createMockRecentTableItem();
 const TEST_RECENT_METRIC = createMockRecentMetric(
   createMockMetricResult({
     collection: TEST_COLLECTION,
+    name: "Metric",
   }) as unknown as RecentMetric,
 );
 const TEST_RECENT_MODEL = createMockRecentModel(
   createMockModelResult({
     collection: TEST_COLLECTION,
+    name: "Model",
   }) as unknown as RecentModel,
 );
 
@@ -108,19 +110,19 @@ const dataPickerValueMap: Record<
   },
   card: {
     tabIcon: "folder",
-    tabDisplayName: "Saved questions",
+    tabDisplayName: "Collections",
     recentItem: TEST_RECENT_CARD,
     itemPickerData: ["card"],
   },
   dataset: {
-    tabIcon: "model",
-    tabDisplayName: "Models",
+    tabIcon: "folder",
+    tabDisplayName: "Collections",
     recentItem: TEST_RECENT_MODEL,
     itemPickerData: ["dataset"],
   },
   metric: {
-    tabIcon: "metric",
-    tabDisplayName: "Metrics",
+    tabIcon: "folder",
+    tabDisplayName: "Collections",
     recentItem: TEST_RECENT_METRIC,
     itemPickerData: ["metric"],
   },
@@ -307,6 +309,7 @@ describe("Notebook", () => {
         });
       });
 
+      // eslint-disable-next-line jest/expect-expect
       it("should show tabs if more than one type is chosen", async () => {
         const models: DataPickerValue["model"][] = ["dataset", "card"];
 
@@ -318,20 +321,9 @@ describe("Notebook", () => {
 
         await goToEntityModal();
 
-        expect(await screen.findByTestId("tabs-view")).toBeInTheDocument();
-
         for (const model of models) {
-          const {
-            tabDisplayName,
-            tabIcon,
-            pickerColIdx = 1,
-            itemPickerData,
-          } = dataPickerValueMap[model];
-
-          await goToDataPickerTab({
-            name: tabDisplayName,
-            iconName: tabIcon,
-          });
+          const { pickerColIdx = 1, itemPickerData } =
+            dataPickerValueMap[model];
 
           await userEvent.click(screen.getByText("Our analytics"));
 
@@ -366,7 +358,7 @@ describe("Notebook", () => {
       "when filtering with %s",
       entityType => {
         // eslint-disable-next-line jest/expect-expect
-        it(`should only show the ${entityType} picker when modelsFilterList=[${entityType}]`, async () => {
+        it(`should show the Collection item picker when modelsFilterList=[${entityType}]`, async () => {
           setup({
             question: createSummarizedQuestion("question"),
             modelsFilterList: [entityType],
@@ -447,21 +439,19 @@ const assertDataInPickerColumn = ({
   columnIndex: number;
   data: string[];
 }) => {
-  const pickerItems = within(
-    screen.getByTestId(`item-picker-level-${columnIndex}`),
-  ).getAllByTestId("picker-item");
-
-  // Need to figure out this one for the nested items
-  for (let i = 0; i < data.length; i++) {
-    expect(within(pickerItems[i]).getByText(data[i])).toBeInTheDocument();
-  }
+  data.forEach(d => {
+    expect(
+      within(screen.getByTestId(`item-picker-level-${columnIndex}`)).getByText(
+        d,
+      ),
+    ).toBeInTheDocument();
+  });
 };
 
 const assertDataInRecents = ({ data }: { data: string[] }) => {
-  const pickerItems = screen.getAllByTestId("result-item");
-
-  // Need to figure out this one for the nested items
-  for (let i = 0; i < data.length; i++) {
-    expect(within(pickerItems[i]).getByText(data[i])).toBeInTheDocument();
-  }
+  data.forEach(d => {
+    expect(
+      within(screen.getByRole("tabpanel", { name: /Recents/ })).getByText(d),
+    ).toBeInTheDocument();
+  });
 };

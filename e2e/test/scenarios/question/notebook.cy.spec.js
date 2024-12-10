@@ -497,7 +497,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     H.join();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Models").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("Products model").click();
     });
 
@@ -554,7 +554,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.startNewQuestion();
 
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("Orders, Count").click();
     });
 
