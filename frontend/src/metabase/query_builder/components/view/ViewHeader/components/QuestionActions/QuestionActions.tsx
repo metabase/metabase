@@ -21,20 +21,18 @@ import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
-import { Icon, Menu } from "metabase/ui";
+import { Box, Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { checkCanBeModel } from "metabase-lib/v1/metadata/utils/models";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 import { UploadMode } from "metabase-types/store/upload";
 
+import DatasetMetadataStrengthIndicator from "../../../sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator";
 import { shouldShowQuestionSettingsSidebar } from "../../../sidebars/QuestionSettingsSidebar";
-import { ViewHeaderIconButtonContainer } from "../../ViewTitleHeader.styled";
+import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 
-import {
-  QuestionActionsDivider,
-  StrengthIndicator,
-} from "./QuestionActions.styled";
+import QuestionActionsS from "./QuestionActions.module.css";
 
 const HEADER_ICON_SIZE = 16;
 
@@ -145,7 +143,11 @@ export const QuestionActions = ({
       extraButtons.push({
         title: (
           <div>
-            {t`Edit metadata`} <StrengthIndicator dataset={question} />
+            {t`Edit metadata`}{" "}
+            <DatasetMetadataStrengthIndicator
+              className={QuestionActionsS.StrengthIndicator}
+              dataset={question}
+            />
           </div>
         ),
         icon: "label",
@@ -250,19 +252,21 @@ export const QuestionActions = ({
 
   return (
     <>
-      <QuestionActionsDivider />
+      <Box className={QuestionActionsS.QuestionActionsDivider} />
       {!question.isArchived() && (
-        <ViewHeaderIconButtonContainer>
+        <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
           <BookmarkToggle
+            className={ViewTitleHeaderS.ViewHeaderIconButton}
             onCreateBookmark={onToggleBookmark}
             onDeleteBookmark={onToggleBookmark}
             isBookmarked={isBookmarked}
           />
-        </ViewHeaderIconButtonContainer>
+        </Box>
       )}
       <Tooltip tooltip={t`More info`}>
-        <ViewHeaderIconButtonContainer>
+        <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
           <Button
+            className={ViewTitleHeaderS.ViewHeaderIconButton}
             onlyIcon
             icon="info"
             iconSize={HEADER_ICON_SIZE}
@@ -270,7 +274,7 @@ export const QuestionActions = ({
             color={infoButtonColor}
             data-testid="qb-header-info-button"
           />
-        </ViewHeaderIconButtonContainer>
+        </Box>
       </Tooltip>
       {canAppend && (
         <>
@@ -280,10 +284,11 @@ export const QuestionActions = ({
             onChange={handleFileUpload}
           />
           <Tooltip tooltip={t`Upload data to this model`}>
-            <ViewHeaderIconButtonContainer>
+            <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
               <Menu position="bottom-end">
                 <Menu.Target>
                   <Button
+                    className={ViewTitleHeaderS.ViewHeaderIconButton}
                     onlyIcon
                     icon="upload"
                     iconSize={HEADER_ICON_SIZE}
@@ -307,7 +312,7 @@ export const QuestionActions = ({
                   </Menu.Item>
                 </Menu.Dropdown>
               </Menu>
-            </ViewHeaderIconButtonContainer>
+            </Box>
           </Tooltip>
         </>
       )}

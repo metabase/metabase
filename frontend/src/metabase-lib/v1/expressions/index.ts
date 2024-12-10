@@ -284,7 +284,7 @@ export function isExpression(expr: unknown): expr is Expression {
     isBooleanLiteral(expr) ||
     isMetric(expr) ||
     isSegment(expr) ||
-    isCase(expr)
+    isCaseOrIf(expr)
   );
 }
 
@@ -342,8 +342,12 @@ export function isSegment(expr: unknown): boolean {
   );
 }
 
-export function isCase(expr: unknown): boolean {
-  return Array.isArray(expr) && expr[0] === "case"; // && _.all(expr.slice(1), isValidArg)
+export function isCaseOrIfOperator(operator: string) {
+  return operator === "case" || operator === "if";
+}
+
+export function isCaseOrIf(expr: unknown): boolean {
+  return Array.isArray(expr) && isCaseOrIfOperator(expr[0]); // && _.all(expr.slice(1), isValidArg)
 }
 
 export function isOffset(expr: unknown): boolean {
