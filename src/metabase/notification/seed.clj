@@ -1,7 +1,7 @@
 (ns metabase.notification.seed
   "Seed default notifications on startup.
   No-op if none of the notifications are changed.
-  If a notification is changed, it will be replaced with the new one."
+  If a notification is changed, it will be replaced with a new one."
   (:require
    [metabase.models.notification :as models.notification]
    [metabase.models.permissions-group :as perms-group]
