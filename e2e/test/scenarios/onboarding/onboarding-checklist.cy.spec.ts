@@ -40,6 +40,9 @@ describe("Onboarding checklist page", () => {
       .icon("eye_crossed_out")
       .as("dismissIcon")
       .should("be.visible")
+      // Not using another .realHover here to reduce test flakiness.
+      // We had to first hover the parent element in order to show the icon,
+      // after which we hover the icon itself in order to show the tooltip.
       .trigger("mouseenter");
     cy.findByRole("tooltip", { name: "Hide page" }).should("be.visible");
     cy.get("@dismissIcon").click();
