@@ -59,11 +59,16 @@ export const formatSubmitValues = (
   return values;
 };
 
-export const getChangedValues = (
+export const getValuesForUpdate = (
   values: ParametersForActionExecution,
   initialValues: Partial<ParametersForActionExecution>,
 ) => {
   const changedValues = Object.entries(values).filter(([key, value]) => {
+    if (key === "id") {
+      // always include the "id" attribute
+      return true;
+    }
+
     const initialValue = initialValues[key];
 
     return value !== initialValue;
