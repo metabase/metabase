@@ -1,5 +1,6 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 
+import { isNotNull } from "metabase/lib/types";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   addColumnMapping,
@@ -67,22 +68,18 @@ export const pieDropHandler = (
 export function removeColumnFromPieChart(
   state: VisualizerHistoryItem,
   columnName: string,
-  wellId: string,
 ) {
-  if (
-    wellId === DROPPABLE_ID.PIE_DIMENSION &&
-    state.settings["pie.dimension"]
-  ) {
-    let dimensions = state.settings["pie.dimension"];
-    if (!Array.isArray(dimensions)) {
-      dimensions = [dimensions];
-    }
+  const dimensions = Array.isArray(state.settings["pie.dimension"])
+    ? state.settings["pie.dimension"]
+    : [state.settings["pie.dimension"]].filter(isNotNull);
+
+  if (dimensions.includes(columnName)) {
     state.settings["pie.dimension"] = dimensions.filter(
       dimension => dimension !== columnName,
     );
   }
 
-  if (wellId === DROPPABLE_ID.PIE_METRIC) {
+  if (state.settings["pie.metric"] === columnName) {
     delete state.settings["pie.metric"];
   }
 }

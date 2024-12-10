@@ -29,12 +29,7 @@ export function CartesianVerticalWell() {
   }, [columns, settings]);
 
   const handleRemoveMetric = (metric: DatasetColumn) => {
-    dispatch(
-      removeColumn({
-        name: metric.name,
-        wellId: DROPPABLE_ID.Y_AXIS_WELL,
-      }),
-    );
+    dispatch(removeColumn({ name: metric.name }));
   };
 
   return (

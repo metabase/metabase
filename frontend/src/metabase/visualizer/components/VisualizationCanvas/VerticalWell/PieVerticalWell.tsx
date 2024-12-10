@@ -36,9 +36,7 @@ function PieMetricWell() {
 
   const handleRemoveMetric = () => {
     if (metric) {
-      dispatch(
-        removeColumn({ name: metric.name, wellId: DROPPABLE_ID.PIE_METRIC }),
-      );
+      dispatch(removeColumn({ name: metric.name }));
     }
   };
 
@@ -72,12 +70,7 @@ function PieDimensionWell() {
   );
 
   const handleRemoveDimension = (dimension: DatasetColumn) => {
-    dispatch(
-      removeColumn({
-        name: dimension.name,
-        wellId: DROPPABLE_ID.PIE_DIMENSION,
-      }),
-    );
+    dispatch(removeColumn({ name: dimension.name }));
   };
 
   return (

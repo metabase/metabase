@@ -68,24 +68,41 @@ export const pivotDropHandler = (
     (!over || over.id === DROPPABLE_ID.CANVAS_MAIN)
   ) {
     const { column, wellId } = active.data.current;
-    removeColumnFromPivotTable(state, column.name, wellId);
+    const columnType = getColumnTypeFromWellId(wellId);
+    removeColumnFromPivotTable(state, column.name, columnType);
   }
 };
 
 export function removeColumnFromPivotTable(
   state: VisualizerHistoryItem,
   columnName: string,
-  wellId: string,
+  columnType?: "columns" | "rows" | "values" | null,
 ) {
-  const columnType = getColumnTypeFromWellId(wellId);
+  state.columns = state.columns.filter(col => col.name !== columnName);
+  delete state.columnValuesMapping[columnName];
+
   if (columnType) {
     state.settings = removeColumnFromVizSettings(
       state.settings,
       columnName,
       columnType,
     );
-    state.columns = state.columns.filter(col => col.name !== columnName);
-    delete state.columnValuesMapping[columnName];
+  } else {
+    state.settings = removeColumnFromVizSettings(
+      state.settings,
+      columnName,
+      "columns",
+    );
+    state.settings = removeColumnFromVizSettings(
+      state.settings,
+      columnName,
+      "rows",
+    );
+    state.settings = removeColumnFromVizSettings(
+      state.settings,
+      columnName,
+      "values",
+    );
   }
 }
 

@@ -31,12 +31,7 @@ export function CartesianHorizontalWell({ style, ...props }: FlexProps) {
   }, [columns, settings]);
 
   const handleRemoveDimension = (dimension: DatasetColumn) => {
-    dispatch(
-      removeColumn({
-        name: dimension.name,
-        wellId: DROPPABLE_ID.X_AXIS_WELL,
-      }),
-    );
+    dispatch(removeColumn({ name: dimension.name }));
   };
 
   return (

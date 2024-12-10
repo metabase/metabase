@@ -136,14 +136,13 @@ function createDimensionColumn(name: string): DatasetColumn {
 
 export function removeColumnFromFunnel(
   state: VisualizerHistoryItem,
-  name: string,
-  wellId: string,
+  columnName: string,
 ) {
-  if (wellId === DROPPABLE_ID.X_AXIS_WELL) {
+  if (state.settings["funnel.dimension"] === columnName) {
     delete state.settings["funnel.dimension"];
   }
 
-  if (wellId === DROPPABLE_ID.Y_AXIS_WELL) {
+  if (state.settings["funnel.metric"] === columnName) {
     delete state.settings["funnel.metric"];
   }
 }

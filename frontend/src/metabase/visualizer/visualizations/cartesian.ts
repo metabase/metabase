@@ -122,26 +122,22 @@ export function addMetricColumnToCartesianChart(
 export function removeColumnFromCartesianChart(
   state: VisualizerHistoryItem,
   columnName: string,
-  wellId: string,
 ) {
-  if (
-    wellId === DROPPABLE_ID.X_AXIS_WELL &&
-    state.settings["graph.dimensions"]
-  ) {
+  if (state.settings["graph.dimensions"]) {
     const dimensions = state.settings["graph.dimensions"];
     state.settings["graph.dimensions"] = dimensions.filter(
       dimension => dimension !== columnName,
     );
   }
 
-  if (wellId === DROPPABLE_ID.Y_AXIS_WELL && state.settings["graph.metrics"]) {
+  if (state.settings["graph.metrics"]) {
     const metrics = state.settings["graph.metrics"];
     state.settings["graph.metrics"] = metrics.filter(
       metric => metric !== columnName,
     );
   }
 
-  if (wellId === DROPPABLE_ID.SCATTER_BUBBLE_SIZE_WELL) {
+  if (state.settings["scatter.bubble"] === columnName) {
     delete state.settings["scatter.bubble"];
   }
 }

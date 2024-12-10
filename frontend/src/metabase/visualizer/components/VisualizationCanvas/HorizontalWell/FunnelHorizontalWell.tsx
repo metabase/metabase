@@ -60,12 +60,7 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
   };
 
   const handleRemove = () => {
-    dispatch(
-      removeColumn({
-        name: settings["funnel.dimension"],
-        wellId: DROPPABLE_ID.X_AXIS_WELL,
-      }),
-    );
+    dispatch(removeColumn({ name: settings["funnel.dimension"] }));
   };
 
   const borderStyle = rows.length > 0 ? "solid" : "dashed";

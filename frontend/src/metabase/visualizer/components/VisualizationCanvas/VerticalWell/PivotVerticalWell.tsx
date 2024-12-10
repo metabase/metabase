@@ -42,8 +42,8 @@ export function PivotVerticalWell() {
     };
   }, [series, settings]);
 
-  const handleRemoveColumn = (column: DatasetColumn, wellId: string) => {
-    dispatch(removeColumn({ name: column.name, wellId }));
+  const handleRemoveColumn = (column: DatasetColumn) => {
+    dispatch(removeColumn({ name: column.name }));
   };
 
   if (!series[0]?.data) {
@@ -62,9 +62,7 @@ export function PivotVerticalWell() {
             key={rowCol.name}
             column={rowCol}
             wellId={DROPPABLE_ID.PIVOT_ROWS_WELL}
-            onRemove={() =>
-              handleRemoveColumn(rowCol, DROPPABLE_ID.PIVOT_ROWS_WELL)
-            }
+            onRemove={() => handleRemoveColumn(rowCol)}
           >
             <Text truncate>{rowCol.display_name}</Text>
           </DraggableWellItem>
@@ -80,9 +78,7 @@ export function PivotVerticalWell() {
             key={col.name}
             column={col}
             wellId={DROPPABLE_ID.PIVOT_COLUMNS_WELL}
-            onRemove={() =>
-              handleRemoveColumn(col, DROPPABLE_ID.PIVOT_COLUMNS_WELL)
-            }
+            onRemove={() => handleRemoveColumn(col)}
           >
             <Text key={col.name} truncate>
               {col.display_name}
@@ -100,9 +96,7 @@ export function PivotVerticalWell() {
             key={valueCol.name}
             column={valueCol}
             wellId={DROPPABLE_ID.PIVOT_VALUES_WELL}
-            onRemove={() =>
-              handleRemoveColumn(valueCol, DROPPABLE_ID.PIVOT_VALUES_WELL)
-            }
+            onRemove={() => handleRemoveColumn(valueCol)}
           >
             <Text truncate>{valueCol.display_name}</Text>
           </DraggableWellItem>

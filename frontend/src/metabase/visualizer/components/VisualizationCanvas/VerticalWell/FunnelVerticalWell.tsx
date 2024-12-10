@@ -1,6 +1,5 @@
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Text } from "metabase/ui";
-import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
@@ -22,9 +21,7 @@ export function FunnelVerticalWell() {
 
   const handleRemoveMetric = () => {
     if (metric) {
-      dispatch(
-        removeColumn({ name: metric.name, wellId: DROPPABLE_ID.Y_AXIS_WELL }),
-      );
+      dispatch(removeColumn({ name: metric.name }));
     }
   };
 

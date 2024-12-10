@@ -203,11 +203,8 @@ const visualizerHistoryItemSlice = createSlice({
         ...action.payload,
       };
     },
-    removeColumn: (
-      state,
-      action: PayloadAction<{ name: string; wellId: string }>,
-    ) => {
-      const { name, wellId } = action.payload;
+    removeColumn: (state, action: PayloadAction<{ name: string }>) => {
+      const { name } = action.payload;
       if (!state.display) {
         return;
       }
@@ -216,13 +213,13 @@ const visualizerHistoryItemSlice = createSlice({
       delete state.columnValuesMapping[name];
 
       if (isCartesianChart(state.display)) {
-        removeColumnFromCartesianChart(state, name, wellId);
+        removeColumnFromCartesianChart(state, name);
       } else if (state.display === "funnel") {
-        removeColumnFromFunnel(state, name, wellId);
+        removeColumnFromFunnel(state, name);
       } else if (state.display === "pie") {
-        removeColumnFromPieChart(state, name, wellId);
+        removeColumnFromPieChart(state, name);
       } else if (state.display === "pivot") {
-        removeColumnFromPivotTable(state, name, wellId);
+        removeColumnFromPivotTable(state, name);
       }
     },
   },
