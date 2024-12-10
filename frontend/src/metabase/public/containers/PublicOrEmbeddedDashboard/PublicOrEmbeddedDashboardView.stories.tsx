@@ -427,13 +427,21 @@ export const CardVisualizationsDarkTheme = {
   },
 };
 
-const EXPLICIT_SIZE_WAIT_TIME = 300;
 function ScrollDecorator(Story: StoryFn) {
+  const asyncCallback = createAsyncCallback();
+
   useEffect(() => {
-    setTimeout(() => {
-      document.querySelector("[data-testid=embed-frame]")?.scrollBy(0, 9999);
-    }, EXPLICIT_SIZE_WAIT_TIME);
-  }, []);
+    const scrollContainer = document.querySelector("[data-testid=embed-frame]");
+    const intervalId = setInterval(() => {
+      const contentHeight = scrollContainer?.scrollHeight ?? 0;
+      if (contentHeight > 1000) {
+        scrollContainer?.scrollBy(0, 9999);
+        clearInterval(intervalId);
+        asyncCallback();
+      }
+    }, 100);
+  }, [asyncCallback]);
+
   return <Story />;
 }
 

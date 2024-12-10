@@ -8,7 +8,7 @@ import {
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { describeEE, modal, updateSetting } from "e2e/support/helpers";
 import {
-  DEFAULT_SDK_PROVIDER_CONFIG,
+  DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
   mockAuthProviderAndJwtSignIn,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
@@ -36,7 +36,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
             <h1>This is outside of the provider</h1>
           </div>
 
-          <MetabaseProvider config={DEFAULT_SDK_PROVIDER_CONFIG}>
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
             <div style={{ border: "1px solid black" }}>
               <h1>This is inside of the provider</h1>
             </div>
@@ -80,7 +80,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
           </div>
 
           <MetabaseProvider
-            config={{
+            authConfig={{
               apiKey: "TEST",
               metabaseInstanceUrl: "http://fake-host:1234",
             }}
@@ -122,7 +122,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
     it("should use the font from the theme if set", () => {
       cy.mount(
         <MetabaseProvider
-          config={DEFAULT_SDK_PROVIDER_CONFIG}
+          authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
           theme={{ fontFamily: "Impact" }}
         >
           <StaticQuestion questionId={ORDERS_QUESTION_ID} />
@@ -152,7 +152,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
             <h1>This is outside of the provider</h1>
           </div>
 
-          <MetabaseProvider config={DEFAULT_SDK_PROVIDER_CONFIG}>
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
             <div style={{ border: "1px solid black" }}>
               <h1>This is inside of the provider</h1>
             </div>
@@ -199,7 +199,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
             <h1>This is outside of the provider</h1>
           </div>
 
-          <MetabaseProvider config={DEFAULT_SDK_PROVIDER_CONFIG}>
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
             <div style={{ border: "1px solid black" }}>
               <h1>This is inside of the provider</h1>
             </div>
@@ -227,7 +227,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
     it("legacy WindowModal modals should render with our styles", () => {
       // this test renders a create dashboard modal that, at this time, is using the legacy WindowModal
       cy.mount(
-        <MetabaseProvider config={DEFAULT_SDK_PROVIDER_CONFIG}>
+        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
           <CreateDashboardModal />
         </MetabaseProvider>,
       );
@@ -242,7 +242,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
 
     it("mantine modals should render with our styles", () => {
       cy.mount(
-        <MetabaseProvider config={DEFAULT_SDK_PROVIDER_CONFIG}>
+        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
         </MetabaseProvider>,
       );
@@ -292,7 +292,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
       cy.mount(
         <div>
           {elements.map(({ jsx }) => jsx)}
-          <MetabaseProvider config={DEFAULT_SDK_PROVIDER_CONFIG}>
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
             <StaticQuestion questionId={ORDERS_QUESTION_ID} />
           </MetabaseProvider>
         </div>,

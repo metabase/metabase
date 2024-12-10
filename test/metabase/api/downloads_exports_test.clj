@@ -9,7 +9,6 @@
   - Static Embedding Dashboard/dashcard downloads
   - Dashboard Subscription Attachments
   - Alert attachments"
-  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.data :as data]
    [clojure.data.csv :as csv]
@@ -21,8 +20,10 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.formatter :as formatter]
    [metabase.public-settings :as public-settings]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.pulse.test-util :as pulse.test-util]
+   [metabase.query-processor.interface :as qp.i]
    [metabase.test :as mt]
    [metabase.util.json :as json])
   (:import
@@ -1004,35 +1005,36 @@
 
 (deftest downloads-row-limit-test
   (testing "Downloads row limit works."
-    (mt/with-temporary-setting-values [public-settings/download-row-limit 1050000]
-      (mt/dataset test-data
-        (mt/with-temp [:model/Card card {:display       :table
-                                         :dataset_query {:database (mt/id)
-                                                         :type     :native
-                                                         :native   {:query "SELECT 1 as A FROM generate_series(1,1100000);"}}}]
-          (let [results (all-outputs! card {:export-format :csv :format-rows true})]
-            (is (= {:card-download            1050001
-                    :unsaved-card-download    1050001
-                    :alert-attachment         1050001
-                    :dashcard-download        1050001
-                    :subscription-attachment  1050001
-                    :public-question-download 1050001
-                    :public-dashcard-download 1050001}
-                   (update-vals results count))))))))
-  (testing "Downloads row limit default works."
-    (mt/dataset test-data
+    (mt/with-temporary-setting-values [public-settings/download-row-limit 105]
       (mt/with-temp [:model/Card card {:display       :table
                                        :dataset_query {:database (mt/id)
                                                        :type     :native
-                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,1100000);"}}}]
+                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,110);"}}}]
         (let [results (all-outputs! card {:export-format :csv :format-rows true})]
-          (is (= {:card-download            1048576
-                  :unsaved-card-download    1048576
-                  :alert-attachment         1048576
-                  :dashcard-download        1048576
-                  :subscription-attachment  1048576
-                  :public-question-download 1048576
-                  :public-dashcard-download 1048576}
+          (is (= {:card-download            106
+                  :unsaved-card-download    106
+                  :alert-attachment         106
+                  :dashcard-download        106
+                  :subscription-attachment  106
+                  :public-question-download 106
+                  :public-dashcard-download 106}
+                 (update-vals results count))))))))
+
+(deftest downloads-row-limit-default-test
+  (testing "Downloads row limit default works."
+    (with-redefs [qp.i/absolute-max-results 100]
+      (mt/with-temp [:model/Card card {:display       :table
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,110);"}}}]
+        (let [results (all-outputs! card {:export-format :csv :format-rows true})]
+          (is (= {:card-download            101
+                  :unsaved-card-download    101
+                  :alert-attachment         101
+                  :dashcard-download        101
+                  :subscription-attachment  101
+                  :public-question-download 101
+                  :public-dashcard-download 101}
                  (update-vals results count))))))))
 
 (deftest ^:parallel model-viz-settings-downloads-test
@@ -1068,7 +1070,7 @@
                    {:card-download     (mapv #(nth % 3) (take 2 card-result))
                     :dashcard-download (mapv #(nth % 3) (take 2 dashcard-result))}))))))))
 
-(deftest column-settings-on-aggregated-columns-test
+(deftest ^:parallel column-settings-on-aggregated-columns-test
   (testing "Column settings on aggregated columns are applied"
     (mt/dataset test-data
       (mt/with-temp [:model/Card card  {:display                :table
@@ -1092,7 +1094,7 @@
           (is (= "2,185.89 Canadian dollars"
                  (-> (card-download card {:export-format :xlsx :format-rows true}) second second))))))))
 
-(deftest table-metadata-affects-column-formatting-properly
+(deftest ^:parallel table-metadata-affects-column-formatting-properly
   (testing "A Table's configured metadata (eg. Semantic Type of currency) can affect column formatting"
     (mt/dataset test-data
       (mt/with-temp [:model/Card card  {:display                :table
@@ -1117,11 +1119,11 @@
                                                                                      {:currency_in_header false}}}}]
         (testing "for csv"
           (is (= [["Discount"] ["$6.42"]]
-                 (-> (card-download card {:export-format :csv :format-rows true})))))
+                 (card-download card {:export-format :csv :format-rows true}))))
         (testing "for xlsx"
           ;; the [$$] part will appear as $ when you open the Excel file in a spreadsheet app
           (is (= [["Discount"] ["[$$]6.42"]]
-                 (-> (card-download card {:export-format :xlsx :format-rows true})))))))))
+                 (card-download card {:export-format :xlsx :format-rows true}))))))))
 
 (deftest clean-errors-test
   (testing "Queries that error should not include visualization settings (metabase-private #233)"

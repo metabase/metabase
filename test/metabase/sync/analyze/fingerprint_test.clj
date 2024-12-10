@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.db.query :as mdb.query]
-   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
