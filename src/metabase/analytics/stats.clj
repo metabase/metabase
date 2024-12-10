@@ -863,7 +863,10 @@
     :enabled   (t2/exists? :model/Table :is_upload true)}
    {:name      :snippet-collections
     :available (premium-features/enable-snippet-collections?)
-    :enabled   (t2/exists? :model/Collection :namespace "snippets")}])
+    :enabled   (t2/exists? :model/Collection :namespace "snippets")}
+   {:name      :cache-preemptive
+    :available (premium-features/enable-preemptive-caching?)
+    :enabled   (t2/exists? :model/CacheConfig :refresh_automatically true)}])
 
 (defn- snowplow-features
   []
