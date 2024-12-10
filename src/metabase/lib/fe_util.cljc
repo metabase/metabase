@@ -318,10 +318,11 @@
    column     :- ::lib.schema.metadata/column
    values     :- [:maybe [:sequential [:fn u.time/valid?]]]
    with-time? :- [:maybe :boolean]]
-  (let [column (cond-> column
-                 with-time? (lib.temporal-bucket/with-temporal-bucket :minute))
+  (let [column (lib.temporal-bucket/with-temporal-bucket column nil)
         values (mapv #(u.time/format-for-base-type % (if with-time? :type/DateTime :type/Date)) values)]
-    (expression-clause operator (into [column] values) {})))
+    (if (and (= operator :=) with-time?)
+      (expression-clause :during [column (first values) :minute] {})
+      (expression-clause operator (into [column] values) {}))))
 
 (mu/defn specific-date-filter-parts :- [:maybe SpecificDateFilterParts]
   "Destructures a specific date filter clause created by [[specific-date-filter-clause]]. Returns `nil` if the clause
@@ -338,6 +339,12 @@
             arg   (u.time/coerce-to-timestamp arg)]
         (when (u.time/valid? arg)
           {:operator op, :column (ref->col col-ref), :values [arg], :with-time? (not date?)}))
+
+      ;; during
+      [:during _ (col-ref :guard date-col?) (arg :guard string?) :minute]
+      (let [arg (u.time/coerce-to-timestamp arg)]
+        (when (u.time/valid? arg)
+          {:operator :=, :column (ref->col col-ref), :values [arg], :with-time? true}))
 
       ;; exactly 2 arguments
       [(op :guard #{:between}) _ (col-ref :guard date-col?) (start :guard string?) (end :guard string?)]
@@ -369,10 +376,9 @@
    offset-value :- [:maybe number?]
    offset-unit  :- [:maybe ::lib.schema.temporal-bucketing/unit.date-time.interval]
    options      :- [:maybe ::lib.schema.filter/time-interval-options]]
-  (let [column (lib.temporal-bucket/with-temporal-bucket column nil)]
-    (if (or (nil? offset-value) (nil? offset-unit))
-      (expression-clause :time-interval [column value unit] options)
-      (expression-clause :relative-time-interval [column value unit offset-value offset-unit] {}))))
+  (if (or (nil? offset-value) (nil? offset-unit))
+    (expression-clause :time-interval [column value unit] options)
+    (expression-clause :relative-time-interval [column value unit offset-value offset-unit] {})))
 
 (mu/defn relative-date-filter-parts :- [:maybe RelativeDateFilterParts]
   "Destructures a relative date filter clause created by [[relative-date-filter-clause]]. Returns `nil` if the clause
@@ -425,14 +431,13 @@
    column   :- ::lib.schema.metadata/column
    unit     :- [:maybe ::lib.schema.filter/exclude-date-filter-unit]
    values   :- [:maybe [:sequential number?]]]
-  (let [column (lib.temporal-bucket/with-temporal-bucket column nil)
-        expr   (if (= operator :!=)
-                 (case unit
-                   :hour-of-day (lib.expression/get-hour column)
-                   :day-of-week (lib.expression/get-day-of-week column :iso)
-                   :month-of-year (lib.expression/get-month column)
-                   :quarter-of-year (lib.expression/get-quarter column))
-                 column)]
+  (let [expr (if (= operator :!=)
+               (case unit
+                 :hour-of-day (lib.expression/get-hour column)
+                 :day-of-week (lib.expression/get-day-of-week column :iso)
+                 :month-of-year (lib.expression/get-month column)
+                 :quarter-of-year (lib.expression/get-quarter column))
+               column)]
     (expression-clause operator (into [expr] values) {})))
 
 (mu/defn exclude-date-filter-parts :- [:maybe ExcludeDateFilterParts]
