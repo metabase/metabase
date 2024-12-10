@@ -153,7 +153,7 @@ export const ErrorDiagnosticModal = ({
             <Text>
               {t`Select the info you want to include in the diagnostic JSON file.`}
             </Text>
-            <Stack spacing="md" my="lg">
+            <Stack gap="md" my="lg">
               {canIncludeQueryData && (
                 <FormCheckbox name="queryResults" label={t`Query results`} />
               )}
@@ -195,14 +195,14 @@ export const ErrorDiagnosticModal = ({
               <Button onClick={onClose}>{t`Cancel`}</Button>
               <FormSubmitButton
                 variant="filled"
-                leftIcon={<Icon name="download" />}
+                leftSection={<Icon name="download" />}
                 label={t`Download`}
                 color="brand"
               />
               {enableBugReportField && (
                 <Button
                   variant="filled"
-                  leftIcon={
+                  leftSection={
                     isSlackSending ? (
                       <Loader size="xs" />
                     ) : (
@@ -234,7 +234,7 @@ export const ErrorDiagnosticModalTrigger = () => {
     <ErrorBoundary>
       <Stack justify="center" my="lg">
         <Button
-          leftIcon={<Icon name="download" />}
+          leftSection={<Icon name="download" />}
           onClick={() => setModalOpen(true)}
         >
           {t`Download diagnostic information`}

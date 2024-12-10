@@ -243,7 +243,6 @@ export const WebhookForm = ({
             </Button>
           </Flex>
           {testData && (
-            //@ts-expect-error - I think the typing for ScrollArea.Autosize is wrong. It seems to want every single style prop for Box
             <ScrollArea.Autosize
               mah={300}
               pt="0.75rem"
