@@ -699,6 +699,53 @@ describe("scenarios > organization > entity picker", () => {
         });
       });
     });
+
+    it("Should properly render a path from other users personal collections", () => {
+      cy.signInAsAdmin();
+      createTestCollections();
+      cy.visit("/");
+      H.newButton("Dashboard").click();
+
+      H.modal().within(() => {
+        cy.findByLabelText("Which collection should this go in?").click();
+      });
+
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalItem(0, "All personal collections").click();
+        H.entityPickerModalItem(
+          1,
+          "Robert Tableton's Personal Collection",
+        ).click();
+        H.entityPickerModalItem(2, "Normal personal collection 2").click();
+        cy.button("Select").click();
+      });
+
+      cy.log(
+        "Re-open the collection picker to ensure that the path is generated properly",
+      );
+      H.modal().within(() => {
+        cy.findByLabelText("Which collection should this go in?").click();
+      });
+
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalItem(0, "All personal collections").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+        H.entityPickerModalItem(
+          1,
+          "Robert Tableton's Personal Collection",
+        ).should("have.attr", "data-active", "true");
+        H.entityPickerModalItem(2, "Normal personal collection 2").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+      });
+    });
   });
 
   describe("dashboard picker", () => {
