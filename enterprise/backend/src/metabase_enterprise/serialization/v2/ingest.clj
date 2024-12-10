@@ -40,8 +40,7 @@
 (defn- parse-key
   "Convert suitable string keys to clojure keywords, ignoring keys with whitespace, etc."
   [{k :key}]
-  (if (and (string? k)
-           (re-matches #"^[0-9a-zA-Z_\./\-]+$" k))
+  (if (re-matches #"^[0-9a-zA-Z_\./\-]+$" k)
     (keyword k)
     k))
 

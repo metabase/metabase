@@ -367,8 +367,12 @@
   (testing "A very simple card with two plain fields should return the singe assigned dimension for each field."
     (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
-        (let [source-query (mt/mbql-query products
-                             {:fields [$category $price]})]
+        (let [source-query {:database (mt/id)
+                            :query    (mt/$ids
+                                        {:source-table $$products
+                                         :fields       [$products.category
+                                                        $products.price]})
+                            :type     :query}]
           (mt/with-temp
             [Collection {collection-id :id} {}
              Card       card                {:table_id        (mt/id :products)
@@ -392,16 +396,19 @@
             and choose the best-match candidate."
     (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
-        (let [source-query (mt/mbql-query orders
-                             {:joins  [{:fields       [$people.state
-                                                       $people.longitude
-                                                       $people.latitude]
-                                        :source-table $$people
-                                        :condition    [:= $orders.user_id $people.id]}
-                                       {:fields       [$products.price]
-                                        :source-table $$products
-                                        :condition    [:= $orders.product_id $products.id]}]
-                              :fields [$orders.created_at]})]
+        (let [source-query {:database (mt/id)
+                            :type     :query
+                            :query    (mt/$ids
+                                        {:source-table $$orders
+                                         :joins        [{:fields       [$people.state
+                                                                        $people.longitude
+                                                                        $people.latitude]
+                                                         :source-table $$people
+                                                         :condition    [:= $orders.user_id $people.id]}
+                                                        {:fields       [$products.price]
+                                                         :source-table $$products
+                                                         :condition    [:= $orders.product_id $products.id]}]
+                                         :fields       [$orders.created_at]})}]
           (mt/with-temp [Collection {collection-id :id} {}
                          Card       card                {:table_id        (mt/id :products)
                                                          :collection_id   collection-id
@@ -432,16 +439,19 @@
   (testing "A model that breaksout by non-source-table fields should not provide dimensions."
     (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
-        (let [source-query (mt/mbql-query orders
-                             {:joins        [{:fields       [$people.state
-                                                             $people.longitude
-                                                             $people.latitude]
-                                              :source-table $$people
-                                              :condition    [:= $orders.user_id $people.id]}
-                                             {:fields       [$products.price]
-                                              :source-table $$products
-                                              :condition    [:= $orders.product_id $products.id]}]
-                              :breakout     [$products.category $people.state]})]
+        (let [source-query {:database (mt/id)
+                            :type     :query
+                            :query    (mt/$ids
+                                        {:source-table $$orders
+                                         :joins        [{:fields       [$people.state
+                                                                        $people.longitude
+                                                                        $people.latitude]
+                                                         :source-table $$people
+                                                         :condition    [:= $orders.user_id $people.id]}
+                                                        {:fields       [$products.price]
+                                                         :source-table $$products
+                                                         :condition    [:= $orders.product_id $products.id]}]
+                                         :breakout     [$products.category $people.state]})}]
           (mt/with-temp [Collection {collection-id :id} {}
                          Card       card                {:table_id        (mt/id :products)
                                                          :collection_id   collection-id
@@ -488,18 +498,21 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         ;; Unlike the above test, we do need to provide a full context to match these fields against the dimension
         ;; definitions.
-        (let [source-query (mt/mbql-query orders
-                             {:joins        [{:fields       [&u.people.state
-                                                             &u.people.source
-                                                             &u.people.longitude
-                                                             &u.people.latitude]
-                                              :source-table $$people
-                                              :condition    [:= $orders.user_id &u.people.id]}
-                                             {:fields       [&p.products.category
-                                                             &p.products.price]
-                                              :source-table $$products
-                                              :condition    [:= $orders.product_id &p.products.id]}]
-                              :fields       [$orders.created_at]})]
+        (let [source-query {:database (mt/id)
+                            :type     :query
+                            :query    (mt/$ids
+                                        {:source-table $$orders
+                                         :joins        [{:fields       [&u.people.state
+                                                                        &u.people.source
+                                                                        &u.people.longitude
+                                                                        &u.people.latitude]
+                                                         :source-table $$people
+                                                         :condition    [:= $orders.user_id &u.people.id]}
+                                                        {:fields       [&p.products.category
+                                                                        &p.products.price]
+                                                         :source-table $$products
+                                                         :condition    [:= $orders.product_id &p.products.id]}]
+                                         :fields       [$orders.created_at]})}]
           (mt/with-temp
             [Collection {collection-id :id} {}
              Card       card                {:table_id        (mt/id :products)
@@ -682,10 +695,13 @@
   (testing "Simple model with an aggregation and a filter should not leak filter to the upper cards"
     (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
-        (let [source-query (mt/mbql-query products
-                             {:aggregation [[:count]],
-                              :breakout [$products.id]
-                              :filter [:time-interval $products.created_at -30 :day]})]
+        (let [source-query {:database (mt/id)
+                            :query    (mt/$ids
+                                        {:source-table $$products
+                                         :aggregation [[:count]],
+                                         :breakout [$products.id]
+                                         :filter [:time-interval $products.created_at -30 :day]})
+                            :type     :query}]
           (mt/with-temp
             [Collection {collection-id :id} {}
              Card       card                {:table_id        (mt/id :products)
@@ -788,20 +804,22 @@
   ;; The created dashboard should use all the data with the correct labels.
   (mt/dataset test-data
     (mt/with-non-admin-groups-no-root-collection-perms
-      (let [source-query (mt/mbql-query orders
-                           {:joins        [{:fields       [[:field (mt/id :people :state) {:join-alias "People - User"}]]
-                                            :source-table (mt/id :people)
-                                            :condition    [:=
-                                                           [:field (mt/id :orders :user_id) nil]
-                                                           [:field (mt/id :people :id) {:join-alias "People - User"}]]
-                                            :alias        "People - User"}
-                                           {:fields       [[:field (mt/id :products :price) {:join-alias "Products"}]]
-                                            :source-table (mt/id :products)
-                                            :condition    [:=
-                                                           [:field (mt/id :orders :product_id) nil]
-                                                           [:field (mt/id :products :id) {:join-alias "Products"}]]
-                                            :alias        "Products"}]
-                            :fields       [$created_at]})]
+      (let [source-query {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table (mt/id :orders)
+                                     :joins        [{:fields       [[:field (mt/id :people :state) {:join-alias "People - User"}]]
+                                                     :source-table (mt/id :people)
+                                                     :condition    [:=
+                                                                    [:field (mt/id :orders :user_id) nil]
+                                                                    [:field (mt/id :people :id) {:join-alias "People - User"}]]
+                                                     :alias        "People - User"}
+                                                    {:fields       [[:field (mt/id :products :price) {:join-alias "Products"}]]
+                                                     :source-table (mt/id :products)
+                                                     :condition    [:=
+                                                                    [:field (mt/id :orders :product_id) nil]
+                                                                    [:field (mt/id :products :id) {:join-alias "Products"}]]
+                                                     :alias        "Products"}]
+                                     :fields       [[:field (mt/id :orders :created_at) nil]]}}]
         (mt/with-temp [Collection {collection-id :id} {}
                        Card card {:table_id        (mt/id :orders)
                                   :collection_id   collection-id
@@ -1538,10 +1556,7 @@
                                                                  (remove (comp (#'magic/singular-cell-dimension-field-ids root) #'magic/id-or-name)))
                                                    :cards dashcards)
                 final-dashboard             (populate/create-dashboard base-dashboard show)
-                strip-ids                   (partial walk/prewalk (fn [v] (cond-> v
-                                                                            (map? v) (dissoc :id :card_id :ident
-                                                                                             :aggregation-idents
-                                                                                             :breakout-idents))))]
+                strip-ids                   (partial walk/prewalk (fn [v] (cond-> v (map? v) (dissoc :id :card_id))))]
             (is (pos? (count (:dashcards final-dashboard))))
             (is (= (strip-ids (:dashcards final-dashboard))
                    (strip-ids (:dashcards (#'magic/generate-dashboard base-context template
@@ -1592,13 +1607,21 @@
     (mt/dataset test-data
       (mt/with-test-user :crowberto
         (let [left                 (query/adhoc-query
-                                    (mt/mbql-query orders
-                                      {:joins [{:strategy     :left-join
-                                                :alias        "Products"
-                                                :condition    [:= $product_id &Products.products.id]
-                                                :source-table $$products}]
-                                       :aggregation  [[:avg $tax]]
-                                       :breakout     [&Products.products.title]}))
+                                    {:database (mt/id)
+                                     :type     :query
+                                     :query
+                                     {:source-table (mt/id :orders)
+                                      :joins
+                                      [{:strategy     :left-join
+                                        :alias        "Products"
+                                        :condition
+                                        [:=
+                                         [:field (mt/id :orders :product_id) {:base-type :type/Integer}]
+                                         [:field (mt/id :products :id) {:base-type :type/BigInteger :join-alias "Products"}]]
+                                        :source-table (mt/id :products)}]
+                                      :aggregation  [[:avg [:field (mt/id :orders :tax) {:base-type :type/Float}]]]
+                                      :breakout     [[:field (mt/id :products :title)
+                                                      {:base-type :type/Text :join-alias "Products"}]]}})
               right                (t2/select-one :model/Table (mt/id :orders))
               cell-query           [:= [:field (mt/id :products :title)
                                         {:base-type :type/Text :join-alias "Products"}]

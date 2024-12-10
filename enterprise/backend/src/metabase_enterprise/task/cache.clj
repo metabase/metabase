@@ -7,7 +7,6 @@
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.task :as task]
-   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    (org.quartz.spi MutableTrigger)))
@@ -45,9 +44,7 @@
   (let [query       {:database db-id
                      :type     :query
                      :query    {:source-table table-id
-                                :aggregation  [(:aggregation config) [:field field-id nil]]
-                                :aggregation-idents {0 (u/generate-nano-id)
-                                                     1 (u/generate-nano-id)}}}
+                                :aggregation  [(:aggregation config) [:field field-id nil]]}}
         result      (-> (qp/process-query query) :data :rows ffirst)
         now         (t/offset-date-time)
         next-run-at (calc-next-run (:schedule config) now)

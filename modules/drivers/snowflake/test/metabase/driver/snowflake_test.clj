@@ -918,17 +918,19 @@
                       (is (=? [[string? 4] [string? 4] [string? 4]]
                               (mt/rows
                                (qp/process-query
-                                (mt/mbql-query nil
-                                  {:source-table (mt/id :GOOD_DATETIMES)
-                                   :aggregation [[:count]]
-                                   :breakout [tested-day]})))))
+                                {:database (mt/id)
+                                 :type :query
+                                 :query {:source-table (mt/id :GOOD_DATETIMES)
+                                         :aggregation [[:count]]
+                                         :breakout [tested-day]}}))))
                       (is (= [[yesterday-first-str 4 yesterday-first-str yesterday-last-str]]
                              (mt/rows
                               (qp/process-query
-                               (mt/mbql-query nil
-                                 {:source-table (mt/id :GOOD_DATETIMES)
-                                  :aggregation [[:count]
-                                                [:min tested-minute]
-                                                [:max tested-minute]]
-                                  :breakout [tested-day]
-                                  :filter [:= tested-field (t/format :iso-local-date yesterday-last)]}))))))))))))))))
+                               {:database (mt/id)
+                                :type :query
+                                :query {:source-table (mt/id :GOOD_DATETIMES)
+                                        :aggregation [[:count]
+                                                      [:min tested-minute]
+                                                      [:max tested-minute]]
+                                        :breakout [tested-day]
+                                        :filter [:= tested-field (t/format :iso-local-date yesterday-last)]}})))))))))))))))

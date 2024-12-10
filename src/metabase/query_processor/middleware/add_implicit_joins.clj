@@ -19,7 +19,6 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
@@ -67,7 +66,6 @@
               alias-for-join           (join-alias table-name fk-name)]
           (-> {:source-table source-table
                :alias        alias-for-join
-               :ident        (u/generate-nano-id)
                :fields       :none
                :strategy     :left-join
                :condition    [:= [:field fk-field-id nil] [:field pk-id {:join-alias alias-for-join}]]
