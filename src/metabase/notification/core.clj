@@ -17,7 +17,7 @@
   Notification
   NotificationPayload]
  [notification.seed
-  truncate-then-seed-notification!])
+  seed-notification!])
 
 (def ^:private Options
   [:map

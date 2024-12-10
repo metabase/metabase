@@ -1,0 +1,49 @@
+.nodeListInfoIcon {
+  margin-left: auto;
+}
+
+.NodeListItemIcon {
+  color: var(--mb-color-focus);
+  margin-top: 1px;
+  width: 1rem;
+
+  &.isDisabled {
+    color: inherit;
+  }
+}
+
+.NodeListItemLink {
+  border-radius: 8px;
+  align-items: center;
+  color: var(--mb-color-brand);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  word-wrap: anywhere;
+  min-height: 2.2rem;
+  display: flex;
+  padding: 0.5rem;
+  text-decoration: none;
+
+  &:hover {
+    background-color: var(--mb-color-bg-medium);
+  }
+
+  &.isDisabled {
+    pointer-events: none;
+    opacity: 0.4;
+    color: inherit;
+  }
+}
+
+.NodeListItem {
+  .NodeListItemLink {
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-right: 0;
+  }
+}
+
+.NodeListItemId {
+  color: var(--mb-color-text-medium);
+}
