@@ -10082,6 +10082,27 @@ databaseChangeLog:
   - changeSet:
       id: v52.2024-12-10T10:00:00
       author: qnkhuat
+      comment: add notification.internal_id
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: notification
+              columnName: internal_id
+      changes:
+        - addColumn:
+            tableName: notification
+            columns:
+              - column:
+                  name: internal_id
+                  type: varchar(254)
+                  remarks: the internal id of the notification
+                  constraints:
+                    nullable: true
+                    unique: true
+
+  - changeSet:
+      id: v52.2024-12-10T10:00:10
+      author: qnkhuat
       comment: Truncate the notification tables
       rollback: # not needed
       changes:
