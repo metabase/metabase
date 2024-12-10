@@ -6,6 +6,7 @@ import Tether from "tether";
 
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import CS from "metabase/css/core/index.css";
+import ZIndex from "metabase/css/core/z-index.module.css";
 import { isCypressActive } from "metabase/env";
 
 import PopoverS from "./Popover.module.css";
@@ -99,6 +100,7 @@ export default class Popover extends Component {
       this._popoverElement = document.createElement("span");
       this._popoverElement.className = cx(
         PopoverS.PopoverContainer,
+        ZIndex.Overlay,
         this.props.containerClassName,
       );
       this._popoverElement.dataset.testid = "popover";

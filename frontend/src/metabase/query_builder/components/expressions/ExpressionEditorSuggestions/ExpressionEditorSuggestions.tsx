@@ -16,13 +16,7 @@ import { Popover as InfoPopover } from "metabase/components/MetadataInfo/Popover
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isObscured } from "metabase/lib/dom";
-import {
-  DEFAULT_POPOVER_Z_INDEX,
-  DelayGroup,
-  Icon,
-  type IconName,
-  Popover,
-} from "metabase/ui";
+import { DelayGroup, Icon, type IconName, Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type {
   GroupName,
@@ -107,7 +101,6 @@ export const ExpressionEditorSuggestions = forwardRef<
       opened={open && suggestions.length > 0}
       radius="xs"
       withinPortal
-      zIndex={DEFAULT_POPOVER_Z_INDEX}
       middlewares={{
         flip: false,
         shift: false,

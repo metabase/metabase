@@ -118,6 +118,7 @@ export class ClickActionsPopover extends Component<
     }
 
     const popoverAnchor = this.getPopoverReference(clicked);
+    const columnName = clicked?.column?.display_name;
 
     return (
       <FlexTippyPopover
@@ -145,15 +146,17 @@ export class ClickActionsPopover extends Component<
           ],
         }}
         content={
-          popover ? (
-            popover
-          ) : (
-            <ClickActionsView
-              clickActions={clickActions}
-              close={this.close}
-              onClick={this.handleClickAction}
-            />
-          )
+          <div data-testid={`click-actions-popover-content-for-${columnName}`}>
+            {popover ? (
+              popover
+            ) : (
+              <ClickActionsView
+                clickActions={clickActions}
+                close={this.close}
+                onClick={this.handleClickAction}
+              />
+            )}
+          </div>
         }
         {...popoverAction?.popoverProps}
       />
