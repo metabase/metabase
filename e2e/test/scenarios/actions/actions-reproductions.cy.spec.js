@@ -1,7 +1,10 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_MODEL_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   createMockActionParameter,
   createMockParameter,
@@ -217,5 +220,73 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
     H.getDashboardCard().findByText(EXPECTED_UPDATED_VALUE).should("exist");
     H.modal().should("not.exist");
     H.undoToast().findByText("Query action ran successfully").should("exist");
+  });
+});
+
+describe("issue 51020", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+
+    H.visitModel(ORDERS_MODEL_ID);
+    H.questionInfoButton().click();
+    H.modal().findByText("See more about this model").click();
+    cy.findByRole("tab", { name: "Actions" }).click();
+    cy.button(/Create basic actions/).click();
+
+    H.newButton("Dashboard").click();
+    H.modal().findByLabelText("Name").type("Dash");
+    H.modal().button("Create").click();
+
+    cy.button("Add a saved question").click();
+    cy.findByTestId("add-card-sidebar").findByText("Orders Model").click();
+
+    cy.findByLabelText("Add a filter or parameter").click();
+    H.popover().findByText("ID").click();
+    H.getDashboardCard().findByText("Select…").click();
+    H.popover().findAllByText("ID").eq(0).click();
+    cy.button("Done").click();
+
+    H.getDashboardCard().realHover().icon("click").click();
+    cy.get("aside").within(() => {
+      cy.findByText("ID").click();
+      cy.findByText("Update a dashboard filter").click();
+      cy.findByTestId("click-target-column").click();
+    });
+    H.popover().findByText("ID").click();
+    cy.button("Done").click();
+
+    cy.findByLabelText("Add action").click();
+    cy.button("Pick an action").click();
+    H.modal().within(() => {
+      cy.findByText("Orders Model").click();
+      cy.findByText("Update").click();
+      cy.findAllByText("Ask the user").eq(0).click();
+    });
+    H.popover().findByText("ID").click();
+    cy.button("Done").click();
+
+    H.saveDashboard();
+  });
+
+  it("should pass id attribute to execute action endpoint when it's coming from click behavior or URL (metabase#51020)", () => {
+    cy.log("check when id parameter is coming from click behavior");
+    H.getDashboardCard(0).findAllByText("1").eq(0).click();
+    H.getDashboardCard(1).findByText("Click Me").click();
+    H.modal().findByLabelText("Discount").type("5");
+    H.modal().button("Update").click();
+
+    H.modal().should("not.exist");
+    H.undoToast().findByText("Successfully updated").should("be.visible");
+
+    cy.log("check when id parameter is coming from URL");
+    cy.reload();
+    H.getDashboardCard(1).findByText("Click Me").click();
+    H.modal().findByLabelText("Discount").type("{backspace}");
+    H.modal().button("Update").click();
+
+    H.modal().should("not.exist");
+    H.undoToast().findByText("Successfully updated").should("be.visible");
   });
 });
