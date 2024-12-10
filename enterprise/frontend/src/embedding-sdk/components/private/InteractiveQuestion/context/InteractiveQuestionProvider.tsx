@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
 
 import { useLoadQuestion } from "embedding-sdk/hooks/private/use-load-question";
+import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import type { DataPickerValue } from "metabase/common/components/DataPicker";
@@ -53,6 +54,7 @@ export const InteractiveQuestionProvider = ({
   isSaveEnabled = true,
   entityTypeFilter,
   saveToCollectionId,
+  initialSqlParameters,
 }: InteractiveQuestionProviderProps) => {
   const { id: cardId, isLoading: isLoadingValidatedId } = useValidatedEntityId({
     type: "card",
@@ -65,10 +67,11 @@ export const InteractiveQuestionProvider = ({
   const handleSave = async (question: Question) => {
     if (isSaveEnabled) {
       const saveContext = { isNewQuestion: false };
+      const sdkQuestion = transformSdkQuestion(question);
 
-      await onBeforeSave?.(question, saveContext);
+      await onBeforeSave?.(sdkQuestion, saveContext);
       await handleSaveQuestion(question);
-      onSave?.(question, saveContext);
+      onSave?.(sdkQuestion, saveContext);
       await loadQuestion();
     }
   };
@@ -76,11 +79,12 @@ export const InteractiveQuestionProvider = ({
   const handleCreate = async (question: Question) => {
     if (isSaveEnabled) {
       const saveContext = { isNewQuestion: true };
+      const sdkQuestion = transformSdkQuestion(question);
 
-      await onBeforeSave?.(question, saveContext);
+      await onBeforeSave?.(sdkQuestion, saveContext);
 
       const createdQuestion = await handleCreateQuestion(question);
-      onSave?.(createdQuestion, saveContext);
+      onSave?.(sdkQuestion, saveContext);
 
       // Set the latest saved question object to update the question title.
       replaceQuestion(createdQuestion);
@@ -105,6 +109,7 @@ export const InteractiveQuestionProvider = ({
     cardId,
     options,
     deserializedCard,
+    initialSqlParameters,
   });
 
   const globalPlugins = useSdkSelector(getPlugins);

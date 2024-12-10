@@ -164,7 +164,11 @@
 
       ;; multiple arguments with options
       [(op :guard #{:contains :does-not-contain :starts-with :ends-with}) opts (col-ref :guard string-col?) & (args :guard #(every? string? %))]
-      {:operator op, :column (ref->col col-ref), :values args, :options {:case-sensitive (get opts :case-sensitive true)}})))
+      {:operator op, :column (ref->col col-ref), :values args, :options {:case-sensitive (get opts :case-sensitive true)}}
+
+      ;; do not match inner clauses
+      _
+      nil)))
 
 (def ^:private NumberFilterParts
   [:map
@@ -203,7 +207,11 @@
 
       ;; exactly 2 arguments
       [(op :guard #{:between}) _ (col-ref :guard number-col?) (start :guard number?) (end :guard number?)]
-      {:operator op, :column (ref->col col-ref), :values [start end]})))
+      {:operator op, :column (ref->col col-ref), :values [start end]}
+
+      ;; do not match inner clauses
+      _
+      nil)))
 
 (def ^:private CoordinateFilterParts
   [:map
@@ -255,7 +263,11 @@
        (lat-col-ref :guard coordinate-col?)
        (lon-col-ref :guard coordinate-col?)
        & (args :guard #(and (every? number? %) (= (count %) 4)))]
-      {:operator op, :column (ref->col lat-col-ref), :longitude-column (ref->col lon-col-ref), :values args})))
+      {:operator op, :column (ref->col lat-col-ref), :longitude-column (ref->col lon-col-ref), :values args}
+
+      ;; do not match inner clauses
+      _
+      nil)))
 
 (def ^:private BooleanFilterParts
   [:map
@@ -286,7 +298,11 @@
 
       ;; exactly 1 argument
       [(op :guard #{:=}) _ (col-ref :guard boolean-col?) (arg :guard boolean?)]
-      {:operator op, :column (ref->col col-ref), :values [arg]})))
+      {:operator op, :column (ref->col col-ref), :values [arg]}
+
+      ;; do not match inner clauses
+      _
+      nil)))
 
 (def ^:private SpecificDateFilterParts
   [:map
@@ -329,7 +345,11 @@
             start (u.time/coerce-to-timestamp start)
             end   (u.time/coerce-to-timestamp end)]
         (when (and (u.time/valid? start) (u.time/valid? end))
-          {:operator op, :column (ref->col col-ref), :values [start end], :with-time? (not date?)})))))
+          {:operator op, :column (ref->col col-ref), :values [start end], :with-time? (not date?)}))
+
+      ;; do not match inner clauses
+      _
+      nil)))
 
 (def ^:private RelativeDateFilterParts
   [:map
@@ -385,7 +405,11 @@
        :unit         unit
        :offset-value offset-value
        :offset-unit  offset-unit
-       :options      {}})))
+       :options      {}}
+
+       ;; do not match inner clauses
+      _
+      nil)))
 
 (def ^:private ExcludeDateFilterParts
   [:map
@@ -431,7 +455,11 @@
 
       ;; with `:mode`
       [:!= _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard #(every? int? %))]
-      {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args})))
+      {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args}
+
+      ;; do not match inner clauses
+      _
+      nil)))
 
 (def ^:private TimeFilterParts
   [:map
@@ -472,7 +500,11 @@
       (let [start (u.time/coerce-to-time start)
             end   (u.time/coerce-to-time end)]
         (when (and (u.time/valid? start) (u.time/valid? end))
-          {:operator op, :column (ref->col col-ref), :values [start end]})))))
+          {:operator op, :column (ref->col col-ref), :values [start end]}))
+
+      ;; do not match inner clauses
+      _
+      nil)))
 
 (def ^:private DefaultFilterParts
   [:map
@@ -499,7 +531,11 @@
                              (not (lib.util/original-isa? % :type/TextLike)))]
     (lib.util.match/match-one filter-clause
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard supported-col?)]
-      {:operator op, :column (ref->col col-ref)})))
+      {:operator op, :column (ref->col col-ref)}
+
+      ;; do not match inner clauses
+      _
+      nil)))
 
 (mu/defn filter-args-display-name :- :string
   "Provides a reasonable display name for the `filter-clause` excluding the column-name.
