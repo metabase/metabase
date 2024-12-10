@@ -10,7 +10,7 @@ If you want to have it build when you change a file there are two options:
 
 #### build-embedding-sdk:watch
 
-`build-embedding-sdk:watch` is the original command, the js output is fast, but the dts output is extremely slow and is not fixed by the fixup script on watch.
+`build-embedding-sdk:watch` is the original command, the js output is fast, but the dts output is extremely slow and is not fixed by the dts fixup script on watch so typescript definitions may be broken.
 
 #### embedding-sdk:dev
 
@@ -40,11 +40,13 @@ Storybook will use the source files and not the built package.
 
 ## E2E tests
 
-E2e tests for the sdk are currently done with storybook component tests.
+E2e tests for the sdk are currently done with cypress component tests.
 
 ```bash
 yarn test-cypress-open-component-sdk
 ```
+
+Cypress will use the built package, so we recommend running it together with either the watch or dev command.
 
 ## Use the local build in a project
 
@@ -66,7 +68,7 @@ npm install --install-links  ../metabase/resources/embedding-sdk
 
 #### Caching issues
 
-Most bundlers cache npm packages aggressively, here's how to clean the cache for the most used bundlers:
+Most bundlers optimize npm packages and cache the optimized files aggressively, here's how to clean the cache for the most used bundlers:
 
 next: `rm -rf .next`
 vite: `rm -rf node_modules/.vite`
@@ -74,8 +76,8 @@ webpack: `rm -rf node_modules/.cache`
 
 We recommend clearing the cache every time you install the sdk, a common workflow is to:
 
-- remove `node_modules/@metabase`
-- install the sdk with `yarn add file:../metabase/resources/embedding-sdk`
+- remove `node_modules/@metabase` to make sure no old files are used
+- install the sdk with `yarn add file:../metabase/resources/embedding-sdk` / `npm install --install-links ../metabase/resources/embedding-sdk`
 - clean the cache of your bundler
 
 An example for vite: `rm -rf node_modules/@metabase && rm -rf node_modules/.vite && yarn add file:../metabase/resources/embedding-sdk`
