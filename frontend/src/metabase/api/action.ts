@@ -43,7 +43,7 @@ export const actionApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (action, error) =>
-        action ? [...invalidateTags(error, [listTag("action")])] : [],
+        action ? invalidateTags(error, [listTag("action")]) : [],
     }),
     updateAction: builder.mutation<WritebackAction, UpdateActionRequest>({
       query: body => ({
@@ -53,12 +53,10 @@ export const actionApi = Api.injectEndpoints({
       }),
       invalidatesTags: (action, error) =>
         action
-          ? [
-              ...invalidateTags(error, [
-                listTag("action"),
-                idTag("action", action.id),
-              ]),
-            ]
+          ? invalidateTags(error, [
+              listTag("action"),
+              idTag("action", action.id),
+            ])
           : [],
     }),
     deleteAction: builder.mutation<WritebackAction, WritebackActionId>({
