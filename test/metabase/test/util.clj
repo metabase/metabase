@@ -793,7 +793,8 @@
            {:delete-from (t2/table-name model)
             :where       [:and max-id-condition additional-conditions]})
           ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
-          (search/reindex!))))))
+          ;; We swallow exceptions, in case the
+          (search/reindex! {:in-place? true}))))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
