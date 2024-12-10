@@ -107,7 +107,8 @@
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]
   (search.index/ensure-ready! false)
-  (when-not in-place?
+  (if in-place?
+    (t2/delete! (search.index/active-table))
     (search.index/maybe-create-pending!))
   (u/prog1 (search.ingestion/populate-index! :search.engine/appdb)
     (search.index/activate-table!)))
