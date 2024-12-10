@@ -61,15 +61,15 @@
 
 (deftest ^:parallel used-fields-text
   (with-index-contents []
-   (testing "We have defined all the fields that we reference within our ranking expressions"
-     (is (set/subset? (into #{}
-                            (comp (mapcat #'search.spec/find-fields-expr)
-                                  (filter (comp #{:this :search_index} first))
+    (testing "We have defined all the fields that we reference within our ranking expressions"
+      (is (set/subset? (into #{}
+                             (comp (mapcat #'search.spec/find-fields-expr)
+                                   (filter (comp #{:this :search_index} first))
                                   ;; Remove db-specific fields
-                                  (map (comp keyword u/->kebab-case-en name second))
-                                  (remove #{:search-vector :query}))
-                            (vals (scoring/scorers {:search-string ""})))
-                      (set (cons :model (keys search.spec/attr-types))))))))
+                                   (map (comp keyword u/->kebab-case-en name second))
+                                   (remove #{:search-vector :query}))
+                             (vals (scoring/scorers {:search-string ""})))
+                       (set (cons :model (keys search.spec/attr-types))))))))
 
 ;; ---- index-ony rankers ----
 ;; These are the easiest to test, as they don't depend on other appdb state.
