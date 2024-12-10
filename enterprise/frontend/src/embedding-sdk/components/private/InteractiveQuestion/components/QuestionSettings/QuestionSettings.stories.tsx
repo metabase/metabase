@@ -1,6 +1,10 @@
-import { InteractiveQuestion } from "embedding-sdk";
+import { InteractiveQuestion, type MetabaseTheme } from "embedding-sdk";
+import {
+  Wrapper,
+  darkTheme,
+} from "embedding-sdk/components/public/InteractiveQuestion/util";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
-import { Box } from "metabase/ui";
+import { Box, Button, Popover } from "metabase/ui";
 
 import { QuestionSettings } from "./QuestionSettings";
 
@@ -15,7 +19,7 @@ export default {
   decorators: [CommonSdkStoryWrapper],
 };
 
-export const PickerInPopover = {
+export const QuestionSettingsWithNoPopover = {
   render() {
     return (
       <Box p="lg">
@@ -28,4 +32,33 @@ export const PickerInPopover = {
       </Box>
     );
   },
+};
+
+const DefaultTemplate = (theme: MetabaseTheme) => (
+  <Wrapper theme={theme}>
+    <Box p="lg">
+      <InteractiveQuestion questionId={QUESTION_ID}>
+        <Box>
+          <Popover>
+            <Popover.Target>
+              <Button>Open Question Settings</Button>
+            </Popover.Target>
+            <Popover.Dropdown>
+              <InteractiveQuestion.QuestionSettings />
+            </Popover.Dropdown>
+          </Popover>
+          <InteractiveQuestion.QuestionVisualization />
+        </Box>
+      </InteractiveQuestion>
+    </Box>
+  </Wrapper>
+);
+
+export const QuestionSettingsWithPopover = {
+  render: DefaultTemplate,
+};
+
+export const QuestionSettingsDarkTheme = {
+  render: DefaultTemplate,
+  args: darkTheme,
 };
