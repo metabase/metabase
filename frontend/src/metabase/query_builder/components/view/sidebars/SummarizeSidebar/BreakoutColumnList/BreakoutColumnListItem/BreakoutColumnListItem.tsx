@@ -5,16 +5,16 @@ import { t } from "ttag";
 import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
 import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import Tooltip from "metabase/core/components/Tooltip";
+import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import BreakoutColumnListItemS from "./BreakoutColumnListItem.module.css";
 import {
   AddButton,
   ColumnTypeIcon,
   Content,
   RemoveButton,
   Root,
-  Title,
-  TitleContainer,
 } from "./BreakoutColumnListItem.styled";
 
 interface BreakoutColumnListItemProps {
@@ -74,7 +74,12 @@ export function BreakoutColumnListItem({
       data-testid="dimension-list-item"
     >
       <Content onClick={handleListItemClick}>
-        <TitleContainer>
+        <Flex
+          align="center"
+          ml="sm"
+          p="0.5rem 0"
+          className={BreakoutColumnListItemS.titleContainer}
+        >
           <ColumnTypeIcon
             query={query}
             stageIndex={stageIndex}
@@ -82,8 +87,13 @@ export function BreakoutColumnListItem({
             position="left"
             size={18}
           />
-          <Title data-testid="dimension-list-item-name">{displayName}</Title>
-        </TitleContainer>
+          <Box
+            className={BreakoutColumnListItemS.title}
+            data-testid="dimension-list-item-name"
+          >
+            {displayName}
+          </Box>
+        </Flex>
         <BucketPickerPopover
           query={query}
           stageIndex={stageIndex}
