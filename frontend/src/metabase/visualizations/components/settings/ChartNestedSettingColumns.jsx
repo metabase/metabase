@@ -1,8 +1,9 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 
-import { ColumnItem } from "./ColumnItem";
+import { Stack } from "metabase/ui";
 
+import { ColumnItem } from "./ColumnItem";
 const displayNameForColumn = column =>
   column ? column.display_name || column.name : "[Unknown]";
 
@@ -14,7 +15,7 @@ export default class ChartNestedSettingColumns extends Component {
       return <div>{this.props.objectSettingsWidgets}</div>;
     } else {
       return (
-        <div>
+        <Stack>
           {objects.map((column, index) => (
             <ColumnItem
               key={index}
@@ -23,7 +24,7 @@ export default class ChartNestedSettingColumns extends Component {
               onClick={() => onChangeEditingObject(column)}
             />
           ))}
-        </div>
+        </Stack>
       );
     }
   }
