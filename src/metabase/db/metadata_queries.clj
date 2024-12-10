@@ -4,6 +4,7 @@
   TODO -- these have nothing to do with the application database. This namespace should be renamed something like
   `metabase.driver.util.metadata-queries`."
   (:require
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -54,6 +55,14 @@
       ;; > 1
       (update query :filter update-query-filter-fn (into [:and] (map partition-field->filter-form required-filter-fields))))))
 
+(defn- add-breakout-idents-if-needed [inner-query]
+  (->> (:breakout inner-query)
+       (map-indexed (fn [i _breakout]
+                      [i (u/generate-nano-id)]))
+       (into {})
+       not-empty
+       (m/assoc-some inner-query :breakout-idents)))
+
 (defn table-query
   "Runs the `mbql-query` where the source table is `table-id` and returns the result.
   Add the required filters if the table requires it, see [[add-required-filters-if-needed]] for more details.
@@ -68,7 +77,8 @@
        :database   (t2/select-one-fn :db_id :model/Table table-id)
        :query      (-> mbql-query
                        (assoc :source-table table-id)
-                       add-required-filters-if-needed)
+                       add-required-filters-if-needed
+                       add-breakout-idents-if-needed)
        :middleware {:disable-remaps? true}}
       rff))))
 
@@ -94,14 +104,16 @@
 (defn field-distinct-count
   "Return the distinct count of `field`."
   [field & [limit]]
-  (-> (table-query (:table_id field) {:aggregation [[:distinct [:field (u/the-id field) nil]]]
-                                      :limit       limit})
+  (-> (table-query (:table_id field) {:aggregation        [[:distinct [:field (u/the-id field) nil]]]
+                                      :aggregation-idents {0 (u/generate-nano-id)}
+                                      :limit              limit})
       :data :rows first first int))
 
 (defn field-count
   "Return the count of `field`."
   [field]
-  (-> (table-query (:table_id field) {:aggregation [[:count [:field (u/the-id field) nil]]]})
+  (-> (table-query (:table_id field) {:aggregation        [[:count [:field (u/the-id field) nil]]]
+                                      :aggregation-idents {0 (u/generate-nano-id)}})
       :data :rows first first int))
 
 (def max-sample-rows
