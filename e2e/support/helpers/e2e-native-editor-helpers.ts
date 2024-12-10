@@ -24,7 +24,11 @@ export function nativeEditorCompletion(label: string) {
 }
 
 export function nativeEditorSelectAll() {
-  focusNativeEditor().realPress(["Meta", "A"]);
+  if (navigator.platform.toLowerCase().includes("mac")) {
+    focusNativeEditor().realPress(["Meta", "A"]);
+  } else {
+    focusNativeEditor().realPress(["Control", "A"]);
+  }
   cy.get(".cm-selectionBackground").should("exist");
 }
 
