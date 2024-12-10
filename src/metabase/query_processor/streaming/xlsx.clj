@@ -459,12 +459,13 @@
          val-it (.iterator ^Iterable values)
          col-it (.iterator ^Iterable cols)
          sty-it (.iterator ^Iterable cell-styles)]
+     (def col-settings col-settings)
      (loop [index 0]
        (when (.hasNext val-it)
          (let [value (.next val-it)
                col (.next col-it)
                styles (.next sty-it)
-               id-or-name   (or (:id col) (:name col))
+               id-or-name   (or (:name col) (:id col))
                settings     (or (get col-settings {::mb.viz/field-id id-or-name})
                                 (get col-settings {::mb.viz/column-name id-or-name}))
                ;; value can be a column header (a string), so if the column is scaled, it'll try to do (* "count" 7)

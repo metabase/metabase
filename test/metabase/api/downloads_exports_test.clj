@@ -1643,20 +1643,21 @@
                                                                           {:name "TOTAL" :enabled false}
                                                                           {:name "DISCOUNT" :enabled false}
                                                                           {:name "CREATED_AT" :enabled false}
-                                                                          {:name "QUANTITY" :enabled true}                                                                      {:name "QUANTITY_SCALED" :enabled true}]
+                                                                          {:name "QUANTITY" :enabled true}                                                                       {:name "Quantity Scaled" :enabled true}]
+                                                                 :table.cell_column "SUBTOTAL"
                                                                  :column_settings   {(format "[\"ref\",[\"field\",%s,null]]" (mt/id :orders :discount))
                                                                                      {:currency_in_header false}
                                                                                      "[\"name\",\"Quantity Scaled\"]"
                                                                                      {:scale 2.134}}}}]
         (testing "for csv"
-          (is (= [(take-last 2 ["ID" "User ID" "Product ID" "Subtotal" "Tax" "Total" "Discount" "Created At" "Quantity" "Quantity Scaled"])
-                  (take-last 2 ["1" "1" "14" "37.65" "2.07" "39.72" "" "February 11, 2019, 9:40 PM" "2" "4.27"])]
-                 (mapv (partial take-last 2) (card-download card {:export-format :json :format-rows true})))))
-        #_(testing "for json"
-          (is (= [(take-last 2 ["ID" "User ID" "Product ID" "Subtotal" "Tax" "Total" "Discount" "Created At" "Quantity" "Quantity Scaled"])
-                  (take-last 2 ["1" "1" "14" "37.65" "2.07" "39.72" "" "February 11, 2019, 9:40 PM" "2" "4.27"])]
-                 (card-download card {:export-format :json :format-rows true})))))
-        #_(testing "for xlsx"
-          ;; the [$$] part will appear as $ when you open the Excel file in a spreadsheet app
-          (is (= [["Discount"] ["[$$]6.42"]]
-                 (card-download card {:export-format :xlsx :format-rows true})))))))
+          (is (= [["Quantity" "Quantity Scaled"]
+                  ["2" "4.27"]]
+                 (card-download card {:export-format :csv :format-rows true})))
+        (testing "for xlsx"
+          (is (= [["Quantity" "Quantity Scaled"]
+                  ["2" "4.27"]]
+                 (card-download card {:export-format :xlsx :format-rows true}))))
+        (testing "for json"
+          (is (= [["Quantity" "Quantity Scaled"]
+                  ["2" "4.27"]]
+                 (card-download card {:export-format :json :format-rows true})))))))))
