@@ -249,8 +249,8 @@
         (is (not (nil? (task.cache/init-cache-task!))))
 
         (let [call-count (atom 0)]
-          (with-redefs [task.cache/refresh-schedule-cache! (fn [_] (swap! call-count inc))
-                        task.cache/maybe-refresh-duration-caches! (fn [] (swap! call-count inc))]
+          (mt/with-dynamic-redefs [task.cache/refresh-schedule-cache! (fn [_] (swap! call-count inc))
+                                   task.cache/maybe-refresh-duration-caches! (fn [] (swap! call-count inc))]
             (@#'task.cache/refresh-cache-configs!)
             (is (= 0 @call-count))
 
