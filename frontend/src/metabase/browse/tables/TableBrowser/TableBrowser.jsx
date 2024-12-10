@@ -52,7 +52,7 @@ export const TableBrowser = ({
             { title: t`Databases`, to: "/browse/databases" },
             databaseCrumb,
             showSchemaInHeader && { title: schemaName },
-          ].filter(Boolean)}
+          ]}
         />
       </BrowseHeaderContent>
       <TableGrid>
