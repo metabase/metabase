@@ -87,7 +87,7 @@ describe("issue 16886", () => {
 
   it("shouldn't remove parts of the query when choosing 'Run selected text' (metabase#16886)", () => {
     H.openNativeEditor();
-    cy.realType(ORIGINAL_QUERY);
+    H.NativeEditor.type(ORIGINAL_QUERY);
     cy.realPress("Home");
     Cypress._.range(SELECTED_TEXT.length).forEach(() =>
       cy.realPress(["Shift", "ArrowRight"]),
@@ -130,8 +130,7 @@ describe("issue 16914", () => {
       .click();
     cy.button("Done").click();
 
-    H.NativeEditor.focus();
-    cy.realType(FAILING_PIECE);
+    H.NativeEditor.focus().type(FAILING_PIECE);
     H.runNativeQuery();
 
     H.NativeEditor.focus();
@@ -195,7 +194,7 @@ describe("issue 17060", () => {
     Cypress._.range(SELECTED_TEXT.length).forEach(() =>
       cy.realPress(["Shift", "ArrowRight"]),
     );
-    cy.realType("RATING");
+    H.NativeEditor.type("RATING");
     runQuery();
 
     cy.findByTestId("query-visualization-root").within(() => {
@@ -231,8 +230,7 @@ describe("issue 18148", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(dbName).click();
 
-    H.NativeEditor.focus();
-    cy.realType("select foo");
+    H.NativeEditor.focus().type("select foo");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
@@ -414,12 +412,12 @@ describe("issue 20625", { tags: "@quarantine" }, () => {
     }).as("autocomplete");
 
     H.openNativeEditor();
-    cy.realType("e");
+    H.NativeEditor.type("e");
 
     // autocomplete_suggestions?prefix=s
     cy.wait("@autocomplete");
 
-    cy.realType("o");
+    H.NativeEditor.type("o");
 
     // autocomplete_suggestions?prefix=so
     cy.wait("@autocomplete");
@@ -441,12 +439,12 @@ describe("issue 20625", { tags: "@quarantine" }, () => {
     }).as("autocomplete");
 
     H.openNativeEditor();
-    cy.realType("e");
+    H.NativeEditor.type("e");
 
     // autocomplete_suggestions?prefix=s
     cy.wait("@autocomplete");
 
-    cy.realType("o");
+    H.NativeEditor.type("o");
 
     cy.get("@autocomplete.all").should("have.length", 1);
   });
@@ -465,8 +463,7 @@ describe("issue 21034", () => {
   });
 
   it("should not invoke API calls for autocomplete twice in a row (metabase#18148)", () => {
-    H.NativeEditor.focus();
-    cy.realType("p");
+    H.NativeEditor.type("p");
 
     // Wait until another explicit autocomplete is triggered
     // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
@@ -682,7 +679,7 @@ describe("issue 34330", () => {
 
   it("should call the autocompleter when backspacing to a 1-character prefix (metabase#34330)", () => {
     H.openNativeEditor();
-    cy.realType("SE{backspace}");
+    H.NativeEditor.type("SE{backspace}");
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
@@ -711,8 +708,7 @@ describe("issue 35344", () => {
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
 
     // make sure normal undo still works
-    H.NativeEditor.focus();
-    cy.realType("--");
+    H.NativeEditor.focus().type("--");
     expect(H.NativeEditor.focus().findByText("--")).to.exist;
 
     H.NativeEditor.focus();

@@ -41,11 +41,11 @@ describe("scenarios > question > native subquery", () => {
           H.NativeEditor.focus().type("{rightarrow}");
           cy.findByText("A People Question");
           // typing a template tag id should open the editor
-          H.NativeEditor.focus().type(" ").realType("{{#");
+          H.NativeEditor.focus().type(" ").type("{{#");
 
           H.NativeEditor.focus()
             .type("{leftarrow}{leftarrow}")
-            .realType(questionId2.toString());
+            .type(questionId2.toString());
           cy.findByText("A People Model");
         });
       });
@@ -80,7 +80,7 @@ describe("scenarios > question > native subquery", () => {
 
         H.openNativeEditor();
         cy.reload(); // Refresh the state, so previously created questions need to be loaded again.
-        H.NativeEditor.focus().realType(" {{#people");
+        H.NativeEditor.focus().type(" {{#people");
 
         // Wait until another explicit autocomplete is triggered
         // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
@@ -277,7 +277,7 @@ describe("scenarios > question > native subquery", () => {
         cy.intercept("GET", `/api/card/${nestedQuestionId}`).as("loadQuestion");
 
         H.startNewNativeQuestion();
-        H.NativeEditor.focus().realType(`SELECT * FROM {{${tagID}`);
+        H.NativeEditor.focus().type(`SELECT * FROM {{${tagID}`);
         cy.wait("@loadQuestion");
         cy.findByTestId("sidebar-header-title").should(
           "have.text",
@@ -301,7 +301,7 @@ describe("scenarios > question > native subquery", () => {
         const tagID = `#${baseQuestionId}`;
 
         H.startNewNativeQuestion();
-        H.NativeEditor.focus().realType(`SELECT * FROM {{${tagID}`);
+        H.NativeEditor.focus().type(`SELECT * FROM {{${tagID}`);
 
         H.runNativeQuery();
         cy.findAllByTestId("cell-data").should("contain", "1");

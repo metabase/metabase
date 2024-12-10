@@ -133,9 +133,8 @@ describe("issue 33327", () => {
     cy.findByTestId("visualization-root").icon("warning").should("be.visible");
     cy.findByTestId("scalar-value").should("not.exist");
 
-    H.NativeEditor.focus()
-      .should("contain", "SELECT --1")
-      .realType("{leftarrow}{backspace}{backspace}");
+    H.NativeEditor.get().should("contain", "SELECT --1");
+    H.NativeEditor.type("{leftarrow}{backspace}{backspace}");
 
     H.NativeEditor.get().should("contain", query);
 
@@ -171,7 +170,8 @@ describe("issue 49454", () => {
   });
 
   it("should be possible to use metrics in native queries (metabase#49454)", () => {
-    H.openNativeEditor().realType("select * from {{ #test");
+    H.openNativeEditor();
+    H.NativeEditor.type("select * from {{ #test");
 
     H.NativeEditor.completions().within(() => {
       H.NativeEditor.completion("-question-49454").should("be.visible");

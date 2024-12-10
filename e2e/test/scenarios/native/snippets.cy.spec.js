@@ -21,7 +21,8 @@ describe("scenarios > question > snippets", () => {
 
   it("should let you create and use a snippet", () => {
     cy.log("Type a query and highlight some of the text");
-    H.openNativeEditor().realType("select 'stuff'");
+    H.openNativeEditor();
+    H.NativeEditor.type("select 'stuff'");
 
     for (let i = 0; i < "'stuff'".length; i++) {
       cy.realPress(["Shift", "ArrowLeft"]);
@@ -53,7 +54,8 @@ describe("scenarios > question > snippets", () => {
 
     // Populate the native editor first
     // 1. select
-    H.openNativeEditor().realType("select ");
+    H.openNativeEditor();
+    H.NativeEditor.type("select ");
     // 2. snippet
     cy.icon("snippet").click();
     cy.findByTestId("sidebar-right").within(() => {
