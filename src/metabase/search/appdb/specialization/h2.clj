@@ -30,7 +30,7 @@
   (->> (str/split search-term #"\s+")
        (map #(u/lower-case-en (str/trim %)))
        (remove str/blank?)
-       (map #(str "%" % "%"))))
+       (map (fn [s] (str "%" s "%")))))
 
 (defmethod specialization/base-query :h2
   [active-table search-term search-ctx select-items]
