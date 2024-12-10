@@ -1,5 +1,6 @@
 (ns metabase.search.appdb.specialization.h2
   (:require
+   [clojure.math :as math]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.search.appdb.specialization.api :as specialization]
@@ -83,7 +84,8 @@
 
 (defmethod specialization/view-count-percentile-query :h2
   [index-table p-value]
-  ;; Since H2 doesn't support calculating percentiles, we just use the max YOLO
-  {:select   [:search_index.model [[:* p-value :view_count] :vcp]]
+  ;; Since H2 doesn't support calculating percentiles, we just scale the max >_<
+  ;; We take the power of the p-value to simulate a one-sided, long-tailed distribution
+  {:select   [:search_index.model [[:* [:inline (math/pow p-value 10)] [:max :view_count]] :vcp]]
    :from     [[index-table :search_index]]
    :group-by [:search_index.model]})
