@@ -1468,11 +1468,15 @@
 
   (That's super unstable, but legacy MBQL is never manipulated anymore. We just need a clean round trip through
   legacy, so indexes work fine. Idents are stored directly on the clauses in pMBQL.)"
-  [:map-of ::lib.schema.common/int-greater-than-or-equal-to-zero ::Ident])
+  ;; TODO: Make the ::Ident values strict once idents are always-populated? That only works for post-normalization
+  ;; queries, but I think we don't apply this schema until normalization.
+  [:map-of ::lib.schema.common/int-greater-than-or-equal-to-zero [:maybe ::Ident]])
 
 (mr/def ::ExpressionIdents
   "Expressions get their `:ident` in legacy MBQL from a separate map, which maps expression names to idents."
-  [:map-of ::lib.schema.common/non-blank-string ::Ident])
+  ;; TODO: Make the ::Ident values strict once idents are always-populated? That only works for post-normalization
+  ;; queries, but I think we don't apply this schema until normalization.
+  [:map-of ::lib.schema.common/non-blank-string [:maybe ::Ident]])
 
 (mr/def ::MBQLQuery
   [:and
