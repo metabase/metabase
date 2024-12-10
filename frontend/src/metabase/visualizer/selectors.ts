@@ -75,6 +75,9 @@ export const getIsLoading = createSelector(
 
 export const getDraggedItem = (state: State) => state.visualizer.draggedItem;
 
+export const getIsVizSettingsSidebarOpen = (state: State) =>
+  state.visualizer.isVizSettingsSidebarOpen;
+
 export const getCanUndo = (state: State) => state.visualizer.past.length > 0;
 export const getCanRedo = (state: State) => state.visualizer.future.length > 0;
 
@@ -198,7 +201,7 @@ export const getVisualizerRawSeries = createSelector(
 export const getVisualizerComputedSettings = createSelector(
   [getVisualizerRawSeries],
   (rawSeries): ComputedVisualizationSettings =>
-    getComputedSettingsForSeries(rawSeries),
+    rawSeries.length > 0 ? getComputedSettingsForSeries(rawSeries) : {},
 );
 
 export const getVisualizerUrlHash = createSelector(

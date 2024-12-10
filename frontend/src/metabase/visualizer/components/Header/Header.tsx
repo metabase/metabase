@@ -1,13 +1,16 @@
 import { t } from "ttag";
 
+import { useDispatch } from "metabase/lib/redux";
 import { ActionIcon, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
+import { toggleVizSettingsSidebar } from "metabase/visualizer/visualizer.slice";
 
 export function Header() {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
+  const dispatch = useDispatch();
 
   return (
-    <Flex p="md" pb="sm">
+    <Flex p="md" pb="sm" justify="space-between">
       <Flex align="center">
         <Tooltip label={t`Back`}>
           <ActionIcon disabled={!canUndo} onClick={undo}>
@@ -21,13 +24,18 @@ export function Header() {
         </Tooltip>
       </Flex>
 
-      <Flex ml="auto" align="center">
+      <Flex align="center" gap="sm">
+        <Tooltip label={t`Settings`}>
+          <ActionIcon onClick={() => dispatch(toggleVizSettingsSidebar())}>
+            <Icon name="gear" />
+          </ActionIcon>
+        </Tooltip>
         <Tooltip label={t`Share`}>
           <ActionIcon>
             <Icon name="share" />
           </ActionIcon>
         </Tooltip>
-        <Button compact mx="md" disabled>
+        <Button compact disabled mx="xs">
           Persist me
         </Button>
         <Tooltip label={t`Fullscreen`}>

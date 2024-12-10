@@ -63,6 +63,7 @@ const initialCommonState: VisualizerCommonState = {
   loadingDataSources: {},
   loadingDatasets: {},
   expandedDataSources: {},
+  isVizSettingsSidebarOpen: false,
   error: null,
   draggedItem: null,
 };
@@ -313,6 +314,9 @@ const visualizerSlice = createSlice({
       state.expandedDataSources[action.payload] =
         !state.expandedDataSources[action.payload];
     },
+    toggleVizSettingsSidebar: state => {
+      state.isVizSettingsSidebarOpen = !state.isVizSettingsSidebarOpen;
+    },
     undo: state => {
       const canUndo = state.past.length > 0;
       if (canUndo) {
@@ -365,6 +369,7 @@ const visualizerSlice = createSlice({
           state.past = [...state.past, present];
           state.present = initialVisualizerHistoryItem;
           state.future = [];
+          state.isVizSettingsSidebarOpen = false;
         } else {
           maybeUpdateHistory(state, action);
         }
@@ -522,6 +527,7 @@ export const { setDisplay, updateSettings, removeColumn } =
 export const {
   setDraggedItem,
   toggleDataSourceExpanded,
+  toggleVizSettingsSidebar,
   undo,
   redo,
   resetVisualizer,

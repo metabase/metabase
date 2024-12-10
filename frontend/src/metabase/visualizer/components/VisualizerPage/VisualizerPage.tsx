@@ -17,6 +17,7 @@ import { useVisualizerUrlSync } from "metabase/visualizer/hooks/use-visualizer-u
 import {
   getDatasets,
   getDraggedItem,
+  getIsVizSettingsSidebarOpen,
   getVisualizationType,
 } from "metabase/visualizer/selectors";
 import { isValidDraggedItem } from "metabase/visualizer/utils";
@@ -34,15 +35,18 @@ import { DragOverlay as VisualizerDragOverlay } from "../DragOverlay";
 import { Header } from "../Header";
 import { VisualizationCanvas } from "../VisualizationCanvas";
 import { VisualizationPicker } from "../VisualizationPicker";
+import { VizSettingsSidebar } from "../VizSettingsSidebar/VizSettingsSidebar";
 
 export const VisualizerPage = ({ location, router }: WithRouterProps) => {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
   const display = useSelector(getVisualizationType);
   const draggedItem = useSelector(getDraggedItem);
+  const datasets = useSelector(getDatasets);
+  const isVizSettingsSidebarOpen = useSelector(getIsVizSettingsSidebarOpen);
+
   const dispatch = useDispatch();
 
-  const datasets = useSelector(getDatasets);
   const hasDatasets = Object.values(datasets).length > 0;
 
   const canvasSensor = useSensor(PointerSensor, {
@@ -141,6 +145,11 @@ export const VisualizerPage = ({ location, router }: WithRouterProps) => {
               <VisualizationCanvas />
             </Box>
           </Box>
+          {isVizSettingsSidebarOpen && (
+            <Flex direction="column" miw={320}>
+              <VizSettingsSidebar />
+            </Flex>
+          )}
         </Flex>
         <DragOverlay dropAnimation={null}>
           {draggedItem && <VisualizerDragOverlay item={draggedItem} />}
