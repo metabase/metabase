@@ -32,7 +32,7 @@
   [_channel-type notification-info _template _recipients]
   [notification-info])
 
-(defmethod notification.payload/payload :notification/testing
+(defmethod notification.payload/content :notification/testing
   [_notification]
   {::payload? true})
 
@@ -100,7 +100,9 @@
 (defn do-with-card-notification
   [{:keys [card notification-card notification subscriptions handlers]} thunk]
   (mt/with-temp
-    [:model/Card {card-id :id} card]
+    [:model/Card {card-id :id} (merge
+                                {:dataset_query (mt/mbql-query orders {:limit 1})}
+                                card)]
     (let [notification (models.notification/create-notification!
                         (merge {:payload      (assoc notification-card
                                                      :card_id card-id)

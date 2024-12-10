@@ -32,21 +32,21 @@
                 </td>
               </tr>
             </table>
-            {{{computed.alert_content}}}
+            {{{computed.content}}}
             <p style="color: {{payload.style.color_text_medium}}; font-size: 12px; font-weight: 400">
-              {{#with payload.alert}}
-                {{#if (equals alert_condition "goal")}}
-                  {{#if alert_above_goal}}
-                    when this question meets its goal
-                  {{else}}
-                    when this question goes below its goal
-                  {{/if}}
+              {{#with payload.notification_card}}
+                {{#if (equals send_condition "goal_above")}}
+                  when this question meets its goal
                 {{else}}
+                  {{#if (equals send_condition "goal_below")}}
+                  when this question goes below its goal
+                  {{else}}
                   whenever this question has any results
+                  {{/if}}
                 {{/if}}
               {{/with}}
             </p>
-            {{#if payload.alert.alert_first_only}}
+            {{#if payload.notification_card.send_once}}
               <p style="color: {{payload.style.color_text_medium}}; font-size: 12px; font-weight: 400">
               We’ll stop sending you alerts about this question now.
               </p>

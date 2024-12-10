@@ -78,9 +78,10 @@
 
 (mu/defmethod channel/render-notification [:channel/http :notification/card]
   [_channel-type {:keys [payload creator]} _template _recipients]
-  (let [{:keys [card alert card_part]} payload
+  (let [{:keys [card notification_card card_part]} payload
         request-body {:type               "alert"
-                      :alert_id           (:id alert)
+                      ;; TODO: can we rename this???
+                      :alert_id           (:id notification_card)
                       :alert_creator_id   (:id creator)
                       :alert_creator_name (:common_name creator)
                       :data               {:type          "question"

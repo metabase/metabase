@@ -91,8 +91,9 @@
     (slack/post-chat-message! channel-id nil (create-and-upload-slack-attachments! attachments))))
 
 ;; ------------------------------------------------------------------------------------------------;;
-;;                                           Alerts                                                ;;
+;;                                      Notification Card                                          ;;
 ;; ------------------------------------------------------------------------------------------------;;
+
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/card] :- [:sequential SlackMessage]
   [_channel-type {:keys [payload]} _template channel-ids]

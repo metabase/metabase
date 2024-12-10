@@ -36,10 +36,12 @@
         [:event_info  [:maybe :map]]]]]]
     [:notification/card
      [:map
-      ;; replacement of pulse
-      [:alert      [:map
+      [:payload    [:map
                     [:card_id                           ms/PositiveInt]
-                    [:schedule                          :map]
+                    [:send_condition                    (into [:enum] models.notification/card-subscription-send-conditions)]
+                    [:send_once        {:optional true} ms/BooleanValue]
+                    ;; delete
+                    [:schedule         {:optional true} :map]
                     [:alert_condition  {:optional true} [:enum "rows" "goal"]]
                     [:alert_above_goal {:optional true} [:maybe ms/BooleanValue]]
                     [:alert_first_only {:optional true} [:maybe ms/BooleanValue]]
@@ -94,10 +96,10 @@
     [:notification/card
      [:map
       [:payload [:map
-                 [:card_part [:maybe notification.payload.execute/Part]]
-                 [:card      :map]
-                 [:style     :map]
-                 [:alert     :map]]]]]
+                 [:card_part         [:maybe notification.payload.execute/Part]]
+                 [:card              :map]
+                 [:style             :map]
+                 [:notification_card :map]]]]]
     [:notification/testing   :map]]])
 
 (defn- logo-url
@@ -138,7 +140,7 @@
    :style                {:button (button-style (channel.render/primary-color))}})
 
 (defmulti payload
-  "Given a notification info, return the notification payload."
+  "Given a notification info, return the notification content."
   :payload_type)
 
 (mu/defn notification-payload :- NotificationPayload

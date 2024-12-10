@@ -286,6 +286,7 @@
 (def ^:private notification-recipient-types
   #{:notification-recipient/user
     :notification-recipient/group
+    ;; TODO rename this to notification-recipient/raw-value so it's generic and can be used for slack channel
     :notification-recipient/external-email
     :notification-recipient/template})
 
@@ -341,7 +342,8 @@
 ;;                                     :model/NotificationCard                                     ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(def ^:private card-subscription-send-conditions
+(def card-subscription-send-conditions
+  "Set of valid send conditions for NotificationCard."
   #{:has_result
     :goal_above
     :goal_below})
