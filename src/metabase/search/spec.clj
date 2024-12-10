@@ -24,6 +24,26 @@
   - map: a sub-select"
   [:union :boolean :keyword vector? :map])
 
+(def attr-types
+  "The abstract types of each attribute."
+  {:archived            :boolean
+   :collection-id       :pk
+   :created-at          :timestamp
+   :creator-id          :pk
+   :dashboardcard-count :int
+   :database-id         :pk
+   :id                  :pk
+   :last-edited-at      :timestamp
+   :last-editor-id      :pk
+   :last-viewed-at      :timestamp
+   :name                :text
+   :native-query        nil
+   :official-collection :boolean
+   :pinned              :boolean
+   :updated-at          :timestamp
+   :verified            :boolean
+   :view-count          :int})
+
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
   [:archived
@@ -53,6 +73,9 @@
 (def ^:private attr-keys
   "Keys of a search-model that correspond to concrete columns in the index"
   (into explicit-attrs optional-attrs))
+
+;; Make sure to keep attr-types up to date
+(assert (= (set (keys attr-types)) (set attr-keys)))
 
 (def attr-columns
   "Columns of an ingestion query that correspond to concrete columns in the index"
@@ -127,8 +150,9 @@
 (defn- find-fields-kw [kw]
   ;; Filter out SQL functions
   (when-not (str/starts-with? (name kw) "%")
-    (let [table (get-table kw)]
-      (list [(or table :this) (remove-table table kw)]))))
+    (when-not (#{:else :integer :float} kw)
+      (let [table (get-table kw)]
+        (list [(or table :this) (remove-table table kw)])))))
 
 (defn- find-fields-expr [expr]
   (cond

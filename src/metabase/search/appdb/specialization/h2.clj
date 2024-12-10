@@ -7,48 +7,16 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(defmethod specialization/table-schema :h2 []
-  [[:id :bigint :auto-increment :primary-key]
-   ;; entity
-   [:model_id :int :not-null]
-   ;; TODO We could shrink this to just what we need.
-   [:model [:varchar 254] :not-null]
-   [:name :text :not-null]
-   ;; search
-   [:search_terms :text]
-   [:native_search_terms :text]
-   ;; results
-   [:display_data :text :not-null]
-   [:legacy_input :text :not-null]
-   ;; scoring related
-   [:dashboardcard_count :int]
-   [:last_viewed_at :timestamp-with-time-zone]
-   [:official_collection :boolean]
-   [:pinned :boolean]
-   [:verified :boolean]
-   [:view_count :int]
-   ;; permission related entities
-   [:collection_id :int]
-   [:database_id :int]
-   ;; filter related
-   [:archived :boolean :not-null [:default false]]
-   [:creator_id :int]
-   [:last_edited_at :timestamp-with-time-zone]
-   [:last_editor_id :int]
-   [:model_created_at :timestamp-with-time-zone]
-   [:model_updated_at :timestamp-with-time-zone]
-   ;; useful for tracking the speed and age of the index
-   [:created_at :timestamp-with-time-zone
-    [:default [:raw "CURRENT_TIMESTAMP"]]
-    :not-null]
-   [:updated_at :timestamp-with-time-zone :not-null]])
+(defmethod specialization/table-schema :h2 [base-schema]
+  (into [[:id :bigint :auto-increment :primary-key]
+         [:search_terms :text]
+         [:native_search_terms :text]]
+        base-schema))
 
 (defmethod specialization/post-create-statements :h2 [prefix table-name]
   (mapv
    (fn [template] (format template prefix table-name))
-   ["CREATE UNIQUE INDEX %s_identity_idx ON %s (model, model_id)"
-    ;; indexes on text?
-    ]))
+   ["CREATE UNIQUE INDEX %s_identity_idx ON %s (model, model_id)"]))
 
 (defmethod specialization/batch-upsert! :h2 [table entries]
   ;; it's in memory, let's just do it quick and dirty (HoneySQL can't speak MERGE WITH)
