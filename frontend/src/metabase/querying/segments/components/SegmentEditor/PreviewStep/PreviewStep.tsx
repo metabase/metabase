@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { Link } from "react-router";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -29,10 +28,7 @@ type PreviewQueryProps = {
 };
 
 function PreviewQuery({ query, stageIndex }: PreviewQueryProps) {
-  const countQuery = useMemo(
-    () => Lib.aggregateByCount(query, stageIndex),
-    [query, stageIndex],
-  );
+  const countQuery = Lib.aggregateByCount(query, stageIndex);
   const { data, isFetching } = useGetAdhocQueryQuery(
     Lib.toLegacyQuery(countQuery),
   );

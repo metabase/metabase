@@ -539,10 +539,11 @@
             (sync/sync-table! table)
             (let [field (t2/select-one Field :table_id (u/id table) :name "json_bit → 1234")
                   compile-res (qp.compile/compile
-                               (mt/mbql-query nil
-                                 {:source-table (u/the-id table)
-                                  :aggregation  [[:count]]
-                                  :breakout     [[:field (u/the-id field) nil]]}))]
+                               {:database (u/the-id (mt/db))
+                                :type     :query
+                                :query    {:source-table (u/the-id table)
+                                           :aggregation  [[:count]]
+                                           :breakout     [[:field (u/the-id field) nil]]}})]
               (is (= ["SELECT"
                       "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), DECIMAL) AS `json_bit → 1234`,"
                       "  COUNT(*) AS `count`"

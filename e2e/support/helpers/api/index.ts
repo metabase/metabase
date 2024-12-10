@@ -14,7 +14,7 @@ export { createNativeQuestion } from "./createNativeQuestion";
 export type { NativeQuestionDetails } from "./createNativeQuestion";
 export { createNativeQuestionAndDashboard } from "./createNativeQuestionAndDashboard";
 export { createPulse } from "./createPulse";
-export { createQuestion, mbqlQuery } from "./createQuestion";
+export { createQuestion } from "./createQuestion";
 export type {
   QuestionDetails,
   StructuredQuestionDetails,

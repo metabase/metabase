@@ -906,7 +906,7 @@ H.describeEE("formatting > sandboxes", () => {
         name: "14969",
         dataset_query: {
           type: "query",
-          query: H.mbqlQuery({
+          query: {
             "source-table": ORDERS_ID,
             joins: [
               {
@@ -929,7 +929,7 @@ H.describeEE("formatting > sandboxes", () => {
                 ["field-id", PRODUCTS.CATEGORY],
               ],
             ],
-          }),
+          },
           database: SAMPLE_DB_ID,
         },
         display: "pivot",
