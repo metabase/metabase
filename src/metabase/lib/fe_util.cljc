@@ -407,25 +407,7 @@
        :offset-unit  offset-unit
        :options      {}}
 
-      ;; legacy expression; replaced by :relative-time-interval; supported for backward compatibility
-      [:between _
-       [:+ _
-        (col-ref :guard date-col?)
-        [:internal _ (offset-value :guard number?) (offset-unit :guard keyword?)]]
-       [:relative-datetime _
-        (start-value :guard number?)
-        (start-unit :guard keyword?)]
-       [:relative-datetime _
-        (end-value :guard number?)
-        (end-unit :guard keyword?)]]
-      {:column       (ref->col col-ref)
-       :value        (if (pos? offset-value) start-value end-value)
-       :unit         start-unit
-       :offset-value (- offset-value)
-       :offset-unit  offset-unit
-       :options      {}}
-
-      ;; do not match inner clauses
+       ;; do not match inner clauses
       _
       nil)))
 
