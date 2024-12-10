@@ -172,7 +172,7 @@ describe("scenarios > public > question", () => {
     }).then(({ body: { id } }) => {
       H.openNativeEditor();
 
-      H.nativeEditorType(`select * from {{#${id}`);
+      H.NativeEditor.type(`select * from {{#${id}`);
 
       H.saveQuestion(
         "test question",

@@ -35,7 +35,7 @@ function clearNativeEditor() {
   cy.realPress(["Backspace"]);
 }
 
-export function nativeEditorType(
+function nativeEditorType(
   text: string,
   { delay = 10 }: { delay?: number } = {},
 ) {

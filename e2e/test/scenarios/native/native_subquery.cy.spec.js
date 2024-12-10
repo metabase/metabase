@@ -140,7 +140,7 @@ describe("scenarios > question > native subquery", () => {
           // Refresh the state, so previously created questions need to be loaded again.
           cy.reload();
           cy.findByText("Open Editor").click();
-          H.nativeEditorType(" a_");
+          H.NativeEditor.type(" a_");
 
           H.NativeEditor.completion("A_UNIQUE_COLUMN_NAME").should(
             "be.visible",
@@ -148,11 +148,11 @@ describe("scenarios > question > native subquery", () => {
 
           // For some reason, typing `{{#${questionId2}}}` in one go isn't deterministic,
           // so type it in two parts
-          H.nativeEditorType(` {{#${questionId2}}}`);
+          H.NativeEditor.type(` {{#${questionId2}}}`);
 
           // Again, typing in in one go doesn't always work
           // so type it in two parts
-          H.nativeEditorType(" another");
+          H.NativeEditor.type(" another");
 
           H.NativeEditor.completion("ANOTHER_UNIQUE_COLUMN_NAME").should(
             "be.visible",

@@ -68,7 +68,7 @@ describe("issue 15029", () => {
 
   it("should allow dots in the variable reference (metabase#15029)", () => {
     H.openNativeEditor();
-    H.nativeEditorType(
+    H.NativeEditor.type(
       "select * from products where RATING = {{number.of.stars}}",
     );
 
@@ -537,7 +537,7 @@ describe("issue 21597", { tags: "@external" }, () => {
       databaseName,
     });
 
-    H.nativeEditorType("SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}");
+    H.NativeEditor.type("SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}");
 
     cy.findByTestId("variable-type-select").click();
     H.popover().within(() => {
@@ -654,7 +654,7 @@ describe("issue 34330", () => {
 
   it("should only call the autocompleter with all text typed (metabase#34330)", () => {
     H.openNativeEditor();
-    H.nativeEditorType("USER", { delay: 0 });
+    H.NativeEditor.type("USER", { delay: 0 });
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
@@ -669,7 +669,7 @@ describe("issue 34330", () => {
 
   it("should call the autocompleter eventually, even when only 1 character was typed (metabase#34330)", () => {
     H.openNativeEditor();
-    H.nativeEditorType("U");
+    H.NativeEditor.type("U");
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
@@ -820,7 +820,7 @@ describe("issue 22991", () => {
     H.openNativeEditor();
     cy.get("@questionId").then(questionId => {
       // can't use cy.type because it does not simulate the bug
-      H.nativeEditorType(`select * from {{${questionId}}}`);
+      H.NativeEditor.type(`select * from {{${questionId}}}`);
     });
 
     cy.get("main").should(
