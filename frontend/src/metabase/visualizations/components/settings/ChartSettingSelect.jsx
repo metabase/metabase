@@ -17,6 +17,7 @@ export const ChartSettingSelect = ({
   id,
   searchProp,
   footer,
+  ...selectProps
 }) => {
   const disabled =
     options.length === 0 ||
@@ -45,7 +46,7 @@ export const ChartSettingSelect = ({
       dropdownComponent={dropdownComponent}
       disabled={disabled}
       value={value}
-      onChange={e => onChange(e)}
+      onChange={onChange}
       placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
       initiallyOpened={isInitiallyOpen}
       searchable={!!searchProp}
@@ -54,6 +55,7 @@ export const ChartSettingSelect = ({
           fontWeight: "bold",
         },
       }}
+      {...selectProps}
     />
   );
 };

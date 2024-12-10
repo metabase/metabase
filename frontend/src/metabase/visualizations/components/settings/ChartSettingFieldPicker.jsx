@@ -4,7 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { ActionIcon, Group, Icon, Select } from "metabase/ui";
+import { ActionIcon, Group, Icon, useMantineTheme } from "metabase/ui";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
@@ -13,6 +13,7 @@ import {
   ChartSettingFieldPickerRoot,
   GrabberHandle,
 } from "./ChartSettingFieldPicker.styled";
+import ChartSettingSelect from "./ChartSettingSelect";
 
 const ChartSettingFieldPicker = ({
   value,
@@ -32,6 +33,8 @@ const ChartSettingFieldPicker = ({
   autoOpenWhenUnset = true,
   fieldSettingWidget = null,
 }) => {
+  const theme = useMantineTheme();
+
   let columnKey;
   if (value && showColumnSetting && columns) {
     const column = _.findWhere(columns, { name: value });
@@ -85,10 +88,13 @@ const ChartSettingFieldPicker = ({
       bg="bg-white"
       align="center"
     >
-      <Select
+      <ChartSettingSelect
         data-testid="chartsettings-field-picker-select"
-        data={data}
-        disabled={disabled}
+        pl="xs"
+        pr="xs"
+        w="100%"
+        isInitiallyOpen={autoOpenWhenUnset && value === undefined}
+        options={options}
         value={value}
         onChange={onChange}
         icon={
@@ -99,9 +105,8 @@ const ChartSettingFieldPicker = ({
                   name="grabber"
                   noMargin
                   onClick={e => e.stopPropagation()}
-                  style={{ pointerEvents: "all" }}
-                  width={16}
-                  height={16}
+                  c="text-medium"
+                  className={CS.pointerEventsAll}
                 />
               )}
               {showColorPicker && seriesKey && (
@@ -117,28 +122,8 @@ const ChartSettingFieldPicker = ({
             </>
           ) : null
         }
-        placeholder={
-          options.length === 0 ? t`No valid fields` : t`Select a field`
-        }
-        pl="xs"
-        pr="xs"
-        w="100%"
-        initiallyOpened={autoOpenWhenUnset && value === undefined}
-        styles={{
-          input: {
-            marginLeft: "0.25rem",
-            textOverflow: "ellipsis",
-            fontWeight: "bold",
-            "&[data-disabled]": {
-              backgroundColor: "var(--mb-color-bg-white) !important",
-            },
-            border: "none",
-            lineHeight: "1rem",
-          },
-          rightSection: {
-            pointerEvents: "none",
-          },
-        }}
+        placeholderNoOptions={t`No valid fields`}
+        placeholder={t`Select a field`}
         iconWidth="auto"
         rightSectionWidth="auto"
         rightSection={
@@ -170,13 +155,27 @@ const ChartSettingFieldPicker = ({
                 data-testid={`remove-${value}`}
                 onClick={onRemove}
                 className={CS.pointerEventsAll}
-                style={{ pointerEvents: "all" }}
               >
                 <Icon name="close" />
               </ActionIcon>
             )}
           </Group>
         }
+        styles={{
+          input: {
+            marginLeft: theme.spacing.xs,
+            textOverflow: "ellipsis",
+            fontWeight: "bold",
+            "&[data-disabled]": {
+              backgroundColor: "var(--mb-color-bg-white) !important",
+            },
+            border: "none",
+            lineHeight: theme.lineHeight,
+          },
+          rightSection: {
+            pointerEvents: "none",
+          },
+        }}
       />
     </ChartSettingFieldPickerRoot>
   );
