@@ -105,8 +105,9 @@
       (search.ingestion/populate-index! :search.engine/appdb))))
 
 (defmethod search.engine/reindex! :search.engine/appdb
-  [_]
+  [_ {:keys [in-place?]}]
   (search.index/ensure-ready! false)
-  (search.index/maybe-create-pending!)
+  (when-not in-place?
+    (search.index/maybe-create-pending!))
   (u/prog1 (search.ingestion/populate-index! :search.engine/appdb)
     (search.index/activate-table!)))
