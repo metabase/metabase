@@ -9,7 +9,10 @@
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (set! *warn-on-reflection* true)
 
@@ -233,8 +236,8 @@
             (let [cache-timestamp-2 (t2/select-one-fn :updated_at :model/QueryCache)]
               (is (t/before? cache-timestamp-1 cache-timestamp-2)))))))))
 
-(deftest feature-flag-test
-  (testing "Sanity check that we are correctly enforcing caching feature flags"
+(deftest cache-preemptive-feature-flag-test
+  (testing "Sanity check that we are correctly enforcing the :cache-preemptive feature flags"
     (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
                                               :dataset_query (parameterized-native-query)}
                    :model/CacheConfig cc {:model "question"
@@ -242,20 +245,14 @@
                                           :strategy :schedule
                                           :refresh_automatically true
                                           :config {:schedule "0 0 * * * ?"}}]
-      (mt/with-premium-features #{}
-        (is (= nil (task.cache/init-cache-task!))))
+      (let [call-count (atom 0)]
+        (mt/with-dynamic-redefs [task.cache/refresh-schedule-cache! (fn [_] (swap! call-count inc))
+                                 task.cache/maybe-refresh-duration-caches! (fn [] (swap! call-count inc))]
+          (@#'task.cache/refresh-cache-configs!)
+          (is (= 0 @call-count))
 
-      (mt/with-premium-features #{:cache-granular-controls}
-        (is (not (nil? (task.cache/init-cache-task!))))
-
-        (let [call-count (atom 0)]
-          (mt/with-dynamic-redefs [task.cache/refresh-schedule-cache! (fn [_] (swap! call-count inc))
-                                   task.cache/maybe-refresh-duration-caches! (fn [] (swap! call-count inc))]
+          (mt/with-additional-premium-features #{:cache-preemptive}
+            (t2/update! :model/CacheConfig (:id cc) (assoc cc :next_run_at nil))
+            (is (true? (premium-features/enable-preemptive-caching?)))
             (@#'task.cache/refresh-cache-configs!)
-            (is (= 0 @call-count))
-
-            (mt/with-additional-premium-features #{:cache-preemptive}
-              (t2/update! :model/CacheConfig (:id cc) (assoc cc :next_run_at nil))
-              (is (true? (premium-features/enable-preemptive-caching?)))
-              (@#'task.cache/refresh-cache-configs!)
-              (is (= 2 @call-count)))))))))
+            (is (= 2 @call-count))))))))
