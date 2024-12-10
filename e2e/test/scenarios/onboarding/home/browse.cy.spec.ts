@@ -105,7 +105,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
     cy.intercept("GET", "/api/search*", req => {
       req.reply({ statusCode: 400 });
     });
-    navigationSidebar().findByLabelText("Browse models").click();
+    H.navigationSidebar().findByLabelText("Browse models").click();
     cy.findByLabelText("Models")
       .findAllByText("An error occurred")
       .should("have.length", 2);
@@ -116,7 +116,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
     cy.intercept("GET", "/api/search*", req => {
       req.reply({ statusCode: 400 });
     });
-    navigationSidebar().findByLabelText("Browse metrics").click();
+    H.navigationSidebar().findByLabelText("Browse metrics").click();
     cy.findByLabelText("Metrics")
       .findByText("An error occurred")
       .should("be.visible");
