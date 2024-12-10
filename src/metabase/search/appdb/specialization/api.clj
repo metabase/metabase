@@ -6,7 +6,7 @@
 
 (defmulti table-schema
   "The HoneySQL definition for the shape of the index table for this appdb."
-  {:arglists '([])}
+  {:arglists '([base-schema])}
   db-type)
 
 (defmulti post-create-statements
@@ -19,11 +19,6 @@
   {:arglists '([_table-name _search-term _search-ctx _select-items])}
   db-type)
 
-(defmulti upsert!
-  "Insert or update a single entry in the index table."
-  {:arglists '([table-name entry])}
-  db-type)
-
 (defmulti batch-upsert!
   "Insert or update multiple entries in the index table."
   {:arglists '([table-name entries])}
@@ -32,4 +27,14 @@
 (defmulti extra-entry-fields
   "Populate additional fields only present for this database driver's index table"
   {:arglists '([entity])}
+  db-type)
+
+(defmulti text-score
+  "The HoneySQL expression used to calculate a text score for the given entry."
+  {:arglists '([_search-ctx])}
+  db-type)
+
+(defmulti view-count-percentile-query
+  "Calculate the given p-value of view counts for each search model"
+  {:arglists '([index-table p-value])}
   db-type)

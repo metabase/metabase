@@ -54,12 +54,12 @@
 
 (defn reindex!
   "Populate a new index, and make it active. Simultaneously updates the current index."
-  []
+  [& {:as opts}]
   ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
   (reduce (partial merge-with max)
           nil
           (for [e (search.engine/active-engines)]
-            (search.engine/reindex! e))))
+            (search.engine/reindex! e opts))))
 
 (defn reset-tracking!
   "Stop tracking the current indexes. Used when resetting the appdb."
