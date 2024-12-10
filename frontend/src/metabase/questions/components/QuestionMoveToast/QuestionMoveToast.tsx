@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { match } from "ts-pattern";
 import { jt } from "ttag";
 
 import { useGetCollectionQuery } from "metabase/api";
@@ -33,9 +34,11 @@ function QuestionMoveToast({ collectionId, question }: QuestionMoveToastProps) {
   return (
     <ToastRoot>
       <StyledIcon name="collection" />
-      {type === "question" && jt`Question moved to ${collectionLink}`}
-      {type === "model" && jt`Model moved to ${collectionLink}`}
-      {type === "metric" && jt`Metric moved to ${collectionLink}`}
+      {match(type)
+        .with("question", () => jt`Question moved to ${collectionLink}`)
+        .with("model", () => jt`Model moved to ${collectionLink}`)
+        .with("metric", () => jt`Metric moved to ${collectionLink}`)
+        .exhaustive()}
     </ToastRoot>
   );
 }
