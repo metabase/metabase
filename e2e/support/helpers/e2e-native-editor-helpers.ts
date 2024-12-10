@@ -95,3 +95,29 @@ export function nativeEditorType(
 
   return nativeEditor();
 }
+
+export const NativeEditor = {
+  get: nativeEditor,
+  type(text: string) {
+    nativeEditorType(text);
+    return NativeEditor;
+  },
+  focus() {
+    focusNativeEditor();
+    return NativeEditor;
+  },
+  blur() {
+    blurNativeEditor();
+    return NativeEditor;
+  },
+  selectAll() {
+    nativeEditorSelectAll();
+    return NativeEditor;
+  },
+  clear() {
+    clearNativeEditor();
+    return NativeEditor;
+  },
+  completions: nativeEditorCompletions,
+  completion: nativeEditorCompletion,
+};
