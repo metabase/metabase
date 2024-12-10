@@ -6,7 +6,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.task :as task]
    [metabase.util :as u]
@@ -204,11 +204,15 @@
         (count
          (for [{:keys [id config refresh_automatically] :as cache-config} (select-ready-to-run :schedule)]
            (do
-             (t2/update! :model/CacheConfig {:id id}
-                         {:next_run_at     (calc-next-run (:schedule config) now)
+             (t2/update! :model/CacheConfig
+                         {:id id}
+                         {:next_run_at    (calc-next-run (:schedule config) now)
                           :invalidated_at now})
-             (when refresh_automatically (refresh-schedule-cache! cache-config)))))]
-    (maybe-refresh-duration-caches!)
+             (when (and (premium-features/enable-preemptive-caching?)
+                        refresh_automatically)
+               (refresh-schedule-cache! cache-config)))))]
+    (when (premium-features/enable-preemptive-caching?)
+      (maybe-refresh-duration-caches!))
     invalidated-count))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
