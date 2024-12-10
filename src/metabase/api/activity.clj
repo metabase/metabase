@@ -41,7 +41,7 @@
                    "table" [:metabase_database [:= :metabase_database.id (self-qualify :db_id)]]
                    "card" [:collection [:= :collection.id (self-qualify :collection_id)]
                            [:report_dashboard :dashboard] [:= :dashboard.id (self-qualify :dashboard_id)]]
-                   [:collection [:= :collection.id (self-qualify :collection_id)]])})))
+                   "dashboard" [:collection [:= :collection.id (self-qualify :collection_id)]])})))
 
 (defn- models-for-views
   "Returns a map of {model {id instance}} for activity views suitable for looking up by model and id to get a model."

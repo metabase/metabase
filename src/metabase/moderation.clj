@@ -67,6 +67,6 @@
                                  (group-by (juxt :moderated_item_type :moderated_item_id))
                                  (m/map-vals #(:status (first %)))))]
       (for [item items]
-        (when (some? item)
-          (let [k ((juxt (comp keyword object->type) u/the-id) item)]
-            (assoc item :moderation_status (get type+id->status k))))))))
+        (some-> item
+                (assoc :moderation_status (get type+id->status [(keyword (object->type item))
+                                                                (u/the-id item)])))))))

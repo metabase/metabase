@@ -22,7 +22,6 @@
    [metabase.models.audit-log :as audit-log]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
-   [metabase.models.dashboard.constants :as dashboard.constants]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
@@ -143,31 +142,32 @@
   (mi/instances-with-hydrated-data
    cards k
    (fn []
-     (->> (t2/query {:select [:card_id
-                              :name
-                              :collection_id
-                              :id]
-                     :from [[{:union-all [{:select [[:dc.card_id :card_id]
-                                                    [:d.name :name]
-                                                    [:d.collection_id :collection_id]
-                                                    [:d.id :id]]
-                                           :from [[:report_dashboardcard :dc]]
-                                           :join [[:report_dashboard :d] [:= :dc.dashboard_id :d.id]]
-                                           :where [:in :dc.card_id (map :id cards)]}
-                                          {:select [[:dcs.card_id :card_id]
-                                                    [:d.name :name]
-                                                    [:d.collection_id :collection_id]
-                                                    [:d.id :id]]
-                                           :from [[:dashboardcard_series :dcs]]
-                                           :where [:in :dcs.card_id (map :id cards)]
-                                           :join [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
-                                                  [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]}]}
-                             :dummy_alias]]})
-          (group-by :card_id)
-          (m/map-vals (fn [dashes] (->> dashes
-                                        (map (fn [dash] (dissoc dash :card_id)))
-                                        distinct
-                                        (mapv (fn [dash] (t2/instance :model/Dashboard dash))))))))
+     (update-vals
+      (group-by :card_id
+                (t2/query {:select [:card_id
+                                    :name
+                                    :collection_id
+                                    :id]
+                           :from [[{:union-all [{:select [[:dc.card_id :card_id]
+                                                          [:d.name :name]
+                                                          [:d.collection_id :collection_id]
+                                                          [:d.id :id]]
+                                                 :from [[:report_dashboardcard :dc]]
+                                                 :join [[:report_dashboard :d] [:= :dc.dashboard_id :d.id]]
+                                                 :where [:in :dc.card_id (map :id cards)]}
+                                                {:select [[:dcs.card_id :card_id]
+                                                          [:d.name :name]
+                                                          [:d.collection_id :collection_id]
+                                                          [:d.id :id]]
+                                                 :from [[:dashboardcard_series :dcs]]
+                                                 :join [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
+                                                        [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
+                                                 :where [:in :dcs.card_id (map :id cards)]}]}
+                                   :dummy_alias]]}))
+      (fn [dashes] (->> dashes
+                        (map (fn [dash] (dissoc dash :card_id)))
+                        distinct
+                        (mapv (fn [dash] (t2/instance :model/Dashboard dash)))))))
    :id
    {:default []}))
 
@@ -477,7 +477,7 @@
         (tru "Invalid Dashboard Question: Cannot manually set `collection_id` on a Dashboard Question")
         (api/column-will-change? :collection_position card changes)
         (tru "Invalid Dashboard Question: Cannot set `collection_position` on a Dashboard Question")
-       ;; `column-will-change?` seems broken in the case where we 'change' :question to "question"
+        ;; `column-will-change?` seems broken in the case where we 'change' :question to "question"
         (and (api/column-will-change? :type card changes)
              (not (contains? #{"question" :question} (:type changes))))
         (tru "Invalid Dashboard Question: Cannot set `type` on a Dashboard Question")))))
@@ -681,8 +681,8 @@
     (query-analysis/analyze! card)))
 
 (defn- apply-dashboard-question-updates [changes]
-  (if (:dashboard_id changes)
-    (assoc changes :collection_id (t2/select-one-fn :collection_id :model/Dashboard :id (:dashboard_id changes)))
+  (if-let [dashboard-id (:dashboard_id changes)]
+    (assoc changes :collection_id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))
     changes))
 
 (t2/define-before-update :model/Card
@@ -735,10 +735,7 @@
     (when-not already-on-dashboard?
       (let [cards-on-first-tab (or (:cards (first tabs))
                                    dashcards)
-            new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab
-                                                              (:width (:default (get dashboard.constants/card-size-defaults (:display card))))
-                                                              (:height (:default (get dashboard.constants/card-size-defaults (:display card))))
-                                                              autoplace/default-grid-width)]
+            new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab (:display card))]
         (t2/insert! :model/DashboardCard (assoc new-spot
                                                 :card_id (:id card)
                                                 :dashboard_id dashboard-id))
@@ -785,19 +782,19 @@
     (when (and on-dashboard-after? (not archived-after?))
       (autoplace-dashcard-for-card! new-dashboard-id card-before-update))
 
-    (when (or
-           ;; we're moving from one dashboard to another dashboard
-           (and on-dashboard-before?
-                on-dashboard-after?
-                dashboard-changes?)
-           ;; we're archiving a Dashboard Question
-           (and archived-after?
-                on-dashboard-before?
-                on-dashboard-after?)
-           ;; we're moving from a dashboard to a collection and the user has told us to delete
-           (and on-dashboard-before?
-                (not on-dashboard-after?)
-                delete-old-dashcards?))
+    (when (and
+           ;; we start out as a DQ, and
+           on-dashboard-before?
+           (or
+            ;; we're moving to a *different* dashboard,
+            (and on-dashboard-after?
+                 dashboard-changes?)
+            ;; we're archiving the DQ, or
+            (and archived-after?
+                 on-dashboard-after?)
+            ;; we're moving the DQ to a collection, AND the user has told us to delete
+            (and (not on-dashboard-after?)
+                 delete-old-dashcards?)))
       (autoremove-dashcard-for-card! card-id old-dashboard-id))
 
     ;; we're moving from a collection to a dashboard, and the user has told us to remove the dashcards for other
