@@ -9,7 +9,6 @@
   - Static Embedding Dashboard/dashcard downloads
   - Dashboard Subscription Attachments
   - Alert attachments"
-  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.data :as data]
    [clojure.data.csv :as csv]
@@ -21,8 +20,10 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.formatter :as formatter]
    [metabase.public-settings :as public-settings]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.pulse.test-util :as pulse.test-util]
+   [metabase.query-processor.interface :as qp.i]
    [metabase.test :as mt]
    [metabase.util.json :as json])
   (:import
@@ -313,7 +314,8 @@
                       ((fn [m] (update-vals m #(into #{} (mapv first %)))))
                       (apply concat)))))
         (testing "only when `public-settings/enable-pivoted-exports` is true (true by default)."
-          (is (= [[["Doohickey" "2016" "$632.14"]
+          (is (= [[["Category" "Created At: Year" "Sum of Price"]
+                   ["Doohickey" "2016" "$632.14"]
                    ["Doohickey" "2017" "$854.19"]
                    ["Doohickey" "2018" "$496.43"]
                    ["Doohickey" "2019" "$203.13"]
@@ -1003,35 +1005,36 @@
 
 (deftest downloads-row-limit-test
   (testing "Downloads row limit works."
-    (mt/with-temporary-setting-values [public-settings/download-row-limit 1050000]
-      (mt/dataset test-data
-        (mt/with-temp [:model/Card card {:display       :table
-                                         :dataset_query {:database (mt/id)
-                                                         :type     :native
-                                                         :native   {:query "SELECT 1 as A FROM generate_series(1,1100000);"}}}]
-          (let [results (all-outputs! card {:export-format :csv :format-rows true})]
-            (is (= {:card-download            1050001
-                    :unsaved-card-download    1050001
-                    :alert-attachment         1050001
-                    :dashcard-download        1050001
-                    :subscription-attachment  1050001
-                    :public-question-download 1050001
-                    :public-dashcard-download 1050001}
-                   (update-vals results count))))))))
-  (testing "Downloads row limit default works."
-    (mt/dataset test-data
+    (mt/with-temporary-setting-values [public-settings/download-row-limit 105]
       (mt/with-temp [:model/Card card {:display       :table
                                        :dataset_query {:database (mt/id)
                                                        :type     :native
-                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,1100000);"}}}]
+                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,110);"}}}]
         (let [results (all-outputs! card {:export-format :csv :format-rows true})]
-          (is (= {:card-download            1048576
-                  :unsaved-card-download    1048576
-                  :alert-attachment         1048576
-                  :dashcard-download        1048576
-                  :subscription-attachment  1048576
-                  :public-question-download 1048576
-                  :public-dashcard-download 1048576}
+          (is (= {:card-download            106
+                  :unsaved-card-download    106
+                  :alert-attachment         106
+                  :dashcard-download        106
+                  :subscription-attachment  106
+                  :public-question-download 106
+                  :public-dashcard-download 106}
+                 (update-vals results count))))))))
+
+(deftest downloads-row-limit-default-test
+  (testing "Downloads row limit default works."
+    (with-redefs [qp.i/absolute-max-results 100]
+      (mt/with-temp [:model/Card card {:display       :table
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,110);"}}}]
+        (let [results (all-outputs! card {:export-format :csv :format-rows true})]
+          (is (= {:card-download            101
+                  :unsaved-card-download    101
+                  :alert-attachment         101
+                  :dashcard-download        101
+                  :subscription-attachment  101
+                  :public-question-download 101
+                  :public-dashcard-download 101}
                  (update-vals results count))))))))
 
 (deftest ^:parallel model-viz-settings-downloads-test
@@ -1067,7 +1070,7 @@
                    {:card-download     (mapv #(nth % 3) (take 2 card-result))
                     :dashcard-download (mapv #(nth % 3) (take 2 dashcard-result))}))))))))
 
-(deftest column-settings-on-aggregated-columns-test
+(deftest ^:parallel column-settings-on-aggregated-columns-test
   (testing "Column settings on aggregated columns are applied"
     (mt/dataset test-data
       (mt/with-temp [:model/Card card  {:display                :table
@@ -1091,7 +1094,7 @@
           (is (= "2,185.89 Canadian dollars"
                  (-> (card-download card {:export-format :xlsx :format-rows true}) second second))))))))
 
-(deftest table-metadata-affects-column-formatting-properly
+(deftest ^:parallel table-metadata-affects-column-formatting-properly
   (testing "A Table's configured metadata (eg. Semantic Type of currency) can affect column formatting"
     (mt/dataset test-data
       (mt/with-temp [:model/Card card  {:display                :table
@@ -1116,11 +1119,11 @@
                                                                                      {:currency_in_header false}}}}]
         (testing "for csv"
           (is (= [["Discount"] ["$6.42"]]
-                 (-> (card-download card {:export-format :csv :format-rows true})))))
+                 (card-download card {:export-format :csv :format-rows true}))))
         (testing "for xlsx"
           ;; the [$$] part will appear as $ when you open the Excel file in a spreadsheet app
           (is (= [["Discount"] ["[$$]6.42"]]
-                 (-> (card-download card {:export-format :xlsx :format-rows true})))))))))
+                 (card-download card {:export-format :xlsx :format-rows true}))))))))
 
 (deftest clean-errors-test
   (testing "Queries that error should not include visualization settings (metabase-private #233)"
@@ -1433,3 +1436,190 @@
                 (if expected
                   (is (= [nil nil] [unique-to-a unique-to-b]))
                   (is (or (some? unique-to-a) (some? unique-to-b))))))))))))
+
+(deftest ^:parallel pivot-exports-handle-nil-in-breakout-column
+  (testing "Pivot Exports will still work if the breakout column contains `nil` values."
+    (let [q "SELECT A,
+           CASE
+             WHEN A = 2 THEN NULL
+             ELSE A
+           END AS MEASURE
+         FROM ( SELECT 1 AS A UNION ALL SELECT 2 UNION ALL SELECT 3 )"]
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card {pivot-data-card-id :id}
+                       {:dataset_query {:database (mt/id)
+                                        :type     :native
+                                        :native
+                                        {:template-tags {}
+                                         :query         q}}
+                        :result_metadata
+                        (into [] (for [[_ field-name {:keys [base-type]}] pivot-fields]
+                                   {:name         field-name
+                                    :display_name field-name
+                                    :field_ref    [:field field-name {:base-type base-type}]
+                                    :base_type    base-type}))}
+                       :model/Card pivot-card
+                       {:display                :pivot
+                        :visualization_settings {:pivot_table.column_split
+                                                 {:rows    ["MEASURE"]
+                                                  :columns []
+                                                  :values  ["count" "sum"]}}
+                        :dataset_query          {:database (mt/id)
+                                                 :type     :query
+                                                 :query
+                                                 {:breakout     [[:field "MEASURE" {:base-type :type/Integer}]],
+                                                  :aggregation
+                                                  [[:count]
+                                                   [:sum [:field "A" {:base-type :type/Integer}]]]
+                                                  :source-table (format "card__%s" pivot-data-card-id)}}}]
+          (let [result (card-download pivot-card {:export-format :csv :pivot true})]
+            (is (= [["MEASURE" "Count" "Sum of A"]
+                    ["" "1" "2"]
+                    ["1" "1" "1"]
+                    ["3" "1" "3"]
+                    ["Grand totals" "3" "6"]]
+                   result))))))))
+
+(deftest ^:parallel pivot-exports-handle-aggregations-with-the-same-base-name
+  (testing "Pivot Exports with multiple of the same kind of aggregation will include all of the data."
+    (let [q "SELECT A, B, MEASURE
+               FROM (
+                  SELECT 1 as A, 1 as B, 1 as MEASURE UNION ALL
+                  SELECT 2, 2, 2 UNION ALL
+                  SELECT 3, 3, 3 UNION ALL
+                  SELECT 4, 4, 4  UNION ALL
+                  SELECT 5, 5, 5
+               )"]
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card {pivot-data-card-id :id}
+                       {:dataset_query {:database (mt/id)
+                                        :type     :native
+                                        :native
+                                        {:template-tags {}
+                                         :query         q}}
+                        :result_metadata
+                        (into [] (for [[_ field-name {:keys [base-type]}] pivot-fields]
+                                   {:name         field-name
+                                    :display_name field-name
+                                    :field_ref    [:field field-name {:base-type base-type}]
+                                    :base_type    base-type}))}
+                       :model/Card pivot-card
+                       {:display                :pivot
+                        :visualization_settings {:pivot_table.column_split
+                                                 {:rows    ["MEASURE"]
+                                                  :columns []
+                                                  :values  ["count" "sum" "sum_2"]}}
+                        :dataset_query          {:database (mt/id)
+                                                 :type     :query
+                                                 :query
+                                                 {:breakout     [[:field "MEASURE" {:base-type :type/Integer}]],
+                                                  :aggregation
+                                                  [[:count]
+                                                   [:sum [:field "A" {:base-type :type/Integer}]]
+                                                   [:sum [:field "B" {:base-type :type/Integer}]]]
+                                                  :source-table (format "card__%s" pivot-data-card-id)}}}
+                       :model/Card reordered-card
+                       {:display                :pivot
+                        :visualization_settings {:pivot_table.column_split
+                                                 {:rows    ["MEASURE"]
+                                                  :columns []
+                                                  :values  ["sum_2" "count" "sum"]}}
+                        :dataset_query          {:database (mt/id)
+                                                 :type     :query
+                                                 :query
+                                                 {:breakout     [[:field "MEASURE" {:base-type :type/Integer}]],
+                                                  :aggregation
+                                                  [[:count]
+                                                   [:sum [:field "A" {:base-type :type/Integer}]]
+                                                   [:sum [:field "B" {:base-type :type/Integer}]]]
+                                                  :source-table (format "card__%s" pivot-data-card-id)}}}]
+          (let [result (card-download pivot-card {:export-format :csv :pivot true})
+                reordered-result (card-download reordered-card {:export-format :csv :pivot true})]
+            (testing "Both Sums are correctly included."
+              (is (= [["MEASURE" "Count" "Sum of A" "Sum of B"]
+                      ["1" "1" "1" "1"]
+                      ["2" "1" "2" "2"]
+                      ["3" "1" "3" "3"]
+                      ["4" "1" "4" "4"]
+                      ["5" "1" "5" "5"]
+                      ["Grand totals" "5" "15" "15"]]
+                     result)))
+            (testing "and different order still works."
+              (is (= [["MEASURE" "Sum of B" "Count" "Sum of A"]
+                      ["1" "1" "1" "1"]
+                      ["2" "2" "1" "2"]
+                      ["3" "3" "1" "3"]
+                      ["4" "4" "1" "4"]
+                      ["5" "5" "1" "5"]
+                      ["Grand totals" "15" "5" "15"]]
+                     reordered-result)))))))))
+
+(deftest ^:parallel pivot-exports-aggregations-work
+  (testing "Pivot Exports have correct aggregations."
+    (let [q "SELECT A, B
+               FROM (
+                  SELECT 1 as A, 1 as B UNION ALL
+                  SELECT 1, 2 UNION ALL
+                  SELECT 1, 3 UNION ALL
+                  SELECT 1, 4 UNION ALL
+                  SELECT 1, 5 UNION ALL
+                  SELECT 2, 10 UNION ALL
+                  SELECT 2, 20 UNION ALL
+                  SELECT 2, 30 UNION ALL
+                  SELECT 2, 40 UNION ALL
+                  SELECT 2, 50 UNION ALL
+                  SELECT 3, -1 UNION ALL
+                  SELECT 3, -2 UNION ALL
+                  SELECT 3, -3 UNION ALL
+                  SELECT 3, -4 UNION ALL
+                  SELECT 3, -5 UNION ALL
+                  SELECT 4, 15 UNION ALL
+                  SELECT 4, 25 UNION ALL
+                  SELECT 4, 35 UNION ALL
+                  SELECT 4, 45 UNION ALL
+                  SELECT 4, 55 UNION ALL
+                  SELECT 5, 11 UNION ALL
+                  SELECT 5, 22 UNION ALL
+                  SELECT 5, 33 UNION ALL
+                  SELECT 5, 44 UNION ALL
+                  SELECT 5, 55
+               )"]
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card {pivot-data-card-id :id}
+                       {:dataset_query {:database (mt/id)
+                                        :type     :native
+                                        :native
+                                        {:template-tags {}
+                                         :query         q}}
+                        :result_metadata
+                        (into [] (for [[_ field-name {:keys [base-type]}] pivot-fields]
+                                   {:name         field-name
+                                    :display_name field-name
+                                    :field_ref    [:field field-name {:base-type base-type}]
+                                    :base_type    base-type}))}
+                       :model/Card pivot-card
+                       {:display                :pivot
+                        :visualization_settings {:pivot_table.column_split
+                                                 {:rows    ["A"]
+                                                  :columns []
+                                                  :values  ["count" "sum" "avg" "min" "max"]}}
+                        :dataset_query          {:database (mt/id)
+                                                 :type     :query
+                                                 :query
+                                                 {:breakout     [[:field "A" {:base-type :type/Integer}]],
+                                                  :aggregation
+                                                  [[:count]
+                                                   [:sum [:field "B" {:base-type :type/Integer}]]
+                                                   [:avg [:field "B" {:base-type :type/Integer}]]
+                                                   [:min [:field "B" {:base-type :type/Integer}]]
+                                                   [:max [:field "B" {:base-type :type/Integer}]]]
+                                                  :source-table (format "card__%s" pivot-data-card-id)}}}]
+          (let [result (card-download pivot-card {:export-format :csv :pivot true})]
+            (is (= [["A" "Count" "Sum of B" "Average of B" "Min of B" "Max of B"]
+                    ["1" "5" "15" "3.0" "1" "5"]
+                    ["2" "5" "150" "30.0" "10" "50"]
+                    ["3" "5" "-15" "-3.0" "-5" "-1"]
+                    ["4" "5" "175" "35.0" "15" "55"]
+                    ["5" "5" "165" "33.0" "11" "55"]
+                    ["Grand totals" "25" "490" "19.6" "-5" "55"]]
+                   result))))))))

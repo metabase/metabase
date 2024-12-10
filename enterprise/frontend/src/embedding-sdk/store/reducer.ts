@@ -1,8 +1,8 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
-import type { FetchRequestTokenFn } from "embedding-sdk";
+import type { MetabaseFetchRequestTokenFn } from "embedding-sdk";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
-import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
+import type { MetabasePluginsConfig } from "embedding-sdk/lib/plugins";
 import type {
   SdkErrorComponent,
   SdkState,
@@ -28,9 +28,8 @@ export const setLoaderComponent = createAction<null | (() => JSX.Element)>(
 export const setErrorComponent = createAction<null | SdkErrorComponent>(
   SET_ERROR_COMPONENT,
 );
-export const setFetchRefreshTokenFn = createAction<null | FetchRequestTokenFn>(
-  SET_FETCH_REQUEST_TOKEN_FN,
-);
+export const setFetchRefreshTokenFn =
+  createAction<null | MetabaseFetchRequestTokenFn>(SET_FETCH_REQUEST_TOKEN_FN);
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 
@@ -51,7 +50,9 @@ export const getOrRefreshSession = createAsyncThunk(
 );
 
 const SET_PLUGINS = "sdk/SET_PLUGINS";
-export const setPlugins = createAction<SdkPluginsConfig | null>(SET_PLUGINS);
+export const setPlugins = createAction<MetabasePluginsConfig | null>(
+  SET_PLUGINS,
+);
 
 const SET_EVENT_HANDLERS = "sdk/SET_EVENT_HANDLERS";
 export const setEventHandlers = createAction<SdkEventHandlersConfig | null>(

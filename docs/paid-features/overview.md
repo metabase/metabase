@@ -40,41 +40,36 @@ Pro and Enterprise plans include more ways to manage permissions, including data
 
 ## People and group management
 
-- [Group managers](../people-and-groups/managing.md#group-managers)
+Delegate group membership managemnet by assigning [group managers](../people-and-groups/managing.md#group-managers).
 
-## Interactive embedding
+## Appearance
 
-You can embed all of Metabase in your app.
+[White-label Metabase's appearance](../configuring-metabase/appearance.md).
 
-- [Embedding the entire Metabase app in your app](../embedding/interactive-embedding.md)
-- [Customizing Metabase's appearance](../configuring-metabase/appearance.md)
+## Embedding
+
+Some embedding tools are paid features.
+
+### Interactive embedding
+
+[Embed the entire Metabase app in your app](../embedding/interactive-embedding.md).
+
+### Embedded analytics SDK (BETA)
+
+[Embed Metabase components in your app](../embedding/sdk/introduction.md).
 
 ## Dashboard subscription and alert customization
 
-### Custom filter values
-
-Send different groups of people the contents of a dashboard with different filters applied. You only need to maintain one dashboard, which you can use to send results relevant to each subscriber.
-
-- [Customizing filter values for each dashboard subscription](../dashboards/subscriptions.md)
-
-### Restrict which domains people can send alerts and subscriptions to
-
-As an additional security layer, you can whitelist domains, which restricts people from sending alerts and subscriptions to email addresses that don't use an approved domain.
-
-- [Approved domains for notifications](../configuring-metabase/email.md#approved-domains-for-notifications)
-
-### Suggest recipients on dashboard subscriptions and alerts
-
-You can also control which recipients Metabase suggests when people create dashboard subscriptions and alert.
-
-- [Recipient suggestion controls](../configuring-metabase/email.md#suggest-recipients-on-dashboard-subscriptions-and-alerts)
+- [Customizing filter values for each dashboard subscription](../dashboards/subscriptions.md).
+- [Approved domains for notifications](../configuring-metabase/email.md#approved-domains-for-notifications).
+- [Recipient suggestion controls](../configuring-metabase/email.md#suggest-recipients-on-dashboard-subscriptions-and-alerts).
 
 ## Content moderation tools
 
 Tools for keeping your Metabase organized, so people can find your most important, verified items.
 
 - [Official collections](../exploration-and-organization/collections.md#official-collections)
-- [Verified items](../exploration-and-organization/exploration.md#verified-items)
+- [Verified items](../exploration-and-organization/content-verification.md)
 
 ## Advanced caching controls
 
@@ -86,13 +81,11 @@ All Metabase editions include global caching controls. Pro and Enterprise plans 
 
 ## Model persistence for individual models
 
-- [Toggle persistence for individual models](../data-modeling/model-persistence.md#turn-on-model-persistence-for-individual-models)
+[Toggle persistence for individual models](../data-modeling/model-persistence.md#turn-on-model-persistence-for-individual-models).
 
 ## Usage analytics
 
-See how people are using your Metabase.
-
-- [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
+[See how people are using your Metabase](../usage-and-performance-tools/usage-analytics.md).
 
 ## Admin tools
 
@@ -103,9 +96,7 @@ See which queries are failing to help keep your Metabase tidy.
 
 ## Serialization
 
-You can export Metabase application data and use that to spin up new instances preloaded with questions, dashboards, and collections.
-
-- [Serialization](../installation-and-operation/serialization.md)
+You can [export Metabase application data](../installation-and-operation/serialization.md) and use that to spin up new instances preloaded with questions, dashboards, and collections.
 
 ## Configuration file
 

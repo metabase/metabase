@@ -54,14 +54,14 @@ function getTotalGraphicOption(
         hoveredSliceKeyPath,
       );
 
-      sliceValueOrTotal = checkNotNull(sliceTreeNode).displayValue;
+      sliceValueOrTotal = checkNotNull(sliceTreeNode).rawValue;
       labelText = checkNotNull(sliceTreeNode?.name);
 
       // legend hovered
     } else if (hoveredIndex != null) {
       const slice = getArrayFromMapValues(chartModel.sliceTree)[hoveredIndex];
 
-      sliceValueOrTotal = slice.displayValue;
+      sliceValueOrTotal = slice.rawValue;
       labelText = slice.name.toUpperCase();
     } else {
       sliceValueOrTotal = chartModel.total;

@@ -1,23 +1,10 @@
+import { H } from "e2e/support";
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
   USER_GROUPS,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  describeEE,
-  entityPickerModal,
-  entityPickerModalTab,
-  moveDnDKitElement,
-  openOrdersTable,
-  openProductsTable,
-  openReviewsTable,
-  openTable,
-  popover,
-  restore,
-  setTokenFeatures,
-  startNewQuestion,
-} from "e2e/support/helpers";
 
 const {
   ORDERS,
@@ -51,7 +38,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
   describe("table settings", () => {
     beforeEach(() => {
-      restore();
+      H.restore();
       cy.signInAsAdmin();
     });
 
@@ -63,9 +50,9 @@ describe("scenarios > admin > datamodel > editor", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Table display_name").should("be.visible");
 
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("New orders").should("be.visible");
       });
@@ -110,9 +97,9 @@ describe("scenarios > admin > datamodel > editor", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("5 Hidden Tables").should("be.visible");
 
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("Orders").should("not.exist");
       });
@@ -124,9 +111,9 @@ describe("scenarios > admin > datamodel > editor", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("4 Hidden Tables").should("be.visible");
 
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("Orders").should("be.visible");
       });
@@ -142,7 +129,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Tax").should("be.visible");
 
-      openOrdersTable();
+      H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New tax").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -191,7 +178,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field visibility", () => {
       visitTableMetadata();
       getFieldSection("TAX").findByText("Everywhere").click();
-      popover().findByText("Do not include").click();
+      H.popover().findByText("Do not include").click();
       cy.wait("@updateField");
       getFieldSection("TAX").findByText("Do not include").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -199,7 +186,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Tax").should("be.visible");
 
-      openOrdersTable();
+      H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Total").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -219,7 +206,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       searchAndSelectValue("Canadian Dollar");
       cy.wait("@updateField");
 
-      openOrdersTable();
+      H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Tax (CA$)").should("be.visible");
     });
@@ -227,7 +214,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field foreign key target", () => {
       visitTableMetadata();
       getFieldSection("USER_ID").findByText("People → ID").click();
-      popover().findByText("Products → ID").click();
+      H.popover().findByText("Products → ID").click();
       cy.wait("@updateField");
       getFieldSection("USER_ID")
         .findByText("Products → ID")
@@ -235,10 +222,14 @@ describe("scenarios > admin > datamodel > editor", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated User ID").should("be.visible");
 
-      openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
+      H.openTable({
+        database: SAMPLE_DB_ID,
+        table: ORDERS_ID,
+        mode: "notebook",
+      });
       cy.icon("join_left_outer").click();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -248,7 +239,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow sorting fields as in the database", () => {
       visitTableMetadata({ tableId: PRODUCTS_ID });
       setTableOrder("Database");
-      openProductsTable();
+      H.openProductsTable();
       assertTableHeader([
         "ID",
         "Ean",
@@ -264,7 +255,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow sorting fields alphabetically", () => {
       visitTableMetadata({ tableId: PRODUCTS_ID });
       setTableOrder("Alphabetical");
-      openProductsTable();
+      H.openProductsTable();
       assertTableHeader([
         "Category",
         "Created At",
@@ -280,7 +271,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow sorting fields smartly", () => {
       visitTableMetadata({ tableId: PRODUCTS_ID });
       setTableOrder("Smart");
-      openProductsTable();
+      H.openProductsTable();
       assertTableHeader([
         "ID",
         "Created At",
@@ -296,11 +287,11 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow sorting fields in the custom order", () => {
       visitTableMetadata({ tableId: PRODUCTS_ID });
       //moveField(0, 200);
-      moveDnDKitElement(cy.findAllByTestId("grabber").first(), {
+      H.moveDnDKitElement(cy.findAllByTestId("grabber").first(), {
         vertical: 200,
       });
       cy.wait("@updateFieldOrder");
-      openProductsTable();
+      H.openProductsTable();
       assertTableHeader([
         "Ean",
         "ID",
@@ -332,7 +323,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
   describe("field settings", () => {
     beforeEach(() => {
-      restore();
+      H.restore();
       cy.signInAsAdmin();
     });
 
@@ -344,7 +335,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Tax").should("be.visible");
 
-      openOrdersTable();
+      H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New tax").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -372,14 +363,14 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitFieldMetadata({ fieldId: ORDERS.TAX });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Everywhere").click();
-      popover().findByText("Do not include").click();
+      H.popover().findByText("Do not include").click();
       cy.wait("@updateField");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Do not include").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Tax").should("be.visible");
 
-      openOrdersTable();
+      H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Total").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -402,7 +393,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       searchAndSelectValue("Canadian Dollar");
       cy.wait("@updateField");
 
-      openOrdersTable();
+      H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Tax (CA$)").should("be.visible");
     });
@@ -411,17 +402,21 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitFieldMetadata({ fieldId: ORDERS.USER_ID });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("People → ID").click();
-      popover().findByText("Products → ID").click();
+      H.popover().findByText("Products → ID").click();
       cy.wait("@updateField");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Products → ID").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated User ID").should("be.visible");
 
-      openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
+      H.openTable({
+        database: SAMPLE_DB_ID,
+        table: ORDERS_ID,
+        mode: "notebook",
+      });
       cy.icon("join_left_outer").click();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -435,22 +430,22 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.log(
         "Ensure that Coercion strategy has been humanized (metabase#44723)",
       );
-      popover().should("not.contain.text", "Coercion");
-      popover().findByText("UNIX seconds → Datetime").click();
+      H.popover().should("not.contain.text", "Coercion");
+      H.popover().findByText("UNIX seconds → Datetime").click();
       cy.wait("@updateField");
 
-      openTable({ database: SAMPLE_DB_ID, table: FEEDBACK_ID });
+      H.openTable({ database: SAMPLE_DB_ID, table: FEEDBACK_ID });
       cy.findAllByTestId("cell-data")
         .contains("December 31, 1969, 4:00 PM")
         .should("have.length.greaterThan", 0);
     });
   });
 
-  describeEE("data model permissions", () => {
+  H.describeEE("data model permissions", () => {
     beforeEach(() => {
-      restore();
+      H.restore();
       cy.signInAsAdmin();
-      setTokenFeatures("all");
+      H.setTokenFeatures("all");
     });
 
     it("should allow changing the table name with data model permissions only", () => {
@@ -466,9 +461,9 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signOut();
 
       cy.signInAsNormalUser();
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("New orders").should("be.visible");
       });
@@ -488,7 +483,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("Updated Tax").should("be.visible");
 
       cy.signInAsNormalUser();
-      openOrdersTable();
+      H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New tax").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -507,7 +502,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("Updated Total").should("be.visible");
 
       cy.signInAsNormalUser();
-      openOrdersTable();
+      H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New total").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -523,7 +518,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitFieldMetadata({ fieldId: ORDERS.USER_ID });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("People → ID").click();
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("Reviews → ID").should("not.exist");
         cy.findByText("Products → ID").click();
       });
@@ -534,10 +529,14 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("Updated User ID").should("be.visible");
 
       cy.signInAsNormalUser();
-      openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
+      H.openTable({
+        database: SAMPLE_DB_ID,
+        table: ORDERS_ID,
+        mode: "notebook",
+      });
       cy.icon("join_left_outer").click();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -553,12 +552,12 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.PRODUCT_ID });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Use original value").click();
-      popover().findByText("Use foreign key").click();
-      popover().findByText("Title").click();
+      H.popover().findByText("Use foreign key").click();
+      H.popover().findByText("Title").click();
       cy.wait("@updateFieldDimension");
 
       cy.signInAsNormalUser();
-      openReviewsTable({ limit: 1 });
+      H.openReviewsTable({ limit: 1 });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Rustic Paper Wallet").should("be.visible");
     });
@@ -570,7 +569,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.PRODUCT_ID });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Use original value").click();
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("Use original value").should("be.visible");
         cy.findByText("Use foreign key").should("not.exist");
       });
@@ -583,7 +582,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.RATING });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Use original value").click();
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("Use original value").should("be.visible");
         cy.findByText("Custom mapping").should("not.exist");
       });
@@ -592,7 +591,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.RATING });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Use original value").click();
-      popover().findByText("Custom mapping").click();
+      H.popover().findByText("Custom mapping").click();
       cy.wait("@updateFieldDimension");
 
       cy.signIn("none");
@@ -606,7 +605,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
   describe("databases without schemas", { tags: ["@external"] }, () => {
     beforeEach(() => {
-      restore("mysql-8");
+      H.restore("mysql-8");
       cy.signInAsAdmin();
     });
 
@@ -626,7 +625,7 @@ describe("scenarios > admin > datamodel > editor", () => {
         schemaId: MYSQL_DB_SCHEMA_ID,
       });
       getFieldSection("TAX").findByText("Everywhere").click();
-      popover().findByText("Do not include").click();
+      H.popover().findByText("Do not include").click();
       cy.wait("@updateField");
       getFieldSection("TAX").findByText("Do not include").should("be.visible");
     });
@@ -681,7 +680,7 @@ const clearAndBlurInput = oldValue => {
 };
 
 const searchAndSelectValue = (newValue, searchText = newValue) => {
-  popover().within(() => {
+  H.popover().within(() => {
     cy.findByRole("grid").scrollTo("top", { ensureScrollable: false });
     cy.findByPlaceholderText("Find...").type(searchText, { delay: 50 });
     cy.findByText(newValue).click();
@@ -694,7 +693,7 @@ const getFieldSection = fieldName => {
 
 const setTableOrder = order => {
   cy.findByLabelText("Sort").click();
-  popover().findByText(order).click();
+  H.popover().findByText(order).click();
   cy.wait("@updateTable");
 };
 

@@ -9,7 +9,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.field :refer [Field]]
    [metabase.models.humanization :as humanization]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.common :as common]
