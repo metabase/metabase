@@ -658,7 +658,7 @@ describe("issue 34330", () => {
 
   it("should only call the autocompleter with all text typed (metabase#34330)", () => {
     H.openNativeEditor();
-    H.nativeEditorType("USER");
+    H.nativeEditorType("USER", { delay: 0 });
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
@@ -684,7 +684,7 @@ describe("issue 34330", () => {
     cy.get("@autocomplete.all").should("have.length", 1);
   });
 
-  it("should call the autocompleter when backspacing to a 1-character prefix(metabase#34330)", () => {
+  it("should call the autocompleter when backspacing to a 1-character prefix (metabase#34330)", () => {
     H.openNativeEditor();
     cy.realType("SE{backspace}");
 
