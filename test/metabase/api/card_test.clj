@@ -4097,7 +4097,7 @@
              (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
 
   (testing "nonexistent card"
-    (mt/user-http-request :rasta :get 404 (str "card/invalid-id/dashboards")))
+    (mt/user-http-request :rasta :get 404 "card/invalid-id/dashboards"))
 
   (testing "Don't have permissions on all the dashboards involved"
     (mt/with-temp [:model/Collection {allowed-coll-id :id} {:name "The allowed collection"}
