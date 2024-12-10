@@ -499,7 +499,7 @@ describe(
 
       cy.visit(H.WEBHOOK_TEST_DASHBOARD);
 
-      cy.findByRole("heading", { name: /Requests 1/ }).should("exist");
+      cy.findByRole("heading", { name: /Requests 2/ }).should("exist");
 
       cy.request(
         `${H.WEBHOOK_TEST_HOST}/api/session/${H.WEBHOOK_TEST_SESSION_ID}/requests`,
