@@ -4,8 +4,7 @@
    [clojure.set :as set]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
-   [metabase.types :as types]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.types :as types]))
 
 ;;; the logic for calculating the return type of a `:case` or similar statement is not optimal nor perfect. But it
 ;;; should be ok for now and errors on the side of being permissive. See this Slack thread for more info:
@@ -48,27 +47,25 @@
         (set/union x y))))
 
 ;;; believe it or not, a `:case` clause really has the syntax [:case {} [[pred1 expr1] [pred2 expr2] ...]]
-(mr/def ::case-subclause
-  [:tuple
-   {:error/message "Valid :case [pred expr] pair"}
-   #_pred [:ref ::expression/boolean]
-   #_expr [:ref ::expression/expression]])
-
-(mbql-clause/define-catn-mbql-clause :case
-  ;; TODO -- we should further constrain this so all of the exprs are of the same type
-  [:pred-expr-pairs [:sequential {:min 1} [:ref ::case-subclause]]]
-  [:default [:? [:schema [:ref ::expression/expression]]]])
-
-(defmethod expression/type-of-method :case
-  [[_tag _opts pred-expr-pairs _default]]
-  ;; Following logic for picking a type is taken from
-  ;; the [[metabase.query-processor.middleware.annotate/infer-expression-type]].
-  (some
-   (fn [[_pred expr]]
-     (if-some [t (expression/type-of expr)]
-       t
-       ::expression/type.unknown))
-   pred-expr-pairs))
+;;; `:if` is an alias to `:case`
+(doseq [tag [:case :if]]
+  (mbql-clause/define-catn-mbql-clause tag
+    ;; TODO -- we should further constrain this so all of the exprs are of the same type
+    [:pred-expr-pairs [:sequential {:min 1} [:tuple
+                                             {:error/message "Valid [pred expr] pair"}
+                                             #_pred [:ref ::expression/boolean]
+                                             #_expr [:ref ::expression/expression]]]]
+    [:default [:? [:schema [:ref ::expression/expression]]]])
+  (defmethod expression/type-of-method tag
+    [[_tag _opts pred-expr-pairs _default]]
+    ;; Following logic for picking a type is taken from
+    ;; the [[metabase.query-processor.middleware.annotate/infer-expression-type]].
+    (some
+     (fn [[_pred expr]]
+       (if-some [t (expression/type-of expr)]
+         t
+         ::expression/type.unknown))
+     pred-expr-pairs)))
 
 ;;; TODO -- add constraint that these types have to be compatible
 (mbql-clause/define-catn-mbql-clause :coalesce
