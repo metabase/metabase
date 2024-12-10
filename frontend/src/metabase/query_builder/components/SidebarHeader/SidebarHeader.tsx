@@ -1,15 +1,15 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import type { IconName } from "metabase/ui";
-import { Icon } from "metabase/ui";
+import { Box, Flex, Icon } from "metabase/ui";
 
-import type { HeaderTitleContainerVariant } from "./SidebarHeader.styled";
-import {
-  CloseButton,
-  HeaderIcon,
-  HeaderRoot,
-  HeaderTitleContainer,
-} from "./SidebarHeader.styled";
+import SidebarHeaderS from "./SidebarHeader.module.css";
+
+type HeaderTitleContainerVariant =
+  | "default"
+  | "back-button"
+  | "default-back-button";
 
 type Props = {
   className?: string;
@@ -44,24 +44,29 @@ function SidebarHeader({ className, title, icon, onBack, onClose }: Props) {
   });
 
   return (
-    <HeaderRoot className={className}>
-      <HeaderTitleContainer
-        variant={headerVariant}
+    <Flex align="center" className={className}>
+      <Box
+        component="span"
+        className={cx(SidebarHeaderS.HeaderTitleContainer, {
+          [SidebarHeaderS.backButton]: headerVariant === "back-button",
+          [SidebarHeaderS.defaultBackButton]:
+            headerVariant === "default-back-button",
+        })}
         onClick={onBack}
         data-testid="sidebar-header-title"
       >
-        {onBack && <HeaderIcon name="chevronleft" />}
-        {icon && <HeaderIcon name={icon} />}
+        {onBack && <Icon mr="sm" name="chevronleft" />}
+        {icon && <Icon mr="sm" name={icon} />}
         {hasDefaultBackButton ? t`Back` : title}
-      </HeaderTitleContainer>
+      </Box>
       {onClose && (
-        <CloseButton onClick={onClose}>
+        <a className={SidebarHeaderS.CloseButton} onClick={onClose}>
           <Icon name="close" size={18} />
-        </CloseButton>
+        </a>
       )}
-    </HeaderRoot>
+    </Flex>
   );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(SidebarHeader, { Root: HeaderRoot });
+export default SidebarHeader;

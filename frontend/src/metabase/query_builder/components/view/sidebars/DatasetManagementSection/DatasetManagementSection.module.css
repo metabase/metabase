@@ -1,0 +1,17 @@
+.SectionTitle {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--mb-color-text-medium);
+}
+
+.MetadataIndicatorContainer {
+  display: flex;
+  flex: 0.4;
+}
+
+.Button {
+  padding: 8px;
+  color: var(--mb-color-brand);
+  font-weight: 700;
+  border: none;
+}
