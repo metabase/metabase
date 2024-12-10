@@ -435,7 +435,7 @@
    *  `query-params`         Key-value pairs that will be encoded and added to the URL as query params
 
   Note: One benefit of [[client]] over [[real-client]] is the call site and API execution are on the same thread,
-  so it's possible to run a test inside a transaction and bindings will works."
+  so it's possible to run a test inside a transaction and bindings will work."
   {:arglists '([credentials? method expected-status-code? endpoint request-options? http-body-map? & {:as query-params}])}
   [& args]
   (:body (apply client-full-response args)))
