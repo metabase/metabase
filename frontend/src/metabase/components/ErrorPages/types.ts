@@ -14,14 +14,14 @@ export type ReportableEntityName =
   | "dashboard"
   | "collection";
 
-export type ErrorPayload = Partial<{
+export type ErrorPayload = {
   url: string;
-  frontendErrors: string[];
-  backendErrors: Log[];
-  userLogs: Log[];
-  logs: Log[];
-  entityName: ReportableEntityName;
-  localizedEntityName: string;
+  frontendErrors?: string[];
+  backendErrors?: Log[];
+  userLogs?: Log[];
+  logs?: Log[];
+  entityName?: ReportableEntityName;
+  localizedEntityName?: string;
   entityInfo: Card | Dashboard | Collection;
   queryResults: DatasetData;
   bugReportDetails: MetabaseInfo;
@@ -34,4 +34,4 @@ export type ErrorPayload = Partial<{
     os: string;
     osVersion: string;
   };
-}>;
+};

@@ -6,7 +6,7 @@ import { CardApi, CollectionsApi, DashboardApi } from "metabase/services";
 import type { ErrorPayload, ReportableEntityName } from "./types";
 
 export function downloadObjectAsJson(
-  exportObj: ErrorPayload,
+  exportObj: Partial<ErrorPayload>,
   exportName: string,
 ) {
   const dataStr =

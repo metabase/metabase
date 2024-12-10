@@ -50,6 +50,16 @@ const defaultErrorPayload: ErrorPayload = {
   localizedEntityName: "Question",
   entityInfo: createMockCard(),
   queryResults: createMockDatasetData({ rows: [[1]] }),
+  browserInfo: {
+    userAgent:
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    language: "en-US",
+    browserName: "Chrome",
+    browserVersion: "91.0.4472.124",
+    platform: "Mac",
+    os: "Mac OS X",
+    osVersion: "10.15.7",
+  },
   bugReportDetails: {
     "application-database": "h2",
     "application-database-details": {},

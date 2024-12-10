@@ -240,8 +240,8 @@ describe("command palette", () => {
     cy.visit("/");
     cy.findByRole("button", { name: /Search/ }).click();
 
-    commandPalette().within(() => {
-      commandPaletteInput().should("exist").type("Bug");
+    H.commandPalette().within(() => {
+      H.commandPaletteInput().should("exist").type("Bug");
       cy.findByText("File a bug").should("be.visible");
     });
   });

@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import FormTextArea from "metabase/core/components/FormTextArea";
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import { color } from "metabase/lib/colors";
 import {
   Box,
   Button,
@@ -20,11 +21,14 @@ import type { ErrorPayload } from "./types";
 interface BugReportModalProps {
   errorInfo: ErrorPayload;
   onClose: () => void;
-  onSubmit: (values: any) => void;
-  onSlackSubmit: (values: any) => void;
+  onSubmit: (values: Partial<Record<keyof ErrorPayload, boolean>>) => void;
+  onSlackSubmit: (values: Partial<Record<keyof ErrorPayload, boolean>>) => void;
   canIncludeQueryData: boolean;
   applicationName: string;
-  hiddenValues: Record<string, boolean>;
+  hiddenValues: Record<
+    keyof Pick<ErrorPayload, "url" | "entityName" | "browserInfo">,
+    boolean
+  >;
   isSlackSending: boolean;
 }
 
@@ -61,14 +65,21 @@ export const BugReportModal = ({
               {t`What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?`}
             </Text>
             <FormTextArea name="description" autoFocus />
-            <Box bg="#FAFAFB" p="lg" my="md" style={{ borderRadius: "0.5rem" }}>
+            <Box
+              bg={color("accent-gray-light")}
+              p="lg"
+              my="md"
+              style={{ borderRadius: "0.5rem" }}
+            >
               <Flex align="flex-start" gap="md">
                 <Stack spacing="xs">
                   <Text size="lg" weight="bold">
                     {t`Include diagnostic information`}
                   </Text>
                   <Text color="text-medium" w="80%">
-                    {t`This information helps ${applicationName} figure out what exactly caused the issue.`}
+                    {/* eslint-disable-next-line no-literal-metabase-strings -- these reports will most likely be sent to Metabase team */}
+                    {c("{0} is the name of the application, usually 'Metabase'")
+                      .t`This information helps ${applicationName} figure out what exactly caused the issue.`}
                   </Text>
                 </Stack>
                 <Button
@@ -105,7 +116,7 @@ export const BugReportModal = ({
               </Box>
               <FormSubmitButton
                 variant="outline"
-                label={t`Download`}
+                label={c("This is a verb, not a noun").t`Download`}
                 color="text-dark"
                 my="sm"
                 px="lg"

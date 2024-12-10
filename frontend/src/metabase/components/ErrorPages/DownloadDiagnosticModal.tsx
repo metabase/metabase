@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import { Modal, Text } from "metabase/ui";
@@ -9,10 +9,15 @@ import type { ErrorPayload } from "./types";
 interface DownloadDiagnosticModalProps {
   errorInfo: ErrorPayload;
   onClose: () => void;
-  onSubmit: (values: any) => void;
+  onSubmit: (
+    values: Partial<Record<keyof Omit<ErrorPayload, "description">, boolean>>,
+  ) => void;
   canIncludeQueryData: boolean;
   applicationName: string;
-  hiddenValues: Record<string, boolean>;
+  hiddenValues: Record<
+    keyof Pick<ErrorPayload, "url" | "entityName" | "browserInfo">,
+    boolean
+  >;
 }
 
 export const DownloadDiagnosticModal = ({
@@ -43,7 +48,11 @@ export const DownloadDiagnosticModal = ({
       onSubmit={onSubmit}
     >
       <Form>
-        <Text py="md">{t`This information helps ${applicationName} to figure out what exactly caused the issue`}</Text>
+        <Text py="md">
+          {/* eslint-disable-next-line no-literal-metabase-strings -- these reports will most likely be sent to Metabase team */}
+          {c("{0} is the name of the application, usually 'Metabase'")
+            .t`This information helps ${applicationName} figure out what exactly caused the issue`}
+        </Text>
         <DiagnosticCheckboxes
           canIncludeQueryData={canIncludeQueryData}
           errorInfo={errorInfo}
@@ -51,7 +60,7 @@ export const DownloadDiagnosticModal = ({
         />
         <FormSubmitButton
           variant="filled"
-          label={t`Download`}
+          label={c("This is a verb, not a noun").t`Download`}
           color="brand"
           mt="lg"
           mb="sm"

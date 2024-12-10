@@ -80,7 +80,10 @@ export const ErrorDiagnosticModal = ({
     const selectedKeys = Object.keys(values).filter(
       key => values[key as keyof PayloadSelection],
     );
-    const selectedInfo: ErrorPayload = _.pick(errorInfo, ...selectedKeys);
+    const selectedInfo: Partial<ErrorPayload> = _.pick(
+      errorInfo,
+      ...selectedKeys,
+    );
 
     downloadObjectAsJson(
       selectedInfo,
@@ -140,7 +143,8 @@ export const ErrorDiagnosticModal = ({
         <Stack spacing="sm" align="center" py="xl">
           <img
             src="app/assets/img/metabot-bug-report.svg"
-            alt="Bug report submitted"
+            alt={c("Image shown on successful bug report submission")
+              .t`Bug report submitted`}
             style={{ width: 100, height: 100 }}
           />
           <Text align="center" size="lg" weight="bold">

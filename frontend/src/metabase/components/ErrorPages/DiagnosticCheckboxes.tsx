@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { FormCheckbox } from "metabase/forms";
 import { capitalize } from "metabase/lib/formatting";
@@ -43,7 +43,9 @@ export const DiagnosticCheckboxes = ({
     )}
     <FormCheckbox
       name="bugReportDetails"
-      label={t`${applicationName} instance version information`}
+      // eslint-disable-next-line no-literal-metabase-strings -- this is a hidden section of bug report
+      label={c("{0} is the name of the application, usually 'Metabase'")
+        .t`${applicationName} instance version information`}
     />
   </Stack>
 );
