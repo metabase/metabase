@@ -77,7 +77,7 @@ export const Onboarding = () => {
 
   const isValidItemKey = useCallback(
     (key?: ChecklistItemValue | null): key is ItemKeys => {
-      return key != null && key in itemRefs
+      return key != null && key in itemRefs;
     },
     [itemRefs],
   );
@@ -127,23 +127,13 @@ export const Onboarding = () => {
     }
   }, [itemRefs, lastItemOpened, isValidItemKey]);
 
-  const stopVideo = (iframe: HTMLIFrameElement) =>
-    iframe.contentWindow?.postMessage(
-      JSON.stringify({
-        event: "command",
-        func: "stopVideo",
-        args: [],
-      }),
-      "*",
-    );
-
   const handleValueChange = (newValue: ChecklistItemValue | null) => {
     if (isValidItemKey(itemValue)) {
       const currentItem = itemRefs[itemValue].current;
       const iframe = currentItem?.querySelector("iframe");
 
       // If the current accordion item contains an iframe, stop the video before expanding a new item
-      iframe && stopVideo(iframe);
+      stopVideo(iframe);
     }
 
     if (newValue !== null) {
@@ -721,3 +711,18 @@ const VideoTutorial = forwardRef(function VideoTutorial(
     />
   );
 });
+
+const stopVideo = (iframe?: HTMLIFrameElement | null) => {
+  if (!iframe) {
+    return;
+  }
+
+  iframe.contentWindow?.postMessage(
+    JSON.stringify({
+      event: "command",
+      func: "stopVideo",
+      args: [],
+    }),
+    "*",
+  );
+};
