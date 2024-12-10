@@ -158,8 +158,7 @@ export function ViewTitleHeader({
         style={style}
         data-testid="qb-header"
       >
-        <DashboardBackButton />
-
+        <DashboardBackButton mr="sm" />
         {isSaved ? (
           <SavedQuestionLeftSide
             question={question}

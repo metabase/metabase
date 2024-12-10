@@ -1,24 +1,23 @@
+import { Link } from "react-router";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
-import Tooltip from "metabase/core/components/Tooltip";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { getDashboard } from "metabase/query_builder/selectors";
-import { Box } from "metabase/ui";
+import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
 
-import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
+import DashboardBackButtonS from "./DashboardBackButton.module.css";
 
 type DashboardBackButtonProps = {
   noLink?: boolean;
   onClick?: () => void;
-};
+} & ActionIconProps;
 
 export function DashboardBackButton({
   noLink,
   onClick,
+  ...actionIconProps
 }: DashboardBackButtonProps) {
   const dashboard = useSelector(getDashboard);
   const dispatch = useDispatch();
@@ -36,22 +35,21 @@ export function DashboardBackButton({
   const label = t`Back to ${dashboard.name}`;
 
   return (
-    <Tooltip tooltip={label}>
-      <Box mr="0.75rem" component="span">
-        <Button
-          className={ViewTitleHeaderS.BackButton}
-          {...(noLink
-            ? {}
-            : {
-                as: Link,
-                to: Urls.dashboard(dashboard),
-              })}
-          round
-          icon="arrow_left"
-          aria-label={label}
-          onClick={handleClick}
-        />
-      </Box>
+    <Tooltip label={label}>
+      <ActionIcon
+        className={DashboardBackButtonS.DashboardBackButton}
+        variant="outline"
+        radius="xl"
+        size="2.625rem"
+        color="border"
+        aria-label={label}
+        onClick={handleClick}
+        component={noLink ? undefined : Link}
+        to={Urls.dashboard(dashboard)}
+        {...actionIconProps}
+      >
+        <Icon c="brand" name="arrow_left" />
+      </ActionIcon>
     </Tooltip>
   );
 }
