@@ -1,21 +1,22 @@
 import { useState } from "react";
 
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
 import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { DashboardNotificationsModalType } from "metabase/notifications/types";
-import { Flex, Menu } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
-import { DashboardSubscriptionMenuItem } from "./MenuItems/DashboardSubscriptionMenuItem";
-import { EmbedMenuItem } from "./MenuItems/EmbedMenuItem";
-import { ExportPdfMenuItem } from "./MenuItems/ExportPdfMenuItem";
-import { PublicLinkMenuItem } from "./MenuItems/PublicLinkMenuItem";
+import { DashboardSubscriptionMenuItem } from "../../sharing/components/SharingMenu/MenuItems/DashboardSubscriptionMenuItem";
+
 import { SharingMenu } from "./SharingMenu";
 import { SharingModals } from "./SharingModals";
 
-export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
+export function DashboardNotificationsMenu({
+  dashboard,
+}: {
+  dashboard: Dashboard;
+}) {
   const dispatch = useDispatch();
 
   const isDashboardSubscriptionSidebarOpen = useSelector(
@@ -29,12 +30,7 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
   const [modalType, setModalType] =
     useState<DashboardNotificationsModalType | null>(null);
 
-  const hasPublicLink = !!dashboard?.public_uuid;
   const isArchived = dashboard.archived;
-  const isAnalytics =
-    dashboard.collection && isInstanceAnalyticsCollection(dashboard.collection);
-
-  const canShare = !isAnalytics;
 
   if (isArchived) {
     return null;
@@ -47,17 +43,6 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
           onClick={toggleSubscriptionSidebar}
           dashboard={dashboard}
         />
-        <ExportPdfMenuItem dashboard={dashboard} />
-        {!!canShare && (
-          <>
-            <Menu.Divider />
-            <PublicLinkMenuItem
-              hasPublicLink={hasPublicLink}
-              onClick={() => setModalType("dashboard-public-link")}
-            />
-            <EmbedMenuItem onClick={() => setModalType("dashboard-embed")} />
-          </>
-        )}
       </SharingMenu>
       <SharingModals
         modalType={modalType}

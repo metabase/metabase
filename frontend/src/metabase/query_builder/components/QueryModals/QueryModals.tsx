@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { type JSX, type Ref, forwardRef, useCallback } from "react";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
@@ -14,21 +14,31 @@ import { CreateAlertModalContent } from "metabase/notifications/AlertModals";
 import type { UpdateQuestionOpts } from "metabase/query_builder/actions/core/updateQuestion";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
+import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
 import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getQuestionWithParameters } from "metabase/query_builder/selectors";
 import { FilterModal } from "metabase/querying/filters/components/FilterModal";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
+import { QuestionPublicLinkPopover } from "metabase/sharing/components/PublicLinkPopover";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
+import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Alert, Card, User } from "metabase-types/api";
 import type { QueryBuilderMode } from "metabase-types/store";
 
 import { MoveQuestionModal } from "../MoveQuestionModal";
+
+const MenuTarget = forwardRef(function _MenuTarget(
+  _props,
+  ref: Ref<HTMLDivElement>,
+) {
+  return <Box h="2rem" ref={ref} />;
+});
 
 interface QueryModalsProps {
   questionAlerts: Alert[];
@@ -65,7 +75,7 @@ export function QueryModals({
   setQueryBuilderMode,
   originalQuestion,
   onChangeLocation,
-}: QueryModalsProps) {
+}: QueryModalsProps): JSX.Element {
   const dispatch = useDispatch();
 
   const initialCollectionId = useGetDefaultCollectionId();
@@ -352,7 +362,19 @@ export function QueryModals({
           <PreviewQueryModal onClose={onCloseModal} />
         </Modal>
       );
-    default:
-      return null;
+    case MODAL_TYPES.QUESTION_PUBLIC_LINK:
+      return (
+        <QuestionPublicLinkPopover
+          question={question}
+          target={<MenuTarget />}
+          onClose={onCloseModal}
+          isOpen
+        />
+      );
+
+    case MODAL_TYPES.QUESTION_EMBED:
+      return (
+        <QuestionEmbedWidget card={question._card} onClose={onCloseModal} />
+      );
   }
 }

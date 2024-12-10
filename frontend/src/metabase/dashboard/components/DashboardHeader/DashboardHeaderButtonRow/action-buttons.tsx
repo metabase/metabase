@@ -1,4 +1,4 @@
-import { DashboardSharingMenu } from "metabase/sharing/components/SharingMenu";
+import { DashboardNotificationsMenu } from "metabase/notifications/NotificationsActionsMenu";
 import { Center, Divider } from "metabase/ui";
 
 import { DashboardBookmark } from "../../DashboardBookmark";
@@ -87,7 +87,7 @@ export const dashboardActionButtons: Record<
       !isFullscreen && !isEditing && canEdit,
   },
   [DASHBOARD_ACTION.DASHBOARD_SHARING]: {
-    component: DashboardSharingMenu,
+    component: DashboardNotificationsMenu,
     enabled: ({ isEditing }) => !isEditing,
   },
   [DASHBOARD_ACTION.REFRESH_WIDGET]: {

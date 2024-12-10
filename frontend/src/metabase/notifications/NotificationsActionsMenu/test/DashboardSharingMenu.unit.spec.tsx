@@ -13,7 +13,7 @@ describe("DashboardSharingMenu", () => {
     setupDashboardSharingMenu({
       isAdmin: true,
     });
-    expect(screen.getByTestId("sharing-menu-button")).toHaveAttribute(
+    expect(screen.getByTestId("notifications-menu-button")).toHaveAttribute(
       "aria-label",
       "Sharing",
     );
@@ -25,7 +25,9 @@ describe("DashboardSharingMenu", () => {
       dashboard: { archived: true },
     });
 
-    expect(screen.queryByTestId("sharing-menu-button")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("notifications-menu-button"),
+    ).not.toBeInTheDocument();
   });
 
   describe("dashboard subscriptions", () => {

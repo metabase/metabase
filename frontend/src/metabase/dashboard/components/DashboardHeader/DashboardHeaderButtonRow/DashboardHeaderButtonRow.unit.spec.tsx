@@ -283,7 +283,9 @@ describe("DashboardHeaderButtonRow", () => {
 
     it("should show sharing button", () => {
       setup({ isEditing: false });
-      expect(screen.getByTestId("sharing-menu-button")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("notifications-menu-button"),
+      ).toBeInTheDocument();
     });
 
     it("should not show editing-related buttons", () => {

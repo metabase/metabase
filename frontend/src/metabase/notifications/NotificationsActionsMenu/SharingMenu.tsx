@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { Menu } from "metabase/ui";
 
+// TODO: rename to notifications
 export function SharingMenu({
   children,
   tooltip,
@@ -17,14 +18,14 @@ export function SharingMenu({
     <Menu withinPortal position="bottom-end">
       <Menu.Target>
         <ToolbarButton
-          icon="share"
-          data-testid="sharing-menu-button"
-          tooltipLabel={tooltip ?? t`Sharing`}
-          aria-label={tooltip ?? t`Sharing`}
+          icon="alert"
+          data-testid="notifications-menu-button"
+          tooltipLabel={tooltip ?? t`Notifications`}
+          aria-label={tooltip ?? t`Notifications`}
           disabled={hasNoChildren}
         />
       </Menu.Target>
-      <Menu.Dropdown data-testid="sharing-menu">{children}</Menu.Dropdown>
+      <Menu.Dropdown data-testid="notifications-menu">{children}</Menu.Dropdown>
     </Menu>
   );
 }
@@ -45,7 +46,7 @@ export const SharingButton = forwardRef(function _SharingButton(
     <ToolbarButton
       ref={ref}
       icon="share"
-      data-testid="sharing-menu-button"
+      data-testid="notifications-menu-button"
       tooltipLabel={tooltip ?? t`Sharing`}
       aria-label={tooltip ?? t`Sharing`}
       onClick={onClick}

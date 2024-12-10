@@ -43,7 +43,7 @@ export const SharingModals = ({
   modalType,
   onClose,
   question,
-  dashboard,
+  // dashboard,
 }: SharingModalProps) => {
   if (modalType === "question-alert") {
     return (
@@ -65,21 +65,8 @@ export const SharingModals = ({
     );
   }
 
-  // if (modalType === "question-public-link") {
-  //   return (
-  //     <QuestionPublicLinkPopover
-  //       question={question}
-  //       target={<MenuTarget />}
-  //       onClose={onClose}
-  //       isOpen
-  //     />
-  //   );
-  // }
-  //
-  // if (modalType === "question-embed" && question) {
-  //   return <QuestionEmbedWidget card={question._card} onClose={onClose} />;
-  // }
-  //
+  // TODO: add Dashboard modal
+
   // if (modalType === "dashboard-public-link") {
   //   return (
   //     <DashboardPublicLinkPopover

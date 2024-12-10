@@ -27,7 +27,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { DashboardSharingMenu } from "../DashboardSharingMenu";
+import { DashboardNotificationsMenu } from "../DashboardNotificationsMenu";
 import { QuestionSharingMenu } from "../QuestionSharingMenu";
 
 // This is a fake sidebar that we can use to check if the correct redux state is getting updated
@@ -142,7 +142,7 @@ export function setupDashboardSharingMenu({
 
   renderWithProviders(
     <div>
-      <DashboardSharingMenu dashboard={dashboard} />
+      <DashboardNotificationsMenu dashboard={dashboard} />
       <FakeSidebar />
     </div>,
     { storeInitialState: state },
@@ -199,5 +199,5 @@ export function setupQuestionSharingMenu({
 }
 
 export const openMenu = () => {
-  return userEvent.click(screen.getByTestId("sharing-menu-button"));
+  return userEvent.click(screen.getByTestId("notifications-menu-button"));
 };

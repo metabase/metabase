@@ -3,11 +3,17 @@ import { withRouter } from "react-router";
 import type { WithRouterProps } from "react-router/lib/withRouter";
 import { c, t } from "ttag";
 
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
 import type { HeaderButtonProps } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
+import { EmbeddingModals } from "metabase/dashboard/components/DashboardHeader/EmbeddingModals";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
+import type { SharingModalType } from "metabase/notifications/NotificationsActionsMenu/types";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { EmbedMenuItem } from "metabase/sharing/components/SharingMenu/MenuItems/EmbedMenuItem";
+import { ExportPdfMenuItem } from "metabase/sharing/components/SharingMenu/MenuItems/ExportPdfMenuItem";
+import { PublicLinkMenuItem } from "metabase/sharing/components/SharingMenu/MenuItems/PublicLinkMenuItem";
 import { Icon, Menu } from "metabase/ui";
 
 const DashboardActionMenuInner = ({
@@ -22,6 +28,8 @@ const DashboardActionMenuInner = ({
 }: HeaderButtonProps & WithRouterProps): JSX.Element => {
   const [opened, setOpened] = useState(false);
 
+  const [modalType, setModalType] = useState<SharingModalType | null>(null);
+
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId: dashboard.id,
     parameterQueryParams: location.query,
@@ -33,7 +41,15 @@ const DashboardActionMenuInner = ({
     refreshDashboard,
   );
 
+  const hasPublicLink = !!dashboard?.public_uuid;
+  const isArchived = dashboard.archived;
+  const isAnalytics =
+    dashboard.collection && isInstanceAnalyticsCollection(dashboard.collection);
+
+  const canShare = !isArchived && !isAnalytics;
+
   return (
+    <>
     <Menu position="bottom-end" opened={opened} onChange={setOpened}>
       <Menu.Target>
         <div>
@@ -75,6 +91,19 @@ const DashboardActionMenuInner = ({
           </>
         )}
 
+        <ExportPdfMenuItem dashboard={dashboard} />
+
+        {canShare && (
+          <>
+            <Menu.Divider />
+            <PublicLinkMenuItem
+              hasPublicLink={hasPublicLink}
+              onClick={() => setModalType("dashboard-public-link")}
+            />
+            <EmbedMenuItem onClick={() => setModalType("dashboard-embed")} />
+          </>
+        )}
+
         {canEdit && (
           <>
             <Menu.Divider />
@@ -105,6 +134,12 @@ const DashboardActionMenuInner = ({
         )}
       </Menu.Dropdown>
     </Menu>
+  <EmbeddingModals
+    modalType={modalType}
+    dashboard={dashboard}
+    onClose={() => setModalType(null)}
+  />
+  </>
   );
 };
 

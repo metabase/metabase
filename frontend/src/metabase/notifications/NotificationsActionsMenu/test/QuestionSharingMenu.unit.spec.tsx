@@ -10,14 +10,16 @@ describe("QuestionSharingMenu", () => {
     setupQuestionSharingMenu({
       question: { type: "model" },
     });
-    expect(screen.queryByTestId("sharing-menu-button")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("notifications-menu-button"),
+    ).not.toBeInTheDocument();
   });
 
   it("should have a 'sharing' tooltip by default", () => {
     setupQuestionSharingMenu({
       isAdmin: true,
     });
-    expect(screen.getByTestId("sharing-menu-button")).toHaveAttribute(
+    expect(screen.getByTestId("notifications-menu-button")).toHaveAttribute(
       "aria-label",
       "Sharing",
     );
@@ -29,7 +31,9 @@ describe("QuestionSharingMenu", () => {
       question: { archived: true },
     });
 
-    expect(screen.queryByTestId("sharing-menu-button")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("notifications-menu-button"),
+    ).not.toBeInTheDocument();
   });
 
   it("should prompt you to save an unsaved question", async () => {
@@ -38,7 +42,7 @@ describe("QuestionSharingMenu", () => {
       question: { id: undefined },
     });
 
-    expect(screen.getByTestId("sharing-menu-button")).toHaveAttribute(
+    expect(screen.getByTestId("notifications-menu-button")).toHaveAttribute(
       "aria-label",
       "You must save this question before sharing",
     );
