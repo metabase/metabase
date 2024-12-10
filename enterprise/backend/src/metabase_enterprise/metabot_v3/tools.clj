@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools
   (:require
    [cheshire.core :as json]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [malli.core :as mc]
    [malli.transform :as mtx]
@@ -51,7 +52,7 @@
   [^Path path :- (lib.schema.common/instance-of-class Path)]
   (try
     (with-open [is (Files/newInputStream path (u/varargs OpenOption))
-                r  (java.io.InputStreamReader. is)]
+                r  (io/reader is)]
       (u/prog1 (decode-tool-metadata (json/parse-stream r true))
         (let [expected-filename (format "%s.json" (name (:name <>)))
               actual-filename   (str (.getFileName path))]
