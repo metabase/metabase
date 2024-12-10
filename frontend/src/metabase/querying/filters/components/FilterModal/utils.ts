@@ -8,7 +8,6 @@ export function getModalTitle(groupItems: GroupItem[]) {
     : t`Filter by`;
 }
 
-export function getModalWidth(groupItems: GroupItem[]) {
-  const maxWidth = groupItems.length > 1 ? "70rem" : "55rem";
-  return `min(98vw, ${maxWidth})`;
+export function getModalWidth() {
+  return `min(98vw, 920px)`;
 }

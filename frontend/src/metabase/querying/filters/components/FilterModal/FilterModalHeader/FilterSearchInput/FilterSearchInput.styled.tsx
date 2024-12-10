@@ -1,10 +1,14 @@
 import styled from "@emotion/styled";
 
 import type { TextInputProps } from "metabase/ui";
-import { Flex, TextInput } from "metabase/ui";
+import { Flex, Icon, TextInput } from "metabase/ui";
 
 export const SearchInputContainer = styled(Flex)`
   flex-grow: 1;
+`;
+
+export const SearchIcon = styled(Icon)`
+  color: var(--mb-color-text-brand);
 `;
 
 interface SearchInputProps extends TextInputProps {

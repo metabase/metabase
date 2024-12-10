@@ -6,10 +6,11 @@ import {
   type OperatorType,
   useStringFilter,
 } from "metabase/querying/filters/hooks/use-string-filter";
-import { Grid, MultiAutocomplete } from "metabase/ui";
+import { MultiAutocomplete } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { StringFilterValuePicker } from "../../FilterValuePicker";
+import ItemGrid from "../FilterModalBody/poc.styled";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";
@@ -70,35 +71,35 @@ export function StringFilterEditor({
 
   return (
     <HoverParent data-testid="string-filter-editor">
-      <Grid grow>
-        <Grid.Col span="auto">
+      <ItemGrid
+        operatorPicker={
+          <FilterOperatorPicker
+            value={operator}
+            options={availableOptions}
+            onChange={handleOperatorChange}
+          />
+        }
+        title={
           <FilterTitle
             query={query}
             stageIndex={stageIndex}
             column={column}
             columnIcon={columnIcon}
             isSearching={isSearching}
-          >
-            <FilterOperatorPicker
-              value={operator}
-              options={availableOptions}
-              onChange={handleOperatorChange}
-            />
-          </FilterTitle>
-        </Grid.Col>
-        <Grid.Col span={4}>
-          <StringValueInput
-            query={query}
-            stageIndex={stageIndex}
-            column={column}
-            values={values}
-            type={type}
-            onChange={handleInputChange}
-            onFocus={handleInputFocus}
-            onBlur={handleInputBlur}
           />
-        </Grid.Col>
-      </Grid>
+        }
+      >
+        <StringValueInput
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
+          values={values}
+          type={type}
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
+        />
+      </ItemGrid>
     </HoverParent>
   );
 }

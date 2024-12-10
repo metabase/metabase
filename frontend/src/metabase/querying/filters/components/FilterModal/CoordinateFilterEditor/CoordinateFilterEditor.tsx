@@ -7,10 +7,11 @@ import {
   type NumberValue,
   useCoordinateFilter,
 } from "metabase/querying/filters/hooks/use-coordinate-filter";
-import { Flex, Grid, NumberInput, Text } from "metabase/ui";
+import { Flex, NumberInput, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
+import ItemGrid from "../FilterModalBody/poc.styled";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";
@@ -72,36 +73,36 @@ export function CoordinateFilterEditor({
 
   return (
     <HoverParent data-testid="coordinate-filter-editor">
-      <Grid grow>
-        <Grid.Col span="auto">
+      <ItemGrid
+        title={
           <FilterTitle
             query={query}
             stageIndex={stageIndex}
             column={column}
             columnIcon={columnIcon}
             isSearching={isSearching}
-          >
-            <FilterOperatorPicker
-              value={operator}
-              options={availableOptions}
-              onChange={handleOperatorChange}
-            />
-          </FilterTitle>
-        </Grid.Col>
-        <Grid.Col span={4}>
-          <NumberValueInput
-            query={query}
-            stageIndex={stageIndex}
-            column={column}
-            values={values}
-            valueCount={valueCount}
-            hasMultipleValues={hasMultipleValues}
-            onChange={handleInputChange}
-            onFocus={handleInputFocus}
-            onBlur={handleInputBlur}
           />
-        </Grid.Col>
-      </Grid>
+        }
+        operatorPicker={
+          <FilterOperatorPicker
+            value={operator}
+            options={availableOptions}
+            onChange={handleOperatorChange}
+          />
+        }
+      >
+        <NumberValueInput
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
+          values={values}
+          valueCount={valueCount}
+          hasMultipleValues={hasMultipleValues}
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
+        />
+      </ItemGrid>
     </HoverParent>
   );
 }
@@ -163,7 +164,6 @@ function NumberValueInput({
         <NumberInput
           value={values[0]}
           placeholder={t`Min`}
-          maw="8rem"
           onChange={(newValue: number) => onChange([newValue, values[1]])}
           onFocus={onFocus}
           onBlur={onBlur}
@@ -172,7 +172,6 @@ function NumberValueInput({
         <NumberInput
           value={values[1]}
           placeholder={t`Max`}
-          maw="8rem"
           onChange={(newValue: number) => onChange([values[0], newValue])}
           onFocus={onFocus}
           onBlur={onBlur}
