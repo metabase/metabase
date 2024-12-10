@@ -1,7 +1,6 @@
 export { CreateAlertModalContent } from "./CreateAlertModalContent";
 export { UpdateAlertModalContent } from "./UpdateAlertModalContent";
 export { AlertEditForm } from "./AlertEditForm";
-export { AlertModalTitle } from "./AlertModalTitle";
 export { AlertAboveGoalToggle } from "./AlertAboveGoalToggle";
 export { AlertFirstOnlyToggle } from "./AlertFirstOnlyToggle";
 export { AlertSettingToggle } from "./AlertSettingToggle";
