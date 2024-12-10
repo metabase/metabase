@@ -61,7 +61,7 @@ describe("scenarios > question > native", () => {
     cy.log("after visiting a dashboard, it should be the new suggestion");
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.openNativeEditor({ fromCurrentPage: true });
-    cy.realType("select count(*) from orders");
+    H.NativeEditor.type("select count(*) from orders");
 
     cy.findByTestId("qb-header").within(() => {
       cy.findByText("Save").click();

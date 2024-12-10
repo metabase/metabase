@@ -130,7 +130,7 @@ describe("issue 16914", () => {
       .click();
     cy.button("Done").click();
 
-    H.NativeEditor.type(FAILING_PIECE);
+    H.NativeEditor.focus().type(FAILING_PIECE);
     H.runNativeQuery();
 
     H.NativeEditor.focus();
