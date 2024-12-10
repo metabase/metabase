@@ -4,13 +4,16 @@ import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import type { UpdateQueryHookProps } from "metabase/query_builder/hooks/types";
-import { useBreakoutQueryHandlers } from "metabase/query_builder/hooks/use-breakout-query-handlers";
+import {
+  type UpdateQueryHookProps,
+  useBreakoutQueryHandlers,
+} from "metabase/query_builder/hooks";
 import { DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ColumnGroupName, SearchContainer } from "./BreakoutColumnList.styled";
 import { BreakoutColumnListItem } from "./BreakoutColumnListItem";
+import { getBreakoutListItem, getColumnSections, isPinnedColumn } from "./util";
 
 export type BreakoutColumnListProps = UpdateQueryHookProps;
 
@@ -156,91 +159,5 @@ export function BreakoutColumnList({
         </ul>
       </DelayGroup>
     </>
-  );
-}
-
-type ListItem = Lib.ColumnDisplayInfo & {
-  column: Lib.ColumnMetadata;
-  breakout?: Lib.BreakoutClause;
-};
-
-type ListSection = {
-  name: string;
-  items: ListItem[];
-};
-
-function getBreakoutListItem(
-  query: Lib.Query,
-  stageIndex: number,
-  breakout: Lib.BreakoutClause,
-): ListItem {
-  const column = Lib.breakoutColumn(query, stageIndex, breakout);
-  const columnInfo = Lib.displayInfo(query, stageIndex, column);
-  return { ...columnInfo, column, breakout };
-}
-
-function getColumnListItems(
-  query: Lib.Query,
-  stageIndex: number,
-  breakouts: Lib.BreakoutClause[],
-  column: Lib.ColumnMetadata,
-): ListItem[] {
-  const columnInfo = Lib.displayInfo(query, stageIndex, column);
-  const { breakoutPositions = [] } = columnInfo;
-  if (breakoutPositions.length === 0) {
-    return [{ ...columnInfo, column }];
-  }
-
-  return breakoutPositions.map(index => {
-    const breakout = breakouts[index];
-    return {
-      ...columnInfo,
-      column: Lib.breakoutColumn(query, stageIndex, breakout),
-      breakout,
-    };
-  });
-}
-
-function getColumnSections(
-  query: Lib.Query,
-  stageIndex: number,
-  columns: Lib.ColumnMetadata[],
-  searchQuery: string,
-): ListSection[] {
-  const breakouts = Lib.breakouts(query, stageIndex);
-  const formattedSearchQuery = searchQuery.trim().toLowerCase();
-
-  const filteredColumns =
-    formattedSearchQuery.length > 0
-      ? columns.filter(column => {
-          const { displayName } = Lib.displayInfo(query, stageIndex, column);
-          return displayName.toLowerCase().includes(formattedSearchQuery);
-        })
-      : columns;
-
-  return Lib.groupColumns(filteredColumns).map(group => {
-    const groupInfo = Lib.displayInfo(query, stageIndex, group);
-
-    const items = Lib.getColumnsFromColumnGroup(group).flatMap(column =>
-      getColumnListItems(query, stageIndex, breakouts, column),
-    );
-
-    return {
-      name: groupInfo.displayName,
-      items,
-    };
-  });
-}
-
-function isPinnedColumn(
-  query: Lib.Query,
-  stageIndex: number,
-  column: Lib.ColumnMetadata,
-  pinnedItemCount: number,
-): boolean {
-  const { breakoutPositions = [] } = Lib.displayInfo(query, stageIndex, column);
-  return (
-    breakoutPositions.length > 0 &&
-    breakoutPositions.every(breakoutIndex => breakoutIndex < pinnedItemCount)
   );
 }
