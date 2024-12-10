@@ -25,7 +25,7 @@ Create keys to authenticate programmatic requests to your Metabase. See [API key
 
 ## API changelog
 
-For breaking changes, see the API [changelog](../developers-guide/api-changelog).
+For breaking changes, see the API [changelog](./developers-guide/api-changelog.md).
 
 ## API endpoints
 
