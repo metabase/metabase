@@ -9,7 +9,15 @@ import {
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
-import { Box, Divider, Group, Stack } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Divider,
+  Group,
+  Icon,
+  Popover,
+  Stack,
+} from "metabase/ui";
 
 import {
   FlexibleSizeComponent,
@@ -97,6 +105,16 @@ export const InteractiveQuestionResult = ({
             {withChartTypeSelector && (
               <>
                 <InteractiveQuestion.ChartTypeDropdown />
+                <Popover>
+                  <Popover.Target>
+                    <ActionIcon>
+                      <Icon name="gear"></Icon>
+                    </ActionIcon>
+                  </Popover.Target>
+                  <Popover.Dropdown>
+                    <InteractiveQuestion.QuestionSettings />
+                  </Popover.Dropdown>
+                </Popover>
                 <Divider
                   mx="xs"
                   orientation="vertical"
