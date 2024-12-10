@@ -37,8 +37,7 @@
    [metabase.models.user-key-value.types :as types]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2])
-  (:import (java.time OffsetDateTime)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -74,19 +73,30 @@
                                                                                             :expires_at expires-at})))))
     value))
 
+(mu/defn delete!
+  "Deletes a KV-pair"
+  [user-id :- :int
+   namespace :- :string
+   k :- :string]
+  (t2/delete! :model/UserKeyValue :namespace namespace :user_id user-id :key k))
+
 (mu/defn retrieve
   "Retrieves a KV-pair"
   [user-id :- :int
    namespace :- :string
    k :- :string]
-  (let [{:keys [expires_at value]} (t2/select-one :model/UserKeyValue :user_id user-id :namespace namespace :key k)]
-    (when (or (nil? expires_at)
-              (.isBefore ^OffsetDateTime (OffsetDateTime/now) expires_at))
-      (:value (mc/decode ::types/user-key-value
-                         {:namespace namespace
-                          :key k
-                          :value value
-                          :expires-at expires_at}
-                         (mtx/transformer
-                          (mtx/default-value-transformer)
-                          {:name :database}))))))
+  (when-let [ukv
+             (t2/select-one :model/UserKeyValue
+                            {:where
+                             [:and
+                              [:= :user_id user-id]
+                              [:= :namespace namespace]
+                              [:= :key k]
+                              [:or
+                               [:>= :expires_at :%now]
+                               [:= :expires_at nil]]]})]
+    (:value (mc/decode ::types/user-key-value
+                       ukv
+                       (mtx/transformer
+                        (mtx/default-value-transformer)
+                        {:name :database})))))

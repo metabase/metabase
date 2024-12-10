@@ -15,7 +15,12 @@
     (is (= {:key1 "foo" :key2 123} (mt/user-http-request :rasta :put 200 "/user-key-value" {:key "meow" :namespace "meow" :value {:key1 "foo" :key2 123}})))
     (is (= {:meow {:key1 "foo" :key2 123}} (mt/user-http-request :rasta :get 200 "/user-key-value?key=meow&namespace=meow")))
     (mt/user-http-request :rasta :put 400 "/user-key-value" {:key "meow" :namespace "meow" :value {}})
-    (mt/user-http-request :rasta :put 200 "/user-key-value" {:key "other" :namespace "other" :value "true"})))
+    (testing "Deletion works"
+      (mt/user-http-request :rasta :put 200 "/user-key-value" {:key "other" :namespace "other" :value "true"})
+      (is (= {:other "true"} (mt/user-http-request :rasta :get 200 "/user-key-value" {}:key "other" :namespace "other")))
+      (mt/user-http-request :rasta :delete 200 "/user-key-value" {:key "other" :namespace "other"})
+      (is (= {:other nil}
+             (mt/user-http-request :rasta :get 200 "/user-key-value" {}:key "other" :namespace "other"))))))
 
 (deftest expiry-works
   (mt/with-model-cleanup [:model/UserKeyValue]

@@ -1,5 +1,5 @@
 (ns metabase.api.user-key-value
-  (:require [compojure.core :refer [GET PUT]]
+  (:require [compojure.core :refer [GET PUT DELETE]]
             [malli.core :as mc]
             [malli.experimental.time.transform :as mett]
             [malli.transform :as mtx]
@@ -42,6 +42,13 @@
   (into {}
         (for [k key]
           [k (user-key-value/retrieve api/*current-user-id* namespace k)])))
+
+(api/defendpoint DELETE "/"
+  "Deletes a KV-pair for the user"
+  [:as {{k :key namespace :namespace} :body}]
+  (user-key-value/delete! api/*current-user-id*
+                          namespace
+                          k))
 
 (mr/resolve-schema ::types/user-key-value)
 
