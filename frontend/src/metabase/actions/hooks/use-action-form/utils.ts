@@ -59,7 +59,7 @@ export const formatSubmitValues = (
   return values;
 };
 
-export const getChangedValues = (
+export const getValuesForUpdate = (
   values: ParametersForActionExecution,
   initialValues: Partial<ParametersForActionExecution>,
 ) => {

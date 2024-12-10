@@ -12,8 +12,8 @@ import type {
 import {
   formatInitialValue,
   formatSubmitValues,
-  getChangedValues,
   getOrGenerateFieldSettings,
+  getValuesForUpdate,
 } from "./utils";
 
 type Opts = {
@@ -60,14 +60,15 @@ function useActionForm({
   const getCleanValues = useCallback(
     (values: ParametersForActionExecution = {}) => {
       const allValues = { ...cleanedInitialValues, ...values };
-      const formatted = formatSubmitValues(allValues, fieldSettings);
+      const formattedValues = formatSubmitValues(allValues, fieldSettings);
 
       // For some actions (e.g. implicit update actions), we prefetch
       // selected row values, and pass them as initial values to prefill
       // the form. In that case, we want to return only changed values.
+      // But we always want to include entity id which is required in API.
       return prefetchesInitialValues
-        ? getChangedValues(formatted, initialValues)
-        : formatted;
+        ? getValuesForUpdate(formattedValues, initialValues)
+        : formattedValues;
     },
     [
       initialValues,
