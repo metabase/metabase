@@ -10,7 +10,7 @@ import {
 } from "metabase/collections/utils";
 import { Tree } from "metabase/components/tree";
 import CS from "metabase/css/core/index.css";
-import Collection, {
+import Collections, {
   PERSONAL_COLLECTIONS,
   buildCollectionTree,
 } from "metabase/entities/collections";
@@ -143,12 +143,12 @@ SavedEntityPicker.propTypes = propTypes;
 const mapStateToProps = ({ currentUser }) => ({ currentUser });
 
 export default _.compose(
-  Collection.load({
+  Collections.load({
     id: () => "root",
     entityAlias: "rootCollection",
     loadingAndErrorWrapper: false,
   }),
-  Collection.loadList({
+  Collections.loadList({
     query: () => ({ tree: true, "exclude-archived": true }),
   }),
   connect(mapStateToProps),

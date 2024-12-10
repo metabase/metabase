@@ -8,7 +8,7 @@ import EntityItem from "metabase/components/EntityItem";
 import { Grid } from "metabase/components/Grid";
 import CS from "metabase/css/core/index.css";
 import Database from "metabase/entities/databases";
-import Schema from "metabase/entities/schemas";
+import Schemas from "metabase/entities/schemas";
 import * as Urls from "metabase/lib/urls";
 import type { CollectionItem } from "metabase-types/api";
 
@@ -91,7 +91,7 @@ const BrowseSchemasContainer = ({
   );
 };
 
-export const BrowseSchemas = Schema.loadList({
+export const BrowseSchemas = Schemas.loadList({
   query: (state: any, { params: { slug } }: { params: { slug: string } }) => ({
     dbId: Urls.extractEntityId(slug),
   }),

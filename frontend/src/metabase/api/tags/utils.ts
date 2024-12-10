@@ -20,6 +20,7 @@ import type {
   FieldDimension,
   FieldId,
   ForeignKey,
+  Group,
   GroupListQuery,
   ModelCacheRefreshStatus,
   ModelIndex,
@@ -372,14 +373,23 @@ export function providePermissionsGroupListTags(
 ): TagDescription<TagType>[] {
   return [
     listTag("permissions-group"),
-    ...groups.flatMap(providePermissionsGroupTags),
+    ...groups.flatMap(providePermissionsGroupListQueryTags),
   ];
 }
 
-export function providePermissionsGroupTags(
+export function providePermissionsGroupListQueryTags(
   group: GroupListQuery,
 ): TagDescription<TagType>[] {
   return [idTag("permissions-group", group.id)];
+}
+
+export function providePermissionsGroupTags(
+  group: Group,
+): TagDescription<TagType>[] {
+  return [
+    idTag("permissions-group", group.id),
+    ...group.members.map(member => idTag("user", member.user_id)),
+  ];
 }
 
 export function providePersistedInfoListTags(
