@@ -103,7 +103,6 @@
                                            {:type                 :notification-recipient/group
                                             :permissions_group_id (:id (perms-group/admin))}]}]}]))
 
-
 (defn- cleanup-notification!
   [internal-id existing-row]
   (t2/delete! :model/Notification :internal_id internal-id)

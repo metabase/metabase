@@ -61,7 +61,6 @@
             (is (false? (t2/exists? :model/Notification :id notification-id)))
             (is (false? (t2/exists? :model/ChannelTemplate :id template-id)))))))))
 
-
 (def ^:private test-notification
   {:internal_id   "metabase-testing"
    :active        true
