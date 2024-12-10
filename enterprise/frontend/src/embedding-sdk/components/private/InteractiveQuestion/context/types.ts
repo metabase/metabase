@@ -8,9 +8,11 @@ import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/typ
 import type { NotebookProps as QBNotebookProps } from "metabase/querying/notebook/components/Notebook";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Question from "metabase-lib/v1/Question";
-import type { CardId } from "metabase-types/api";
+import type { CardId, ParameterId } from "metabase-types/api";
 
 export type EntityTypeFilterKeys = "table" | "question" | "model" | "metric";
+
+export type ParameterValues = Record<ParameterId, string | number>;
 
 type InteractiveQuestionConfig = {
   componentPlugins?: SdkPluginsConfig;
@@ -27,6 +29,9 @@ type InteractiveQuestionConfig = {
 
   /** Is the save question button visible? */
   isSaveEnabled?: boolean;
+
+  /** Initial values for the SQL parameters */
+  initialSqlParameters?: ParameterValues;
 } & Pick<SaveQuestionProps, "saveToCollectionId">;
 
 export type QuestionMockLocationParameters = {
