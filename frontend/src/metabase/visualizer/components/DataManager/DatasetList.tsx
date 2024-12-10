@@ -13,6 +13,7 @@ import {
 } from "metabase/visualizer/selectors";
 import { isReferenceToColumn } from "metabase/visualizer/utils";
 import {
+  removeColumn,
   removeDataSource,
   toggleDataSourceExpanded,
 } from "metabase/visualizer/visualizer.slice";
@@ -27,6 +28,10 @@ export const DatasetList = () => {
   const expandedDataSources = useSelector(getExpandedDataSources);
   const referencedColumns = useSelector(getReferencedColumns);
   const dispatch = useDispatch();
+
+  const handleRemoveColumn = (columnRefName: string) => {
+    dispatch(removeColumn({ name: columnRefName }));
+  };
 
   return (
     <Flex
@@ -70,16 +75,25 @@ export const DatasetList = () => {
               <Box ml={12} mt={2}>
                 {dataset.data.cols
                   .filter(column => !isPivotGroupColumn(column))
-                  .map(column => (
-                    <DraggableColumnListItem
-                      key={column.name}
-                      column={column}
-                      dataSource={source}
-                      isSelected={referencedColumns.some(ref =>
-                        isReferenceToColumn(column, source.id, ref),
-                      )}
-                    />
-                  ))}
+                  .map(column => {
+                    const columnReference = referencedColumns.find(ref =>
+                      isReferenceToColumn(column, source.id, ref),
+                    );
+                    const isSelected = !!columnReference;
+                    return (
+                      <DraggableColumnListItem
+                        key={column.name}
+                        column={column}
+                        dataSource={source}
+                        isSelected={isSelected}
+                        onRemove={
+                          isSelected
+                            ? () => handleRemoveColumn(columnReference.name)
+                            : undefined
+                        }
+                      />
+                    );
+                  })}
               </Box>
             )}
           </Box>
