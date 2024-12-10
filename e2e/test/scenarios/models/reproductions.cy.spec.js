@@ -431,7 +431,7 @@ describe("issue 22517", () => {
 
     // This will edit the original query and add the `SIZE` column
     // Updated query: `select *, case when quantity > 4 then 'large' else 'small' end size from orders`
-    H.focusNativeEditor().type(
+    H.NativeEditor.focus().type(
       "{leftarrow}".repeat(" from orders".length) +
         ", case when quantity > 4 then 'large' else 'small' end size ",
     );
@@ -471,7 +471,7 @@ describe("issue 22518", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit query definition").click();
 
-    H.focusNativeEditor().type(", 'b' bar");
+    H.NativeEditor.focus().type(", 'b' bar");
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
 
@@ -1606,7 +1606,7 @@ describe("issues 35039 and 37009", () => {
   it("should show columns available in the model (metabase#35039) (metabase#37009)", () => {
     // The repro requires that we update the query in a minor, non-impactful way.
     cy.log("Update the query and save");
-    H.focusNativeEditor().type("{backspace}");
+    H.NativeEditor.focus().type("{backspace}");
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
 
@@ -1677,7 +1677,7 @@ describe("issue 37009", () => {
 
     H.openQuestionActions();
     H.popover().findByText("Edit query definition").click();
-    H.focusNativeEditor().type(" WHERE CATEGORY = 'Gadget'");
+    H.NativeEditor.focus().type(" WHERE CATEGORY = 'Gadget'");
     cy.findByTestId("dataset-edit-bar")
       .button("Save changes")
       .should("be.disabled")

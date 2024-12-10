@@ -132,7 +132,7 @@ describe("scenarios > question > snippets", () => {
       .should("be.visible")
       .and("have.text", "select * from {{snippet: Table: Orders}} limit 1");
     // Replace "Orders" with "Reviews"
-    H.focusNativeEditor().realType(
+    H.NativeEditor.focus().type(
       "{end}" +
         "{leftarrow}".repeat("}} limit 1".length) + // move left to "reach" the "Orders"
         "{backspace}".repeat("Orders".length) + // Delete orders character by character

@@ -413,7 +413,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       // Switch to SQL engine which is supported by the formatter
       H.popover().findByText("Sample Database").click();
 
-      H.focusNativeEditor().type("select * from orders", {
+      H.NativeEditor.focus().type("select * from orders", {
         parseSpecialCharSequences: false,
       });
 

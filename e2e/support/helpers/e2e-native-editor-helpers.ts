@@ -3,7 +3,7 @@ function nativeEditor() {
   return cy.get("[data-testid=native-query-editor] .cm-content");
 }
 
-export function focusNativeEditor() {
+function focusNativeEditor() {
   nativeEditor().should("be.visible").click();
 
   nativeEditor().get(".cm-editor").should("have.class", "cm-focused");

@@ -122,7 +122,8 @@ describe("issue 33327", () => {
     cy.findByTestId("scalar-value").should("have.text", "1");
 
     cy.findByTestId("visibility-toggler").click();
-    H.focusNativeEditor().should("contain", query).realType("{leftarrow}--");
+    H.NativeEditor.get().should("contain", query);
+    H.NativeEditor.type("{leftarrow}--");
 
     cy.intercept("POST", "/api/dataset").as("dataset");
     H.NativeEditor.get().should("be.visible").and("contain", "SELECT --1");
@@ -132,7 +133,7 @@ describe("issue 33327", () => {
     cy.findByTestId("visualization-root").icon("warning").should("be.visible");
     cy.findByTestId("scalar-value").should("not.exist");
 
-    H.focusNativeEditor()
+    H.NativeEditor.focus()
       .should("contain", "SELECT --1")
       .realType("{leftarrow}{backspace}{backspace}");
 
