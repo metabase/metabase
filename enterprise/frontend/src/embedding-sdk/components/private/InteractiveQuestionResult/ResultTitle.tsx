@@ -15,7 +15,7 @@ interface ResultTitleTextProps
 }
 
 const ResultTitleText = ({
-  title,
+  title: Title,
   withResetButton = false,
   isQuestionChanged = false,
   onReset,
@@ -30,7 +30,7 @@ const ResultTitleText = ({
         </Anchor>
       </Text>
     )}
-    {title}
+    {typeof Title === "function" ? <Title></Title> : Title}
   </Stack>
 );
 
