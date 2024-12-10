@@ -24,11 +24,17 @@
     #(= (u/->kebab-case-en %) %)]])
 
 (mr/def ::metadata.parameter
-  [:map
-   [:type [:or
-           ::metadata.parameter.type
-           [:set ::metadata.parameter.type]]]
-   [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
+  [:and
+   [:map
+    [:type {:optional true} [:or
+                             ::metadata.parameter.type
+                             [:set ::metadata.parameter.type]]]
+    [:anyOf {:optional true} [:sequential [:ref ::metadata.parameter]]]
+    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]]
+   [:fn
+    {:error/message "metadata.parameter must specify either `:type`` or `:anyOf`, but not both."}
+    (fn [query]
+      (= (count (select-keys query [:type :anyOf])) 1))]])
 
 (mr/def ::metadata.parameters.properties
   [:map-of ::metadata.parameter.name ::metadata.parameter])

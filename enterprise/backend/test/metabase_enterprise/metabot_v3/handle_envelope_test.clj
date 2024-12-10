@@ -16,7 +16,7 @@
         e (create-env response)
         e* (#'metabot-v3.handle-envelope/handle-envelope e)]
     (testing "No reactions were created"
-      (is (= [] (:reactions e*))))
+      (is (empty? (:reactions e*))))
     (testing "The history is unchanged"
       (is (= [response] (:history e*))))
     (testing "We can get a reaction from the last message in the history"
