@@ -49,7 +49,8 @@
 
 (deftest scheduled-queries-to-rerun-test
   (testing "Given a card, we rerun a limited number of variations of the card's query"
-    (binding [qp.util/*execute-async?* false]
+    (binding [qp.util/*execute-async?*             false
+              task.cache/*run-cache-refresh-async* false]
       (doall (map t2/delete! [:model/Query :model/QueryExecution :model/QueryCache]))
       (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
                                                 :dataset_query (parameterized-native-query)}]
@@ -83,7 +84,8 @@
 
 (deftest duration-queries-to-rerun-test
   (testing "We refresh expired :duration caches for queries that were run at least once in the last caching duration"
-    (binding [qp.util/*execute-async?* false]
+    (binding [qp.util/*execute-async?*             false
+              task.cache/*run-cache-refresh-async* false]
       (doall (map t2/delete! [:model/Query :model/QueryExecution :model/QueryCache]))
       (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
                                                 :dataset_query (parameterized-native-query)}
