@@ -18,7 +18,7 @@ import * as ML_Urls from "metabase-lib/v1/urls";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
 
-import { IconWrapper, TablesDivider } from "./QuestionDataSource.styled";
+import S from "./QuestionDataSource.module.css";
 
 type DataSourcePart = ReactElement | DataSourceBadgePart;
 
@@ -158,14 +158,14 @@ function QuestionTableBadges({
       <span>
         {table.displayName()}
         {!subHead && (
-          <IconWrapper>
+          <span className={S.IconWrapper}>
             <TableInfoIcon
               table={table}
               icon="info_filled"
               size={12}
               position="bottom"
             />
-          </IconWrapper>
+          </span>
         )}
       </span>
     </HeadBreadcrumbs.Badge>
@@ -175,7 +175,7 @@ function QuestionTableBadges({
     <HeadBreadcrumbs
       parts={parts}
       variant={subHead ? "subhead" : "head"}
-      divider={<TablesDivider>+</TablesDivider>}
+      divider={<span className={S.TablesDivider}>+</span>}
       data-testid="question-table-badges"
     />
   );

@@ -2,13 +2,12 @@
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import CS from "metabase/css/core/index.css";
 import NewQuestionHeader from "metabase/query_builder/components/view/NewQuestionHeader";
-import { Transition } from "metabase/ui";
+import { Box, Transition } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import {
-  BorderedViewTitleHeader,
-  QueryBuilderViewHeaderContainer,
-} from "./ViewHeaderContainer.styled";
+import { ViewTitleHeader } from "../../ViewHeader";
+
+import ViewHeaderContainerS from "./ViewHeaderContainer.module.css";
 
 const fadeIn = {
   in: { opacity: 1 },
@@ -24,7 +23,7 @@ export const ViewHeaderContainer = props => {
   const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
 
   return (
-    <QueryBuilderViewHeaderContainer>
+    <Box className={ViewHeaderContainerS.QueryBuilderViewHeaderContainer}>
       {card.archived && (
         <ArchivedEntityBanner
           name={card.name}
@@ -38,7 +37,8 @@ export const ViewHeaderContainer = props => {
         />
       )}
 
-      <BorderedViewTitleHeader
+      <ViewTitleHeader
+        className={ViewHeaderContainerS.BorderedViewTitleHeader}
         {...props}
         style={{
           transition: "opacity 300ms linear",
@@ -49,6 +49,6 @@ export const ViewHeaderContainer = props => {
       <Transition mounted={isNewQuestion} transition={fadeIn} duration={300}>
         {style => <NewQuestionHeader className={CS.spread} style={style} />}
       </Transition>
-    </QueryBuilderViewHeaderContainer>
+    </Box>
   );
 };

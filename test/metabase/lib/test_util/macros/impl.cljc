@@ -1,7 +1,8 @@
 (ns metabase.lib.test-util.macros.impl
   (:require
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   [metabase.test.data.mbql-query-impl]))
 
 (defn field-name
   "Impl for [[metabase.lib.test-util.macros]]."
