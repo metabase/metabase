@@ -125,7 +125,7 @@ describe("issue 33327", () => {
     H.focusNativeEditor().should("contain", query).realType("{leftarrow}--");
 
     cy.intercept("POST", "/api/dataset").as("dataset");
-    H.nativeEditor().should("be.visible").and("contain", "SELECT --1");
+    H.NativeEditor.get().should("be.visible").and("contain", "SELECT --1");
     getRunQueryButton().click();
     cy.wait("@dataset");
 
@@ -136,7 +136,7 @@ describe("issue 33327", () => {
       .should("contain", "SELECT --1")
       .realType("{leftarrow}{backspace}{backspace}");
 
-    H.nativeEditor().should("contain", query);
+    H.NativeEditor.get().should("contain", query);
 
     getRunQueryButton().click();
     cy.wait("@dataset");

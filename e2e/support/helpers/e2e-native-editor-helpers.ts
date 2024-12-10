@@ -1,4 +1,4 @@
-export function nativeEditor() {
+function nativeEditor() {
   cy.findAllByTestId("loading-indicator").should("not.exist");
   return cy.get("[data-testid=native-query-editor] .cm-content");
 }
