@@ -73,10 +73,10 @@ export const Onboarding = () => {
     };
   }, []);
 
-  type ItemKeys = keyof typeof itemRefs;
+  type ItemKey = keyof typeof itemRefs;
 
   const isValidItemKey = useCallback(
-    (key?: ChecklistItemValue | null): key is ItemKeys => {
+    (key?: ChecklistItemValue | null): key is ItemKey => {
       return key != null && key in itemRefs;
     },
     [itemRefs],
