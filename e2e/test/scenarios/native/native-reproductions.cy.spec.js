@@ -130,7 +130,7 @@ describe("issue 16914", () => {
       .click();
     cy.button("Done").click();
 
-    H.NativeEditor.focus().type(FAILING_PIECE);
+    H.NativeEditor.type(FAILING_PIECE);
     H.runNativeQuery();
 
     H.NativeEditor.focus();
@@ -708,7 +708,7 @@ describe("issue 35344", () => {
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
 
     // make sure normal undo still works
-    H.NativeEditor.focus().type("--");
+    H.NativeEditor.type("--");
     expect(H.NativeEditor.focus().findByText("--")).to.exist;
 
     H.NativeEditor.focus();
