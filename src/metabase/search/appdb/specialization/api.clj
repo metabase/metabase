@@ -33,3 +33,8 @@
   "The HoneySQL expression used to calculate a text score for the given entry."
   {:arglists '([_search-ctx])}
   db-type)
+
+(defmulti view-count-percentile-query
+  "Calculate the given p-value of view counts for each search model"
+  {:arglists '([index-table p-value])}
+  db-type)

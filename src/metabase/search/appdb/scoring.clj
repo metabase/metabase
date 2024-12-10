@@ -103,17 +103,11 @@
               [:= :search_index.model [:inline "metric"]] [:inline "card"]
               :else :search_index.model]]]})
 
-;; TODO this will need to be abstracted for other appdbs
-(defn- view-count-percentile-query [p-value]
-  (let [expr [:raw "percentile_cont(" [:lift p-value] ") WITHIN GROUP (ORDER BY view_count)"]]
-    {:select   [:search_index.model [expr :vcp]]
-     :from     [[(search.index/active-table) :search_index]]
-     :group-by [:search_index.model]
-     :having   [:is-not expr nil]}))
-
 (defn- view-count-percentiles*
   [p-value]
-  (into {} (for [{:keys [model vcp]} (t2/query (view-count-percentile-query p-value))]
+  (into {} (for [{:keys [model vcp]} (t2/query (specialization/view-count-percentile-query
+                                                (search.index/active-table)
+                                                p-value))]
              [(keyword model) vcp])))
 
 (def ^{:private true
