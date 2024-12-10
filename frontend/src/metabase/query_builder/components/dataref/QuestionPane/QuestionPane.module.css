@@ -1,0 +1,17 @@
+.QuestionPaneDetailLink {
+  display: flex;
+  align-items: center;
+  color: var(--mb-color-brand);
+}
+
+.QuestionPaneIcon {
+  margin-top: 1px;
+  width: 12px;
+}
+
+.description {
+  white-space: pre-line;
+  max-height: 200px;
+  overflow: auto;
+  margin-bottom: 0.5em;
+}
