@@ -11,10 +11,14 @@ on:
       commit:
         description: 'A full-length commit SHA-1 hash'
         required: true
-      auto:
-        description: 'auto-patch release DO NOT SET MANUALLY'
-        type: boolean
-        default: false
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+      commit:
+        type: string
+        required: true
 
 jobs:
   start-message:
@@ -241,17 +245,3 @@ jobs:
     with:
       commit: ${{ inputs.commit }}
       version: ${{ inputs.version }}
-
-  auto-publish-release:
-    name: Auto-publish release ${{ inputs.version }}
-    if: ${{ inputs.auto }}
-    needs: run-pre-release-tests
-    uses: ./.github/workflows/release.yml
-    secrets: inherit
-    with:
-      version: ${{ inputs.version }}
-      commit: ${{ inputs.commit }}
-      auto: ${{ inputs.auto }}
-      # for now don't auto-set release channel because we don't want to have
-      # multiple nightlies due to race conditions
-      release-channel: none
