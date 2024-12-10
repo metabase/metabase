@@ -10,19 +10,21 @@ import {
   getFetchRefreshTokenFn,
   getLoginStatus,
 } from "embedding-sdk/store/selectors";
-import type { SDKConfig } from "embedding-sdk/types";
+import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import api from "metabase/lib/api";
 import registerVisualizations from "metabase/visualizations/register";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
 
 interface InitDataLoaderParameters {
-  config: SDKConfig;
+  authConfig: MetabaseAuthConfig;
+  allowConsoleLog?: boolean;
 }
 
-export const useInitData = ({ config }: InitDataLoaderParameters) => {
-  const { allowConsoleLog = true } = config;
-
+export const useInitData = ({
+  authConfig,
+  allowConsoleLog = true,
+}: InitDataLoaderParameters) => {
   // react calls some lifecycle hooks twice in dev mode, the auth init fires some http requests and when it's called twice,
   // it fires them twice as well, making debugging harder as they show up twice in the network tab and in the logs
   const hasBeenInitialized = useRef(false);
@@ -34,16 +36,16 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
 
   // This is outside of a useEffect otherwise calls done on the first render could use the wrong value
   // This is the case for example for the locale json files
-  if (api.basename !== config.metabaseInstanceUrl) {
-    api.basename = config.metabaseInstanceUrl;
+  if (api.basename !== authConfig.metabaseInstanceUrl) {
+    api.basename = authConfig.metabaseInstanceUrl;
   }
 
   useEffect(() => {
-    if (config.fetchRequestToken !== fetchRefreshTokenFnFromStore) {
+    if (authConfig.fetchRequestToken !== fetchRefreshTokenFnFromStore) {
       // This needs to be a useEffect to avoid the `Cannot update a component XX while rendering a different component` error
-      dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));
+      dispatch(setFetchRefreshTokenFn(authConfig.fetchRequestToken ?? null));
     }
-  }, [config.fetchRequestToken, fetchRefreshTokenFnFromStore, dispatch]);
+  }, [authConfig.fetchRequestToken, fetchRefreshTokenFnFromStore, dispatch]);
 
   useMount(() => {
     if (hasBeenInitialized.current) {
@@ -56,7 +58,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
     // Note: this check is not actually needed in prod, but some of our tests start with a loginStatus already initialized
     // and they don't mock the network requests so the tests fail
     if (loginStatus.status === "uninitialized") {
-      dispatch(initAuth(config));
+      dispatch(initAuth(authConfig));
     }
 
     const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
