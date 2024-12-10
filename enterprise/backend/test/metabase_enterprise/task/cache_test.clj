@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.task.cache :as task.cache]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -212,3 +213,30 @@
           (@#'task.cache/refresh-cache-configs!)
           (let [cache-timestamp-2 (t2/select-one-fn :updated_at :model/QueryCache)]
             (is (t/before? cache-timestamp-1 cache-timestamp-2))))))))
+
+(deftest feature-flag-test
+  (testing "Sanity check that we are correctly enforcing caching feature flags"
+    (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
+                                              :dataset_query (field-filter-query)}
+                   :model/CacheConfig cc {:model "question"
+                                          :model_id card-id
+                                          :strategy :schedule
+                                          :refresh_automatically true
+                                          :config {:schedule "0 0 * * * ?"}}]
+      (mt/with-premium-features #{}
+        (is (= nil (task.cache/init-cache-task!))))
+
+      (mt/with-premium-features #{:cache-granular-controls}
+        (is (not (nil? (task.cache/init-cache-task!))))
+
+        (let [call-count (atom 0)]
+          (with-redefs [task.cache/refresh-schedule-cache! (fn [_] (swap! call-count inc))
+                        task.cache/maybe-refresh-duration-caches! (fn [] (swap! call-count inc))]
+            (@#'task.cache/refresh-cache-configs!)
+            (is (= 0 @call-count))
+
+            (mt/with-additional-premium-features #{:cache-preemptive}
+              (t2/update! :model/CacheConfig (assoc cc :next_run_at nil))
+              (is (true? (premium-features/enable-preemptive-caching?)))
+              (@#'task.cache/refresh-cache-configs!)
+              (is (= 2 @call-count)))))))))
