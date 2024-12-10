@@ -844,7 +844,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     name: "case",
     structure: "case",
     description: () =>
-      t`Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.`,
+      t`Alias for if(). Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.`,
     args: [
       {
         name: t`condition`,
@@ -865,6 +865,31 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       },
     ],
     docsPage: "case",
+  },
+  {
+    name: "if",
+    structure: "if",
+    description: () =>
+      t`Alias for case(). Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.`,
+    args: [
+      {
+        name: t`condition`,
+        description: t`Something that should evaluate to true or false.`,
+        example: `${formatIdentifier(t`Weight`)} > 200`,
+      },
+      {
+        name: t`output`,
+        description: t`The value that will be returned if the preceding condition is true.`,
+        example: formatStringLiteral(t`Large`),
+      },
+      {
+        name: "…",
+        description: t`You can add more conditions to test.`,
+        example: `${formatIdentifier(t`Weight`)} > 150, ${formatStringLiteral(
+          t`Medium`,
+        )}, ${formatStringLiteral(t`Small`)}`,
+      },
+    ],
   },
   {
     name: "get-year",

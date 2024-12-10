@@ -341,6 +341,11 @@ describe("metabase-lib/v1/expressions/resolve", () => {
       const def = { default: ["-", A, B] };
       expect(() => expr(["case", [[X, ["*", 0.5, Y]]], def])).not.toThrow();
     });
+
+    it("should accept IF as an alias for CASE", () => {
+      expect(expr(["if", [[A, B]]]).segments).toEqual(["A"]);
+      expect(expr(["if", [[A, B]]]).dimensions).toEqual(["B"]);
+    });
   });
 
   it("should not fail on literal 0", () => {

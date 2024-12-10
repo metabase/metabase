@@ -13,7 +13,7 @@ import {
   formatStringLiteral,
   getExpressionName,
   isBooleanLiteral,
-  isCase,
+  isCaseOrIf,
   isDimension,
   isFunction,
   isMetric,
@@ -59,8 +59,8 @@ export function format(mbql: any, options: Options): string {
     return formatMetric(mbql, options);
   } else if (isSegment(mbql)) {
     return formatSegment(mbql, options);
-  } else if (isCase(mbql)) {
-    return formatCase(mbql, options);
+  } else if (isCaseOrIf(mbql)) {
+    return formatCaseOrIf(mbql, options);
   } else if (isNegativeFilter(mbql)) {
     return formatNegativeFilter(mbql, options);
   }
@@ -207,8 +207,11 @@ function formatOperator([op, ...operands]: any[], options: Options) {
   return options.parens ? `(${formatted})` : formatted;
 }
 
-function formatCase([_, clauses, caseOptions = {}]: any[], options: Options) {
-  const formattedName = getExpressionName("case");
+function formatCaseOrIf(
+  [operator, clauses, caseOptions = {}]: any[],
+  options: Options,
+) {
+  const formattedName = getExpressionName(operator);
   const formattedClauses = clauses
     .map(
       ([filter, mbql]: any[]) =>

@@ -108,6 +108,26 @@ describe("metabase-lib/v1/expressions/recursive-parser", () => {
     ]);
   });
 
+  it("should handle IF expression", () => {
+    expect(process("IF(A,B)")).toEqual(["if", [[A, B]]]);
+    expect(process("IF(A,B,X,Y)")).toEqual([
+      "if",
+      [
+        [A, B],
+        [X, Y],
+      ],
+    ]);
+    expect(process("IF(A,B,C)")).toEqual(["if", [[A, B]], { default: C }]);
+    expect(process("IF(A,B,X,Y,C)")).toEqual([
+      "if",
+      [
+        [A, B],
+        [X, Y],
+      ],
+      { default: C },
+    ]);
+  });
+
   it("should use MBQL canonical function names", () => {
     expect(process("regexextract(B,C)")).toEqual(["regex-match-first", B, C]);
   });
