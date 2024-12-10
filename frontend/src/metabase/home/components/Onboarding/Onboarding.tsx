@@ -77,7 +77,7 @@ export const Onboarding = () => {
 
   const isValidItemKey = useCallback(
     (key?: ChecklistItemValue | null): key is ItemKeys => {
-      return key != null && Object.keys(itemRefs).includes(key);
+      return key != null && key in itemRefs
     },
     [itemRefs],
   );
