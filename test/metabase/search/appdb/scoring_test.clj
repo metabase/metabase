@@ -66,44 +66,44 @@
       (is (= [["card" 1 "orders"]] (search-results* nil))))))
 
 (deftest ^:parallel text-test
-  (case (mdb/db-type)
-    :postgres
-    (with-index-contents
-      [{:model "card" :id 1 :name "orders"}
-       {:model "card" :id 2 :name "unrelated"}
-       {:model "card" :id 3 :name "classified" :description "available only by court order"}
-       {:model "card" :id 4 :name "order"}
-       {:model "card" :id 5 :name "orders, invoices, other stuff", :description "a verbose description"}
-       {:model "card" :id 6 :name "ordering"}]
-      ;; WARNING: this is likely to diverge between appdb types as we support more.
+  (with-index-contents
+    [{:model "card" :id 1 :name "orders"}
+     {:model "card" :id 2 :name "unrelated"}
+     {:model "card" :id 3 :name "classified" :description "available only by court order"}
+     {:model "card" :id 4 :name "order"}
+     {:model "card" :id 5 :name "orders, invoices, other stuff", :description "a verbose description"}
+     {:model "card" :id 6 :name "ordering"}]
+    (case (mdb/db-type)
+      :postgres
+        ;; WARNING: this is likely to diverge between appdb types as we support more.
       (testing "Preferences according to textual matches"
-        ;; Note that, ceteris paribus, the ordering in the database is currently stable - this might change!
-        ;; Due to stemming, we do not distinguish between exact matches and those that differ slightly.
+          ;; Note that, ceteris paribus, the ordering in the database is currently stable - this might change!
+          ;; Due to stemming, we do not distinguish between exact matches and those that differ slightly.
         (is (= [["card" 1 "orders"]
                 ["card" 4 "order"]
-                ;; We do not currently normalize the score based on the number of words in the vector / the coverage.
+                  ;; We do not currently normalize the score based on the number of words in the vector / the coverage.
                 ["card" 5 "orders, invoices, other stuff"]
                 ["card" 6 "ordering"]
-                ;; If the match is only in a secondary field, it is less preferred.
+                  ;; If the match is only in a secondary field, it is less preferred.
                 ["card" 3 "classified"]]
-               (search-results :text "order")))))
-    :h2
-    ;; TODO text ranking (probably in-memory
-    nil))
+               (search-results :text "order"))))
+      :h2
+        ;; TODO text ranking (probably in-memory
+      nil)))
 
 (deftest ^:parallel exact-test
-  (case (mdb/db-type)
-    :postgres
-    (with-index-contents
-      [{:model "card" :id 1 :name "the any most of stop words very"}
-       {:model "card" :id 2 :name "stop words"}]
+  (with-index-contents
+    [{:model "card" :id 1 :name "the any most of stop words very"}
+     {:model "card" :id 2 :name "stop words"}]
+    (case (mdb/db-type)
+      :postgres
       (testing "Preferences according to exact name matches, including stop words"
         (is (= [["card" 1 "the any most of stop words very"]
                 ["card" 2 "stop words"]]
-               (search-results :exact "the any most of stop words very")))))
-    :h2
-    ;; TODO text ranking (probably in-memory
-    nil))
+               (search-results :exact "the any most of stop words very"))))
+      :h2
+        ;; TODO text ranking (probably in-memory
+      nil)))
 
 (deftest ^:parallel prefix-test
   (with-index-contents
