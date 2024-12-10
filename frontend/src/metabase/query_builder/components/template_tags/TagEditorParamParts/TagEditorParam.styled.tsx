@@ -2,18 +2,6 @@ import styled from "@emotion/styled";
 
 import { ParameterValueWidget } from "metabase/parameters/components/ParameterValueWidget";
 
-export const TagContainer = styled.div`
-  padding: 1.5rem 1.5rem 0 1.5rem;
-  margin-bottom: 1.5rem;
-  border-top: 1px solid var(--mb-color-border);
-`;
-export const TagName = styled.h3`
-  font-weight: 900;
-  margin-bottom: 2rem;
-  align-self: flex-end;
-  color: var(--mb-color-brand);
-`;
-
 interface ContainerLabelProps {
   paddingTop?: boolean;
 }
@@ -45,19 +33,4 @@ export const DefaultParameterValueWidget = styled(ParameterValueWidget)`
   border-radius: 4px;
   background-color: var(--mb-color-bg-white);
   font-weight: normal;
-`;
-
-export const ToggleContainer = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  margin: 0.5rem 0;
-`;
-
-export const ToggleLabel = styled.label`
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.35rem;
-  font-weight: 700;
-  color: var(--mb-color-text-medium);
-  cursor: pointer;
 `;

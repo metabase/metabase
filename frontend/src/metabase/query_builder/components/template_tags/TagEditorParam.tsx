@@ -8,6 +8,7 @@ import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
+import { Box, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -34,6 +35,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import TagEditorParamS from "./TagEditorParam.module.css";
 import {
   ContainerLabel,
   DefaultRequiredValueControl,
@@ -41,8 +43,6 @@ import {
   FilterWidgetLabelInput,
   FilterWidgetTypeSelect,
   InputContainer,
-  TagContainer,
-  TagName,
 } from "./TagEditorParamParts";
 import { VariableTypeSelect } from "./TagEditorParamParts/VariableTypeSelect";
 
@@ -262,9 +262,14 @@ class TagEditorParamInner extends Component<Props> {
     const hasWidgetOptions = widgetOptions.length > 0;
 
     return (
-      <TagContainer data-testid={`tag-editor-variable-${tag.name}`}>
+      <Box
+        className={TagEditorParamS.TagContainer}
+        data-testid={`tag-editor-variable-${tag.name}`}
+      >
         <ContainerLabel paddingTop>{t`Variable name`}</ContainerLabel>
-        <TagName>{tag.name}</TagName>
+        <Text component="h3" className={TagEditorParamS.TagName}>
+          {tag.name}
+        </Text>
 
         <VariableTypeSelect value={tag.type} onChange={this.setType} />
 
@@ -320,7 +325,7 @@ class TagEditorParamInner extends Component<Props> {
           }}
           onChangeRequired={this.setRequired}
         />
-      </TagContainer>
+      </Box>
     );
   }
 }
