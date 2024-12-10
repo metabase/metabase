@@ -2,7 +2,7 @@ import type { MultiSelectProps, SelectItem } from "@mantine/core";
 import { MultiSelect, Tooltip } from "@mantine/core";
 import { useUncontrolled } from "@mantine/hooks";
 import type { ClipboardEvent, FocusEvent } from "react";
-import { useMemo, useState } from "react";
+import { forwardRef, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
@@ -13,24 +13,32 @@ import { parseValues, unique } from "./utils";
 export type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
   shouldCreate?: (query: string, selectedValues: string[]) => boolean;
   showInfoIcon?: boolean;
+  isSelectingItem?: (event: FocusEvent<HTMLInputElement>) => boolean;
 };
 
-export function MultiAutocomplete({
-  data,
-  value: controlledValue,
-  defaultValue,
-  searchValue: controlledSearchValue,
-  placeholder,
-  autoFocus,
-  shouldCreate = defaultShouldCreate,
-  showInfoIcon = true,
-  rightSection,
-  onChange,
-  onSearchChange,
-  onFocus,
-  onBlur,
-  ...props
-}: MultiAutocompleteProps) {
+export const MultiAutocomplete = forwardRef<
+  HTMLInputElement,
+  MultiAutocompleteProps
+>(function MultiAutocomplete(
+  {
+    data,
+    value: controlledValue,
+    defaultValue,
+    searchValue: controlledSearchValue,
+    placeholder,
+    autoFocus,
+    shouldCreate = defaultShouldCreate,
+    showInfoIcon = true,
+    rightSection,
+    onChange,
+    onSearchChange,
+    onFocus,
+    onBlur,
+    isSelectingItem,
+    ...props
+  },
+  ref,
+) {
   const [selectedValues, setSelectedValues] = useUncontrolled({
     value: controlledValue,
     defaultValue,
@@ -68,7 +76,13 @@ export function MultiAutocomplete({
   }
 
   const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
-    setIsFocused(false);
+    onBlur?.(event);
+
+    if (event.isPropagationStopped()) {
+      setSelectedValues(lastSelectedValues);
+      setIsFocused(false);
+      return;
+    }
 
     const values = parseValues(searchValue);
     const validValues = values.filter(isValid);
@@ -82,8 +96,7 @@ export function MultiAutocomplete({
     } else {
       setSelectedValues(lastSelectedValues);
     }
-
-    onBlur?.(event);
+    setIsFocused(false);
   };
 
   const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
@@ -153,7 +166,7 @@ export function MultiAutocomplete({
     }
   };
 
-  const infoIcon = isFocused ? (
+  const infoIcon = (
     <Tooltip
       label={
         <>
@@ -165,11 +178,12 @@ export function MultiAutocomplete({
     >
       <Icon name="info_filled" fill={color("text-light")} />
     </Tooltip>
-  ) : null;
+  );
 
   return (
     <MultiSelect
       {...props}
+      ref={ref}
       data={items}
       value={visibleValues}
       searchValue={searchValue}
@@ -184,7 +198,7 @@ export function MultiAutocomplete({
       rightSection={rightSection ?? (showInfoIcon ? infoIcon : null)}
     />
   );
-}
+});
 
 function getSelectItem(item: string | SelectItem): SelectItem {
   if (typeof item === "string") {
