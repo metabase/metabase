@@ -21,8 +21,7 @@
 
 (p/import-vars
  [search.config
-  SearchableModel
-  all-models]
+  SearchableModel]
 
  [search.engine
   model-set]
