@@ -56,7 +56,7 @@ By default, dashboard components take full page height (100vh). You can override
 import React from "react";
 import {MetabaseProvider, InteractiveDashboard} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const authConfig = {...}
 
 export default function App() {
     const dashboardId = 1; // This is the dashboard ID you want to embed
@@ -66,7 +66,7 @@ export default function App() {
     const hiddenParameters = ["location", "city"]
 
     return (
-        <MetabaseProvider config={config}>
+        <MetabaseProvider authConfig={authConfig}>
             <InteractiveDashboard
                 dashboardId={dashboardId}
                 initialSqlParameters={initialSqlParameters}
@@ -159,14 +159,14 @@ You can add custom actions to the dashcard menu by adding an object to the `cust
     iconName: string;
     label: string;
     onClick: () => void;
-    disabled ? : boolean;
+    disabled?: boolean;
 }
 ```
 
 Here's an example:
 
 ```typescript
-const plugins: SdkPluginsConfig = {
+const plugins: MetabasePluginsConfig = {
   dashboard: {
     dashcardMenu: {
       customItems: [
@@ -197,7 +197,7 @@ const plugins: SdkPluginsConfig = {
 If you want to replace the existing menu with your own component, you can do so by providing a function that returns a React component. This function also can receive the question as an argument.
 
 ```typescript
-const plugins: SdkPluginsConfig = {
+const plugins: MetabasePluginsConfig = {
   dashboard: {
     dashcardMenu: ({ question }) => (
       <button onClick={() => console.log(question.name)}>Click me</button>

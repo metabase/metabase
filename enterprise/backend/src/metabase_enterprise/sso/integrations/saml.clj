@@ -43,8 +43,7 @@
    [metabase.integrations.common :as integrations.common]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.server.middleware.session :as mw.session]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -223,9 +222,9 @@
                           :email           email
                           :group-names     groups
                           :user-attributes attrs
-                          :device-info     (req.util/device-info request)})
+                          :device-info     (request/device-info request)})
           response      (response/redirect (or continue-url (public-settings/site-url)))]
-      (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
+      (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
 
 (def ^:private saml2-success-status "urn:oasis:names:tc:SAML:2.0:status:Success")
 
@@ -248,8 +247,8 @@
   (if (sso-settings/saml-slo-enabled)
     (let [xml-str (base64-decode (:SAMLResponse params))
           success? (slo-success? xml-str)]
-      (if-let [metabase-session-id (and success? (get-in cookies [mw.session/metabase-session-cookie :value]))]
+      (if-let [metabase-session-id (and success? (get-in cookies [request/metabase-session-cookie :value]))]
         (do (t2/delete! :model/Session :id metabase-session-id)
-            (mw.session/clear-session-cookie (response/redirect (urls/site-url))))
+            (request/clear-session-cookie (response/redirect (urls/site-url))))
         {:status 500 :body "SAML logout failed."}))
     (log/warn "SAML SLO is not enabled, not continuing Single Log Out flow.")))

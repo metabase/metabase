@@ -21,11 +21,9 @@ import {
   within,
 } from "__support__/ui";
 import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
-import Actions from "metabase/entities/actions";
 import Models from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { checkNotNull } from "metabase/lib/types";
-import { ActionsApi } from "metabase/services";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
@@ -610,7 +608,6 @@ describe("ModelDetailPage", () => {
       });
 
       it("allows to archive a query action", async () => {
-        const updateActionSpy = jest.spyOn(ActionsApi, "update");
         const model = getModel();
         const action = createMockQueryAction({ model_id: model.id });
         await setupActions({ model, actions: [action] });
@@ -627,7 +624,14 @@ describe("ModelDetailPage", () => {
         await waitFor(() =>
           expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
         );
-        expect(updateActionSpy).toHaveBeenCalledWith({
+
+        expect(
+          fetchMock.calls(`path:/api/action/${action.id}`, { method: "PUT" }),
+        ).toHaveLength(1);
+        const call = fetchMock.lastCall(`path:/api/action/${action.id}`, {
+          method: "PUT",
+        });
+        expect(await call?.request?.json()).toEqual({
           id: action.id,
           archived: true,
         });
@@ -646,7 +650,6 @@ describe("ModelDetailPage", () => {
       });
 
       it("allows to disable implicit actions", async () => {
-        const deleteActionSpy = jest.spyOn(Actions.actions, "delete");
         const model = getModel();
         const actions = createMockImplicitCUDActions(model.id);
         await setupActions({ model, actions });
@@ -655,9 +658,13 @@ describe("ModelDetailPage", () => {
         await userEvent.click(await screen.findByText("Disable basic actions"));
         await userEvent.click(screen.getByRole("button", { name: "Disable" }));
 
-        actions.forEach(action => {
-          expect(deleteActionSpy).toHaveBeenCalledWith({ id: action.id });
-        });
+        for (const action of actions) {
+          expect(
+            fetchMock.called(`path:/api/action/${action.id}`, {
+              method: "DELETE",
+            }),
+          ).toBe(true);
+        }
       });
     });
 
@@ -818,61 +825,67 @@ describe("ModelDetailPage", () => {
     });
 
     it("allows to create implicit actions", async () => {
-      const createActionSpy = jest.spyOn(ActionsApi, "create");
       const action = createMockQueryAction({ model_id: modelCard.id });
       await setupActions({ model: modelCard, actions: [action] });
+      fetchMock.post("path:/api/action", {}, { overwriteRoutes: true });
 
       await userEvent.click(screen.getByLabelText("Actions menu"));
       await userEvent.click(await screen.findByText("Create basic actions"));
 
-      await waitFor(() => {
-        expect(createActionSpy).toHaveBeenCalledWith({
-          name: "Create",
-          type: "implicit",
-          kind: "row/create",
-          model_id: modelCard.id,
-        });
+      const createActionCalls = fetchMock.calls("path:/api/action", {
+        method: "POST",
       });
-      expect(createActionSpy).toHaveBeenCalledWith({
+      expect(createActionCalls).toHaveLength(3);
+
+      expect(await createActionCalls[0].request?.json()).toEqual({
+        name: "Delete",
+        type: "implicit",
+        kind: "row/delete",
+        model_id: modelCard.id,
+      });
+      expect(await createActionCalls[1].request?.json()).toEqual({
         name: "Update",
         type: "implicit",
         kind: "row/update",
         model_id: modelCard.id,
       });
-      expect(createActionSpy).toHaveBeenCalledWith({
-        name: "Delete",
+      expect(await createActionCalls[2].request?.json()).toEqual({
+        name: "Create",
         type: "implicit",
-        kind: "row/delete",
+        kind: "row/create",
         model_id: modelCard.id,
       });
     });
 
     it("allows to create implicit actions from the empty state", async () => {
-      const createActionSpy = jest.spyOn(ActionsApi, "create");
       await setupActions({ model: modelCard, actions: [] });
+      fetchMock.post("path:/api/action", {}, { overwriteRoutes: true });
 
       await userEvent.click(
         screen.getByRole("button", { name: /Create basic action/i }),
       );
 
-      await waitFor(() => {
-        expect(createActionSpy).toHaveBeenCalledWith({
-          name: "Create",
-          type: "implicit",
-          kind: "row/create",
-          model_id: modelCard.id,
-        });
+      const createActionCalls = fetchMock.calls("path:/api/action", {
+        method: "POST",
       });
-      expect(createActionSpy).toHaveBeenCalledWith({
+      expect(createActionCalls).toHaveLength(3);
+
+      expect(await createActionCalls[0].request?.json()).toEqual({
+        name: "Delete",
+        type: "implicit",
+        kind: "row/delete",
+        model_id: modelCard.id,
+      });
+      expect(await createActionCalls[1].request?.json()).toEqual({
         name: "Update",
         type: "implicit",
         kind: "row/update",
         model_id: modelCard.id,
       });
-      expect(createActionSpy).toHaveBeenCalledWith({
-        name: "Delete",
+      expect(await createActionCalls[2].request?.json()).toEqual({
+        name: "Create",
         type: "implicit",
-        kind: "row/delete",
+        kind: "row/create",
         model_id: modelCard.id,
       });
     });

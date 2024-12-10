@@ -400,6 +400,30 @@ describe("scenarios > visualizations > waterfall", () => {
     });
   });
 
+  it("should show tooltip when hovering the total bar (metabase#48118)", () => {
+    H.visitQuestionAdhoc({
+      display: "waterfall",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"], ["sum", ["field-id", ORDERS.TOTAL]]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+        },
+      },
+    });
+
+    const totalBarColor = "#4C5773";
+
+    H.chartPathWithFillColor(totalBarColor).realHover();
+
+    H.assertEChartsTooltip({
+      header: "Total",
+      rows: [{ name: "Count", value: "18,760", color: totalBarColor }],
+    });
+  });
+
   describe("scenarios > visualizations > waterfall settings", () => {
     beforeEach(() => {
       H.restore();

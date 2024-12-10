@@ -2222,7 +2222,7 @@
        first))
 
 (defn- get-item-with-id-in-root [id]
-  (->> (mt/user-http-request :crowberto :get 200 (str "collection/root/items"))
+  (->> (mt/user-http-request :crowberto :get 200 "collection/root/items")
        :data
        (filter #(= (:id %) id))
        first))

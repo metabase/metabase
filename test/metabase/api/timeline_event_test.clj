@@ -6,7 +6,7 @@
    [metabase.models.collection :refer [Collection]]
    [metabase.models.timeline :refer [Timeline]]
    [metabase.models.timeline-event :refer [TimelineEvent]]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -15,9 +15,9 @@
 
 (deftest auth-tests
   (testing "Authentication"
-    (is (= (get req.util/response-unauthentic :body)
+    (is (= (get request/response-unauthentic :body)
            (client/client :get 401 "/timeline-event")))
-    (is (= (get req.util/response-unauthentic :body)
+    (is (= (get request/response-unauthentic :body)
            (client/client :get 401 "/timeline-event/1")))))
 
 (deftest get-timeline-event-test

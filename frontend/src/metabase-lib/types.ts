@@ -11,12 +11,7 @@ import type {
   TemporalUnit,
 } from "metabase-types/api";
 
-import type {
-  DEFAULT_FILTER_OPERATORS,
-  EXCLUDE_DATE_BUCKETS,
-  EXCLUDE_DATE_FILTER_OPERATORS,
-  SPECIFIC_DATE_FILTER_OPERATORS,
-} from "./constants";
+import type { DEFAULT_FILTER_OPERATORS } from "./constants";
 import type { ColumnExtractionTag } from "./extractions";
 
 /**
@@ -301,8 +296,8 @@ export type FilterOperatorName =
   | StringFilterOperator
   | NumberFilterOperator
   | BooleanFilterOperator
-  | SpecificDateFilterOperatorName
-  | ExcludeDateFilterOperatorName
+  | SpecificDateFilterOperator
+  | ExcludeDateFilterOperator
   | CoordinateFilterOperator;
 
 export type StringFilterOperator =
@@ -338,11 +333,9 @@ export type CoordinateFilterOperator =
 
 export type BooleanFilterOperator = "=" | "is-null" | "not-null";
 
-export type SpecificDateFilterOperatorName =
-  (typeof SPECIFIC_DATE_FILTER_OPERATORS)[number];
+export type SpecificDateFilterOperator = "=" | ">" | "<" | "between";
 
-export type ExcludeDateFilterOperatorName =
-  (typeof EXCLUDE_DATE_FILTER_OPERATORS)[number];
+export type ExcludeDateFilterOperator = "!=" | "is-null" | "not-null";
 
 export type TimeFilterOperator = ">" | "<" | "between" | "is-null" | "not-null";
 
@@ -358,7 +351,11 @@ export type RelativeDateFilterUnit =
   | "quarter"
   | "year";
 
-export type ExcludeDateBucketName = (typeof EXCLUDE_DATE_BUCKETS)[number];
+export type ExcludeDateFilterUnit =
+  | "hour-of-day"
+  | "day-of-week"
+  | "month-of-year"
+  | "quarter-of-year";
 
 export type FilterOperatorDisplayInfo = {
   shortName: FilterOperatorName;
@@ -409,7 +406,7 @@ export type BooleanFilterParts = {
 };
 
 export type SpecificDateFilterParts = {
-  operator: SpecificDateFilterOperatorName;
+  operator: SpecificDateFilterOperator;
   column: ColumnMetadata;
   values: Date[];
   hasTime: boolean;
@@ -431,14 +428,14 @@ export type RelativeDateFilterOptions = {
 /*
  * values depend on the bucket
  * day-of-week => 1-7 (Monday-Sunday)
- * month-of-year => 0-11 (January-December)
+ * month-of-year => 1-12 (January-December)
  * quarter-of-year => 1-4
  * hour-of-day => 0-23
  */
 export type ExcludeDateFilterParts = {
-  operator: ExcludeDateFilterOperatorName;
+  operator: ExcludeDateFilterOperator;
   column: ColumnMetadata;
-  bucket: ExcludeDateBucketName | null;
+  unit: ExcludeDateFilterUnit | null;
   values: number[];
 };
 

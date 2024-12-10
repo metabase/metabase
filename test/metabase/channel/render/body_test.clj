@@ -999,3 +999,28 @@
                 card-header-els (hik.s/select (hik.s/tag :th) card-doc)]
             (is (=  ["Category" "Created At: Year" "Sum of Price"]
                     (mapv (comp first :content) card-header-els)))))))))
+
+(deftest render-sankey-chart-test
+  (testing "The static-viz sankey chart renders correctly."
+    (mt/dataset test-data
+      (let [q       {:database (mt/id)
+                     :type     :query
+                     :query    {:source-table (mt/id :products)
+                                :aggregation  [[:count]]
+                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                               [:field (mt/id :products :price) {:base-type :type/Float
+                                                                                 :binning    {:strategy :default}}]]}}
+            card    {:name           "sankey-test"
+                     :display        :sankey
+                     :dataset_query  q
+                     :visualization_settings
+                     {:sankey.source "CATEGORY"
+                      :sankey.target "PRICE"
+                      :sankey.value  "count"}}]
+        (mt/with-temp [:model/Card {card-id :id} card]
+          (let [doc (render.tu/render-card-as-hickory! card-id)
+                category-text (->> (hik.s/select (hik.s/find-in-text #"Doohickey") doc)
+                                   (map (fn [el] (-> el :content first)))
+                                   first)]
+            (testing "Renders with at least one category name visible"
+              (is (= "Doohickey" category-text)))))))))

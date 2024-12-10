@@ -126,7 +126,7 @@ function setup({ props }: { props?: Partial<CreateDashboardModalProps> } = {}) {
   return renderWithProviders(<CreateDashboardModal {...props} />, {
     mode: "sdk",
     sdkProviderProps: {
-      config: createMockAuthProviderUriConfig(),
+      authConfig: createMockAuthProviderUriConfig(),
     },
     storeInitialState: {
       currentUser: CURRENT_USER,
