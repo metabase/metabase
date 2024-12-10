@@ -1,18 +1,14 @@
 (ns metabase.util.autoplace
   "NOTE: It's not SUPER high impact if it falls out of sync - hopefully both will place things in a reasonable spot - but
   ideally this namespace should be kept in sync with
-  [the frontend version](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dashboard_grid.js).")
+  [the frontend version](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dashboard_grid.js)."
+  (:require [metabase.models.dashboard.constants :as dashboard.constants]))
 
 (def ^:constant default-grid-width
-  "The default width of the grid. See GRID_WIDTH in
-  https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dashboard_grid.js" 24)
+  "The default grid width."
+  dashboard.constants/GRID_WIDTH)
 
-(def ^:constant default-card-size
-  "The size of the default card. See DEFAULT_CARD_SIZE in
-  https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dashboard_grid.js"
-  {:width 4 :height 4})
-
-(defn- intersects [a b]
+(defn- intersects? [a b]
   (not (or
         (>= (:col b) (+ (:col a) (:size_x a)))
         (<= (+ (:col b) (:size_x b)) (:col a))
@@ -20,7 +16,7 @@
         (<= (+ (:row b) (:size_y b)) (:row a)))))
 
 (defn- intersects-with-any-card? [cards position]
-  (boolean (some #(intersects position %) cards)))
+  (boolean (some #(intersects? position %) cards)))
 
 (defn get-position-for-new-dashcard
   "Where should a new card be placed on a tab, given the existing dashcards?
@@ -38,8 +34,12 @@
   - this includes a `dashboard_tab_id` in the returned value (which may be `nil`). This is just to make it a bit
   easier for the caller.
   "
-  ([cards]
-   (get-position-for-new-dashcard cards (:width default-card-size) (:height default-card-size) default-grid-width))
+  ([cards display-type]
+   (let [{:keys [width height]} (:default (get dashboard.constants/card-size-defaults display-type))]
+     (get-position-for-new-dashcard cards
+                                    width
+                                    height
+                                    default-grid-width)))
   ([cards size_x size_y grid-width]
    (let [dashboard-tab-id (:dashboard_tab_id (first cards))]
      (first

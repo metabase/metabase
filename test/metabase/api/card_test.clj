@@ -4040,7 +4040,22 @@
         (testing "The card is still in the old dashboard and not the new one"
           (is (= [{:name other-dash-name :collection_id forbidden-coll-id :id other-dash-id}]
                  (:in_dashboards (t2/hydrate (t2/select-one :model/Card :id card-id) :in_dashboards))))
-          (is (nil? (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id))))))))
+          (is (nil? (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id)))))))
+  (testing "Moving an archived card to a Dashboard unarchives and autoplaces it"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Card {card-id :id} {:archived true}]
+      ;; move it to a dashboard
+      (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id})
+      (testing "we actually did the change (i.e. it's a DQ now)"
+        (is (= dash-id (:dashboard_id (t2/select-one :model/Card :id card-id)))))
+      (testing "it got unarchived"
+        (is (not (:archived (t2/select-one :model/Card :id card-id)))))
+      (testing "it got autoplaced"
+        (is (= dash-id (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] :card_id card-id))))))
+  (testing "You can't mark a card as archived *and* move it to a dashboard"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Card {card-id :id} {}]
+      (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id :archived true}))))
 
 (deftest we-can-get-a-list-of-dashboards-a-card-appears-in
   (testing "a card in one dashboard"

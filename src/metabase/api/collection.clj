@@ -1007,7 +1007,10 @@
   *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.
   *  `pinned_state` - when `is_pinned`, return pinned objects only.
                    when `is_not_pinned`, return non pinned objects only.
-                   when `all`, return everything. By default returns everything"
+                   when `all`, return everything. By default returns everything.
+
+  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
+  changed, that should too."
   [id models archived pinned_state sort_column sort_direction official_collections_first show_dashboard_questions]
   {id                         ms/PositiveInt
    models                     [:maybe Models]
@@ -1071,7 +1074,10 @@
   top-level objects you're allowed to access.
 
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
-  `snippets`, you can pass the `?namespace=` parameter."
+  `snippets`, you can pass the `?namespace=` parameter.
+
+  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
+  changed, that should too."
   [models archived namespace pinned_state sort_column sort_direction official_collections_first show_dashboard_questions]
   {models                     [:maybe Models]
    archived                   [:maybe ms/BooleanValue]

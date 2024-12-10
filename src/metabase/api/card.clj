@@ -227,7 +227,7 @@
                                 :user-id api/*current-user-id*
                                 :context (or context :question)})))))
 
-(defn- check-perms-to-remove-from-existing-dashboards [card]
+(defn- check-allowed-to-remove-from-existing-dashboards [card]
   (let [dashboards (or (:in_dashboards card)
                        (:in_dashboards (t2/hydrate card :in_dashboards)))]
     (doseq [dashboard dashboards]
@@ -542,7 +542,7 @@
 
 (defn- check-allowed-to-move [card-before-update card-updates]
   (when (api/column-will-change? :dashboard_id card-before-update card-updates)
-    (check-perms-to-remove-from-existing-dashboards card-before-update))
+    (check-allowed-to-remove-from-existing-dashboards card-before-update))
   (collection/check-allowed-to-change-collection card-before-update card-updates))
 
 (def ^:private CardUpdateSchema
@@ -592,7 +592,15 @@
           card-updates                       (merge card-updates
                                                     (when (and (some? type)
                                                                is-model-after-update?)
-                                                      {:display :table}))
+                                                      {:display :table})
+                                                    (when (and
+                                                           (api/column-will-change? :dashboard_id
+                                                                                    card-before-update
+                                                                                    card-updates)
+                                                           (:dashboard_id card-updates))
+                                                      (api/check-400
+                                                       (not (:archived card-updates)))
+                                                      {:archived false}))
           card-updates                       (cond-> card-updates
                                                metadata
                                                (assoc :result_metadata           metadata
