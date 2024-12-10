@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useSearchListQuery } from "metabase/common/hooks";
+import { useListCollectionItemsQuery } from "metabase/api";
 import {
   Button,
   Flex,
@@ -45,16 +45,14 @@ export function ModelUploadModal({
 }) {
   const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.create);
   const [tableId, setTableId] = useState<TableId | null>(null);
-  const models = useSearchListQuery({
-    query: {
-      collection: collectionId,
-      models: ["dataset"],
-    },
+  const { data: models } = useListCollectionItemsQuery({
+    id: collectionId,
+    models: ["dataset"],
   });
 
   const uploadableModels = useMemo(
-    () => models.data?.filter(model => !!model.based_on_upload) ?? [],
-    [models.data],
+    () => models?.data?.filter(model => !!model.based_on_upload) ?? [],
+    [models?.data],
   );
 
   useEffect(

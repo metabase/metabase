@@ -27,5 +27,6 @@ export const useAvailableData = ({ databaseId }: Props = {}) => {
     hasQuestions,
     hasModels,
     hasMetrics,
+    availableModels,
   };
 };
