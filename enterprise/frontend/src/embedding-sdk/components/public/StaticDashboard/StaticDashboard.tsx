@@ -1,4 +1,3 @@
-import cx from "classnames";
 import _ from "underscore";
 
 import {
@@ -18,6 +17,7 @@ import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { Box } from "metabase/ui";
+import cx from "classnames";
 
 export type StaticDashboardProps = SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
@@ -31,6 +31,7 @@ export const StaticDashboardInner = ({
   hiddenParameters = [],
   onLoad,
   onLoadWithoutCards,
+  initialTab,
   style,
   className,
 }: StaticDashboardProps) => {
@@ -82,6 +83,7 @@ export const StaticDashboardInner = ({
         isNightMode={false}
         onNightModeChange={_.noop}
         hasNightModeToggle={false}
+        initialTab={initialTab}
       />
     </Box>
   );
