@@ -1,5 +1,7 @@
 # Docs for development on the sdk
 
+These docs are for building the sdk locally, if you just want to use the sdk, please refer to the [sdk documentation](https://www.metabase.com/docs/latest/embedding/sdk/introduction).
+
 ## Build
 
 You can build the sdk with `build-embedding-sdk`.
