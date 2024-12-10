@@ -37,21 +37,15 @@
   "Basic query that will return results for an alert"
   [query-map]
   {:name          card-name
-   :dataset_query {:database (mt/id)
-                   :type     :query
-                   :query    (merge {:source-table (mt/id :checkins)
-                                     :aggregation  [["count"]]}
-                                    query-map)}})
+   :dataset_query query-map})
 
 (defmacro checkins-query-card [query]
-  `(checkins-query-card* (mt/$ids ~'checkins ~query)))
+  `(checkins-query-card* (mt/mbql-query ~'checkins ~(merge {:aggregation [["count"]]} query))))
 
 (defn venues-query-card [aggregation-op]
   {:name          card-name
-   :dataset_query {:database (mt/id)
-                   :type     :query
-                   :query    {:source-table (mt/id :venues)
-                              :aggregation  [[aggregation-op (mt/id :venues :price)]]}}})
+   :dataset_query (mt/mbql-query venues
+                    {:aggregation  [[aggregation-op $price]]})})
 
 (defn rasta-id []
   (mt/user->id :rasta))

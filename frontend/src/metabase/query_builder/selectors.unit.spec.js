@@ -157,6 +157,7 @@ describe("getIsResultDirty", () => {
       const filter = [">", ["field", ORDERS.TOTAL, null], 20];
       const join = {
         alias: "Products",
+        ident: "LUso-laB06h37QT_phn2R",
         fields: "all",
         "source-table": PRODUCTS_ID,
         condition: [
