@@ -62,7 +62,6 @@
 
 (defn- exists? [table]
   (when table
-    ;; TODO specialize the case based on the driver
     (t2/exists? :information_schema.tables :table_name (table-name table))))
 
 (defn- drop-table! [table]
