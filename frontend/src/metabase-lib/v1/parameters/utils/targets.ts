@@ -127,8 +127,9 @@ export function getParameterTargetField(
 
 export function buildDimensionTarget(
   dimension: TemplateTagDimension,
+  stageIndex: number,
 ): NativeParameterDimensionTarget {
-  return ["dimension", dimension.mbql()];
+  return ["dimension", dimension.mbql(), { "stage-number": stageIndex }];
 }
 
 export function buildColumnTarget(

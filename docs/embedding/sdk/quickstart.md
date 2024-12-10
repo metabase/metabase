@@ -162,7 +162,7 @@ Install packages:
 npm install
 ```
 
-This command will install the [Metabase embedded analytics SDK](https://metaba.se/sdk), in addition to the application's other dependencies.
+This command will install the [Metabase embedded analytics SDK](https://www.npmjs.com/package/@metabase/embedding-sdk-react), in addition to the application's other dependencies.
 
 ## Start the client
 
@@ -191,7 +191,7 @@ Your browser should automatically open the app. By default, the app runs on [htt
 In your app, you'll see an embedded `InteractiveQuestion` component.
 
 ```javascript
-<MetabaseProvider config={config} theme={theme}>
+<MetabaseProvider authConfig={authConfig} theme={theme}>
   <InteractiveQuestion questionId={questionId} />
 </MetabaseProvider>
 ```

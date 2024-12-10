@@ -129,12 +129,52 @@ export type LoadingMessage =
 
 export type TokenStatusStatus = "unpaid" | "past-due" | "invalid" | string;
 
+const tokenStatusFeatures = [
+  "advanced-config",
+  "advanced-permissions",
+  "audit-app",
+  "cache-granular-controls",
+  "collection-cleanup",
+  "config-text-file",
+  "content-management",
+  "content-verification",
+  "dashboard-subscription-filters",
+  "database-auth-providers",
+  "disable-password-login",
+  "email-allow-list",
+  "email-restrict-recipients",
+  "embedding-sdk",
+  "embedding",
+  "hosting",
+  "metabase-store-managed",
+  "metabot-v3",
+  "no-upsell",
+  "official-collections",
+  "query-reference-validation",
+  "question-error-logs",
+  "sandboxes",
+  "scim",
+  "serialization",
+  "session-timeout-config",
+  "snippet-collections",
+  "sso-google",
+  "sso-jwt",
+  "sso-ldap",
+  "sso-saml",
+  "sso",
+  "upload-management",
+  "whitelabel",
+] as const;
+
+export type TokenStatusFeature = (typeof tokenStatusFeatures)[number];
+
 export interface TokenStatus {
-  status?: TokenStatusStatus;
+  status: TokenStatusStatus;
   valid: boolean;
   "valid-thru"?: string;
   "error-details"?: string;
-  trial: boolean;
+  trial?: boolean;
+  features?: TokenStatusFeature[];
 }
 
 export type DayOfWeekId =
@@ -294,6 +334,7 @@ interface PublicSettings {
   "application-font": string;
   "application-font-files": FontFile[] | null;
   "application-name": string;
+  "application-favicon-url": string;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
   "bug-reporting-enabled": boolean;
@@ -324,6 +365,7 @@ interface PublicSettings {
   "ldap-group-membership-filter": string;
   "loading-message": LoadingMessage;
   "map-tile-server-url": string;
+  "native-query-autocomplete-match-style": "substring" | "prefix" | "off";
   "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;
@@ -349,6 +391,7 @@ interface PublicSettings {
 export type UserSettings = {
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
+  "dismissed-onboarding-sidebar-link"?: boolean;
   "last-used-native-database-id"?: number | null;
   "notebook-native-preview-shown"?: boolean;
   "notebook-native-preview-sidebar-width"?: number | null;
@@ -358,6 +401,7 @@ export type UserSettings = {
   "browse-filter-only-verified-metrics"?: boolean;
   "show-updated-permission-modal": boolean;
   "show-updated-permission-banner": boolean;
+  "trial-banner-dismissal-timestamp"?: string | null;
 };
 
 /**

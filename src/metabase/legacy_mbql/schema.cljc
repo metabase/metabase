@@ -89,6 +89,7 @@
    :week-of-year-instance
    :day-of-month
    :day-of-week
+   :day-of-week-iso
    :hour-of-day
    :minute-of-hour
    :second-of-minute])
@@ -387,7 +388,7 @@
 
 (def string-functions
   "Functions that return string values. Should match [[StringExpression]]."
-  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case
+  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case :if
     :host :domain :subdomain :month-name :quarter-name :day-name})
 
 (def ^:private StringExpression
@@ -412,7 +413,7 @@
 
 (def numeric-functions
   "Functions that return numeric values. Should match [[NumericExpression]]."
-  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :datetime-diff
+  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :if :datetime-diff
     ;; extraction functions (get some component of a given temporal value/column)
     :temporal-extract
     ;; SUGAR drivers do not need to implement
@@ -421,7 +422,7 @@
 (def boolean-functions
   "Functions that return boolean values. Should match [[BooleanExpression]]."
   #{:and :or :not :< :<= :> :>= := :!= :between :starts-with :ends-with :contains :does-not-contain :inside :is-empty
-    :not-empty :is-null :not-null :relative-time-interval :time-interval})
+    :not-empty :is-null :not-null :relative-time-interval :time-interval :during})
 
 (def ^:private aggregations
   #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct
@@ -638,7 +639,7 @@
 (defclause ^{:requires-features #{:temporal-extract}} temporal-extract
   datetime DateTimeExpressionArg
   unit     [:ref ::TemporalExtractUnit]
-  mode     (optional [:ref ::ExtractWeekMode])) ;; only for get-week
+  mode     (optional [:ref ::ExtractWeekMode])) ;; only for get-week and get-day-of-week
 
 ;; SUGAR CLAUSE: get-year, get-month... clauses are all sugars clause that will be rewritten as [:temporal-extract column :year]
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-year
@@ -658,7 +659,8 @@
   date DateTimeExpressionArg)
 
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-day-of-week
-  date DateTimeExpressionArg)
+  date DateTimeExpressionArg
+  mode (optional [:ref ::ExtractWeekMode]))
 
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-hour
   datetime DateTimeExpressionArg)
@@ -863,6 +865,11 @@
   unit    [:ref ::RelativeDatetimeUnit]
   options (optional TimeIntervalOptions))
 
+(defclause ^:sugar during
+  field   Field
+  value   [:or ::lib.schema.literal/date ::lib.schema.literal/datetime]
+  unit    ::DateTimeUnit)
+
 (defclause ^:sugar relative-time-interval
   col           Field
   value         :int
@@ -886,7 +893,7 @@
    ;; filters drivers must implement
    and or not = != < > <= >= between starts-with ends-with contains
     ;; SUGAR filters drivers do not need to implement
-   does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval))
+   does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval during))
 
 (mr/def ::Filter
   [:multi
@@ -918,14 +925,17 @@
 (defclause ^{:requires-features #{:basic-aggregations}} case
   clauses CaseClauses, options (optional CaseOptions))
 
+(defclause ^:sugar ^{:requires-features #{:basic-aggregations}} [case:if if]
+  clauses CaseClauses, options (optional CaseOptions))
+
 (mr/def ::NumericExpression
-  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case datetime-diff
+  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff
           temporal-extract get-year get-quarter get-month get-week get-day get-day-of-week
           get-hour get-minute get-second))
 
 (mr/def ::StringExpression
-  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case host domain subdomain
-          month-name quarter-name day-name))
+  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case case:if host domain
+          subdomain month-name quarter-name day-name))
 
 (mr/def ::FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
@@ -940,6 +950,7 @@
                        (is-clause? boolean-functions x)  :boolean
                        (is-clause? datetime-functions x) :datetime
                        (is-clause? :case x)              :case
+                       (is-clause? :if   x)              :if
                        (is-clause? :offset x)            :offset
                        :else                             :else))}
    [:numeric  NumericExpression]
@@ -947,6 +958,7 @@
    [:boolean  BooleanExpression]
    [:datetime DatetimeExpression]
    [:case     case]
+   [:if       case:if]
    [:offset   offset]
    [:else     Field]])
 
@@ -1013,7 +1025,7 @@
                        :else))}
    [:numeric-expression NumericExpression]
    [:else (one-of avg cum-sum distinct stddev sum min max metric share count-where
-                  sum-where case median percentile ag:var cum-count count offset)]])
+                  sum-where case case:if median percentile ag:var cum-count count offset)]])
 
 (def ^:private UnnamedAggregation
   ::UnnamedAggregation)
@@ -1710,15 +1722,14 @@
   "Is this a valid outer query? (Pre-compling a validator is more efficient.)"
   (mr/validator Query))
 
-(def ^{:arglists '([query])} validate-query
+(defn validate-query
   "Validator for an outer query; throw an Exception explaining why the query is invalid if it is. Returns query if
   valid."
-  (let [explainer (mr/explainer Query)]
-    (fn [query]
-      (if (valid-query? query)
-        query
-        (let [error     (explainer query)
-              humanized (me/humanize error)]
-          (throw (ex-info (i18n/tru "Invalid query: {0}" (pr-str humanized))
-                          {:error    humanized
-                           :original error})))))))
+  [query]
+  (if (valid-query? query)
+    query
+    (let [error     (mr/explain Query query)
+          humanized (me/humanize error)]
+      (throw (ex-info (i18n/tru "Invalid query: {0}" (pr-str humanized))
+                      {:error    humanized
+                       :original error})))))

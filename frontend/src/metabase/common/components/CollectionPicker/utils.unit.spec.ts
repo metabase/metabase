@@ -11,7 +11,6 @@ describe("CollectionPicker > utils", () => {
           is_personal: true,
         },
         1337,
-        false,
       );
 
       expect(path).toEqual([1337]);
@@ -26,7 +25,6 @@ describe("CollectionPicker > utils", () => {
           is_personal: true,
         },
         1337,
-        false,
       );
 
       expect(path).toEqual([1337, 1339]);
@@ -40,7 +38,6 @@ describe("CollectionPicker > utils", () => {
           effective_location: "/",
         },
         1337,
-        false,
       );
 
       expect(path).toEqual(["personal"]);
@@ -52,9 +49,9 @@ describe("CollectionPicker > utils", () => {
           id: 8675309,
           location: "/1400/",
           effective_location: "/1400/",
+          is_personal: true,
         },
         1337,
-        true,
       );
 
       expect(path).toEqual(["personal", 1400, 8675309]);
@@ -69,10 +66,9 @@ describe("CollectionPicker > utils", () => {
           is_personal: true,
         },
         1337,
-        true,
       );
 
-      expect(path).toEqual(["personal", 1337]);
+      expect(path).toEqual([1337]);
     });
 
     it("should handle subcollections of the current user's personal collection within all users' personal collections 🥴", () => {
@@ -84,10 +80,9 @@ describe("CollectionPicker > utils", () => {
           is_personal: true,
         },
         1337,
-        true,
       );
 
-      expect(path).toEqual(["personal", 1337, 1339]);
+      expect(path).toEqual([1337, 1339]);
     });
 
     it("should handle root collection", () => {
@@ -98,7 +93,6 @@ describe("CollectionPicker > utils", () => {
           effective_location: "/",
         },
         1337,
-        false,
       );
 
       expect(path).toEqual(["root"]);
@@ -112,7 +106,6 @@ describe("CollectionPicker > utils", () => {
           effective_location: "/6/7/8/",
         },
         1337,
-        false,
       );
 
       expect(path).toEqual(["root", 6, 7, 8, 9]);
@@ -126,7 +119,6 @@ describe("CollectionPicker > utils", () => {
           effective_location: "/6/7/8/",
         },
         1337,
-        false,
       );
 
       expect(path).toEqual(["root", 6, 7, 8, 9]);

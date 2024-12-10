@@ -1,11 +1,11 @@
 (ns metabase.models.task-history
   (:require
-   [cheshire.generate :refer [add-encoder encode-map]]
    [java-time.api :as t]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -97,7 +97,8 @@
    [:on-fail-info    {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any] :map]]]
    [:task_details    {:optional true} [:maybe :map]]])   ; additional map of details to include in the recorded row
 
-(def ^:private ns->ms #(int (/ % 1e6)))
+(defn- ns->ms [nanoseconds]
+  (long (/ nanoseconds 1e6)))
 
 (defn- update-task-history!
   [th-id startime-ns info]
@@ -156,7 +157,7 @@
 
 ;; TaskHistory can contain an exception for logging purposes, so use the built-in
 ;; serialization of a `Throwable->map` to make this something that can be JSON encoded.
-(add-encoder
+(json/add-encoder
  Throwable
  (fn [throwable json-generator]
-   (encode-map (Throwable->map throwable) json-generator)))
+   (json/generate-map (Throwable->map throwable) json-generator)))

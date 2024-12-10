@@ -58,7 +58,7 @@ const getLabelValueFormatting = (
 
   const totalNodesWidth = SANKEY_CHART_STYLE.nodeWidth * nodeLevelsCount;
   const widthPerLevel =
-    (boundaryWidth - totalNodesWidth) / Math.min(nodeLevelsCount - 1, 1);
+    (boundaryWidth - totalNodesWidth) / Math.max(nodeLevelsCount - 1, 1);
 
   return maxEdgeLabelWidth >= widthPerLevel ? "compact" : "full";
 };
@@ -97,7 +97,7 @@ export const getSankeyLayout = (
   );
   const maxRightLabelWidth = Math.max(
     ...mostRightNodes
-      .map(({ node }) => chartModel.formatters.node(node.value))
+      .map(({ node }) => chartModel.formatters.node(node))
       .map(formattedNode =>
         renderingContext.measureText(formattedNode, {
           ...SANKEY_CHART_STYLE.nodeLabels,

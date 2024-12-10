@@ -1,8 +1,11 @@
+import cx from "classnames";
+import type { CSSProperties } from "react";
 import { t } from "ttag";
 
-import { Icon } from "metabase/ui";
+import { alpha, darken } from "metabase/lib/colors";
+import { Icon, useMantineTheme } from "metabase/ui";
 
-import { RadioInput, Tab, TabBar } from "./EditorTabs.styled";
+import EditorTabsS from "./EditorTabs.module.css";
 
 type Props = {
   currentTab: string;
@@ -11,12 +14,33 @@ type Props = {
 };
 
 export function EditorTabs({ currentTab, disabledMetadata, onChange }: Props) {
+  const theme = useMantineTheme();
+
   return (
-    <TabBar>
+    <ul
+      className={EditorTabsS.TabBar}
+      style={
+        {
+          "--active-tab-color": darken(theme.fn.themeColor("brand")),
+          "--inactive-tab-color": alpha(
+            darken(theme.fn.themeColor("brand")),
+            0.3,
+          ),
+        } as CSSProperties
+      }
+    >
       <li>
-        <Tab htmlFor="editor-tabs-query" selected={currentTab === "query"}>
+        <label
+          className={cx(EditorTabsS.Tab, {
+            [EditorTabsS.active]: currentTab === "query",
+            [EditorTabsS.inactive]: currentTab !== "query",
+          })}
+          htmlFor="editor-tabs-query"
+        >
           <Icon name="notebook" />
-          <RadioInput
+          <input
+            className={EditorTabsS.RadioInput}
+            type="radio"
             id="editor-tabs-query"
             name="editor-tabs"
             value="query"
@@ -26,17 +50,22 @@ export function EditorTabs({ currentTab, disabledMetadata, onChange }: Props) {
             }}
           />
           <span data-testid="editor-tabs-query-name">{t`Query`}</span>
-        </Tab>
+        </label>
       </li>
 
       <li>
-        <Tab
+        <label
+          className={cx(EditorTabsS.Tab, {
+            [EditorTabsS.active]: currentTab === "metadata",
+            [EditorTabsS.inactive]: currentTab !== "metadata",
+            [EditorTabsS.disabled]: disabledMetadata,
+          })}
           htmlFor="editor-tabs-metadata"
-          selected={currentTab === "metadata"}
-          disabled={disabledMetadata}
         >
           <Icon name="notebook" />
-          <RadioInput
+          <input
+            type="radio"
+            className={EditorTabsS.RadioInput}
             id="editor-tabs-metadata"
             name="editor-tabs"
             value="metadata"
@@ -48,8 +77,8 @@ export function EditorTabs({ currentTab, disabledMetadata, onChange }: Props) {
             data-testid="editor-tabs-metadata"
           />
           <span data-testid="editor-tabs-metadata-name">{t`Metadata`}</span>
-        </Tab>
+        </label>
       </li>
-    </TabBar>
+    </ul>
   );
 }

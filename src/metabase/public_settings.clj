@@ -710,6 +710,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :public
   :type       :string
   :audit      :getter
+  :default   "https://www.metabase.com/help/premium"
   :feature    :whitelabel
   :setter     (fn [new-value]
                 (let [new-value-string (str new-value)]
@@ -1064,12 +1065,12 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    true
   :type       :integer)
 
-(defsetting experimental-fulltext-search-enabled
-  (deferred-tru "Enables search engines which are still in the experimental stage")
+(defsetting search-engine
+  (deferred-tru "Which engine to use when performing search. Supported values are :in-place and :appdb")
   :visibility :internal
   :export?    false
-  :default    false
-  :type       :boolean)
+  :default    :in-place
+  :type       :keyword)
 
 (defsetting experimental-search-weight-overrides
   (deferred-tru "Used to override weights used for search ranking")
@@ -1077,7 +1078,8 @@ See [fonts](../configuring-metabase/fonts.md).")
   :encryption :no
   :export?    false
   :default    nil
-  :type       :json)
+  :type       :json
+  :doc        false)
 
 (defsetting bug-reporting-enabled
   (deferred-tru "Enable bug report submissions.")

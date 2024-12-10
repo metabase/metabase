@@ -85,8 +85,59 @@
                            second
                            :temporal-unit
                            lib.temporal-bucket/describe-temporal-unit
-                           u/lower-case-en)]
+                           u/lower-case-en)
+
+        ->unit {:get-hour :hour-of-day
+                :get-month :month-of-year
+                :get-quarter :quarter-of-year}]
     (lib.util.match/match-one expr
+      [:= _ [:get-hour _ (a :guard temporal?)] (b :guard int?)]
+      (i18n/tru "{0} is at {1}" (->unbucketed-display-name a) (u.time/format-unit b :hour-of-day))
+
+      [:!= _ [:get-hour _ (a :guard temporal?)] (b :guard int?)]
+      (i18n/tru "{0} excludes the hour of {1}" (->unbucketed-display-name a) (u.time/format-unit b :hour-of-day))
+
+      [:= _ [:get-day-of-week _ (a :guard temporal?) :iso] (b :guard int?)]
+      (i18n/tru "{0} is on {1}" (->display-name a) (u.time/format-unit b :day-of-week-iso))
+
+      [:!= _ [:get-day-of-week _ (a :guard temporal?) :iso] (b :guard int?)]
+      (i18n/tru "{0} excludes {1}"
+                (->unbucketed-display-name a)
+                (inflections/plural (u.time/format-unit b :day-of-week-iso)))
+
+      [:= _ [:get-day-of-week _ (a :guard temporal?) :iso] & (args :guard #(every? int? %))]
+      (i18n/tru "{0} is one of {1} {2} selections"
+                (->display-name a)
+                (count args)
+                (-> :day-of-week lib.temporal-bucket/describe-temporal-unit u/lower-case-en))
+
+      [:!= _ [:get-day-of-week _ (a :guard temporal?) :iso] & (args :guard #(every? int? %))]
+      (i18n/tru "{0} excludes {1} {2} selections"
+                (->unbucketed-display-name a)
+                (count args)
+                (-> :day-of-week lib.temporal-bucket/describe-temporal-unit u/lower-case-en))
+
+      [:= _ [(f :guard #{:get-month :get-quarter}) _ (a :guard temporal?)] (b :guard int?)]
+      (i18n/tru "{0} is in {1}" (->unbucketed-display-name a) (u.time/format-unit b (->unit f)))
+
+      [:!= _ [:get-month _ (a :guard temporal?)] (b :guard int?)]
+      (i18n/tru "{0} excludes each {1}" (->unbucketed-display-name a) (u.time/format-unit b :month-of-year))
+
+      [:!= _ [:get-quarter _ (a :guard temporal?)] (b :guard int?)]
+      (i18n/tru "{0} excludes {1} each year" (->unbucketed-display-name a) (u.time/format-unit b :quarter-of-year))
+
+      [:= _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (a :guard temporal?)] & (args :guard #(every? int? %))]
+      (i18n/tru "{0} is one of {1} {2} selections"
+                (->unbucketed-display-name a)
+                (count args)
+                (-> f ->unit lib.temporal-bucket/describe-temporal-unit u/lower-case-en))
+
+      [:!= _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (a :guard temporal?)] & (args :guard #(every? int? %))]
+      (i18n/tru "{0} excludes {1} {2} selections"
+                (->unbucketed-display-name a)
+                (count args)
+                (-> f ->unit lib.temporal-bucket/describe-temporal-unit u/lower-case-en))
+
       [:= _ (a :guard numeric?) b]
       (i18n/tru "{0} is equal to {1}" (->display-name a) (->display-name b))
 
@@ -240,6 +291,13 @@
                 (->display-name y)
                 (->display-name z)))))
 
+(defmethod lib.metadata.calculation/display-name-method :during
+  [query stage-number [_tag _opts expr value unit] style]
+  (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)]
+    (i18n/tru "{0} is {1}"
+              (->display-name expr)
+              (u.time/format-relative-date-range value 1 unit -1 unit {}))))
+
 (defmethod lib.metadata.calculation/display-name-method :inside
   [query stage-number [_tag opts lat-expr lon-expr lat-max lon-min lat-min lon-max] style]
   (lib.metadata.calculation/display-name query stage-number
@@ -316,6 +374,7 @@
 (lib.common/defop does-not-contain [whole & parts])
 (lib.common/defop relative-time-interval [x value bucket offset-value offset-bucket])
 (lib.common/defop time-interval [x amount unit])
+(lib.common/defop during [t v unit])
 (lib.common/defop segment [segment-id])
 
 (mu/defn- add-filter-to-stage

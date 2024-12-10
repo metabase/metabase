@@ -21,10 +21,12 @@
    [metabase.models.revision :as revision]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.search :as search]
+   [metabase.search.appdb.core :as search.engines.appdb]
+   [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
-   [metabase.search.fulltext :as search.fulltext]
+   [metabase.search.core :as search]
    [metabase.search.in-place.scoring :as scoring]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -32,7 +34,7 @@
 
 (comment
   ;; We need this to ensure the engine hierarchy is registered
-  search.fulltext/keep-me)
+  search.engines.appdb/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -40,6 +42,8 @@
 
 (def ^:private default-search-row
   {:archived                   false
+   :dashboard_id               false
+   :dashboard                  nil
    :effective_location         nil
    :location                   nil
    :bookmark                   nil
@@ -155,35 +159,36 @@
                         (merge (data-map instance-name)
                                (when-not in-root-collection?
                                  {:collection_id (u/the-id collection)})))]
-    (mt/with-temp [Collection  coll           (data-map "collection %s collection")
-                   Card        action-model   (if in-root-collection?
-                                                action-model-params
-                                                (assoc action-model-params :collection_id (u/the-id coll)))
-                   Action      {action-id :id
-                                :as action}   (merge (data-map "action %s action")
-                                                     {:type :query, :model_id (u/the-id action-model)})
-                   Database    {db-id :id
-                                :as db}       (data-map "database %s database")
-                   Table       table          (merge (data-map "database %s database")
-                                                     {:db_id db-id})
+    (search.tu/with-temp-index-table
+      (mt/with-temp [Collection  coll           (data-map "collection %s collection")
+                     Card        action-model   (if in-root-collection?
+                                                  action-model-params
+                                                  (assoc action-model-params :collection_id (u/the-id coll)))
+                     Action      {action-id :id
+                                  :as action}   (merge (data-map "action %s action")
+                                                       {:type :query, :model_id (u/the-id action-model)})
+                     Database    {db-id :id
+                                  :as db}       (data-map "database %s database")
+                     Table       table          (merge (data-map "database %s database")
+                                                       {:db_id db-id})
 
-                   QueryAction _qa (query-action action-id)
-                   Card        card           (coll-data-map "card %s card" coll)
-                   Card        dataset        (assoc (coll-data-map "dataset %s dataset" coll)
-                                                     :type :model)
-                   Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
-                   Card        metric         (assoc (coll-data-map "metric %s metric" coll)
-                                                     :type :metric)
-                   Segment     segment        (data-map "segment %s segment")]
-      (f {:action     action
-          :collection coll
-          :card       card
-          :database   db
-          :dataset    dataset
-          :dashboard  dashboard
-          :metric     metric
-          :table      table
-          :segment    segment}))))
+                     QueryAction _qa (query-action action-id)
+                     Card        card           (coll-data-map "card %s card" coll)
+                     Card        dataset        (assoc (coll-data-map "dataset %s dataset" coll)
+                                                       :type :model)
+                     Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
+                     Card        metric         (assoc (coll-data-map "metric %s metric" coll)
+                                                       :type :metric)
+                     Segment     segment        (data-map "segment %s segment")]
+        (f {:action     action
+            :collection coll
+            :card       card
+            :database   db
+            :dataset    dataset
+            :dashboard  dashboard
+            :metric     metric
+            :table      table
+            :segment    segment})))))
 
 (defmacro ^:private with-search-items-in-root-collection [search-string & body]
   `(do-with-search-items ~search-string true (fn [~'_] ~@body)))
@@ -312,10 +317,25 @@
 (deftest custom-engine-test
   (when (search/supports-index?)
     (testing "It can use an alternate search engine"
+      (search/init-index! {:force-reset? false :re-populate? false})
+      (with-search-items-in-root-collection "test"
+        (let [resp (search-request :crowberto :q "test" :search_engine "appdb" :limit 1)]
+          ;; The index is not populated here, so there's not much interesting to assert.
+          (is (= "search.engine/appdb" (:engine resp))))))
+
+    (testing "It can use the old search engine name, e.g. for old cookies"
+      (search/init-index! {:force-reset? false :re-populate? false})
       (with-search-items-in-root-collection "test"
         (let [resp (search-request :crowberto :q "test" :search_engine "fulltext" :limit 1)]
-          ;; The index is not populated here, so there's not much interesting to assert.
-          (is (= "search.engine/fulltext" (:engine resp))))))))
+          (is (= "search.engine/fulltext" (:engine resp))))))
+
+    (testing "It will not use an unknown search engine"
+      (search/init-index! {:force-reset? false :re-populate? false})
+      (with-search-items-in-root-collection "test"
+        (let [resp (search-request :crowberto :q "test" :search_engine "wut" :limit 1)]
+          (is (#{"search.engine/in-place"
+                 "search.engine/appdb"}
+               (:engine resp))))))))
 
 (defn- get-available-models [& args]
   (set
@@ -333,37 +353,42 @@
       (is (= #{} (get-available-models :q "noresults"))))))
 
 (deftest available-models-test
-  (let [search-term "query-model-set"]
-    (with-search-items-in-root-collection search-term
-      (testing "should returns a list of models that search result will return"
-        (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
-               (get-available-models :q search-term))))
-      (testing "return a subset of model for created-by filter"
-        (is (= #{"dashboard" "dataset" "card" "metric" "action"}
-               (get-available-models :q search-term :created_by (mt/user->id :rasta)))))
-      (testing "return a subset of model for verified filter"
-        (t2.with-temp/with-temp
-          [:model/Card       {v-card-id :id}   {:name (format "%s Verified Card" search-term)}
-           :model/Card       {v-model-id :id}  {:name (format "%s Verified Model" search-term) :type :model}
-           :model/Card       {v-metric-id :id} {:name (format "%s Verified Metric" search-term) :type :metric}
-           :model/Collection {_v-coll-id :id}  {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
-          (testing "when has both :content-verification features"
-            (mt/with-premium-features #{:content-verification}
-              (mt/with-verified-cards! [v-card-id v-model-id v-metric-id]
-                (is (= #{"card" "dataset" "metric"}
-                       (get-available-models :q search-term :verified true))))))
-          (testing "when has :content-verification feature only"
-            (mt/with-premium-features #{:content-verification}
-              (mt/with-verified-cards! [v-card-id]
-                (is (= #{"card"}
-                       (get-available-models :q search-term :verified true))))))))
-      (testing "return a subset of model for created_at filter"
-        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
-               (get-available-models :q search-term :created_at "today"))))
+  ;; Porting these tests over earlier
+  (doseq [engine ["in-place" "appdb"]]
+    (let [search-term "query-model-set"
+          get-available-models #(apply get-available-models :search_engine engine %&)]
+      (with-search-items-in-root-collection search-term
+        (testing "should returns a list of models that search result will return"
+          (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+                 (get-available-models)))
+          (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+                 (get-available-models :q search-term))))
+        (testing "return a subset of model for created-by filter"
+          (is (= #{"dashboard" "dataset" "card" "metric" "action"}
+                 (get-available-models :q search-term :created_by (mt/user->id :rasta)))))
+        (testing "return a subset of model for verified filter"
+          (t2.with-temp/with-temp
+            [:model/Card       {v-card-id :id}   {:name (format "%s Verified Card" search-term)}
+             :model/Card       {v-model-id :id}  {:name (format "%s Verified Model" search-term) :type :model}
+             :model/Card       {v-metric-id :id} {:name (format "%s Verified Metric" search-term) :type :metric}
+             :model/Collection {_v-coll-id :id}  {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
+            (testing "when has both :content-verification features"
+              (mt/with-premium-features #{:content-verification}
+                (mt/with-verified-cards! [v-card-id v-model-id v-metric-id]
+                  (is (= #{"card" "dataset" "metric"}
+                         (get-available-models :q search-term :verified true))))))
+            (testing "when has :content-verification feature only"
+              (mt/with-premium-features #{:content-verification}
+                (mt/with-verified-cards! [v-card-id]
+                  (is (= #{"card"}
+                         (get-available-models :q search-term :verified true))))))))
+        (testing "return a subset of model for created_at filter"
+          (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
+                 (get-available-models :q search-term :created_at "today"))))
 
-      (testing "return a subset of model for search_native_query filter"
-        (is (= #{"dataset" "action" "card" "metric"}
-               (get-available-models :q search-term :search_native_query true)))))))
+        (testing "return a subset of model for search_native_query filter"
+          (is (= #{"dataset" "action" "card" "metric"}
+                 (get-available-models :q search-term :search_native_query true))))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
@@ -1578,19 +1603,20 @@
 
 (deftest force-reindex-test
   (when (search/supports-index?)
-    (mt/with-temp [Card {id :id} {:name "It boggles the mind!"}]
-      (let [search-results #(:data (mt/user-http-request :rasta :get 200 "search" :q "boggle" :search_engine "fulltext"))]
-        (try
-          (t2/delete! :search_index)
-          (catch Exception _))
-        (is (empty? (search-results)))
-        (mt/user-http-request :crowberto :post 200 "search/force-reindex")
-        (is (loop [attempts-left 5]
-              (if (some (comp #{id} :id) (search-results))
-                ::success
-                (when (pos? attempts-left)
-                  (Thread/sleep 200)
-                  (recur (dec attempts-left))))))))))
+    (search.tu/with-temp-index-table
+      (mt/with-temp [Card {id :id} {:name "It boggles the mind!"}]
+        (mt/user-http-request :crowberto :post 200 "search/re-init")
+        (let [search-results #(:data (mt/user-http-request :rasta :get % "search" :q "boggle" :search_engine "appdb"))]
+          (is (try (t2/delete! (search.index/active-table)) (catch Exception _ :already-deleted)))
+          (is (empty? (search-results 200)))
+          (mt/user-http-request :crowberto :post 200 "search/force-reindex")
+          (is (loop [attempts-left 5]
+                (if (and (pos? (try (t2/count (search.index/active-table)) (catch Exception _ 0)))
+                         (some (comp #{id} :id) (search-results 200)))
+                  ::success
+                  (when (pos? attempts-left)
+                    (Thread/sleep 200)
+                    (recur (dec attempts-left)))))))))))
 
 (defn- weights-url
   ([]
@@ -1664,3 +1690,57 @@
 
       (finally
         (public-settings/experimental-search-weight-overrides! original-overrides)))))
+
+(deftest dashboard-questions
+  (testing "Dashboard questions get a dashboard_id when searched"
+    (let [search-name (random-uuid)
+          named #(str search-name "-" %)]
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name (named "dashboard")}
+                     :model/Card {card-id :id} {:dashboard_id dash-id :name (named "dashboard card")}
+                     :model/Card {reg-card-id :id} {:name (named "regular card")}
+                     ;; DQs aren't searchable without a DashboardCard (see later test)
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (testing "The card data includes the `dashboard_id`"
+          (is (= dash-id
+                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                      :data
+                      (filter #(= card-id (:id %)))
+                      first
+                      :dashboard_id))))
+        (testing "The card data also include `dashboard` info"
+          (is (= {:id dash-id
+                  :name (named "dashboard")
+                  :moderation_status nil}
+                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                      :data
+                      (filter #(= card-id (:id %)))
+                      first
+                      :dashboard))))
+        (testing "Regular cards don't have it"
+          (is (nil?
+               (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                    :data
+                    (filter #(= reg-card-id (:id %)))
+                    first
+                    :dashboard_id)))
+          (is (nil?
+               (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                    :data
+                    (filter #(= reg-card-id (:id %)))
+                    first
+                    :dashboard))))
+        (testing "Dashboard questions are only returned if you pass `include_dashboard_questions=true`"
+          (is (= []
+                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "false")
+                      :data
+                      (filter #(= card-id (:id %))))))))))
+  (testing "Dashboard questions aren't searchable without a DashboardCard"
+    (let [search-name (random-uuid)
+          named #(str search-name "-" %)]
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Dashboard"}
+                     :model/Card _ {:dashboard_id dash-id :name (named "dashboard card")}]
+        (is (= {:total 0
+                :data []}
+               (select-keys
+                (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                [:total :data])))))))

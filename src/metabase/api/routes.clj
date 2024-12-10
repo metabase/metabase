@@ -1,4 +1,5 @@
 (ns metabase.api.routes
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [compojure.core :refer [GET]]
    [compojure.route :as route]
@@ -10,6 +11,7 @@
    [metabase.api.bookmark :as api.bookmark]
    [metabase.api.cache :as api.cache]
    [metabase.api.card :as api.card]
+   [metabase.api.cards :as api.cards]
    [metabase.api.channel :as api.channel]
    [metabase.api.cloud-migration :as api.cloud-migration]
    [metabase.api.collection :as api.collection]
@@ -108,6 +110,7 @@
   (context "/automagic-dashboards" [] (+auth api.magic/routes))
   (context "/bookmark"             [] (+auth api.bookmark/routes))
   (context "/card"                 [] (+auth api.card/routes))
+  (context "/cards"                [] (+auth api.cards/routes))
   (context "/cloud-migration"      [] (+auth api.cloud-migration/routes))
   (context "/collection"           [] (+auth api.collection/routes))
   (context "/channel"              [] (+auth api.channel/routes))

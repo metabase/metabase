@@ -1,7 +1,6 @@
 (ns metabase-enterprise.serialization.upsert
   "Upsert-or-skip functionality for our models."
   (:require
-   [cheshire.core :as json]
    [clojure.data :as data]
    [medley.core :as m]
    [metabase-enterprise.serialization.names :refer [name-for-logging]]
@@ -10,7 +9,7 @@
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-   [metabase.models.database :as database :refer [Database]]
+   [metabase.models.database :refer [Database]]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.models.field-values :refer [FieldValues]]
@@ -19,11 +18,12 @@
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.pulse-channel :refer [PulseChannel]]
    [metabase.models.segment :refer [Segment]]
-   [metabase.models.setting :as setting :refer [Setting]]
+   [metabase.models.setting  :refer [Setting]]
    [metabase.models.table :refer [Table]]
    [metabase.models.user :refer [User]]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [trs]]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]

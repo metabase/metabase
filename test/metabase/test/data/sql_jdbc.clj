@@ -1,6 +1,7 @@
 (ns metabase.test.data.sql-jdbc
   "Common test extension functionality for SQL-JDBC drivers."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -42,3 +43,15 @@
 (defmethod tx/destroy-db! :sql-jdbc/test-extensions
   [driver dbdef]
   (load-data/destroy-db! driver dbdef))
+
+(defmethod tx/create-view-of-table! :sql-jdbc/test-extensions
+  [driver database view-name table-name options]
+  (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
+                 (sql.tx/create-view-of-table-sql driver database view-name table-name options)
+                 {:transaction? false}))
+
+(defmethod tx/drop-view! :sql-jdbc/test-extensions
+  [driver database view-name options]
+  (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
+                 (sql.tx/drop-view-sql driver database view-name options)
+                 {:transaction? false}))

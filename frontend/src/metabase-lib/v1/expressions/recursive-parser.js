@@ -2,7 +2,13 @@ import { t } from "ttag";
 
 import { OPERATOR as OP, TOKEN, tokenize } from "./tokenizer";
 
-import { MBQL_CLAUSES, getMBQLName, unescapeString } from "./index";
+import {
+  MBQL_CLAUSES,
+  getMBQLName,
+  isCaseOrIfOperator,
+  isOptionsObject,
+  unescapeString,
+} from "./index";
 
 const COMPARISON_OPS = [
   OP.Equal,
@@ -264,7 +270,7 @@ export const adjustOptions = tree =>
       if (operands.length > 0) {
         const clause = MBQL_CLAUSES[operator];
         if (clause && clause.hasOptions) {
-          if (operands.length === clause.args.length + 1) {
+          if (operands.length === clause.args.length + 1 || clause.multiple) {
             // the last one holds the function options
             const options = operands[operands.length - 1];
 
@@ -285,11 +291,11 @@ export const adjustOptions = tree =>
   });
 
 // ["case", X, Y, Z] becomes ["case", [[X, Y]], { default: Z }]
-export const adjustCase = tree =>
+export const adjustCaseOrIf = tree =>
   modify(tree, node => {
     if (Array.isArray(node)) {
       const [operator, ...operands] = node;
-      if (operator === "case") {
+      if (isCaseOrIfOperator(operator)) {
         const pairs = [];
         const pairCount = operands.length >> 1;
         for (let i = 0; i < pairCount; ++i) {
@@ -310,10 +316,40 @@ export const adjustCase = tree =>
 export const adjustOffset = tree =>
   modify(tree, node => {
     if (Array.isArray(node)) {
-      const [tag, expr, n] = node;
-      if (tag === "offset") {
+      const [operator, expr, n] = node;
+      if (operator === "offset") {
         const opts = {};
-        return withAST([tag, opts, expr, n], node);
+        return withAST([operator, opts, expr, n], node);
+      }
+    }
+    return node;
+  });
+
+/*
+ MBQL clause for an operator that supports multiple arguments *requires* an
+ option object after the operator when there are more than 2 arguments. Compare:
+
+ ["contains", ["field", 1, null], "A"]
+ ["contains", ["field", 1, null], "A", {"case-sensitive": false}]
+ ["contains", {}, ["field", 1, null], "A", "B"]
+ ["contains", {"case-sensitive": false}, ["field", 1, null], "A", "B"]
+
+ By default, the expression parser adds the options object as the last operand,
+ so we need to adjust its position here or insert an empty options object if
+ there is none.
+*/
+export const adjustMultiArgOptions = tree =>
+  modify(tree, node => {
+    if (Array.isArray(node)) {
+      const [operator, ...args] = node;
+      const clause = MBQL_CLAUSES[operator];
+      if (clause != null && clause.multiple && clause.hasOptions) {
+        if (isOptionsObject(args.at(-1)) && args.length > 3) {
+          return withAST([operator, args.at(-1), ...args.slice(0, -1)], node);
+        }
+        if (args.length > 2 && !isOptionsObject(args.at(-1))) {
+          return withAST([operator, {}, ...args], node);
+        }
       }
     }
     return node;
@@ -322,7 +358,7 @@ export const adjustOffset = tree =>
 export const adjustBooleans = tree =>
   modify(tree, node => {
     if (Array.isArray(node)) {
-      if (node?.[0] === "case") {
+      if (isCaseOrIfOperator(node[0])) {
         const [operator, pairs, options] = node;
         return [
           operator,
@@ -373,5 +409,6 @@ export const parse = pipe(
   adjustOptions,
   useShorthands,
   adjustOffset,
-  adjustCase,
+  adjustCaseOrIf,
+  adjustMultiArgOptions,
 );

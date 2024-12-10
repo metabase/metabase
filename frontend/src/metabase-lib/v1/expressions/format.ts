@@ -12,15 +12,15 @@ import {
   formatSegmentName,
   formatStringLiteral,
   getExpressionName,
-  hasOptions,
   isBooleanLiteral,
-  isCase,
+  isCaseOrIf,
   isDimension,
   isFunction,
   isMetric,
   isNumberLiteral,
   isOffset,
   isOperator,
+  isOptionsObject,
   isSegment,
   isStringLiteral,
 } from "./index";
@@ -59,8 +59,8 @@ export function format(mbql: any, options: Options): string {
     return formatMetric(mbql, options);
   } else if (isSegment(mbql)) {
     return formatSegment(mbql, options);
-  } else if (isCase(mbql)) {
-    return formatCase(mbql, options);
+  } else if (isCaseOrIf(mbql)) {
+    return formatCaseOrIf(mbql, options);
   } else if (isNegativeFilter(mbql)) {
     return formatNegativeFilter(mbql, options);
   }
@@ -159,26 +159,24 @@ function formatFunctionOptions(fnOptions: Record<string, any>) {
   }
 }
 
-function formatFunction([fn, ...args]: any[], options: Options) {
-  if (hasOptions(args)) {
-    const fnOptions = formatFunctionOptions(args.pop());
-    if (fnOptions) {
-      args = [...args, fnOptions];
+function formatFunction([fn, ...operands]: any[], formatOptions: Options) {
+  const args = operands.filter(arg => !isOptionsObject(arg));
+  const options = operands.find(isOptionsObject);
+  if (options) {
+    const formattedOptions = formatFunctionOptions(options);
+    if (formattedOptions) {
+      args.push(formattedOptions);
     }
   }
   const formattedName = getExpressionName(fn) ?? "";
-  const formattedArgs = args.map(arg => format(arg, options));
+  const formattedArgs = args.map(arg => format(arg, formatOptions));
   return args.length === 0
     ? formattedName
     : `${formattedName}(${formattedArgs.join(", ")})`;
 }
 
-function formatOperator([op, ...args]: any[], options: Options) {
-  if (hasOptions(args)) {
-    // FIXME: how should we format args?
-    args = args.slice(0, -1);
-  }
-
+function formatOperator([op, ...operands]: any[], options: Options) {
+  const args = operands.filter(arg => !isOptionsObject(arg));
   const formattedOperator = getExpressionName(op) || op;
   const formattedArgs = args.map((arg, index) => {
     const argOp = isOperator(arg) && arg[0];
@@ -209,8 +207,11 @@ function formatOperator([op, ...args]: any[], options: Options) {
   return options.parens ? `(${formatted})` : formatted;
 }
 
-function formatCase([_, clauses, caseOptions = {}]: any[], options: Options) {
-  const formattedName = getExpressionName("case");
+function formatCaseOrIf(
+  [operator, clauses, caseOptions = {}]: any[],
+  options: Options,
+) {
+  const formattedName = getExpressionName(operator);
   const formattedClauses = clauses
     .map(
       ([filter, mbql]: any[]) =>

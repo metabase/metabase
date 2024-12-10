@@ -217,24 +217,28 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: `contains`,
     type: "boolean",
     args: ["string", "string"],
+    multiple: true,
     hasOptions: true,
   },
   "does-not-contain": {
     displayName: `doesNotContain`,
     type: "boolean",
     args: ["string", "string"],
+    multiple: true,
     hasOptions: true,
   },
   "starts-with": {
     displayName: `startsWith`,
     type: "boolean",
     args: ["string", "string"],
+    multiple: true,
     hasOptions: true,
   },
   "ends-with": {
     displayName: `endsWith`,
     type: "boolean",
     args: ["string", "string"],
+    multiple: true,
     hasOptions: true,
   },
   between: {
@@ -289,6 +293,12 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: `case`,
     type: "expression",
     args: ["expression", "expression"], // ideally we'd alternate boolean/expression
+    multiple: true,
+  },
+  if: {
+    displayName: `if`,
+    type: "expression",
+    args: ["expression", "expression"],
     multiple: true,
   },
   offset: {
@@ -399,6 +409,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: `weekday`,
     type: "number",
     args: ["datetime"],
+    hasOptions: true, // optional mode parameter
   },
   "get-hour": {
     displayName: `hour`,
@@ -550,6 +561,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "not-empty",
   "does-not-contain",
   // other
+  "if",
   "coalesce",
 ]);
 

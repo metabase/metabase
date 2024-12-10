@@ -260,12 +260,13 @@
                                              (lib.schema.expression/type-of value)))]
     (lib.options/ensure-uuid [:value opts value])))
 
-(defmethod ->pMBQL :case
-  [[_tag pred-expr-pairs options]]
-  (let [default (:default options)]
-    (cond-> [:case (dissoc options :default) (mapv ->pMBQL pred-expr-pairs)]
-      :always lib.options/ensure-uuid
-      (some? default) (conj (->pMBQL default)))))
+(doseq [tag [:case :if]]
+  (defmethod ->pMBQL tag
+    [[_tag pred-expr-pairs options]]
+    (let [default (:default options)]
+      (cond-> [tag (dissoc options :default) (mapv ->pMBQL pred-expr-pairs)]
+        :always lib.options/ensure-uuid
+        (some? default) (conj (->pMBQL default))))))
 
 (defmethod ->pMBQL :expression
   [[tag value opts]]
@@ -354,23 +355,26 @@
   ([m]
    (into {} (disqualify) m)))
 
+(def ^:private options-preserved-in-legacy
+  "Map of option keys in pMBQL to their legacy names. Keys are renamed before [[disqualify]] drops all namespaced keys."
+  {:metabase.lib.field/original-temporal-unit :original-temporal-unit})
+
 (defn- options->legacy-MBQL
   "Convert an options map in an MBQL clause to the equivalent shape for legacy MBQL. Remove `:lib/*` keys and
   `:effective-type`, which is not used in options maps in legacy MBQL."
   [m]
-  (not-empty
-   (-> (into {}
-             (comp (disqualify)
-                   (remove (fn [[k _v]]
-                             (= k :effective-type))))
-             ;; Following construct ensures that transformation mbql -> pmbql -> mbql, does not add base-type where
-             ;; those were not present originally. Base types are adeed in [[metabase.lib.query/add-types-to-fields]].
-             (if (contains? m :metabase.lib.query/transformation-added-base-type)
-               (dissoc m
-                       :metabase.lib.query/transformation-added-base-type
-                       :base-type)
-               m))
-       (m/assoc-some :original-temporal-unit (:metabase.lib.field/original-temporal-unit m)))))
+  (->> (cond-> m
+         ;; Following construct ensures that transformation mbql -> pmbql -> mbql, does not add base-type where those
+         ;; were not present originally. Base types are added in [[metabase.lib.query/add-types-to-fields]].
+         (contains? m :metabase.lib.query/transformation-added-base-type)
+         (dissoc :metabase.lib.query/transformation-added-base-type :base-type)
+
+         ;; Removing the namespaces from a few
+         true (update-keys #(get options-preserved-in-legacy % %)))
+       (into {} (comp (disqualify)
+                      (remove (fn [[k _v]]
+                                (#{:effective-type :ident} k)))))
+       not-empty))
 
 (defmulti ^:private aggregation->legacy-MBQL
   {:arglists '([aggregation-clause])}
@@ -380,9 +384,9 @@
 (defmethod aggregation->legacy-MBQL :default
   [[tag options & args]]
   (let [inner (into [tag] (map ->legacy-MBQL) args)
-        ;; the default value of the :case expression is in the options
+        ;; the default value of the :case or :if expression is in the options
         ;; in legacy MBQL
-        inner (if (and (= tag :case) (next args))
+        inner (if (and (#{:case :if} tag) (next args))
                 (conj (pop inner) {:default (peek inner)})
                 inner)]
     (if-let [aggregation-opts (not-empty (options->legacy-MBQL options))]
@@ -419,7 +423,7 @@
   (lib.hierarchy/derive tag ::aggregation))
 
 (doseq [tag [:+ :- :* :/
-             :case :coalesce
+             :case :if :coalesce
              :abs :log :exp :sqrt :ceil :floor :round :power :interval
              :relative-datetime :time :absolute-datetime :now :convert-timezone
              :get-week :get-year :get-month :get-day :get-hour
