@@ -80,3 +80,10 @@
 
 (defmethod specialization/text-score :h2 []
   [:inline 1])
+
+(defmethod specialization/view-count-percentile-query :h2
+  [index-table p-value]
+  ;; Since H2 doesn't support calculating percentiles, we just use the max YOLO
+  {:select   [:search_index.model [[:* p-value :view_count] :vcp]]
+   :from     [[index-table :search_index]]
+   :group-by [:search_index.model]})

@@ -170,3 +170,11 @@
 (defmethod specialization/text-score :postgres
   []
   [:ts_rank :search_vector :query [:inline ts-rank-normalization]])
+
+(defmethod specialization/view-count-percentile-query :postgres
+  [index-table p-value]
+  (let [expr [:raw "percentile_cont(" [:lift p-value] ") WITHIN GROUP (ORDER BY view_count)"]]
+    {:select   [:search_index.model [expr :vcp]]
+     :from     [[index-table :search_index]]
+     :group-by [:search_index.model]
+     :having   [:is-not expr nil]}))
