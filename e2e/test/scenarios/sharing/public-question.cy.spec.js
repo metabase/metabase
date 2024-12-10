@@ -175,9 +175,8 @@ describe("scenarios > public > question", () => {
       );
       H.focusNativeEditor().type(id);
       cy.wait("@cardAutocompleteSuggestions");
-      cy.findByRole("option", { name: `${id}-nested-question` }).should(
-        "be.visible",
-      );
+      cy.log("Suggestion should be visible");
+      cy.findByLabelText(`${id}-nested-question`).should("be.visible");
       cy.log('Accept the first suggestion by pressing "Enter".');
       cy.findByTestId("native-query-editor").realPress("Enter");
       cy.findByTestId("native-query-editor").type("}}");
