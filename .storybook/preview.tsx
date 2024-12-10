@@ -1,5 +1,6 @@
 import React from "react";
 import { ThemeProvider } from "metabase/ui";
+import { GlobalTypes } from "@storybook/types";
 
 const isEmbeddingSDK = process.env.IS_EMBEDDING_SDK === "true";
 
@@ -14,6 +15,7 @@ if (!isEmbeddingSDK) {
   require("metabase/lib/dayjs");
 }
 
+import { storybookThemeOptions } from "embedding-sdk/test/storybook-themes";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { css, Global, useTheme } from "@emotion/react";
@@ -87,3 +89,18 @@ function CssVariables() {
 
   return <Global styles={styles} />;
 }
+
+const sdkGlobalTypes: GlobalTypes = {
+  sdkTheme: {
+    name: "SDK Theme",
+    description: "Global theme for sdk components",
+    defaultValue: "default",
+    toolbar: {
+      icon: "paintbrush",
+      items: storybookThemeOptions,
+      showName: true,
+    },
+  },
+};
+
+export const globalTypes: GlobalTypes = isEmbeddingSDK ? sdkGlobalTypes : {};
