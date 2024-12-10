@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import CS from "metabase/css/core/index.css";
-import { Box, Transition } from "metabase/ui";
 import { NewQuestionHeader } from "metabase/query_builder/components/view/NewQuestionHeader";
+import { Box, Transition } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ViewTitleHeader } from "../../ViewHeader";

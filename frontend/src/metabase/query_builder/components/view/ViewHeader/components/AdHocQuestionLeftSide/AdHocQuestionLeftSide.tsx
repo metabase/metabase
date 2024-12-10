@@ -1,16 +1,9 @@
 import type React from "react";
 import { t } from "ttag";
 
-import { Box, Flex, Icon, Text } from "metabase/ui";
-import { skipToken, useGetDashboardQuery } from "metabase/api";
-import {
-  AdHocLeftSideRoot,
-  AdHocViewHeading,
-  ViewHeaderLeftSubHeading,
-  ViewHeaderMainLeftContentContainer,
-} from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -78,9 +71,6 @@ export function AdHocQuestionLeftSide(
             isObjectDetail={isObjectDetail}
             subHead
           />
-        )}
-        {saveToDashboard && (
-          <DashboardSaveLocation dashboardName={saveToDashboard.name} />
         )}
       </ViewSubHeading>
     </Box>
