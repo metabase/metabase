@@ -1,3 +1,23 @@
+## [0.51.11](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.10...embedding-sdk-0.51.11) (2024-12-10)
+
+
+### Bug Fixes
+
+* **sdk:** introduce `.mb-wrapper` to scope down our css ([#50792](https://github.com/metabase/metabase/issues/50792)) ([f20b519](https://github.com/metabase/metabase/commit/f20b51906dffbc594dcccc13bbd4844a35c9d484)), closes [#50466](https://github.com/metabase/metabase/issues/50466)
+* **sdk:** remove Error.captureStackTrace as it errors on firefox ([#50773](https://github.com/metabase/metabase/issues/50773)) ([#50935](https://github.com/metabase/metabase/issues/50935)) ([c02224b](https://github.com/metabase/metabase/commit/c02224bbe8e357abdad3c768546e29f7e454c531))
+
+
+### Features
+
+* **sdk:** Add cross-version e2e tests using a published SDK package ([#50423](https://github.com/metabase/metabase/issues/50423)) ([#50594](https://github.com/metabase/metabase/issues/50594)) ([88fcdea](https://github.com/metabase/metabase/commit/88fcdea9b9195f73792529dee303b0e6bdd9f28e))
+* **sdk:** add withChartTypeSelector prop to InteractiveQuestion ([#50706](https://github.com/metabase/metabase/issues/50706)) ([0dd6eae](https://github.com/metabase/metabase/commit/0dd6eaee1491a30e87db4592d3e4c0844f3075c9)), closes [#50664](https://github.com/metabase/metabase/issues/50664)
+* **sdk:** detect if session.id is not a string ([#50890](https://github.com/metabase/metabase/issues/50890)) ([#51056](https://github.com/metabase/metabase/issues/51056)) ([7122360](https://github.com/metabase/metabase/commit/71223606e55254ea976a575b96649b7bcb5e230b))
+* **sdk:** make tooltips themeable ([#50457](https://github.com/metabase/metabase/issues/50457)) ([#50621](https://github.com/metabase/metabase/issues/50621)) ([fc77ed4](https://github.com/metabase/metabase/commit/fc77ed4b8fc97e3a32416dc6b3373e5dbfeae95f))
+* **sdk:** use public-facing question type in event handlers ([#50867](https://github.com/metabase/metabase/issues/50867)) ([#51038](https://github.com/metabase/metabase/issues/51038)) ([c2a2d47](https://github.com/metabase/metabase/commit/c2a2d4766c74c9ee8b2fd8665af4956ebd2833f8))
+* **sdk:** use string types for specifying entity ids instead of internal nanoid type ([#50847](https://github.com/metabase/metabase/issues/50847)) ([571b64f](https://github.com/metabase/metabase/commit/571b64fd81efb0afb3a69bb9e65aaa4febf960bb))
+
+
+
 ## [0.51.10](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.9...embedding-sdk-0.51.10) (2024-11-28)
 
 
