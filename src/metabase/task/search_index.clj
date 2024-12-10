@@ -33,7 +33,8 @@
 
 ;; We define the job bodies outside the defrecord, so that we can redefine them live from the REPL
 
-(defn- report->prometheus! [report]
+(defn- report->prometheus! [duration report]
+  (prometheus/inc! :metabase-search/index-ms duration)
   (doseq [[model cnt] report]
     (prometheus/inc! :metabase-search/index {:model model} cnt)))
 
@@ -41,11 +42,12 @@
   "Create a new index, if necessary"
   []
   (when (search/supports-index?)
-    (let [timer  (u/start-timer)
-          report (search/init-index! {:force-reset? false, :re-populate? false})]
+    (let [timer    (u/start-timer)
+          report   (search/init-index! {:force-reset? false, :re-populate? false})
+          duration (u/since-ms timer)]
       (if (seq report)
-        (do (report->prometheus! report)
-            (log/infof "Done indexing in %.0fms %s" (u/since-ms timer) (sort-by (comp - val) report))
+        (do (report->prometheus! duration report)
+            (log/infof "Done indexing in %.0fms %s" duration (sort-by (comp - val) report))
             true)
         (log/info "Found existing search index, and using it.")))))
 
@@ -54,20 +56,22 @@
   []
   (when (search/supports-index?)
     (log/info "Reindexing searchable entities")
-    (let [timer  (u/start-timer)
-          report (search/reindex!)]
-      (report->prometheus! report)
-      (log/infof "Done reindexing in %.0fms %s" (u/since-ms timer) (sort-by (comp - val) report))
+    (let [timer    (u/start-timer)
+          report   (search/reindex!)
+          duration (u/since-ms timer)]
+      (report->prometheus! duration report)
+      (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
       report)))
 
 (defn- update-index! []
   (when (search/supports-index?)
     (while true
-      (let [timer  (u/start-timer)
-            report (search/process-next-batch! Long/MAX_VALUE 100)]
+      (let [timer    (u/start-timer)
+            report   (search/process-next-batch! Long/MAX_VALUE 100)
+            duration (u/since-ms timer)]
         (when (seq report)
-          (report->prometheus! report)
-          (log/debugf "Indexed search entries in %.0fms %s" (u/since-ms timer) (sort-by (comp - val) report)))))))
+          (report->prometheus! duration report)
+          (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) report)))))))
 
 (defn- force-scheduled-task! [^JobDetail job ^Trigger trigger]
   ;; For some reason, using the schedule-task! with a non-durable job causes it to only fire on the first trigger.
