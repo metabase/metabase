@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
+   [metabase.db :as mdb]
    [metabase.models.setting :as settings :refer [defsetting]]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.appdb.specialization.h2 :as h2]
@@ -54,15 +55,19 @@
   []
   (keyword (str/replace (str "search_index__" (random-uuid)) #"-" "_")))
 
-(defn- exists? [table-name]
-  (when table-name
-    ;; TODO specialize the case based on the driver
-    (t2/exists? :information_schema.tables :table_name (u/upper-case-en (name table-name)))))
+(defn- table-name [kw]
+  (cond-> (name kw)
+    (= :h2 (mdb/db-type)) u/upper-case-en))
 
-(defn- drop-table! [table-name]
+(defn- exists? [table]
+  (when table
+    ;; TODO specialize the case based on the driver
+    (t2/exists? :information_schema.tables :table_name (table-name table))))
+
+(defn- drop-table! [table]
   (boolean
-   (when (and table-name (exists? table-name))
-     (t2/query (sql.helpers/drop-table (keyword (u/upper-case-en (name table-name))))))))
+   (when (and table (exists? table))
+     (t2/query (sql.helpers/drop-table (keyword (table-name table)))))))
 
 (defn- existing-indexes []
   (map (comp keyword u/lower-case-en :table_name)
