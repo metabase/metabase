@@ -72,7 +72,7 @@ describe("BarChart", () => {
     setup({ question, series });
 
     expect(screen.getByText("X-axis")).toBeInTheDocument();
-    expect(screen.getByText("No valid fields")).toBeInTheDocument();
-    expect(screen.getByText("Count")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("No valid fields")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Count")).toBeInTheDocument();
   });
 });
