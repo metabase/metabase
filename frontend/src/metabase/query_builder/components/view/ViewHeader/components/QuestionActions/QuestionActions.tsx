@@ -23,7 +23,6 @@ import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
 import { Box, Icon, Menu } from "metabase/ui";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { checkCanBeModel } from "metabase-lib/v1/metadata/utils/models";
