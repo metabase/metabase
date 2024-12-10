@@ -1,4 +1,4 @@
-import { type ReactNode, isValidElement } from "react";
+import { t } from "ttag";
 
 import { Anchor, Stack, Text } from "metabase/ui";
 
@@ -8,15 +8,14 @@ import { getQuestionTitle } from "../QuestionTitle";
 import type { InteractiveQuestionResultProps } from "./InteractiveQuestionResult";
 
 interface ResultTitleTextProps
-  extends Pick<InteractiveQuestionResultProps, "withResetButton"> {
-  text: string | ReactNode;
+  extends Pick<InteractiveQuestionResultProps, "withResetButton" | "title"> {
   isQuestionChanged?: boolean;
   onReset?: () => void;
   originalName?: string | null;
 }
 
 const ResultTitleText = ({
-  text,
+  title,
   withResetButton = false,
   isQuestionChanged = false,
   onReset,
@@ -31,9 +30,7 @@ const ResultTitleText = ({
         </Anchor>
       </Text>
     )}
-    <Text fw={700} c="var(--mb-color-text-primary)" fz="xl">
-      {text}
-    </Text>
+    {title}
   </Stack>
 );
 
@@ -44,22 +41,26 @@ export const ResultTitle = ({
   const { question, originalQuestion, onReset } =
     useInteractiveQuestionContext();
 
+  const isQuestionChanged = originalQuestion
+    ? question?.isQueryDirtyComparedTo(originalQuestion)
+    : true;
+
   if (title === false) {
     return null;
   }
 
   if (title === undefined || title === true) {
-    const isQuestionChanged = originalQuestion
-      ? question?.isQueryDirtyComparedTo(originalQuestion)
-      : true;
-
     const originalName = originalQuestion?.displayName();
 
     const titleText = getQuestionTitle({ question });
 
     return (
       <ResultTitleText
-        text={titleText}
+        title={
+          <Text fw={700} c="var(--mb-color-text-primary)" fz="xl">
+            {titleText}
+          </Text>
+        }
         withResetButton={withResetButton}
         isQuestionChanged={isQuestionChanged}
         onReset={onReset}
@@ -70,9 +71,17 @@ export const ResultTitle = ({
 
   if (typeof title === "string") {
     return (
-      <Text fw={700} c="var(--mb-color-text-primary)" fz="xl">
-        {title}
-      </Text>
+      <ResultTitleText
+        title={
+          <Text fw={700} c="var(--mb-color-text-primary)" fz="xl">
+            {title}
+          </Text>
+        }
+        withResetButton={withResetButton}
+        isQuestionChanged={isQuestionChanged}
+        onReset={onReset}
+        originalName={t`the original exploration`}
+      />
     );
   }
 
