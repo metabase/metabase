@@ -49,8 +49,15 @@ export const QuestionMoveConfirmModal = ({
   const cardsThatAppearInOtherDashboards = useMemo(
     () =>
       cardDashboards?.filter(cd => {
-        cd.dashboards.length !== 1 ||
-          first(cd.dashboards)?.id !== destination?.id;
+        if (cd.dashboards.length === 0) {
+          return false;
+        }
+
+        if (cd.dashboards.length > 1) {
+          return true;
+        }
+
+        return first(cd.dashboards)?.id !== destination?.id;
       }),
     [destination, cardDashboards],
   );
