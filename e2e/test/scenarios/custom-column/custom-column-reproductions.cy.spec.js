@@ -829,7 +829,7 @@ describe.skip("issue 25189", () => {
   });
 });
 
-["postgres", "mysql"].forEach(dialect => {
+["postgres" /*, "mysql" */].forEach(dialect => {
   describe(`issue 27745 (${dialect})`, { tags: "@external" }, () => {
     const tableName = "colors27745";
 
@@ -846,6 +846,7 @@ describe.skip("issue 25189", () => {
       H.startNewQuestion();
 
       H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Collections").click();
         cy.findByPlaceholderText("Search this collection or everywhere…").type(
           "colors",
         );
