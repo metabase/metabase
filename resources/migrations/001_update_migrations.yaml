@@ -10079,6 +10079,43 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.CreateSampleContentV2"
 
+  - changeSet:
+      id: v52.2024-12-10T10:00:00
+      author: qnkhuat
+      comment: Truncate the notification tables
+      rollback: # not needed)
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              TRUNCATE TABLE notification RESTART IDENTITY CASCADE;
+              TRUNCATE TABLE notification_handler RESTART IDENTITY CASCADE;
+              TRUNCATE TABLE notification_subscription RESTART IDENTITY CASCADE;
+              TRUNCATE TABLE notification_recipient RESTART IDENTITY CASCADE;
+              TRUNCATE TABLE channel_template RESTART IDENTITY CASCADE;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DELETE FROM notification;
+              ALTER TABLE notification AUTO_INCREMENT = 1;
+              DELETE FROM notification_handler;
+              ALTER TABLE notification_handler AUTO_INCREMENT = 1;
+              DELETE FROM notification_subscription;
+              ALTER TABLE notification_subscription AUTO_INCREMENT = 1;
+              DELETE FROM notification_recipient;
+              ALTER TABLE notification_recipient AUTO_INCREMENT = 1;
+              DELETE FROM channel_template;
+              ALTER TABLE channel_template AUTO_INCREMENT = 1;
+
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE notification ALTER COLUMN id RESTART WITH 1;
+              ALTER TABLE notification_handler ALTER COLUMN id RESTART WITH 1;
+              ALTER TABLE notification_subscription ALTER COLUMN id RESTART WITH 1;
+              ALTER TABLE notification_recipient ALTER COLUMN id RESTART WITH 1;
+              ALTER TABLE channel_template ALTER COLUMN id RESTART WITH 1;
+
  # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
