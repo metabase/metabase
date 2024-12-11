@@ -116,7 +116,8 @@
 
 (defmacro with-analysis-on [& body]
   `(mt/with-dynamic-redefs [query-analysis/enabled-type? (constantly true)]
-     ~@body))
+     (query-analysis/with-immediate-analysis
+      ~@body)))
 
 (deftest parse-crosstab-test
   (with-analysis-on
