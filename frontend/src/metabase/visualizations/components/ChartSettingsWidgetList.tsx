@@ -23,17 +23,18 @@ const ChartSettingsWidgetList = ({
             <pre>
               {JSON.stringify(
                 {
-                  widget: Object.entries(widget).reduce((acc, [key, value]) => {
-                    acc[key] = typeof value === "object" ? "OBJECT" : value;
-                    return acc;
-                  }, {}),
-                  extraWidgetProps: Object.entries(extraWidgetProps).reduce(
-                    (acc, [key, value]) => {
+                  widget: Object.entries(widget)
+                    .toSorted(([keyA], [keyB]) => keyA.localeCompare(keyB))
+                    .reduce((acc, [key, value]) => {
                       acc[key] = typeof value === "object" ? "OBJECT" : value;
                       return acc;
-                    },
-                    {},
-                  ),
+                    }, {}),
+                  extraWidgetProps: Object.entries(widget)
+                    .toSorted(([keyA], [keyB]) => keyA.localeCompare(keyB))
+                    .reduce((acc, [key, value]) => {
+                      acc[key] = typeof value === "object" ? "OBJECT" : value;
+                      return acc;
+                    }, {}),
                 },
                 undefined,
                 2,
