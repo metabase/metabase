@@ -96,6 +96,7 @@ function _BaseBucketPickerPopover({
     <Popover opened={isOpened} position="right" onClose={handlePopoverClose}>
       <Popover.Target>
         <TriggerButton
+          className="base-bucket-picker-popover__trigger-button"
           aria-label={triggerLabel}
           data-testid="dimension-list-item-binning"
           onClick={event => {

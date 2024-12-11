@@ -38,11 +38,11 @@ const Root = ({
   return (
     <Box
       component="li"
-      className={cx(BreakoutColumnListItemS.Root, {
+      {...props}
+      className={cx(props.className, BreakoutColumnListItemS.Root, {
         [BreakoutColumnListItemS.isSelected]: isSelected,
         [BreakoutColumnListItemS.isNotSelected]: !isSelected,
       })}
-      {...props}
     >
       {children}
     </Box>

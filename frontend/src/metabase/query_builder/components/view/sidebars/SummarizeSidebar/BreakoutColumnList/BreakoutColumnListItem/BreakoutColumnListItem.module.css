@@ -35,9 +35,9 @@
   align-items: center;
   border-radius: 6px;
 
-  /* ${BucketPickerPopover.TriggerButton} {
+  :global(.base-bucket-picker-popover__trigger-button) {
     height: 100%;
-  } */
+  }
 }
 
 .Root {
@@ -55,16 +55,15 @@
       color: var(--mb-color-text-white);
     }
 
-    /*
-  ${BucketPickerPopover.TriggerButton} {
-    opacity: 1;
-    color: ${alpha(theme.fn.themeColor("text-white"), 0.65)};
-  }
+    :global(.base-bucket-picker-popover__trigger-button) {
+      opacity: 1;
+      color: color-mix(in srgb, var(--mb-color-text-white), transparent 35%);
 
-  ${BucketPickerPopover.TriggerButton}:hover {
-    color: var(--mb-color-text-white);
-    opacity: 1;
-  } */
+      &:hover {
+        color: var(--mb-color-text-white);
+        opacity: 1;
+      }
+    }
   }
 
   &.isNotSelected {
@@ -84,20 +83,15 @@
         background-color: var(--mb-color-bg-medium);
       }
 
-      /* ${BucketPickerPopover.TriggerButton} {
+      :global(.base-bucket-picker-popover__trigger-button) {
         opacity: 1;
         color: var(--mb-color-text-light);
+
+        &:hover {
+          color: var(--mb-color-text-medium);
+        }
       }
-
-      ${BucketPickerPopover.TriggerButton}:hover {
-        color: var(--mb-color-text-medium);
-      } */
     }
-
-    /* ${BucketPickerPopover.TriggerButton} {
-      opacity: 0;
-      color: var(--mb-color-text-light);
-    } */
   }
 }
 
