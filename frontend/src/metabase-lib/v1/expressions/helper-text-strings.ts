@@ -618,7 +618,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "contains",
     structure: "contains",
-    description: () => t`Checks to see if string1 contains string2 within it.`,
+    description: () =>
+      t`Returns true if string1 contains string2 within it (or string3, etc. if specified).`,
     args: [
       {
         name: t`string1`,
@@ -629,6 +630,16 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         name: t`string2`,
         description: t`The string of text to look for.`,
         example: formatStringLiteral(t`Pass`),
+      },
+      {
+        name: "…",
+        description: t`You can add more values to look for.`,
+        example: formatStringLiteral(t`Pass`),
+      },
+      {
+        name: "case-insensitive",
+        description: t`Optional. To perform a case-insensitive match.`,
+        example: formatStringLiteral("case-insensitive"),
       },
     ],
   },
@@ -636,7 +647,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     name: "does-not-contain",
     structure: "doesNotContain",
     description: () =>
-      t`Checks to see if string1 does not contain string2 within it.`,
+      t`Returns true if string1 does not contain string2 within it (and string3, etc. if specified).`,
     args: [
       {
         name: t`string1`,
@@ -648,23 +659,43 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         description: t`The string of text to look for.`,
         example: formatStringLiteral(t`Pass`),
       },
+      {
+        name: "…",
+        description: t`You can add more values to look for.`,
+        example: formatStringLiteral(t`Pass`),
+      },
+      {
+        name: "case-insensitive",
+        description: t`Optional. To perform a case-insensitive match.`,
+        example: formatStringLiteral("case-insensitive"),
+      },
     ],
   },
   {
     name: "starts-with",
     structure: "startsWith",
     description: () =>
-      t`Returns true if the beginning of the text matches the comparison text.`,
+      t`Returns true if the beginning of the string1 matches the string2 (or string3, etc. if specified).`,
     args: [
       {
-        name: t`text`,
+        name: t`string1`,
         description: t`The column or text to check.`,
         example: formatIdentifier(t`Course Name`),
       },
       {
-        name: t`comparison`,
-        description: t`The string of text that the original text should start with.`,
+        name: t`string2`,
+        description: t`The string of text to look for.`,
         example: formatStringLiteral(t`Computer Science`),
+      },
+      {
+        name: "…",
+        description: t`You can add more values to look for.`,
+        example: formatStringLiteral(t`Pass`),
+      },
+      {
+        name: "case-insensitive",
+        description: t`Optional. To perform a case-insensitive match.`,
+        example: formatStringLiteral("case-insensitive"),
       },
     ],
   },
@@ -672,17 +703,27 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     name: "ends-with",
     structure: "endsWith",
     description: () =>
-      t`Returns true if the end of the text matches the comparison text.`,
+      t`Returns true if the end of the string1 matches the string2 (or string3, etc. if specified).`,
     args: [
       {
-        name: t`text`,
+        name: t`string1`,
         description: t`The column or text to check.`,
-        example: formatIdentifier(t`Appetite`),
+        example: formatIdentifier(t`Course Name`),
       },
       {
-        name: t`comparison`,
-        description: t`The string of text that the original text should end with.`,
-        example: formatStringLiteral(t`hungry`),
+        name: t`string2`,
+        description: t`The string of text to look for.`,
+        example: formatStringLiteral(t`Computer Science`),
+      },
+      {
+        name: "…",
+        description: t`You can add more values to look for.`,
+        example: formatStringLiteral(t`Pass`),
+      },
+      {
+        name: "case-insensitive",
+        description: t`Optional. To perform a case-insensitive match.`,
+        example: formatStringLiteral("case-insensitive"),
       },
     ],
   },
@@ -895,16 +936,16 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     name: "in",
     structure: "in",
     description: () =>
-      t`Returns true if column is equal to value1 (or value2, etc. if specified).`,
+      t`Returns true if value1 equals value2 (or value3, etc. if specified).`,
     args: [
       {
-        name: t`column`,
+        name: t`value1`,
         description: t`The column or value to check.`,
         example: formatIdentifier(t`ID`),
       },
       {
-        name: t`value1`,
-        description: t`The column of value to look for.`,
+        name: t`value2`,
+        description: t`The column or value to look for.`,
         example: "1",
       },
       {
@@ -918,16 +959,16 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     name: "not-in",
     structure: "notIn",
     description: () =>
-      t`Returns true if column is not equal to value1 (and value2, etc. if specified).`,
+      t`Returns true if value1 doesn't equal value2 (and value3, etc. if specified).`,
     args: [
       {
-        name: t`column`,
+        name: t`value1`,
         description: t`The column or value to check.`,
         example: formatIdentifier(t`ID`),
       },
       {
-        name: t`value1`,
-        description: t`The column of value to look for.`,
+        name: t`value2`,
+        description: t`The column or value to look for.`,
         example: "1",
       },
       {
