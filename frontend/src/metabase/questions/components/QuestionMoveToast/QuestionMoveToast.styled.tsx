@@ -14,12 +14,7 @@ export const StyledIcon = styled(Icon)`
   margin-right: ${space(1)};
 `;
 
-export const CollectionLink = styled(Link)`
-  color: var(--mb-color-brand);
-  margin-left: ${space(0)};
-`;
-
-export const DashboardLink = styled(Link)`
+export const DestinationLink = styled(Link)`
   color: var(--mb-color-brand);
   margin-left: ${space(0)};
 `;

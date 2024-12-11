@@ -1,4 +1,3 @@
-import { Fragment } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
@@ -11,10 +10,10 @@ import type { MoveDestination } from "metabase/collections/types";
 import { coerceCollectionId } from "metabase/collections/utils";
 import * as Urls from "metabase/lib/urls";
 import type Question from "metabase-lib/v1/Question";
+import type { CollectionId, DashboardId } from "metabase-types/api";
 
 import {
-  CollectionLink,
-  DashboardLink,
+  DestinationLink,
   StyledIcon,
   ToastRoot,
 } from "./QuestionMoveToast.styled";
@@ -26,18 +25,6 @@ type QuestionMoveToastProps = {
 
 function QuestionMoveToast({ destination, question }: QuestionMoveToastProps) {
   const type = question.type();
-  const collectionId =
-    destination?.model === "collection"
-      ? coerceCollectionId(destination.id)
-      : undefined;
-  const dashboardId =
-    destination?.model === "dashboard" ? destination.id : undefined;
-  const { data: collection } = useGetCollectionQuery(
-    collectionId != null ? { id: collectionId } : skipToken,
-  );
-  const { data: dashboard } = useGetDashboardQuery(
-    dashboardId != null ? { id: dashboardId } : skipToken,
-  );
 
   if (!destination) {
     return (
@@ -50,19 +37,12 @@ function QuestionMoveToast({ destination, question }: QuestionMoveToastProps) {
 
   const link =
     destination.model === "dashboard" ? (
-      dashboard ? (
-        <DashboardLink key="dashboard-link" to={Urls.dashboard(dashboard)}>
-          {dashboard.name}
-        </DashboardLink>
-      ) : (
-        <Fragment key="dashboard-link-placeholder" />
-      )
-    ) : collection ? (
-      <CollectionLink key="collection-link" to={Urls.collection(collection)}>
-        {collection.name}
-      </CollectionLink>
+      <DashboardLink key="dashboard" dashboardId={destination.id} />
     ) : (
-      <Fragment key="collection-link-placeholder" />
+      <CollectionLink
+        key="collection"
+        collectionId={coerceCollectionId(destination.id)}
+      />
     );
 
   return (
@@ -76,6 +56,38 @@ function QuestionMoveToast({ destination, question }: QuestionMoveToastProps) {
     </ToastRoot>
   );
 }
+
+const DashboardLink = ({ dashboardId }: { dashboardId: DashboardId }) => {
+  const { data: dashboard } = useGetDashboardQuery(
+    dashboardId != null ? { id: dashboardId } : skipToken,
+  );
+
+  if (!dashboard) {
+    return null;
+  }
+
+  return (
+    <DestinationLink to={Urls.dashboard(dashboard)}>
+      {dashboard.name}
+    </DestinationLink>
+  );
+};
+
+const CollectionLink = ({ collectionId }: { collectionId: CollectionId }) => {
+  const { data: collection } = useGetCollectionQuery(
+    collectionId != null ? { id: collectionId } : skipToken,
+  );
+
+  if (!collection) {
+    return null;
+  }
+
+  return (
+    <DestinationLink to={Urls.collection(collection)}>
+      {collection.name}
+    </DestinationLink>
+  );
+};
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default QuestionMoveToast;
