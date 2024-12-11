@@ -5,7 +5,12 @@ const webpack = require("webpack");
 
 const mainConfig = require("../../webpack.config");
 
-const { isEmbeddingSdkPackageInstalled } = resolveEmbeddingSdkPackage();
+const { isEmbeddingSdkPackageInstalled, embeddingSdkVersion } =
+  resolveEmbeddingSdkPackage();
+
+console.log(
+  `Embedding SDK is ${isEmbeddingSdkPackageInstalled ? `installed, using "${embeddingSdkVersion}"` : 'NOT installed, using locally built version from "resources/embedding-sdk"'}`,
+);
 
 module.exports = {
   mode: "development",
