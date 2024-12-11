@@ -3,15 +3,18 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { Box, type BoxProps, type IconName } from "metabase/ui";
+import {
+  Box,
+  type BoxProps,
+  Flex,
+  type FlexProps,
+  type IconName,
+} from "metabase/ui";
 
 import SidebarHeader from "../SidebarHeader";
+import ViewButton from "../view/ViewButton";
 
-import {
-  FooterButton,
-  SidebarContentMain,
-  SidebarContentRoot,
-} from "./SidebarContent.styled";
+import SidebarContentS from "./SidebarContent.module.css";
 
 type Props = {
   className?: string;
@@ -27,6 +30,31 @@ type Props = {
   "data-testid"?: string;
 };
 
+const SidebarContentMain = ({ children, ...props }: BoxProps) => {
+  return (
+    <Box
+      className={`${SidebarContentS.SidebarContentMain} sidebar-content-main`}
+      {...props}
+    >
+      {children}
+    </Box>
+  );
+};
+
+const SidebarContentRoot = ({ className, children, ...props }: FlexProps) => {
+  return (
+    <Flex
+      direction="column"
+      justify="space-between"
+      h="100%"
+      className={`sidebar-content-root ${className}`}
+      {...props}
+    >
+      {children}
+    </Flex>
+  );
+};
+
 function SidebarContent({
   className,
   title,
@@ -37,9 +65,14 @@ function SidebarContent({
   onDone,
   doneButtonText = t`Done`,
   footer = onDone ? (
-    <FooterButton color={color} onClick={onDone}>
+    <ViewButton
+      className={SidebarContentS.FooterButton}
+      color={color}
+      onClick={onDone}
+      active
+    >
       {doneButtonText}
-    </FooterButton>
+    </ViewButton>
   ) : null,
   children,
   "data-testid": dataTestId,
@@ -63,8 +96,8 @@ function SidebarContent({
   );
 }
 
-const PaneContent = (props: BoxProps) => {
-  return <Box px="lg" {...props} />;
+export const PaneContent = (props: BoxProps) => {
+  return <Box pl="lg" pr="lg" {...props} />;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

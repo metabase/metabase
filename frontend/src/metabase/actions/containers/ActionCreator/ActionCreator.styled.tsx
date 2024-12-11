@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { space } from "metabase/styled-components/theme";
 
 export const ActionCreatorBodyContainer = styled.div`
@@ -53,16 +52,17 @@ export const ModalRight = styled.div`
   position: relative;
   overflow-y: hidden;
 
-  ${SidebarContent.Root}, ${SidebarContent.Content} {
+  .sidebar-content-root,
+  .sidebar-content-main {
     width: 100%;
     height: 100%;
   }
 
-  ${SidebarContent.Content} {
+  .sidebar-content-main {
     overflow-y: auto;
   }
 
-  ${SidebarContent.Header.Root} {
+  .sidebar-header-root {
     position: sticky;
     top: 0;
     padding: 1.5rem 1.5rem 0.5rem 1.5rem;
