@@ -43,4 +43,40 @@ describeEE("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
 
     getSdkRoot().findByText("Als PDF exportieren").should("exist");
   });
+
+  it("when locale=de-CH it should fallback to `de.json`", () => {
+    cy.mount(
+      <MetabaseProvider
+        config={{
+          authProviderUri: AUTH_PROVIDER_URL,
+          metabaseInstanceUrl: METABASE_INSTANCE_URL,
+        }}
+        locale="de"
+      >
+        <div />
+      </MetabaseProvider>,
+    );
+
+    cy.request("/app/locales/de.json").then(response => {
+      expect(response.status).to.eq(200);
+    });
+  });
+
+  it("when locale=pt it should fallback to pt_BR.json", () => {
+    cy.mount(
+      <MetabaseProvider
+        config={{
+          authProviderUri: AUTH_PROVIDER_URL,
+          metabaseInstanceUrl: METABASE_INSTANCE_URL,
+        }}
+        locale="pt"
+      >
+        <div />
+      </MetabaseProvider>,
+    );
+
+    cy.request("/app/locales/pt_BR.json").then(response => {
+      expect(response.status).to.eq(200);
+    });
+  });
 });

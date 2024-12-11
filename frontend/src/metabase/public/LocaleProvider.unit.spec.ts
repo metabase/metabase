@@ -1,27 +1,80 @@
-import { validateLocale } from "./LocaleProvider";
+/* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "expectLocale"] }] */
+import { getLocaleToUse } from "./LocaleProvider";
 
-describe("validateLocale", () => {
-  it("should return the aa_bb when passed aa-bb and aa-bb is available", () => {
-    const locale = "zh-TW";
-    const availableLocales = ["zh-TW", "en"];
-    expect(validateLocale(locale, availableLocales)).toBe(locale);
+const expectLocale = ({
+  locale,
+  availableLocales,
+  expected,
+}: {
+  locale: string;
+  availableLocales: string[];
+  expected: string | null;
+}) => {
+  it(`getLocaleToUse(${locale}, [${availableLocales.join(", ")}]) should return ${expected}`, () => {
+    expect(getLocaleToUse(locale, availableLocales)).toBe(expected);
+  });
+};
+
+const availableLocales = ["de", "en", "pt-BR", "zh-CN", "zh-HK", "zh-TW"];
+
+describe("getLocaleToUse", () => {
+  describe("when given a locale in the format $language-$country", () => {
+    describe("it should return the input locale if it is available", () => {
+      expectLocale({
+        locale: "zh-TW",
+        availableLocales,
+        expected: "zh-TW",
+      });
+    });
+
+    describe("it should fallback to $language if that's available and $language-$country is not", () => {
+      expectLocale({
+        locale: "en-US",
+        availableLocales,
+        expected: "en",
+      });
+    });
+
+    describe("it should fallback to the first locale-country with the correct locale found if the locale is not valid", () => {
+      expectLocale({
+        locale: "zh-XY",
+        availableLocales,
+        expected: "zh-CN",
+      });
+    });
+
+    describe("it should return `null` if the locale is not valid", () => {
+      expectLocale({
+        locale: "it-CH",
+        availableLocales,
+        expected: null,
+      });
+    });
   });
 
-  it("should fallback to the language if the locale is not valid", () => {
-    const locale = "zh-ZZ";
-    const availableLocales = ["zh-TW", "zh", "en"];
-    expect(validateLocale(locale, availableLocales)).toBe("zh");
-  });
+  describe("when given a locale in the format of $language", () => {
+    describe("it should return the input locale if it is available", () => {
+      expectLocale({
+        locale: "de",
+        availableLocales,
+        expected: "de",
+      });
+    });
 
-  it("should fallback to en if the locale is not valid", () => {
-    const locale = "de";
-    const availableLocales = ["zh-TW", "en"];
-    expect(validateLocale(locale, availableLocales)).toBe("en");
-  });
+    describe("it should fallback to the first locale-country with the correct locale found if the locale is not valid", () => {
+      expectLocale({
+        locale: "pt",
+        availableLocales,
+        expected: "pt-BR",
+      });
+    });
 
-  it("should fallback to the first locale-country available if the locale is not valid", () => {
-    const locale = "zh-ZZ";
-    const availableLocales = ["zh-TW", "zh-CN", "en"];
-    expect(validateLocale(locale, availableLocales)).toBe("zh-TW");
+    describe("it should return `null` if the locale is not valid", () => {
+      expectLocale({
+        locale: "it",
+        availableLocales,
+        expected: null,
+      });
+    });
   });
 });

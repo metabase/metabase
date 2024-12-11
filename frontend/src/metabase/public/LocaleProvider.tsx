@@ -14,8 +14,8 @@ export const LocaleProvider = ({
   const [_isLoadingLocale, setIsLoadingLocale] = useState(false);
 
   useEffect(() => {
-    const validatedLocale = validateLocale(locale, localesData.locales);
-    if (locale) {
+    const validatedLocale = getLocaleToUse(locale ?? null, localesData.locales);
+    if (validatedLocale) {
       setIsLoadingLocale(true);
       setLocaleHeader(validatedLocale);
       loadLocalization(validatedLocale.replace("-", "_")).then(
@@ -34,34 +34,34 @@ export const LocaleProvider = ({
 };
 
 // Re-implementation of the fallback logic of the backend.
-// See https://github.com/metabase/metabase/blob/5197e318d7a6f6d9b9f79bdba134191f2111a680/src/metabase/util/i18n/impl.clj#L93-L105
+// See `fallback-locale` in https://github.com/metabase/metabase/blob/master/src/metabase/util/i18n/impl.clj
 // for the original implementation
-export const validateLocale = (
-  locale: string | null | undefined,
+export const getLocaleToUse = (
+  locale: string | null,
   availableLocales: string[],
 ) => {
   if (!locale) {
-    return "en";
+    return null;
   }
 
-  const [language, country] = locale.split("-");
-
-  // perfect match of aa-BB
-  if (availableLocales.includes(`${language}-${country}`)) {
-    return `${language}-${country}`;
+  // return the locale if it's available
+  if (availableLocales.includes(locale)) {
+    return locale;
   }
 
-  // perfect match of aa
+  const [language, _country] = locale.split("-");
+
+  // return the `aa` if it's available
   if (availableLocales.includes(language)) {
     return language;
   }
 
-  // fallback to aa-XX if available
+  // fallback to `aa-XX` if available
   for (const availableLocale of availableLocales) {
     if (availableLocale.startsWith(language)) {
       return availableLocale;
     }
   }
 
-  return "en";
+  return null;
 };
