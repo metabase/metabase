@@ -76,7 +76,7 @@ function ProfileLink({ adminItems, onLogout, openDiagnostics }) {
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },
       {
-        title: t`File a bug`,
+        title: t`Report an issue`,
         icon: null,
         action: () => {
           trackErrorDiagnosticModalOpened("profile-menu");

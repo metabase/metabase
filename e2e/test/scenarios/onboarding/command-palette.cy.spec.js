@@ -236,13 +236,13 @@ describe("command palette", () => {
     });
   });
 
-  it("should show the 'File a bug' command palette item", () => {
+  it("should show the 'Report an issue' command palette item", () => {
     cy.visit("/");
     cy.findByRole("button", { name: /Search/ }).click();
 
     H.commandPalette().within(() => {
-      H.commandPaletteInput().should("exist").type("Bug");
-      cy.findByText("File a bug").should("be.visible");
+      H.commandPaletteInput().should("exist").type("Issue");
+      cy.findByText("Report an issue").should("be.visible");
     });
   });
 });

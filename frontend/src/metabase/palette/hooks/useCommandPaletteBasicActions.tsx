@@ -188,8 +188,8 @@ export const useCommandPaletteBasicActions = ({
     ];
 
     const diagnosticAction = {
-      id: "report-bug",
-      name: t`File a bug`,
+      id: "report-issue",
+      name: t`Report an issue`,
       section: "basic",
       icon: "bug",
       keywords: "bug, issue, problem, error, diagnostic",
