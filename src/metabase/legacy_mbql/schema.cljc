@@ -421,8 +421,8 @@
 
 (def boolean-functions
   "Functions that return boolean values. Should match [[BooleanExpression]]."
-  #{:and :or :not :< :<= :> :>= := :!= :between :starts-with :ends-with :contains :does-not-contain :inside :is-empty
-    :not-empty :is-null :not-null :relative-time-interval :time-interval :during})
+  #{:and :or :not :< :<= :> :>= := :!= :in :not-in :is :not-is :between :starts-with :ends-with :contains
+    :does-not-contain :inside :is-empty :not-empty :is-null :not-null :relative-time-interval :time-interval :during})
 
 (def ^:private aggregations
   #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct
@@ -774,6 +774,12 @@
 (defclause =,  field EqualityComparable, value-or-field EqualityComparable, more-values-or-fields (rest EqualityComparable))
 (defclause !=, field EqualityComparable, value-or-field EqualityComparable, more-values-or-fields (rest EqualityComparable))
 
+;; aliases to `:=` and `:!=`
+(defclause ^:sugar in,  field EqualityComparable, value-or-field EqualityComparable, more-values-or-fields (rest EqualityComparable))
+(defclause ^:sugar not-in,  field EqualityComparable, value-or-field EqualityComparable, more-values-or-fields (rest EqualityComparable))
+(defclause ^:sugar is,  field EqualityComparable, value-or-field EqualityComparable, more-values-or-fields (rest EqualityComparable))
+(defclause ^:sugar not-is,  field EqualityComparable, value-or-field EqualityComparable, more-values-or-fields (rest EqualityComparable))
+
 (defclause <,  field OrderComparable, value-or-field OrderComparable)
 (defclause >,  field OrderComparable, value-or-field OrderComparable)
 (defclause <=, field OrderComparable, value-or-field OrderComparable)
@@ -893,7 +899,8 @@
    ;; filters drivers must implement
    and or not = != < > <= >= between starts-with ends-with contains
     ;; SUGAR filters drivers do not need to implement
-   does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval during))
+   in not-in is not-is does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval
+   during))
 
 (mr/def ::Filter
   [:multi

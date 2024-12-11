@@ -91,108 +91,108 @@
                 :get-month :month-of-year
                 :get-quarter :quarter-of-year}]
     (lib.util.match/match-one expr
-      [:= _ [:get-hour _ (a :guard temporal?)] (b :guard int?)]
+      [(op :guard #{:= :in :is}) _ [:get-hour _ (a :guard temporal?)] (b :guard int?)]
       (i18n/tru "{0} is at {1}" (->unbucketed-display-name a) (u.time/format-unit b :hour-of-day))
 
-      [:!= _ [:get-hour _ (a :guard temporal?)] (b :guard int?)]
+      [(op :guard #{:!= :not-in :not-is}) _ [:get-hour _ (a :guard temporal?)] (b :guard int?)]
       (i18n/tru "{0} excludes the hour of {1}" (->unbucketed-display-name a) (u.time/format-unit b :hour-of-day))
 
-      [:= _ [:get-day-of-week _ (a :guard temporal?) :iso] (b :guard int?)]
+      [(op :guard #{:= :in :is}) _ [:get-day-of-week _ (a :guard temporal?) :iso] (b :guard int?)]
       (i18n/tru "{0} is on {1}" (->display-name a) (u.time/format-unit b :day-of-week-iso))
 
-      [:!= _ [:get-day-of-week _ (a :guard temporal?) :iso] (b :guard int?)]
+      [(op :guard #{:!= :not-in :not-is}) _ [:get-day-of-week _ (a :guard temporal?) :iso] (b :guard int?)]
       (i18n/tru "{0} excludes {1}"
                 (->unbucketed-display-name a)
                 (inflections/plural (u.time/format-unit b :day-of-week-iso)))
 
-      [:= _ [:get-day-of-week _ (a :guard temporal?) :iso] & (args :guard #(every? int? %))]
+      [(op :guard #{:= :in :is}) _ [:get-day-of-week _ (a :guard temporal?) :iso] & (args :guard #(every? int? %))]
       (i18n/tru "{0} is one of {1} {2} selections"
                 (->display-name a)
                 (count args)
                 (-> :day-of-week lib.temporal-bucket/describe-temporal-unit u/lower-case-en))
 
-      [:!= _ [:get-day-of-week _ (a :guard temporal?) :iso] & (args :guard #(every? int? %))]
+      [(op :guard #{:!= :not-in :not-is}) _ [:get-day-of-week _ (a :guard temporal?) :iso] & (args :guard #(every? int? %))]
       (i18n/tru "{0} excludes {1} {2} selections"
                 (->unbucketed-display-name a)
                 (count args)
                 (-> :day-of-week lib.temporal-bucket/describe-temporal-unit u/lower-case-en))
 
-      [:= _ [(f :guard #{:get-month :get-quarter}) _ (a :guard temporal?)] (b :guard int?)]
+      [(op :guard #{:= :in :is}) _ [(f :guard #{:get-month :get-quarter}) _ (a :guard temporal?)] (b :guard int?)]
       (i18n/tru "{0} is in {1}" (->unbucketed-display-name a) (u.time/format-unit b (->unit f)))
 
-      [:!= _ [:get-month _ (a :guard temporal?)] (b :guard int?)]
+      [(op :guard #{:!= :not-in :not-is}) _ [:get-month _ (a :guard temporal?)] (b :guard int?)]
       (i18n/tru "{0} excludes each {1}" (->unbucketed-display-name a) (u.time/format-unit b :month-of-year))
 
-      [:!= _ [:get-quarter _ (a :guard temporal?)] (b :guard int?)]
+      [(op :guard #{:!= :not-in :not-is}) _ [:get-quarter _ (a :guard temporal?)] (b :guard int?)]
       (i18n/tru "{0} excludes {1} each year" (->unbucketed-display-name a) (u.time/format-unit b :quarter-of-year))
 
-      [:= _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (a :guard temporal?)] & (args :guard #(every? int? %))]
+      [(op :guard #{:= :in :is}) _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (a :guard temporal?)] & (args :guard #(every? int? %))]
       (i18n/tru "{0} is one of {1} {2} selections"
                 (->unbucketed-display-name a)
                 (count args)
                 (-> f ->unit lib.temporal-bucket/describe-temporal-unit u/lower-case-en))
 
-      [:!= _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (a :guard temporal?)] & (args :guard #(every? int? %))]
+      [(op :guard #{:!= :not-in :not-is}) _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (a :guard temporal?)] & (args :guard #(every? int? %))]
       (i18n/tru "{0} excludes {1} {2} selections"
                 (->unbucketed-display-name a)
                 (count args)
                 (-> f ->unit lib.temporal-bucket/describe-temporal-unit u/lower-case-en))
 
-      [:= _ (a :guard numeric?) b]
+      [(op :guard #{:= :in :is}) _ (a :guard numeric?) b]
       (i18n/tru "{0} is equal to {1}" (->display-name a) (->display-name b))
 
-      [:= _ (a :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (b :guard string?)]
+      [(op :guard #{:= :in :is}) _ (a :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (b :guard string?)]
       (i18n/tru "{0} is {1}" (->unbucketed-display-name a) (u.time/format-relative-date-range b 0 (:temporal-unit (second a)) nil nil {:include-current true}))
 
-      [:= _ (a :guard (unit-is :day-of-week)) (b :guard (some-fn int? string?))]
+      [(op :guard #{:= :in :is}) _ (a :guard (unit-is :day-of-week)) (b :guard (some-fn int? string?))]
       (i18n/tru "{0} is {1}" (->display-name a) (->temporal-name a b))
 
-      [:= _ (a :guard temporal?) (b :guard (some-fn int? string?))]
+      [(op :guard #{:= :in :is}) _ (a :guard temporal?) (b :guard (some-fn int? string?))]
       (i18n/tru "{0} is on {1}" (->display-name a) (->temporal-name a b))
 
-      [:!= _ (a :guard numeric?) b]
+      [(op :guard #{:!= :not-in :not-is}) _ (a :guard numeric?) b]
       (i18n/tru "{0} is not equal to {1}" (->display-name a) (->display-name b))
 
-      [:!= _ (a :guard (unit-is :day-of-week)) (b :guard (some-fn int? string?))]
+      [(op :guard #{:!= :not-in :not-is}) _ (a :guard (unit-is :day-of-week)) (b :guard (some-fn int? string?))]
       (i18n/tru "{0} excludes {1}" (->unbucketed-display-name a) (inflections/plural (->temporal-name a b)))
 
-      [:!= _ (a :guard (unit-is :month-of-year)) (b :guard (some-fn int? string?))]
+      [(op :guard #{:!= :not-in :not-is}) _ (a :guard (unit-is :month-of-year)) (b :guard (some-fn int? string?))]
       (i18n/tru "{0} excludes each {1}" (->unbucketed-display-name a) (->temporal-name a b))
 
-      [:!= _ (a :guard (unit-is :quarter-of-year)) (b :guard (some-fn int? string?))]
+      [(op :guard #{:!= :not-in :not-is}) _ (a :guard (unit-is :quarter-of-year)) (b :guard (some-fn int? string?))]
       (i18n/tru "{0} excludes {1} each year" (->unbucketed-display-name a) (->temporal-name a b))
 
-      [:!= _ (a :guard (unit-is :hour-of-day)) (b :guard (some-fn int? string?))]
+      [(op :guard #{:!= :not-in :not-is}) _ (a :guard (unit-is :hour-of-day)) (b :guard (some-fn int? string?))]
       (i18n/tru "{0} excludes the hour of {1}" (->unbucketed-display-name a) (->temporal-name a b))
 
-      [:!= _ (a :guard temporal?) (b :guard (some-fn int? string?))]
+      [(op :guard #{:!= :not-in :not-is}) _ (a :guard temporal?) (b :guard (some-fn int? string?))]
       (i18n/tru "{0} excludes {1}" (->display-name a) (->temporal-name a b))
 
-      [:= _ a (b :guard string?)]
+      [(op :guard #{:= :in :is}) _ a (b :guard string?)]
       (i18n/tru "{0} is {1}" (->display-name a) b)
 
-      [:= _ a b]
+      [(op :guard #{:= :in :is}) _ a b]
       (i18n/tru "{0} is {1}" (->display-name a) (->display-name b))
 
-      [:!= _ a (b :guard string?)]
+      [(op :guard #{:!= :not-in :not-is}) _ a (b :guard string?)]
       (i18n/tru "{0} is not {1}" (->display-name a) b)
 
-      [:!= _ a b]
+      [(op :guard #{:!= :not-in :not-is}) _ a b]
       (i18n/tru "{0} is not {1}" (->display-name a) (->display-name b))
 
-      [:= _ (a :guard numeric?) & args]
+      [(op :guard #{:= :in :is}) _ (a :guard numeric?) & args]
       (i18n/tru "{0} is equal to {1} selections" (->display-name a) (count args))
 
-      [:!= _ (a :guard numeric?) & args]
+      [(op :guard #{:!= :not-in :not-is}) _ (a :guard numeric?) & args]
       (i18n/tru "{0} is not equal to {1} selections" (->display-name a) (count args))
 
-      [:!= _ (a :guard temporal?) & args]
+      [(op :guard #{:!= :not-in :not-is}) _ (a :guard temporal?) & args]
       (i18n/tru "{0} excludes {1} {2} selections" (->unbucketed-display-name a) (count args) (->bucket-name a))
 
-      [:= _ a & args]
+      [(op :guard #{:= :in :is}) _ a & args]
       (i18n/tru "{0} is {1} selections" (->display-name a) (count args))
 
-      [:!= _ a & args]
+      [(op :guard #{:!= :not-in :not-is}) _ a & args]
       (i18n/tru "{0} is not {1} selections" (->display-name a) (count args))
 
       [:starts-with _ x (y :guard string?)]
