@@ -1,6 +1,6 @@
 import { InteractiveQuestion } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
-import { Box } from "metabase/ui";
+import { Box, Button, Popover } from "metabase/ui";
 
 import { QuestionSettings } from "./QuestionSettings";
 
@@ -21,7 +21,14 @@ export const PickerInPopover = {
       <Box p="lg">
         <InteractiveQuestion questionId={QUESTION_ID}>
           <Box>
-            <InteractiveQuestion.QuestionSettings />
+            <Popover>
+              <Popover.Target>
+                <Button>Open Settings</Button>
+              </Popover.Target>
+              <Popover.Dropdown>
+                <InteractiveQuestion.QuestionSettings />
+              </Popover.Dropdown>
+            </Popover>
             <InteractiveQuestion.QuestionVisualization />
           </Box>
         </InteractiveQuestion>

@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
-import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { Box, Popover, Stack, Tabs } from "metabase/ui";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
-import { PopoverRoot, PopoverTabs } from "./ChartSettingsWidgetPopover.styled";
-
 interface Widget {
   id: string;
   section: string;
@@ -13,7 +11,7 @@ interface Widget {
 }
 
 interface ChartSettingsWidgetPopoverProps {
-  anchor: HTMLElement;
+  anchor?: HTMLElement;
   handleEndShowWidget: () => void;
   widgets: Widget[];
 }
@@ -46,23 +44,40 @@ const ChartSettingsWidgetPopover = ({
     handleEndShowWidget();
   };
 
+  const rect = anchor?.getBoundingClientRect();
+
   return (
-    <TippyPopover
-      reference={anchor}
-      content={
-        widgets.length > 0 ? (
-          <PopoverRoot noTopPadding={hasMultipleSections} ref={contentRef}>
+    <Popover opened={!!anchor} onClose={onClose} position="right">
+      <Popover.Target>
+        <Box
+          pos="fixed"
+          left={rect?.left}
+          top={rect?.top}
+          w={anchor?.offsetWidth}
+          h={anchor?.offsetHeight}
+          style={{
+            pointerEvents: "none",
+          }}
+        />
+      </Popover.Target>
+      <Popover.Dropdown miw="20rem">
+        {widgets.length > 0 ? (
+          <Stack p="sm">
             {hasMultipleSections && (
-              <PopoverTabs
+              <Tabs
                 value={currentSection}
-                options={sections.current.map((sectionName: string) => ({
-                  name: sectionName,
-                  value: sectionName,
-                }))}
-                onChange={section => setCurrentSection(String(section))}
-                variant="underlined"
-              />
+                onTabChange={section => setCurrentSection(String(section))}
+              >
+                <Tabs.List grow>
+                  {sections.current.map(sectionName => (
+                    <Tabs.Tab key={sectionName} value={sectionName}>
+                      {sectionName}
+                    </Tabs.Tab>
+                  ))}
+                </Tabs.List>
+              </Tabs>
             )}
+
             {widgets
               .filter(widget => widget.section === currentSection)
               ?.map(widget => (
@@ -72,24 +87,10 @@ const ChartSettingsWidgetPopover = ({
                   hidden={false}
                 />
               ))}
-          </PopoverRoot>
-        ) : null
-      }
-      visible={!!anchor}
-      onClose={onClose}
-      placement="right"
-      offset={[10, 10]}
-      popperOptions={{
-        modifiers: [
-          {
-            name: "preventOverflow",
-            options: {
-              padding: 16,
-            },
-          },
-        ],
-      }}
-    />
+          </Stack>
+        ) : null}
+      </Popover.Dropdown>
+    </Popover>
   );
 };
 
