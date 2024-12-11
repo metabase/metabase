@@ -10,7 +10,22 @@ title: Embedded analytics SDK - Using the SDK with Next.js
 
 Some notes on using the Embedded analytics SDK with [Next.js](https://nextjs.org/). The SDK is tested to work with Next.js 14, although it may work with other versions.
 
-## Using App Router and Pages Router
+## Making the SDK components work on Server Side Rendering (SSR) or React Server Components
+
+Currently, the SDK components only work on the browser, this means that using them directly from Server Side Rendering (SSR) or Server Components is not supported.
+
+### Compatibility layer
+
+On the latest releases of the sdk do provide an experimental compatibility layer that wraps all the components with [dynamic imports and disable SSR](https://nextjs.org/docs/pages/building-your-application/optimizing/lazy-loading#with-no-ssr) for them. The compatibility layer also uses `use client` so that it will work with the app router.
+
+To use the compatibility layer you can change your imports from `@metabase/embedding-sdk-react` to `@metabase/embedding-sdk-react/nextjs`.
+
+## Manual wrapping of the components
+
+TODO:
+
+- wrap the provider in its own file so that it also wraps the defineConfig functions
+- show how to wrap the components needed individually to keep the rest of the host app code ssr
 
 Create a component that imports the `MetabaseProvider` and mark it as a React Client component with "use client".
 
