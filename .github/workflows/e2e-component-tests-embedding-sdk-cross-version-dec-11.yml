@@ -119,6 +119,8 @@ jobs:
               branchName,
             });
 
+            console.log("SDK version is", sdk_version)
+
             return {
               sdk_version,
             };
