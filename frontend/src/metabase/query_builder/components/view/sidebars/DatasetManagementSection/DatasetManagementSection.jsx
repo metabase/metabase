@@ -9,7 +9,7 @@ import {
   setQueryBuilderMode,
   turnModelIntoQuestion,
 } from "metabase/query_builder/actions";
-import { Box, Flex, Text } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 
 import DatasetManagementSectionS from "./DatasetManagementSection.module.css";
@@ -45,10 +45,10 @@ function DatasetManagementSection({
 
   return (
     <div>
-      <Text
+      <Box
         component="span"
         className={DatasetManagementSectionS.SectionTitle}
-      >{t`Model management`}</Text>
+      >{t`Model management`}</Box>
       <Box mt="md" pos="relative" right={8}>
         <Button
           className={DatasetManagementSectionS.Button}
