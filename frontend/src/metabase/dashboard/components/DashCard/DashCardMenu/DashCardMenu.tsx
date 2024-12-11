@@ -4,6 +4,7 @@ import { isValidElement, useState } from "react";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
 import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
+import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import CS from "metabase/css/core/index.css";
 import {
   canDownloadResults,
@@ -98,7 +99,9 @@ export const DashCardMenu = ({
 
   const getMenuContent = () => {
     if (typeof plugins?.dashboard?.dashboardCardMenu === "function") {
-      return plugins.dashboard.dashboardCardMenu({ question: question.card() });
+      return plugins.dashboard.dashboardCardMenu({
+        question: transformSdkQuestion(question),
+      });
     }
 
     if (isValidElement(plugins?.dashboard?.dashboardCardMenu)) {

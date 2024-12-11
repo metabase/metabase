@@ -3,12 +3,16 @@ title: "Pulse"
 summary: |
   `/api/pulse` endpoints. These are all authenticated. For unauthenticated `/api/pulse/unsubscribe` endpoints,
     see [[metabase.api.pulse.unsubscribe]].
+  
+    Deprecated: will soon be migrated to notification APIs.
 ---
 
 # Pulse
 
 `/api/pulse` endpoints. These are all authenticated. For unauthenticated `/api/pulse/unsubscribe` endpoints,
   see [[metabase.api.pulse.unsubscribe]].
+
+  Deprecated: will soon be migrated to notification APIs.
 
 ## `DELETE /api/pulse/:id/subscription`
 

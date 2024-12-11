@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
+import type { MetabaseQuestion } from "embedding-sdk/types/public/question";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import type { ClickAction, ClickObject } from "metabase/visualizations/types";
-import type { Card as QuestionType } from "metabase-types/api";
 
 export type MetabaseDataPointObject = Pick<
   ClickObject,
@@ -17,13 +17,13 @@ export type MetabaseClickActionPluginsConfig = (
 export type DashboardCardMenuCustomElement = ({
   question,
 }: {
-  question: QuestionType;
+  question: MetabaseQuestion;
 }) => ReactNode;
 
 export type CustomDashboardCardMenuItem = ({
   question,
 }: {
-  question?: QuestionType;
+  question?: MetabaseQuestion;
 }) => DashCardMenuItem;
 
 export type DashboardCardCustomMenuItem = {

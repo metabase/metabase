@@ -9,6 +9,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -282,9 +283,10 @@
                        qp.store/->legacy-metadata)))))
 
       (:binning opts)
-      (assoc :binning_info (-> (:binning opts)
-                               (set/rename-keys {:strategy :binning-strategy})
-                               u/snake-keys))
+      (-> (assoc :binning_info (-> (:binning opts)
+                                   (set/rename-keys {:strategy :binning-strategy})
+                                   u/snake-keys))
+          (assoc :was_binned true))
 
       (:temporal-unit opts)
       (assoc :unit (:temporal-unit opts))
@@ -592,7 +594,8 @@
   [query {cols-returned-by-driver :cols, :as result} :- [:maybe :map]]
   (->> (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)
        (deduplicate-cols-names)
-       (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)))
+       (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)
+       (map lib.binning/ensure-binning-in-display-name)))
 
 (defn base-type-inferer
   "Native queries don't have the type information from the original `Field` objects used in the query.

@@ -72,7 +72,7 @@ export const EditableDashboard = ({
       {adhocQuestionUrl ? (
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}
-          withTitle
+          title={true}
           height={drillThroughQuestionHeight}
           plugins={plugins}
           onNavigateBack={onNavigateBackToDashboard}
