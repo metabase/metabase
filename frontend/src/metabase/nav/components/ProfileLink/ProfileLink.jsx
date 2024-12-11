@@ -119,7 +119,7 @@ function ProfileLink({
           link: "/getting-started",
           event: `Navbar;Profile Dropdown;Getting Started`,
         },
-        {
+      {
         title: t`About ${applicationName}`,
         icon: null,
         action: () => openModal("about"),
