@@ -20,27 +20,6 @@ const ChartSettingsWidgetList = ({
       <Stack px="lg">
         {widgets.map(widget => (
           <Stack key={widget.id}>
-            <pre>
-              {JSON.stringify(
-                {
-                  widget: Object.entries(widget)
-                    .toSorted(([keyA], [keyB]) => keyA.localeCompare(keyB))
-                    .reduce((acc, [key, value]) => {
-                      acc[key] = typeof value === "object" ? "OBJECT" : value;
-                      return acc;
-                    }, {}),
-                  extraWidgetProps: Object.entries(widget)
-                    .toSorted(([keyA], [keyB]) => keyA.localeCompare(keyB))
-                    .reduce((acc, [key, value]) => {
-                      acc[key] = typeof value === "object" ? "OBJECT" : value;
-                      return acc;
-                    }, {}),
-                },
-                undefined,
-                2,
-              )}
-            </pre>
-
             <ChartSettingsWidget
               key={widget.id}
               {...widget}
@@ -74,30 +53,6 @@ const ChartSettingsWidgetList = ({
               <Stack>
                 {_.sortBy(groupedWidgets[group], "index").map(widget => (
                   <Stack key={widget.id}>
-                    <pre>
-                      {JSON.stringify(
-                        {
-                          widget: Object.entries(widget).reduce(
-                            (acc, [key, value]) => {
-                              acc[key] =
-                                typeof value === "object" ? "OBJECT" : value;
-                              return acc;
-                            },
-                            {},
-                          ),
-                          extraWidgetProps: Object.entries(
-                            extraWidgetProps,
-                          ).reduce((acc, [key, value]) => {
-                            acc[key] =
-                              typeof value === "object" ? "OBJECT" : value;
-                            return acc;
-                          }, {}),
-                        },
-                        undefined,
-                        2,
-                      )}
-                    </pre>
-
                     <ChartSettingsWidget
                       key={widget.id}
                       {...widget}

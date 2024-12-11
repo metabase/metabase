@@ -69,6 +69,7 @@ const ChartSettingsWidget = ({
           variant={variant}
           className={cx({ [FormS.FormLabel]: isFormField })}
           htmlFor={extraWidgetProps.id}
+          style={{ border: "1px solid red" }}
         >
           {title}
           {hint && (
