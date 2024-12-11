@@ -108,7 +108,8 @@
   [_ {:keys [in-place?]}]
   (search.index/ensure-ready! false)
   (if in-place?
-    (t2/delete! (search.index/active-table))
+    (when-let [table (search.index/active-table)]
+      (t2/delete! table))
     (search.index/maybe-create-pending!))
   (u/prog1 (search.ingestion/populate-index! :search.engine/appdb)
     (search.index/activate-table!)))
