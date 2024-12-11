@@ -774,7 +774,7 @@
 (defclause =,  field EqualityComparable, value-or-field EqualityComparable, more-values-or-fields (rest EqualityComparable))
 (defclause !=, field EqualityComparable, value-or-field EqualityComparable, more-values-or-fields (rest EqualityComparable))
 
-;; aliases to `:=` and `:!=`
+;; aliases for `:=` and `:!=`
 (defclause ^:sugar in,  field EqualityComparable, value-or-field EqualityComparable, more-values-or-fields (rest EqualityComparable))
 (defclause ^:sugar not-in,  field EqualityComparable, value-or-field EqualityComparable, more-values-or-fields (rest EqualityComparable))
 (defclause ^:sugar is,  field EqualityComparable, value-or-field EqualityComparable, more-values-or-fields (rest EqualityComparable))
