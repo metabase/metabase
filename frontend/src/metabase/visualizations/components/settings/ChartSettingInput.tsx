@@ -4,7 +4,7 @@ import _ from "underscore";
 import { Text, TextInput } from "metabase/ui";
 
 interface ChartSettingInputProps {
-  title: string;
+  label: string;
   value: string;
   onChange: (value: string) => void;
   id?: string;
@@ -13,14 +13,14 @@ interface ChartSettingInputProps {
 export const ChartSettingInput = ({
   value,
   onChange,
-  title,
+  label,
   ...props
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState(value);
 
   return (
     <TextInput
-      label={<Text>{title}</Text>}
+      label={<Text>{label}</Text>}
       data-testid={props.id}
       value={inputValue}
       onChange={e => setInputValue(e.target.value)}
