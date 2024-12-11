@@ -4,7 +4,7 @@ title: Case
 
 # Case
 
-`case` checks if a value matches a list of conditions, and returns some output based on the first condition that's met. Basically, `case` works the same way as ["if... then" logic](#spreadsheets), but it's much nicer to write.
+`case` (alias `if`) checks if a value matches a list of conditions, and returns some output based on the first condition that's met. `if` and `case` work exactly the same.
 
 You can optionally tell `case` to return a default output if none of the conditions are met. If you don't set a default output, `case` will return `null` after checking all of your conditions (`null` values are displayed as blank values in Metabase).
 

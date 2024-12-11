@@ -36,7 +36,6 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -400,21 +399,12 @@
   {:type            maybe-normalize-token
    ;; don't normalize native queries
    :native          normalize-native-query
-   :query           {:aggregation        normalize-ag-clause-tokens
-                     :aggregation-idents (fn [m]
-                                           (update-keys m #(cond-> %
-                                                             (string? %) parse-long
-                                                             (keyword? %) (-> name parse-long))))
-                     :breakout-idents    (fn [m]
-                                           (update-keys m #(cond-> %
-                                                             (string? %) parse-long
-                                                             (keyword? %) (-> name parse-long))))
-                     :expressions        normalize-expressions-tokens
-                     :expression-idents  #(update-keys % lib.schema.common/normalize-string-key)
-                     :order-by           normalize-order-by-tokens
-                     :source-query       normalize-source-query
-                     :source-metadata    {::sequence normalize-source-metadata}
-                     :joins              {::sequence normalize-join}}
+   :query           {:aggregation     normalize-ag-clause-tokens
+                     :expressions     normalize-expressions-tokens
+                     :order-by        normalize-order-by-tokens
+                     :source-query    normalize-source-query
+                     :source-metadata {::sequence normalize-source-metadata}
+                     :joins           {::sequence normalize-join}}
    ;; we smuggle metadata for Models and want to preserve their "database" form vs a normalized form so it matches
    ;; the style in annotate.clj
    :info            {:metadata/model-metadata identity

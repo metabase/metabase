@@ -216,8 +216,6 @@
                                                               [:aggregation-options
                                                                [:max $rating]
                                                                {:name "max"}]]
-                                                :aggregation-idents {0 "VghddL-up6ZVkpUNkE9H_"
-                                                                     1 "O7xQpRu8mQfVAnjroblU2"}
                                                 :breakout    [$category]
                                                 :order-by    [[:asc $category]]})])
             (is (partial= {:data {:cols [{:name "sum" :display_name "Sum of Sum of Price"}
@@ -236,9 +234,7 @@
                                                                                 {:name "sum"}]
                                                                                [:aggregation-options
                                                                                 [:count]
-                                                                                {:name "count"}]]
-                                                                :aggregation-idents {0 "VghddL-up6ZVkpUNkE9H_"
-                                                                                     1 "q0awK8v8lIp1iW_ZhSS_E"}}}
+                                                                                {:name "count"}]]}}
                                                     (when dataset?
                                                       {:info {:metadata/model-metadata
                                                               (:result-metadata (lib.metadata/card (qp.store/metadata-provider) 1))}}))))))))))))
@@ -262,7 +258,7 @@
     :query    {:source-table (str "card__" (u/the-id card))}})
 
   ([card m]
-   (update (query-with-source-card card) :query #(merge (get m :query m) %)))
+   (update (query-with-source-card card) :query merge m))
 
   ([card k v & {:as more}]
    (query-with-source-card card (merge {k v} more))))
@@ -276,14 +272,12 @@
                                              {:fields [$id]
                                               :joins  [{:source-table $$products
                                                         :alias        "P"
-                                                        :ident        "Zh421ECf3-b2l2Ml7s_3P"
                                                         :fields       [&P.products.id &P.products.ean]
                                                         :condition    [:= $product_id &P.products.id]}]})
                                            (mt/mbql-query orders
                                              {:fields [$id]
                                               :joins  [{:source-table "card__1"
                                                         :alias        "RP"
-                                                        :ident        "FGuqyLkhyOtYbUCeFSpfl"
                                                         :fields       [&RP.reviews.id &RP.products.id &RP.products.ean]
                                                         :condition    [:= $product_id &RP.products.id]}]})])
           (is (=? {:status :completed}
@@ -302,7 +296,7 @@
                   [int int]
                   (qp/process-query
                    (query-with-source-card 1
-                                           (mt/mbql-query venues
+                                           (mt/$ids venues
                                              {:aggregation [:count]
                                               :breakout    [$price]})))))))))))
 
@@ -345,7 +339,7 @@
                (mt/format-rows-by
                 [int int]
                 (qp/process-query
-                 (query-with-source-card 1 (mt/mbql-query venues
+                 (query-with-source-card 1 (mt/$ids venues
                                              {:aggregation [:count]
                                               :breakout    [*price]})))))))]
       (is (=? (breakout-results :has-source-metadata? false :native-source? true)
@@ -626,7 +620,7 @@
                 (mt/cols
                  (qp/process-query
                   (query-with-source-card 1
-                                          (mt/mbql-query venues
+                                          (mt/$ids venues
                                             {:aggregation [[:count]]
                                              :breakout    [$price]}))))))))))
 
@@ -645,9 +639,8 @@
                (qp.test-util/aggregate-col :count)]
               (mt/cols
                (qp/process-query
-                (query-with-source-card 1 (mt/mbql-query checkins
+                (query-with-source-card 1 (mt/$ids checkins
                                             {:aggregation [[:count]]
-                                             :aggregation-idents {0 "vX12AxUR50eQNFNZgdG0m"}
                                              :breakout    [!day.*date]})))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::breakout-year-test]
@@ -708,9 +701,8 @@
                                         [(mt/mbql-query checkins)])
         (is (= :completed
                (-> (query-with-source-card 1
-                                           (mt/mbql-query checkins
+                                           (mt/$ids :checkins
                                              {:aggregation [[:count]]
-                                              :aggregation-idents {0 "D8bJ476ZFWsYM5G159Ndc"}
                                               :filter      [:= !quarter.*date "2014-01-01T08:00:00.000Z"]
                                               :breakout    [!month.*date]}))
                    qp/process-query
@@ -723,7 +715,7 @@
                                         [(mt/mbql-query checkins)])
         (is (= :completed
                (-> (query-with-source-card 1
-                                           (mt/mbql-query checkins
+                                           (mt/$ids checkins
                                              {:aggregation [[:count]]
                                               :breakout    [!week.*date]
                                               :filter      [:between !week.*date "2014-02-01T00:00:00-08:00" "2014-05-01T00:00:00-07:00"]}))
@@ -747,8 +739,7 @@
                 [int]
                 (qp/process-query
                  (query-with-source-card 1
-                                         {:aggregation [:count]
-                                          :aggregation-idents {0 "ApWqC4pOyxysqqeiuiPeS"}})))))))))
+                                         {:aggregation [:count]})))))))))
 
 (deftest ^:parallel card-perms-test
   (testing "perms for a Card with a SQL source query\n"

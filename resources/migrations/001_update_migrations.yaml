@@ -10146,7 +10146,65 @@ databaseChangeLog:
               ALTER TABLE notification_recipient ALTER COLUMN id RESTART WITH 1;
               ALTER TABLE channel_template ALTER COLUMN id RESTART WITH 1;
 
- # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+  - changeSet:
+      id: v52.2024-12-10T10:28:16
+      author: johnswanson
+      comment: Add `report_card.dashboard_id`
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: report_card
+              columnName: dashboard_id
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The dashboard that owns the card, if it is a dashboard-internal card.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v52.2024-12-10T10:28:21
+      author: johnswanson
+      comment: Make `report_card.dashboard_id` a foreign key
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - foreignKeyConstraintExists:
+            - foreignKeyName: fk_report_card_ref_dashboard_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: dashboard_id
+            referencedTableName: report_dashboard
+            referencedColumnNames: id
+            constraintName: fk_report_card_ref_dashboard_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v52.2024-12-10T10:28:24
+      author: johnswanson
+      comment: Add an index for `report_card.dashboard_id`
+      rollback: # will be removed with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: report_card
+                indexName: idx_report_card_dashboard_id
+      changes:
+        - createIndex:
+            indexName: idx_report_card_dashboard_id
+            tableName: report_card
+            columns:
+              - column:
+                  name: dashboard_id
+
+  # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
 #

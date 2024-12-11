@@ -1947,6 +1947,17 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
     });
 
     it("1st stage explicit join + unit of time parameter", () => {
+      H.createDashboard(
+        {
+          name: "My new dashboard",
+        },
+        { wrapId: true, idAlias: "myNewDash" },
+      );
+
+      cy.get("@myNewDash").then((dashId: number | any) => {
+        H.visitDashboard(dashId);
+      });
+
       H.startNewQuestion();
 
       H.entityPickerModal().within(() => {
@@ -2003,18 +2014,7 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
 
       H.visualize(); // need to visualize because startNewQuestion does not set "display" property on a card
       cy.wait("@dataset");
-      H.saveQuestion("test", { addToDashboard: true });
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Dashboards").click();
-        cy.button(/create a new dashboard/i).click();
-      });
-      H.modal()
-        .last()
-        .within(() => {
-          cy.findByPlaceholderText("My new dashboard").type("Dash");
-          cy.button("Create").click();
-        });
-      H.entityPickerModal().button("Select").click();
+      H.saveQuestion("test"); // added to new dash automatically
 
       cy.findByLabelText("Add a filter or parameter").click();
       H.popover().findByText("Text or Category").click();
@@ -2082,7 +2082,7 @@ describe("pivot tables", () => {
     });
 
     function createPivotableQuery(source: Card): StructuredQuery {
-      return H.mbqlQuery({
+      return {
         ...createQ1Query(source),
         aggregation: [["count"]],
         breakout: [
@@ -2103,7 +2103,7 @@ describe("pivot tables", () => {
             },
           ],
         ],
-      });
+      };
     }
   });
 
@@ -2194,7 +2194,7 @@ function createBaseQuestions() {
 
 // Q1 - join, custom column, no aggregations, no breakouts
 function createQ1Query(source: Card): StructuredQuery {
-  return H.mbqlQuery({
+  return {
     "source-table": `card__${source.id}`,
     expressions: {
       Net: ["-", TOTAL_FIELD, TAX_FIELD],
@@ -2219,20 +2219,20 @@ function createQ1Query(source: Card): StructuredQuery {
         "source-table": REVIEWS_ID,
       },
     ],
-  });
+  };
 }
 
 // Q2 - join, custom column, 2 aggregations, no breakouts
 function createQ2Query(source: Card): StructuredQuery {
-  return H.mbqlQuery({
+  return {
     ...createQ1Query(source),
     aggregation: [["count"], ["sum", TOTAL_FIELD]],
-  });
+  };
 }
 
 // Q3 - join, custom column, no aggregations, 3 breakouts
 function createQ3Query(source: Card): StructuredQuery {
-  return H.mbqlQuery({
+  return {
     ...createQ1Query(source),
     breakout: [
       [
@@ -2261,20 +2261,20 @@ function createQ3Query(source: Card): StructuredQuery {
         },
       ],
     ],
-  });
+  };
 }
 
 // Q4 - join, custom column, 2 aggregations, 2 breakouts
 function createQ4Query(source: Card): StructuredQuery {
-  return H.mbqlQuery({
+  return {
     ...createQ3Query(source),
     aggregation: [["count"], ["sum", TOTAL_FIELD]],
-  });
+  };
 }
 
 // Q5 - Q4 + 2nd stage with join, custom column, no aggregations, no breakouts
 function createQ5Query(source: Card): StructuredQuery {
-  return H.mbqlQuery({
+  return {
     "source-query": createQ4Query(source),
     expressions: {
       "5 * Count": [
@@ -2316,12 +2316,12 @@ function createQ5Query(source: Card): StructuredQuery {
         "source-table": REVIEWS_ID,
       },
     ],
-  });
+  };
 }
 
 // Q6 - Q4 + 2nd stage with join, custom column, 2 aggregations, no breakouts
 function createQ6Query(source: Card): StructuredQuery {
-  return H.mbqlQuery({
+  return {
     ...createQ5Query(source),
     aggregation: [
       ["count"],
@@ -2337,12 +2337,12 @@ function createQ6Query(source: Card): StructuredQuery {
         ],
       ],
     ],
-  });
+  };
 }
 
 // Q7 - Q4 + 2nd stage with join, custom column, no aggregations, 2 breakouts
 function createQ7Query(source: Card): StructuredQuery {
-  return H.mbqlQuery({
+  return {
     ...createQ5Query(source),
     breakout: [
       [
@@ -2361,12 +2361,12 @@ function createQ7Query(source: Card): StructuredQuery {
         },
       ],
     ],
-  });
+  };
 }
 
 // Q8 - Q4 + 2nd stage with join, custom column, 2 aggregations, 2 breakouts
 function createQ8Query(source: Card): StructuredQuery {
-  return H.mbqlQuery({
+  return {
     ...createQ7Query(source),
     aggregation: [
       ["count"],
@@ -2382,15 +2382,15 @@ function createQ8Query(source: Card): StructuredQuery {
         ],
       ],
     ],
-  });
+  };
 }
 
 // Q9 - Q8 + 3rd stage with 1 aggregation
 function createQ9Query(source: Card): StructuredQuery {
-  return H.mbqlQuery({
+  return {
     "source-query": createQ8Query(source),
     aggregation: [["count"]],
-  });
+  };
 }
 
 type CreateQuery = (source: Card) => StructuredQuery;

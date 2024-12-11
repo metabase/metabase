@@ -213,7 +213,9 @@
                        {:description "Number of errors when processing metrics in the metrics adjust middleware."})
    (prometheus/counter :metabase-search/index
                        {:description "Number of entries indexed for search"
-                        :labels      [:model]})])
+                        :labels      [:model]})
+   (prometheus/counter :metabase-search/index-ms
+                       {:description "Total number of ms indexing took"})])
 
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it

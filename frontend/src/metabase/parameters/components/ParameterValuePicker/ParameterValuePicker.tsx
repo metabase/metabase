@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { useDispatch } from "metabase/lib/redux";
 import { fetchParameterValues } from "metabase/parameters/actions";
-import { DefaultParameterValueWidget } from "metabase/query_builder/components/template_tags/TagEditorParamParts/TagEditorParam.styled";
+import { DefaultParameterValueWidget } from "metabase/query_builder/components/template_tags/TagEditorParamParts/TagEditorParam";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type { Parameter, TemplateTag } from "metabase-types/api";

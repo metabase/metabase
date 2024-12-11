@@ -35,9 +35,12 @@
 
 (deftest ^:parallel render-test
   (testing "If the pulse renders correctly, it will have an img tag."
-    (let [query (mt/mbql-query orders
-                  {:aggregation  [[:count]]
-                   :breakout     [!month.created_at]})]
+    (let [query {:database (mt/id)
+                 :type     :query
+                 :query
+                 {:source-table (mt/id :orders)
+                  :aggregation  [[:count]]
+                  :breakout     [[:field (mt/id :orders :created_at) {:base-type :type/DateTime, :temporal-unit :month}]]}}]
       (t2.with-temp/with-temp [Card card {:dataset_query          query
                                           :display                :line
                                           :visualization_settings {:graph.dimensions ["CREATED_AT"]

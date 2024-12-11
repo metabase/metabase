@@ -8,6 +8,8 @@ import type {
   GetDashboardRequest,
   GetEmbeddableDashboard,
   GetPublicDashboard,
+  ListCollectionItemsRequest,
+  ListCollectionItemsResponse,
   ListDashboardsRequest,
   ListDashboardsResponse,
   SaveDashboardRequest,
@@ -73,6 +75,16 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: metadata =>
           metadata ? provideDashboardQueryMetadataTags(metadata) : [],
+      }),
+      getDashboardItemsList: builder.query<
+        ListCollectionItemsResponse,
+        Omit<ListCollectionItemsRequest, "id"> & { id: DashboardId }
+      >({
+        query: ({ id, ...body }) => ({
+          method: "GET",
+          url: `/api/dashboard/${id}/items`,
+          body,
+        }),
       }),
       createDashboard: builder.mutation<Dashboard, CreateDashboardRequest>({
         query: body => ({
@@ -189,6 +201,7 @@ export const {
   useGetDashboardQuery,
   useGetDashboardQueryMetadataQuery,
   useListDashboardsQuery,
+  useGetDashboardItemsListQuery,
   useCreateDashboardMutation,
   useUpdateDashboardMutation,
   useSaveDashboardMutation,

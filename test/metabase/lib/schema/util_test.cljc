@@ -3,8 +3,7 @@
    [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.util :as u]))
+   [metabase.lib.schema.util :as lib.schema.util]))
 
 (defn- query [uuid-1 uuid-2]
   {:lib/type :mbql/query
@@ -99,20 +98,16 @@
     [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Integer} 1]
      [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]))
 
-(deftest ^:parallel remove-randomized-idents-test
+(deftest ^:parallel remove-lib-uuids-test
   (are [x expected] (= expected
-                       (lib.schema.util/remove-randomized-idents x))
+                       (lib.schema.util/remove-lib-uuids x))
     {:lib/uuid "00000000-0000-0000-0000-000000000000"}
-    {}
-
-    {:ident "arbitrary string"}
     {}
 
     {:a 1, :lib/uuid "00000000-0000-0000-0000-000000000000"}
     {:a 1}
 
-    [{:lib/uuid "00000000-0000-0000-0000-000000000000"
-      :ident    "9qXy7eADqYbU2ET9ZWFbp"}]
+    [{:lib/uuid "00000000-0000-0000-0000-000000000000"}]
     [{}]
 
     [:a {:lib/uuid "00000000-0000-0000-0000-000000000000"}]
@@ -123,8 +118,7 @@
 
     [:a {:b [:c
              {:d 1, :lib/uuid "00000000-0000-0000-0000-000000000000"}
-             {:lib/uuid "00000000-0000-0000-0000-000000000001"
-              :ident    "mje0fGVMd7QtI_s_HkSRk"}]
+             {:lib/uuid "00000000-0000-0000-0000-000000000001"}]
          :lib/uuid "00000000-0000-0000-0000-000000000002"}]
     [:a {:b [:c {:d 1} {}]}]
 
@@ -133,7 +127,6 @@
      {:lib/uuid "81fdaa28-0af3-4168-b4a2-1afe43c389e7"}
      [:field
       {:lib/uuid "92d6d8d3-5685-4e41-93ce-f83d63c4156d"
-       :ident    (u/generate-nano-id)
        :base-type :type/BigInteger
        :effective-type :type/BigInteger}
       63400]]

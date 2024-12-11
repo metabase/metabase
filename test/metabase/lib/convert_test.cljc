@@ -69,7 +69,6 @@
                        :joins       [{:lib/type    :mbql/join
                                       :lib/options {:lib/uuid string?}
                                       :alias       "CATEGORIES__via__CATEGORY_ID"
-                                      :ident       string?
                                       :conditions  [[:=
                                                      {:lib/uuid string?}
                                                      [:field
@@ -88,7 +87,6 @@
             :query    {:source-table (meta/id :categories)
                        :fields [[:field (meta/id :categories :name) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                        :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
-                                 :ident        (u/generate-nano-id)
                                  :source-table (meta/id :venues)
                                  :condition    [:=
                                                 [:field (meta/id :venues :category-id) nil]
@@ -120,13 +118,11 @@
                   :type     :query
                   :query    {:source-table (meta/id :categories)
                              :joins        [{:source-table (meta/id :venues)
-                                             :ident        "lc83lcERitfJeaWZ_KIjl"
                                              :condition    [:=
                                                             [:field (meta/id :venues :category-id) nil]
                                                             [:field (meta/id :categories :id) nil]]
                                              :strategy     :left-join}
                                             {:source-table (meta/id :checkins)
-                                             :ident        "SaMKTxObUc0lg3ea4MTlK"
                                              :condition    [:=
                                                             [:field (meta/id :venues :id) nil]
                                                             [:field (meta/id :checkins :venue-id) nil]]
@@ -137,7 +133,6 @@
                          :joins    [{:lib/type    :mbql/join
                                      :lib/options {:lib/uuid string?}
                                      :alias       "__join"
-                                     :ident       "lc83lcERitfJeaWZ_KIjl"
                                      :conditions  [[:=
                                                     {:lib/uuid string?}
                                                     [:field
@@ -152,7 +147,6 @@
                                     {:lib/type    :mbql/join
                                      :lib/options {:lib/uuid string?}
                                      :alias       "__join_2"
-                                     :ident       "SaMKTxObUc0lg3ea4MTlK"
                                      :conditions  [[:=
                                                     {:lib/uuid string?}
                                                     [:field
@@ -173,7 +167,6 @@
     (is (=? {:lib/type :mbql/query
              :stages   [{:lib/type     :mbql.stage/mbql
                          :joins        [{:alias       "Cat"
-                                         :ident       "wVMxAr29_-JXf2hByuPOt"
                                          :fields      [[:field {:lib/uuid string?, :join-alias "Cat"} 1]]
                                          :conditions  [[:=
                                                         {:lib/uuid string?}
@@ -191,7 +184,6 @@
               :type     :query
               :query    {:joins        [{:source-table 3
                                          :alias        "Cat"
-                                         :ident        "wVMxAr29_-JXf2hByuPOt"
                                          :condition    [:= [:field 2 nil] [:field 2 nil]]
                                          :fields       [[:field 1 {:join-alias "Cat"}]]}]
                          :limit        1
@@ -284,6 +276,49 @@
 (deftest ^:parallel round-trip-test
   ;; Miscellaneous queries that have caused test failures in the past, captured here for quick feedback.
   (are [query] (test-round-trip query)
+    ;; query with segment
+    {:database 282
+     :type :query
+     :query {:source-table 661
+             :filter [:and
+                      [:segment 42]
+                      [:= [:field 1972 nil] "Run Query"]
+                      [:time-interval [:field 1974 nil] -30 :day]
+                      [:!= [:field 1973 nil] "(not set)" "url"]]
+             :breakout [[:field 1973 nil]]}}
+
+    ;; :aggregation-options on a non-aggregate expression with an inner aggregate.
+    {:database 194
+     :query {:aggregation [[:aggregation-options
+                            [:- [:sum [:field 1677 nil]] 41]
+                            {:name "Sum-41"}]]
+             :breakout [[:field 1677 nil]]
+             :source-table 517}
+     :type :query}
+
+    ;; :aggregation-options nested, not at the top level under :aggregation
+    {:database 194
+     :query {:aggregation [[:- [:aggregation-options
+                                [:sum [:field 1677 nil]]
+                                {:name "Sum-41"}] 41]]
+             :breakout [[:field 1677 nil]]
+             :source-table 517}
+     :type :query}
+
+    {:database 67
+     :query {:aggregation [[:aggregation-options
+                            [:avg
+                             [:field
+                              809
+                              {:metabase.query-processor.util.add-alias-info/source-alias "RATING"
+                               :metabase.query-processor.util.add-alias-info/source-table 224}]]
+                            {:name "avg"
+                             :metabase.query-processor.util.add-alias-info/desired-alias "avg"
+                             :metabase.query-processor.util.add-alias-info/position 1
+                             :metabase.query-processor.util.add-alias-info/source-alias "avg"}]]
+             :source-table 224}
+     :type :query}
+
     [:value nil {:base_type :type/Number}]
 
     [:value "TX" nil]
@@ -335,7 +370,6 @@
      :query    {:source-table 224
                 :fields [[:field 23101 {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                 :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
-                          :ident        (u/generate-nano-id)
                           :source-table 23040
                           :condition    [:=
                                          [:field 23402 nil]
@@ -352,7 +386,6 @@
      :type     :query
      :query    {:joins        [{:source-table 3
                                 :alias        "Cat"
-                                :ident        (u/generate-nano-id)
                                 :condition    [:= [:field 2 nil] [:field 2 nil]]
                                 :fields       [[:field 1 {:join-alias "Cat"}]]}]
                 :limit        1
@@ -394,8 +427,7 @@
     {:database 1
      :type     :query
      :query    {:source-table 224
-                :expressions {"a" 1}
-                :expression-idents {"a" (u/generate-nano-id)}}}
+                :expressions {"a" 1}}}
 
     ;; card__<id> source table syntax.
     {:database 1
@@ -416,88 +448,28 @@
                                                       [[[:= [:expression "Additional Information Capture"] "None"]
                                                         "No"]]
                                                       {:default "Yes"}]}
-             :expression-idents {"Additional Information Capture" (u/generate-nano-id)
-                                 "Additional Info Present"        (u/generate-nano-id)}
              :filter [:= [:field 518086 nil] "active"]
              :aggregation [[:aggregation-options
                             [:share [:= [:expression "Additional Info Present"] "Yes"]]
-                            {:name "Additional Information", :display-name "Additional Information"}]]
-             :aggregation-idents {0 (u/generate-nano-id)}}}))
-
-(deftest ^:parallel round-trip-segments-test
-  (test-round-trip {:database 282
-                    :type :query
-                    :query {:source-table 661
-                            :filter [:and
-                                     [:segment 42]
-                                     [:= [:field 1972 nil] "Run Query"]
-                                     [:time-interval [:field 1974 nil] -30 :day]
-                                     [:!= [:field 1973 nil] "(not set)" "url"]]
-                            :breakout [[:field 1973 nil]]
-                            :breakout-idents {0 (u/generate-nano-id)}}}))
-
-(deftest ^:parallel round-trip-aggregation-options-test
-  (testing ":aggregation-options on a non-aggregate expression with an inner aggregate"
-    (test-round-trip
-     {:database 194
-      :query {:aggregation [[:aggregation-options
-                             [:- [:sum [:field 1677 nil]] 41]
-                             {:name "Sum-41"}]]
-              :aggregation-idents {0 (u/generate-nano-id)}
-              :breakout [[:field 1677 nil]]
-              :breakout-idents {0 (u/generate-nano-id)}
-              :source-table 517}
-      :type :query}))
-
-  (testing ":aggregation-options nested, not at the top level under :aggregation"
-    (test-round-trip
-     {:database 194
-      :query {:aggregation [[:- [:aggregation-options
-                                 [:sum [:field 1677 nil]]
-                                 {:name "Sum-41"}] 41]]
-              :aggregation-idents {0 (u/generate-nano-id)}
-              :breakout [[:field 1677 nil]]
-              :breakout-idents {0 (u/generate-nano-id)}
-              :source-table 517}
-      :type :query}))
-
-  (test-round-trip
-   {:database 67
-    :query {:aggregation [[:aggregation-options
-                           [:avg
-                            [:field
-                             809
-                             {:metabase.query-processor.util.add-alias-info/source-alias "RATING"
-                              :metabase.query-processor.util.add-alias-info/source-table 224}]]
-                           {:name "avg"
-                            :metabase.query-processor.util.add-alias-info/desired-alias "avg"
-                            :metabase.query-processor.util.add-alias-info/position 1
-                            :metabase.query-processor.util.add-alias-info/source-alias "avg"}]]
-            :aggregation-idents {0 (u/generate-nano-id)}
-            :source-table 224}
-    :type :query}))
+                            {:name "Additional Information", :display-name "Additional Information"}]]}}))
 
 (deftest ^:parallel round-trip-aggregation-references-test
   (test-round-trip
    {:database 1
     :type     :query
-    :query    {:source-table       2
-               :aggregation        [[:count]]
-               :aggregation-idents {0 (u/generate-nano-id)}
-               :breakout           [[:field 14 {:temporal-unit :month}]]
-               :breakout-idents    {0 (u/generate-nano-id)}
-               :order-by           [[:asc [:aggregation 0]]]}}))
+    :query    {:source-table 2
+               :aggregation  [[:count]]
+               :breakout     [[:field 14 {:temporal-unit :month}]]
+               :order-by     [[:asc [:aggregation 0]]]}}))
 
 (deftest ^:parallel round-trip-aggregation-with-case-test
   (test-round-trip
    {:database 2762
     :type     :query
-    :query    {:aggregation        [[:sum [:case [[[:< [:field 139657 nil] 2] [:field 139657 nil]]] {:default 0}]]]
-               :aggregation-idents {0 (u/generate-nano-id)}
-               :breakout           [[:field 139658 nil]]
-               :breakout-idents    {0 (u/generate-nano-id)}
-               :limit              4
-               :source-table       33674}}))
+    :query    {:aggregation  [[:sum [:case [[[:< [:field 139657 nil] 2] [:field 139657 nil]]] {:default 0}]]]
+               :breakout     [[:field 139658 nil]]
+               :limit        4
+               :source-table 33674}}))
 
 (deftest ^:parallel round-trip-aggregation-with-if-test
   (test-round-trip
@@ -513,9 +485,8 @@
 (deftest ^:parallel round-trip-aggregation-with-metric-test
   (test-round-trip
    {:database 1
-    :query    {:aggregation        [[:+ [:metric 82] 1]]
-               :aggregation-idents {0 (u/generate-nano-id)}
-               :source-table       1}
+    :query    {:aggregation  [[:+ [:metric 82] 1]]
+               :source-table 1}
     :type     :query}))
 
 (deftest ^:parallel unclean-stage-round-trip-test
@@ -524,7 +495,6 @@
             [{:database 7
               :type :query
               :query {:joins [{:alias "__join"
-                               :ident (u/generate-nano-id)
                                :strategy :left-join
                                :condition [:= [:field 388 nil] 1]
                                :source-table 44}]
@@ -560,7 +530,6 @@
                                                                                    :average-length 6.375}}}
                                                   :base_type :type/Text}]
                                :alias "Card 2 - Category"
-                               :ident (u/generate-nano-id)
                                :strategy :left-join
                                :source-query/model? false
                                :qp/stage-had-source-card 2
@@ -569,7 +538,6 @@
                                            [:field 350 {:base-type :type/Text, :join-alias "Card 2 - Category"}]]
                                :source-query {:source-table 45
                                               :breakout [[:field 350 {:base-type :type/Text}]]
-                                              :breakout-idents {0 (u/generate-nano-id)}
                                               :qp/stage-is-from-source-card 2
                                               :order-by [[:asc [:field 350 {:base-type :type/Text}]]]}}]
                       :source-query {:qp/stage-had-source-card 1
@@ -578,13 +546,10 @@
                                               [:field "count" {:base-type :type/Integer}]]
                                      :source-query {:source-table 42
                                                     :breakout [[:field 350 {:base-type :type/Text, :join-alias "Products"}]]
-                                                    :breakout-idents {0 (u/generate-nano-id)}
                                                     :aggregation [[:count]]
-                                                    :aggregation-idents {0 (u/generate-nano-id)}
                                                     :qp/stage-is-from-source-card 1
                                                     :order-by [[:asc [:field 350 {:base-type :type/Text, :join-alias "Products"}]]]
                                                     :joins [{:alias "Products"
-                                                             :ident (u/generate-nano-id)
                                                              :strategy :left-join
                                                              :condition [:=
                                                                          [:field 382 {:base-type :type/Integer}]
@@ -592,7 +557,6 @@
                                                                                       :join-alias "Products"}]]
                                                              :source-table 45}
                                                             {:alias "People - User"
-                                                             :ident (u/generate-nano-id)
                                                              :strategy :left-join
                                                              :condition [:=
                                                                          [:field 381 {:base-type :type/Integer}]
@@ -680,14 +644,11 @@
           mbql-query
           {:database 1
            :type :query
-           :query {:expressions       {"CC" [:+ 1 1]}
-                   :expression-idents {"CC" "exuIJ7he_3lxD2CrB_OHJ"}
+           :query {:expressions {"CC" [:+ 1 1]}
                    :limit 10
                    :source-query {:source-table 2
                                   :aggregation [aggregation-options-clause]
-                                  :aggregation-idents {0 "kqEYvcz6DgjWt7pAEEn2L"}
-                                  :breakout [[:field 15 {:temporal-unit :month}]]
-                                  :breakout-idents {0 "XGXJEWDAONPUw_dgVtLuR"}}}
+                                  :breakout [[:field 15 {:temporal-unit :month}]]}}
            :parameters []}
           pmbql-aggregation-options-clause
           (lib.convert/->pMBQL aggregation-options-clause)]
@@ -695,7 +656,7 @@
               pmbql-aggregation-options-clause))
       (is (=? aggregation-options-clause
               (lib.convert/->legacy-MBQL pmbql-aggregation-options-clause)))
-      (is (= (dissoc mbql-query :parameters)
+      (is (= (dissoc mbql-query :parameters [])
              (-> mbql-query lib.convert/->pMBQL lib.convert/->legacy-MBQL))))))
 
 (deftest ^:parallel round-trip-preserve-metadata-test
@@ -791,7 +752,6 @@
   (is (nil? (-> {:database 5
                  :type :query
                  :query {:joins [{:source-table 3
-                                  :ident        "9GV0U_XzEn3x6ukpT-SGW"
                                   ;; Invalid condition makes the join invalid
                                   :condition [:= [:field 2 nil] [:xfield 2 nil]]}]
                          :source-table 4}}
@@ -800,7 +760,6 @@
   (is (nil? (-> {:database 5
                  :type :query
                  :query {:joins [{:source-table 3
-                                  :ident        "9GV0U_XzEn3x6ukpT-SGW"
                                   :condition [:= [:field 2 nil] [:field 2 nil]]
                                   ;; Invalid field, the join is still valid
                                   :fields [[:xfield 2 nil]]}]
@@ -919,7 +878,6 @@
                  :query    {:aggregation  [[:aggregation-options
                                             [:sum [:field 100 {:source-table 12, :source-alias "TOTAL"}]]
                                             {:name "sum"}]]
-                            :aggregation-idents {0 (u/generate-nano-id)}
                             :order-by     [[:asc [:aggregation 0 {:desired-alias "sum", :position 1}]]
                                            [:asc
                                             [:field 99 {:source-table  12
