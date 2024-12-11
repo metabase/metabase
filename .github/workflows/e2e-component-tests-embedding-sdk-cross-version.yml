@@ -156,10 +156,11 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       # Needed to omit newly added tests for functionality that is not yet released
-#      - name: Checkout SDK release commit
-#        uses: actions/checkout@v4
-#        with:
-#          ref: embedding-sdk-${{ needs.resolve-sdk-version.outputs.sdk_version }}
+      - name: Checkout SDK release commit
+        uses: actions/checkout@v4
+        with:
+          ref: embedding-sdk-${{ needs.resolve-sdk-version.outputs.sdk_version }}
+          filter: 'e2e/*'
 
       - name: Retrieve uberjar artifact for ee
         uses: actions/download-artifact@v4
