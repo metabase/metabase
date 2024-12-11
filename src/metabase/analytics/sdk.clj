@@ -15,8 +15,8 @@
 (def ^:dynamic *client* "Used to track information about the metabase embedding client." nil)
 
 (mu/defn include-analytics :- :map
-  "Adds the currently bound, or existing `*client*` and `*version*` to the given map, which is usually a row going into
-   the `view_log` or `query_execution` table. Falls back to the original value."
+  "Adds the currently bound, or existing `*client*` and `*version*` to the given map, which is usually a row going
+   into the `view_log` or `query_execution` table. Falls back to the original value."
   [m :- :map]
   (-> m
       (update :embedding_client (fn [client] (or *client* client)))
@@ -52,8 +52,10 @@
                 *version* version]
         (handler request
                  (fn responder [response]
-                   (when (= sdk-client embedding-sdk-client) (track-sdk-response (categorize-request response)))
+                   (when (= sdk-client embedding-sdk-client)
+                     (track-sdk-response (categorize-request response)))
                    (respond response))
                  (fn raiser [response]
-                   (when (= sdk-client embedding-sdk-client) (track-sdk-response :error))
+                   (when (= sdk-client embedding-sdk-client)
+                     (track-sdk-response :error))
                    (raise response)))))))
