@@ -892,6 +892,98 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     ],
   },
   {
+    name: "in",
+    structure: "in",
+    description: () =>
+      t`Alias for is(). Returns true if value1 equals value2 (or value3, etc. if specified).`,
+    args: [
+      {
+        name: t`value1`,
+        description: t`The column or value to check.`,
+        example: formatIdentifier(t`ID`),
+      },
+      {
+        name: t`value2`,
+        description: t`The column of value to look for.`,
+        example: "1",
+      },
+      {
+        name: "…",
+        description: t`You can add more values to look for.`,
+        example: "2",
+      },
+    ],
+  },
+  {
+    name: "not-in",
+    structure: "notIn",
+    description: () =>
+      t`Alias for isNot(). Returns true if value1 doesn't equal value2 (and value3, etc. if specified).`,
+    args: [
+      {
+        name: t`value1`,
+        description: t`The column or value to check.`,
+        example: formatIdentifier(t`ID`),
+      },
+      {
+        name: t`value2`,
+        description: t`The column of value to look for.`,
+        example: "1",
+      },
+      {
+        name: "…",
+        description: t`You can add more values to look for.`,
+        example: "2",
+      },
+    ],
+  },
+  {
+    name: "is",
+    structure: "is",
+    description: () =>
+      t`Alias for in(). Returns true if value1 equals value2 (or value3, etc. if specified).`,
+    args: [
+      {
+        name: t`value1`,
+        description: t`The column or value to check.`,
+        example: formatIdentifier(t`ID`),
+      },
+      {
+        name: t`value2`,
+        description: t`The column of value to look for.`,
+        example: "1",
+      },
+      {
+        name: "…",
+        description: t`You can add more values to look for.`,
+        example: "2",
+      },
+    ],
+  },
+  {
+    name: "not-is",
+    structure: "isNot",
+    description: () =>
+      t`Alias for notIn(). Returns true if value1 doesn't equal value2 (and value3, etc. if specified).`,
+    args: [
+      {
+        name: t`value1`,
+        description: t`The column or value to check.`,
+        example: formatIdentifier(t`ID`),
+      },
+      {
+        name: t`value2`,
+        description: t`The column of value to look for.`,
+        example: "1",
+      },
+      {
+        name: "…",
+        description: t`You can add more values to look for.`,
+        example: "2",
+      },
+    ],
+  },
+  {
     name: "get-year",
     structure: "year",
     description: () =>

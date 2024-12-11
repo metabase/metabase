@@ -31,7 +31,7 @@
 (doseq [tag [:and :or]]
   (lib.hierarchy/derive tag ::compound))
 
-(doseq [tag [:= :!= :starts-with :ends-with :contains :does-not-contain]]
+(doseq [tag [:= :!= :in :not-in :is :not-is :starts-with :ends-with :contains :does-not-contain]]
   (lib.hierarchy/derive tag ::varargs))
 
 (doseq [tag [:< :<= :> :>=]]
