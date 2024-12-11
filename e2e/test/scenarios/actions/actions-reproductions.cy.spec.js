@@ -291,20 +291,24 @@ describe("issue 51020", () => {
       );
       H.getDashboardCard(0).findAllByText("1").eq(0).click();
       H.getDashboardCard(1).findByText("Click Me").click();
-      H.modal().findByLabelText("Discount").type("5");
+      H.modal().findByLabelText("Discount").type("987");
       H.modal().button("Update").click();
 
       H.modal().should("not.exist");
       H.undoToast().findByText("Successfully updated").should("be.visible");
+      H.getDashboardCard(0).should("contain.text", "987");
 
       cy.log("check when primary key parameter is populated with URL");
       cy.reload();
       H.getDashboardCard(1).findByText("Click Me").click();
-      H.modal().findByLabelText("Discount").type("{backspace}");
+      H.modal()
+        .findByLabelText("Discount")
+        .type("{backspace}{backspace}{backspace}654");
       H.modal().button("Update").click();
 
       H.modal().should("not.exist");
       H.undoToast().findByText("Successfully updated").should("be.visible");
+      H.getDashboardCard(0).should("contain.text", "654");
     });
   });
 
@@ -385,6 +389,7 @@ describe("issue 51020", () => {
 
       H.modal().should("not.exist");
       H.undoToast().findByText("Successfully updated").should("be.visible");
+      H.getDashboardCard(0).should("contain.text", "Foo Baz");
 
       cy.log("check when primary key parameter is populated with URL");
       cy.reload();
@@ -394,6 +399,7 @@ describe("issue 51020", () => {
 
       H.modal().should("not.exist");
       H.undoToast().findByText("Successfully updated").should("be.visible");
+      H.getDashboardCard(0).should("contain.text", "Foo Baz Baz");
     });
   });
 });
