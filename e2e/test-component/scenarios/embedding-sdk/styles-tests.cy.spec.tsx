@@ -248,15 +248,13 @@ describeEE("scenarios > embedding-sdk > styles", () => {
       );
 
       getSdkRoot().findByText("Summarize").click();
-      getSdkRoot().findByText("Add a function or metric").click();
       getSdkRoot().findByText("Count of rows").click();
-      getSdkRoot().findByText("Apply").click();
-      getSdkRoot().findByText("Save").click();
 
       getSdkRoot()
-        .findByText("Save question")
+        .findByText("Save")
         .should("exist")
-        .and("have.css", "font-family", "Lato, sans-serif");
+        .and("have.css", "font-family", "Lato")
+        .click();
 
       // TODO: good place for a visual regression test
 
@@ -264,7 +262,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
       getSdkRoot().findByText("Our analytics").click();
 
       getSdkRoot()
-        .findByText("Select a collection")
+        .findByText("Select a collection or dashboard")
         .should("exist")
         .and("have.css", "font-family", "Lato, sans-serif");
 

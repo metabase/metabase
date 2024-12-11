@@ -92,6 +92,15 @@ function ProfileLink({
         externalLink: true,
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },
+      // If the instance is not new, we're removing the link from the sidebar automatically!
+      (!isNewInstance || showOnboardingLink) &&
+        canAccessOnboardingPage && {
+          // eslint-disable-next-line no-literal-metabase-strings -- We don't show this to whitelabelled instances
+          title: t`How to use Metabase`,
+          icon: null,
+          link: "/getting-started",
+          event: `Navbar;Profile Dropdown;Getting Started`,
+        },
       {
         title: t`Report an issue`,
         icon: null,

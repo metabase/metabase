@@ -1,7 +1,10 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import type { OnMoveWithSourceAndDestination } from "metabase/collections/types";
+import type {
+  MoveDestination,
+  OnMoveWithSourceAndDestination,
+} from "metabase/collections/types";
 import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { MoveModal } from "metabase/containers/MoveModal";
@@ -22,7 +25,7 @@ const MoveCollectionModalView = ({
   onClose,
 }: MoveCollectionModalProps): JSX.Element => {
   const handleMove = useCallback(
-    async (destination: { id: CollectionId }) => {
+    async (destination: MoveDestination) => {
       await onMove(collection, destination);
       onClose();
     },

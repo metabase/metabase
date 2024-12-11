@@ -471,6 +471,17 @@
                :limit        4
                :source-table 33674}}))
 
+(deftest ^:parallel round-trip-aggregation-with-if-test
+  (test-round-trip
+   {:database 2762
+    :type     :query
+    :query    {:aggregation        [[:sum [:if [[[:< [:field 139657 nil] 2] [:field 139657 nil]]] {:default 0}]]]
+               :aggregation-idents {0 (u/generate-nano-id)}
+               :breakout           [[:field 139658 nil]]
+               :breakout-idents    {0 (u/generate-nano-id)}
+               :limit              4
+               :source-table       33674}}))
+
 (deftest ^:parallel round-trip-aggregation-with-metric-test
   (test-round-trip
    {:database 1

@@ -554,11 +554,10 @@
                                              :month)))
             columns      (lib/returned-columns query)
             sum          (by-name columns "sum")
-            breakout     (by-name columns "CREATED_AT")
             sum-dim      {:column     sum
                           :column-ref (lib/ref sum)
                           :value      42295.12}
-            breakout-dim {:column     breakout
+            breakout-dim {:column     (first (lib/breakouts-metadata query))
                           :column-ref (first (lib/breakouts query))
                           :value      "2024-11-01T00:00:00Z"}
             context      (merge sum-dim

@@ -2,13 +2,16 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
+   [metabase.db :as mdb]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.connection :as u.conn]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -490,3 +493,48 @@
           (is (not (#'search.index/exists? (#'search.index/pending-table)))))
         (finally
           (#'search.index/drop-table! related-table))))))
+
+;; We don't currently track database deletes in realtime in the search index.
+;; To do so, we would make use of the following mechanism to find downstream elements deleted by a cascade.
+;; For now, as we lack a low-impact way to decorate toucan2 to do such a thing, we simply track the relations as a test.
+;; This way we will at least be aware of the implication for staleness in the index whenever we change the specs.
+
+(def ^:private model->deleted-descendants
+  ;; Note that these refer to the table names, not the search-model names.
+  {"core_user"         #{"action" "collection" "model_index_value" "report_card" "report_dashboard" "segment"}
+   "model_index"       #{"model_index_value"}
+   "metabase_database" #{"action" "metabase_table" "model_index_value" "report_card" "segment"}
+   "metabase_table"    #{"action" "model_index_value" "report_card" "segment"}
+   "report_card"       #{"action" "model_index_value" "report_card"}
+   "report_dashboard"  #{"action" "model_index_value" "report_card"}})
+
+(defn- transitive*
+  "Borrows heavily from clojure.core/derive. Notably, however, this intentionally permits circular dependencies."
+  [h child parent]
+  (let [td (:descendants h {})
+        ta (:ancestors h {})
+        tf (fn [source sources target targets]
+             (reduce (fn [ret k]
+                       (assoc ret k
+                              (reduce conj (get targets k #{}) (cons target (targets target)))))
+                     targets (cons source (sources source))))]
+    {:ancestors   (tf child td parent ta)
+     :descendants (tf parent ta child td)}))
+
+(defn transitive
+  "Given a mapping from (say) parents to children, return the corresponding mapping from parents to descendants."
+  [adj-map]
+  (:descendants (reduce-kv (fn [h p children] (reduce #(transitive* %1 %2 p) h children)) nil adj-map)))
+
+(deftest search-model-cascade-text
+  (is (= model->deleted-descendants
+         (mt/with-empty-h2-app-db
+           (let [table->children    (u.conn/app-db-cascading-deletes (mdb/app-db) (map t2/table-name (descendants :metabase/model)))
+                 table->sub-tables  (into {} (for [[t cs] table->children] [t (map :child-table cs)]))
+                 table->descendants (transitive table->sub-tables)
+                 search-model?      (into #{} (map (comp name t2/table-name :model val)) (search.spec/specifications))]
+             (into {}
+                   (keep (fn [[p ds]]
+                           (when-let [ds (not-empty (into (sorted-set) (filter search-model? ds)))]
+                             [p ds])))
+                   table->descendants))))))

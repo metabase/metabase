@@ -11,7 +11,6 @@ import type {
   TemporalUnit,
 } from "metabase-types/api";
 
-import type { DEFAULT_FILTER_OPERATORS } from "./constants";
 import type { ColumnExtractionTag } from "./extractions";
 
 /**
@@ -339,8 +338,7 @@ export type ExcludeDateFilterOperator = "!=" | "is-null" | "not-null";
 
 export type TimeFilterOperator = ">" | "<" | "between" | "is-null" | "not-null";
 
-export type DefaultFilterOperatorName =
-  (typeof DEFAULT_FILTER_OPERATORS)[number];
+export type DefaultFilterOperator = "is-null" | "not-null";
 
 export type RelativeDateFilterUnit =
   | "minute"
@@ -446,7 +444,7 @@ export type TimeFilterParts = {
 };
 
 export type DefaultFilterParts = {
-  operator: DefaultFilterOperatorName;
+  operator: DefaultFilterOperator;
   column: ColumnMetadata;
 };
 
