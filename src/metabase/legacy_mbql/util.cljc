@@ -289,7 +289,7 @@
   "Transform `:in` and `:not-in` expressions to `:=` and `:!=` expressions."
   [m]
   (lib.util.match/replace m
-    [:is & args]
+    [:in & args]
     (into [:=] args)
 
     [:not-in & args]
