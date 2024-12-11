@@ -1,0 +1,80 @@
+.SidebarIcon {
+  color: var(--mb-color-text-light);
+  margin-right: 0.5rem;
+}
+
+.HideSearchIcon {
+  cursor: pointer;
+  padding: 0.5rem;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+
+  &.isHidden {
+    display: none;
+  }
+}
+
+.AddSnippetIcon {
+  color: var(--mb-color-brand);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+
+  &:hover {
+    background-color: var(--mb-color-bg-light);
+  }
+
+  &.isHidden {
+    display: none;
+  }
+}
+
+.SearchSnippetIcon {
+  cursor: pointer;
+  margin-right: 0.5rem;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+
+  &.isHidden {
+    display: none;
+  }
+}
+
+.SnippetTitle {
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}
+
+.MenuIconContainer {
+  display: flex;
+  padding: 1rem;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-brand);
+    background-color: var(--mb-color-bg-medium);
+  }
+}
+
+.SidebarFooter {
+  display: flex;
+  padding: 1rem;
+  font-size: 0.875em;
+  color: var(--mb-color-text-medium);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-brand);
+
+    .SidebarIcon {
+      color: var(--mb-color-brand);
+    }
+  }
+}
