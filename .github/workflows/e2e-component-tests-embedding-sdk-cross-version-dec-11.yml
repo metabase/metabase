@@ -1,13 +1,6 @@
-name: E2E Cross-version Component Tests for Embedding SDK
+name: E2E Cross-version Component Tests for Embedding SDK (December 11)
 
 on:
-  push:
-    branches:
-      - "release-**"
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    branches:
-      - "release-**"
   workflow_dispatch:
     inputs:
       target_ref:
