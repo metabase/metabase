@@ -237,12 +237,12 @@
            :status        "invalid"
            :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")})))
 
-(def ^{:arglists '([token])} fetch-token-status
-  "Locked version of `fetch-token-status` allowing one request at a time."
-  (let [lock (Object.)]
-    (fn [token]
-      (locking lock
-        (fetch-token-status* token)))))
+(let [lock (Object.)]
+  (defn fetch-token-status
+    "Locked version of `fetch-token-status` allowing one request at a time."
+    [token]
+    (locking lock
+      (fetch-token-status* token))))
 
 (declare token-valid-now?)
 

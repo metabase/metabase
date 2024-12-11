@@ -135,26 +135,28 @@ describe("scenarios > question > saved", () => {
 
     H.modal().within(() => {
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
-      cy.findByTestId("collection-picker-button").click();
+      cy.findByTestId("dashboard-and-collection-picker-button").click();
     });
 
     H.entityPickerModal().findByText("Create a new collection").click();
 
-    const NEW_COLLECTION = "Foo";
+    const NEW_COLLECTION = "My New collection";
     H.collectionOnTheGoModal().then(() => {
       cy.findByPlaceholderText("My new collection").type(NEW_COLLECTION);
       cy.findByText("Create").click();
     });
 
-    H.entityPickerModal().findByText("Select").click();
+    H.entityPickerModal()
+      .button(/Select/)
+      .click();
 
     H.modal().within(() => {
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
-      cy.findByTestId("collection-picker-button").should(
+      cy.findByTestId("dashboard-and-collection-picker-button").should(
         "have.text",
         NEW_COLLECTION,
       );
-      cy.findByText("Duplicate").click();
+      cy.button("Duplicate").click();
       cy.wait("@cardCreate");
     });
 
@@ -375,7 +377,7 @@ describe("scenarios > question > saved", () => {
       H.openQuestionActions();
       cy.findByTestId("move-button").click();
       H.entityPickerModal().within(() => {
-        clickTab && cy.findByRole("tab", { name: /Collections/ }).click();
+        clickTab && cy.findByRole("tab", { name: /Browse/ }).click();
         cy.findByText(newCollectionName).click();
         cy.button("Move").click();
       });
@@ -421,7 +423,7 @@ describe("scenarios > question > saved", () => {
 //http://127.0.0.1:9080/api/session/00000000-0000-0000-0000-000000000000/requests
 
 // Ensure the webhook tester docker container is running
-// docker run -p 9080:8080/tcp tarampampam/webhook-tester serve --create-session 00000000-0000-0000-0000-000000000000
+// docker run -p 9080:8080/tcp tarampampam/webhook-tester:1.1.0 serve --create-session 00000000-0000-0000-0000-000000000000
 describe(
   "scenarios > question > saved > alerts",
   { tags: ["@external"] },

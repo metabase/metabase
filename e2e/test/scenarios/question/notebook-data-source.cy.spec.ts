@@ -148,7 +148,7 @@ describe("scenarios > notebook > data source", () => {
           cy.findByText(tableName).click();
         });
         H.visualize();
-        H.saveQuestion("Beasts");
+        H.saveQuestionToCollection("Beasts");
 
         H.openNotebook();
         cy.findByTestId("data-step-cell").should("contain", tableName).click();

@@ -8,29 +8,34 @@ title: Embedded analytics SDK - config
 
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
-To use the SDK in your app, you need to import the `MetabaseProvider` component and provide it with a `config` object, like so:
+To use the SDK in your app, you need to import the `MetabaseProvider` component and provide it with an `authConfig` object, like so:
 
 ```typescript
-const config = defineEmbeddingSdkConfig({
+const authConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   authProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
 });
 
 export default function App() {
   return (
-    <MetabaseProvider config={config} theme={theme} className="optional-class">
+    <MetabaseProvider authConfig={authConfig} theme={theme} className="optional-class">
       Hello World!
     </MetabaseProvider>
   );
 }
 ```
 
-You can also pass additional objects to `MetabaseProvider`:
+You can also pass additional props to `MetabaseProvider`:
 
-- `config` (Required). Includes information about your Metabase.
+- `authConfig` (Required). Defines how to authenticate with Metabase.
 - `theme` (Optional) See [Appearance](./appearance.md).
 - `pluginsConfig` (Optional). See [Plugins](./plugins.md).
 - `eventHandlers` (Optional). See [Global event handlers](#global-event-handlers).
+- `className` (Optional). Classes to be added to the wrapper element.
+- `locale` (Optional). Defines the display language. Accepts an ISO language code such as `en` or `de`.
+- `loaderComponent` (Optional). A custom loader component to display while the SDK is loading.
+- `errorComponent` (Optional). A custom error component to display when the SDK encounters an error.
+- `allowConsoleLog` (Optional). If `true`, log messages will be printed to the console.
 
 ## Example `config` object passed to `MetabaseProvider`
 
@@ -38,18 +43,18 @@ You can also pass additional objects to `MetabaseProvider`:
 import React from "react";
 import {
   MetabaseProvider,
-  defineEmbeddingSdkConfig,
-  defineEmbeddingSdkTheme,
+  defineMetabaseAuthConfig,
+  defineMetabaseTheme,
 } from "@metabase/embedding-sdk-react";
 
-// Configuration
-const config = defineEmbeddingSdkConfig({
+// Configure authentication
+const authConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   authProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
 });
 
 // See the "Customizing appearance" section for more information
-const theme = defineEmbeddingSdkTheme({
+const theme = defineMetabaseTheme({
   // Optional: Specify a font to use from the set of fonts supported by Metabase
   fontFamily: "Lato",
 
@@ -64,7 +69,7 @@ const theme = defineEmbeddingSdkTheme({
 
 export default function App() {
   return (
-    <MetabaseProvider config={config} theme={theme} className="optional-class">
+    <MetabaseProvider authConfig={authConfig} theme={theme} className="optional-class">
       Hello World!
     </MetabaseProvider>
   );
@@ -91,7 +96,7 @@ const eventHandlers = {
 };
 
 return (
-  <MetabaseProvider config={config} eventHandlers={eventHandlers}>
+  <MetabaseProvider authConfig={authConfig} eventHandlers={eventHandlers}>
     {children}
   </MetabaseProvider>
 );

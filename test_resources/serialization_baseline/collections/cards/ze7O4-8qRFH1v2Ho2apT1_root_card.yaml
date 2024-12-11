@@ -26,6 +26,7 @@ serdes/meta:
   label: root_card
   model: Card
 archived_directly: false
-metabase_version: v1.48.1-SNAPSHOT (53cf083)
+dashboard_id: null
+metabase_version: v1.1.33-SNAPSHOT (a859933)
 source_card_id: null
 type: question
