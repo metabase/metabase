@@ -41,6 +41,7 @@
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
+   [metabase.test.util :as tu]
    [metabase.upload-test :as upload-test]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -311,25 +312,6 @@
         (is (= {:embedding_client client-string, :embedding_version version-string}
                (t2/select-one [:model/ViewLog :embedding_client :embedding_version] :model "card" :model_id (u/the-id card-1))))))))
 
-(defn- do-poll-until [^Long timeout-ms thunk]
-  (let [result-prom (promise)
-        _timeouter (future (Thread/sleep timeout-ms) (deliver result-prom ::timeout))
-        _runner (future (loop []
-                          (if-let [thunk-return (try (thunk) (catch Exception e e))]
-                            (deliver result-prom thunk-return)
-                            (recur))))
-        result @result-prom]
-    (cond (= result ::timeout) (throw (ex-info (str "Timeout after " timeout-ms "ms")
-                                               {:timeout-ms timeout-ms}))
-          (instance? Throwable result) (throw result)
-          :else result)))
-
-(defmacro ^:private poll-until
-  "A macro that continues to call the given body until it returns a truthy value or the timeout is reached.
-  Returns the truthy body, or re-throws any exception raised in body. Hence, this cannot be used to return nil, false, or a Throwable."
-  [timeout-ms & body]
-  `(do-poll-until ~timeout-ms (fn [] ~@body)))
-
 (deftest embedding-sdk-info-saves-query-execution
   (testing "GET /api/card with embedding headers set"
     (mt/with-temp [:model/Card card-1 {:name "Card 1"
@@ -343,9 +325,9 @@
                                                          "x-metabase-client-version" "2"}}})
       (is (=? {:embedding_client "client-B", :embedding_version "2"}
               ;; The query metadata is handled asynchronously, so we need to poll until it's available:
-              (poll-until 100
-                          (t2/select-one [:model/QueryExecution :embedding_client :embedding_version]
-                                         :card_id (u/the-id card-1))))))))
+              (tu/poll-until 100
+                             (t2/select-one [:model/QueryExecution :embedding_client :embedding_version]
+                                            :card_id (u/the-id card-1))))))))
 
 (deftest filter-by-bookmarked-test
   (testing "Filter by `bookmarked`"
@@ -1319,7 +1301,7 @@
 
 (deftest ^:parallel updating-a-card-that-doesnt-exist-should-give-a-404
   (is (= "Not found."
-         (mt/user-http-request :crowberto :put 404 (format "card/%d" Integer/MAX_VALUE)))))
+         (mt/user-http-request :crowberto :put 404 (format "card/%d" Integer/MAX_VALUE) {}))))
 
 (deftest test-that-we-can-edit-a-card
   (t2.with-temp/with-temp [:model/Card card {:name "Original Name"}]
@@ -3845,3 +3827,294 @@
                                     (< 0 (second (reverse row))))
                                   (get-in result [:data :rows]))]
                (first totals)))))))
+
+(deftest dashboard-internal-card-creation
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Collection {other-coll-id :id} {}
+                 :model/Dashboard {dash-id :id} {:collection_id coll-id}]
+    (testing "We can create a dashboard internal card"
+      (let [card-id (:id (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query)
+                                                                                  :dashboard_id dash-id)))]
+        (testing "We autoplace a dashboard card for the new question"
+          (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id))))
+    (testing "We can't create a dashboard internal card with a collection_id different that its dashboard's"
+      (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query)
+                                                               :dashboard_id dash-id
+                                                               :collection_id other-coll-id)))
+    (testing "... including `null` (the root collection id)"
+      (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query)
+                                                               :dashboard_id dash-id
+                                                               :collection_id nil)))
+    (testing "We can't create a dashboard internal card with a non-question `type`"
+      (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query)
+                                                               :dashboard_id dash-id
+                                                               :type "model")))
+    (testing "We can't create a dashboard internal card with a non-null :collection_position"
+      (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query)
+                                                               :dashboard_id dash-id
+                                                               :collection_position 5)))))
+
+(deftest dashboard-internal-card-updates
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Collection {other-coll-id :id} {}
+                 :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                 :model/Dashboard {other-dash-id :id} {}
+                 :model/Card {card-id :id} {:dashboard_id dash-id}
+                 :model/Card {other-card-id :id} {}]
+    (testing "We can update with `archived=true` or `archived=false`"
+      (is (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived true}))
+      (is (t2/select-one-fn :archived :model/Card card-id))
+      (is (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived false}))
+      (is (not (t2/select-one-fn :archived :model/Card card-id))))
+    (testing "we can update the name"
+      (is (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:name "foo"}))
+      (is (= "foo" (t2/select-one-fn :name :model/Card card-id))))
+    (testing "We can update with `dashboard_id` for a normal card."
+      (is (mt/user-http-request :crowberto :put 200 (str "card/" other-card-id) {:dashboard_id dash-id}))
+      (is (= dash-id (t2/select-one-fn :dashboard_id :model/Card :id other-card-id))))
+    (testing "We can update a DQ with a `dashboard_id`"
+      (is (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:dashboard_id other-dash-id}))
+      (is (nil? (t2/select-one-fn :collection_id :model/Card :id card-id))))
+    (testing "We can't update the `collection_id`"
+      (is (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:collection_id other-coll-id})))
+    (testing "We can't set the `type`"
+      (is (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:type "model"})))))
+
+(deftest dashboard-questions-get-autoplaced-on-unarchive-or-placement
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                 :model/Card {card-id :id} {}]
+    (let [dashcard-exists? #(t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id)]
+      ;; move it to the dashboard - now it has a dashcard (autoplacement)
+      (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:dashboard_id dash-id})
+      (is (dashcard-exists?))
+      ;; archive it and remove it from the dashboard
+      (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived true})
+      (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id dash-id)
+      ;; unarchive it, it gets autoplaced
+      (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived false})
+      (is (dashcard-exists?)))))
+
+(deftest moving-dashboard-questions
+  (testing "We can move a dashboard question to a collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id
+                                           :card_id      card-id}]
+      (is (=? {:collection_id coll-id
+               :dashboard_id  nil}
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:collection_id coll-id
+                                                                           :dashboard_id  nil})))
+      (is (= coll-id (t2/select-one-fn :collection_id :model/Card card-id)))
+      ;; the old dashboardcard is still there (we don't remove the card from the dashboard it was in)
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id))))
+  (testing "We can move a dashboard question to a collection and remove the old reference to it"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id
+                                           :card_id      card-id}]
+      (is (=? {:collection_id coll-id
+               :dashboard_id  nil}
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:collection_id coll-id
+                                                                                                        :dashboard_id  nil})))
+      (is (= coll-id (t2/select-one-fn :collection_id :model/Card card-id)))
+      ;; we remove the card from the dashboard it was in
+      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+  (testing "We can move a question from a collection to a dashboard it is already in"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id dash-id
+                                           :card_id      card-id}]
+      (is (=? {:collection_id coll-id
+               :dashboard_id  dash-id}
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id})))))
+  (testing "We can move a question from a collection to a dashboard it is NOT already in"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id}
+                   :model/Card {card-id :id} {}]
+      (is (=? {:collection_id coll-id
+               :dashboard_id  dash-id}
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id})))
+      (is (=? {:dashboard_id dash-id :card_id card-id}
+              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+  (testing "We can move a question from a collection to a dashboard with tabs"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/DashboardTab {dash-tab-id :id} {:dashboard_id dash-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :dashboard_tab_id dash-tab-id}
+                   :model/Card {card-id :id} {}]
+      (is (=? {:collection_id coll-id
+               :dashboard_id  dash-id}
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id})))
+      (is (=? {:dashboard_id dash-id :card_id card-id :dashboard_tab_id dash-tab-id}
+              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+  (testing "We can move a question from one dashboard to another"
+    (mt/with-temp [:model/Collection {source-coll-id :id} {}
+                   :model/Collection {dest-coll-id :id} {}
+                   :model/Dashboard {source-dash-id :id} {:collection_id source-coll-id}
+                   :model/Dashboard {dest-dash-id :id} {:collection_id dest-coll-id}
+                   :model/Card {card-id :id} {:dashboard_id source-dash-id}
+                   :model/DashboardCard _ {:dashboard_id source-dash-id :card_id card-id}]
+      (is (=? {:collection_id dest-coll-id
+               :dashboard_id  dest-dash-id}
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dest-dash-id})))
+      (testing "old dashcards are deleted, a new one is created"
+        (is (=? #{dest-dash-id}
+                (set (map :dashboard_id (t2/select :model/DashboardCard :card_id card-id))))))))
+  (testing "We can't move a question from a collection to a dashboard if it's in another dashboard"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Dashboard {other-dash-id :id} {}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id other-dash-id
+                                           :card_id      card-id}]
+      (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id})))
+  (testing "... unless we pass `delete_old_dashcards=true`"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Dashboard {other-dash-id :id} {}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id other-dash-id
+                                           :card_id      card-id}]
+      (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
+      (is (= #{dash-id} (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id)))))
+
+  (testing "We can't move a question from a collection to a dashboard if it's in another dashboard AS A SERIES"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Dashboard {other-dash-id :id} {}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard {dc-id :id} {:dashboard_id other-dash-id}
+                   :model/DashboardCardSeries _ {:dashboardcard_id dc-id :card_id card-id}]
+      (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id})
+      (testing "... again, unless we pass `delete_old_dashcards=true`"
+        (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id}))))
+
+  (testing "And, if we don't have permissions on the other dashboard, it fails even when we pass `delete_old_dashcards`"
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [:model/Collection {forbidden-coll-id :id} {}
+                     :model/Collection {_coll-id :id} {}
+                     :model/Dashboard {other-dash-id :id} {:collection_id forbidden-coll-id}
+                     :model/Dashboard {dash-id :id} {}
+                     :model/Card {card-id :id} {}
+                     :model/DashboardCard _ {:dashboard_id other-dash-id :card_id card-id}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
+        (testing "We get a 403 back, because we don't have permissions"
+          (is (= "You don't have permissions to do that."
+                 ;; regardless of the `delete_old_dashcards` value, same response
+                 (mt/user-http-request :rasta :put 403 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
+                 (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id}))))
+        (testing "The card is still in the old dashboard and not the new one"
+          (is (= #{other-dash-id} (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id)))))))
+  (testing "The above includes when a card is 'in' a dashboard in a series"
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [:model/Collection {forbidden-coll-id :id} {}
+                     :model/Collection {_coll-id :id} {}
+                     :model/Dashboard {other-dash-id :id other-dash-name :name} {:collection_id forbidden-coll-id}
+                     :model/Dashboard {dash-id :id} {}
+                     :model/Card {card-id :id} {}
+                     :model/DashboardCard {dc-id :id} {:dashboard_id other-dash-id}
+                     :model/DashboardCardSeries _ {:dashboardcard_id dc-id :card_id card-id}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
+        (testing "We get a 403 back, because we don't have permissions"
+          (is (= "You don't have permissions to do that."
+                 ;; regardless of the `delete_old_dashcards` value, same response
+                 (mt/user-http-request :rasta :put 403 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
+                 (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id}))))
+        (testing "The card is still in the old dashboard and not the new one"
+          (is (= [{:name other-dash-name :collection_id forbidden-coll-id :id other-dash-id}]
+                 (:in_dashboards (t2/hydrate (t2/select-one :model/Card :id card-id) :in_dashboards))))
+          (is (nil? (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id)))))))
+  (testing "Moving an archived card to a Dashboard unarchives and autoplaces it"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Card {card-id :id} {:archived true}]
+      ;; move it to a dashboard
+      (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id})
+      (testing "we actually did the change (i.e. it's a DQ now)"
+        (is (= dash-id (:dashboard_id (t2/select-one :model/Card :id card-id)))))
+      (testing "it got unarchived"
+        (is (not (:archived (t2/select-one :model/Card :id card-id)))))
+      (testing "it got autoplaced"
+        (is (= dash-id (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] :card_id card-id))))))
+  (testing "You can't mark a card as archived *and* move it to a dashboard"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Card {card-id :id} {}]
+      (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id :archived true}))))
+
+(deftest we-can-get-a-list-of-dashboards-a-card-appears-in
+  (testing "a card in one dashboard"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Dashboard"}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+      (is (= [{:id dash-id :name "My Dashboard"}]
+             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
+
+  (testing "card in no dashboards"
+    (mt/with-temp [:model/Card {card-id :id} {}]
+      (is (= []
+             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
+
+  (testing "card in multiple dashboards"
+    (mt/with-temp [:model/Dashboard {dash-id1 :id} {:name "Dashboard One"}
+                   :model/Dashboard {dash-id2 :id} {:name "Dashboard Two"}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id dash-id1 :card_id card-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id2 :card_id card-id}]
+      (is (= [{:id dash-id1 :name "Dashboard One"}
+              {:id dash-id2 :name "Dashboard Two"}]
+             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
+
+  (testing "card in the same dashboard twice"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Dashboard"}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+      (is (= [{:id dash-id :name "My Dashboard"}]
+             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
+
+  (testing "If it's in the dashboard in a series, it's counted as 'in' the dashboard"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Dashboard"}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard {dc-id :id} {:dashboard_id dash-id}
+                   :model/DashboardCardSeries _ {:dashboardcard_id dc-id :card_id card-id}]
+      (is (= [{:id dash-id :name "My Dashboard"}]
+             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
+
+  (testing "nonexistent card"
+    (mt/user-http-request :rasta :get 404 "card/invalid-id/dashboards"))
+
+  (testing "Don't have permissions on all the dashboards involved"
+    (mt/with-temp [:model/Collection {allowed-coll-id :id} {:name "The allowed collection"}
+                   :model/Collection {forbidden-coll-id :id} {:name "The forbidden collection"}
+                   :model/Dashboard {allowed-dash-id :id} {:name "The allowed dashboard" :collection_id allowed-coll-id}
+                   :model/Dashboard {forbidden-dash-id :id} {:name "The forbidden dashboard" :collection_id forbidden-coll-id}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:card_id card-id :dashboard_id allowed-dash-id}
+                   :model/DashboardCard _ {:card_id card-id :dashboard_id forbidden-dash-id}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
+      (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :get 403 (str "card/" card-id "/dashboards")))))))
+
+(deftest dashboard-questions-have-hydrated-dashboard-details
+  (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Dashboard"}
+                 :model/Card {card-id :id} {:dashboard_id dash-id}
+                 :model/ModerationReview {mr-id :id} {:moderated_item_id   dash-id
+                                                      :moderated_item_type "dashboard"
+                                                      :moderator_id        (mt/user->id :rasta)
+                                                      :most_recent         true
+                                                      :status              "verified"
+                                                      :text                "lookin good"}]
+    (is (= {:name "My Dashboard"
+            :id dash-id
+            :moderation_status "verified"}
+           (-> (mt/user-http-request :rasta :get 200 (str "card/" card-id))
+               :dashboard)))
+    (t2/delete! :model/ModerationReview mr-id)
+    (is (= {:name "My Dashboard"
+            :id dash-id
+            :moderation_status nil}
+           (-> (mt/user-http-request :rasta :get 200 (str "card/" card-id))
+               :dashboard)))))
