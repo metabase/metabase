@@ -224,13 +224,6 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
 });
 
 describe("issue 51020", () => {
-  beforeEach(() => {
-    H.restore();
-    H.restore("postgres-writable");
-    cy.signInAsAdmin();
-    H.setActionsEnabledForDB(SAMPLE_DB_ID);
-  });
-
   function setupBasicActionsInModel() {
     H.questionInfoButton().click();
     H.modal().findByText("See more about this model").click();
@@ -276,6 +269,10 @@ describe("issue 51020", () => {
 
   describe("when primary key is called 'id'", () => {
     beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.setActionsEnabledForDB(SAMPLE_DB_ID);
+
       H.visitModel(ORDERS_MODEL_ID);
       setupBasicActionsInModel();
       setupDashboard({
@@ -331,6 +328,9 @@ describe("issue 51020", () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.intercept("POST", "/api/card").as("createCard");
       cy.intercept("GET", "/api/card/*").as("getCard");
+
+      H.restore("postgres-writable");
+      cy.signInAsAdmin();
 
       dropTemporaryTable();
       createTemporaryTable();
