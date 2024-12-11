@@ -1239,7 +1239,7 @@
         (qp.util.transformations.nest-breakouts/finest-temporal-breakout-index breakouts 2)
 
         sort-index (or finest-temporal-index
-                          (dec (count breakouts)))
+                       (dec (count breakouts)))
         sort-name (first (nth (seq id) sort-index))
         default-sort {(sort-lookup id sort-name) 1}
         user-sort (when order-by
