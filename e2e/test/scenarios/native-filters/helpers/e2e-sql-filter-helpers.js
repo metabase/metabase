@@ -1,9 +1,4 @@
-import {
-  filterWidget,
-  focusNativeEditor,
-  nativeEditor,
-  popover,
-} from "e2e/support/helpers";
+import { NativeEditor, filterWidget, popover } from "e2e/support/helpers";
 
 // FILTER TYPES
 
@@ -97,9 +92,7 @@ export function runQuery(xhrAlias = "dataset") {
  * @param {string} query
  */
 export function enterParameterizedQuery(query, options = {}) {
-  focusNativeEditor();
-  nativeEditor().type(query, {
-    parseSpecialCharSequences: false,
+  NativeEditor.focus().type(query, {
     ...options,
   });
 }

@@ -480,7 +480,7 @@ describe("issue 30165", () => {
 
   it("should not autorun native queries after updating a question (metabase#30165)", () => {
     H.openNativeEditor();
-    H.focusNativeEditor().type("SELECT * FROM ORDERS");
+    H.NativeEditor.focus().type("SELECT * FROM ORDERS");
     H.queryBuilderHeader().findByText("Save").click();
     cy.findByTestId("save-question-modal").within(() => {
       cy.findByLabelText("Name").clear().type("Q1");
@@ -489,14 +489,14 @@ describe("issue 30165", () => {
     cy.wait("@createQuestion");
     cy.button("Not now").click();
 
-    H.focusNativeEditor().type(" WHERE TOTAL < 20");
+    H.NativeEditor.focus().type(" WHERE TOTAL < 20");
     H.queryBuilderHeader().findByText("Save").click();
     cy.findByTestId("save-question-modal").within(modal => {
       cy.findByText("Save").click();
     });
     cy.wait("@updateQuestion");
 
-    H.focusNativeEditor().type(" LIMIT 10");
+    H.NativeEditor.focus().type(" LIMIT 10");
     H.queryBuilderHeader().findByText("Save").click();
     cy.findByTestId("save-question-modal").within(modal => {
       cy.findByText("Save").click();
@@ -655,7 +655,7 @@ describe("issue 43216", () => {
     cy.findByTestId("native-query-editor-container")
       .findByText("Open Editor")
       .click();
-    H.focusNativeEditor().should("be.visible").type(" , 4 as D");
+    H.NativeEditor.focus().type(" , 4 as D");
     H.saveSavedQuestion();
 
     cy.log("Assert updated metadata in target question");

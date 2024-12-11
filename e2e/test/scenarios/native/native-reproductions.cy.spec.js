@@ -9,10 +9,6 @@ import {
 
 const { PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
 
-// cy.realType does not have an option to not parse special characters
-const LEFT_BRACKET = "{{}";
-const DOUBLE_LEFT_BRACKET = `${LEFT_BRACKET}${LEFT_BRACKET}`;
-
 describe("issue 12439", () => {
   const nativeQuery = `
   SELECT "PRODUCTS__via__PRODUCT_ID"."CATEGORY" AS "CATEGORY",
@@ -72,11 +68,8 @@ describe("issue 15029", () => {
 
   it("should allow dots in the variable reference (metabase#15029)", () => {
     H.openNativeEditor();
-    cy.realType(
-      `select * from products where RATING = ${DOUBLE_LEFT_BRACKET}number.of.stars}}`,
-      {
-        parseSpecialCharSequences: false,
-      },
+    H.NativeEditor.type(
+      "select * from products where RATING = {{number.of.stars}}",
     );
 
     cy.findAllByText("Variable name").parent().findByText("number.of.stars");
@@ -94,7 +87,7 @@ describe("issue 16886", () => {
 
   it("shouldn't remove parts of the query when choosing 'Run selected text' (metabase#16886)", () => {
     H.openNativeEditor();
-    cy.realType(ORIGINAL_QUERY);
+    H.NativeEditor.type(ORIGINAL_QUERY);
     cy.realPress("Home");
     Cypress._.range(SELECTED_TEXT.length).forEach(() =>
       cy.realPress(["Shift", "ArrowRight"]),
@@ -137,11 +130,10 @@ describe("issue 16914", () => {
       .click();
     cy.button("Done").click();
 
-    H.focusNativeEditor();
-    cy.realType(FAILING_PIECE);
+    H.NativeEditor.focus().type(FAILING_PIECE);
     H.runNativeQuery();
 
-    H.focusNativeEditor();
+    H.NativeEditor.focus();
     cy.realPress("End");
     Cypress._.range(FAILING_PIECE.length).forEach(() =>
       cy.realPress(["Shift", "ArrowLeft"]),
@@ -196,13 +188,13 @@ describe("issue 17060", () => {
   });
 
   it("should not render duplicated columns (metabase#17060)", () => {
-    H.focusNativeEditor();
+    H.NativeEditor.focus();
     cy.realPress("Home");
     Cypress._.range(SECTION.length).forEach(() => cy.realPress("ArrowRight"));
     Cypress._.range(SELECTED_TEXT.length).forEach(() =>
       cy.realPress(["Shift", "ArrowRight"]),
     );
-    cy.realType("RATING");
+    H.NativeEditor.type("RATING");
     runQuery();
 
     cy.findByTestId("query-visualization-root").within(() => {
@@ -238,8 +230,7 @@ describe("issue 18148", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(dbName).click();
 
-    H.focusNativeEditor();
-    cy.realType("select foo");
+    H.NativeEditor.focus().type("select foo");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
@@ -361,24 +352,105 @@ describe("issue 20625", { tags: "@quarantine" }, () => {
     cy.signInAsAdmin();
     H.updateSetting("native-query-autocomplete-match-style", "prefix");
     cy.signInAsNormalUser();
-    cy.intercept("GET", "/api/database/*/autocomplete_suggestions**").as(
-      "autocomplete",
-    );
   });
 
   // realpress messes with cypress 13
-  it("should continue to request more prefix matches (metabase#20625)", () => {
+  it("should continue to request more prefix matches from the server when the limit was hit (metabase#20625)", () => {
+    cy.intercept("GET", "/api/database/*/autocomplete_suggestions**", {
+      statusCode: 200,
+      body: [
+        // This result has 50 items, which is the limit
+        // as set by the backend.
+        // This is needed to trigger the second autocomplete.
+        ["ORDERS", "Table"],
+        ["PEOPLE", "Table"],
+        ["REVIEWS", "Table"],
+        ["ACTIVE_SUBSCRIPTION", "ACCOUNTS :type/Boolean :type/Category"],
+        ["ADDRESS", "PEOPLE :type/Text"],
+        ["BIRTH_DATE", "PEOPLE :type/Date"],
+        ["BUTTON_LABEL", "ANALYTIC_EVENTS :type/Text :type/Category"],
+        ["CANCELED_AT", "ACCOUNTS :type/DateTime :type/CancelationTimestamp"],
+        ["CATEGORY", "PRODUCTS :type/Text :type/Category"],
+        ["CREATED_AT", "ACCOUNTS :type/DateTime :type/CreationTimestamp"],
+        ["CREATED_AT", "ORDERS :type/DateTime :type/CreationTimestamp"],
+        ["CREATED_AT", "PEOPLE :type/DateTime :type/CreationTimestamp"],
+        ["CREATED_AT", "PRODUCTS :type/DateTime :type/CreationTimestamp"],
+        ["CREATED_AT", "REVIEWS :type/DateTime :type/CreationTimestamp"],
+        ["DATE_RECEIVED", "FEEDBACK :type/DateTime"],
+        ["DATE_RECEIVED", "INVOICES :type/DateTime"],
+        ["EAN", "PRODUCTS :type/Text"],
+        ["EMAIL", "ACCOUNTS :type/Text :type/Email"],
+        ["EMAIL", "FEEDBACK :type/Text :type/Email"],
+        ["EMAIL", "PEOPLE :type/Text :type/Email"],
+        ["EVENT", "ANALYTIC_EVENTS :type/Text :type/Category"],
+        ["EXPECTED_INVOICE", "INVOICES :type/Boolean :type/Category"],
+        ["FIRST_NAME", "ACCOUNTS :type/Text :type/Name"],
+        ["LAST_NAME", "ACCOUNTS :type/Text :type/Name"],
+        ["LATITUDE", "ACCOUNTS :type/Float :type/Latitude"],
+        ["LATITUDE", "PEOPLE :type/Float :type/Latitude"],
+        ["LEGACY_PLAN", "ACCOUNTS :type/Boolean :type/Category"],
+        ["LONGITUDE", "ACCOUNTS :type/Float :type/Longitude"],
+        ["LONGITUDE", "PEOPLE :type/Float :type/Longitude"],
+        ["NAME", "PEOPLE :type/Text :type/Name"],
+        ["PAGE_URL", "ANALYTIC_EVENTS :type/Text :type/URL"],
+        ["PAYMENT", "INVOICES :type/Float"],
+        ["PRICE", "PRODUCTS :type/Float"],
+        ["RATING_MAPPED", "FEEDBACK :type/Text :type/Category"],
+        ["REVIEWER", "REVIEWS :type/Text"],
+        ["SEATS", "ACCOUNTS :type/Integer"],
+        ["SOURCE", "ACCOUNTS :type/Text :type/Source"],
+        ["SOURCE", "PEOPLE :type/Text :type/Source"],
+        ["STATE", "PEOPLE :type/Text :type/State"],
+        ["TIMESTAMP", "ANALYTIC_EVENTS :type/DateTime"],
+        ["TITLE", "PRODUCTS :type/Text :type/Title"],
+        ["TRIAL_CONVERTED", "ACCOUNTS :type/Boolean :type/Category"],
+        ["TRIAL_ENDS_AT", "ACCOUNTS :type/DateTime"],
+        ["USER_ID", "ORDERS :type/Integer :type/FK"],
+        ["VENDOR", "PRODUCTS :type/Text :type/Company"],
+        ["VENDOR_ID", "PRODUCTS :type/Integer :type/FK"],
+        ["USER_NAME", "PRODUCTS :type/Text :type/Name"],
+        ["TEST_COLUMN_1", "PRODUCTS :type/Text :type/Name"],
+        ["TEST_COLUMN_2", "PRODUCTS :type/Text :type/Name"],
+        ["TEST_COLUMN_3", "PRODUCTS :type/Text :type/Name"],
+      ],
+    }).as("autocomplete");
+
     H.openNativeEditor();
-    cy.realType("s");
+    H.NativeEditor.type("e");
 
     // autocomplete_suggestions?prefix=s
     cy.wait("@autocomplete");
 
-    // can't use cy.type because it does not simulate the bug
-    cy.realPress("o");
+    H.NativeEditor.type("o");
 
     // autocomplete_suggestions?prefix=so
     cy.wait("@autocomplete");
+  });
+
+  it("should not continue to request more prefix matches from the server when the limit was not hit (metabase#20625)", () => {
+    cy.intercept("GET", "/api/database/*/autocomplete_suggestions**", {
+      statusCode: 200,
+      body: [
+        // This result has less 50 items, which is under the limit
+        // as set by the backend.
+        // It will not be necessary to trigger the second autocomplete.
+        ["ORDERS", "Table"],
+        ["PEOPLE", "Table"],
+        ["REVIEWS", "Table"],
+        ["ACTIVE_SUBSCRIPTION", "ACCOUNTS :type/Boolean :type/Category"],
+        ["ADDRESS", "PEOPLE :type/Text"],
+      ],
+    }).as("autocomplete");
+
+    H.openNativeEditor();
+    H.NativeEditor.type("e");
+
+    // autocomplete_suggestions?prefix=s
+    cy.wait("@autocomplete");
+
+    H.NativeEditor.type("o");
+
+    cy.get("@autocomplete.all").should("have.length", 1);
   });
 });
 
@@ -395,8 +467,7 @@ describe("issue 21034", () => {
   });
 
   it("should not invoke API calls for autocomplete twice in a row (metabase#18148)", () => {
-    H.focusNativeEditor();
-    cy.realType("p");
+    H.NativeEditor.type("p");
 
     // Wait until another explicit autocomplete is triggered
     // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
@@ -466,9 +537,8 @@ describe("issue 21597", { tags: "@external" }, () => {
     H.openNativeEditor({
       databaseName,
     });
-    cy.realType(
-      `SELECT COUNT(*) FROM PRODUCTS WHERE ${DOUBLE_LEFT_BRACKET}FILTER}}`,
-    );
+
+    H.NativeEditor.type("SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}");
 
     cy.findByTestId("variable-type-select").click();
     H.popover().within(() => {
@@ -585,11 +655,13 @@ describe("issue 34330", () => {
 
   it("should only call the autocompleter with all text typed (metabase#34330)", () => {
     H.openNativeEditor();
-    cy.realType("USER");
+    H.NativeEditor.type("USER", { delay: 0 });
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
-      expect(url.searchParams.get("substring")).to.equal("USER");
+      expect(url.searchParams.get("substring")).to.equal("USER", {
+        delay: 0,
+      });
     });
 
     // only one call to the autocompleter should have been made
@@ -598,7 +670,7 @@ describe("issue 34330", () => {
 
   it("should call the autocompleter eventually, even when only 1 character was typed (metabase#34330)", () => {
     H.openNativeEditor();
-    cy.realType("U");
+    H.NativeEditor.type("U");
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
@@ -609,9 +681,9 @@ describe("issue 34330", () => {
     cy.get("@autocomplete.all").should("have.length", 1);
   });
 
-  it("should call the autocompleter when backspacing to a 1-character prefix(metabase#34330)", () => {
+  it("should call the autocompleter when backspacing to a 1-character prefix (metabase#34330)", () => {
     H.openNativeEditor();
-    cy.realType("SE{backspace}");
+    H.NativeEditor.type("SE{backspace}");
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
@@ -640,18 +712,17 @@ describe("issue 35344", () => {
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
 
     // make sure normal undo still works
-    H.focusNativeEditor();
-    cy.realType("--");
-    expect(H.focusNativeEditor().findByText("--")).to.exist;
+    H.NativeEditor.focus().type("--");
+    expect(H.NativeEditor.focus().findByText("--")).to.exist;
 
-    H.focusNativeEditor();
+    H.NativeEditor.focus();
     cy.realPress(["Meta", "z"]);
-    H.focusNativeEditor().findByText("--").should("not.exist");
+    H.NativeEditor.focus().findByText("--").should("not.exist");
 
     // more undoing does not change to empty editor
-    H.focusNativeEditor();
+    H.NativeEditor.focus();
     cy.realPress(["Meta", "z"]);
-    expect(H.focusNativeEditor().findByText("select")).to.exist;
+    expect(H.NativeEditor.focus().findByText("select")).to.exist;
   });
 });
 
@@ -696,8 +767,7 @@ describe("issue 35785", () => {
     cy.findByTestId("native-query-editor-container")
       .findByTestId("visibility-toggler")
       .click();
-    H.focusNativeEditor();
-    cy.realType("{backspace}4");
+    H.NativeEditor.type("{backspace}4");
 
     cy.findByTestId("qb-header").findByRole("button", { name: "Save" }).click();
 
@@ -750,7 +820,7 @@ describe("issue 22991", () => {
     H.openNativeEditor();
     cy.get("@questionId").then(questionId => {
       // can't use cy.type because it does not simulate the bug
-      cy.realType(`select * from ${DOUBLE_LEFT_BRACKET}#${questionId}`);
+      H.NativeEditor.type(`select * from {{${questionId}}}`);
     });
 
     cy.get("main").should(

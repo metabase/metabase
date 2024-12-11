@@ -3,6 +3,7 @@ export * from "./activity";
 export * from "./alert";
 export * from "./api";
 export * from "./api-key";
+export * from "./autocomplete";
 export * from "./automagic-dashboards";
 export * from "./bookmark";
 export * from "./bug-report";

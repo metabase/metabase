@@ -68,14 +68,14 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     H.getDashboardCard().realHover();
     H.getDashboardCardMenu().click();
     H.popover().findByText("Edit question").click();
-    H.nativeEditor().should("be.visible");
+    H.NativeEditor.get().should("be.visible");
 
     H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
     H.getDashboardCard().findByText("Orders SQL").click();
     cy.findByTestId("native-query-top-bar")
       .findByText("This question is written in SQL.")
       .should("be.visible");
-    H.nativeEditor().should("not.be.visible");
+    H.NativeEditor.get().should("not.be.visible");
   });
 
   it("should display a back to the dashboard button in table x-ray dashboards", () => {
