@@ -84,6 +84,7 @@
 
 (t2/define-before-insert :model/Revision
   [{:keys [model model_id] :as revision}]
+  ;; obtain a lock on the existing revisions for this entity to prevent concurrent inserts of new revisions
   (t2/query {:select [:id]
              :from [:revision]
              :where [:and
