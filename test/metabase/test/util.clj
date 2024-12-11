@@ -1516,3 +1516,28 @@
   [bindings & body]
   `(fn [{:keys ~(mapv (comp symbol name) bindings)}]
      ~@body))
+
+(defn do-poll-until [^Long timeout-ms thunk]
+  (let [result-prom (promise)
+        _timeouter (future (Thread/sleep timeout-ms) (deliver result-prom ::timeout))
+        _runner (future (loop []
+                          (if-let [thunk-return (try (thunk) (catch Exception e e))]
+                            (deliver result-prom thunk-return)
+                            (recur))))
+        result @result-prom]
+    (cond (= result ::timeout) (throw (ex-info (str "Timeout after " timeout-ms "ms")
+                                               {:timeout-ms timeout-ms}))
+          (instance? Throwable result) (throw result)
+          :else result)))
+
+(defmacro poll-until
+  "A macro that continues to call the given body until it returns a truthy value or the timeout is reached.
+  Returns the truthy body, or re-throws any exception raised in body.
+
+  Hence, this cannot return nil, false, or a Throwable. [[thunk]] can check for those instead.
+
+  Pro tip: wrap your body with `time` macro to get a feel for how many calls to [[poll-body]] are made."
+  [timeout-ms & body]
+  `(do-poll-until
+    ~timeout-ms
+    (fn ~'poll-body [] ~@body)))

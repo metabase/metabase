@@ -42,7 +42,7 @@ export function useDefaultFilter({
   return {
     operator,
     availableOptions,
-    getFilterClause: (operator: Lib.DefaultFilterOperatorName | undefined) =>
+    getFilterClause: (operator: Lib.DefaultFilterOperator | undefined) =>
       getFilterClause(operator, column),
     setOperator,
   };

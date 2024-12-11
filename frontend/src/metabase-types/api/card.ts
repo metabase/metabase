@@ -2,7 +2,7 @@ import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
-import type { DashCardId, DashboardId } from "./dashboard";
+import type { DashCardId, Dashboard, DashboardId } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
@@ -47,6 +47,9 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   collection?: Collection | null;
   collection_id: number | null;
   collection_position: number | null;
+  dashboard: Pick<Dashboard, "id" | "name"> | null;
+  dashboard_id: DashboardId | null;
+  dashboard_count: number | null;
 
   result_metadata: Field[];
   moderation_reviews?: ModerationReview[];
@@ -342,11 +345,13 @@ export interface UpdateCardRequest {
   archived?: boolean;
   enable_embedding?: boolean;
   embedding_params?: EmbeddingParameters;
-  collection_id?: CollectionId;
+  collection_id?: CollectionId | null;
+  dashboard_id?: DashboardId | null;
   collection_position?: number;
   result_metadata?: Field[];
   cache_ttl?: number;
   collection_preview?: boolean;
+  delete_old_dashcards?: boolean;
 }
 
 export type UpdateCardKeyRequest<PropertyKey extends keyof UpdateCardRequest> =

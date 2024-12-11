@@ -12,6 +12,7 @@ on:
         options:
           - master
           - release-x.51.x
+          - release-x.52.x
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because
@@ -255,7 +256,7 @@ jobs:
         run: |
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
           # Please keep the value in sync with `inputs.branch`'s release branch
-          npm publish --tag ${{fromJson('{"master": "nightly", "release-x.51.x": "51-stable"}')[inputs.branch]}}
+          npm publish --tag ${{fromJson('{"master": "nightly", "release-x.51.x": "51-stable", "release-x.52.x": "52-stable"}')[inputs.branch]}}
 
       - name: Add `latest` tag to the latest release branch (`release-x.51.x`) deployment
         if: ${{ inputs.branch == 'release-x.51.x' }}

@@ -277,6 +277,14 @@
        [:>= col-default-bucket lower-bound]
        [:<  col-default-bucket upper-bound]])))
 
+(defn desugar-if
+  "Transform a `:if` expression to an `:case` expression."
+  [m]
+  (lib.util.match/replace
+    m
+    [:if & args]
+    (into [:case] args)))
+
 (defn desugar-does-not-contain
   "Rewrite `:does-not-contain` filter clauses as simpler `[:not [:contains ...]]` clauses.
 
@@ -427,6 +435,7 @@
       simplify-compound-filter
       desugar-temporal-extract
       desugar-during
+      desugar-if
       maybe-desugar-expression))
 
 (defmulti ^:private negate* first)
@@ -791,6 +800,11 @@
 
     :else
     x))
+
+(defn field-options
+  "Returns options in a `:field`, `:expression`, or `:aggregation` clause."
+  [[_ _ opts]]
+  opts)
 
 (mu/defn update-field-options :- mbql.s/Reference
   "Like [[clojure.core/update]], but for the options in a `:field`, `:expression`, or `:aggregation` clause."

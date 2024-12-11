@@ -1,5 +1,6 @@
 import type { Ace } from "ace-builds";
 import * as ace from "ace-builds/src-noconflict/ace";
+import cx from "classnames";
 import * as React from "react";
 import type { ICommand, IMarker } from "react-ace";
 import AceEditor from "react-ace";
@@ -11,7 +12,7 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import type { IconName } from "metabase/ui";
+import { Box, Flex, type IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/v1/expressions";
 import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
@@ -36,11 +37,7 @@ import { ExpressionEditorHelpText } from "../ExpressionEditorHelpText";
 import { ExpressionEditorSuggestions } from "../ExpressionEditorSuggestions";
 import ExpressionMode from "../ExpressionMode";
 
-import {
-  EditorContainer,
-  EditorEqualsSign,
-  ErrorMessageContainer,
-} from "./ExpressionEditorTextfield.styled";
+import ExpressionEditorTextfieldS from "./ExpressionEditorTextfield.module.css";
 
 ace.config.set("basePath", "/assets/ui/");
 ace.config.set("useStrictCSP", true);
@@ -787,13 +784,19 @@ class ExpressionEditorTextfieldInner extends React.Component<
           open={isFocused}
           ref={this.popupMenuTarget}
         >
-          <EditorContainer
-            isFocused={isFocused}
-            hasError={Boolean(errorMessage)}
+          <Flex
+            className={cx(
+              "expression-editor-textfield",
+              ExpressionEditorTextfieldS.EditorContainer,
+              {
+                [ExpressionEditorTextfieldS.isFocused]: isFocused,
+                [ExpressionEditorTextfieldS.hasError]: errorMessage,
+              },
+            )}
             ref={this.suggestionTarget}
             data-testid="expression-editor-textfield"
           >
-            <EditorEqualsSign>=</EditorEqualsSign>
+            <Box className={ExpressionEditorTextfieldS.EditorEqualsSign}>=</Box>
             <AceEditor
               commands={this.commands}
               mode="text"
@@ -811,10 +814,12 @@ class ExpressionEditorTextfieldInner extends React.Component<
               onCursorChange={this.handleCursorChange}
               width="100%"
             />
-          </EditorContainer>
+          </Flex>
         </ExpressionEditorSuggestions>
         {errorMessage && hasChanges && (
-          <ErrorMessageContainer>{errorMessage.message}</ErrorMessageContainer>
+          <Box className={ExpressionEditorTextfieldS.ErrorMessageContainer}>
+            {errorMessage.message}
+          </Box>
         )}
         <ExpressionEditorHelpText
           target={this.helpTextTarget}
