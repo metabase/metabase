@@ -1,25 +1,9 @@
-import type * as React from "react";
 import { useState } from "react";
 import _ from "underscore";
 
-import { ChartSettingNumericInput } from "./ChartSettingInputNumeric.styled";
-import type { ChartSettingWidgetProps } from "./types";
+import { NumberInput, Text } from "metabase/ui";
 
-const ALLOWED_CHARS = [
-  "0",
-  "1",
-  "2",
-  "3",
-  "4",
-  "5",
-  "6",
-  "7",
-  "8",
-  "9",
-  ".",
-  "-",
-  "e",
-];
+import type { ChartSettingWidgetProps } from "./types";
 
 // Note: there are more props than these that are provided by the viz settings
 // code, we just don't have types for them here.
@@ -34,41 +18,19 @@ export const ChartSettingInputNumeric = ({
   onChange,
   value,
   options,
-  ...props
+  title,
 }: ChartSettingInputProps) => {
-  const [internalValue, setInternalValue] = useState(value?.toString() ?? "");
+  const [inputValue, setInputValue] = useState<number | "">(value ?? "");
 
   return (
-    <ChartSettingNumericInput
-      type="text"
-      {..._.omit(props, "onChangeSettings")}
-      error={internalValue !== "" && isNaN(Number(internalValue))}
-      value={internalValue}
-      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-        const everyCharValid = e.target.value
-          .split("")
-          .every(char => ALLOWED_CHARS.includes(char));
-
-        if (everyCharValid) {
-          setInternalValue(e.target.value);
-        }
-      }}
-      onBlur={(e: React.ChangeEvent<HTMLInputElement>) => {
-        let num = e.target.value !== "" ? Number(e.target.value) : Number.NaN;
-        if (options?.isInteger) {
-          num = Math.round(num);
-        }
-        if (options?.isNonNegative && num < 0) {
-          num *= -1;
-        }
-
-        if (isNaN(num)) {
-          onChange(undefined);
-        } else {
-          onChange(num);
-          setInternalValue(String(num));
-        }
-      }}
+    <NumberInput
+      type="number"
+      label={<Text>{title}</Text>}
+      value={inputValue}
+      onChange={setInputValue}
+      precision={options?.isInteger ? 0 : undefined}
+      min={options?.isNonNegative ? 0 : undefined}
+      onBlur={() => onChange(inputValue || undefined)}
     />
   );
 };
