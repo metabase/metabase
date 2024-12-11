@@ -592,13 +592,13 @@
       [(_ :guard #{:!= :not-in :not-is}) _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
       (i18n/tru "Excludes {0}" (u.time/format-unit b (->unit f)))
 
-      [(_ :guard #{:= :in :is}) _(x :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
+      [(_ :guard #{:= :in :is}) _ (x :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
       (u.time/format-relative-date-range y 0 (:temporal-unit (second x)) nil nil {:include-current true})
 
       [:during _ (x :guard temporal?) (y :guard string?) unit]
       (u.time/format-relative-date-range y 1 unit -1 unit {})
 
-      [(_ :guard #{:= :in :is}) _(x :guard temporal?) (y :guard (some-fn int? string?))]
+      [(_ :guard #{:= :in :is}) _ (x :guard temporal?) (y :guard (some-fn int? string?))]
       (lib.temporal-bucket/describe-temporal-pair x y)
 
       [(_ :guard #{:!= :not-in :not-is}) _ (x :guard temporal?) (y :guard (some-fn int? string?))]

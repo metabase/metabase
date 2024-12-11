@@ -289,11 +289,11 @@
   "Transform `:in`, `:not-in`, `:is`, `:not-is` expressions to `:=` and `:!=` expressions."
   [m]
   (lib.util.match/replace m
-   [(_op :guard #{:in :is}) & args]
-   (into [:=] args)
+    [(_op :guard #{:in :is}) & args]
+    (into [:=] args)
 
-   [(_op :guard #{:not-in :not-is}) & args]
-   (into [:!=] args)))
+    [(_op :guard #{:not-in :not-is}) & args]
+    (into [:!=] args)))
 
 (defn desugar-does-not-contain
   "Rewrite `:does-not-contain` filter clauses as simpler `[:not [:contains ...]]` clauses.
