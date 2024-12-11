@@ -733,14 +733,19 @@
         {:keys [dashcards tabs]} dashboard
         already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))]
     (when-not already-on-dashboard?
-      (let [cards-on-first-tab (or (:cards (first tabs))
+      (let [first-tab (first tabs)
+            cards-on-first-tab (or (:cards first-tab)
                                    dashcards)
             new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab (:display card))]
         (t2/insert! :model/DashboardCard (assoc new-spot
+                                                :dashboard_tab_id (some-> first-tab :id)
                                                 :card_id (:id card)
                                                 :dashboard_id dashboard-id))
-        (events/publish-event! :event/dashboard-update {:object dashboard
-                                                        :user-id api/*current-user-id*})))))
+        ;; the handler for `:event/dashboard-update` will hydrate `:dashcards` iff it's missing - make sure it is, so
+        ;; we don't store a revision for the *unmodified* dashcards.
+        (events/publish-event! :event/dashboard-update
+                               {:object (dissoc dashboard :dashcards :tabs)
+                                :user-id api/*current-user-id*})))))
 
 (defn- autoremove-dashcard-for-card!
   [card-id dashboard-id]
