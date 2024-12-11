@@ -471,14 +471,15 @@
                :limit        4
                :source-table 33674}}))
 
-(deftest ^:parallel round-trip-aggregation-with-if-test
+(deftest ^:parallel round-trip-in-test
   (test-round-trip
    {:database 2762
     :type     :query
-    :query    {:aggregation        [[:sum [:if [[[:< [:field 139657 nil] 2] [:field 139657 nil]]] {:default 0}]]]
-               :aggregation-idents {0 (u/generate-nano-id)}
-               :breakout           [[:field 139658 nil]]
-               :breakout-idents    {0 (u/generate-nano-id)}
+    :query    {:expressions  {"CC" [:case [[[:in [:field 1 nil] 1 2], "A"]] {:default "B"}]}
+               :filter       [:not-in [:field 2 nil] 3 4]
+               :aggregation  [[:sum-where
+                               [:field 3 nil]
+                               [:in [:field 4 nil] 5 6]]]
                :limit              4
                :source-table       33674}}))
 
