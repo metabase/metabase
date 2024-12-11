@@ -34,8 +34,7 @@
 
 (mu/defn- ^:dynamic *instance-info* :- ::metabot-v3.client.schema/request.instance-info
   []
-  {:token            (premium-features/premium-embedding-token)
-   :site-uuid        (public-settings/site-uuid-for-premium-features-token-checks)
+  {:site-uuid        (public-settings/site-uuid-for-premium-features-token-checks)
    :created-at       (snowplow/instance-creation)
    :analytics-uuid   (snowplow/analytics-uuid)
    :metabase-version (public-settings/version)})
@@ -70,13 +69,15 @@
     (json/generate-stream x w)
     (.toByteArray os)))
 
-(def ^:private request-headers
-  {"Accept"       "application/json"
-   "Content-Type" "application/json;charset=UTF-8"})
+(defn- request-headers
+  []
+  {"Accept"                    "application/json"
+   "Content-Type"              "application/json;charset=UTF-8"
+   "x-metabase-instance-token" (premium-features/premium-embedding-token)})
 
 (defn- build-request-options [body]
   (merge
-   {:headers          request-headers
+   {:headers          (request-headers)
     :body             (->json-bytes body)
     :follow-redirects true
     :throw-exceptions false}

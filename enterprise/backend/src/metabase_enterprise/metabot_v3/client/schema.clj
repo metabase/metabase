@@ -12,8 +12,7 @@
   "Instance info for billing purposes."
   [:map
    {:encode/api-request #(update-keys % u/->snake_case_en)}
-   [:site-uuid :string]
-   [:token :string]])
+   [:site-uuid :string]])
 
 (mr/def ::role
   [:enum
