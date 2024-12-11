@@ -66,11 +66,10 @@
         payload-type+id->payload (into {}
                                        (for [[payload-type payload-ids] payload-type->ids]
                                          (case payload-type
-                                           :notification/system-event
-                                           {[:notification/system-event nil] nil}
                                            :notification/card
                                            (t2/select-fn->fn (fn [x] [payload-type (:id x)]) identity
-                                                             :model/NotificationCard :id [:in payload-ids]))))]
+                                                             :model/NotificationCard :id [:in payload-ids])
+                                           {[payload-type nil] nil})))]
 
     (for [notification notifications]
       (assoc notification k
