@@ -17,12 +17,7 @@ import {
   isNumberParameter,
   isStringParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
-import type {
-  Dashboard,
-  FieldValue,
-  Parameter,
-  RowValue,
-} from "metabase-types/api";
+import type { Dashboard, FieldValue, Parameter } from "metabase-types/api";
 
 import type { ValuesMode } from "./types";
 
@@ -321,12 +316,4 @@ export function isNumeric(field: Field, parameter?: Parameter) {
   }
 
   return field.isNumeric();
-}
-
-export function getLabel(option: FieldValue): string | undefined {
-  return option[1];
-}
-
-export function getValue(option: FieldValue): RowValue {
-  return option[0];
 }
