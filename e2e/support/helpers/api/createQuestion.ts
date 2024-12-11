@@ -2,7 +2,6 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import type {
   Card,
   DatasetQuery,
-  Join,
   NativeQuery,
   StructuredQuery,
 } from "metabase-types/api";
@@ -31,6 +30,11 @@ export type QuestionDetails = {
    * Parent collection in which to store this question.
    */
   collection_id?: Card["collection_id"];
+
+  /**
+   * Parent dashboard in which to store this question.
+   */
+  dashboard_id?: Card["dashboard_id"];
   /**
    * Used on the frontend to determine whether the question is pinned or not.
    */
@@ -89,77 +93,6 @@ export type Options = {
   interceptAlias?: string;
 };
 
-let uniqueCounter = 1;
-function uniqueIdent(prefix: string): string {
-  const counter = uniqueCounter++;
-  return prefix + "_" + counter;
-}
-
-function expressionIdents(
-  exprs: Record<string, unknown>,
-  existingIdents: Record<string, string> | undefined,
-): Record<string, string> {
-  const newIdents = {};
-  for (const k of Object.keys(exprs)) {
-    newIdents[k] =
-      (existingIdents && existingIdents[k]) || uniqueIdent("expr_" + k);
-  }
-  return newIdents;
-}
-
-function indexedIdents(count: number, prefix: string): Record<number, string> {
-  const idents = {};
-  for (let i = 0; i < count; i++) {
-    idents[i] = uniqueIdent(prefix);
-  }
-  return idents;
-}
-
-function joinWithIdent(join: Join): Join {
-  return join.ident ? join : { ...join, ident: uniqueIdent("join") };
-}
-
-export const mbqlQuery = (query: StructuredQuery): StructuredQuery => {
-  // Updating the query to fill in some key details:
-  // - Aggregations, breakouts and expressions need corresponding aggregation-idents etc.
-  // - Joins need `ident` keys on their maps.
-  const aggs = query.aggregation?.length;
-  const aggIdents = aggs && {
-    "aggregation-idents": {
-      ...indexedIdents(aggs, "aggregation"),
-      ...query["aggregation-idents"],
-    },
-  };
-  const brks = query.breakout?.length;
-  const brkIdents = aggs && {
-    "breakout-idents": {
-      ...indexedIdents(brks, "breakout"),
-      ...query["breakout-idents"],
-    },
-  };
-  const exprs = !!query.expressions;
-  const exprIdents = exprs && {
-    "expression-idents": expressionIdents(
-      query.expressions,
-      query["expression-idents"],
-    ),
-  };
-
-  const joins = query.joins && { joins: query.joins.map(joinWithIdent) };
-  const innerQuery = query["source-query"] && {
-    "source-query": mbqlQuery(query["source-query"]),
-  };
-
-  return {
-    ...query,
-    ...aggIdents,
-    ...brkIdents,
-    ...exprIdents,
-    ...joins,
-    ...innerQuery,
-  };
-};
-
 export const createQuestion = (
   questionDetails: StructuredQuestionDetails,
   options?: Options,
@@ -175,11 +108,7 @@ export const createQuestion = (
   return question(
     {
       ...questionDetails,
-      dataset_query: {
-        type: "query",
-        query: mbqlQuery(query),
-        database,
-      },
+      dataset_query: { type: "query", query, database },
     },
     options,
   );
@@ -195,6 +124,7 @@ export const question = (
     parameters,
     visualization_settings = {},
     collection_id,
+    dashboard_id,
     collection_position,
     embedding_params,
     enable_embedding = false,
@@ -216,6 +146,7 @@ export const question = (
       parameters,
       visualization_settings,
       collection_id,
+      dashboard_id,
       collection_position,
     })
     .then(({ body }) => {

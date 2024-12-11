@@ -801,6 +801,11 @@
     :else
     x))
 
+(defn field-options
+  "Returns options in a `:field`, `:expression`, or `:aggregation` clause."
+  [[_ _ opts]]
+  opts)
+
 (mu/defn update-field-options :- mbql.s/Reference
   "Like [[clojure.core/update]], but for the options in a `:field`, `:expression`, or `:aggregation` clause."
   {:arglists '([field-or-ag-ref-or-expression-ref f & args])}

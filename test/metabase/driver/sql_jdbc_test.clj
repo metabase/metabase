@@ -101,10 +101,11 @@
                      (some-> (.getCause e) recur))))))))))
 
 (defn- test-spliced-count-of [table filter-clause expected]
-  (let [query        (mt/mbql-query nil
-                       {:source-table (mt/id table)
-                        :aggregation  [[:count]]
-                        :filter       filter-clause})
+  (let [query        {:database (mt/id)
+                      :type     :query
+                      :query    {:source-table (mt/id table)
+                                 :aggregation  [[:count]]
+                                 :filter       filter-clause}}
         native-query (qp.compile/compile-with-inline-parameters query)]
     (testing (format "\nnative query =\n%s" (u/pprint-to-str native-query))
       (is (= expected

@@ -91,10 +91,12 @@
                                                   (mt/id :people :latitude)
                                                   (mt/id :people :longitude))
                       :query (json/encode
-                              (mt/mbql-query people
-                                {:breakout    [[:field (mt/id :people :latitude)]
-                                               [:field (mt/id :people :longitude)]]
-                                 :aggregation [[:count]]})))]
+                              {:database (mt/id)
+                               :type :query
+                               :query {:source-table (mt/id :people)
+                                       :breakout [[:field (mt/id :people :latitude)]
+                                                  [:field (mt/id :people :longitude)]]
+                                       :aggregation [[:count]]}}))]
           (is (= [[36.6163612 -94.5197949]
                   [36.8177783 -93.8447328]
                   [36.8311004 -95.0253779]]

@@ -18,3 +18,8 @@ export const CollectionLink = styled(Link)`
   color: var(--mb-color-brand);
   margin-left: ${space(0)};
 `;
+
+export const DashboardLink = styled(Link)`
+  color: var(--mb-color-brand);
+  margin-left: ${space(0)};
+`;

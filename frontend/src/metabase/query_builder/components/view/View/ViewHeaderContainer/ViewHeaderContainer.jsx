@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import CS from "metabase/css/core/index.css";
-import NewQuestionHeader from "metabase/query_builder/components/view/NewQuestionHeader";
+import { NewQuestionHeader } from "metabase/query_builder/components/view/NewQuestionHeader";
 import { Box, Transition } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -28,7 +28,7 @@ export const ViewHeaderContainer = props => {
         <ArchivedEntityBanner
           name={card.name}
           entityType={card.type}
-          canWrite={card.can_write}
+          canMove={card.can_write}
           canRestore={card.can_restore}
           canDelete={card.can_delete}
           onUnarchive={() => onUnarchive(question)}
@@ -47,7 +47,13 @@ export const ViewHeaderContainer = props => {
       />
       {/*This is used so that the New Question Header is unmounted after the animation*/}
       <Transition mounted={isNewQuestion} transition={fadeIn} duration={300}>
-        {style => <NewQuestionHeader className={CS.spread} style={style} />}
+        {style => (
+          <NewQuestionHeader
+            className={CS.spread}
+            style={style}
+            saveToDashboardId={card.dashboard_id}
+          />
+        )}
       </Transition>
     </Box>
   );

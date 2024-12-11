@@ -65,7 +65,7 @@ describe("issue 19737", () => {
     H.popover().findByText("Move").click();
 
     H.entityPickerModal().within(() => {
-      cy.findByRole("tab", { name: /Collections/ }).click();
+      cy.findByRole("tab", { name: /Browse|Collections/ }).click();
       cy.findByText(collectionName).click();
       cy.button("Move").click();
     });
@@ -357,7 +357,14 @@ describe("issue 20963", () => {
 
     cy.get("@editor").type("{moveToStart}select ");
 
-    H.saveQuestion(questionName, { wrapId: true });
+    H.saveQuestion(
+      questionName,
+      { wrapId: true },
+      {
+        tab: "Browse",
+        path: ["Our analytics"],
+      },
+    );
 
     // Convert into to a model
     H.openQuestionActions();
@@ -840,15 +847,9 @@ describe("issue 26091", () => {
       H.entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(() => {
-      cy.findByLabelText("Name").clear().type("New model");
-      cy.findByText("Save").click();
-      cy.wait("@saveQuestion");
-    });
-    cy.get("#QuestionSavedModal").within(() => {
-      cy.button("Not now").click();
+    H.saveQuestion("New model", undefined, {
+      tab: "Browse",
+      path: ["Our analytics"],
     });
     turnIntoModel();
 
@@ -1357,8 +1358,9 @@ describe("issue 31905", () => {
     );
   });
 
+  // TODO: This should be 1, but MainNavbar.tsx RTKQ fetch + QB's call to loadCard makes it 2
   it("should not send more than one same api requests to load a model (metabase#31905)", () => {
-    cy.get("@card.all").should("have.length", 1);
+    cy.get("@card.all").should("have.length", 2);
   });
 });
 

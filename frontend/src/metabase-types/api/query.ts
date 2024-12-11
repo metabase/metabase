@@ -296,7 +296,6 @@ export type Join = {
   "source-query"?: StructuredQuery;
   condition: JoinCondition;
   alias?: JoinAlias;
-  ident?: string;
   strategy?: JoinStrategy;
   fields?: JoinFields;
 };
