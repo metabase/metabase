@@ -777,8 +777,6 @@
 ;; aliases for `:=` and `:!=`
 (defclause ^:sugar in,  field EqualityComparable, value-or-field EqualityComparable, more-values-or-fields (rest EqualityComparable))
 (defclause ^:sugar not-in,  field EqualityComparable, value-or-field EqualityComparable, more-values-or-fields (rest EqualityComparable))
-(defclause ^:sugar is,  field EqualityComparable, value-or-field EqualityComparable, more-values-or-fields (rest EqualityComparable))
-(defclause ^:sugar not-is,  field EqualityComparable, value-or-field EqualityComparable, more-values-or-fields (rest EqualityComparable))
 
 (defclause <,  field OrderComparable, value-or-field OrderComparable)
 (defclause >,  field OrderComparable, value-or-field OrderComparable)
@@ -899,8 +897,7 @@
    ;; filters drivers must implement
    and or not = != < > <= >= between starts-with ends-with contains
     ;; SUGAR filters drivers do not need to implement
-   in not-in is not-is does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval
-   during))
+   in not-in does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval during))
 
 (mr/def ::Filter
   [:multi
