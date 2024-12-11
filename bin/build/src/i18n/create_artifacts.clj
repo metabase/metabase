@@ -24,7 +24,7 @@
       (u/assert-file-exists file))))
 
 (defn- generate-locales-dot-json! []
-  (u/step "Create resources/locales.clj"
+  (u/step "Create resources/locales.json"
     (let [file (u/filename u/project-root-directory "resources" "locales.json")]
       (u/delete-file-if-exists! file)
       (spit file
