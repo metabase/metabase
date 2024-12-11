@@ -285,6 +285,16 @@
     [:if & args]
     (into [:case] args)))
 
+(defn desugar-in-is
+  "Transform `:in`, `:not-in`, `:is`, `:not-is` expressions to `:=` and `:!=` expressions."
+  [m]
+  (lib.util.match/replace m
+   [(_op :guard #{:in :is}) & args]
+   (into [:=] args)
+
+   [(_op :guard #{:not-in :not-is}) & args]
+   (into [:!=] args)))
+
 (defn desugar-does-not-contain
   "Rewrite `:does-not-contain` filter clauses as simpler `[:not [:contains ...]]` clauses.
 
@@ -425,6 +435,7 @@
   [filter-clause :- mbql.s/Filter]
   (-> filter-clause
       desugar-current-relative-datetime
+      desugar-in-is
       desugar-multi-argument-comparisons
       desugar-does-not-contain
       desugar-time-interval

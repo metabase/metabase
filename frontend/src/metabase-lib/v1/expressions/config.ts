@@ -343,11 +343,43 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     args: ["number", "number"],
   },
   // comparison operators
+  "=": {
+    displayName: "=",
+    tokenName: "Equal",
+    type: "boolean",
+    args: ["expression", "expression"],
+  },
   "!=": {
     displayName: "!=",
     tokenName: "NotEqual",
     type: "boolean",
     args: ["expression", "expression"],
+  },
+  // `in` and `not-in` are aliases for `=` and `!=`
+  in: {
+    displayName: "in",
+    type: "boolean",
+    args: ["expression", "expression"],
+    multiple: true,
+  },
+  "not-in": {
+    displayName: "notIn",
+    type: "boolean",
+    args: ["expression", "expression"],
+    multiple: true,
+  },
+  // `is` and `not-is` are aliases for `=` and `!=`
+  is: {
+    displayName: "is",
+    type: "boolean",
+    args: ["expression", "expression"],
+    multiple: true,
+  },
+  "not-is": {
+    displayName: "isNot",
+    type: "boolean",
+    args: ["expression", "expression"],
+    multiple: true,
   },
   "<=": {
     displayName: "<=",
@@ -370,12 +402,6 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
   ">": {
     displayName: ">",
     tokenName: "GreaterThan",
-    type: "boolean",
-    args: ["expression", "expression"],
-  },
-  "=": {
-    displayName: "=",
-    tokenName: "Equal",
     type: "boolean",
     args: ["expression", "expression"],
   },
@@ -548,6 +574,10 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "now",
   "convert-timezone",
   // boolean
+  "in",
+  "not-in",
+  "is",
+  "not-is",
   "contains",
   "ends-with",
   "starts-with",
