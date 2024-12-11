@@ -143,7 +143,7 @@ export const ErrorDiagnosticModal = ({
         <Stack spacing="sm" align="center" py="xl">
           <img
             src="app/assets/img/metabot-bug-report.svg"
-            alt={c("Image shown on successful bug report submission")
+            alt={c("Alt text for image shown on successful bug report submission")
               .t`Bug report submitted`}
             style={{ width: 100, height: 100 }}
           />
