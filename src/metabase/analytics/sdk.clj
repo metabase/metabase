@@ -15,7 +15,7 @@
 (def ^:dynamic *client* "Used to track information about the metabase embedding client." nil)
 
 (mu/defn include-analytics :- :map
-  "Adds the currently bound, or existing `*client*` and `version` to the given map, which is usually a row going into
+  "Adds the currently bound, or existing `*client*` and `*version*` to the given map, which is usually a row going into
    the `view_log` or `query_execution` table. Falls back to the original value."
   [m :- :map]
   (-> m
@@ -39,6 +39,8 @@
     :error (prometheus/inc! :metabase-sdk/response-error)
     nil nil))
 
+(def ^:private embedding-sdk-client "embedding-sdk-react")
+
 (defn embedding-mw
   "Reads Metabase Client and Version headers and binds them to *metabase-client{-version}*."
   [handler]
@@ -50,8 +52,8 @@
                 *version* version]
         (handler request
                  (fn responder [response]
-                   (when sdk-client (track-sdk-response (categorize-request response)))
+                   (when (= sdk-client embedding-sdk-client) (track-sdk-response (categorize-request response)))
                    (respond response))
                  (fn raiser [response]
-                   (when sdk-client (track-sdk-response :error))
+                   (when (= sdk-client embedding-sdk-client) (track-sdk-response :error))
                    (raise response)))))))
