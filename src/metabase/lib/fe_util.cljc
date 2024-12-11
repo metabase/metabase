@@ -164,7 +164,11 @@
 
       ;; multiple arguments with options
       [(op :guard #{:contains :does-not-contain :starts-with :ends-with}) opts (col-ref :guard string-col?) & (args :guard #(every? string? %))]
-      {:operator op, :column (ref->col col-ref), :values args, :options {:case-sensitive (get opts :case-sensitive true)}})))
+      {:operator op, :column (ref->col col-ref), :values args, :options {:case-sensitive (get opts :case-sensitive true)}}
+
+      ;; do not match inner clauses
+      _
+      nil)))
 
 (def ^:private NumberFilterParts
   [:map
@@ -203,7 +207,11 @@
 
       ;; exactly 2 arguments
       [(op :guard #{:between}) _ (col-ref :guard number-col?) (start :guard number?) (end :guard number?)]
-      {:operator op, :column (ref->col col-ref), :values [start end]})))
+      {:operator op, :column (ref->col col-ref), :values [start end]}
+
+      ;; do not match inner clauses
+      _
+      nil)))
 
 (def ^:private CoordinateFilterParts
   [:map
@@ -255,7 +263,11 @@
        (lat-col-ref :guard coordinate-col?)
        (lon-col-ref :guard coordinate-col?)
        & (args :guard #(and (every? number? %) (= (count %) 4)))]
-      {:operator op, :column (ref->col lat-col-ref), :longitude-column (ref->col lon-col-ref), :values args})))
+      {:operator op, :column (ref->col lat-col-ref), :longitude-column (ref->col lon-col-ref), :values args}
+
+      ;; do not match inner clauses
+      _
+      nil)))
 
 (def ^:private BooleanFilterParts
   [:map
@@ -286,7 +298,58 @@
 
       ;; exactly 1 argument
       [(op :guard #{:=}) _ (col-ref :guard boolean-col?) (arg :guard boolean?)]
-      {:operator op, :column (ref->col col-ref), :values [arg]})))
+      {:operator op, :column (ref->col col-ref), :values [arg]}
+
+      ;; do not match inner clauses
+      _
+      nil)))
+
+(def ^:private SpecificDateFilterParts
+  [:map
+   [:operator   ::lib.schema.filter/specific-date-filter-operator]
+   [:column     ::lib.schema.metadata/column]
+   [:values     [:sequential [:fn u.time/valid?]]]
+   [:with-time? :boolean]])
+
+(mu/defn specific-date-filter-clause :- ::lib.schema.expression/expression
+  "Creates a specific date filter clause based on FE-friendly filter parts. It should be possible to destructure each
+   created expression with [[specific-date-filter-parts]]."
+  [operator   :- ::lib.schema.filter/specific-date-filter-operator
+   column     :- ::lib.schema.metadata/column
+   values     :- [:maybe [:sequential [:fn u.time/valid?]]]
+   with-time? :- [:maybe :boolean]]
+  (let [column (cond-> column
+                 with-time? (lib.temporal-bucket/with-temporal-bucket :minute))
+        values (mapv #(u.time/format-for-base-type % (if with-time? :type/DateTime :type/Date)) values)]
+    (expression-clause operator (into [column] values) {})))
+
+(mu/defn specific-date-filter-parts :- [:maybe SpecificDateFilterParts]
+  "Destructures a specific date filter clause created by [[specific-date-filter-clause]]. Returns `nil` if the clause
+  does not match the expected shape."
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   filter-clause :- ::lib.schema.expression/expression]
+  (let [ref->col  #(column-metadata-from-ref query stage-number (lib.temporal-bucket/with-temporal-bucket % nil))
+        date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])]
+    (lib.util.match/match-one filter-clause
+      ;; exactly 1 argument
+      [(op :guard #{:= :> :<}) _ (col-ref :guard date-col?) (arg :guard string?)]
+      (let [date? (u.time/matches-date? arg)
+            arg   (u.time/coerce-to-timestamp arg)]
+        (when (u.time/valid? arg)
+          {:operator op, :column (ref->col col-ref), :values [arg], :with-time? (not date?)}))
+
+      ;; exactly 2 arguments
+      [(op :guard #{:between}) _ (col-ref :guard date-col?) (start :guard string?) (end :guard string?)]
+      (let [date? (or (u.time/matches-date? start) (u.time/matches-date? end))
+            start (u.time/coerce-to-timestamp start)
+            end   (u.time/coerce-to-timestamp end)]
+        (when (and (u.time/valid? start) (u.time/valid? end))
+          {:operator op, :column (ref->col col-ref), :values [start end], :with-time? (not date?)}))
+
+      ;; do not match inner clauses
+      _
+      nil)))
 
 (def ^:private RelativeDateFilterParts
   [:map
@@ -344,23 +407,9 @@
        :offset-unit  offset-unit
        :options      {}}
 
-      ;; legacy expression; replaced by :relative-time-interval; supported for backward compatibility
-      [:between _
-       [:+ _
-        (col-ref :guard date-col?)
-        [:internal _ (offset-value :guard number?) (offset-unit :guard keyword?)]]
-       [:relative-datetime _
-        (start-value :guard number?)
-        (start-unit :guard keyword?)]
-       [:relative-datetime _
-        (end-value :guard number?)
-        (end-unit :guard keyword?)]]
-      {:column       (ref->col col-ref)
-       :value        (if (pos? offset-value) start-value end-value)
-       :unit         start-unit
-       :offset-value (- offset-value)
-       :offset-unit  offset-unit
-       :options      {}})))
+       ;; do not match inner clauses
+      _
+      nil)))
 
 (def ^:private ExcludeDateFilterParts
   [:map
@@ -406,7 +455,11 @@
 
       ;; with `:mode`
       [:!= _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard #(every? int? %))]
-      {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args})))
+      {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args}
+
+      ;; do not match inner clauses
+      _
+      nil)))
 
 (def ^:private TimeFilterParts
   [:map
@@ -447,7 +500,42 @@
       (let [start (u.time/coerce-to-time start)
             end   (u.time/coerce-to-time end)]
         (when (and (u.time/valid? start) (u.time/valid? end))
-          {:operator op, :column (ref->col col-ref), :values [start end]})))))
+          {:operator op, :column (ref->col col-ref), :values [start end]}))
+
+      ;; do not match inner clauses
+      _
+      nil)))
+
+(def ^:private DefaultFilterParts
+  [:map
+   [:operator ::lib.schema.filter/default-filter-operator]
+   [:column   ::lib.schema.metadata/column]])
+
+(mu/defn default-filter-clause :- ::lib.schema.expression/expression
+  "Creates a default filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[default-filter-parts]]. This clause works as a fallback for more specialized column types."
+  [operator :- ::lib.schema.filter/default-filter-operator
+   column   :- ::lib.schema.metadata/column]
+  (expression-clause operator [column] {}))
+
+(mu/defn default-filter-parts :- [:maybe DefaultFilterParts]
+  "Destructures a default filter clause created by [[default-filter-clause]]. Returns `nil` if the clause does not match
+  the expected shape or if the clause uses a string column; the FE allows only `:is-empty` and `:not-empty` operators
+  for string columns."
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   filter-clause :- ::lib.schema.expression/expression]
+  (let [ref->col       #(column-metadata-from-ref query stage-number %)
+        supported-col? #(and (lib.util/ref-clause? %)
+                             (not (lib.util/original-isa? % :type/Text))
+                             (not (lib.util/original-isa? % :type/TextLike)))]
+    (lib.util.match/match-one filter-clause
+      [(op :guard #{:is-null :not-null}) _ (col-ref :guard supported-col?)]
+      {:operator op, :column (ref->col col-ref)}
+
+      ;; do not match inner clauses
+      _
+      nil)))
 
 (mu/defn filter-args-display-name :- :string
   "Provides a reasonable display name for the `filter-clause` excluding the column-name.
@@ -482,6 +570,9 @@
 
       [:= _ (x :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
       (u.time/format-relative-date-range y 0 (:temporal-unit (second x)) nil nil {:include-current true})
+
+      [:during _ (x :guard temporal?) (y :guard string?) unit]
+      (u.time/format-relative-date-range y 1 unit -1 unit {})
 
       [:= _ (x :guard temporal?) (y :guard (some-fn int? string?))]
       (lib.temporal-bucket/describe-temporal-pair x y)

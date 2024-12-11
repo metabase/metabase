@@ -42,7 +42,6 @@ export interface UpdateActionRequest {
   url?: string;
   body?: string;
   headers?: string;
-  type?: "query" | "implicit" | "http";
   visualization_settings?: ActionFormSettings;
 }
 

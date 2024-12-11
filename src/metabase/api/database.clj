@@ -20,9 +20,7 @@
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.database
-    :as database
-    :refer [Database protected-password]]
+   [metabase.models.database :as database :refer [Database protected-password]]
    [metabase.models.field :refer [Field readable-fields-only]]
    [metabase.models.interface :as mi]
    [metabase.models.persisted-info :as persisted-info]
@@ -31,13 +29,11 @@
    [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features
-    :as premium-features
-    :refer [defenterprise]]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.request.core :as request]
    [metabase.sample-data :as sample-data]
-   [metabase.server.middleware.session :as mw.session]
    [metabase.sync.analyze :as analyze]
-   [metabase.sync.field-values :as field-values]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
@@ -532,7 +528,7 @@
    If the search string contains a number like '123' we match that as a prefix against the card IDs.
    If the search string contains a number at the start AND text like '123-foo' we match do an exact match on card ID, and a substring match on the card name.
    If the search string does not start with a number, and is text like 'foo' we match that as a substring on the card name."
-  [database-id search-card-slug]
+  [database-id search-card-slug include-dashboard-questions?]
   (let [search-id   (re-find #"\d*" search-card-slug)
         search-name (-> (re-matches #"\d*-?(.*)" search-card-slug)
                         second
@@ -542,6 +538,8 @@
                {:where    [:and
                            [:= :report_card.database_id database-id]
                            [:= :report_card.archived false]
+                           (when-not include-dashboard-questions?
+                             [:= :report_card.dashboard_id nil])
                            (cond
                              ;; e.g. search-string = "123"
                              (and (not-empty search-id) (empty? search-name))
@@ -665,12 +663,13 @@
   "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
 
   This is intended for use with the ACE Editor when the User is typing in a template tag for a `Card`, e.g. {{#...}}."
-  [id query]
-  {id    ms/PositiveInt
-   query ms/NonBlankString}
+  [id query include_dashboard_questions]
+  {id                          ms/PositiveInt
+   query                       ms/NonBlankString
+   include_dashboard_questions ms/MaybeBooleanValue}
   (api/read-check Database id)
   (try
-    (->> (autocomplete-cards id query)
+    (->> (autocomplete-cards id query include_dashboard_questions)
          (filter mi/can-read?)
          (map #(select-keys % [:id :name :type :collection_name])))
     (catch Throwable e
@@ -1052,10 +1051,10 @@
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
-    (mw.session/as-admin
+    (request/as-admin
       (if *rescan-values-async*
-        (future (field-values/update-field-values! db))
-        (field-values/update-field-values! db))))
+        (future (sync.field-values/update-field-values! db))
+        (sync.field-values/update-field-values! db))))
   {:status :ok})
 
 (defn- delete-all-field-values-for-database! [database-or-id]

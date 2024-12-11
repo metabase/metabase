@@ -1,0 +1,9 @@
+.Divider {
+  height: 1px;
+  width: 100%;
+  background-color: var(--mb-color-bg-medium);
+}
+
+.MainFormContainer {
+  padding: 1.5rem 1.5rem 0;
+}

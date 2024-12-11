@@ -3,6 +3,7 @@ import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
@@ -244,8 +245,8 @@ describe("scenarios > question > new", () => {
     cy.findByText("37.65");
   });
 
-  it("should suggest the currently viewed collection when saving question", () => {
-    H.visitCollection(THIRD_COLLECTION_ID);
+  it("should suggest the currently viewed dashboard when saving question", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
 
     cy.findByLabelText("Navigation bar").within(() => {
       cy.findByText("New").click();
@@ -276,9 +277,9 @@ describe("scenarios > question > new", () => {
       cy.findByText("Save").click();
     });
     cy.findByTestId("save-question-modal").within(() => {
-      cy.findByLabelText(/Which collection/).should(
+      cy.findByLabelText(/Where do you want to save/).should(
         "have.text",
-        "Third collection",
+        "Orders in a dashboard",
       );
     });
   });
@@ -302,11 +303,11 @@ describe("scenarios > question > new", () => {
       cy.findByLabelText("Description").should("be.focused");
 
       cy.findByTestId("save-question-modal")
-        .findByLabelText(/Which collection/)
+        .findByLabelText(/Where do you want to save/)
         .click();
 
       H.entityPickerModal()
-        .findByRole("tab", { name: /Collections/ })
+        .findByRole("tab", { name: /Browse/ })
         .click();
 
       H.entityPickerModal().findByText("Create a new collection").click();
@@ -318,11 +319,11 @@ describe("scenarios > question > new", () => {
       });
       H.entityPickerModal().within(() => {
         cy.findByText("Foo").click();
-        cy.findByText("Select").click();
+        cy.button(/Select/).click();
       });
       cy.findByTestId("save-question-modal").within(() => {
         cy.findByText("Save new question");
-        cy.findByLabelText(/Which collection/).should(
+        cy.findByLabelText(/Where do you want to save/).should(
           "have.text",
           NEW_COLLECTION,
         );
@@ -395,13 +396,13 @@ describe("scenarios > question > new", () => {
 
       H.queryBuilderHeader().button("Save").click();
       cy.findByTestId("save-question-modal")
-        .findByLabelText(/Which collection/)
+        .findByLabelText(/Where do you want to save/)
         .click();
 
       H.pickEntity({
         path: [myPersonalCollectionName],
         select: true,
-        tab: "Collections",
+        tab: "Browse",
       });
 
       cy.findByTestId("save-question-modal").button("Save").click();
@@ -431,16 +432,20 @@ describe("scenarios > question > new", () => {
       });
 
       H.queryBuilderHeader().button("Save").click();
-      cy.log("default selected collection is the root collection");
+      cy.findByTestId("save-question-modal")
+        .findByLabelText(/Where do you want to save/)
+        .click();
 
-      cy.findByTestId("save-question-modal").within(modal => {
-        cy.findByText("Save").click();
-        cy.wait("@createQuestion");
+      H.pickEntity({
+        path: ["Our analytics"],
+        select: true,
+        tab: "Browse",
       });
 
-      cy.get("#QuestionSavedModal").within(() => {
-        cy.findByText("Yes please!").click();
-      });
+      cy.findByTestId("save-question-modal").button("Save").click();
+      cy.wait("@createQuestion");
+
+      cy.get("#QuestionSavedModal").findByText("Yes please!").click();
 
       H.entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
@@ -463,9 +468,18 @@ describe("scenarios > question > new", () => {
         });
 
         H.queryBuilderHeader().button("Save").click();
-        cy.log("default selected collection is the root collection");
 
         cy.findByTestId("save-question-modal").within(modal => {
+          cy.findByLabelText(/Where do you want to save/).click();
+        });
+
+        H.pickEntity({
+          tab: "Browse",
+          path: ["Our analytics"],
+          select: true,
+        });
+
+        cy.findByTestId("save-question-modal").within(() => {
           cy.findByText("Save").click();
           cy.wait("@createQuestion");
         });

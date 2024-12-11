@@ -1179,18 +1179,23 @@
                             :visualization_settings {:click_behavior {:type     "link"
                                                                       :linkType "dashboard"
                                                                       :targetId (:id dash1)}})
+          card-2 (ts/create! :model/Card :name "card-2" :dashboard_id (:id dash1))
           ser   (into [] (serdes.extract/extract {:no-settings   true
                                                   :no-data-model true}))]
       (t2/delete! DashboardCard :id [:in (map :id [dc1 dc2 dc3])])
       (testing "Circular dependencies are loaded correctly"
         (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
         (let [select-target #(-> % :visualization_settings :click_behavior :targetId)]
+
           (is (= (:id dash2)
                  (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc1))))
           (is (= (:id dash3)
                  (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc2))))
           (is (= (:id dash1)
-                 (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc3)))))))))
+                 (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc3)))))
+        (testing "Circular dependencies work for Dashboard Questions as well"
+          (is (= (:id dash1)
+                 (t2/select-one-fn :dashboard_id :model/Card :entity_id (:entity_id card-2)))))))))
 
 (deftest continue-on-error-test
   (let [change-ser    (fn [ser changes] ;; kind of like left-join, but right side is indexed

@@ -16,7 +16,6 @@
     :as perms-group-membership
     :refer [PermissionsGroupMembership]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.session :refer [Session]]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
@@ -402,7 +401,7 @@
   by [[pre-insert]] or [[pre-update]])"
   [user-id password]
   ;; when changing/resetting the password, kill any existing sessions
-  (t2/delete! (t2/table-name Session) :user_id user-id)
+  (t2/delete! (t2/table-name :model/Session) :user_id user-id)
   ;; NOTE: any password change expires the password reset token
   (t2/update! User user-id
               {:password        password
@@ -466,6 +465,15 @@
 (defsetting dismissed-custom-dashboard-toast
   (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
   :user-local :only
+  :visibility :authenticated
+  :type       :boolean
+  :default    false
+  :audit      :never)
+
+(defsetting dismissed-onboarding-sidebar-link
+  (deferred-tru "Whether the user has dismissed the onboarding link from the main sidebar.")
+  :user-local :only
+  :export?    false
   :visibility :authenticated
   :type       :boolean
   :default    false

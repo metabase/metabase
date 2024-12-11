@@ -31,18 +31,18 @@
   (or (qualified-keyword? k)
       (str/includes? k ".")))
 
-(def ^:private ^{:arglists '([k])} memoized-kebab-key
-  "Calculating the kebab-case version of a key every time is pretty slow (even with the LRU
+;; we spent a lot of time messing around with different ways of doing this and this seems to be the fastest. See
+;; https://metaboat.slack.com/archives/C04CYTEL9N2/p1702671632956539 -- Cam
+(let [cache      (java.util.concurrent.ConcurrentHashMap.)
+      mapping-fn (reify java.util.function.Function
+                   (apply [_this k]
+                     (u/->kebab-case-en k)))]
+  (defn- memoized-kebab-key
+    "Calculating the kebab-case version of a key every time is pretty slow (even with the LRU
   caching [[u/->kebab-case-en]] has), since the keys here are static and finite we can just memoize them forever and
   get a nice performance boost."
-  ;; we spent a lot of time messing around with different ways of doing this and this seems to be the fastest. See
-  ;; https://metaboat.slack.com/archives/C04CYTEL9N2/p1702671632956539 -- Cam
-  (let [cache      (java.util.concurrent.ConcurrentHashMap.)
-        mapping-fn (reify java.util.function.Function
-                     (apply [_this k]
-                       (u/->kebab-case-en k)))]
-    (fn [k]
-      (.computeIfAbsent cache k mapping-fn))))
+    [k]
+    (.computeIfAbsent cache k mapping-fn)))
 
 (defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a MLv2 style

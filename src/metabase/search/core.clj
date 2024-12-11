@@ -1,4 +1,5 @@
 (ns metabase.search.core
+  "NOT the API namespace for the search module!! See [[metabase.search]] instead."
   (:require
    [metabase.search.appdb.core :as search.engines.appdb]
    [metabase.search.config :as search.config]
@@ -21,8 +22,7 @@
 
 (p/import-vars
  [search.config
-  SearchableModel
-  all-models]
+  SearchableModel]
 
  [search.engine
   model-set]

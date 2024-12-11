@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useDispatch } from "react-redux";
 
-import type { SDKConfig } from "embedding-sdk";
+import type { MetabaseAuthConfig } from "embedding-sdk";
 import { printUsageProblemToConsole } from "embedding-sdk/lib/print-usage-problem";
 import { getSdkUsageProblem } from "embedding-sdk/lib/usage-problem";
 import { setUsageProblem } from "embedding-sdk/store/reducer";
@@ -9,9 +9,13 @@ import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getTokenFeature } from "metabase/setup/selectors";
 
-export function useSdkUsageProblem(config: SDKConfig) {
-  const { allowConsoleLog = true } = config;
-
+export function useSdkUsageProblem({
+  authConfig,
+  allowConsoleLog = true,
+}: {
+  authConfig: MetabaseAuthConfig;
+  allowConsoleLog?: boolean;
+}) {
   const hasLoggedRef = useRef(false);
 
   const dispatch = useDispatch();
@@ -33,8 +37,12 @@ export function useSdkUsageProblem(config: SDKConfig) {
   });
 
   const usageProblem = useMemo(() => {
-    return getSdkUsageProblem({ hasTokenFeature, isEnabled, config });
-  }, [config, hasTokenFeature, isEnabled]);
+    return getSdkUsageProblem({
+      authConfig,
+      hasTokenFeature,
+      isEnabled,
+    });
+  }, [authConfig, hasTokenFeature, isEnabled]);
 
   useEffect(() => {
     // SDK components will stop rendering if a license error is detected.

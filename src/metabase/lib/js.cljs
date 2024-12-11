@@ -1131,6 +1131,26 @@
            :column   column
            :values   (to-array (map clj->js values))})))
 
+(defn ^:export specific-date-filter-clause
+  "Creates a specific date filter clause based on FE-friendly filter parts. It should be possible to destructure each
+   created expression with [[specific-date-filter-parts]]."
+  [operator column values with-time?]
+  (lib.core/specific-date-filter-clause (keyword operator)
+                                        column
+                                        (js->clj values)
+                                        with-time?))
+
+(defn ^:export specific-date-filter-parts
+  "Destructures a specific date filter clause created by [[specific-date-filter-clause]]. Returns `nil` if the clause
+  does not match the expected shape."
+  [a-query stage-number a-filter-clause]
+  (when-let [filter-parts (lib.core/specific-date-filter-parts a-query stage-number a-filter-clause)]
+    (let [{:keys [operator column values with-time?]} filter-parts]
+      #js {:operator (name operator)
+           :column   column
+           :values   (to-array (map clj->js values))
+           :hasTime  with-time?})))
+
 (defn ^:export relative-date-filter-clause
   "Creates a relative date filter clause based on FE-friendly filter parts. It should be possible to destructure each
    created expression with [[relative-date-filter-parts]]."
@@ -1192,6 +1212,22 @@
       #js {:operator (name operator)
            :column   column
            :values   (to-array (map clj->js values))})))
+
+(defn ^:export default-filter-clause
+  "Creates a default filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[default-filter-parts]]. This clause works as a fallback for more specialized column types."
+  [operator column]
+  (lib.core/default-filter-clause (keyword operator) column))
+
+(defn ^:export default-filter-parts
+  "Destructures a default filter clause created by [[default-filter-clause]]. Returns `nil` if the clause does not match
+  the expected shape or if the clause uses a string column; the FE allows only `:is-empty` and `:not-empty` operators
+  for string columns."
+  [a-query stage-boolean a-filter-clause]
+  (when-let [filter-parts (lib.core/default-filter-parts a-query stage-boolean a-filter-clause)]
+    (let [{:keys [operator column]} filter-parts]
+      #js {:operator (name operator)
+           :column   column})))
 
 ;; TODO remove once all filter-parts are migrated to MBQL lib
 (defn ^:export is-column-metadata

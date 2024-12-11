@@ -11,10 +11,6 @@ import type {
   TemporalUnit,
 } from "metabase-types/api";
 
-import type {
-  DEFAULT_FILTER_OPERATORS,
-  SPECIFIC_DATE_FILTER_OPERATORS,
-} from "./constants";
 import type { ColumnExtractionTag } from "./extractions";
 
 /**
@@ -299,7 +295,7 @@ export type FilterOperatorName =
   | StringFilterOperator
   | NumberFilterOperator
   | BooleanFilterOperator
-  | SpecificDateFilterOperatorName
+  | SpecificDateFilterOperator
   | ExcludeDateFilterOperator
   | CoordinateFilterOperator;
 
@@ -336,15 +332,13 @@ export type CoordinateFilterOperator =
 
 export type BooleanFilterOperator = "=" | "is-null" | "not-null";
 
-export type SpecificDateFilterOperatorName =
-  (typeof SPECIFIC_DATE_FILTER_OPERATORS)[number];
+export type SpecificDateFilterOperator = "=" | ">" | "<" | "between";
 
 export type ExcludeDateFilterOperator = "!=" | "is-null" | "not-null";
 
 export type TimeFilterOperator = ">" | "<" | "between" | "is-null" | "not-null";
 
-export type DefaultFilterOperatorName =
-  (typeof DEFAULT_FILTER_OPERATORS)[number];
+export type DefaultFilterOperator = "is-null" | "not-null";
 
 export type RelativeDateFilterUnit =
   | "minute"
@@ -410,7 +404,7 @@ export type BooleanFilterParts = {
 };
 
 export type SpecificDateFilterParts = {
-  operator: SpecificDateFilterOperatorName;
+  operator: SpecificDateFilterOperator;
   column: ColumnMetadata;
   values: Date[];
   hasTime: boolean;
@@ -450,7 +444,7 @@ export type TimeFilterParts = {
 };
 
 export type DefaultFilterParts = {
-  operator: DefaultFilterOperatorName;
+  operator: DefaultFilterOperator;
   column: ColumnMetadata;
 };
 
