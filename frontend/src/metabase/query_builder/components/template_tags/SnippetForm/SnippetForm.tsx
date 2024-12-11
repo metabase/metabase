@@ -10,6 +10,7 @@ import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import FormTextArea from "metabase/core/components/FormTextArea";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
 import { Form, FormProvider } from "metabase/forms";
@@ -21,7 +22,7 @@ import type {
   NativeQuerySnippetId,
 } from "metabase-types/api";
 
-import { FormSnippetTextArea } from "./SnippetForm.styled";
+import S from "./SnippetForm.module.css";
 
 const SNIPPET_SCHEMA = Yup.object({
   name: Yup.string()
@@ -149,8 +150,9 @@ function SnippetForm({
       onSubmit={handleSubmit}
     >
       {({ dirty }) => (
-        <Form disabled={!dirty}>
-          <FormSnippetTextArea
+        <Form disabled={!dirty} className={S.SnippetForm}>
+          <FormTextArea
+            inputClassName={S.FormSnippetTextArea}
             name="content"
             title={t`Enter some SQL here so you can reuse it later`}
             placeholder="AND canceled_at IS null\nAND account_type = 'PAID'"
@@ -175,7 +177,7 @@ function SnippetForm({
               type="snippet-collections"
             />
           )}
-          <Flex align="center" justify="center">
+          <Flex align="center" justify="space-between">
             <Flex align="center" justify="center" gap="sm">
               {isEditing && (
                 <Button
