@@ -25,9 +25,6 @@
                                                     :properties {"email" {:type :string, :description "A valid email address of the user to invite"}}
                                                     :required ["email"]
                                                     :additionalProperties false}}])
-              metabot-v3.client/*instance-info* (constantly
-                                                 {:token "c54f339509b1af2451342c188d59be5e5a112ceaa28f3bd560dc4aa946906fd53"})
-
               metabot-v3.client/*request*
               (fn [context history]
                 (swap! calls conj [:api-request {:context context, :history history}])
