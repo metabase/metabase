@@ -624,17 +624,17 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`string1`,
         description: t`The column or text to check.`,
-        example: formatIdentifier(t`Status`),
+        example: formatIdentifier(t`Title`),
       },
       {
         name: t`string2`,
         description: t`The string of text to look for.`,
-        example: formatStringLiteral(t`Pass`),
+        example: formatStringLiteral(t`Small`),
       },
       {
         name: "…",
         description: t`You can add more values to look for.`,
-        example: formatStringLiteral(t`Pass`),
+        example: formatStringLiteral(t`Medium`),
       },
       {
         name: "case-insensitive",
@@ -652,17 +652,17 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`string1`,
         description: t`The column or text to check.`,
-        example: formatIdentifier(t`Status`),
+        example: formatIdentifier(t`Title`),
       },
       {
         name: t`string2`,
         description: t`The string of text to look for.`,
-        example: formatStringLiteral(t`Pass`),
+        example: formatStringLiteral(t`Small`),
       },
       {
         name: "…",
         description: t`You can add more values to look for.`,
-        example: formatStringLiteral(t`Pass`),
+        example: formatStringLiteral(t`Medium`),
       },
       {
         name: "case-insensitive",
@@ -680,17 +680,17 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`string1`,
         description: t`The column or text to check.`,
-        example: formatIdentifier(t`Course Name`),
+        example: formatIdentifier(t`Title`),
       },
       {
         name: t`string2`,
         description: t`The string of text to look for.`,
-        example: formatStringLiteral(t`Computer Science`),
+        example: formatStringLiteral(t`Small`),
       },
       {
         name: "…",
         description: t`You can add more values to look for.`,
-        example: formatStringLiteral(t`Pass`),
+        example: formatStringLiteral(t`Medium`),
       },
       {
         name: "case-insensitive",
@@ -708,17 +708,17 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`string1`,
         description: t`The column or text to check.`,
-        example: formatIdentifier(t`Course Name`),
+        example: formatIdentifier(t`Title`),
       },
       {
         name: t`string2`,
         description: t`The string of text to look for.`,
-        example: formatStringLiteral(t`Computer Science`),
+        example: formatStringLiteral(t`Small`),
       },
       {
         name: "…",
         description: t`You can add more values to look for.`,
-        example: formatStringLiteral(t`Pass`),
+        example: formatStringLiteral(t`Medium`),
       },
       {
         name: "case-insensitive",
@@ -941,17 +941,17 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`value1`,
         description: t`The column or value to check.`,
-        example: formatIdentifier(t`ID`),
+        example: formatIdentifier(t`Category`),
       },
       {
         name: t`value2`,
         description: t`The column or value to look for.`,
-        example: "1",
+        example: formatStringLiteral("Widget"),
       },
       {
         name: "…",
         description: t`You can add more values to look for.`,
-        example: "2",
+        example: formatStringLiteral("Gadget"),
       },
     ],
   },
@@ -964,17 +964,17 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`value1`,
         description: t`The column or value to check.`,
-        example: formatIdentifier(t`ID`),
+        example: formatIdentifier(t`Category`),
       },
       {
         name: t`value2`,
         description: t`The column or value to look for.`,
-        example: "1",
+        example: formatStringLiteral("Widget"),
       },
       {
         name: "…",
         description: t`You can add more values to look for.`,
-        example: "2",
+        example: formatStringLiteral("Gadget"),
       },
     ],
   },
