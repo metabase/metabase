@@ -157,7 +157,9 @@ jobs:
 
       # Needed to omit newly added tests for functionality that is not yet released
       - name: Checkout tests from SDK release commit
-        run: git checkout tags/embedding-sdk-${{ needs.resolve-sdk-version.outputs.sdk_version }} -- e2e/support/helpers e2e/test-component
+        run: |
+          git fetch --all --tags --prune
+          git checkout tags/embedding-sdk-${{ needs.resolve-sdk-version.outputs.sdk_version }} -- e2e/support/helpers e2e/test-component
         shell: bash
 
       - name: Retrieve uberjar artifact for ee
