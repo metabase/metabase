@@ -90,8 +90,8 @@ export interface IFieldValuesWidgetProps {
   dashboard?: Dashboard;
   question?: Question;
 
-  value: string[];
-  onChange: (value: string[]) => void;
+  value: RowValue[];
+  onChange: (value: RowValue[]) => void;
 
   multi?: boolean;
   autoFocus?: boolean;
@@ -449,7 +449,7 @@ export function FieldValuesWidgetInner({
           <ListField
             isDashboardFilter={!!parameter}
             placeholder={tokenFieldPlaceholder}
-            value={value?.filter((v: string) => v != null)}
+            value={value?.filter((v: RowValue) => v != null)}
             onChange={onChange}
             options={options}
             optionRenderer={optionRenderer}
