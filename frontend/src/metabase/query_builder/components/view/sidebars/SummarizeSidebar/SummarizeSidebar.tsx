@@ -44,7 +44,7 @@ export function SummarizeSidebar({
 
   return (
     <SidebarContent
-      className={cx(className, SummarizeSidebarS.sidebarView)}
+      className={cx(className, SummarizeSidebarS.SidebarView)}
       title={t`Summarize by`}
       color={color("summarize")}
       onDone={handleDoneClick}

@@ -88,7 +88,7 @@ function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
           component="span"
           fz="0.8rem"
           fw="bold"
-          className={DatasetMetadataStrengthIndicatorS.label}
+          className={DatasetMetadataStrengthIndicatorS.PercentageLabel}
           color={indicationColor}
           data-testid="tooltip-component-wrapper"
         >
