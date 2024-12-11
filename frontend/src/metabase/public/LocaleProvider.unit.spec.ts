@@ -8,7 +8,7 @@ const expectLocale = ({
 }: {
   locale: string;
   availableLocales: string[];
-  expected: string | null;
+  expected: string;
 }) => {
   it(`getLocaleToUse(${locale}, [${availableLocales.join(", ")}]) should return ${expected}`, () => {
     expect(getLocaleToUse(locale, availableLocales)).toBe(expected);
@@ -43,11 +43,11 @@ describe("getLocaleToUse", () => {
       });
     });
 
-    describe("it should return `null` if the locale is not valid", () => {
+    describe("it should return 'en if the locale is not valid", () => {
       expectLocale({
         locale: "it-CH",
         availableLocales,
-        expected: null,
+        expected: "en",
       });
     });
   });
@@ -69,11 +69,11 @@ describe("getLocaleToUse", () => {
       });
     });
 
-    describe("it should return `null` if the locale is not valid", () => {
+    describe("it should return 'en' if the locale is not valid", () => {
       expectLocale({
         locale: "it",
         availableLocales,
-        expected: null,
+        expected: "en",
       });
     });
   });

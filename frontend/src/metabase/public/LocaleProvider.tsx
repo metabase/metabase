@@ -19,13 +19,10 @@ export const LocaleProvider = ({
 
   useEffect(() => {
     if (shouldLoadLocale) {
-      const validatedLocale = getLocaleToUse(
-        locale ?? null,
-        localesData.locales,
-      );
+      const localeToLoad = getLocaleToUse(locale ?? null, localesData.locales);
 
-      setLocaleHeader(locale);
-      loadLocalization(validatedLocale!.replace("-", "_"))
+      setLocaleHeader(localeToLoad);
+      loadLocalization(localeToLoad.replace("-", "_"))
         .then(translatedObject => {
           setIsLocaleLoading(false);
           setUserLocale(translatedObject);
@@ -54,7 +51,7 @@ export const getLocaleToUse = (
   availableLocales: string[],
 ) => {
   if (!locale) {
-    return null;
+    return "en";
   }
 
   // return the locale if it's available
@@ -76,5 +73,5 @@ export const getLocaleToUse = (
     }
   }
 
-  return null;
+  return "en";
 };
