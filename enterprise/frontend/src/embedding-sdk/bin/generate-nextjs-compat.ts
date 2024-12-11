@@ -1,4 +1,3 @@
-/* eslint-disable no-console, no-literal-metabase-strings */
 import fs from "fs";
 
 import path from "path";
