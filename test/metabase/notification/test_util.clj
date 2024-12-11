@@ -32,7 +32,7 @@
   [_channel-type notification-info _template _recipients]
   [notification-info])
 
-(defmethod notification.payload/content :notification/testing
+(defmethod notification.payload/payload :notification/testing
   [_notification]
   {::payload? true})
 

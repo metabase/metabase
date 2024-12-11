@@ -24,7 +24,6 @@
         [notification {:handlers [{:channel_type :channel/email
                                    :recipients   [{:type    :notification-recipient/user
                                                    :user_id (t2/select-one-pk :model/User)}]}]}]
-        (def notification notification)
         (notification/send-notification! notification)
         #_(notification.tu/with-captured-channel-send!
             (notification/send-notification! notification))))))
