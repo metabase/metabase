@@ -18,12 +18,11 @@
      (thunk))))
 
 (deftest basic-card-notification-test
-  (ngoc/with-tc
-    (notification.tu/with-notification-testing-setup!
-      (notification.tu/with-card-notification
-        [notification {:handlers [{:channel_type :channel/email
-                                   :recipients   [{:type    :notification-recipient/user
-                                                   :user_id (t2/select-one-pk :model/User)}]}]}]
-        (notification/send-notification! notification)
-        #_(notification.tu/with-captured-channel-send!
-            (notification/send-notification! notification))))))
+  (notification.tu/with-notification-testing-setup!
+    (notification.tu/with-card-notification
+      [notification {:handlers [{:channel_type :channel/email
+                                 :recipients   [{:type    :notification-recipient/user
+                                                 :user_id (t2/select-one-pk :model/User)}]}]}]
+      (notification/send-notification! notification)
+      #_(notification.tu/with-captured-channel-send!
+          (notification/send-notification! notification)))))
