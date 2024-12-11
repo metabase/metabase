@@ -14,9 +14,16 @@
   cursor: pointer;
 
   &:hover {
-    /* TODO: find a color or maybe use a Button? */
-    /* background-color: ${() => alpha("summarize", 0.8)};
-    border-color: ${() => alpha("summarize", 0.8)}; */
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-summarize),
+      transparent 20%
+    );
+    border-color: color-mix(
+      in srgb,
+      var(--mb-color-summarize),
+      transparent 20%
+    );
   }
 }
 
