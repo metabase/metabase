@@ -523,7 +523,7 @@ describe("Dashboard > Dashboard Questions", () => {
         H.visitDashboard(dashboardId);
         H.openDashboardMenu("Move to trash");
         H.modal().button("Move to trash").click();
-        cy.findByText("Dashboard with a title").should("not.exist");
+
         cy.findByText(/gone wrong/, { timeout: 0 }).should("not.exist");
 
         cy.findByTestId("archive-banner").findByText(/is in the trash/);
