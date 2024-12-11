@@ -6,7 +6,7 @@
   (:require
    [medley.core :as m]
    [metabase.models.interface :as mi]
-   [metabase.models.spec-update :as models.spec-update]
+   [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -432,25 +432,25 @@
 (def ^:private notification-update-spec
   {:model        :model/Notification
    ;; a function that takes a row and returns a map of the columns to compare
-   :compare-row  #(select-keys % [:active])
+   :compare-row  [:active]
    :nested-specs {:payload       {:model        :model/NotificationCard
-                                  :compare-row  #(select-keys % [:send_condition :send_once])}
+                                  :compare-row  [:send_condition :send_once]}
                   :subscriptions {:model        :model/NotificationSubscription
                                   ;; the foreign key column in the nested model with respect to the parent model
                                   :fk-column    :notification_id
-                                  :compare-row  #(select-keys % [:notification_id :type :event_name :cron_schedule])
+                                  :compare-row  [:notification_id :type :event_name :cron_schedule]
                                   ;; whether this nested model is a sequentials with respect to the parent model
                                   :multi-row?   true}
                   :handlers      {:model        :model/NotificationHandler
                                   :fk-column    :notification_id
-                                  :compare-row  #(select-keys % [:notification_id :channel_type :channel_id :template_id :active])
+                                  :compare-row  [:notification_id :channel_type :channel_id :template_id :active]
                                   :multi-row?   true
                                   :nested-specs {:recipients {:model       :model/NotificationRecipient
                                                               :fk-column   :notification_handler_id
-                                                              :compare-row #(select-keys % [:notification_handler_id :type :user_id :permissions_group_id :details])
+                                                              :compare-row [:notification_handler_id :type :user_id :permissions_group_id :details]
                                                               :multi-row?  true}}}}})
 
 (defn update-notification!
   "Update an existing notification with `new-notification`."
   [existing-notification new-notification]
-  (models.spec-update/do-update! existing-notification new-notification notification-update-spec))
+  (models.u.spec-update/do-update! existing-notification new-notification notification-update-spec))

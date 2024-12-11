@@ -161,11 +161,11 @@
                                                 :type    :notification-recipient/user
                                                 :user_id (mt/user->id :rasta)}]}
                 new-handlers (conj (:handlers @notification) new-handler)]
-            (is (=?  {:channel_type "channel/slack"
-                      :recipients   [{:type    "notification-recipient/user"
-                                      :user_id (mt/user->id :rasta)}]}
+            (is (=? {:channel_type "channel/slack"
+                     :recipients   [{:type    "notification-recipient/user"
+                                     :user_id (mt/user->id :rasta)}]}
                     (->> (update-notification (assoc @notification :handlers new-handlers))
-                        :handlers (m/find-first #(= "channel/slack" (:channel_type %))))))))))))
+                         :handlers (m/find-first #(= "channel/slack" (:channel_type %))))))))))))
 
 (deftest update-notification-error-test
   (testing "require auth"
