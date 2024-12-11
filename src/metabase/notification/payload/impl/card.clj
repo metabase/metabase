@@ -40,7 +40,7 @@
   (let [{:keys [notification_card card_part]} payload
         send-condition                        (:send_condition notification_card)]
     (cond
-      (= :has_result #pp send-condition)
+      (= :has_result send-condition)
       (not (notification.execute/is-card-empty? card_part))
 
       (#{:goal_above :goal_below} send-condition)
