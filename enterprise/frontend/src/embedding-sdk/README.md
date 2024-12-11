@@ -1,6 +1,6 @@
 # Metabase embedded analytics SDK
 
-![Metabase logo](../../../../docs/images/metabase-logo.svg)
+![Metabase logo](https://raw.githubusercontent.com/metabase/metabase/refs/heads/master/docs/images/metabase-logo.svg)
 
 > This SDK is in public beta and actively being developed. You can expect some changes to the API, especially during the beta. The SDK currently only works with a Metabase 1.51 or higher.
 
