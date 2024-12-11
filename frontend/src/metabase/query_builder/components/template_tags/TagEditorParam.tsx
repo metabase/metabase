@@ -37,13 +37,15 @@ import type { State } from "metabase-types/store";
 
 import TagEditorParamS from "./TagEditorParam.module.css";
 import {
-  ContainerLabel,
   DefaultRequiredValueControl,
   FieldMappingSelect,
   FilterWidgetLabelInput,
   FilterWidgetTypeSelect,
-  InputContainer,
 } from "./TagEditorParamParts";
+import {
+  ContainerLabel,
+  InputContainer,
+} from "./TagEditorParamParts/TagEditorParam";
 import { VariableTypeSelect } from "./TagEditorParamParts/VariableTypeSelect";
 
 interface Props {
