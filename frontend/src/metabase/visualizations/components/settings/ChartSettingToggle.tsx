@@ -2,11 +2,11 @@
 import CS from "metabase/css/core/index.css";
 import { Switch, Text } from "metabase/ui";
 
-export const ChartSettingToggle = ({ value, onChange, id, title }) => (
+export const ChartSettingToggle = ({ value, onChange, id, label }) => (
   <Switch
     label={
       <Text truncate fw="bold">
-        {title}
+        {label}
       </Text>
     }
     labelPosition="left"
