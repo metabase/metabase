@@ -40,6 +40,7 @@ import {
 import { createMockUndo } from "metabase-types/api/mocks";
 
 import { BulkActionBarInner } from "../../../components/BulkActionBar/BulkActionBar";
+import { OverlaysDemoProps, OverlayType, Setter } from "./types";
 
 const LauncherGroup = ({
   title,
@@ -191,33 +192,10 @@ const _Launchers = ({
   );
 };
 
-enum OverlayType {
-  "legacyModal",
-  "mantineModal",
-  "mantineModalWithTitleProp",
-  "toast",
-  "actionToast",
-  "sidesheet",
-  "entityPicker",
-  "commandPalette",
-  "undo",
-  "mantinePopover",
-  "mantineTooltip",
-  "mantineMenu",
-  "mantineSelect",
-  "hoverCard",
-  "legacySelect",
-  "legacyTooltip",
-  "legacyPopover",
-}
-
 export const OverlaysDemo = ({
   enableNesting,
   overlaysToOpen = [],
-}: {
-  enableNesting: boolean;
-  overlaysToOpen: OverlayType[];
-}) => {
+}: OverlaysDemoProps) => {
   const [legacyModalCount, setLegacyModalCount] = useState(0);
   const [mantineModalCount, setMantineModalCount] = useState(0);
   const [mantineModalWithTitlePropCount, setMantineModalWithTitlePropCount] =
@@ -229,40 +207,36 @@ export const OverlaysDemo = ({
   const [commandPaletteCount, setCommandPaletteCount] = useState(0);
   const [undoCount, setUndoCount] = useState(0);
 
-  const setters: Record<OverlayType, Dispatch<SetStateAction<number>>> = {
-    [OverlayType.legacyModal]: setLegacyModalCount,
-    [OverlayType.mantineModal]: setMantineModalCount,
-    [OverlayType.mantineModalWithTitleProp]: setMantineModalWithTitlePropCount,
-    [OverlayType.toast]: setToastCount,
-    [OverlayType.actionToast]: setActionToastCount,
-    [OverlayType.sidesheet]: setSidesheetCount,
-    [OverlayType.entityPicker]: setEntityPickerCount,
-    [OverlayType.commandPalette]: setCommandPaletteCount,
-    [OverlayType.undo]: setUndoCount,
-  };
-
   useEffect(() => {
-    overlaysToOpen.forEach(overlay => {
-      const setter = setters[overlay];
-      setter(c => c + 1);
-    });
-    // I also need to ensure that tooltips open. For that we can just use a boolean setter function, I believe.
+    // I also need to ensure that tooltips open. For that we can just use a
+    // boolean setter function, I believe.
 
-    // FIXME: I might need something like this to ensure that the overlays open in a specific order
-    // const updateOverlaysSequentially = async () => {
-    //   for (const overlay of overlaysToOpen) {
-    //     // Ensuring each setter updates state after the previous one
-    //     await new Promise(resolve => {
-    //       const setter = setters[overlay];
+    const setters: Partial<Record<OverlayType, Setter>> = {
+      [OverlayType.legacyModal]: setLegacyModalCount,
+      [OverlayType.mantineModal]: setMantineModalCount,
+      [OverlayType.mantineModalWithTitleProp]:
+        setMantineModalWithTitlePropCount,
+      [OverlayType.toast]: setToastCount,
+      [OverlayType.actionToast]: setActionToastCount,
+      [OverlayType.sidesheet]: setSidesheetCount,
+      [OverlayType.entityPicker]: setEntityPickerCount,
+      [OverlayType.commandPalette]: setCommandPaletteCount,
+      [OverlayType.undo]: setUndoCount,
+    };
 
-    //       setter(c => {
-    //         resolve(c + 1);
-    //         return c + 1;  // Returning the new state
-    //       });
-    //     });
-    //   }
-    // };
-  }, []);
+    const updateOverlaysSequentially = async () => {
+      for (const overlay of overlaysToOpen) {
+        await new Promise(resolve => {
+          const setter = setters[overlay] as Setter;
+          setter(c => {
+            resolve(c + 1);
+            return c + 1;
+          });
+        });
+      }
+    };
+    updateOverlaysSequentially();
+  }, [overlaysToOpen]);
 
   const Launchers = () => (
     <_Launchers

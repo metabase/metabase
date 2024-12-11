@@ -17,6 +17,7 @@ import {
 } from "metabase-types/store/mocks";
 
 import { OverlaysDemo } from "./OverlaysDemo";
+import { OverlayType, OverlaysDemoProps } from "./types";
 
 const mockCard = createMockCard();
 const storeInitialState = createMockState({
@@ -58,153 +59,162 @@ export default {
   },
 };
 
-type StoryProps = {
-  enableNesting: boolean;
-};
-
-const Template: StoryFn<StoryProps> = args => {
+const Template: StoryFn<OverlaysDemoProps> = args => {
   return <OverlaysDemo {...args} />;
 };
 
-export const Default = {
+type Scenario = {
+  render: StoryFn<OverlaysDemoProps>;
+  args: OverlaysDemoProps;
+};
+
+export const Default: Scenario = {
   render: Template,
   args: {
     enableNesting: false,
   },
 };
 
-const overlays: any[] = [
-  {
-    name: "Mantine Tooltip",
-    targetEvent: "hover",
-    targetText: "Mantine Tooltip",
-    textContent: "Mantine Tooltip content",
-    canLaunchOverlays: false,
-    shouldBeInteractable: false,
+export const MantineModalLaunchesLegacyModal: Scenario = {
+  render: Template,
+  args: {
+    enableNesting: true,
+    overlaysToOpen: [OverlayType.mantineModal, OverlayType.legacyModal],
   },
-  {
-    name: "Legacy tooltip",
-    targetEvent: "hover",
-    targetText: "Legacy tooltip",
-    textContent: "Legacy tooltip content",
-    canLaunchOverlays: false,
-    shouldBeInteractable: false,
-  },
-  {
-    name: "Mantine Popover",
-    targetEvent: "click",
-    targetText: "Mantine Popover",
-    textContent: "Mantine Popover text content",
-    contentLabel: "Mantine Popover content",
-    canLaunchOverlays: true,
-  },
-  {
-    name: "Legacy popover",
-    targetEvent: "click",
-    targetText: "Legacy popover",
-    textContent: "Legacy popover text content",
-    contentLabel: "Legacy popover content",
-    canLaunchOverlays: true,
-  },
-  {
-    name: "Mantine Modal",
-    targetEvent: "click",
-    targetText: "Mantine Modal",
-    textContent: "Mantine Modal text content",
-    contentLabel: "Mantine Modal content",
-    canLaunchOverlays: true,
-  },
-  {
-    name: "Legacy modal",
-    targetEvent: "click",
-    targetText: "Legacy modal",
-    textContent: "Legacy modal text content",
-    contentLabel: "Legacy modal content",
-    canLaunchOverlays: true,
-  },
-  {
-    name: "Undo-style toast",
-    targetEvent: "click",
-    targetText: "Undo-style toast",
-    textContent: "Undo-style toast text content",
-    contentLabel: "Undo-style toast content",
-    canLaunchOverlays: false,
-  },
-  {
-    name: "Action-style toast",
-    targetEvent: "click",
-    targetText: "Action-style toast",
-    textContent: "Action-style toast text content",
-    contentLabel: "Action-style toast content",
-    canLaunchOverlays: true,
-  },
-  {
-    name: "Toaster-style toast",
-    targetEvent: "click",
-    targetText: "Toaster-style toast",
-    textContent: "Toaster-style toast text content",
-    canLaunchOverlays: false,
-  },
-  {
-    name: "Mantine Menu",
-    targetEvent: "click",
-    targetText: "Mantine Menu",
-    textContent: "Mantine Menu Item 1",
-    canLaunchOverlays: false,
-  },
-  {
-    name: "Mantine Select",
-    targetEvent: "click",
-    targetText: "Mantine Select option 1",
-    textContent: "Mantine Select option 2",
-    canLaunchOverlays: false,
+};
 
-    // For Mantine Select we provide custom functions to find the target and text content
-    findTarget: (container: Container, targetText: string) =>
-      // eslint-disable-next-line testing-library/prefer-screen-queries
-      container.findByDisplayValue(targetText),
-    findTextContent: (container: Container, contentText: string) => {
-      // eslint-disable-next-line testing-library/prefer-screen-queries
-      return container.findByText(new RegExp(contentText));
-    },
-  },
-  {
-    name: "Legacy Select",
-    targetEvent: "click",
-    targetText: "Legacy Select option 1",
-    textContent: "Legacy Select option 2",
-    canLaunchOverlays: false,
-  },
-  {
-    name: "Sidesheet",
-    targetEvent: "click",
-    targetText: "Sidesheet",
-    textContent: "Sidesheet text content",
-    contentLabel: "Sidesheet content",
-    canLaunchOverlays: true,
-  },
-  {
-    name: "Entity Picker",
-    targetEvent: "click",
-    targetText: "Entity Picker",
-    textContent: "Entity Picker text content",
-    contentLabel: "Entity Picker content",
-    canLaunchOverlays: true,
-  },
-  {
-    name: "Command Palette",
-    targetEvent: "click",
-    targetText: "Command Palette",
-    textContent: "Command Palette text content",
-    contentLabel: "Command Palette content",
-    canLaunchOverlays: true,
-  },
-  // TODO: Make HoverCard work here
-  // {
-  //   name: "Mantine HoverCard",
-  //   targetEvent: "click",
-  //   targetText: "Mantine HoverCard",
-  //   textContent: "Mantine HoverCard text content",
-  //   canLaunchOverlays: false,
-  // },
-];
+// const overlays: any[] = [
+//   {
+//     name: "Mantine Tooltip",
+//     targetEvent: "hover",
+//     targetText: "Mantine Tooltip",
+//     textContent: "Mantine Tooltip content",
+//     canLaunchOverlays: false,
+//     shouldBeInteractable: false,
+//   },
+//   {
+//     name: "Legacy tooltip",
+//     targetEvent: "hover",
+//     targetText: "Legacy tooltip",
+//     textContent: "Legacy tooltip content",
+//     canLaunchOverlays: false,
+//     shouldBeInteractable: false,
+//   },
+//   {
+//     name: "Mantine Popover",
+//     targetEvent: "click",
+//     targetText: "Mantine Popover",
+//     textContent: "Mantine Popover text content",
+//     contentLabel: "Mantine Popover content",
+//     canLaunchOverlays: true,
+//   },
+//   {
+//     name: "Legacy popover",
+//     targetEvent: "click",
+//     targetText: "Legacy popover",
+//     textContent: "Legacy popover text content",
+//     contentLabel: "Legacy popover content",
+//     canLaunchOverlays: true,
+//   },
+//   {
+//     name: "Mantine Modal",
+//     targetEvent: "click",
+//     targetText: "Mantine Modal",
+//     textContent: "Mantine Modal text content",
+//     contentLabel: "Mantine Modal content",
+//     canLaunchOverlays: true,
+//   },
+//   {
+//     name: "Legacy modal",
+//     targetEvent: "click",
+//     targetText: "Legacy modal",
+//     textContent: "Legacy modal text content",
+//     contentLabel: "Legacy modal content",
+//     canLaunchOverlays: true,
+//   },
+//   {
+//     name: "Undo-style toast",
+//     targetEvent: "click",
+//     targetText: "Undo-style toast",
+//     textContent: "Undo-style toast text content",
+//     contentLabel: "Undo-style toast content",
+//     canLaunchOverlays: false,
+//   },
+//   {
+//     name: "Action-style toast",
+//     targetEvent: "click",
+//     targetText: "Action-style toast",
+//     textContent: "Action-style toast text content",
+//     contentLabel: "Action-style toast content",
+//     canLaunchOverlays: true,
+//   },
+//   {
+//     name: "Toaster-style toast",
+//     targetEvent: "click",
+//     targetText: "Toaster-style toast",
+//     textContent: "Toaster-style toast text content",
+//     canLaunchOverlays: false,
+//   },
+//   {
+//     name: "Mantine Menu",
+//     targetEvent: "click",
+//     targetText: "Mantine Menu",
+//     textContent: "Mantine Menu Item 1",
+//     canLaunchOverlays: false,
+//   },
+//   {
+//     name: "Mantine Select",
+//     targetEvent: "click",
+//     targetText: "Mantine Select option 1",
+//     textContent: "Mantine Select option 2",
+//     canLaunchOverlays: false,
+
+//     // For Mantine Select we provide custom functions to find the target and text content
+//     findTarget: (container: Container, targetText: string) =>
+//       // eslint-disable-next-line testing-library/prefer-screen-queries
+//       container.findByDisplayValue(targetText),
+//     findTextContent: (container: Container, contentText: string) => {
+//       // eslint-disable-next-line testing-library/prefer-screen-queries
+//       return container.findByText(new RegExp(contentText));
+//     },
+//   },
+//   {
+//     name: "Legacy Select",
+//     targetEvent: "click",
+//     targetText: "Legacy Select option 1",
+//     textContent: "Legacy Select option 2",
+//     canLaunchOverlays: false,
+//   },
+//   {
+//     name: "Sidesheet",
+//     targetEvent: "click",
+//     targetText: "Sidesheet",
+//     textContent: "Sidesheet text content",
+//     contentLabel: "Sidesheet content",
+//     canLaunchOverlays: true,
+//   },
+//   {
+//     name: "Entity Picker",
+//     targetEvent: "click",
+//     targetText: "Entity Picker",
+//     textContent: "Entity Picker text content",
+//     contentLabel: "Entity Picker content",
+//     canLaunchOverlays: true,
+//   },
+//   {
+//     name: "Command Palette",
+//     targetEvent: "click",
+//     targetText: "Command Palette",
+//     textContent: "Command Palette text content",
+//     contentLabel: "Command Palette content",
+//     canLaunchOverlays: true,
+//   },
+//   // TODO: Make HoverCard work here
+//   // {
+//   //   name: "Mantine HoverCard",
+//   //   targetEvent: "click",
+//   //   targetText: "Mantine HoverCard",
+//   //   textContent: "Mantine HoverCard text content",
+//   //   canLaunchOverlays: false,
+//   // },
+// ];
