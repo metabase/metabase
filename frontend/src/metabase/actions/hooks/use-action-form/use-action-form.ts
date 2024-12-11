@@ -13,13 +13,11 @@ import {
   formatInitialValue,
   formatSubmitValues,
   getOrGenerateFieldSettings,
-  getValuesForUpdate,
 } from "./utils";
 
 type Opts = {
   action: WritebackAction;
   initialValues?: ActionFormInitialValues;
-  prefetchesInitialValues?: boolean;
 };
 
 const INITIAL_VALUES = {};
@@ -28,7 +26,6 @@ const DEFAULT_PARAMETERS: WritebackParameter[] = [];
 function useActionForm({
   action: { parameters = DEFAULT_PARAMETERS, visualization_settings },
   initialValues = INITIAL_VALUES,
-  prefetchesInitialValues,
 }: Opts) {
   const fieldSettings = useMemo(() => {
     return getOrGenerateFieldSettings(
@@ -62,20 +59,9 @@ function useActionForm({
       const allValues = { ...cleanedInitialValues, ...values };
       const formatted = formatSubmitValues(allValues, fieldSettings);
 
-      // For some actions (e.g. implicit update actions), we prefetch
-      // selected row values, and pass them as initial values to prefill
-      // the form. In that case, we want to return only changed values.
-      // But we always want to include entity id which is required in API.
-      return prefetchesInitialValues
-        ? getValuesForUpdate(formatted, initialValues)
-        : formatted;
+      return formatted;
     },
-    [
-      initialValues,
-      cleanedInitialValues,
-      fieldSettings,
-      prefetchesInitialValues,
-    ],
+    [cleanedInitialValues, fieldSettings],
   );
 
   return {

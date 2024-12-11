@@ -59,24 +59,6 @@ export const formatSubmitValues = (
   return values;
 };
 
-export const getValuesForUpdate = (
-  values: ParametersForActionExecution,
-  initialValues: Partial<ParametersForActionExecution>,
-) => {
-  const changedValues = Object.entries(values).filter(([key, value]) => {
-    if (key === "id") {
-      // always include the "id" attribute
-      return true;
-    }
-
-    const initialValue = initialValues[key];
-
-    return value !== initialValue;
-  });
-
-  return Object.fromEntries(changedValues);
-};
-
 const isNumericParameter = (param: Parameter): boolean =>
   /integer|float/gi.test(param.type);
 

@@ -147,7 +147,6 @@ describe("useActionForm", () => {
         useActionForm({
           action,
           initialValues: { param1: "some value" },
-          prefetchesInitialValues: true,
         }),
       );
       expect(result.current.getCleanValues({ param1: "some value" })).toEqual(
