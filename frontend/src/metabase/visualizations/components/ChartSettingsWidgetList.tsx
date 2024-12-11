@@ -1,10 +1,8 @@
 import _ from "underscore";
 
+import { Divider, Stack, Text } from "metabase/ui";
+
 import ChartSettingsWidget from "./ChartSettingsWidget";
-import {
-  ChartSettingsWidgetListDivider,
-  ChartSettingsWidgetListHeader,
-} from "./ChartSettingsWidgetList.styled";
 
 interface ChartSettingsWidgetListProps {
   widgets: { id: string; group?: string }[];
@@ -18,9 +16,39 @@ const ChartSettingsWidgetList = ({
   const widgetsAreGrouped = widgets.some(widget => widget.group);
 
   if (!widgetsAreGrouped) {
-    return widgets.map(widget => (
-      <ChartSettingsWidget key={widget.id} {...widget} {...extraWidgetProps} />
-    ));
+    return (
+      <Stack px="lg">
+        {widgets.map(widget => (
+          <Stack key={widget.id}>
+            <pre>
+              {JSON.stringify(
+                {
+                  widget: Object.entries(widget).reduce((acc, [key, value]) => {
+                    acc[key] = typeof value === "object" ? "OBJECT" : value;
+                    return acc;
+                  }, {}),
+                  extraWidgetProps: Object.entries(extraWidgetProps).reduce(
+                    (acc, [key, value]) => {
+                      acc[key] = typeof value === "object" ? "OBJECT" : value;
+                      return acc;
+                    },
+                    {},
+                  ),
+                },
+                undefined,
+                2,
+              )}
+            </pre>
+
+            <ChartSettingsWidget
+              key={widget.id}
+              {...widget}
+              {...extraWidgetProps}
+            />
+          </Stack>
+        ))}
+      </Stack>
+    );
   } else {
     const groupedWidgets = widgets.reduce<Record<string, any[]>>(
       (memo, widget) => {
@@ -31,28 +59,58 @@ const ChartSettingsWidgetList = ({
       {},
     );
 
-    return Object.keys(groupedWidgets).map((group, groupIndex, groups) => {
-      const lastGroup = groupIndex === groups.length - 1;
-      return (
-        <div key={`group-${groupIndex}`}>
-          {group && (
-            <ChartSettingsWidgetListHeader>
-              {group}
-            </ChartSettingsWidgetListHeader>
-          )}
-          <div>
-            {_.sortBy(groupedWidgets[group], "index").map(widget => (
-              <ChartSettingsWidget
-                key={widget.id}
-                {...widget}
-                {...extraWidgetProps}
-              />
-            ))}
-            {!lastGroup && <ChartSettingsWidgetListDivider />}
-          </div>
-        </div>
-      );
-    });
+    return (
+      <Stack px="lg">
+        {Object.keys(groupedWidgets).map((group, groupIndex, groups) => {
+          const lastGroup = groupIndex === groups.length - 1;
+          return (
+            <Stack key={`group-${groupIndex}`}>
+              {group && (
+                <Text c="text-medium" tt="uppercase" fw="bold">
+                  {group}
+                </Text>
+              )}
+              <Stack>
+                {_.sortBy(groupedWidgets[group], "index").map(widget => (
+                  <Stack key={widget.id}>
+                    <pre>
+                      {JSON.stringify(
+                        {
+                          widget: Object.entries(widget).reduce(
+                            (acc, [key, value]) => {
+                              acc[key] =
+                                typeof value === "object" ? "OBJECT" : value;
+                              return acc;
+                            },
+                            {},
+                          ),
+                          extraWidgetProps: Object.entries(
+                            extraWidgetProps,
+                          ).reduce((acc, [key, value]) => {
+                            acc[key] =
+                              typeof value === "object" ? "OBJECT" : value;
+                            return acc;
+                          }, {}),
+                        },
+                        undefined,
+                        2,
+                      )}
+                    </pre>
+
+                    <ChartSettingsWidget
+                      key={widget.id}
+                      {...widget}
+                      {...extraWidgetProps}
+                    />
+                  </Stack>
+                ))}
+                {!lastGroup && <Divider />}
+              </Stack>
+            </Stack>
+          );
+        })}
+      </Stack>
+    );
   }
 };
 
