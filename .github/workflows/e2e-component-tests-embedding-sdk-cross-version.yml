@@ -165,11 +165,10 @@ jobs:
 
       - name: Move tests from the release commit into the repo
         run: |
-          ls -lah
           rm -rf e2e/support/helpers
-          mv sdk-release-e2e/e2e/support/helpers/* e2e/support/helpers
+          mv sdk-release-e2e/e2e/support/helpers/* ./e2e/support/helpers
           rm -rf e2e/test-component
-          mv sdk-release-e2e/e2e/test-component/* e2e/test-component
+          mv sdk-release-e2e/e2e/test-component/* ./e2e/test-component
         shell: bash
 
       - name: Retrieve uberjar artifact for ee

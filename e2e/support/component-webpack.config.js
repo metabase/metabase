@@ -19,14 +19,14 @@ module.exports = {
     extensions: [".ts", ".tsx", ".js", ".jsx", ".css", ".svg"],
     alias: {
       ...mainConfig.resolve.alias,
-      // ...(!isEmbeddingSdkPackageInstalled
-      //   ? {
-      //       "@metabase/embedding-sdk-react": path.resolve(
-      //         __dirname,
-      //         "../../resources/embedding-sdk/dist/main.bundle.js",
-      //       ),
-      //     }
-      //   : null),
+      ...(!isEmbeddingSdkPackageInstalled
+        ? {
+            "@metabase/embedding-sdk-react": path.resolve(
+              __dirname,
+              "../../resources/embedding-sdk/dist/main.bundle.js",
+            ),
+          }
+        : null),
     },
     fallback: { path: false, fs: false }, // FIXME: this might break file download tests, we might need to implement this properly
   },
