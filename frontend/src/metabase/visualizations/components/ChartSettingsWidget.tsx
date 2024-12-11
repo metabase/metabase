@@ -85,7 +85,7 @@ const ChartSettingsWidget = ({
         </Title>
       )}
       {description && <Description>{description}</Description>}
-      {Widget && <Widget {...extraWidgetProps} {...props} />}
+      {Widget && <Widget label={title} {...extraWidgetProps} {...props} />}
     </Root>
   );
 };
