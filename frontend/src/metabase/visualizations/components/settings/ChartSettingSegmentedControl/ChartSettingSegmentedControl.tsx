@@ -5,17 +5,17 @@ interface ChartSettingSegmentedControlProps {
   options: { name: string; value: string; icon?: IconName }[];
   onChange: (value: string) => void;
   value: string;
-  title: string;
+  label: string;
 }
 
 export const ChartSettingSegmentedControl = ({
-  title,
+  label,
   options,
   onChange,
   value,
 }: ChartSettingSegmentedControlProps) => (
   <Stack spacing="xs">
-    <Text fw="bold">{title}</Text>
+    <Text fw="bold">{label}</Text>
     <Button.Group>
       {options.map(elem => (
         <Button
