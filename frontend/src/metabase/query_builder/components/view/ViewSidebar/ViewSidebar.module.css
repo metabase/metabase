@@ -5,10 +5,10 @@
   width: 0;
 
   &.rightSide {
-    border-left: 1px solid var(--mb-color-border);
+    border-left: none;
 
     &.isOpen {
-      border-left: none;
+      border-left: 1px solid var(--mb-color-border);
     }
 
     @media screen and (max-width: 40em) {
@@ -17,10 +17,10 @@
   }
 
   &.leftSide {
-    border-right: 1px solid var(--mb-color-border);
+    border-right: none;
 
     &.isOpen {
-      border-right: none;
+      border-right: 1px solid var(--mb-color-border);
     }
   }
 }
