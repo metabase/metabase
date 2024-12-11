@@ -1,0 +1,19 @@
+.ContainerLabel {
+  color: var(--mb-color-text-medium);
+  font-weight: 700;
+  /* it's 7px and not aligned with our DS */
+  margin-bottom: 0.5em;
+}
+
+.ErrorSpan {
+  color: var(--mb-color-error);
+}
+
+.DefaultParameterValueWidget {
+  color: var(--mb-color-text-dark);
+  padding: 0.75rem;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 4px;
+  background-color: var(--mb-color-bg-white);
+  font-weight: normal;
+}
