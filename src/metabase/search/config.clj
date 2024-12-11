@@ -77,7 +77,7 @@
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
-  ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action" "database"])
+  ["dashboard" "metric" "segment" "indexed-entity" "dataset" "card" "collection" "table" "action" "database"])
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 

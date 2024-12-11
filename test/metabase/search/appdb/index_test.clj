@@ -150,7 +150,7 @@
                           [:= :name entity-name]
                           [:= :model model]]}))
 
-(def default-index-entity
+(def blank-index-entity
   {:model               nil
    :model_id            nil
    :name                nil
@@ -169,7 +169,7 @@
 
 (defn- index-entity
   [entity]
-  (merge default-index-entity entity))
+  (merge blank-index-entity entity))
 
 (deftest card-complex-ingestion-test
   (search.tu/with-temp-index-table
