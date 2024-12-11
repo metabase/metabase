@@ -176,6 +176,7 @@
   [_channel-type {:keys [payload payload_type] :as notification-payload} template recipients]
   (let [{:keys [card_part
                 notification_card
+                subscriptions
                 card]}     payload
         template           (or template (payload-type->default-template payload_type))
         timezone           (channel.render/defaulted-timezone card)
@@ -192,8 +193,8 @@
                                                                   :rows  (trs "Alert: {0} has results" (:name card)))
                                                :icon_cid        (:content-id icon-attachment)
                                                :content         (html (:content rendered-card))
-                                               ;; TODO FIX THISSSSSSSSSSSS
-                                               :alert_schedule  #_(messages/alert-schedule-text (:schedule notification_card)) "YES"
+                                               ;; TODO UI only allow one subscription per card notification
+                                               :alert_schedule  (messages/notification-card-schedule-text (first subscriptions))
                                                :management_text (if (nil? non-user-email)
                                                                   "Manage your subscriptions"
                                                                   "Unsubscribe")

@@ -8,7 +8,7 @@
    [toucan2.core :as t2]))
 
 (mu/defmethod notification.payload/payload :notification/card
-  [{:keys [creator_id payload] :as _notification-info} :- notification.payload/Notification]
+  [{:keys [creator_id payload subscriptions] :as _notification-info} :- notification.payload/Notification]
   (let [card_id (:card_id payload)]
     {:card_part       (notification.execute/execute-card creator_id card_id
                                                          ;; for query_execution's context purposes
@@ -18,7 +18,8 @@
      :style            {:color_text_dark   channel.render/color-text-dark
                         :color_text_light  channel.render/color-text-light
                         :color_text_medium channel.render/color-text-medium}
-     :notification_card payload}))
+     :notification_card payload
+     :subscriptions     subscriptions}))
 
 (defn- goal-met? [{:keys [send_condition], :as notification_card} card_part]
   (let [goal-comparison      (if (= :goal_above send_condition) >= <)

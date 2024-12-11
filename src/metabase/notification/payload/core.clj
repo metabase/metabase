@@ -19,12 +19,13 @@
   ;; TODO: how do we make this schema closed after :merge?
   [:merge #_{:closed true}
    [:map
-    [:payload_type                  (into [:enum] models.notification/notification-types)]
+    [:payload_type                   (into [:enum] models.notification/notification-types)]
     ;; allow unsaved notification to be sent
-    [:id           {:optional true} [:maybe ms/PositiveInt]]
-    [:active       {:optional true} :boolean]
-    [:created_at   {:optional true} :any]
-    [:updated_at   {:optional true} :any]]
+    [:id            {:optional true} [:maybe ms/PositiveInt]]
+    [:active        {:optional true} :boolean]
+    [:created_at    {:optional true} :any]
+    [:updated_at    {:optional true} :any]
+    [:subscriptions {:optional true} [:sequential models.notification/NotificationSubscription]]]
    [:multi {:dispatch :payload_type}
     ;; system event is a bit special in that part of the payload comes from the event itself
     [:notification/system-event
@@ -36,19 +37,8 @@
         [:event_info  [:maybe :map]]]]]]
     [:notification/card
      [:map
-      [:payload    [:map
-                    [:card_id                           ms/PositiveInt]
-                    [:send_condition                    (into [:enum] models.notification/card-subscription-send-conditions)]
-                    [:send_once        {:optional true} ms/BooleanValue]
-                    ;; delete
-                    [:schedule         {:optional true} :map]
-                    [:alert_condition  {:optional true} [:enum "rows" "goal"]]
-                    [:alert_above_goal {:optional true} [:maybe ms/BooleanValue]]
-                    [:alert_first_only {:optional true} [:maybe ms/BooleanValue]]
-                    [:include_csv      {:optional true} [:maybe ms/BooleanValue]]
-                    [:include_xls      {:optional true} [:maybe ms/BooleanValue]]
-                    [:format_rows      {:optional true} [:maybe ms/BooleanValue]]
-                    [:pivot_results    {:optional true} [:maybe ms/BooleanValue]]]]
+      [:payload       models.notification/NotificationCard]
+
       [:creator_id ms/PositiveInt]]]
     [:notification/dashboard
      [:map
@@ -99,7 +89,8 @@
                  [:card_part         [:maybe notification.payload.execute/Part]]
                  [:card              :map]
                  [:style             :map]
-                 [:notification_card :map]]]]]
+                 [:notification_card models.notification/NotificationCard]
+                 [:subscriptions     [:sequential models.notification/NotificationSubscription]]]]]]
     [:notification/testing   :map]]])
 
 (defn- logo-url

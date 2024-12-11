@@ -49,25 +49,25 @@
   (testing "Alert schedules can be described as English strings, with the timezone included"
     (tu/with-temporary-setting-values [report-timezone "America/Pacific"]
       (is (= "Run hourly"
-             (@#'messages/alert-schedule-text {:schedule_type :hourly})))
+             (@#'messages/notification-card-schedule-text {:schedule_type :hourly})))
       (is (= "Run daily at 12 AM America/Pacific"
-             (@#'messages/alert-schedule-text {:schedule_type :daily
-                                               :schedule_hour 0})))
+             (@#'messages/notification-card-schedule-text {:schedule_type :daily
+                                                           :schedule_hour 0})))
       (is (= "Run daily at 5 AM America/Pacific"
-             (@#'messages/alert-schedule-text {:schedule_type :daily
-                                               :schedule_hour 5})))
+             (@#'messages/notification-card-schedule-text {:schedule_type :daily
+                                                           :schedule_hour 5})))
       (is (= "Run daily at 6 PM America/Pacific"
-             (@#'messages/alert-schedule-text {:schedule_type :daily
-                                               :schedule_hour 18})))
+             (@#'messages/notification-card-schedule-text {:schedule_type :daily
+                                                           :schedule_hour 18})))
       (is (= "Run weekly on Monday at 8 AM America/Pacific"
-             (@#'messages/alert-schedule-text {:schedule_type :weekly
-                                               :schedule_day  "mon"
-                                               :schedule_hour 8})))))
+             (@#'messages/notification-card-schedule-text {:schedule_type :weekly
+                                                           :schedule_day  "mon"
+                                                           :schedule_hour 8})))))
   (testing "If report-timezone is not set, falls back to UTC"
     (tu/with-temporary-setting-values [report-timezone nil]
       (is (= "Run daily at 12 AM UTC"
-             (@#'messages/alert-schedule-text {:schedule_type :daily
-                                               :schedule_hour 0}))))))
+             (@#'messages/notification-card-schedule-text {:schedule_type :daily
+                                                           :schedule_hour 0}))))))
 
 #_(deftest render-pulse-email-test
     (testing "Email with few rows and columns can be rendered when tracing (#21166)"

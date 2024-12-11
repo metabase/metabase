@@ -148,7 +148,8 @@
   {:type       (mi/transform-validator mi/transform-keyword (partial mi/assert-enum subscription-types))
    :event_name (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "event"))})
 
-(def ^:private NotificationSubscription
+(def NotificationSubscription
+  "Schema for :model/NotificationSubscription."
   [:merge [:map
            [:type (apply ms/enum-decode-keyword subscription-types)]]
    [:multi {:dispatch (comp keyword :type)}
@@ -350,7 +351,8 @@
 (t2/deftransforms :model/NotificationCard
   {:send_condition (mi/transform-validator mi/transform-keyword (partial mi/assert-enum card-subscription-send-conditions))})
 
-(def ^:private NotificationCard
+(def NotificationCard
+  "Schema for :model/NotificationCard."
   [:map
    [:card_id                         ms/PositiveInt]
    [:send_condition {:optional true} (apply ms/enum-decode-keyword card-subscription-send-conditions)]
