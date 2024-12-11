@@ -83,7 +83,13 @@
   {:object mi/transform-json})
 
 (t2/define-before-insert :model/Revision
-  [revision]
+  [{:keys [model model_id] :as revision}]
+  (t2/query {:select [:id]
+             :from [:revision]
+             :where [:and
+                     [:= :model model]
+                     [:= :model_id model_id]]
+             :for :update})
   (assoc revision
          :timestamp (or (:timestamp revision) :%now)
          :metabase_version config/mb-version-string
