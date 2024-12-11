@@ -1272,13 +1272,14 @@
   "Takes a map of {output-name input-name ...} and generates a `$setWindowFields` stage that
   produces a cumulative sum of those fields."
   [window-vals id breakouts order-by]
-  (if (seq id)
+  ;; if id is empty, we don't have any breakouts and so don't need to fiddle around with $setWindowFields
+  (if (empty? id)
+    [{$addFields window-vals}]
     (let [{:keys [sort-expr partition-expr]} (get-window-sort-and-partitions id breakouts order-by)]
       [{$setWindowFields
         (cond-> {"sortBy" sort-expr
                  "output" (into {} (map generate-window-output-clause) window-vals)}
-          (seq partition-expr) (assoc "partitionBy" partition-expr))}])
-    [{$addFields window-vals}]))
+          (seq partition-expr) (assoc "partitionBy" partition-expr))}])))
 
 (defn- group-and-post-aggregations
   "Mongo is picky about which top-level aggregations it allows with groups. Eg. even
@@ -1404,15 +1405,15 @@
 
         cumulative-order-by
         (when-let [finest-temporal-index
-                   (and (seq (filter #(#{:cum-sum :cum-count} (first (second %))) aggregation))
+                   (and (seq (filter (fn [[_ [agg-type]]] (#{:cum-sum :cum-count} agg-type)) aggregation))
                         (qp.util.transformations.nest-breakouts/finest-temporal-breakout-index breakout 2))]
           (let [id (projection-group-map breakout)]
-            (as-> id lst
+            (as-> (keys id) lst
               (m/remove-nth finest-temporal-index lst)
-              (mapv (fn [[name]] [name 1]) lst)
-              (conj lst [(first (nth (seq id) finest-temporal-index)) 1])
-              (filter (fn [[key]] (not (and explicit-order-by
-                                            (explicit-order-by key)))) lst))))
+              (concat lst [(nth (keys id) finest-temporal-index)])
+              (filter (fn [key] (not (and explicit-order-by
+                                          (explicit-order-by key)))) lst)
+              (map (fn [name] [name 1]) lst))))
 
         combined-order-by
         (when (or explicit-order-by cumulative-order-by)
