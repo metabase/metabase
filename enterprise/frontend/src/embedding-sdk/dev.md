@@ -4,7 +4,7 @@ These docs are for building the sdk locally, if you just want to use the sdk, pl
 
 ## Build
 
-You can build the sdk with `build-embedding-sdk`.
+You can build the sdk with `yarn build-embedding-sdk`.
 
 ### Watch
 
@@ -12,7 +12,7 @@ If you want to have it build when you change a file there are two options:
 
 #### build-embedding-sdk:watch
 
-`build-embedding-sdk:watch` is the original command, the js output is fast, but the dts output is extremely slow and is not fixed by the dts fixup script on watch so typescript definitions may be broken.
+`yarn build-embedding-sdk:watch` is the original command, the js output is fast, but the dts output is extremely slow and is not fixed by the dts fixup script on watch so typescript definitions may be broken.
 
 #### embedding-sdk:dev
 
@@ -89,4 +89,5 @@ We usually create a custom `dev:link` script in the package.json to simplify the
 #### `Cannot read properties of null (reading 'useRef')`
 
 This happens when multiple versions of react are found in the project.
-If you installed with npm, try to install with `--install-links`, this will create a copy of the package instead of a symlink, which should fix the issue.
+This often happens because the sdk is installed with a symlink, as the node will resolve `react` starting from the linked folder and find a different one from the one used in the project, It can also happen in mono-repos or if you have nested node projects.
+If you installed with npm, try to install the sdk with `--install-links`, this will create a copy of the package instead of a symlink, which should fix the issue.
