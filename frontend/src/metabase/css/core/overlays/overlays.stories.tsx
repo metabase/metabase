@@ -2,6 +2,7 @@ import type { Store } from "@reduxjs/toolkit";
 import type { StoryFn } from "@storybook/react";
 import { Provider } from "react-redux";
 import _ from "underscore";
+import { storiesOf } from "@storybook/react";
 
 import { getStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
@@ -221,14 +222,18 @@ launchers.forEach(launcher => {
   });
 });
 
-export default {
-  title: "Design System/Overlays!",
-  component: (...args: any) => {
-    return <OverlaysDemo {...args} />;
-  },
-  decorators: [ReduxDecorator],
-  parameters: {
-    layout: "fullscreen",
-  },
-  ...scenarios,
-};
+// export default {
+//   title: "Design System/Overlays!",
+//   component: (...args: any) => {
+//     return <OverlaysDemo {...args} />;
+//   },
+//   decorators: [ReduxDecorator],
+//   parameters: {
+//     layout: "fullscreen",
+//   },
+//   ...scenarios,
+// };
+
+const cases = ["a", "b", "c"];
+const stories = storiesOf("Overlays", module);
+cases.forEach(label => stories.add(label, () => <>{label}</>));
