@@ -895,15 +895,15 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     name: "in",
     structure: "in",
     description: () =>
-      t`Returns true if value1 equals value2 (or value3, etc. if specified).`,
+      t`Returns true if column is equal to value1 (or value2, etc. if specified).`,
     args: [
       {
-        name: t`value1`,
+        name: t`column`,
         description: t`The column or value to check.`,
         example: formatIdentifier(t`ID`),
       },
       {
-        name: t`value2`,
+        name: t`value1`,
         description: t`The column of value to look for.`,
         example: "1",
       },
@@ -918,15 +918,15 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     name: "not-in",
     structure: "notIn",
     description: () =>
-      t`Returns true if value1 doesn't equal value2 (and value3, etc. if specified).`,
+      t`Returns true if column is not equal to value1 (and value2, etc. if specified).`,
     args: [
       {
-        name: t`value1`,
+        name: t`column`,
         description: t`The column or value to check.`,
         example: formatIdentifier(t`ID`),
       },
       {
-        name: t`value2`,
+        name: t`value1`,
         description: t`The column of value to look for.`,
         example: "1",
       },
