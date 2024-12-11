@@ -50,7 +50,6 @@ const COMPONENTS_TO_EXPORT: ComponentDefinition[] = [
 
 // END OF CONFIGURATION
 
-// eslint-disable-next-line no-literal-metabase-strings -- it's code
 const MetabaseProviderCode = `
 const MetabaseProvider = ({
   config,
@@ -164,7 +163,6 @@ export const defineMetabaseTheme = ${defineMetabaseTheme};
 export * from "./nextjs-no-ssr.js";
 `;
 
-// eslint-disable-next-line no-literal-metabase-strings -- it's code
 const nextjs_no_ssr_cjs = `"use client";
 
 const React = require("react");
@@ -178,7 +176,6 @@ module.exports.MetabaseProvider = MetabaseProvider;
 ${generateAllComponents("cjs")}
 `;
 
-// eslint-disable-next-line no-literal-metabase-strings -- it's code
 const nextjs_no_ssr_js = `"use client";
 
 import dynamic from "next/dynamic";
