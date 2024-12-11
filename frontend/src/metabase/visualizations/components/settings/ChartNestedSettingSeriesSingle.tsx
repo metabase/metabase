@@ -4,6 +4,7 @@ import type * as React from "react";
 import ColorSelector from "metabase/core/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import { getAccentColors } from "metabase/lib/colors/groups";
+import { Stack } from "metabase/ui";
 import type { SingleSeries, VisualizationSettings } from "metabase-types/api";
 
 import { SeriesNameInput } from "./ChartNestedSettingSeries.styled";
@@ -34,9 +35,9 @@ const ChartNestedSettingsSeriesSingle = ({
   const seriesCardName = seriesCardNames?.[objectKey];
 
   return (
-    <div
+    <Stack
       key={objectKey}
-      className={cx(CS.px4, CS.alignSelfStretch)}
+      className={cx(CS.alignSelfStretch)}
       data-testid="series-settings"
     >
       <div className={cx(CS.flex, CS.alignCenter, CS.borderBottom, CS.pb2)}>
@@ -58,9 +59,9 @@ const ChartNestedSettingsSeriesSingle = ({
         />
       </div>
       {objectSettingsWidgets && objectSettingsWidgets.length > 0 ? (
-        <div className={CS.mt3}>{objectSettingsWidgets}</div>
+        <Stack>{objectSettingsWidgets}</Stack>
       ) : null}
-    </div>
+    </Stack>
   );
 };
 
