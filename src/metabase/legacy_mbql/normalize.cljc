@@ -602,7 +602,7 @@
         (map canonicalize-mbql-clause other-args)))
 
 (doseq [clause-name [:= :!= :< :<= :> :>=
-                     :in :not-in :is :not-is
+                     :in :not-in
                      :is-empty :not-empty :is-null :not-null
                      :between]]
   (defmethod canonicalize-mbql-clause clause-name

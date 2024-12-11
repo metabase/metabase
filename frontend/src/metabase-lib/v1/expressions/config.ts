@@ -368,19 +368,6 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     args: ["expression", "expression"],
     multiple: true,
   },
-  // `is` and `not-is` are aliases for `=` and `!=`
-  is: {
-    displayName: "is",
-    type: "boolean",
-    args: ["expression", "expression"],
-    multiple: true,
-  },
-  "not-is": {
-    displayName: "isNot",
-    type: "boolean",
-    args: ["expression", "expression"],
-    multiple: true,
-  },
   "<=": {
     displayName: "<=",
     tokenName: "LessThanEqual",
@@ -576,8 +563,6 @@ export const EXPRESSION_FUNCTIONS = new Set([
   // boolean
   "in",
   "not-in",
-  "is",
-  "not-is",
   "contains",
   "ends-with",
   "starts-with",

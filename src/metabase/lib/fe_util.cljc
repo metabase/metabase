@@ -171,11 +171,11 @@
       {:operator op, :column (ref->col col-ref), :values [], :options {}}
 
       ;; multiple arguments, `:=`
-      [(op :guard #{:= :in :is}) _ (col-ref :guard string-col?) & (args :guard #(every? string? %))]
+      [(_ :guard #{:= :in}) _ (col-ref :guard string-col?) & (args :guard #(every? string? %))]
       {:operator :=, :column (ref->col col-ref), :values args, :options {}}
 
       ;; multiple arguments, `:!=`
-      [(op :guard #{:!= :not-in :not-is}) _ (col-ref :guard string-col?) & (args :guard #(every? string? %))]
+      [(_ :guard #{:!= :not-in}) _ (col-ref :guard string-col?) & (args :guard #(every? string? %))]
       {:operator :!=, :column (ref->col col-ref), :values args, :options {}}
 
       ;; multiple arguments with options
@@ -214,11 +214,11 @@
       {:operator op, :column (ref->col col-ref), :values []}
 
       ;; multiple arguments, `:=`
-      [(op :guard #{:= :in :is}) _ (col-ref :guard number-col?) & (args :guard #(every? number? %))]
+      [(_ :guard #{:= :in}) _ (col-ref :guard number-col?) & (args :guard #(every? number? %))]
       {:operator :=, :column (ref->col col-ref), :values args}
 
       ;; multiple arguments, `:!=`
-      [(op :guard #{:!= :not-in :not-is}) _ (col-ref :guard number-col?) & (args :guard #(every? number? %))]
+      [(_ :guard #{:!= :not-in}) _ (col-ref :guard number-col?) & (args :guard #(every? number? %))]
       {:operator :!=, :column (ref->col col-ref), :values args}
 
       ;; exactly 1 argument
@@ -263,11 +263,11 @@
                               (lib.types.isa/coordinate? (ref->col %)))]
     (lib.util.match/match-one filter-clause
       ;; multiple arguments, `:=`
-      [(op :guard #{:= :in :is}) _ (col-ref :guard coordinate-col?) & (args :guard #(every? number? %))]
+      [(_ :guard #{:= :in}) _ (col-ref :guard coordinate-col?) & (args :guard #(every? number? %))]
       {:operator :=, :column (ref->col col-ref), :values args}
 
       ;; multiple arguments, `:!=`
-      [(op :guard #{:!= :not-in :not-is}) _ (col-ref :guard coordinate-col?) & (args :guard #(every? number? %))]
+      [(_ :guard #{:!= :not-in}) _ (col-ref :guard coordinate-col?) & (args :guard #(every? number? %))]
       {:operator :!=, :column (ref->col col-ref), :values args}
 
      ;; exactly 1 argument

@@ -421,7 +421,7 @@
 
 (def boolean-functions
   "Functions that return boolean values. Should match [[BooleanExpression]]."
-  #{:and :or :not :< :<= :> :>= := :!= :in :not-in :is :not-is :between :starts-with :ends-with :contains
+  #{:and :or :not :< :<= :> :>= := :!= :in :not-in :between :starts-with :ends-with :contains
     :does-not-contain :inside :is-empty :not-empty :is-null :not-null :relative-time-interval :time-interval :during})
 
 (def ^:private aggregations
