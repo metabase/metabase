@@ -506,12 +506,6 @@
                 (is (= true
                        (t2/exists? Pulse :id pulse-id)))))}}))
 
-(def y(rasta-alert-message {:subject "Alert: Test card has reached its goal"
-                                            :message [{pulse.test-util/card-name true
-                                                       "This question has reached its goal of 5.9." true}
-                                                      pulse.test-util/png-attachment
-                                                      pulse.test-util/png-attachment]}))
-
 (deftest above-goal-alert-test
   (testing "above goal alert"
     (tests! {:pulse {:alert_condition  "goal"
@@ -858,12 +852,12 @@
         (testing "channel send task history task details include retry config"
           (with-redefs
            [channel/send! (constantly true)]
-           (send!)
-           (is (=? {:task         "channel-send"
-                    :db_id        nil
-                    :status       :success
-                    :task_details default-task-details}
-                   (latest-task-history-entry :channel-send)))))
+            (send!)
+            (is (=? {:task         "channel-send"
+                     :db_id        nil
+                     :status       :success
+                     :task_details default-task-details}
+                    (latest-task-history-entry :channel-send)))))
 
         (testing "retry errors are recorded when the task eventually succeeds"
           (with-redefs [channel/send! (tu/works-after 2 (constantly nil))]
