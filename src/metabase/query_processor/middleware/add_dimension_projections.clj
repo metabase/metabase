@@ -32,6 +32,7 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as helpers]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.ident :as lib.ident]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -208,8 +209,7 @@
                                                   (remove (comp existing-normalized-fields-set mbql.u/remove-namespaced-options)))
                                             infos)
             new-breakout                   (add-fk-remaps-rewrite-breakout original->remapped breakout)
-            new-breakout-idents            (merge (zipmap (range (count new-breakout))
-                                                          (repeatedly u/generate-nano-id))
+            new-breakout-idents            (merge (lib.ident/indexed-idents new-breakout)
                                                   breakout-idents)
             new-order-by                   (add-fk-remaps-rewrite-order-by original->remapped order-by)
             remaps                         (into [] (comp cat (distinct)) [source-query-remaps (map :dimension infos)])]

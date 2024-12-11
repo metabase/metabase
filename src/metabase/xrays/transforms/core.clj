@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.ident :as lib.ident]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.field :refer [Field]]
@@ -125,10 +126,6 @@
   [_bindings {:keys [limit]} query]
   (m/assoc-some query :limit limit))
 
-(defn- add-expression-idents [{:keys [expressions] :as inner-query}]
-  (cond-> inner-query
-    (seq expressions) (assoc :expression-idents (update-vals expressions (fn [_] (u/generate-nano-id))))))
-
 (mu/defn- transform-step! :- Bindings
   [bindings :- Bindings
    {:keys [name source aggregation expressions] :as step} :- Step]
@@ -146,9 +143,9 @@
                             (maybe-add-filter local-bindings step)
                             (maybe-add-limit local-bindings step))
         inner-query    (-> inner-query
-                           add-expression-idents
-                           (m/assoc-some :aggregation-idents (indexed-idents (:aggregation inner-query)))
-                           (m/assoc-some :breakout-idents    (indexed-idents (:breakout inner-query))))
+                           (m/assoc-some :expression-idents  (lib.ident/indexed-idents (:expression inner-query)))
+                           (m/assoc-some :aggregation-idents (lib.ident/indexed-idents (:aggregation inner-query)))
+                           (m/assoc-some :breakout-idents    (lib.ident/indexed-idents (:breakout inner-query))))
         query          {:type     :query
                         :query    inner-query
                         :database ((some-fn :db_id :database_id) source-entity)}]

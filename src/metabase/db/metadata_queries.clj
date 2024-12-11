@@ -9,6 +9,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as helpers]
+   [metabase.lib.ident :as lib.ident]
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
    [metabase.util :as u]
@@ -55,13 +56,8 @@
       ;; > 1
       (update query :filter update-query-filter-fn (into [:and] (map partition-field->filter-form required-filter-fields))))))
 
-(defn- add-breakout-idents-if-needed [inner-query]
-  (->> (:breakout inner-query)
-       (map-indexed (fn [i _breakout]
-                      [i (u/generate-nano-id)]))
-       (into {})
-       not-empty
-       (m/assoc-some inner-query :breakout-idents)))
+(defn- add-breakout-idents-if-needed [{:keys [breakout] :as inner-query}]
+  (m/assoc-some inner-query :breakout-idents (lib.ident/indexed-idents breakout)))
 
 (defn table-query
   "Runs the `mbql-query` where the source table is `table-id` and returns the result.
@@ -105,7 +101,7 @@
   "Return the distinct count of `field`."
   [field & [limit]]
   (-> (table-query (:table_id field) {:aggregation        [[:distinct [:field (u/the-id field) nil]]]
-                                      :aggregation-idents {0 (u/generate-nano-id)}
+                                      :aggregation-idents (lib.ident/indexed-idents 1)
                                       :limit              limit})
       :data :rows first first int))
 
@@ -113,7 +109,7 @@
   "Return the count of `field`."
   [field]
   (-> (table-query (:table_id field) {:aggregation        [[:count [:field (u/the-id field) nil]]]
-                                      :aggregation-idents {0 (u/generate-nano-id)}})
+                                      :aggregation-idents (lib.ident/indexed-idents 1)})
       :data :rows first first int))
 
 (def max-sample-rows

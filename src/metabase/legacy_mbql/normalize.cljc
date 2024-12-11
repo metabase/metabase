@@ -393,6 +393,12 @@
   (cond-> row
     (map? row) (update-keys u/qualified-name)))
 
+(defn- normalize-ident-index [index]
+  (cond
+    (string? index)  (parse-long index)
+    (keyword? index) (-> index name parse-long)
+    :else            index))
+
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
   `:expressions` key in an MBQL query should preserve the case of the expression names; this custom behavior is
@@ -401,14 +407,8 @@
    ;; don't normalize native queries
    :native          normalize-native-query
    :query           {:aggregation        normalize-ag-clause-tokens
-                     :aggregation-idents (fn [m]
-                                           (update-keys m #(cond-> %
-                                                             (string? %) parse-long
-                                                             (keyword? %) (-> name parse-long))))
-                     :breakout-idents    (fn [m]
-                                           (update-keys m #(cond-> %
-                                                             (string? %) parse-long
-                                                             (keyword? %) (-> name parse-long))))
+                     :aggregation-idents #(update-keys % normalize-ident-index)
+                     :breakout-idents    #(update-keys % normalize-ident-index)
                      :expressions        normalize-expressions-tokens
                      :expression-idents  #(update-keys % lib.schema.common/normalize-string-key)
                      :order-by           normalize-order-by-tokens

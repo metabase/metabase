@@ -30,6 +30,7 @@
    [metabase.analyze :as analyze]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
+   [metabase.lib.ident :as lib.ident]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -377,7 +378,7 @@
   (try
     (let [result          (metadata-queries/table-query (:table_id field)
                                                         {:breakout        [[:field (u/the-id field) nil]]
-                                                         :breakout-idents {0 (u/generate-nano-id)}
+                                                         :breakout-idents (lib.ident/indexed-idents 1)
                                                          :limit           *absolute-max-distinct-values-limit*}
                                                         (limit-max-char-len-rff qp.reducible/default-rff *total-max-length*))
           distinct-values (-> result :data :rows)]

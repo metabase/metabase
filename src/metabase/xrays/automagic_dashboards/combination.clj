@@ -21,6 +21,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.ident :as lib.ident]
    [metabase.models.card :as card]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
@@ -38,10 +39,8 @@
   [query
    breakout-fields
    filter-clauses]
-  (let [breakouts  (mapv (partial interesting/->reference :mbql) breakout-fields)
-        brk-idents (into {} (for [i (range (count breakouts))]
-                              [i (u/generate-nano-id)]))]
-    (cond-> (assoc query :breakout breakouts :breakout-idents brk-idents)
+  (let [breakouts  (mapv (partial interesting/->reference :mbql) breakout-fields)]
+    (cond-> (assoc query :breakout breakouts :breakout-idents (lib.ident/indexed-idents breakouts))
       (seq filter-clauses) (assoc :filter (into [:and] filter-clauses)))))
 
 (defn- add-aggregations
@@ -49,8 +48,7 @@
   [query aggregations]
   (assoc query
          :aggregation aggregations
-         :aggregation-idents (into {} (for [i (range (count aggregations))]
-                                        [i (u/generate-nano-id)]))))
+         :aggregation-idents (lib.ident/indexed-idents aggregations)))
 
 (defn matching-types?
   "Given two seqs of types, return true of the types of the child

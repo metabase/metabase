@@ -80,7 +80,7 @@
     (if forms
       (let [form     (first forms)
             threaded (let [args       (when (and (list? form)
-                                                 (seq (rest form)))
+                                                 (next form))
                                         (for [arg-form (rest form)]
                                           [(gensym "arg") arg-form]))
                            before-sym (gensym "before")
