@@ -22,7 +22,7 @@ type MetricEditorProps = {
   isResultDirty: boolean;
   isRunning: boolean;
   onChange: (question: Question) => Promise<void>;
-  onCreate: (question: Question) => Promise<void>;
+  onCreate: (question: Question) => Promise<Question>;
   onSave: (question: Question) => Promise<void>;
   onCancel: (question: Question) => void;
   onRunQuery: () => Promise<void>;
@@ -47,8 +47,8 @@ export function MetricEditor({
   const [modalType, setModalType] = useState<MetricModalType>();
   const isRunnable = Lib.canRun(question.query(), "metric");
 
-  const handleCreate = async (question: Question) => {
-    await onCreate(question.setDefaultDisplay());
+  const handleCreate = (question: Question) => {
+    return onCreate(question.setDefaultDisplay());
   };
 
   const handleCreateStart = async () => {

@@ -109,6 +109,17 @@ export const USERS = {
       { id: READONLY_GROUP, is_group_manager: false },
     ],
   },
+  readonlynosql: {
+    first_name: "Read Only Data No Sql",
+    last_name: "Tableton",
+    email: "readonlynosql@metabase.test",
+    password: "12341234",
+    user_group_memberships: [
+      { id: ALL_USERS_GROUP, is_group_manager: false },
+      { id: READONLY_GROUP, is_group_manager: false },
+      { id: NOSQL_GROUP, is_group_manager: false },
+    ],
+  },
   // Users with access to data, but no access to collections
   nocollection: {
     first_name: "No Collection",

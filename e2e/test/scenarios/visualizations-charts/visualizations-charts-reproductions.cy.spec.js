@@ -649,11 +649,10 @@ describe("issue 21665", () => {
 
     H.visitDashboard("@dashboardId");
 
-    cy.get("@dashboardLoaded").should("have.been.calledThrice");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("There was a problem displaying this chart.").should(
-      "be.visible",
-    );
+    cy.get("@dashboardLoaded").should("have.callCount", 3);
+    cy.findByTestId("dashcard")
+      .findByText("There was a problem displaying this chart.")
+      .should("be.visible");
   });
 });
 

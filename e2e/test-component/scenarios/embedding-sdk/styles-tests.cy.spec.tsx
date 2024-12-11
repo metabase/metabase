@@ -262,7 +262,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
       getSdkRoot().findByText("Our analytics").click();
 
       getSdkRoot()
-        .findByText("Select a collection")
+        .findByText("Select a collection or dashboard")
         .should("exist")
         .and("have.css", "font-family", "Lato, sans-serif");
 
