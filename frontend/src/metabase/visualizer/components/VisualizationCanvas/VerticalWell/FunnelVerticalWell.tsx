@@ -1,10 +1,16 @@
+import { useDroppable } from "@dnd-kit/core";
+import { useMemo } from "react";
+
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Text } from "metabase/ui";
+import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
+import { isDraggedColumnItem } from "metabase/visualizer/utils";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
+import { isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { WellItem } from "../WellItem";
 
@@ -15,9 +21,21 @@ export function FunnelVerticalWell() {
   const columns = useSelector(getVisualizerDatasetColumns);
   const dispatch = useDispatch();
 
+  const { active, isOver, setNodeRef } = useDroppable({
+    id: DROPPABLE_ID.Y_AXIS_WELL,
+  });
+
   const metric = columns.find(
     column => column.name === settings["funnel.metric"],
   );
+
+  const isHighlighted = useMemo(() => {
+    if (!active || !isDraggedColumnItem(active)) {
+      return false;
+    }
+    const { column } = active.data.current;
+    return isMetric(column);
+  }, [active]);
 
   const handleRemoveMetric = () => {
     if (metric) {
@@ -26,7 +44,12 @@ export function FunnelVerticalWell() {
   };
 
   return (
-    <SimpleVerticalWell hasValues={!!metric}>
+    <SimpleVerticalWell
+      hasValues={!!metric}
+      isHighlighted={isHighlighted}
+      isOver={isOver}
+      ref={setNodeRef}
+    >
       {!!metric && (
         <WellItem
           onRemove={handleRemoveMetric}

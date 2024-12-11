@@ -1,5 +1,5 @@
 import { useDroppable } from "@dnd-kit/core";
-import { type ReactNode, forwardRef } from "react";
+import { type ReactNode, forwardRef, useMemo } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -9,7 +9,9 @@ import {
   getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
+import { isDraggedColumnItem } from "metabase/visualizer/utils";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";
@@ -28,11 +30,19 @@ function PieMetricWell() {
   const settings = useSelector(getVisualizerComputedSettings);
   const dispatch = useDispatch();
 
-  const { isOver, setNodeRef, active } = useDroppable({
+  const { active, isOver, setNodeRef } = useDroppable({
     id: DROPPABLE_ID.PIE_METRIC,
   });
 
   const metric = columns.find(col => col.name === settings["pie.metric"]);
+
+  const isHighlighted = useMemo(() => {
+    if (!active || !isDraggedColumnItem(active)) {
+      return false;
+    }
+    const { column } = active.data.current;
+    return isMetric(column);
+  }, [active]);
 
   const handleRemoveMetric = () => {
     if (metric) {
@@ -43,7 +53,7 @@ function PieMetricWell() {
   return (
     <Box mt="lg">
       <Text>{t`Pie chart metric`}</Text>
-      <WellBox isHighlighted={!!active} isOver={isOver} ref={setNodeRef}>
+      <WellBox isHighlighted={isHighlighted} isOver={isOver} ref={setNodeRef}>
         <Stack>
           <WellItem onRemove={metric && handleRemoveMetric}>
             <Text>
@@ -65,6 +75,14 @@ function PieDimensionWell() {
     id: DROPPABLE_ID.PIE_DIMENSION,
   });
 
+  const isHighlighted = useMemo(() => {
+    if (!active || !isDraggedColumnItem(active)) {
+      return false;
+    }
+    const { column } = active.data.current;
+    return isDimension(column);
+  }, [active]);
+
   const dimensions = columns.filter(col =>
     (settings["pie.dimension"] ?? []).includes(col.name),
   );
@@ -76,7 +94,7 @@ function PieDimensionWell() {
   return (
     <Box mt="lg">
       <Text>{t`Pie chart dimensions`}</Text>
-      <WellBox isHighlighted={!!active} isOver={isOver} ref={setNodeRef}>
+      <WellBox isHighlighted={isHighlighted} isOver={isOver} ref={setNodeRef}>
         {dimensions.length > 0 ? (
           <Stack>
             {dimensions.map(dimension => (
@@ -121,7 +139,8 @@ const WellBox = forwardRef<HTMLDivElement, WellBoxProps>(function WellBox(
         transform: isHighlighted ? "scale(1.025)" : "scale(1)",
         transition:
           "transform 0.2s ease-in-out 0.2s, border-color 0.2s ease-in-out 0.2s, background 0.2s ease-in-out 0.2s",
-        outline: isOver ? "1px solid var(--mb-color-brand)" : "none",
+        outline:
+          isOver && isHighlighted ? "1px solid var(--mb-color-brand)" : "none",
       }}
       ref={ref}
     >
