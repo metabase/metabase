@@ -8,9 +8,15 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - "release-**"
+  workflow_dispatch:
+    inputs:
+      target_ref:
+        description: "Branch to test against"
+        required: true
+        type: string
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event.inputs.target_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -53,7 +59,7 @@ jobs:
               getBuildRequirements,
               getVersionFromReleaseBranch,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const targetBranchName = '${{ github.base_ref || github.ref }}';
+            const targetBranchName = '${{ github.event.inputs.target_ref }}';
 
             const version = getVersionFromReleaseBranch(targetBranchName);
             const requirements = getBuildRequirements(version);
@@ -114,7 +120,7 @@ jobs:
         with:
           script: | # js
             const { getSdkVersionFromReleaseBranchName } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const branchName = '${{ github.base_ref || github.ref }}';
+            const branchName = '${{ github.event.inputs.target_ref }}';
 
             const sdk_version = await getSdkVersionFromReleaseBranchName({
               github,
