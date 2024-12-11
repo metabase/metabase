@@ -128,14 +128,14 @@ const SingleSelectListField = ({
     setFilter(value);
     onChange([]);
     setSelectedValue(null);
-    onSearchChange(value);
+    onSearchChange?.(value);
   };
 
   const handleResetClick = () => {
     setFilter("");
     onChange([]);
     setSelectedValue(null);
-    onSearchChange("");
+    onSearchChange?.("");
   };
 
   return (
