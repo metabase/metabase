@@ -49,7 +49,7 @@ export const DownloadDiagnosticModal = ({
     >
       <Form>
         <Text py="md">
-          {/* eslint-disable-next-line no-literal-metabase-strings -- these reports will most likely be sent to Metabase team */}
+          {/* eslint-disable-next-line no-literal-metabase-strings -- this is a translation context string, not shown to users */}
           {c("{0} is the name of the application, usually 'Metabase'")
             .t`This information helps ${applicationName} figure out what exactly caused the issue`}
         </Text>
