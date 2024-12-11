@@ -160,6 +160,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: embedding-sdk-${{ needs.resolve-sdk-version.outputs.sdk_version }} -- e2e
+          sparse-checkout: |
+            e2e/support/helpers
+            e2e/test-component
 
       - name: Retrieve uberjar artifact for ee
         uses: actions/download-artifact@v4
