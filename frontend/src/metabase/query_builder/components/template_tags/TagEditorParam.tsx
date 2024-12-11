@@ -8,7 +8,7 @@ import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Text } from "metabase/ui";
+import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -269,9 +269,9 @@ class TagEditorParamInner extends Component<Props> {
         data-testid={`tag-editor-variable-${tag.name}`}
       >
         <ContainerLabel paddingTop>{t`Variable name`}</ContainerLabel>
-        <Text component="h3" className={TagEditorParamS.TagName}>
+        <Box component="h3" className={TagEditorParamS.TagName}>
           {tag.name}
-        </Text>
+        </Box>
 
         <VariableTypeSelect value={tag.type} onChange={this.setType} />
 

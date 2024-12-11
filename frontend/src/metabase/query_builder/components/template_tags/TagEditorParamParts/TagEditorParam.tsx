@@ -17,12 +17,7 @@ const ContainerLabel = ({
   ...props
 }: ContainerLabelProps) => {
   return (
-    <Box
-      className={S.ContainerLabel}
-      mb="sm"
-      pt={paddingTop ? "sm" : 0}
-      {...props}
-    >
+    <Box className={S.ContainerLabel} pt={paddingTop ? "sm" : 0} {...props}>
       {children}
     </Box>
   );
