@@ -208,7 +208,7 @@ export function resolve({
       }
     }
     const resolvedOperands = operands.map((operand, i) => {
-      if (i >= args.length || isOptionsObject(operand)) {
+      if ((i >= args.length && !clause.multiple) || isOptionsObject(operand)) {
         // as-is, optional object for e.g. ends-with, time-interval, etc
         return operand;
       }
