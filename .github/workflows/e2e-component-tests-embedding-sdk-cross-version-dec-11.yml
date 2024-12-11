@@ -1,15 +1,12 @@
 name: E2E Cross-version Component Tests for Embedding SDK (December 11)
 
 on:
-  workflow_dispatch:
-    inputs:
-      target_ref:
-        description: "Branch to test against"
-        required: true
-        type: string
+  push:
+    branches:
+      - "investigate-sdk-e2e-failing"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.inputs.target_ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -52,7 +49,7 @@ jobs:
               getBuildRequirements,
               getVersionFromReleaseBranch,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const targetBranchName = '${{ github.event.inputs.target_ref }}';
+            const targetBranchName = 'release-x.51.x';
 
             const version = getVersionFromReleaseBranch(targetBranchName);
             const requirements = getBuildRequirements(version);
@@ -113,7 +110,7 @@ jobs:
         with:
           script: | # js
             const { getSdkVersionFromReleaseBranchName } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const branchName = '${{ github.event.inputs.target_ref }}';
+            const branchName = 'release-x.51.x';
 
             const sdk_version = await getSdkVersionFromReleaseBranchName({
               github,
