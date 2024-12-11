@@ -707,6 +707,31 @@ describe("scenarios > question > custom column", () => {
       H.checkExpressionEditorHelperPopoverPosition();
     });
   });
+
+  it("should allow to use `in` and `not-in` expressions", () => {
+    H.openProductsTable({ mode: "notebook" });
+
+    cy.log("filters");
+    H.getNotebookStep("data").button("Filter").click();
+    H.popover().findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({ formula: "in([ID], 1, 2, 3)" });
+    H.popover().button("Done").click();
+    H.visualize();
+    H.assertQueryBuilderRowCount(3);
+    H.openNotebook();
+    H.getNotebookStep("filter").findByText("ID is 3 selections").click();
+    H.popover().within(() => {
+      cy.findByText("3").next("button").click();
+      cy.button("Update filter").click();
+    });
+    H.visualize();
+    H.assertQueryBuilderRowCount(2);
+    H.openNotebook();
+    H.getNotebookStep("filter")
+      .findByText("ID is 2 selections")
+      .icon("close")
+      .click();
+  });
 });
 
 describe("scenarios > question > custom column > data type", () => {
