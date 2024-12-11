@@ -154,7 +154,9 @@ export const CollectionItemsTable = ({
     models,
     limit: pageSize,
     offset: pageSize * page,
-    ...(showAllItems ? {} : { pinned_state: "is_not_pinned" }),
+    ...(showAllItems
+      ? { show_dashboard_questions: true }
+      : { pinned_state: "is_not_pinned" }),
     ...unpinnedItemsSorting,
   };
 
