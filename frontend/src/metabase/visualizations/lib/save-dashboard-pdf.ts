@@ -3,118 +3,130 @@ import { t } from "ttag";
 import type { Dashboard } from "metabase-types/api";
 
 import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
+import _ from "underscore";
 
-const TARGET_ASPECT_RATIO = 22 / 17;
+const TARGET_ASPECT_RATIO = 13 / 17;
 
 interface DashCardBounds {
   top: number;
   bottom: number;
   height: number;
+  allowedBreaks: Set<number>;
 }
 
 const getSortedDashCardBounds = (node: HTMLElement): DashCardBounds[] => {
   const dashCards = Array.from(node.querySelectorAll("[data-dashcard-key]"));
-  const containerRect = node.getBoundingClientRect();
+  const parentOffset = node.getBoundingClientRect().top;
 
   return dashCards
     .map(card => {
-      const rect = (card as HTMLElement).getBoundingClientRect();
+      const rect = card.getBoundingClientRect();
+
+      // Table cards allow having page breaks
+      const allowedBreaks = new Set(
+        Array.from(card.querySelectorAll("[data-allow-page-break-after]"))
+          .map(el => el.getBoundingClientRect().bottom - parentOffset)
+          .filter(isFinite),
+      );
+
       return {
-        top: Math.round(rect.top - containerRect.top),
-        bottom: Math.round(rect.bottom - containerRect.top),
+        top: Math.round(rect.top - parentOffset),
+        bottom: Math.round(rect.bottom - parentOffset),
         height: Math.round(rect.height),
+        allowedBreaks,
       };
     })
     .sort((a, b) => a.top - b.top);
 };
 
-function findPossiblePageBreaks(
+const findPageBreakCandidates = (
+  cards: DashCardBounds[],
+  offset = 0,
+): number[] => {
+  if (cards.length === 0) {
+    return [];
+  }
+
+  const maxBottom = Math.max(...cards.map(card => card.bottom));
+
+  const possibleBreaks = new Set(
+    cards
+      .filter(card => card.bottom < maxBottom)
+      .flatMap(card => [card.bottom, ...card.allowedBreaks]),
+  );
+
+  for (const card of cards) {
+    for (const breakCandidate of Array.from(possibleBreaks)) {
+      const isWithinDashcard =
+        breakCandidate > card.top && breakCandidate < card.bottom;
+      const isAllowedBreak = card.allowedBreaks.has(breakCandidate);
+
+      if (isWithinDashcard && !isAllowedBreak) {
+        possibleBreaks.delete(breakCandidate);
+      }
+    }
+  }
+
+  const sortedBreaks = Array.from(possibleBreaks).sort((a, b) => a - b);
+  return sortedBreaks.map(pageBreak => pageBreak + offset);
+};
+
+function getPageBreaks(
   sortedCards: DashCardBounds[],
   optimalPageHeight: number,
+  totalHeight: number,
+  offset = 0,
 ): number[] {
   if (sortedCards.length === 0) {
     return [];
   }
 
-  const maxBottom = Math.max(...sortedCards.map(card => card.bottom));
+  const pageBreakCandidates = findPageBreakCandidates(sortedCards, offset);
+  const canFitAllCardsInOnePage = optimalPageHeight >= totalHeight;
 
-  const breakCandidates = new Set<number>();
-
-  sortedCards.forEach(card => breakCandidates.add(card.bottom));
-
-  for (let i = 0; i < sortedCards.length - 1; i++) {
-    const currentBottom = Math.max(
-      ...sortedCards.slice(0, i + 1).map(card => card.bottom),
-    );
-    const nextTop = sortedCards[i + 1].top;
-
-    if (nextTop > currentBottom) {
-      breakCandidates.add(currentBottom);
-    }
-  }
-
-  const sortedBreakPoints = Array.from(breakCandidates).sort((a, b) => a - b);
-
-  if (sortedBreakPoints.length === 0) {
+  if (pageBreakCandidates.length === 0 || canFitAllCardsInOnePage) {
     return [];
   }
 
+  const minPageSize = optimalPageHeight * 0.7;
   const result: number[] = [];
-  let currentPosition = 0;
-  let bestNextBreak = sortedBreakPoints[0];
+  let currentPageStart = 0;
+  let candidateIndex = 0;
 
-  while (currentPosition < maxBottom) {
-    let bestDiff = Infinity;
+  while (currentPageStart < totalHeight) {
+    const targetBreakPoint = currentPageStart + optimalPageHeight;
 
-    for (const breakPoint of sortedBreakPoints) {
-      if (breakPoint <= currentPosition) {
-        continue;
-      }
-
-      const pageHeight = breakPoint - currentPosition;
-      const diff = Math.abs(pageHeight - optimalPageHeight);
-
-      if (diff < bestDiff) {
-        bestDiff = diff;
-        bestNextBreak = breakPoint;
-      }
-
-      if (pageHeight > optimalPageHeight * 2) {
-        break;
-      }
+    while (
+      candidateIndex < pageBreakCandidates.length &&
+      pageBreakCandidates[candidateIndex] <= currentPageStart + minPageSize
+    ) {
+      candidateIndex++;
     }
 
-    if (bestNextBreak > currentPosition) {
-      result.push(bestNextBreak);
-      currentPosition = bestNextBreak;
-    } else {
+    if (candidateIndex >= pageBreakCandidates.length) {
       break;
     }
-  }
 
-  if (result.length > 0 && result[result.length - 1] === maxBottom) {
-    result.pop();
+    let bestBreak = pageBreakCandidates[candidateIndex];
+
+    if (candidateIndex + 1 < pageBreakCandidates.length) {
+      const nextBreak = pageBreakCandidates[candidateIndex + 1];
+      const currentDiff = Math.abs(targetBreakPoint - bestBreak);
+      const nextDiff = Math.abs(targetBreakPoint - nextBreak);
+      if (nextDiff < currentDiff) {
+        bestBreak = nextBreak;
+        candidateIndex++;
+      }
+    }
+
+    result.push(bestBreak);
+    currentPageStart = bestBreak;
   }
 
   return result;
 }
 
-const canvasToBlob = (canvas: any) => {
-  canvas.toBlob(blob => {
-    if (blob) {
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.rel = "noopener";
-      link.download = "test.png";
-      link.href = url;
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    }
-  });
-};
-
-const createHeaderElement = (dashboardName: string) => {
+const createHeaderElement = (dashboardName: string, marginBottom: number) => {
   const header = document.createElement("div");
   header.style.cssText = `
     font-family: "Lato", sans-serif;
@@ -122,8 +134,8 @@ const createHeaderElement = (dashboardName: string) => {
     font-weight: 700;
     color: var(--mb-color-text-dark);
     border-bottom: 1px solid var(--mb-color-border);
-    padding: 32px 16px 16px 16px;
-    margin-bottom: 16px;
+    padding: 24px 16px 16px 16px;
+    margin-bottom: ${marginBottom}px;
   `;
   header.textContent = dashboardName;
   return header;
@@ -142,44 +154,42 @@ export const saveDashboardPdf = async (
     console.warn("No dashboard content found", selector);
     return;
   }
+  const cardsBounds = getSortedDashCardBounds(node);
 
-  const originalCardBounds = getSortedDashCardBounds(node);
+  const headerMarginBottom = 8;
+  const pdfHeader = createHeaderElement(dashboardName, headerMarginBottom);
 
-  // const tempHeader = createHeaderElement(dashboardName);
-  // document.body.appendChild(tempHeader);
-  // const headerHeight = tempHeader.getBoundingClientRect().height;
-  // document.body.removeChild(tempHeader);
-
-  const headerHeight = 0;
-
-  const adjustedCardBounds = originalCardBounds.map(bound => ({
-    ...bound,
-    top: bound.top + headerHeight,
-    bottom: bound.bottom + headerHeight,
-  }));
+  node.appendChild(pdfHeader);
+  const headerHeight =
+    pdfHeader.getBoundingClientRect().height + headerMarginBottom;
+  node.removeChild(pdfHeader);
 
   const { default: html2canvas } = await import("html2canvas-pro");
   const image = await html2canvas(node, {
     useCORS: true,
     onclone: (doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
+      node.insertBefore(pdfHeader, node.firstChild);
     },
   });
 
   const imageWidth = parseInt(image.getAttribute("width") ?? "0");
-  const maxBottom = Math.max(...adjustedCardBounds.map(card => card.bottom));
+  const imageHeight = Math.max(...cardsBounds.map(card => card.bottom));
+
   const scale = window.devicePixelRatio || 1;
   const actualWidth = image.width / scale;
 
-  const targetPageHeight = Math.round(imageWidth * TARGET_ASPECT_RATIO);
   const { default: jspdf } = await import("jspdf");
 
-  const pageBreaks = findPossiblePageBreaks(
-    adjustedCardBounds,
-    targetPageHeight,
+  const optimalPageHeight = Math.round(imageWidth * TARGET_ASPECT_RATIO);
+  const pageBreaks = getPageBreaks(
+    cardsBounds,
+    optimalPageHeight,
+    imageHeight,
+    headerHeight,
   );
 
-  const firstPageHeight = pageBreaks.length > 0 ? pageBreaks[0] : maxBottom;
+  const firstPageHeight = pageBreaks.length > 0 ? pageBreaks[0] : imageHeight;
   const pdf = new jspdf({
     unit: "px",
     hotfixes: ["px_scaling"],
@@ -187,7 +197,7 @@ export const saveDashboardPdf = async (
     orientation: "p",
   });
 
-  pdf.addImage(image, "JPEG", 0, 0, actualWidth, maxBottom);
+  pdf.addImage(image, "JPEG", 0, 0, actualWidth, imageHeight);
 
   pageBreaks.forEach((breakPoint, index) => {
     if (index < pageBreaks.length - 1) {
@@ -195,17 +205,17 @@ export const saveDashboardPdf = async (
       const pageHeight = nextBreak - breakPoint;
 
       pdf.addPage([actualWidth, pageHeight]);
-      pdf.addImage(image, "JPEG", 0, -breakPoint, actualWidth, maxBottom);
+      pdf.addImage(image, "JPEG", 0, -breakPoint, actualWidth, imageHeight);
     }
   });
 
   if (pageBreaks.length > 0) {
     const lastBreak = pageBreaks[pageBreaks.length - 1];
-    const remainingHeight = maxBottom - lastBreak;
+    const remainingHeight = imageHeight - lastBreak;
 
     if (remainingHeight > 0) {
       pdf.addPage([actualWidth, remainingHeight]);
-      pdf.addImage(image, "JPEG", 0, -lastBreak, actualWidth, maxBottom);
+      pdf.addImage(image, "JPEG", 0, -lastBreak, actualWidth, imageHeight);
     }
   }
 
