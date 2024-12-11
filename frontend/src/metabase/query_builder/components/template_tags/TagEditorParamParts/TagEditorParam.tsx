@@ -23,21 +23,9 @@ const ContainerLabel = ({
   );
 };
 
-interface InputContainerProps extends BoxProps {
-  lessBottomPadding?: boolean;
-}
-const InputContainer = ({
-  lessBottomPadding,
-  children,
-  ...props
-}: InputContainerProps) => {
+const InputContainer = ({ children, ...props }: BoxProps) => {
   return (
-    <Box
-      display="block"
-      component="label"
-      pb={lessBottomPadding ? "lg" : "xl"}
-      {...props}
-    >
+    <Box display="block" component="label" pb="xl" {...props}>
       {children}
     </Box>
   );
