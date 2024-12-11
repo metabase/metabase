@@ -18,14 +18,14 @@ export const ChartSettingInputNumeric = ({
   onChange,
   value,
   options,
-  title,
+  label,
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState<number | "">(value ?? "");
 
   return (
     <NumberInput
       type="number"
-      label={<Text>{title}</Text>}
+      label={<Text>{label}</Text>}
       value={inputValue}
       onChange={setInputValue}
       precision={options?.isInteger ? 0 : undefined}
