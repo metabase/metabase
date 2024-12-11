@@ -94,6 +94,7 @@
   (let [{:keys [constraints parameters], :as query} (select-keys query [:database :lib/type :stages :parameters :constraints])]
     (cond-> query
       (empty? constraints) (dissoc :constraints)
+      true                 (update :parameters  (fn [params] (mapv #(if (sequential? (:value %)) (update % :value sort) %) params)))
       (empty? parameters)  (dissoc :parameters)
       true                 lib.schema.util/remove-randomized-idents
       true                 walk-query-sort-maps)))
