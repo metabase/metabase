@@ -28,6 +28,7 @@ import { EmotionCacheProvider } from "metabase/styled-components/components/Emot
 import { Box } from "metabase/ui";
 
 import { SCOPED_CSS_RESET } from "../private/PublicComponentStylesWrapper";
+import { SdkContextProvider } from "../private/SdkContext";
 import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
 import {
   FullPagePortalContainer,
@@ -109,21 +110,23 @@ export const MetabaseProviderInternal = ({
   }, [store, authConfig.metabaseInstanceUrl]);
 
   return (
-    <EmotionCacheProvider>
-      <Global styles={SCOPED_CSS_RESET} />
-      <SdkThemeProvider theme={theme}>
-        <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
-        <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
-          <LocaleProvider locale={locale}>{children}</LocaleProvider>
-          <SdkUsageProblemDisplay
-            authConfig={authConfig}
-            allowConsoleLog={allowConsoleLog}
-          />
-          <PortalContainer />
-          <FullPagePortalContainer />
-        </Box>
-      </SdkThemeProvider>
-    </EmotionCacheProvider>
+    <SdkContextProvider>
+      <EmotionCacheProvider>
+        <Global styles={SCOPED_CSS_RESET} />
+        <SdkThemeProvider theme={theme}>
+          <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
+          <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
+            <LocaleProvider locale={locale}>{children}</LocaleProvider>
+            <SdkUsageProblemDisplay
+              authConfig={authConfig}
+              allowConsoleLog={allowConsoleLog}
+            />
+            <PortalContainer />
+            <FullPagePortalContainer />
+          </Box>
+        </SdkThemeProvider>
+      </EmotionCacheProvider>
+    </SdkContextProvider>
   );
 };
 
