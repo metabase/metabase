@@ -22,12 +22,28 @@ driver:
       required: true
       visible-if:
         use-hostname: false
-    - user
-    - password
+    - name: use-username-password
+      display-name: "Use user and password"
+      description: Snowflake will soon block user and password authentication.
+      type: boolean
+      default: false
     - name: private-key
       display-name: RSA private key (PKCS#8/.p8)
       type: secret
       secret-kind: pem-cert
+      visible-if:
+        use-username-password: false
+      required: true
+    - merge:
+      - user
+      - visible-if:
+          use-username-password: true
+        required: true
+    - merge:
+      - password
+      - visible-if:
+          use-username-password: true
+        required: true
     - name: warehouse
       display-name: Warehouse
       helper-text: If your user doesn't have a default warehouse, enter the warehouse to connect to.
