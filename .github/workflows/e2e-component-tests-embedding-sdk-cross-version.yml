@@ -194,8 +194,11 @@ jobs:
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
-      - name: Install Embedding SDK package v${{ needs.resolve-sdk-version.outputs.sdk_version }} and Run E2E tests for Embedding SDK
-        run: yarn add @metabase/embedding-sdk-react@${{ needs.resolve-sdk-version.outputs.sdk_version }} && yarn why @metabase/embedding-sdk-react && yarn run test-cypress-run-component-sdk --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+      - name: Install Embedding SDK package v${{ needs.resolve-sdk-version.outputs.sdk_version }}
+        run: yarn add @metabase/embedding-sdk-react@${{ needs.resolve-sdk-version.outputs.sdk_version }}
+
+      - name: Run E2E tests for Embedding SDK
+        run: yarn run test-cypress-run-component-sdk --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
