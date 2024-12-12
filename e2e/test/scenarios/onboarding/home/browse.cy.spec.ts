@@ -151,11 +151,7 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
 
   const setVerification = (linkSelector: RegExp | string) => {
     cy.findByLabelText("Move, trash, and more…").click();
-    cy.findByRole("dialog", {
-      name: /ellipsis icon/i,
-    })
-      .findByText(linkSelector)
-      .click();
+    cy.findByRole("menu").findByText(linkSelector).click();
   };
   const verifyModel = () => {
     setVerification(/Verify this model/);
