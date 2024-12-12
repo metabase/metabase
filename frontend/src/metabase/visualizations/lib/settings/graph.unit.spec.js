@@ -437,14 +437,6 @@ describe("graph.tooltip_columns", () => {
   const tooltipColumnsSetting = TOOLTIP_SETTINGS["graph.tooltip_columns"];
 
   describe("getHidden", () => {
-    it("should be hidden when tooltip type is default", () => {
-      const isHidden = tooltipColumnsSetting.getHidden([], {
-        "graph.tooltip_type": "default",
-      });
-
-      expect(isHidden).toBe(true);
-    });
-
     it("should be hidden when there are no available additional columns", () => {
       const mockSeries = [
         createMockSingleSeries(
@@ -461,7 +453,7 @@ describe("graph.tooltip_columns", () => {
       ];
 
       const isHidden = tooltipColumnsSetting.getHidden(mockSeries, {
-        "graph.tooltip_type": "customized",
+        "graph.tooltip_type": "series_comparison",
         "graph.dimensions": ["dim"],
         "graph.metrics": ["metric"],
       });
@@ -486,7 +478,7 @@ describe("graph.tooltip_columns", () => {
       ];
 
       const isHidden = tooltipColumnsSetting.getHidden(mockSeries, {
-        "graph.tooltip_type": "customized",
+        "graph.tooltip_type": "series_comparison",
         "graph.dimensions": ["dim"],
         "graph.metrics": ["metric1"],
       });
