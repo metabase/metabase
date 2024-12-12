@@ -1,5 +1,6 @@
-import type { Store } from "@reduxjs/toolkit";
 import createAsyncCallback from "@loki/create-async-callback";
+import type { Store } from "@reduxjs/toolkit";
+import { expect } from "@storybook/jest";
 import type { StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/testing-library";
 import { Provider } from "react-redux";
@@ -85,9 +86,11 @@ export default {
 };
 type OverlayType =
   | "Mantine Modal"
+  | "Mantine Popover"
+  | "Legacy Tooltip"
   | "Legacy Modal"
   | "Legacy Popover"
-  | "Mantine Popover";
+  | "Legacy Select";
 
 type Launcher = ({
   launchFrom,
@@ -128,10 +131,29 @@ const getLaunchers = ({ portalRoot }: { portalRoot: HTMLElement }) => {
           name: "Legacy popover",
         }),
       );
-      const popover = await within(portalRoot).findByRole("tooltip", {
+      return await within(portalRoot).findByRole("tooltip", {
         name: "Legacy popover content",
       });
-      return popover;
+    },
+    "Legacy Tooltip": async ({ launchFrom }) => {
+      await userEvent.hover(
+        await within(launchFrom).findByRole("button", {
+          name: "Legacy tooltip",
+        }),
+      );
+      return await within(portalRoot).findByRole("tooltip", {
+        name: "Legacy tooltip content",
+      });
+    },
+    "Legacy Select": async ({ launchFrom }) => {
+      await userEvent.hover(
+        await within(launchFrom).findByRole("button", {
+          name: /Legacy Select option 1/,
+        }),
+      );
+      return await within(portalRoot).findByRole("combobox", {
+        name: "Legacy Select",
+      });
     },
     "Mantine Popover": async ({ launchFrom }) => {
       // NOTE: Mantine Popovers are clicked, not hovered
@@ -149,7 +171,12 @@ const getLaunchers = ({ portalRoot }: { portalRoot: HTMLElement }) => {
   return launchers;
 };
 
-/** Launch overlay A, then use it to launch overlay B */
+/** Launch overlay A, then use it to launch overlay B
+ *
+ * For convenience and to clarify the expected behavior, this function makes
+ * several expect() assertions with storybook/jest. These assertions do not run
+ * in CI. The expected behavior is validated in CI via visual regression tests.
+ */
 const launchAThenB = async (
   aType: OverlayType,
   bType: OverlayType,
@@ -158,14 +185,15 @@ const launchAThenB = async (
   const launchers = getLaunchers({ portalRoot: body });
   const [launchA, launchB] = [launchers[aType], launchers[bType]];
   const a = await launchA({ launchFrom: body, portalRoot: body });
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const b = await launchB({ launchFrom: a, portalRoot: body });
-  // To test this logic here we could do the following:
-  // expect(a.nextSibling).toBe(b);
-  // const az = getNearestZIndex(a);
-  // const bz = getNearestZIndex(b);
-  // expect(az).toBe(bz);
-  // expect(az).toBeGreaterThan(10);
+  // Ensure that the second overlay appears after the first in the DOM
+  expect(a.nextSibling).toBe(b);
+  const az = getNearestZIndex(a);
+  const bz = getNearestZIndex(b);
+  expect(az).toBe(bz);
+  expect(az).toBeGreaterThan(10);
+  // Given that the z-index is the same, the overlay that appears later in the
+  // DOM will appear on top
   await tellLokiThePageIsReady();
 };
 
@@ -243,6 +271,39 @@ export const MantinePopoverCanLaunchLegacyPopover = {
   },
 };
 
+export const MantinePopoverCanLaunchLegacyTooltip = {
+  render: Template,
+  args: {
+    enableNesting: true,
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const body = canvasElement.parentElement as HTMLElement;
+    await launchAThenB("Mantine Popover", "Legacy Tooltip", body);
+  },
+};
+
+export const MantinePopoverCanLaunchLegacySelect = {
+  render: Template,
+  args: {
+    enableNesting: true,
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const body = canvasElement.parentElement as HTMLElement;
+    await launchAThenB("Mantine Popover", "Legacy Select", body);
+  },
+};
+
+export const MantinePopoverCanLaunchLegacyModal = {
+  render: Template,
+  args: {
+    enableNesting: true,
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const body = canvasElement.parentElement as HTMLElement;
+    await launchAThenB("Mantine Popover", "Legacy Modal", body);
+  },
+};
+
 export const LegacyPopoverCanLaunchMantinePopover = {
   render: Template,
   args: {
@@ -251,5 +312,27 @@ export const LegacyPopoverCanLaunchMantinePopover = {
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const body = canvasElement.parentElement as HTMLElement;
     await launchAThenB("Legacy Popover", "Mantine Popover", body);
+  },
+};
+
+export const MantineModalCanLaunchLegacyTooltip = {
+  render: Template,
+  args: {
+    enableNesting: true,
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const body = canvasElement.parentElement as HTMLElement;
+    await launchAThenB("Mantine Modal", "Legacy Tooltip", body);
+  },
+};
+
+export const MantineModalCanLaunchLegacySelect = {
+  render: Template,
+  args: {
+    enableNesting: true,
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const body = canvasElement.parentElement as HTMLElement;
+    await launchAThenB("Mantine Modal", "Legacy Select", body);
   },
 };
