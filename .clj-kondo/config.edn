@@ -402,6 +402,7 @@
                                      metabase.sync.sync-metadata.tables
                                      metabase.sync.util}                                            ; TODO -- consolidate these into a real API namespace.
     metabase.task                  #{metabase.task
+                                     metabase.task.bootstrap
                                      metabase.task.index-values
                                      metabase.task.persist-refresh
                                      ;; We need to expose this to the metabase.search module.
