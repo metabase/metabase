@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
+import * as Yup from "yup";
 
 import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
@@ -14,6 +15,7 @@ import {
 import { useSetDashboardAttributeHandler } from "metabase/dashboard/components/Dashboard/use-set-dashboard-attribute";
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
+import { DASHBOARD_TITLE_MAX_LENGTH } from "metabase/dashboard/constants";
 import {
   getCanResetFilters,
   getIsEditing,
@@ -28,6 +30,7 @@ import type {
   DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
 import { color } from "metabase/lib/colors";
+import * as Errors from "metabase/lib/errors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTION_COMPONENTS,
@@ -62,6 +65,11 @@ type DashboardHeaderViewProps = {
 } & DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
   DashboardNightModeControls;
+
+const TITLE_SCHEMA = Yup.string()
+  .required(Errors.required)
+  .max(DASHBOARD_TITLE_MAX_LENGTH, Errors.maxLength)
+  .default("");
 
 export function DashboardHeaderView({
   editingTitle = "",
@@ -199,6 +207,7 @@ export function DashboardHeaderView({
                     isDisabled={!dashboard.can_write}
                     data-testid="dashboard-name-heading"
                     onChange={handleUpdateCaption}
+                    validationSchema={TITLE_SCHEMA}
                   />
                   <PLUGIN_MODERATION.EntityModerationIcon
                     dashboard={dashboard}
