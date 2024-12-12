@@ -1,12 +1,16 @@
 (ns metabase.db.custom-migrations
   "Custom liquibase migrations, so we can manipulate data with Clojure.
-   We prefer to use SQL migrations in most cases because they are likely to be more performant and stable.
-   However, there are some cases where we need to do something that is not possible or very difficult with SQL, such as JSON manipulation.
 
-   Migrations demand a higher level of reliability than normal code, so be careful about what these migrations depend on.
-   If the code the migration depends on changes, the migration could corrupt app dbs and be very difficult to recover from.
+  We prefer to use SQL migrations in most cases because they are likely to be more performant and stable. However,
+  there are some cases where we need to do something that is not possible or very difficult with SQL, such as JSON
+  manipulation.
 
-   If you need to use code from elsewhere, consider copying it into this namespace to minimize risk of the code changing behaviour."
+  Migrations demand a higher level of reliability than normal code, so be careful about what these migrations depend
+  on. If the code the migration depends on changes, the migration could corrupt app dbs and be very difficult to
+  recover from.
+
+  If you need to use code from elsewhere, consider copying it into this namespace to minimize risk of the code
+  changing behaviour."
   (:require
    [clojure.core.match :refer [match]]
    [clojure.edn :as edn]
@@ -23,6 +27,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations.metrics-v2 :as metrics-v2]
    [metabase.plugins.classloader :as classloader]
+   [metabase.task.bootstrap]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
@@ -187,42 +192,16 @@
 ;;; |                                           Quartz Scheduler Helpers                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; This section of code's purpose is to avoid the migration depending on the [[metabase.task]] namespace,
-;; which is likely to change, and might not have as tight test coverage as needed for custom migrations.
-
-(defn- load-class ^Class [^String class-name]
-  (Class/forName class-name true (classloader/the-classloader)))
-
-(defrecord ^:private ClassLoadHelper []
-  org.quartz.spi.ClassLoadHelper
-  (initialize [_])
-  (getClassLoader [_]
-    (classloader/the-classloader))
-  (loadClass [_ class-name]
-    (load-class class-name))
-  (loadClass [_ class-name _]
-    (load-class class-name)))
-
-(when-not *compile-files*
-  (System/setProperty "org.quartz.scheduler.classLoadHelper.class" (.getName ClassLoadHelper)))
-
-(defn- set-jdbc-backend-properties!
-  "Set the appropriate system properties needed so Quartz can connect to the JDBC backend. (Since we don't know our DB
-  connection properties ahead of time, we'll need to set these at runtime rather than Setting them in the
-  `quartz.properties` file.)"
-  []
-  (when (= (mdb.connection/db-type) :postgres)
-    (System/setProperty "org.quartz.jobStore.driverDelegateClass" "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate")))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
+(defn- set-jdbc-backend-properties! []
+  (metabase.task.bootstrap/set-jdbc-backend-properties! (mdb.connection/db-type)))
 
 (define-migration DeleteAbandonmentEmailTask
   (classloader/the-classloader)
   (set-jdbc-backend-properties!)
   (let [scheduler (qs/initialize)]
     (qs/start scheduler)
-    (qs/delete-trigger scheduler (triggers/key "metabase.task.abandonment-emails.trigger"))
-    (qs/delete-job scheduler (jobs/key "metabase.task.abandonment-emails.job"))
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.bootstrap.abandonment-emails.trigger"))
+    (qs/delete-job scheduler (jobs/key "metabase.task.bootstrap.abandonment-emails.job"))
     (qs/shutdown scheduler)))
 
 (define-migration FillJSONUnfoldingDefault
@@ -1142,7 +1121,7 @@
     (let [scheduler (qs/initialize)]
       (qs/start scheduler)
       (doseq [db dbs]
-        (qs/delete-trigger scheduler (triggers/key (format "metabase.task.update-field-values.trigger.%d" (:id db)))))
+        (qs/delete-trigger scheduler (triggers/key (format "metabase.task.bootstrap.update-field-values.trigger.%d" (:id db)))))
       ;; use the table, not model/Database because we don't want to trigger the hooks
       (t2/update! :metabase_database :id [:in (map :id dbs)] {:cache_field_values_schedule nil})
       (qs/shutdown scheduler))))
@@ -1340,8 +1319,8 @@
   (set-jdbc-backend-properties!)
   (let [scheduler (qs/initialize)]
     (qs/start scheduler)
-    (qs/delete-trigger scheduler (triggers/key "metabase.task.truncate-audit-log.trigger"))
-    (qs/delete-job scheduler (jobs/key "metabase.task.truncate-audit-log.job"))
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.bootstrap.truncate-audit-log.trigger"))
+    (qs/delete-job scheduler (jobs/key "metabase.task.bootstrap.truncate-audit-log.job"))
     (qs/shutdown scheduler)))
 
 (define-migration DeleteSendPulsesTask
@@ -1349,8 +1328,8 @@
   (set-jdbc-backend-properties!)
   (let [scheduler (qs/initialize)]
     (qs/start scheduler)
-    (qs/delete-trigger scheduler (triggers/key "metabase.task.send-pulses.trigger"))
-    (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.job"))
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.bootstrap.send-pulses.trigger"))
+    (qs/delete-job scheduler (jobs/key "metabase.task.bootstrap.send-pulses.job"))
     (qs/shutdown scheduler)))
 
 ;; If someone upgraded to 50, then downgrade to 49, the send-pulse triggers will run into an error state due to
@@ -1364,7 +1343,7 @@
     (set-jdbc-backend-properties!)
     (let [scheduler (qs/initialize)]
       (qs/start scheduler)
-      (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.send-pulse.job"))
+      (qs/delete-job scheduler (jobs/key "metabase.task.bootstrap.send-pulses.send-pulse.job"))
       (qs/shutdown scheduler))))
 
 ;; The InitSendPulseTriggers is a migration in disguise, it runs once per instance
@@ -1378,7 +1357,7 @@
     (let [scheduler (qs/initialize)]
       (qs/start scheduler)
      ;; delete the job will also delete all of its triggers
-      (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))
+      (qs/delete-job scheduler (jobs/key "metabase.task.bootstrap.send-pulses.init-send-pulse-triggers.job"))
       (qs/shutdown scheduler))))
 
 ;; when card display is area or bar,
