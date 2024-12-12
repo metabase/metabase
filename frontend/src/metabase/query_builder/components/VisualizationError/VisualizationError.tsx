@@ -104,15 +104,15 @@ export function VisualizationError({
       <Box className={cx(className, CS.overflowAuto)}>
         <Flex direction="column" justify="center" align="center" mih="100%">
           <Flex align="center" mb="md">
-            <Icon className={VisErrorS.queryErrorIcon} name="warning" />
+            <Icon className={VisErrorS.QueryErrorIcon} name="warning" />
             <Box
-              className={VisErrorS.queryErrorTitle}
+              className={VisErrorS.QueryErrorTitle}
             >{t`An error occurred in your query`}</Box>
           </Flex>
-          <Box className={VisErrorS.queryErrorMessage}>{processedError}</Box>
+          <Box className={VisErrorS.QueryErrorMessage}>{processedError}</Box>
           {isSql && showMetabaseLinks && (
             <ExternalLink
-              className={VisErrorS.queryErrorLink}
+              className={VisErrorS.QueryErrorLink}
               href={getLearnUrl("debugging-sql/sql-syntax")}
             >
               {t`Learn how to debug SQL errors`}

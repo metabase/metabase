@@ -1,4 +1,4 @@
-.queryErrorTitle {
+.QueryErrorTitle {
   flex: 1 1 auto;
   color: var(--mb-color-text-dark);
   font-size: 1.25rem;
@@ -6,7 +6,7 @@
   font-weight: bold;
 }
 
-.queryErrorIcon {
+.QueryErrorIcon {
   flex: 0 0 auto;
   color: var(--mb-color-error);
   width: 1rem;
@@ -14,7 +14,7 @@
   margin-right: 0.75rem;
 }
 
-.queryErrorMessage {
+.QueryErrorMessage {
   margin: 0 2rem;
   padding: 1rem;
   max-width: 31.25rem;
@@ -27,7 +27,7 @@
   overflow-wrap: break-word;
 }
 
-.queryErrorLink {
+.QueryErrorLink {
   color: var(--mb-color-brand);
   margin: 1rem 0;
   font-size: 0.75rem;

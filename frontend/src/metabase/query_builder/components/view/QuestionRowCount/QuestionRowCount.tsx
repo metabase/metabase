@@ -15,7 +15,7 @@ import {
   getIsResultDirty,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import { Text } from "metabase/ui";
+import { Box } from "metabase/ui";
 import type { Limit } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -134,7 +134,7 @@ function RowCountLabel({
 }) {
   const label = t`Row count`;
   return disabled ? (
-    <Text
+    <Box
       component="span"
       className={QuestionRowCountS.RowCountStaticLabel}
       {...props}
