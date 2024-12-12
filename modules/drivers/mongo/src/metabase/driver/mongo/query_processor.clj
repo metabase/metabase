@@ -1059,7 +1059,7 @@
 
 (defmethod expand-aggregation :cum-sum
   [ag]
-  (let [[_ expr]    (unwrap-named-ag ag)
+  (let [[_ expr] (unwrap-named-ag ag)
         sum-expr (name (gensym "$sum-"))]
     {:group {(subs sum-expr 1) (aggregation->rvalue [:sum expr])}
      :window {(annotate/aggregation-name (:query *query*) ag) sum-expr}}))
@@ -1208,13 +1208,12 @@
                          :asc   1
                          :desc -1)])))
 
-(defn- generate-window-output-clause
+(defn- window-output-clause
   "Takes a pair of [output-name input-name] and generates an output clause suitable for
   including in a `$setWindowFields` output block."
-  [[output-name input-name]]
-  {output-name
-   {$sum input-name
-    "window" {"documents" ["unbounded" "current"]}}})
+  [input-name]
+  {$sum input-name
+   "window" {"documents" ["unbounded" "current"]}})
 
 (defn- sort-lookup
   "Generates a lookup string for a particular field"
@@ -1223,7 +1222,7 @@
     (str "_id." name)
     name))
 
-(defn- make-window-sort
+(defn- window-sort
   "Converts a `$sort` body to something that can be used in a `sortBy` clause in a
   `$setWindowFields` stage."
   [id pairs]
@@ -1232,7 +1231,7 @@
           (map (fn [[name dir]] [(sort-lookup id name) dir]))
           pair-seq)))
 
-(defn- get-window-sort-and-partitions
+(defn- window-sort-and-partitions
   "Calculates the appropriate sort and partition fields for a `$setWindowFields` stage."
   [id breakouts order-by]
   (let [finest-temporal-index
@@ -1247,20 +1246,19 @@
                               (merge *field-mappings*
                                      (into {} (map (juxt identity field-alias)) breakouts))]
                       (order-by->$sort order-by)))
-        sort-expr (cond
-                    ;; if there is only one breakout, always use the user's sort order
-                    (= (count id) 1)
-                    (or (make-window-sort id user-sort) default-sort)
+        sort-expr (or
+                   ;; if there is only one breakout, always use the user's sort order
+                   (when (= (count id) 1)
+                     (window-sort id user-sort))
 
-                    ;; if we don't have a temporal breakout, sort by the last breakout, but
-                    ;; use the user's sort direction if specified
-                    (not finest-temporal-index)
-                    (or (->> user-sort
-                             (filter #(= sort-name (first %)))
-                             (make-window-sort id))
-                        default-sort)
+                   ;; if we don't have a temporal breakout, sort by the last breakout, but
+                   ;; use the user's sort direction if specified
+                   (when-not finest-temporal-index
+                     (->> user-sort
+                          (filter #(= sort-name (first %)))
+                          (window-sort id)))
 
-                    :else default-sort)
+                   default-sort)
 
         partition-expr (into (ordered-map/ordered-map)
                              (map (fn [[name]] [name (str "$_id." name)]))
@@ -1268,17 +1266,17 @@
     {:sort-expr sort-expr
      :partition-expr partition-expr}))
 
-(defn- generate-window-accumulators
+(defn- window-accumulators
   "Takes a map of {output-name input-name ...} and generates a `$setWindowFields` stage that
   produces a cumulative sum of those fields."
   [window-vals id breakouts order-by]
   ;; if id is empty, we don't have any breakouts and so don't need to fiddle around with $setWindowFields
   (if (empty? id)
     [{$addFields window-vals}]
-    (let [{:keys [sort-expr partition-expr]} (get-window-sort-and-partitions id breakouts order-by)]
+    (let [{:keys [sort-expr partition-expr]} (window-sort-and-partitions id breakouts order-by)]
       [{$setWindowFields
         (cond-> {"sortBy" sort-expr
-                 "output" (into {} (map generate-window-output-clause) window-vals)}
+                 "output" (update-vals window-vals window-output-clause)}
           (seq partition-expr) (assoc "partitionBy" partition-expr))}])))
 
 (defn- group-and-post-aggregations
@@ -1297,10 +1295,12 @@
         group-ags    (mapcat :group expanded-ags)
         post-ags     (order-postprocessing (map :post expanded-ags))
         window-values   (into {} (map :window) expanded-ags)]
-    (cond-> [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}]
-      (seq window-values) (into (generate-window-accumulators window-values id breakouts order-by))
-      true (into (keep (fn [p] (when (seq p) {$addFields p})))
-                 post-ags))))
+    (into [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}]
+          cat
+          [(when (seq window-values)
+             (window-accumulators window-values id breakouts order-by))
+           (keep (fn [p] (when (seq p) {$addFields p}))
+                 post-ags)])))
 
 (defn- projection-group-map [fields]
   (reduce
