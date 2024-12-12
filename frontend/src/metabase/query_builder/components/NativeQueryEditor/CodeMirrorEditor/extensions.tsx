@@ -102,6 +102,9 @@ function fonts() {
       fontSize: "12px",
       fontFamily: monospaceFontFamily,
     },
+    ".cm-content": {
+      fontFamily: monospaceFontFamily,
+    },
   });
 }
 
