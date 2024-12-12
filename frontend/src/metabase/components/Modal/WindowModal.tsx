@@ -121,6 +121,7 @@ export class WindowModal extends Component<WindowModalProps> {
       style,
       enableTransition,
       "data-testid": dataTestId,
+      "aria-labelledby": ariaLabelledBy,
     } = this.props;
     const backdropClassnames = cx(
       CS.flex,
@@ -166,6 +167,7 @@ export class WindowModal extends Component<WindowModalProps> {
                 className={cx(ModalS.ModalBackdrop, backdropClassnames)}
                 style={style}
                 data-testid={dataTestId}
+                aria-labelledby={ariaLabelledBy}
               >
                 {this._modalComponent()}
               </div>

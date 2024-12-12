@@ -137,13 +137,15 @@ export const LegacyModalCanLaunchMantineModal = {
     const legacyModal = await getLegacyModal({ withinElement: body });
     await getMantineModal({ withinElement: legacyModal });
     // TODO: Legacy modals aren't properly aria-labelled in this branch so this doesn't quite work yet
+    // NOTE: Actually Legacy models are, I think, now properly aria-labelled,
+    // but I still need to see if this test works
   },
 };
 
-export const MantineModalCanLaunchLegacyPopover = {
-  render: Template,
-  args: {
-    enableNesting: true,
-    overlaysToOpen: ["Mantine Modal", "Legacy Popover"],
-  },
-};
+// export const MantineModalCanLaunchLegacyPopover = {
+//   render: Template,
+//   args: {
+//     enableNesting: true,
+//     overlaysToOpen: ["Mantine Modal", "Legacy Popover"],
+//   },
+// };
