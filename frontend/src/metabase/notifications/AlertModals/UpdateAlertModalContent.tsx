@@ -15,7 +15,7 @@ import {
   getQuestion,
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { Flex } from "metabase/ui";
 import type { Alert } from "metabase-types/api";
 

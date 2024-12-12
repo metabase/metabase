@@ -3,12 +3,9 @@ import type { Alert, EmailChannelSpec, User } from "metabase-types/api";
 import { RecipientPicker } from "./RecipientPicker";
 
 export const EmailChannelEdit = ({
-  channelSpec,
   alert,
-  toggleChannel,
   onChannelPropertyChange,
   users,
-  user,
   invalidRecipientText,
 }: {
   channelSpec: EmailChannelSpec;
