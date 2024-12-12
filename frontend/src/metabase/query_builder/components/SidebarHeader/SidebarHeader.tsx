@@ -36,11 +36,7 @@ function getHeaderVariant({
 }
 
 const SidebarHeaderRoot = (props: FlexProps) => {
-  return (
-    <Flex align="center" className={`sidebar-header-root ${props.className}`}>
-      {props.children}
-    </Flex>
-  );
+  return <Flex align="center" {...props} />;
 };
 
 function SidebarHeader({ className, title, icon, onBack, onClose }: Props) {

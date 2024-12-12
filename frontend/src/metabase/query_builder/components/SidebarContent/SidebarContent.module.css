@@ -13,3 +13,12 @@
   border-radius: 99px;
   box-shadow: 0 2px 2px rgb(0 0 0 / 13%);
 }
+
+.SidebarContentRoot {
+  height: 100%;
+}
+
+.SidebarContentHeader {
+  padding-top: 0.5rem;
+  margin: 1rem 1.5rem;
+}

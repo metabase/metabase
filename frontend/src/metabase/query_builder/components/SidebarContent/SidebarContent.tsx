@@ -2,7 +2,6 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
 import {
   Box,
   type BoxProps,
@@ -32,10 +31,7 @@ type Props = {
 
 const SidebarContentMain = ({ children, ...props }: BoxProps) => {
   return (
-    <Box
-      className={`${SidebarContentS.SidebarContentMain} sidebar-content-main`}
-      {...props}
-    >
+    <Box className={SidebarContentS.SidebarContentMain} {...props}>
       {children}
     </Box>
   );
@@ -46,8 +42,7 @@ const SidebarContentRoot = ({ className, children, ...props }: FlexProps) => {
     <Flex
       direction="column"
       justify="space-between"
-      h="100%"
-      className={`sidebar-content-root ${className}`}
+      className={cx(SidebarContentS.SidebarContentRoot, className)}
       {...props}
     >
       {children}
@@ -82,7 +77,7 @@ function SidebarContent({
       <SidebarContentMain data-testid="sidebar-content">
         {(title || icon || onBack) && (
           <SidebarHeader
-            className={cx(CS.mx3, CS.my2, CS.pt1)}
+            className={SidebarContentS.SidebarContentHeader}
             title={title}
             icon={icon}
             onBack={onBack}
