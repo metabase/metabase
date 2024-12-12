@@ -21,9 +21,9 @@ Check out our [upgrading instructions](https://metabase.com/docs/latest/operatio
 ## Metabase Open Source
 
 Docker image: {{oss-docker-tag}}
-Download the JAR here: {{oss-download-url}}
+JAR download: {{oss-download-url}}
 
-SHA-256 checksum for the JAR:
+SHA-256 checksum for the open source JAR:
 
 \`\`\`
 {{oss-checksum}}
@@ -32,9 +32,9 @@ SHA-256 checksum for the JAR:
 ## Metabase Enterprise
 
 Docker image: {{ee-docker-tag}}
-Download the JAR here: {{ee-download-url}}
+JAR download: {{ee-download-url}}
 
-SHA-256 checksum for the JAR:
+SHA-256 checksum for the enterprise JAR:
 
 \`\`\`
 {{ee-checksum}}
@@ -263,8 +263,8 @@ export const generateReleaseNotes = ({
     .replace("{{oss-docker-tag}}", getDockerTag(ossVersion))
     .replace("{{oss-download-url}}", getDownloadUrl(ossVersion))
     .replace("{{version}}", getGenericVersion(version))
-    .replace("{{oss_checksum}}", oss_checksum.split(" ")[0])
-    .replace("{{ee_checksum}}", ee_checksum.split(" ")[0]);
+    .replace("{{oss-checksum}}", oss_checksum.split(" ")[0])
+    .replace("{{ee-checksum}}", ee_checksum.split(" ")[0]);
 };
 
 export async function publishRelease({
