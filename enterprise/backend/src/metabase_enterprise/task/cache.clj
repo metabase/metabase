@@ -108,7 +108,7 @@
           (let [rerun-cutoff (duration-ago config)]
             {:nest
              {:select   [[:q.query :query]
-                         [:qe.card_id :card_id]
+                         [:qe.card_id :card-id]
                          [[:count :q.query_hash] :count]]
               :from     [[(t2/table-name :model/Query) :q]]
               :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]
@@ -130,7 +130,7 @@
               :group-by [:q.query_hash :q.query :qe.card_id]
               :order-by [[[:count :q.query_hash] :desc]]
               :limit    *parameterized-queries-to-rerun-per-card*}}))]
-    {:select [:u.query :u.card_id]
+    {:select [:u.query :u.card-id]
      :from   [[{:union queries} :u]]}))
 
 (defn- duration-queries-to-rerun

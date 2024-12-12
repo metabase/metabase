@@ -47,98 +47,99 @@
                 (fn [query info]
                   (qp/process-query (qp/userland-query (assoc query :info info))))))))
 
+(defn- most-recent-cache-entry
+  []
+  (t2/select-one :model/QueryCache {:order-by [[:updated_at :desc]]}))
+
+(defn- expire-most-recent-cache-entry!
+  "Manually expire the most recently updated cache entry by setting its updated_at back by 24 hours"
+  []
+  (let [cache-entry (most-recent-cache-entry)]
+    (t2/update! :model/QueryCache :query_hash (:query_hash cache-entry)
+                (update cache-entry :updated_at #(t/minus % (t/days 1))))))
+
 (deftest scheduled-queries-to-rerun-test
   (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}
     (testing "Given a card, we rerun a limited number of variations of the card's query"
       (binding [qp.util/*execute-async?*             false
                 task.cache/*run-cache-refresh-async* false]
-        (mt/with-empty-h2-app-db
-          (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
-                                                    :dataset_query (parameterized-native-query)}]
-            (let [param-val-1 "2024-12-01"
-                  params-1    [{:type  :text
-                                :target [:variable [:template-tag "date"]]
-                                :value param-val-1}]
-                  param-val-2 "2024-12-02"
-                  params-2    [{:type  :text
-                                :target [:variable [:template-tag "date"]]
-                                :value param-val-2}]
-                  to-rerun    #(@#'task.cache/scheduled-queries-to-rerun card-id (t/minus (t/offset-date-time) (t/minutes 10)))
-                  param-vals  #(-> % :parameters first :value)]
-              ;; Sanity check that the query actually runs
-              (is (= [[1000]] (mt/rows (run-query-for-card-id card-id []))))
-              (is (= 1 (count (to-rerun))))
+        (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
+                                                  :dataset_query (parameterized-native-query)}]
+          (let [param-val-1 "2024-12-01"
+                params-1    [{:type  :text
+                              :target [:variable [:template-tag "date"]]
+                              :value param-val-1}]
+                param-val-2 "2024-12-02"
+                params-2    [{:type  :text
+                              :target [:variable [:template-tag "date"]]
+                              :value param-val-2}]
+                to-rerun    #(@#'task.cache/scheduled-queries-to-rerun card-id (t/minus (t/offset-date-time) (t/minutes 10)))
+                param-vals  #(-> % :parameters first :value)]
+            ;; Sanity check that the query actually runs
+            (is (= [[1000]] (mt/rows (run-query-for-card-id card-id []))))
+            (is (= 1 (count (to-rerun))))
 
-              (run-query-for-card-id card-id params-1)
-              (is (= [nil param-val-1] (map param-vals (to-rerun))))
+            (run-query-for-card-id card-id params-1)
+            (is (= [nil param-val-1] (map param-vals (to-rerun))))
 
+            (run-query-for-card-id card-id params-2)
+            (is (= [nil param-val-1 param-val-2] (map param-vals (to-rerun))))
+
+            (testing "Running a parmaeterized query again bumps it up in the result list, but base query comes first"
               (run-query-for-card-id card-id params-2)
-              (is (= [nil param-val-1 param-val-2] (map param-vals (to-rerun))))
+              (is (= [nil param-val-2 param-val-1] (map param-vals (to-rerun)))))
 
-              (testing "Running a parmaeterized query again bumps it up in the result list, but base query comes first"
-                (run-query-for-card-id card-id params-2)
-                (is (= [nil param-val-2 param-val-1] (map param-vals (to-rerun)))))
-
-              (testing "Only base query + *parameterized-queries-to-rerun-per-card* queries are returned"
-                (binding [task.cache/*parameterized-queries-to-rerun-per-card* 1]
-                  (is (= [nil param-val-2] (map param-vals (to-rerun)))))))))))))
+            (testing "Only base query + *parameterized-queries-to-rerun-per-card* queries are returned"
+              (binding [task.cache/*parameterized-queries-to-rerun-per-card* 1]
+                (is (= [nil param-val-2] (map param-vals (to-rerun))))))))))))
 
 (deftest duration-queries-to-rerun-test
   (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}
     (testing "We refresh expired :duration caches for queries that were run at least once in the last caching duration"
       (binding [qp.util/*execute-async?*             false
                 task.cache/*run-cache-refresh-async* false]
-        (mt/with-empty-h2-app-db
-          (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
-                                                    :dataset_query (parameterized-native-query)}
-                         :model/CacheConfig _ {:model "question"
-                                               :model_id card-id
-                                               :strategy :duration
-                                               :refresh_automatically true
-                                               :config {:unit "hours" :duration 1}}]
-            (let [param-val-1 "2024-12-02"
-                  params-1    [{:type  :text
-                                :target [:variable [:template-tag "date"]]
-                                :value param-val-1}]
-                  to-rerun    @#'task.cache/duration-queries-to-rerun
-                  param-vals  #(-> % :query :parameters first :value)]
-              ;; Starting state: no cache entries exist, and nothing can be rerun
-              (is (= nil (t2/select-one :model/QueryCache)))
-              (is (= [] (to-rerun)))
+        (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
+                                                  :dataset_query (parameterized-native-query)}
+                       :model/CacheConfig _ {:model "question"
+                                             :model_id card-id
+                                             :strategy :duration
+                                             :refresh_automatically true
+                                             :config {:unit "hours" :duration 1}}]
+          (let [param-val-1 "2024-12-02"
+                params-1    [{:type  :text
+                              :target [:variable [:template-tag "date"]]
+                              :value param-val-1}]
+                to-rerun    (fn [card-id]
+                              (let [queries (@#'task.cache/duration-queries-to-rerun)]
+                                (filter #(= (:card-id %) card-id) queries)))
+                param-vals  #(-> % :query :parameters first :value)]
+            ;; Starting state: no cache entries exist for the query, so nothing to rerun
+            (is (= [] (to-rerun card-id)))
 
-              ;; After running the nonparameterized query once, a cache entry is created but not rerunnable yet
-              (is (= [[1000]] (mt/rows (run-query-for-card-id card-id []))))
-              (is (= 1 (t2/count :model/QueryCache)))
-              (is (=? [] (to-rerun)))
+            ;; After running the nonparameterized query once, a cache entry is created but not rerunnable yet
+            (is (= [[1000]] (mt/rows (run-query-for-card-id card-id []))))
+            (is (=? [] (to-rerun card-id)))
 
-              ;; Manually 'expire' the cache entry. Now the query is detected as rerunnable!
-              (let [cache (t2/select-one :model/QueryCache)]
-                (t2/update! :model/QueryCache :query_hash (:query_hash cache)
-                            (update cache :updated_at #(t/minus % (t/hours 3)))))
-              (is (=? [{:card-id card-id}] (to-rerun)))
+            ;; Manually 'expire' the cache entry. Now the query is detected as rerunnable!
+            (expire-most-recent-cache-entry!)
+            (is (=? [{:card-id card-id}] (to-rerun card-id)))
 
-              ;; Run a parameterized query. A new cache entry is created but not rerunnable.
-              (is (= [[0]] (mt/rows (run-query-for-card-id card-id params-1))))
-              (is (= 2 (t2/count :model/QueryCache)))
-              ;; We can rerun the base query with no params, but not the parmaeterized query
-              (is (=? [nil] (map param-vals (to-rerun))))
+            ;; Run a parameterized query. A new cache entry is created but not rerunnable yet.
+            (is (= [[0]] (mt/rows (run-query-for-card-id card-id params-1))))
+            (is (= [nil] (map param-vals (to-rerun card-id))))
 
-              ;; Manually 'expire' the cache entry for the parameterized query. The cache entry is still not rerunnable,
-              ;; because we only rerun parameterized queries if they've had a *cache hit* within the most recent caching
-              ;; period.
-              (let [cache (t2/select-one :model/QueryCache {:order-by [[:updated_at :desc]]})]
-                (t2/update! :model/QueryCache :query_hash (:query_hash cache)
-                            (update cache :updated_at #(t/minus % (t/hours 3)))))
-              (is (=? [nil] (map param-vals (to-rerun))))
+            ;; Manually 'expire' the cache entry for the parameterized query. The cache entry is still not rerunnable,
+            ;; because we only rerun parameterized queries if they've had a *cache hit* within the most recent caching
+            ;; period.
+            (expire-most-recent-cache-entry!)
+            (is (= [nil] (map param-vals (to-rerun card-id))))
 
-              ;; Run the parameterized query twice: once to refresh the cache, then again to generate a cache hit.
-              (is (= [[0]] (mt/rows (run-query-for-card-id card-id params-1))))
-              (is (= [[0]] (mt/rows (run-query-for-card-id card-id params-1))))
-              ;; Manually 'expire' the cache entry again. Now the cache entry is rerunnable!
-              (let [cache (t2/select-one :model/QueryCache {:order-by [[:updated_at :desc]]})]
-                (t2/update! :model/QueryCache :query_hash (:query_hash cache)
-                            (update cache :updated_at #(t/minus % (t/hours 3)))))
-              (is (=? [nil param-val-1] (map param-vals (to-rerun)))))))))))
+            ;; Run the parameterized query twice: once to refresh the cache, then again to generate a cache hit.
+            (is (= [[0]] (mt/rows (run-query-for-card-id card-id params-1))))
+            (is (= [[0]] (mt/rows (run-query-for-card-id card-id params-1))))
+            ;; Manually 'expire' the cache entry again. Now the cache entry is rerunnable!
+            (expire-most-recent-cache-entry!)
+            (is (=? [nil param-val-1] (map param-vals (to-rerun card-id))))))))))
 
 (deftest refresh-schedule-cache-card-e2e-test
   (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}
@@ -155,10 +156,11 @@
                                               :config {:schedule "0 0 * * * ?"}}]
           ;; Run card once to populate cache
           (is (= [[1000]] (mt/rows (run-query-for-card-id card-id []))))
-          (let [cache-timestamp-1 (t2/select-one-fn :updated_at :model/QueryCache)]
+
+          (let [cache-timestamp-1 (:updated_at (most-recent-cache-entry))]
             (t2/update! :model/CacheConfig (:id cc) (assoc cc :next_run_at nil))
             (@#'task.cache/refresh-cache-configs!)
-            (let [cache-timestamp-2 (t2/select-one-fn :updated_at :model/QueryCache)]
+            (let [cache-timestamp-2 (:updated_at (most-recent-cache-entry))]
               (is (t/before? cache-timestamp-1 cache-timestamp-2)))))))))
 
 (deftest refresh-schedule-cache-dashboard-e2e-test
@@ -180,9 +182,9 @@
          ;; Run card once to populate cache
           (is (= [[1000]] (mt/rows (run-query-for-dashcard card-id dashboard-id dashcard-id))))
 
-          (let [cache-timestamp-1 (t2/select-one-fn :updated_at :model/QueryCache)]
+          (let [cache-timestamp-1 (:updated_at (most-recent-cache-entry))]
             (@#'task.cache/refresh-cache-configs!)
-            (let [cache-timestamp-2 (t2/select-one-fn :updated_at :model/QueryCache)]
+            (let [cache-timestamp-2 (:updated_at (most-recent-cache-entry))]
               (is (t/before? cache-timestamp-1 cache-timestamp-2)))))))))
 
 (deftest refresh-duration-cache-card-e2e-test
@@ -201,12 +203,11 @@
           (is (= [[1000]] (mt/rows (run-query-for-card-id card-id []))))
           ;; Run again to register a cache hit
           (is (= [[1000]] (mt/rows (run-query-for-card-id card-id []))))
-          (let [cache-timestamp-1 (t2/select-one-fn :updated_at :model/QueryCache)]
-            ;; Manually expire the existing cache entry
-            (t2/update! :model/QueryCache (update (t2/select-one :model/QueryCache)
-                                                  :updated_at #(t/minus % (t/hours 2))))
+
+          (let [cache-timestamp-1 (:updated_at (most-recent-cache-entry))]
+            (expire-most-recent-cache-entry!)
             (@#'task.cache/refresh-cache-configs!)
-            (let [cache-timestamp-2 (t2/select-one-fn :updated_at :model/QueryCache)]
+            (let [cache-timestamp-2 (:updated_at (most-recent-cache-entry))]
               (is (t/before? cache-timestamp-1 cache-timestamp-2)))))))))
 
 (deftest refresh-duration-cache-dashboard-e2e-test
@@ -228,12 +229,11 @@
           (is (= [[1000]] (mt/rows (run-query-for-dashcard card-id dashboard-id dashcard-id))))
           ;; Run again to register a cache hit
           (is (= [[1000]] (mt/rows (run-query-for-dashcard card-id dashboard-id dashcard-id))))
-          (let [cache-timestamp-1 (t2/select-one-fn :updated_at :model/QueryCache)]
+          (let [cache-timestamp-1 (:updated_at (most-recent-cache-entry))]
             ;; Manually expire the existing cache entry
-            (t2/update! :model/QueryCache (update (t2/select-one :model/QueryCache)
-                                                  :updated_at #(t/minus % (t/hours 2))))
+            (expire-most-recent-cache-entry!)
             (@#'task.cache/refresh-cache-configs!)
-            (let [cache-timestamp-2 (t2/select-one-fn :updated_at :model/QueryCache)]
+            (let [cache-timestamp-2 (:updated_at (most-recent-cache-entry))]
               (is (t/before? cache-timestamp-1 cache-timestamp-2)))))))))
 
 (deftest cache-preemptive-feature-flag-test
