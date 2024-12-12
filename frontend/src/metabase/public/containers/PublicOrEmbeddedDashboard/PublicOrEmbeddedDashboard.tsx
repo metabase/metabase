@@ -28,7 +28,7 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
-import { connect, useDispatch } from "metabase/lib/redux";
+import { type DispatchFn, connect, useDispatch } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
