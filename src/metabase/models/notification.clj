@@ -6,6 +6,7 @@
   (:require
    [medley.core :as m]
    [metabase.models.interface :as mi]
+   [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -89,14 +90,15 @@
 (def ^:private Notification
   [:merge
    [:map
-    [:payload_type (into [:enum] notification-types)]]
+    [:payload_type (ms/enum-decode-keyword notification-types)]]
    [:multi {:dispatch (comp keyword :payload_type)}
     [:notification/system-event
      [:map
       [:payload_id {:optional true} nil?]]]
     [:notification/card
      [:map
-      [:payload_id int?]
+      ;; optional during creation
+      [:payload_id {:optional true} int?]
       [:creator_id int?]]]
     [:notification/testing :any]]])
 
@@ -149,16 +151,14 @@
 
 (def ^:private NotificationSubscription
   [:merge [:map
-           [:type            (apply ms/enum-keywords-and-strings subscription-types)]]
+           [:type (ms/enum-decode-keyword subscription-types)]]
    [:multi {:dispatch (comp keyword :type)}
     [:notification-subscription/system-event
      [:map
-      [:type                           [:enum :notification-subscription/system-event]]
       [:event_name                     [:or :keyword :string]]
       [:cron_schedule {:optional true} nil?]]]
     [:notification-subscription/cron
      [:map
-      [:type                           [:enum :notification-subscription/cron]]
       [:cron_schedule                  :string]
       [:event_name    {:optional true} nil?]]]]])
 
@@ -253,15 +253,29 @@
                          :channel-type  channel-type
                          :template-type template-type}))))))
 
+(def ^:private NotificationHandler
+  [:map
+   ;; optional during insertion
+   [:notification_id {:optional true} ms/PositiveInt]
+   [:channel_type                     [:fn #(= "channel" (-> % keyword namespace))]]
+   [:channel_id      {:optional true} [:maybe ms/PositiveInt]]
+   [:template_id     {:optional true} [:maybe ms/PositiveInt]]
+   [:active          {:optional true} [:maybe :boolean]]])
+
+(defn- validate-notification-handler
+  [notification-handler]
+  (mu/validate-throw NotificationHandler notification-handler))
+
 (t2/define-before-insert :model/NotificationHandler
   [instance]
   (cross-check-channel-type-and-template-type instance)
+  (validate-notification-handler instance)
   instance)
 
 (t2/define-before-update :model/NotificationHandler
   [instance]
-  (when (or (contains? (t2/changes instance) :channel_id)
-            (contains? (t2/changes instance) :template_id))
+  (validate-notification-handler instance)
+  (when (some #{:channel_id :template_id :channel_type} (-> instance t2/changes keys))
     (cross-check-channel-type-and-template-type instance)
     instance))
 
@@ -282,9 +296,9 @@
 (def NotificationRecipient
   "Schema for :model/NotificationRecipient."
   [:merge [:map
-           [:type (into [:enum] notification-recipient-types)]
-           [:notification_handler_id ms/PositiveInt]]
-   [:multi {:dispatch :type}
+           [:type (ms/enum-decode-keyword notification-recipient-types)]
+           [:notification_handler_id {:optional true} ms/PositiveInt]]
+   [:multi {:dispatch (comp keyword :type)}
     [:notification-recipient/user
      [:map
       [:user_id                               ms/PositiveInt]
@@ -335,6 +349,12 @@
 (t2/deftransforms :model/NotificationCard
   {:send_condition (mi/transform-validator mi/transform-keyword (partial mi/assert-enum card-subscription-send-conditions))})
 
+(def ^:private NotificationCard
+  [:map
+   [:card_id                         ms/PositiveInt]
+   [:send_condition {:optional true} (ms/enum-decode-keyword card-subscription-send-conditions)]
+   [:send_once      {:optional true} :boolean]])
+
 (t2/define-before-insert :model/NotificationCard
   [instance]
   (merge {:send_condition :has_result
@@ -345,8 +365,25 @@
 ;;                                         Public APIs                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defn hydrate-notification
-  "Fully hydrate notifications."
+(def FullyHydratedNotification
+  "Fully hydrated notification."
+  [:merge
+   Notification
+   [:map
+    [:creator       {:optional true} [:maybe :map]]
+    [:subscriptions {:optional true} [:sequential NotificationSubscription]]
+    [:handlers      {:optional true} [:sequential [:merge
+                                                   NotificationHandler
+                                                   [:map
+                                                    [:template   {:optional true} [:maybe :map]]
+                                                    [:channel    {:optional true} [:maybe :map]]
+                                                    [:recipients {:optional true} [:sequential NotificationRecipient]]]]]]]
+   [:multi {:dispatch (comp keyword :payload_type)}
+    [:notification/card [:map
+                         [:payload NotificationCard]]]]])
+
+(mu/defn hydrate-notification :- FullyHydratedNotification
+  "Fully hydrate notifictitons."
   [notification-or-notifications]
   (t2/hydrate notification-or-notifications
               :creator
@@ -391,3 +428,30 @@
               handler-id (t2/insert-returning-pk! :model/NotificationHandler handler)]
           (t2/insert! :model/NotificationRecipient (map #(assoc % :notification_handler_id handler-id) recipients))))
       instance)))
+
+(models.u.spec-update/define-spec notification-update-spec
+  "Spec for updating a notification."
+  {:model        :model/Notification
+   ;; a function that takes a row and returns a map of the columns to compare
+   :compare-cols [:active]
+   :nested-specs {:payload       {:model        :model/NotificationCard
+                                  :compare-cols [:send_condition :send_once]}
+                  :subscriptions {:model        :model/NotificationSubscription
+                                  ;; the foreign key column in the nested model with respect to the parent model
+                                  :fk-column    :notification_id
+                                  :compare-cols [:notification_id :type :event_name :cron_schedule]
+                                  ;; whether this nested model is a sequentials with respect to the parent model
+                                  :multi-row?   true}
+                  :handlers      {:model        :model/NotificationHandler
+                                  :fk-column    :notification_id
+                                  :compare-cols [:notification_id :channel_type :channel_id :template_id :active]
+                                  :multi-row?   true
+                                  :nested-specs {:recipients {:model        :model/NotificationRecipient
+                                                              :fk-column    :notification_handler_id
+                                                              :compare-cols [:notification_handler_id :type :user_id :permissions_group_id :details]
+                                                              :multi-row?   true}}}}})
+
+(defn update-notification!
+  "Update an existing notification with `new-notification`."
+  [existing-notification new-notification]
+  (models.u.spec-update/do-update! existing-notification new-notification notification-update-spec))

@@ -799,6 +799,7 @@
   metabase.integrations.ldap/with-ldap-connection                                       clojure.core/fn
   metabase.models.collection-test/with-collection-in-location                           clojure.core/let
   metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all
+  metabase.models.util.spec-update/define-spec                                          clojure.core/def
   metabase.models.setting.multi-setting/define-multi-setting                            clojure.core/def
   metabase.models.setting/defsetting                                                    clj-kondo.lint-as/def-catch-all
   metabase.notification.test-util/with-card-notification                                clojure.core/let
