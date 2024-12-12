@@ -9,7 +9,7 @@ import _ from "underscore";
 
 import { ArchiveModal } from "metabase/components/ArchiveModal";
 import { setArchivedDashboard } from "metabase/dashboard/actions";
-import Collection from "metabase/entities/collections";
+import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
 
@@ -69,7 +69,7 @@ export const ArchiveDashboardModalConnected = _.compose(
   Dashboards.load({
     id: (state, props) => Urls.extractCollectionId(props.params.slug),
   }),
-  Collection.load({
+  Collections.load({
     id: (state, props) => props.dashboard && props.dashboard.collection_id,
   }),
   withRouter,

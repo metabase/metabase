@@ -8,7 +8,7 @@ import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { FieldId, TemplateTag } from "metabase-types/api";
 
-import { ContainerLabel, InputContainer } from "./TagEditorParam.styled";
+import { ContainerLabel, InputContainer } from "./TagEditorParam";
 
 export function FieldMappingSelect({
   tag,

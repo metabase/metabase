@@ -83,7 +83,7 @@
                     {:aggregation [[:count]]})
             result (mt/user-http-request :crowberto :post 202 "dataset" query)]
         (testing "\nAPI Response"
-          (is (partial=
+          (is (=?
                {:data                   {:rows             [[1000]]
                                          :cols             [(mt/obj->json->obj (qp.test-util/aggregate-col :count))]
                                          :native_form      true

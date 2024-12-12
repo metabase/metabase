@@ -36,6 +36,7 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -392,6 +393,12 @@
   (cond-> row
     (map? row) (update-keys u/qualified-name)))
 
+(defn- normalize-ident-index [index]
+  (cond
+    (string? index)  (parse-long index)
+    (keyword? index) (-> index name parse-long)
+    :else            index))
+
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
   `:expressions` key in an MBQL query should preserve the case of the expression names; this custom behavior is
@@ -399,12 +406,15 @@
   {:type            maybe-normalize-token
    ;; don't normalize native queries
    :native          normalize-native-query
-   :query           {:aggregation     normalize-ag-clause-tokens
-                     :expressions     normalize-expressions-tokens
-                     :order-by        normalize-order-by-tokens
-                     :source-query    normalize-source-query
-                     :source-metadata {::sequence normalize-source-metadata}
-                     :joins           {::sequence normalize-join}}
+   :query           {:aggregation        normalize-ag-clause-tokens
+                     :aggregation-idents #(update-keys % normalize-ident-index)
+                     :breakout-idents    #(update-keys % normalize-ident-index)
+                     :expressions        normalize-expressions-tokens
+                     :expression-idents  #(update-keys % lib.schema.common/normalize-string-key)
+                     :order-by           normalize-order-by-tokens
+                     :source-query       normalize-source-query
+                     :source-metadata    {::sequence normalize-source-metadata}
+                     :joins              {::sequence normalize-join}}
    ;; we smuggle metadata for Models and want to preserve their "database" form vs a normalized form so it matches
    ;; the style in annotate.clj
    :info            {:metadata/model-metadata identity

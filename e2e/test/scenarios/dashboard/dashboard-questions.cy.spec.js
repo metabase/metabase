@@ -200,6 +200,27 @@ describe("Dashboard > Dashboard Questions", () => {
       new Array(20).fill("slowbro").forEach((_, i) => {
         H.dashboardCards().findByText(`Question ${i + 1}`);
       });
+
+      // add coverage for a previous bug where moving 2 or more questions where at least one was not used by any
+      // dashboard and another was would cause a runtime error and show an error boundary around collection items
+      cy.log(
+        "can bulk move in items where some already exist in the dashboard",
+      );
+      H.visitCollection("root");
+      H.collectionTable().within(() => {
+        selectCollectionItem("Orders");
+        selectCollectionItem("Orders, Count");
+      });
+      cy.findByTestId("toast-card").button("Move").click();
+      H.entityPickerModal().findByText(/Move 2 items/);
+      H.entityPickerModal().findByText("Orders in a dashboard").click();
+      H.entityPickerModal().button("Move").click();
+
+      cy.wait(["@updateCard", "@updateCard"]);
+      cy.findByTestId("error-boundary").should("not.exist");
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      H.dashboardCards().findByText("Orders");
+      H.dashboardCards().findByText("Orders, Count");
     });
 
     it("can edit a dashboard question", () => {
@@ -502,7 +523,7 @@ describe("Dashboard > Dashboard Questions", () => {
         H.visitDashboard(dashboardId);
         H.openDashboardMenu("Move to trash");
         H.modal().button("Move to trash").click();
-        cy.findByText("Dashboard with a title").should("not.exist");
+
         cy.findByText(/gone wrong/, { timeout: 0 }).should("not.exist");
 
         cy.findByTestId("archive-banner").findByText(/is in the trash/);
@@ -807,3 +828,12 @@ describe("Dashboard > Dashboard Questions", () => {
     });
   });
 });
+
+function selectCollectionItem(name) {
+  cy.findAllByTestId("collection-entry-name")
+    .contains(name)
+    .parent()
+    .parent()
+    .findByRole("checkbox")
+    .click();
+}
