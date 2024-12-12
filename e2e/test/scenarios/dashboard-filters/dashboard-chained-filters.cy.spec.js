@@ -80,7 +80,7 @@ describe("scenarios > dashboard > chained filter", () => {
 
       H.popover().within(() => {
         if (has_field_values === "search") {
-          H.multiAutocompleteInput().type("An");
+          H.fieldValuesInput().type("An");
         }
         if (has_field_values === "list") {
           cy.findByPlaceholderText("Search the list").type("An");
@@ -98,7 +98,7 @@ describe("scenarios > dashboard > chained filter", () => {
         .first()
         .within(() => {
           if (has_field_values === "search") {
-            H.multiAutocompleteInput()
+            H.fieldValuesInput()
               .type("{backspace}{backspace}")
               // close the suggestion list
               .blur();
@@ -122,7 +122,7 @@ describe("scenarios > dashboard > chained filter", () => {
       H.filterWidget().contains("Location 1").click();
       H.popover().within(() => {
         if (has_field_values === "search") {
-          H.multiAutocompleteInput().type("An");
+          H.fieldValuesInput().type("An");
         }
         if (has_field_values === "list") {
           cy.findByPlaceholderText("Search the list").type("An");
@@ -141,7 +141,7 @@ describe("scenarios > dashboard > chained filter", () => {
           .first()
           .within(() => {
             // close the suggestion list
-            H.multiAutocompleteInput().blur();
+            H.fieldValuesInput().blur();
           });
       }
 
@@ -159,7 +159,7 @@ describe("scenarios > dashboard > chained filter", () => {
         .first()
         .within(() => {
           if (has_field_values === "search") {
-            H.multiAutocompleteInput().type("An");
+            H.fieldValuesInput().type("An");
           }
           if (has_field_values === "list") {
             cy.findByRole("textbox").type("An");
