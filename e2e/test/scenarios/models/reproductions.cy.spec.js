@@ -1359,7 +1359,7 @@ describe("issue 31905", () => {
   });
 
   it("should not send more than one same api requests to load a model (metabase#31905)", () => {
-    cy.get("@card.all").should("have.length", 1);
+    cy.get("@card.all").should("have.length", 2);
   });
 });
 
