@@ -122,7 +122,6 @@ export class WindowModal extends Component<WindowModalProps> {
       style,
       enableTransition,
       "data-testid": dataTestId,
-      "aria-labelledby": ariaLabelledBy,
     } = this.props;
     const backdropClassnames = cx(
       CS.flex,
