@@ -22,7 +22,7 @@
      :subscriptions     subscriptions}))
 
 (defn- goal-met? [{:keys [send_condition], :as notification_card} card_part]
-  (let [goal-comparison      (if (= :goal_above send_condition) >= <)
+  (let [goal-comparison      (if (= :goal_above (keyword send_condition)) >= <)
         goal-val             (ui-logic/find-goal-value card_part)
         comparison-col-rowfn (ui-logic/make-goal-comparison-rowfn (:card card_part)
                                                                   (get-in card_part [:result :data]))]

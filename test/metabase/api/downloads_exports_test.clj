@@ -1423,10 +1423,10 @@
                                                             [:no-scale-card   :two-scale-card :csv  false]
                                                             [:one-scale-card  :no-scale-card  :xlsx true]
                                                             [:one-scale-card  :two-scale-card :xlsx false]
-                                                            [:no-scale-card   :two-scale-card :xlsx false]
+                                                            [:no-scale-card   :two-scale-card :xlsx false]]]
                                                             ;; TODO: We don't support JSON for pivot tables, once we
                                                             ;; do, we should add them here
-                                                            ]]
+
             (testing (str "> " (name c1-name) " and " (name c2-name) " with export-format: '" (name export-format) "' should be " expected)
               (let [c1 (get named-cards c1-name)
                     c2 (get named-cards c2-name)

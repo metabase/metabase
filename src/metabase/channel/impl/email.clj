@@ -184,7 +184,9 @@
         icon-attachment    (apply make-message-attachment (icon-bundle :bell))
         attachments        (concat [icon-attachment]
                                    (email-attachment rendered-card
-                                                     (assoc-attachment-booleans [notification_card] [card_part])))
+                                                     (assoc-attachment-booleans
+                                                      [(assoc notification_card :include_csv true :format_rows true)]
+                                                      [card_part])))
         message-context-fn (fn [non-user-email]
                              (assoc notification-payload
                                     :computed {:subject         (case (messages/pulse->alert-condition-kwd notification_card)

@@ -608,8 +608,8 @@
                        (mt/summarize-multipart-single-email email test-card-regex))))}})))
 
 (deftest ^:parallel goal-met-test
-  (let [alert-above-pulse {:alert_above_goal true}
-        alert-below-pulse {:alert_above_goal false}
+  (let [alert-above-pulse {:send_condition "goal_above"}
+        alert-below-pulse {:send_condition "goal_below"}
         progress-result   (fn [val] {:card   {:display                :progress
                                               :visualization_settings {:progress.goal    5}}
                                      :result {:data {:rows [[val]]}}})
@@ -842,12 +842,12 @@
         (testing "channel send task history task details include retry config"
           (with-redefs
            [channel/send! (constantly true)]
-            (send!)
-            (is (=? {:task         "channel-send"
-                     :db_id        nil
-                     :status       :success
-                     :task_details default-task-details}
-                    (latest-task-history-entry :channel-send)))))
+           (send!)
+           (is (=? {:task         "channel-send"
+                    :db_id        nil
+                    :status       :success
+                    :task_details default-task-details}
+                   (latest-task-history-entry :channel-send)))))
 
         (testing "retry errors are recorded when the task eventually succeeds"
           (with-redefs [channel/send! (tu/works-after 2 (constantly nil))]

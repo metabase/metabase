@@ -99,12 +99,11 @@
 (defn- maybe-hydrate-notification
   [notification-info]
   ;; skip hydrating if we already have the necessary keys
-  (let [already-included? (some #{:subscriptions :handlers :payload} (keys notification-info))]
+  (let [already-included? (some #{:subscriptions :handlers} (keys notification-info))]
     (cond-> notification-info
-      already-included?
-      (t2/hydrate :creator)
-      (not already-included?)
-      models.notification/hydrate-notification)))
+      ;; always included creator because it's not part of the notification models
+      already-included?       (t2/hydrate :creator)
+      (not already-included?) models.notification/hydrate-notification)))
 
 (defn- hydrate-notification
   [notification-info]
