@@ -36,7 +36,6 @@ const DASHBOARD_SCHEMA = Yup.object({
     .max(DASHBOARD_DESCRIPTION_MAX_LENGTH, Errors.maxLength)
     .default(null),
   collection_id: Yup.number().nullable().default(null),
-  is_shallow_copy: Yup.boolean().default(false),
 });
 
 export interface CopyDashboardFormProperties {
