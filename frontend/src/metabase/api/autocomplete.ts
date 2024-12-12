@@ -1,6 +1,6 @@
 import type {
+  AutocompleteRequest,
   AutocompleteSuggestion,
-  AutocompleteSuggestionsRequest,
   CardAutocompleteRequest,
   CardAutocompleteSuggestion,
 } from "metabase-types/api/autocomplete";
@@ -11,7 +11,7 @@ export const autocompleteApi = Api.injectEndpoints({
   endpoints: builder => ({
     getAutocompleteSuggestions: builder.query<
       AutocompleteSuggestion[],
-      AutocompleteSuggestionsRequest
+      AutocompleteRequest
     >({
       query: ({ databaseId, matchStyle, query }) => ({
         method: "GET",

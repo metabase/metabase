@@ -3,7 +3,7 @@ import type { DatabaseId } from "./database";
 
 export type AutocompleteMatchStyle = "off" | "prefix" | "substring";
 
-export type AutocompleteSuggestionsRequest = {
+export type AutocompleteRequest = {
   databaseId: DatabaseId;
   matchStyle: AutocompleteMatchStyle;
   query: string;
