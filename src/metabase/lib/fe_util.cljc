@@ -474,11 +474,11 @@
       {:operator op, :column (ref->col col-ref), :values []}
 
       ;; without `mode`
-      [(_ :guard #{:!= :not-in :not-is}) _ [(op :guard #{:get-hour :get-month :get-quarter}) _ (col-ref :guard date-col?)] & (args :guard #(every? int? %))]
+      [(_ :guard #{:!= :not-in}) _ [(op :guard #{:get-hour :get-month :get-quarter}) _ (col-ref :guard date-col?)] & (args :guard #(every? int? %))]
       {:operator :!=, :column (ref->col col-ref), :unit (op->unit op), :values args}
 
       ;; with `:mode`
-      [(_ :guard #{:!= :not-in :not-is}) _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard #(every? int? %))]
+      [(_ :guard #{:!= :not-in}) _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard #(every? int? %))]
       {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args}
 
       ;; do not match inner clauses
@@ -580,28 +580,28 @@
                 :get-month :month-of-year
                 :get-quarter :quarter-of-year}]
     (lib.util.match/match-one filter-clause
-      [(_ :guard #{:= :in :is}) _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
+      [(_ :guard #{:= :in}) _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
       (inflections/plural (u.time/format-unit b :day-of-week-iso))
 
-      [(_ :guard #{:!= :not-in :not-is}) _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
+      [(_ :guard #{:!= :not-in}) _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
       (i18n/tru "Excludes {0}" (inflections/plural (u.time/format-unit b :day-of-week-iso)))
 
-      [(_ :guard #{:= :in :is}) _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
+      [(_ :guard #{:= :in}) _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
       (u.time/format-unit b (->unit f))
 
-      [(_ :guard #{:!= :not-in :not-is}) _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
+      [(_ :guard #{:!= :not-in}) _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
       (i18n/tru "Excludes {0}" (u.time/format-unit b (->unit f)))
 
-      [(_ :guard #{:= :in :is}) _ (x :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
+      [(_ :guard #{:= :in}) _ (x :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
       (u.time/format-relative-date-range y 0 (:temporal-unit (second x)) nil nil {:include-current true})
 
       [:during _ (x :guard temporal?) (y :guard string?) unit]
       (u.time/format-relative-date-range y 1 unit -1 unit {})
 
-      [(_ :guard #{:= :in :is}) _ (x :guard temporal?) (y :guard (some-fn int? string?))]
+      [(_ :guard #{:= :in}) _ (x :guard temporal?) (y :guard (some-fn int? string?))]
       (lib.temporal-bucket/describe-temporal-pair x y)
 
-      [(_ :guard #{:!= :not-in :not-is}) _ (x :guard temporal?) (y :guard (some-fn int? string?))]
+      [(_ :guard #{:!= :not-in}) _ (x :guard temporal?) (y :guard (some-fn int? string?))]
       (i18n/tru "Excludes {0}" (lib.temporal-bucket/describe-temporal-pair x y))
 
       [:< _ (x :guard temporal?) (y :guard string?)]
