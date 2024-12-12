@@ -15,8 +15,8 @@
 (def ^:dynamic *client* "Used to track information about the metabase embedding client." nil)
 
 (mu/defn include-analytics :- :map
-  "Adds the currently bound, or existing `*client*` and `version` to the given map, which is usually a row going into
-   the `view_log` or `query_execution` table. Falls back to the original value."
+  "Adds the currently bound, or existing `*client*` and `*version*` to the given map, which is usually a row going
+   into the `view_log` or `query_execution` table. Falls back to the original value."
   [m :- :map]
   (-> m
       (update :embedding_client (fn [client] (or *client* client)))
@@ -31,13 +31,23 @@
       ;; ignore other status codes
       :else nil)))
 
+(def ^:private embedding-sdk-client "embedding-sdk-react")
+(def ^:private embedding-iframe-client "embedding-iframe")
+
 (defn- track-sdk-response
   "Tabulates the number of ok and erroring requests made by clients of the SDK."
-  [category]
-  (case category
-    :ok (prometheus/inc! :metabase-sdk/response-ok)
-    :error (prometheus/inc! :metabase-sdk/response-error)
-    nil nil))
+  [sdk-client status]
+  (condp = [sdk-client status]
+    [embedding-sdk-client :ok]       (prometheus/inc! :metabase-sdk/response-ok)
+    [embedding-sdk-client :error]    (prometheus/inc! :metabase-sdk/response-error)
+    [embedding-iframe-client :ok]    (prometheus/inc! :metabase-embedding-iframe/response-ok)
+    [embedding-iframe-client :error] (prometheus/inc! :metabase-embedding-iframe/response-error)))
+
+(defn- embedding-context?
+  "Should we track this request as being made by an embedding client?"
+  [client]
+  (or (= client embedding-sdk-client)
+      (= client embedding-iframe-client)))
 
 (defn embedding-mw
   "Reads Metabase Client and Version headers and binds them to *metabase-client{-version}*."
@@ -50,8 +60,10 @@
                 *version* version]
         (handler request
                  (fn responder [response]
-                   (when sdk-client (track-sdk-response (categorize-request response)))
+                   (when (embedding-context? sdk-client)
+                     (track-sdk-response sdk-client (categorize-request response)))
                    (respond response))
                  (fn raiser [response]
-                   (when sdk-client (track-sdk-response :error))
+                   (when (embedding-context? sdk-client)
+                     (track-sdk-response sdk-client :error))
                    (raise response)))))))
