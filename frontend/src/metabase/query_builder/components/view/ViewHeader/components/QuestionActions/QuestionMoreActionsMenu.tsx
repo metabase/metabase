@@ -48,7 +48,7 @@ export const QuestionMoreActionsMenu = ({
   question,
   onOpenModal,
   onSetQueryBuilderMode,
-}: QuestionMoreActionsMenuProps): JSX.Element => {
+}: QuestionMoreActionsMenuProps): JSX.Element | null => {
   const [opened, setOpened] = useState(false);
 
   const dispatch = useDispatch();
@@ -92,123 +92,129 @@ export const QuestionMoreActionsMenu = ({
 
   const onTurnModelIntoQuestion = () => dispatch(turnModelIntoQuestion());
 
+  const label = isDashboardQuestion
+    ? t`Move, duplicate, and more…`
+    : t`Move, trash, and more…`;
+
+  const menuItems = [
+    (isStandaloneQuestion || isMetric) && (
+      <Menu.Item
+        key="add_to_dash"
+        icon={<Icon name="add_to_dash" />}
+        onClick={() => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD)}
+        data-testid={ADD_TO_DASH_TESTID}
+      >
+        {t`Add to dashboard`}
+      </Menu.Item>
+    ),
+    ...PLUGIN_MODERATION.useQuestionMenuItems(question, reload),
+    hasCollectionPermissions && isModelOrMetric && hasDataPermissions && (
+      <Menu.Item
+        key="edit_definition"
+        icon={<Icon name="notebook" />}
+        onClick={handleEditQuery}
+      >
+        {isMetric ? t`Edit metric definition` : t`Edit query definition`}
+      </Menu.Item>
+    ),
+    hasCollectionPermissions && isModel && (
+      <Menu.Item
+        key="edit-metadata"
+        icon={<Icon name="label" />}
+        data-testid="edit-metadata"
+        onClick={handleEditMetadata}
+      >
+        <div>
+          {t`Edit metadata`}{" "}
+          <DatasetMetadataStrengthIndicator
+            className={QuestionActionsS.StrengthIndicator}
+            dataset={question}
+          />
+        </div>
+      </Menu.Item>
+    ),
+    hasCollectionPermissions && isQuestion && (
+      <Menu.Item
+        key="turn_into_model"
+        icon={<Icon name="model" />}
+        data-testid={TURN_INTO_DATASET_TESTID}
+        onClick={handleTurnToModel}
+      >
+        {t`Turn into a model`}
+      </Menu.Item>
+    ),
+    hasCollectionPermissions && isModel && (
+      <Menu.Item
+        key="turn_into_question"
+        icon={<Icon name="insight" />}
+        onClick={onTurnModelIntoQuestion}
+      >
+        {t`Turn back to saved question`}
+      </Menu.Item>
+    ),
+    enableSettingsSidebar && (
+      <Menu.Item
+        key="edit-settings"
+        icon={<Icon name="gear" />}
+        data-testid="question-settings-button"
+        onClick={onOpenSettingsSidebar}
+      >
+        {t`Edit settings`}
+      </Menu.Item>
+    ),
+    hasCollectionPermissions && (
+      <>
+        <Menu.Divider />
+        <Menu.Item
+          key="move"
+          icon={<Icon name="move" />}
+          data-testid={MOVE_TESTID}
+          onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
+        >
+          {t`Move`}
+        </Menu.Item>
+      </>
+    ),
+    hasDataPermissions && (
+      <Menu.Item
+        key="duplicate"
+        icon={<Icon name="clone" />}
+        data-testid={CLONE_TESTID}
+        onClick={() => onOpenModal(MODAL_TYPES.CLONE)}
+      >
+        {t`Duplicate`}
+      </Menu.Item>
+    ),
+    hasCollectionPermissions && (
+      <>
+        <Menu.Divider />
+        <Menu.Item
+          key="trash"
+          icon={<Icon name="trash" />}
+          data-testid={ARCHIVE_TESTID}
+          onClick={() => onOpenModal(MODAL_TYPES.ARCHIVE)}
+        >
+          {t`Move to trash`}
+        </Menu.Item>
+      </>
+    ),
+  ].filter(Boolean);
+
+  if (!menuItems.length) {
+    return null;
+  }
+
   return (
     <Menu position="bottom-end" opened={opened} onChange={setOpened}>
       <Menu.Target>
         <div>
-          <Tooltip
-            tooltip={
-              isDashboardQuestion
-                ? t`Move, duplicate, and more...`
-                : t`Move, trash, and more...`
-            }
-            isEnabled={!opened}
-          >
-            <Button onlyIcon icon="ellipsis" />
+          <Tooltip tooltip={label} isEnabled={!opened}>
+            <Button onlyIcon icon="ellipsis" aria-label={label} />
           </Tooltip>
         </div>
       </Menu.Target>
 
-      <Menu.Dropdown>
-        {(isStandaloneQuestion || isMetric) && (
-          <Menu.Item
-            icon={<Icon name="add_to_dash" />}
-            onClick={() => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD)}
-            data-testid={ADD_TO_DASH_TESTID}
-          >
-            {t`Add to dashboard`}
-          </Menu.Item>
-        )}
-
-        {PLUGIN_MODERATION.useQuestionMenuItems(question, reload)}
-
-        {hasCollectionPermissions && isModelOrMetric && hasDataPermissions && (
-          <Menu.Item icon={<Icon name="notebook" />} onClick={handleEditQuery}>
-            {isMetric ? t`Edit metric definition` : t`Edit query definition`}
-          </Menu.Item>
-        )}
-
-        {hasCollectionPermissions && isModel && (
-          <Menu.Item
-            icon={<Icon name="label" />}
-            data-testid="edit-metadata"
-            onClick={handleEditMetadata}
-          >
-            <div>
-              {t`Edit metadata`}{" "}
-              <DatasetMetadataStrengthIndicator
-                className={QuestionActionsS.StrengthIndicator}
-                dataset={question}
-              />
-            </div>
-          </Menu.Item>
-        )}
-
-        {hasCollectionPermissions && isQuestion && (
-          <Menu.Item
-            icon={<Icon name="model" />}
-            data-testid={TURN_INTO_DATASET_TESTID}
-            onClick={handleTurnToModel}
-          >
-            {t`Turn into a model`}
-          </Menu.Item>
-        )}
-
-        {hasCollectionPermissions && isModel && (
-          <Menu.Item
-            icon={<Icon name="insight" />}
-            onClick={onTurnModelIntoQuestion}
-          >
-            {t`Turn back to saved question`}
-          </Menu.Item>
-        )}
-
-        {enableSettingsSidebar && (
-          <Menu.Item
-            icon={<Icon name="gear" />}
-            data-testid="question-settings-button"
-            onClick={onOpenSettingsSidebar}
-          >
-            {t`Edit settings`}
-          </Menu.Item>
-        )}
-
-        {hasCollectionPermissions && (
-          <>
-            <Menu.Divider />
-            <Menu.Item
-              icon={<Icon name="move" />}
-              data-testid={MOVE_TESTID}
-              onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
-            >
-              {t`Move`}
-            </Menu.Item>
-          </>
-        )}
-
-        {hasDataPermissions && (
-          <Menu.Item
-            icon={<Icon name="clone" />}
-            data-testid={CLONE_TESTID}
-            onClick={() => onOpenModal(MODAL_TYPES.CLONE)}
-          >
-            {t`Duplicate`}
-          </Menu.Item>
-        )}
-
-        {hasCollectionPermissions && (
-          <>
-            <Menu.Divider />
-            <Menu.Item
-              icon={<Icon name="trash" />}
-              data-testid={ARCHIVE_TESTID}
-              onClick={() => onOpenModal(MODAL_TYPES.ARCHIVE)}
-            >
-              {t`Move to trash`}
-            </Menu.Item>
-          </>
-        )}
-      </Menu.Dropdown>
+      <Menu.Dropdown>{menuItems}</Menu.Dropdown>
     </Menu>
   );
 };

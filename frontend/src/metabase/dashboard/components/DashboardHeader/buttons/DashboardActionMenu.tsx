@@ -37,8 +37,12 @@ const DashboardActionMenuInner = ({
     <Menu position="bottom-end" opened={opened} onChange={setOpened}>
       <Menu.Target>
         <div>
-          <Tooltip tooltip={t`Move, trash, and more...`} isEnabled={!opened}>
-            <Button onlyIcon icon="ellipsis" />
+          <Tooltip tooltip={t`Move, trash, and more…`} isEnabled={!opened}>
+            <Button
+              onlyIcon
+              icon="ellipsis"
+              aria-label={t`Move, trash, and more…`}
+            />
           </Tooltip>
         </div>
       </Menu.Target>
