@@ -84,10 +84,12 @@ const StaticQuestionInner = ({
 
   const metadata = useSelector(getMetadata);
 
-  const { card, loading, result, error, updateQuestion } =
-    useLoadStaticQuestion(questionId, initialSqlParameters);
+  const { card, loading, queryResult, error, setCard } = useLoadStaticQuestion({
+    questionId,
+    initialSqlParameters,
+  });
 
-  const isLoading = loading || (!result && !error) || isValidatingEntityId;
+  const isLoading = loading || (!queryResult && !error) || isValidatingEntityId;
 
   if (!questionId || isResourceNotFoundError(error)) {
     return <QuestionNotFoundError id={initialQuestionId} />;
@@ -118,19 +120,19 @@ const StaticQuestionInner = ({
         {withChartTypeSelector && (
           <StaticQuestionVisualizationSelector
             question={question}
-            result={result}
-            onUpdateQuestion={updateQuestion}
+            result={queryResult ?? null}
+            onUpdateQuestion={question => setCard(question.card())}
           />
         )}
         <QueryVisualization
           className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
           question={question}
-          rawSeries={[{ card, data: result?.data }]}
+          rawSeries={[{ card, data: queryResult?.data }]}
           isRunning={isLoading}
           isObjectDetail={false}
           isResultDirty={false}
           isNativeEditorOpen={false}
-          result={result}
+          result={queryResult}
           noHeader
           mode={PublicMode}
         />

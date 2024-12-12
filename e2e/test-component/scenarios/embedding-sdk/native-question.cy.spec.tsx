@@ -1,3 +1,5 @@
+import { StaticQuestion } from "@metabase/embedding-sdk-react";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createNativeQuestion,
@@ -7,13 +9,15 @@ import {
 import {
   mockAuthProviderAndJwtSignIn,
   mountInteractiveQuestion,
+  mountSdkContent,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import type { DatasetColumn } from "metabase-types/api";
+import { mountStaticQuestion } from "e2e/support/helpers/component-testing-sdk/component-embedding-sdk-static-question-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describeEE("scenarios > embedding-sdk > interactive-question > native", () => {
+describeEE("scenarios > embedding-sdk > native questions", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
@@ -41,8 +45,31 @@ describeEE("scenarios > embedding-sdk > interactive-question > native", () => {
     mockAuthProviderAndJwtSignIn();
   });
 
-  it("supports passing sql parameters to native questions", () => {
+  it("supports passing sql parameters to interactive questions", () => {
     mountInteractiveQuestion({ initialSqlParameters: { ID: ORDERS_ID } });
+
+    cy.wait("@cardQuery").then(({ response }) => {
+      const { body } = response ?? {};
+
+      const rows = tableInteractiveBody().findAllByRole("rowgroup");
+
+      // There should be one row in the table
+      rows.should("have.length", 1);
+
+      const idColumnIndex = body.data.cols.findIndex(
+        (column: DatasetColumn) => column.name === "ID",
+      );
+
+      // The first row should have the same ID column value as the initial SQL parameters
+      rows
+        .findAllByTestId("cell-data")
+        .eq(idColumnIndex)
+        .should("have.text", String(ORDERS_ID));
+    });
+  });
+
+  it("supports passing sql parameters to static questions", () => {
+    mountStaticQuestion({ initialSqlParameters: { ID: ORDERS_ID } });
 
     cy.wait("@cardQuery").then(({ response }) => {
       const { body } = response ?? {};
