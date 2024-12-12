@@ -1,5 +1,5 @@
 import type { Store } from "@reduxjs/toolkit";
-import type { StoryFn, StoryObj } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 import { Provider } from "react-redux";
 import _ from "underscore";
 
@@ -17,7 +17,7 @@ import {
 } from "metabase-types/store/mocks";
 
 import { OverlaysDemo } from "./OverlaysDemo";
-import { OverlayType, OverlaysDemoProps } from "./types";
+import { OverlaysDemoProps } from "./types";
 
 const mockCard = createMockCard();
 const storeInitialState = createMockState({
@@ -64,163 +64,6 @@ export const Default: Scenario = {
   },
 };
 
-type Overlay = {
-  name: string;
-  targetEvent: string;
-  targetText: string;
-  textContent: string;
-  contentLabel?: string;
-  canLaunchOverlays: boolean;
-  shouldBeInteractable?: boolean;
-};
-
-const overlays: Overlay[] = [
-  {
-    name: "Mantine Tooltip",
-    targetEvent: "hover",
-    targetText: "Mantine Tooltip",
-    textContent: "Mantine Tooltip content",
-    canLaunchOverlays: false,
-    shouldBeInteractable: false,
-  },
-  {
-    name: "Legacy Tooltip",
-    targetEvent: "hover",
-    targetText: "Legacy tooltip",
-    textContent: "Legacy tooltip content",
-    canLaunchOverlays: false,
-    shouldBeInteractable: false,
-  },
-  {
-    name: "Mantine Popover",
-    targetEvent: "click",
-    targetText: "Mantine Popover",
-    textContent: "Mantine Popover text content",
-    contentLabel: "Mantine Popover content",
-    canLaunchOverlays: true,
-  },
-  {
-    name: "Legacy Popover",
-    targetEvent: "click",
-    targetText: "Legacy popover",
-    textContent: "Legacy popover text content",
-    contentLabel: "Legacy popover content",
-    canLaunchOverlays: true,
-  },
-  {
-    name: "Mantine Modal",
-    targetEvent: "click",
-    targetText: "Mantine Modal",
-    textContent: "Mantine Modal text content",
-    contentLabel: "Mantine Modal content",
-    canLaunchOverlays: true,
-  },
-  {
-    name: "Legacy Modal",
-    targetEvent: "click",
-    targetText: "Legacy modal",
-    textContent: "Legacy modal text content",
-    contentLabel: "Legacy modal content",
-    canLaunchOverlays: true,
-  },
-  {
-    name: "Undo-Style toast",
-    targetEvent: "click",
-    targetText: "Undo-style toast",
-    textContent: "Undo-style toast text content",
-    contentLabel: "Undo-style toast content",
-    canLaunchOverlays: false,
-  },
-  {
-    name: "Action-Style toast",
-    targetEvent: "click",
-    targetText: "Action-style toast",
-    textContent: "Action-style toast text content",
-    contentLabel: "Action-style toast content",
-    canLaunchOverlays: true,
-  },
-  {
-    name: "Toaster-Style toast",
-    targetEvent: "click",
-    targetText: "Toaster-style toast",
-    textContent: "Toaster-style toast text content",
-    canLaunchOverlays: false,
-  },
-  {
-    name: "Mantine Menu",
-    targetEvent: "click",
-    targetText: "Mantine Menu",
-    textContent: "Mantine Menu Item 1",
-    canLaunchOverlays: false,
-  },
-  {
-    name: "Mantine Select",
-    targetEvent: "click",
-    targetText: "Mantine Select option 1",
-    textContent: "Mantine Select option 2",
-    canLaunchOverlays: false,
-  },
-  {
-    name: "Legacy Select",
-    targetEvent: "click",
-    targetText: "Legacy Select option 1",
-    textContent: "Legacy Select option 2",
-    canLaunchOverlays: false,
-  },
-  {
-    name: "Sidesheet",
-    targetEvent: "click",
-    targetText: "Sidesheet",
-    textContent: "Sidesheet text content",
-    contentLabel: "Sidesheet content",
-    canLaunchOverlays: true,
-  },
-  {
-    name: "Entity Picker",
-    targetEvent: "click",
-    targetText: "Entity Picker",
-    textContent: "Entity Picker text content",
-    contentLabel: "Entity Picker content",
-    canLaunchOverlays: true,
-  },
-  {
-    name: "Command Palette",
-    targetEvent: "click",
-    targetText: "Command Palette",
-    textContent: "Command Palette text content",
-    contentLabel: "Command Palette content",
-    canLaunchOverlays: true,
-  },
-  // TODO: Make HoverCard work here
-  // {
-  //   name: "Mantine HoverCard",
-  //   targetEvent: "click",
-  //   targetText: "Mantine HoverCard",
-  //   textContent: "Mantine HoverCard text content",
-  //   canLaunchOverlays: false,
-  // },
-];
-
-const launchers = overlays.filter(
-  (overlay: Overlay) => overlay.canLaunchOverlays,
-);
-
-const scenarios: Record<string, Scenario> = {};
-
-launchers.forEach(launcher => {
-  overlays.forEach(launchee => {
-    const scenario: Scenario = {
-      render: Template,
-      args: {
-        enableNesting: true,
-        overlaysToOpen: [launcher.name, launchee.name],
-      },
-    };
-    const key = `${launcher.name} Launches ${launchee.name}`.replace(/\s/g, "");
-    scenarios[key] = scenario;
-  });
-});
-
 export default {
   title: "Design System/Overlays",
   component: (...args: any) => {
@@ -232,7 +75,26 @@ export default {
   },
 };
 
-export const {
-  MantineModalLaunchesLegacyModal,
-  LegacyModalLaunchesMantineModal,
-} = scenarios;
+export const MantineModalCanLaunchLegacyModal = {
+  render: Template,
+  args: {
+    enableNesting: true,
+    overlaysToOpen: ["Mantine Modal", "Legacy Modal"],
+  },
+};
+
+export const LegacyModalCanLaunchMantineModal = {
+  render: Template,
+  args: {
+    enableNesting: true,
+    overlaysToOpen: ["Legacy Modal", "Mantine Modal"],
+  },
+};
+
+export const MantineModalCanLaunchLegacyPopover = {
+  render: Template,
+  args: {
+    enableNesting: true,
+    overlaysToOpen: ["Mantine Modal", "Legacy Popover"],
+  },
+};

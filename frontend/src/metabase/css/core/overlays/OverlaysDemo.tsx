@@ -40,7 +40,7 @@ import {
 import { createMockUndo } from "metabase-types/api/mocks";
 
 import { BulkActionBarInner } from "../../../components/BulkActionBar/BulkActionBar";
-import { OverlaysDemoProps, Setter } from "./types";
+import { OverlaysDemoProps } from "./types";
 
 const LauncherGroup = ({
   title,
@@ -66,6 +66,7 @@ const _Launchers = ({
   setSidesheetCount,
   setEntityPickerCount,
   setCommandPaletteCount,
+  isLegacyPopoverOpen,
 }: {
   nestedLaunchers: ReactNode;
   setUndoCount: Dispatch<SetStateAction<number>>;
@@ -77,6 +78,7 @@ const _Launchers = ({
   setEntityPickerCount: Dispatch<SetStateAction<number>>;
   setCommandPaletteCount: Dispatch<SetStateAction<number>>;
   setMantineModalWithTitlePropCount: Dispatch<SetStateAction<number>>;
+  isLegacyPopoverOpen: boolean;
 }) => {
   const mantinePopoverDropdownTitleId = _.uniqueId(
     "mantine-popover-dropdown-title",
@@ -85,7 +87,7 @@ const _Launchers = ({
   return (
     <Group>
       <LauncherGroup title="Small overlays">
-        <MantineTooltip label={"Mantine Tooltip content"}>
+        <MantineTooltip label="Mantine Tooltip content">
           <Button>Mantine Tooltip</Button>
         </MantineTooltip>
         <MantinePopover>
@@ -139,10 +141,11 @@ const _Launchers = ({
           ]}
           defaultValue={"1"}
         />
-        <TippyTooltip tooltip={"Legacy tooltip content"}>
+        <TippyTooltip tooltip="Legacy tooltip content">
           <Button>Legacy tooltip</Button>
         </TippyTooltip>
         <TippyPopover
+          visible={isLegacyPopoverOpen}
           content={
             <Paper p="md" aria-label="Legacy popover content">
               Legacy popover text content
@@ -206,36 +209,19 @@ export const OverlaysDemo = ({
   const [entityPickerCount, setEntityPickerCount] = useState(0);
   const [commandPaletteCount, setCommandPaletteCount] = useState(0);
   const [undoCount, setUndoCount] = useState(0);
+  const [isLegacyPopoverOpen, setIsLegacyPopoverOpen] = useState(false);
 
   useEffect(() => {
-    // I also need to ensure that tooltips open. For that we can just use a
-    // boolean setter function, I believe.
-
-    const setters: Partial<Record<string, Setter>> = {
-      "Mantine Modal": setMantineModalCount,
-      "Legacy Modal": setLegacyModalCount,
-      "Mantine Modal With Title Prop": setMantineModalWithTitlePropCount,
-      Toast: setToastCount,
-      "Action Toast": setActionToastCount,
-      Sidesheet: setSidesheetCount,
-      "Entity Picker": setEntityPickerCount,
-      "Command Palette": setCommandPaletteCount,
-      Undo: setUndoCount,
+    const open: Partial<Record<string, () => void>> = {
+      //"Mantine Modal": () => setMantineModalCount(c => c + 1),
+      //"Legacy Modal": () => setLegacyModalCount(c => c + 1),
+      "Legacy Popover": () => setIsLegacyPopoverOpen(true),
     };
 
-    const updateOverlaysSequentially = async () => {
-      for (const overlay of overlaysToOpen) {
-        await new Promise(resolve => {
-          const setter = setters[overlay] as Setter;
-          setter(c => {
-            resolve(c + 1);
-            return c + 1;
-          });
-        });
-      }
-    };
-    updateOverlaysSequentially();
-  }, [overlaysToOpen]);
+    for (const overlay of overlaysToOpen) {
+      open[overlay]?.();
+    }
+  }, []);
 
   const Launchers = () => (
     <_Launchers
@@ -248,6 +234,7 @@ export const OverlaysDemo = ({
       setEntityPickerCount={setEntityPickerCount}
       setCommandPaletteCount={setCommandPaletteCount}
       setMantineModalWithTitlePropCount={setMantineModalWithTitlePropCount}
+      isLegacyPopoverOpen={isLegacyPopoverOpen}
       nestedLaunchers={enableNesting ? <Launchers /> : <></>}
     />
   );
@@ -319,22 +306,18 @@ export const OverlaysDemo = ({
           </LegacyModal>
         );
       })}
-      {
-        // TODO: Add a Mantine modal created with <Modal title="title"/> since
-        // it seems the header has a default z-index of 1000
-        Array.from({ length: mantineModalCount }).map((_, index) => (
-          <SimpleModal
-            key={`mantine-modal-${index}`}
-            title={`Mantine Modal content`}
-            onClose={() => setMantineModalCount(c => c - 1)}
-          >
-            <Stack spacing="md">
-              <Text>Mantine Modal text content</Text>
-              {enableNesting && <Launchers />}
-            </Stack>
-          </SimpleModal>
-        ))
-      }
+      {Array.from({ length: mantineModalCount }).map((_, index) => (
+        <SimpleModal
+          key={`mantine-modal-${index}`}
+          title={`Mantine Modal content`}
+          onClose={() => setMantineModalCount(c => c - 1)}
+        >
+          <Stack spacing="md">
+            <Text>Mantine Modal text content</Text>
+            {enableNesting && <Launchers />}
+          </Stack>
+        </SimpleModal>
+      ))}
       {Array.from({ length: mantineModalWithTitlePropCount }).map(
         (_, index) => (
           <MantineModal
