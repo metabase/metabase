@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -11,9 +12,10 @@ import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { getCrumbs } from "metabase/lib/collections";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { connect, useSelector } from "metabase/lib/redux";
+import { connect, useSelector, useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { Icon } from "metabase/ui";
+import { Flex, Icon } from "metabase/ui";
 
 import { QuestionList } from "./QuestionList";
 import {
@@ -29,6 +31,7 @@ QuestionPickerInner.propTypes = {
 };
 
 function QuestionPickerInner({ onSelect, collectionsById, getCollectionIcon }) {
+  const dispatch = useDispatch();
   const dashboard = useSelector(getDashboard);
   const dashboardCollection = dashboard.collection ?? ROOT_COLLECTION;
   const [currentCollectionId, setCurrentCollectionId] = useState(
@@ -51,6 +54,36 @@ function QuestionPickerInner({ onSelect, collectionsById, getCollectionIcon }) {
     ? allCollections.filter(isPublicCollection)
     : allCollections;
 
+  // const onNewQuestion = (type: "native" | "notebook") => {
+  const onNewQuestion = type => {
+    const newQuestionParams =
+      type === "notebook"
+        ? {
+            mode: "notebook",
+            creationType: "custom_question",
+          }
+        : // } as const)
+          {
+            mode: "query",
+            type: "native",
+            creationType: "native_question",
+          };
+    // } as const);
+
+    if (dashboard) {
+      dispatch(
+        push(
+          Urls.newQuestion({
+            ...newQuestionParams,
+            collectionId: dashboard.collection_id || undefined,
+            cardType: "question",
+            dashboardId: dashboard.id,
+          }),
+        ),
+      );
+    }
+  };
+
   return (
     <QuestionPickerRoot>
       <SearchInput
@@ -63,6 +96,16 @@ function QuestionPickerInner({ onSelect, collectionsById, getCollectionIcon }) {
         onResetClick={() => setSearchText("")}
         onChange={handleSearchTextChange}
       />
+      <Flex>
+        <Flex align="center" gap="sm" onClick={() => onNewQuestion("notebook")}>
+          <Icon name="insight" />
+          {t`New Question`}
+        </Flex>
+        <Flex align="center" gap="sm" onClick={() => onNewQuestion("native")}>
+          <Icon name="sql" />
+          {t`New SQL query`}
+        </Flex>
+      </Flex>
 
       {!debouncedSearchText && (
         <>
