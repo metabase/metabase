@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef } from "react";
-import { useDispatch } from "react-redux";
 
 import type { MetabaseAuthConfig } from "embedding-sdk";
 import { printUsageProblemToConsole } from "embedding-sdk/lib/print-usage-problem";
 import { getSdkUsageProblem } from "embedding-sdk/lib/usage-problem";
 import { setUsageProblem } from "embedding-sdk/store/reducer";
 import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+// eslint-disable-next-line no-restricted-imports
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getTokenFeature } from "metabase/setup/selectors";
 
 export function useSdkUsageProblem({

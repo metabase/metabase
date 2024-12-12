@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { assoc } from "icepick";
-import type { HandleThunkActionCreator } from "react-redux";
 import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -25,6 +24,7 @@ import type {
 } from "metabase/dashboard/types";
 import { isActionDashCard } from "metabase/dashboard/utils";
 import { isWithinIframe } from "metabase/lib/dom";
+import type { HandleThunkActionCreator } from "metabase/lib/redux";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
