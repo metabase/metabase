@@ -617,7 +617,7 @@
   (let [qe (t2/select [:model/QueryExecution :embedding_client :context :executor_id :started_at])
         one-day-ago (->one-day-ago)
         ;; reuse the query data:
-        qe-24h (filter (fn [{started-at :started_at}] (t/after? one-day-ago started-at)) qe)]
+        qe-24h (filter (fn [{started-at :started_at}] (t/after? started-at one-day-ago)) qe)]
     {:query-executions (merge
                         {"sdk_embed" 0 "interactive_embed" 0 "static_embed" 0 "public_link" 0 "internal" 0}
                         (-> (group-by categorize-query-execution qe)

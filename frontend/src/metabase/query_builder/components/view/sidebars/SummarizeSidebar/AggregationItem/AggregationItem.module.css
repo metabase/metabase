@@ -1,9 +1,4 @@
-import styled from "@emotion/styled";
-
-import { alpha } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
-
-export const Root = styled.button`
+.Root {
   display: flex;
   align-items: center;
   padding: 0.5rem;
@@ -19,17 +14,25 @@ export const Root = styled.button`
   cursor: pointer;
 
   &:hover {
-    background-color: ${() => alpha("summarize", 0.8)};
-    border-color: ${() => alpha("summarize", 0.8)};
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-summarize),
+      transparent 20%
+    );
+    border-color: color-mix(
+      in srgb,
+      var(--mb-color-summarize),
+      transparent 20%
+    );
   }
-`;
+}
 
-export const AggregationName = styled.span`
+.AggregationName {
   margin-left: 0.5rem;
   margin-right: 0.5rem;
-`;
+}
 
-export const RemoveIcon = styled(Icon)`
+.RemoveIcon {
   display: flex;
   margin-left: auto;
   opacity: 0.4;
@@ -38,4 +41,4 @@ export const RemoveIcon = styled(Icon)`
   &:hover {
     opacity: 1;
   }
-`;
+}
