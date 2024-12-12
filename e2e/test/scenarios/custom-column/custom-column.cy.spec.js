@@ -708,7 +708,7 @@ describe("scenarios > question > custom column", () => {
     });
   });
 
-  it("should allow to use `in` and `not-in` expressions", () => {
+  it("should allow to use `in` and `notIn` functions", () => {
     H.openProductsTable({ mode: "notebook" });
 
     cy.log("custom columns - in");
