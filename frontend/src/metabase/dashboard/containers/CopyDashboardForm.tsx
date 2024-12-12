@@ -11,7 +11,6 @@ import FormFooter from "metabase/core/components/FormFooter";
 import Dashboards from "metabase/entities/dashboards";
 import {
   Form,
-  FormCheckbox,
   FormErrorMessage,
   FormObserver,
   FormProvider,
@@ -22,7 +21,6 @@ import {
 import * as Errors from "metabase/lib/errors";
 import type { CollectionId, Dashboard } from "metabase-types/api";
 
-import { DashboardCopyModalShallowCheckboxLabel } from "../components/DashboardCopyModal/DashboardCopyModalShallowCheckboxLabel/DashboardCopyModalShallowCheckboxLabel";
 import {
   DASHBOARD_DESCRIPTION_MAX_LENGTH,
   DASHBOARD_TITLE_MAX_LENGTH,
@@ -116,10 +114,6 @@ function CopyDashboardForm({
           name="collection_id"
           title={t`Which collection should this go in?`}
           filterPersonalCollections={filterPersonalCollections}
-        />
-        <FormCheckbox
-          name="is_shallow_copy"
-          label={<DashboardCopyModalShallowCheckboxLabel />}
         />
         <FormFooter>
           <FormErrorMessage inline />
