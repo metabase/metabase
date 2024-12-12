@@ -20,69 +20,103 @@ On the latest releases of the sdk do provide an experimental compatibility layer
 
 To use the compatibility layer you can change your imports from `@metabase/embedding-sdk-react` to `@metabase/embedding-sdk-react/nextjs`.
 
+This is the easiest way to get up and running with the SDK in Next.js, you can find [sample apps using this approach on github](https://github.com/metabase/metabase-nextjs-sdk-embedding-sample).
+
 ## Manual wrapping of the components
 
-TODO:
+If the compatibility layer doesn't work for your use case, for example because you want to customize the loading of the components, you can create your own wrapper.
+Here's a suggested way to do it.
 
-- wrap the provider in its own file so that it also wraps the defineConfig functions
-- show how to wrap the components needed individually to keep the rest of the host app code ssr
+First, create a `metabase` folder, and inside it create a file created `EmbeddingSdkProvider.tsx`.
+This file will contain the provider with the appropriate configuration.
 
-Create a component that imports the `MetabaseProvider` and mark it as a React Client component with "use client".
-
-It's fine to leave "use client" in the component even when using the Pages Router, but it's not necessary since the Pages Router doesn't use React Server Components.
-
-```typescript
+```tsx
 "use client";
 
-import { MetabaseProvider, StaticQuestion, defineMetabaseAuthConfig } from "@metabase/embedding-sdk-react";
+import {
+  defineMetabaseAuthConfig,
+  MetabaseProvider,
+} from "@metabase/embedding-sdk-react";
 
 const authConfig = defineMetabaseAuthConfig({
-  //...
+  metabaseInstanceUrl: process.env.NEXT_PUBLIC_METABASE_INSTANCE_URL,
+  authProviderUri: process.env.NEXT_PUBLIC_METABASE_AUTH_PROVIDER_URI,
 });
 
-export default function MetabaseComponents() {
+export const EmbeddingSdkProvider = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
   return (
-    <MetabaseProvider authConfig={authConfig}>
-      <StaticQuestion questionId={QUESTION_ID} />
-    </MetabaseProvider>
+    <MetabaseProvider authConfig={authConfig}>{children}</MetabaseProvider>
   );
+};
 ```
 
-You must use the default export. A named export isn't supported with this setup, and it won't work.
+Then, we need to create a `index.tsx` file that will export all the lazy loaded components:
 
-Then, import this component in your page:
+```tsx
+"use client";
 
-```typescript
-// page.tsx
+import dynamic from "next/dynamic";
 
-const MetabaseComponentsNoSsr = dynamic(
-  () => import("@/components/MetabaseComponents"),
+import React from "react";
+
+// Lazy load the EmbeddingSdkProvider so and let it render children while it's being loaded
+export const EmbeddingSdkProviderLazy = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
+  const EmbeddingSdkProvider = dynamic(
+    () =>
+      import("./EmbeddingSdkProvider").then(m => {
+        return { default: m.EmbeddingSdkProvider };
+      }),
+    {
+      ssr: false,
+      loading: () => {
+        // render children while loading
+        return <div>{children}</div>;
+      },
+    },
+  );
+
+  return <EmbeddingSdkProvider>{children}</EmbeddingSdkProvider>;
+};
+
+// Wrap all components that you need like this:
+
+export const StaticQuestion = dynamic(
+  () => import("@metabase/embedding-sdk-react").then(m => m.StaticQuestion),
   {
     ssr: false,
+    loading: () => {
+      return <div>Loading...</div>;
+    },
   },
 );
 
-export default function HomePage() {
-  return (
-    <>
-      <MetabaseComponentsNoSsr />
-    </>
-  );
+export const StaticDashboard = dynamic(
+  () => import("@metabase/embedding-sdk-react").then(m => m.StaticDashboard),
+  {
+    ssr: false,
+    loading: () => {
+      return <div>Loading...</div>;
+    },
+  },
+);
+```
+
+You can now use the components in your pages or components like this:
+
+```tsx
+import { StaticQuestion } from "@/metabase"; // path to the folder created earlier
+
+export default function Home() {
+  return <StaticQuestion questionId={123} />;
 }
-```
-
-To repeat: if you export the component as a named export, it won't work with Next.js. You must use a default export. For example, this _won't_ work:
-
-```typescript
-const DynamicAnalytics = dynamic(
-  () =>
-    import("@/components/MetabaseComponents").then(
-      module => module.MetabaseComponents,
-    ),
-  {
-    ssr: false,
-  },
-);
 ```
 
 ## Handling authentication
@@ -197,7 +231,7 @@ export default async function handler(
 Then, pass this `authConfig` to `MetabaseProvider`
 
 ```ts
-import { defineMetabaseAuthConfig } from "@metabase/embedding-sdk-react";
+import { defineMetabaseAuthConfig } from "@metabase/embedding-sdk-react/nextjs";
 const authConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   authProviderUri: "/api/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
