@@ -5,8 +5,8 @@ import {
   tableInteractiveBody,
 } from "e2e/support/helpers";
 import {
-  sdkJwtSignIn,
   mountInteractiveQuestion,
+  sdkJwtSignIn,
   signInAsAdminAndEnableEmbeddingSdkForComponentTests,
 } from "e2e/support/helpers/component-testing-sdk";
 import type { DatasetColumn } from "metabase-types/api";
