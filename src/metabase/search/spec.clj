@@ -17,7 +17,7 @@
 (def ^:private AttrValue
   "Key must be present, to show it's been explicitly considered.
 
-  - false: not present [not: consider making the nil instead, since it implies writing NULL to the column]
+  - false: not present [note: consider making the nil instead, since it implies writing NULL to the column]
   - true: given by a column with the same name (snake case) [note: consider removing this sugar, just repeat the column]
   - keyword: given by the corresponding column
   - vector: calculated by the given expression
@@ -32,7 +32,7 @@
    :creator-id          :pk
    :dashboardcard-count :int
    :database-id         :pk
-   :id                  :pk
+   :id                  :text
    :last-edited-at      :timestamp
    :last-editor-id      :pk
    :last-viewed-at      :timestamp
@@ -147,6 +147,11 @@
     (keyword (subs (name kw) (inc (count (name table)))))
     kw))
 
+(defn- add-table [table kw]
+  (if (and table (not (namespace kw)))
+    (keyword (str (name table) "." (name kw)))
+    kw))
+
 (defn- find-fields-kw [kw]
   ;; Filter out SQL functions
   (when-not (str/starts-with? (name kw) "%")
@@ -217,6 +222,18 @@
        x))
    expr))
 
+(defn- construct-source-where [id-fields]
+  (cond
+    (keyword? id-fields) [:= (add-table :updated id-fields) (add-table :this id-fields)]
+    (boolean? id-fields) [:= :updated.id :this.id]
+    ;; Vector is probably something like `[:concat :field1 "sep" :field2]`; maybe we should switch to more restrictive
+    ;; notation in `:attrs`?
+    (vector? id-fields)  (into [:and]
+                               (for [field (next id-fields) ;; first one is going to be a function
+                                     :when (keyword? field)]
+                                 [:= (add-table :updated field) (add-table :this field)]))
+    :else                (throw (ex-info "Unknown :id form" {:id id-fields}))))
+
 (defn- search-model-hooks
   "Generate a map indicating which search-models to update based on which fields are modified for a given model."
   [spec]
@@ -226,7 +243,7 @@
           (cons
            [(:model spec) #{{:search-model s
                              :fields       (:this (find-fields spec))
-                             :where        [:= :updated.id :this.id]}}]
+                             :where        (construct-source-where (-> spec :attrs :id))}}]
            (for [[table-alias [model join-condition]] (:joins spec)]
              (let [table-fields (fields table-alias)]
                [model #{{:search-model s
@@ -288,7 +305,10 @@
 (defn- instance->db-values
   "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
   [instance]
-  (let [xforms (#'t2.transformed/in-transforms (t2/model instance))]
+  (let [xforms (try
+                 (#'t2.transformed/in-transforms (t2/model instance))
+                 (catch Exception _     ; this happens for :model/ModelIndexValue, which has no transforms
+                   nil))]
     (reduce-kv
      (fn [m k v]
        (assoc m k (if-let [f (get xforms k)] (f v) v)))
@@ -310,4 +330,11 @@
   (doseq [d (descendants :hook/search-index)]
     (underive d :hook/search-index))
   (doseq [d (keys (model-hooks))]
-    (derive d :hook/search-index)))
+    (derive d :hook/search-index))
+
+  (search-models-to-update (t2/select-one :model/Card))
+  (methods spec)
+  (model-hooks)
+
+  (let [where (-> (:model/ModelIndexValue (model-hooks)) first :where)]
+    (insert-values where :updated {:model_index_id 1 :model_pk 5})))

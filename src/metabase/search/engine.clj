@@ -30,6 +30,11 @@
   (fn [search-engine _document-reducible]
     search-engine))
 
+(defmulti delete!
+  "Removes the documents from the search index."
+  (fn [search-engine _model _ids]
+    search-engine))
+
 (defmulti init!
   "Ensure that the search index exists, an is ready to take search queries."
   (fn [engine _opts]
