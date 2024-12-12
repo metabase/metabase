@@ -1,6 +1,7 @@
 import type { Store } from "@reduxjs/toolkit";
 import type { StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/testing-library";
+import { expect } from "@storybook/jest";
 import { Provider } from "react-redux";
 import _ from "underscore";
 
@@ -80,39 +81,65 @@ export default {
     layout: "fullscreen",
   },
 };
+type OverlayType = "Mantine Modal" | "Legacy Modal" | "Legacy Popover";
 
-const getMantineModal = async ({
-  withinElement,
+type Launcher = ({
+  launchFrom,
+  portalRoot,
 }: {
-  withinElement: HTMLElement;
-}) => {
-  const context = within(withinElement);
-  await userEvent.click(
-    await context.findByRole("button", { name: "Mantine Modal" }),
-  );
-  await context.findByText("Mantine Modal text content");
-  const modal = await context.findByRole("dialog", {
-    name: /Mantine Modal content/i,
-  });
-  await within(modal).findByText("Mantine Modal text content");
-  return modal;
+  launchFrom: HTMLElement;
+  portalRoot: HTMLElement;
+}) => Promise<HTMLElement>;
+
+const launchers: Record<OverlayType, Launcher> = {
+  "Mantine Modal": async ({ launchFrom, portalRoot }) => {
+    await userEvent.click(
+      await within(launchFrom).findByRole("button", { name: "Mantine Modal" }),
+    );
+    const modal = await within(portalRoot).findByRole("dialog", {
+      name: /Mantine Modal content/i,
+    });
+    await within(modal).findByText("Mantine Modal text content");
+    return modal;
+  },
+  "Legacy Modal": async ({
+    launchFrom,
+    portalRoot,
+  }: {
+    launchFrom: HTMLElement;
+    portalRoot: HTMLElement;
+  }) => {
+    await userEvent.click(
+      await within(launchFrom).findByRole("button", { name: "Legacy modal" }),
+    );
+    const modal = await within(portalRoot).findByRole("dialog", {
+      name: "Legacy modal content",
+    });
+    await within(modal).findByText("Legacy modal text content");
+    return modal;
+  },
 };
 
-const getLegacyModal = async ({
-  withinElement,
-}: {
-  withinElement: HTMLElement;
-}) => {
-  const context = within(withinElement);
-  await userEvent.click(
-    await context.findByRole("button", { name: "Legacy modal" }),
-  );
-  await context.findByText("Legacy modal text content");
-  const modal = await context.findByRole("dialog", {
-    name: /Legacy modal content/i,
+const launchAFromB = (aName: string, bName: string) => {
+  const [launcherA, launcherB] = [
+    launchers[aName],
+    launchers[bName],
+  ] as Function[];
+  const a = await launchMantineModal({
+    launchFrom: body,
+    portalRoot: body,
   });
-  await within(modal).findByText("Legacy modal text content");
-  return modal;
+  const legacyModal = await launchLegacyModal({
+    launchFrom: mantineModal,
+    portalRoot: body,
+  });
+  expect(legacyModal.nextSibling).toBe(mantineModal);
+  const [legacyModalZ, mantineModalZ] = [
+    getNearestZIndex(legacyModal),
+    getNearestZIndex(mantineModal),
+  ];
+  expect(legacyModalZ).toBe(mantineModalZ);
+  expect(legacyModalZ).toBeGreaterThan(10);
 };
 
 export const MantineModalCanLaunchLegacyModal: Scenario = {
@@ -122,9 +149,30 @@ export const MantineModalCanLaunchLegacyModal: Scenario = {
   },
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const body = canvasElement.parentElement as HTMLElement;
-    const mantineModal = await getMantineModal({ withinElement: body });
-    await getLegacyModal({ withinElement: mantineModal });
+    const mantineModal = await launchMantineModal({
+      launchFrom: body,
+      portalRoot: body,
+    });
+    const legacyModal = await launchLegacyModal({
+      launchFrom: mantineModal,
+      portalRoot: body,
+    });
+    expect(legacyModal.nextSibling).toBe(mantineModal);
+    const [legacyModalZ, mantineModalZ] = [
+      getNearestZIndex(legacyModal),
+      getNearestZIndex(mantineModal),
+    ];
+    expect(legacyModalZ).toBe(mantineModalZ);
+    expect(legacyModalZ).toBeGreaterThan(10);
   },
+};
+
+const getNearestZIndex = (el: HTMLElement): number | null => {
+  if (!el) {
+    return null;
+  }
+  const z = Number(getComputedStyle(el).zIndex);
+  return !isNaN(z) ? z : getNearestZIndex(el.parentElement!);
 };
 
 export const LegacyModalCanLaunchMantineModal = {
@@ -134,20 +182,28 @@ export const LegacyModalCanLaunchMantineModal = {
   },
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const body = canvasElement.parentElement as HTMLElement;
-    const legacyModal = await getLegacyModal({ withinElement: body });
-    await getMantineModal({ withinElement: legacyModal });
-    // TODO: Legacy modals aren't properly aria-labelled in this branch so this doesn't quite work yet
-    // NOTE: Actually Legacy models are, I think, now properly aria-labelled,
-    // but I still need to see if this test works
-    // Storybook also keeps crashing. Probably I should comment out these
-    // stories to see if that helps.
+    const legacyModal = await launchLegacyModal({
+      launchFrom: body,
+      portalRoot: body,
+    });
+    const mantineModal = await launchMantineModal({
+      launchFrom: legacyModal,
+      portalRoot: body,
+    });
+    expect(mantineModal.nextSibling).toBe(legacyModal);
+    const [mantineModalZ, legacyModalZ] = [
+      getNearestZIndex(mantineModal),
+      getNearestZIndex(legacyModal),
+    ];
+    expect(legacyModalZ).toBe(mantineModalZ);
+    expect(mantineModalZ).toBeGreaterThan(10);
   },
 };
 
-// export const MantineModalCanLaunchLegacyPopover = {
-//   render: Template,
-//   args: {
-//     enableNesting: true,
-//     overlaysToOpen: ["Mantine Modal", "Legacy Popover"],
-//   },
-// };
+export const MantineModalCanLaunchLegacyPopover = {
+  render: Template,
+  args: {
+    enableNesting: true,
+    overlaysToOpen: ["Mantine Modal", "Legacy Popover"],
+  },
+};

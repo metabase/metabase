@@ -100,6 +100,7 @@ export class WindowModal extends Component<WindowModalProps> {
             )}
             role="dialog"
             data-testid="modal"
+            aria-labelledby={this.props["aria-labelledby"]}
           >
             {getModalContent({
               ...this.props,
@@ -167,7 +168,6 @@ export class WindowModal extends Component<WindowModalProps> {
                 className={cx(ModalS.ModalBackdrop, backdropClassnames)}
                 style={style}
                 data-testid={dataTestId}
-                aria-labelledby={ariaLabelledBy}
               >
                 {this._modalComponent()}
               </div>
