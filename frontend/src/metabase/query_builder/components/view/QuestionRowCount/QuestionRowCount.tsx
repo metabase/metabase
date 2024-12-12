@@ -125,6 +125,7 @@ function QuestionRowCount({
 
 function RowCountLabel({
   disabled,
+  className,
   ...props
 }: {
   children: string;
@@ -136,15 +137,19 @@ function RowCountLabel({
   return disabled ? (
     <Box
       component="span"
-      className={QuestionRowCountS.RowCountStaticLabel}
+      className={cx(QuestionRowCountS.RowCountStaticLabel, className)}
       {...props}
       aria-label={label}
     />
   ) : (
     <button
-      className={cx(QuestionRowCountS.RowCountButton, {
-        [QuestionRowCountS.isHighlighted]: props.highlighted,
-      })}
+      className={cx(
+        QuestionRowCountS.RowCountButton,
+        {
+          [QuestionRowCountS.isHighlighted]: props.highlighted,
+        },
+        className,
+      )}
       {...props}
       aria-label={label}
       aria-haspopup="dialog"

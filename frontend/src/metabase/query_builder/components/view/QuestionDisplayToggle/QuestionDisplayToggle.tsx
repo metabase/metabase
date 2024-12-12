@@ -23,7 +23,7 @@ const QuestionDisplayToggle = ({
   const vizIcon = getIconForVisualizationType(question.display());
   return (
     <Flex
-      className={className}
+      className={cx(QuestionDisplayToggleS.Well, className)}
       onClick={() => onToggleRawTable(!isShowingRawTable)}
     >
       <Flex
