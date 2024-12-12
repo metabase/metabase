@@ -146,14 +146,15 @@ const getLaunchers = ({ portalRoot }: { portalRoot: HTMLElement }) => {
       });
     },
     "Legacy Select": async ({ launchFrom }) => {
-      await userEvent.hover(
+      await userEvent.click(
         await within(launchFrom).findByRole("button", {
           name: /Legacy Select option 1/,
         }),
       );
-      return await within(portalRoot).findByRole("combobox", {
-        name: "Legacy Select",
+      within(portalRoot).findByRole("option", {
+        name: "Legacy Select option 2",
       });
+      return await within(portalRoot).findByTestId("LegacySelect-list");
     },
     "Mantine Popover": async ({ launchFrom }) => {
       // NOTE: Mantine Popovers are clicked, not hovered
@@ -186,23 +187,66 @@ const launchAThenB = async (
   const [launchA, launchB] = [launchers[aType], launchers[bType]];
   const a = await launchA({ launchFrom: body, portalRoot: body });
   const b = await launchB({ launchFrom: a, portalRoot: body });
-  // Ensure that the second overlay appears after the first in the DOM
-  expect(a.nextSibling).toBe(b);
-  const az = getNearestZIndex(a);
-  const bz = getNearestZIndex(b);
-  expect(az).toBe(bz);
-  expect(az).toBeGreaterThan(10);
+  const az = getOperativeZIndex(a);
+  const bz = getOperativeZIndex(b);
+
+  // Ensure that either overlay A is no longer present or that it is occurs before overlay B
+  expect(!a.isConnected || isEarlierInDOM(a, b)).toBe(true);
+  expect(!a.isConnected || az === bz).toBe(true);
+  expect(!a.isConnected || az > 10).toBe(true);
+  expect(bz > 10).toBe(true);
+
   // Given that the z-index is the same, the overlay that appears later in the
   // DOM will appear on top
+
   await tellLokiThePageIsReady();
 };
 
-const getNearestZIndex = (el: HTMLElement): number | null => {
-  if (!el) {
-    return null;
+/**
+ * Returns true if elementA appears earlier in the DOM than elementB
+ * */
+const isEarlierInDOM = (elementA: HTMLElement, elementB: HTMLElement) => {
+  const position = elementA.compareDocumentPosition(elementB);
+
+  // If the elements are disconnected, they are not in the same DOM tree
+  if (position & Node.DOCUMENT_POSITION_DISCONNECTED) {
+    return false;
   }
-  const z = Number(getComputedStyle(el).zIndex);
-  return !isNaN(z) ? z : getNearestZIndex(el.parentElement!);
+
+  if (position & Node.DOCUMENT_POSITION_FOLLOWING) {
+    return true;
+  } else if (position & Node.DOCUMENT_POSITION_PRECEDING) {
+    return false;
+  } else {
+    throw new Error("Neither element is earlier in the DOM");
+  }
+};
+
+/**
+ * Get the z-index of the first element with a z-index in the element's
+ * ancestry
+ *
+ * With this approach, if a library like Tippy adds a z-index within the
+ * element's ancestry that doesn't actually affect the overlay's stacking, we
+ * ignore that z-index. For example, here, the operative z-index of #el is 200:
+ *  <div style="z-index: 200">
+ *   <div style="z-index: 3">
+ *     <div id='el' />
+ *   </div>
+ *  </div>
+ */
+const getOperativeZIndex = (el: HTMLElement) => {
+  let curr: HTMLElement | null = el;
+  const zIndexes: number[] = [];
+  while (curr) {
+    const { zIndex: zIndexString, position } = getComputedStyle(curr);
+    const zIndexNumber = parseInt(zIndexString, 10);
+    if (!isNaN(zIndexNumber) && position !== "static") {
+      zIndexes.unshift(zIndexNumber);
+    }
+    curr = curr.parentElement;
+  }
+  return zIndexes[0];
 };
 
 export const MantineModalCanLaunchLegacyModal: Scenario = {

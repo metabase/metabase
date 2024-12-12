@@ -153,7 +153,7 @@ const _Launchers = ({
         >
           <Button>Legacy popover</Button>
         </TippyPopover>
-        <LegacySelect defaultValue="1">
+        <LegacySelect defaultValue="1" data-testid="LegacySelect">
           <Option value="1">Legacy Select option 1</Option>
           <Option value="2">Legacy Select option 2</Option>
         </LegacySelect>
