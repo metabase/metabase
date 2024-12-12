@@ -70,7 +70,7 @@
   "Returns an enum schema that decodes strings to keywords.
     (enum-decode-keyword :foo :bar)
     ;; => [:enum {:decode/json keyword} :foo :bar]"
-  [& keywords]
+  [keywords]
   (into [:enum {:decode/json keyword}] keywords))
 
 ;;; -------------------------------------------------- Schemas --------------------------------------------------

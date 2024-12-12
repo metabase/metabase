@@ -2,6 +2,8 @@
   "Perform Creation/Update/Deletion with a spec."
   (:require
    [clojure.string :as str]
+   [malli.core :as mc]
+   [malli.error :as me]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -20,15 +22,28 @@
                                ;; the foreign key column in the nested model with respect to the parent model
                                [:fk-column    {:optional true} :keyword]
                                ;; A list of columns that should be compared to determine if the row has changed
-                               [:compare-row  {:optional true} [:sequential :keyword]]
+                               [:compare-cols {:optional true} [:sequential :keyword]]
                                [:nested-specs {:optional true} [:map-of :keyword [:ref ::spec]]]]}}
    [:ref ::spec]])
 
-(defn- compare-row-fn
+(defn validate-spec!
+  "Check whether a given spec is valid"
   [spec]
-  (if-let [compare-row (:compare-row spec)]
+  (when-let [info (mc/explain Spec spec)]
+    (throw (ex-info (str "Invalid spec for " (:model spec) ": " (me/humanize info)) info))))
+
+(defmacro define-spec
+  "Define a spec for update."
+  [spec-name docstring spec]
+  `(let [spec# ~spec]
+     (validate-spec! spec#)
+     (def ~spec-name ~docstring spec#)))
+
+(defn- compare-cols-fn
+  [spec]
+  (if-let [compare-cols (:compare-cols spec)]
     (fn [row]
-      (select-keys row compare-row))
+      (select-keys row compare-cols))
     identity))
 
 (declare do-map-update!)
@@ -41,18 +56,17 @@
 
 (defn- with-parent-id
   [row nested-specs parent-id]
-  (merge row
-         (into {}
-               (for [[k {:keys [fk-column multi-row?]}] nested-specs]
-                 [k (if fk-column
-                      (if multi-row?
-                        (map #(assoc % fk-column parent-id) (get row k))
-                        (assoc (get row k) fk-column parent-id))
-                      row)]))))
+  (into row
+        (for [[k {:keys [fk-column multi-row?]}] nested-specs]
+          [k (if fk-column
+               (if multi-row?
+                 (map #(assoc % fk-column parent-id) (get row k))
+                 (assoc (get row k) fk-column parent-id))
+               row)])))
 
 (defn- sanitize-row-fn
   [{:keys [nested-specs] :as spec}]
-  (comp (compare-row-fn spec) #(apply dissoc % (keys nested-specs))))
+  (comp (compare-cols-fn spec) #(apply dissoc % (keys nested-specs))))
 
 (defn- do-sequential-updates!
   [existing-rows new-rows {:keys [model nested-specs] :as spec} path]
@@ -60,27 +74,27 @@
                 to-create
                 to-delete
                 to-skip]
-         :as _updates}    (u/row-diff existing-rows new-rows :to-compare (compare-row-fn spec))
+         :as _updates}    (u/row-diff existing-rows new-rows :to-compare (compare-cols-fn spec))
         sanitize-row      (sanitize-row-fn spec)]
     (when (seq to-create)
       (if nested-specs
         (do
-          (log/debugf "%s nested spec found, creating rows one by one" (format-path path))
+          (log/tracef "%s nested spec found, creating rows one by one" (format-path path))
           (doseq [row to-create]
             (let [parent-id (t2/insert-returning-pk! model (sanitize-row row))]
-              (log/debugf "%s Created a new entity %s %d" (format-path path) model parent-id)
+              (log/debugf "%s created a new entity %s %d" (format-path path) model parent-id)
               (handle-nested-updates! nil (with-parent-id row nested-specs parent-id) nested-specs (conj path parent-id)))))
         (do
-          (log/debugf "%s no nested spec found, batch creating %d new rows of %s" (format-path path) (count to-create) model)
+          (log/tracef "%s no nested spec found, batch creating %d new rows of %s" (format-path path) (count to-create) model)
           (let [rows (map sanitize-row to-create)]
             (t2/insert! model rows)))))
     (when (seq to-delete)
       ;; TODO: cascade deletes?
-      (log/debugf "%s Deleting %d rows with ids %s" (format-path path) (count to-delete) (str/join ", " (map :id to-delete)))
+      (log/debugf "%s deleting %d rows with ids %s" (format-path path) (count to-delete) (str/join ", " (map :id to-delete)))
       (t2/delete! model :id [:in (map :id to-delete)]))
 
     (when (seq to-update)
-      (log/debugf "%s Attempt updating %d rows of %s" (format-path path) (count to-update) model)
+      (log/tracef "%s Attempt updating %d rows of %s" (format-path path) (count to-update) model)
       (doseq [row to-update]
         (let [path (conj path (:id row))]
           (let [new-row (sanitize-row row)]
@@ -88,7 +102,7 @@
             (t2/update! model (:id row) new-row))
           (when nested-specs
             (let [existing-row (first (filter #(= (:id row) (:id %)) existing-rows))]
-              (log/debugf "%s nested models detected, updating" (format-path path))
+              (log/tracef "%s nested models detected, updating" (format-path path))
               (handle-nested-updates! existing-row row nested-specs path))))))
 
     ;; the row might not change, but the nested models might
@@ -117,7 +131,7 @@
             path      (conj path parent-id)]
         (log/debugf "%s Created a new entity %s %d" (format-path path) model parent-id)
         (when nested-specs
-          (log/debugf "%s nested models detected, creating nested models" (format-path path))
+          (log/tracef "%s nested models detected, creating nested models" (format-path path))
           (handle-nested-updates! nil (with-parent-id new-data nested-specs parent-id) nested-specs path)))
 
       ;; update
@@ -130,7 +144,7 @@
       (log/debugf "%s no change detected for %s %d" (format-path path) model (:id existing-data)))
 
     (when nested-specs
-      (log/debugf "%s nested models detected, updating nested models %s %d" (format-path path) model (:id new-data))
+      (log/tracef "%s nested models detected, updating nested models %s %d" (format-path path) model (:id new-data))
       (handle-nested-updates! existing-data new-data nested-specs (conj path (:id new-data))))))
 
 (defn- check-id-exists
@@ -148,10 +162,10 @@
   (check-id-exists new-data)
   (if (:multi-row? spec)
     (do
-      (log/debugf "%s multi-row spec found" (format-path path))
+      (log/tracef "%s multi-row spec found" (format-path path))
       (do-sequential-updates! existing-data new-data spec path))
     (do
-      (log/debugf "%s single row spec found" (format-path path))
+      (log/tracef "%s single row spec found" (format-path path))
       (do-map-update! existing-data new-data spec path))))
 
 (mu/defn do-update!
