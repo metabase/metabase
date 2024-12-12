@@ -150,7 +150,7 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
   const model2Row = () => modelsTable().findByRole("row", { name: /Model 2/i });
 
   const setVerification = (linkSelector: RegExp | string) => {
-    cy.findByLabelText("Move, trash, and more...").click();
+    cy.findByLabelText("Move, trash, and more…").click();
     cy.findByRole("dialog", {
       name: /ellipsis icon/i,
     })

@@ -836,7 +836,7 @@ describe("issues 11914, 18978, 18977, 23857", () => {
       "Make sure we don't offer to duplicate question with a query for which the user has no permission to run (metabase#23857)",
     );
     H.visitQuestion(ORDERS_QUESTION_ID);
-    cy.findByLabelText("Move, trash, and more...").click();
+    cy.findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Duplicate").should("not.exist");
 
     cy.log(
@@ -844,7 +844,7 @@ describe("issues 11914, 18978, 18977, 23857", () => {
     );
     H.commandPaletteSearch("Repro", false);
     H.commandPalette().findByText("Repro").click();
-    cy.findByLabelText("Move, trash, and more...").click();
+    cy.findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Duplicate").should("not.exist");
 
     cy.log(
