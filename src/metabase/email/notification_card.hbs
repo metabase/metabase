@@ -35,7 +35,7 @@
             {{{computed.content}}}
             {{#if computed.goal_value}}
               <p style="color: {{payload.style.color_text_medium}}; font-size: 12px; font-weight: 400">
-                {{#if (equals send_condition "goal_above")}}
+                {{#if (equals payload.notification_card.send_condition "goal_above")}}
                   This question has reached its goal of {{computed.goal_value}}.
                 {{else}}
                   This question has gone below its goal of {{computed.goal_value}}.

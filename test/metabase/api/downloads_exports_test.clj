@@ -31,6 +31,8 @@
    (org.apache.poi.ss.usermodel DataFormatter)
    (org.apache.poi.xssf.usermodel XSSFSheet)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private cell-formatter (DataFormatter.))
 (defn- read-cell-with-formatting
   [c]
@@ -236,17 +238,22 @@
 
 (defn all-outputs!
   [card-or-dashcard opts]
-  (merge
-   (when-not (= (t2/model card-or-dashcard) :model/DashboardCard)
-     {:unsaved-card-download    (unsaved-card-download card-or-dashcard opts)
-      :public-question-download (public-question-download card-or-dashcard opts)
-      :card-download            (card-download card-or-dashcard opts)
-      :alert-attachment         (alert-attachment! card-or-dashcard opts)})
-   {:dashcard-download        (card-download card-or-dashcard opts)
-    :public-dashcard-download (public-dashcard-download card-or-dashcard opts)
-    :subscription-attachment  (subscription-attachment! card-or-dashcard opts)}))
+  (cond-> (merge
+           (when-not (= (t2/model card-or-dashcard) :model/DashboardCard)
+             {:unsaved-card-download    (delay (unsaved-card-download card-or-dashcard opts))
+              :public-question-download (delay (public-question-download card-or-dashcard opts))
+              :card-download            (delay (card-download card-or-dashcard opts))
+              :alert-attachment         (delay (alert-attachment! card-or-dashcard opts))})
+           {:dashcard-download        (delay (card-download card-or-dashcard opts))
+            :public-dashcard-download (delay (public-dashcard-download card-or-dashcard opts))
+            :subscription-attachment  (delay (subscription-attachment! card-or-dashcard opts))})
+    (:except opts) (#(apply dissoc % (:except opts)))
 
-(set! *warn-on-reflection* true)
+    ;; format rows and pivot does not support alert, they're all off by default
+    (or (:format-rows opts) (:pivot opts))
+    (dissoc :alert-attachment)
+
+    true (update-vals deref)))
 
 (def ^:private pivot-rows-query
   "SELECT *
@@ -287,7 +294,7 @@
                    ["Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
                    ["Grand totals" "$2,829.06" "$4,008.16" "$3,251.08" "$1,060.98" "$11,149.28"]]
                   #{:unsaved-card-download :card-download :dashcard-download
-                    :alert-attachment :subscription-attachment
+                    :subscription-attachment
                     :public-question-download :public-dashcard-download}]
                  (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
                       (group-by second)
@@ -306,7 +313,7 @@
                    ["Widget" "987.39" "1014.68" "912.2" "195.04" "3109.31"]
                    ["Grand totals" "2829.06" "4008.16" "3251.08" "1060.98" "11149.28"]]
                   #{:unsaved-card-download :card-download :dashcard-download
-                    :alert-attachment :subscription-attachment
+                    :subscription-attachment
                     :public-question-download :public-dashcard-download}]
                  (->> (all-outputs! card {:export-format :csv :format-rows false :pivot true})
                       (group-by second)
@@ -331,7 +338,7 @@
                    ["Widget" "2018" "$912.20"]
                    ["Widget" "2019" "$195.04"]]
                   #{:unsaved-card-download :card-download :dashcard-download
-                    :alert-attachment :subscription-attachment
+                    :subscription-attachment
                     :public-question-download :public-dashcard-download}]
                  (mt/with-temporary-setting-values [public-settings/enable-pivoted-exports false]
                    (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
@@ -385,7 +392,7 @@
                     "$11,149.28"
                     "56.66"]]
                   #{:unsaved-card-download :card-download :dashcard-download
-                    :alert-attachment :subscription-attachment
+                    :subscription-attachment
                     :public-question-download :public-dashcard-download}]
                  (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
                       (group-by second)
@@ -426,7 +433,7 @@
                       ["Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
                       (when col-totals? ["Grand totals" "$2,829.06" "$4,008.16" "$3,251.08" "$1,060.98" "$11,149.28"])])
                     #{:unsaved-card-download :card-download :dashcard-download
-                      :alert-attachment :subscription-attachment
+                      :subscription-attachment
                       :public-question-download :public-dashcard-download}]
                    (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
                         (group-by second)

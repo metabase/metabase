@@ -191,10 +191,10 @@
         goal               (ui-logic/find-goal-value payload)
         message-context-fn (fn [non-user-email]
                              (assoc notification-payload
-                                    :computed {:subject         (case (messages/pulse->alert-condition-kwd notification_card)
-                                                                  :meets (trs "Alert: {0} has reached its goal" (:name card))
-                                                                  :below (trs "Alert: {0} has gone below its goal" (:name card))
-                                                                  :rows  (trs "Alert: {0} has results" (:name card)))
+                                    :computed {:subject         (case (keyword (:send_condition notification_card))
+                                                                  :goal_above (trs "Alert: {0} has reached its goal" (:name card))
+                                                                  :goal_below (trs "Alert: {0} has gone below its goal" (:name card))
+                                                                  :has_result (trs "Alert: {0} has results" (:name card)))
                                                :icon_cid        (:content-id icon-attachment)
                                                :content         (html (:content rendered-card))
                                                ;; UI only allow one subscription per card notification

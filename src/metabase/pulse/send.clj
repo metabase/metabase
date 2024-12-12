@@ -76,6 +76,7 @@
      :creator_id    (:creator_id pulse)
      :payload       {:id             (:id pulse)
                      :card_id        (:id (-> pulse :cards first))
+                     :send_once      (:alert_first_only pulse)
                      :send_condition (cond
                                        (= "rows" (:alert_condition pulse)) :has_result
                                        (:alert_above_goal pulse)           :goal_above
