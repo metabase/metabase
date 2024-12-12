@@ -6,6 +6,7 @@ import ChartSettingFieldPicker from "metabase/visualizations/components/settings
 import ChartSettingFieldsPartition from "metabase/visualizations/components/settings/ChartSettingFieldsPartition";
 import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
 import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput";
+import ChartSettingInputGroup from "metabase/visualizations/components/settings/ChartSettingInputGroup";
 import { ChartSettingInputNumeric } from "metabase/visualizations/components/settings/ChartSettingInputNumeric";
 import { ChartSettingMultiSelect } from "metabase/visualizations/components/settings/ChartSettingMultiSelect";
 import ChartSettingRadio from "metabase/visualizations/components/settings/ChartSettingRadio";
@@ -15,6 +16,7 @@ import { ChartSettingToggle } from "metabase/visualizations/components/settings/
 
 const WIDGETS = {
   input: ChartSettingInput,
+  inputGroup: ChartSettingInputGroup,
   number: ChartSettingInputNumeric,
   radio: ChartSettingRadio,
   select: ChartSettingSelect,
