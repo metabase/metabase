@@ -16,15 +16,16 @@
   associated with each command's entrypoint function to generate descriptions for each command."
   (:refer-clojure :exclude [load import])
   (:require
-   [clojure.string :as str]
-   [clojure.tools.cli :as cli]
-   [environ.core :as env]
-   [metabase.config :as config]
-   [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.plugins.classloader :as classloader]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log]))
+    [clojure.string :as str]
+    [clojure.tools.cli :as cli]
+    [environ.core :as env]
+    [metabase.config :as config]
+    [metabase.legacy-mbql.util :as mbql.u]
+    [metabase.plugins.classloader :as classloader]
+    [metabase.util :as u]
+    [metabase.util.encryption :as encryption]
+    [metabase.util.i18n :refer [trs]]
+    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -257,6 +258,22 @@
     (system-exit! 0)
     (catch Throwable e
       (log/error e "ERROR ROTATING KEY.")
+      (system-exit! 1))))
+
+(defn ^:command remove-encryption
+  "Decrypts data in the metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to
+  the current key"
+  []
+  (classloader/require 'metabase.cmd.rotate-encryption-key)
+  (when-not (encryption/default-encryption-enabled?)
+    (log/error "MB_ENCRYPTION_SECRET_KEY environment variable has not been set")
+    (system-exit! 1))
+  (try
+    ((resolve 'metabase.cmd.rotate-encryption-key/rotate-encryption-key!) "")
+    (log/info "Encryption removed OK.")
+    (system-exit! 0)
+    (catch Throwable e
+      (log/error e "ERROR REMOVING ENCRYPTION.")
       (system-exit! 1))))
 
 ;;; ------------------------------------------------ Validate Commands ----------------------------------------------
