@@ -1,7 +1,6 @@
 .parent {
   border: 1px solid transparent;
   border-radius: var(--default-border-radius);
-  cursor: pointer;
 }
 
 .close {

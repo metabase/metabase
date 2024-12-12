@@ -57,14 +57,14 @@ export function getVisualizationType(state: State) {
 
 export const getDatasets = (state: State) => state.visualizer.datasets;
 
+export const getLoadingDatasets = (state: State) =>
+  state.visualizer.loadingDatasets;
+
 export const getExpandedDataSources = (state: State) =>
   state.visualizer.expandedDataSources;
 
 export const getIsLoading = createSelector(
-  [
-    state => state.visualizer.loadingDataSources,
-    state => state.visualizer.loadingDatasets,
-  ],
+  [state => state.visualizer.loadingDataSources, getLoadingDatasets],
   (loadingDataSources, loadingDatasets) => {
     return (
       Object.values(loadingDataSources).includes(true) ||

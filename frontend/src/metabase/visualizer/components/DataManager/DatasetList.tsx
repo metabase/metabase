@@ -3,12 +3,13 @@ import { t } from "ttag";
 
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Box, Flex, Icon, Text } from "metabase/ui";
+import { Box, Flex, Icon, Loader, Text } from "metabase/ui";
 import { DRAGGABLE_ID } from "metabase/visualizer/constants";
 import {
   getDataSources,
   getDatasets,
   getExpandedDataSources,
+  getLoadingDatasets,
   getReferencedColumns,
 } from "metabase/visualizer/selectors";
 import { isReferenceToColumn } from "metabase/visualizer/utils";
@@ -25,6 +26,7 @@ import S from "./DatasetList.module.css";
 export const DatasetList = () => {
   const dataSources = useSelector(getDataSources);
   const datasets = useSelector(getDatasets);
+  const loadingDatasets = useSelector(getLoadingDatasets);
   const expandedDataSources = useSelector(getExpandedDataSources);
   const referencedColumns = useSelector(getReferencedColumns);
   const dispatch = useDispatch();
@@ -43,33 +45,40 @@ export const DatasetList = () => {
     >
       {dataSources.map(source => {
         const dataset = datasets[source.id];
+        const isLoading = loadingDatasets[source.id];
         const isExpanded = expandedDataSources[source.id];
 
         return (
           <Box key={source.id} mb={4}>
             <Flex align="center" px={8} py={4} className={S.parent}>
-              <Icon
-                style={{ flexShrink: 0 }}
-                name={isExpanded ? "chevronup" : "chevrondown"}
-                aria-label={t`Expand`}
-                size={12}
-                mr={6}
-                onClick={() => dispatch(toggleDataSourceExpanded(source.id))}
-                cursor="pointer"
-              />
+              {!isLoading ? (
+                <Icon
+                  style={{ flexShrink: 0 }}
+                  name={isExpanded ? "chevronup" : "chevrondown"}
+                  aria-label={t`Expand`}
+                  size={12}
+                  mr={6}
+                  cursor="pointer"
+                  onClick={() => dispatch(toggleDataSourceExpanded(source.id))}
+                />
+              ) : (
+                <Loader size={12} mr={6} />
+              )}
               <Text truncate mr={4}>
                 {source.name}
               </Text>
-              <Icon
-                style={{ flexShrink: 0 }}
-                className={S.close}
-                name="close"
-                ml="auto"
-                size={12}
-                aria-label={t`Remove the dataset ${source.name} from the list`}
-                onClick={() => dispatch(removeDataSource(source))}
-                cursor="pointer"
-              />
+              {!isLoading && (
+                <Icon
+                  style={{ flexShrink: 0 }}
+                  className={S.close}
+                  name="close"
+                  ml="auto"
+                  size={12}
+                  aria-label={t`Remove the dataset ${source.name} from the list`}
+                  cursor="pointer"
+                  onClick={() => dispatch(removeDataSource(source))}
+                />
+              )}
             </Flex>
             {isExpanded && dataset && dataset.data.cols && (
               <Box ml={12} mt={2}>
