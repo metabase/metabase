@@ -1260,7 +1260,7 @@
 
                    default-sort)
 
-        partition-expr (into (ordered-map/ordered-map)
+        partition-expr (into {}
                              (map (fn [[name]] [name (str "$_id." name)]))
                              (m/remove-nth sort-index id))]
     {:sort-expr sort-expr
