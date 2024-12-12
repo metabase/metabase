@@ -116,7 +116,7 @@
 
 (define-initialization :notifications
   (initialize-if-needed! :db)
-  (notification/truncate-then-seed-notification!))
+  (notification/seed-notification!))
 
 (defn- all-components
   "Set of all components/initialization steps that are defined."

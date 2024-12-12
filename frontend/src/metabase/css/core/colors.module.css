@@ -100,6 +100,7 @@
     var(--mb-color-tooltip-background) 50%,
     #000
   );
+  --mb-color-syntax-parameters: var(--mb-base-color-mango-30);
 
   /**
     * Base colors
@@ -137,6 +138,13 @@
     var(--mb-color-brand),
     white 90%
   );
+
+  /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
+  --mb-color-saturated-blue: #2d86d4;
+  --mb-color-saturated-green: #70a63a;
+  --mb-color-saturated-purple: #885ab1;
+  --mb-color-saturated-red: #ed6e6e;
+  --mb-color-saturated-yellow: #f9cf48;
 
   /* @deprecated Blue */
   --mb-base-color-blue-100: #00172b;
@@ -362,7 +370,8 @@
   background-color: var(--mb-color-bg-light);
 }
 
-.bgMedium {
+.bgMedium,
+.bgMediumHover:hover {
   background-color: var(--mb-color-bg-medium);
 }
 

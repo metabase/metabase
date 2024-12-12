@@ -464,7 +464,8 @@
     (first (qp.preprocess/query->expected-cols {:database (t2/select-one-fn :db_id Table :id table-id)
                                                 :type     :query
                                                 :query    {:source-table table-id
-                                                           :aggregation  [[aggregation-type [:field-id field-id]]]}}))
+                                                           :aggregation  [[aggregation-type [:field-id field-id]]]
+                                                           :aggregation-idents {0 (u/generate-nano-id)}}}))
     (when (= aggregation-type :cum-count)
       {:base_type     :type/Decimal
        :semantic_type :type/Quantity}))))
@@ -813,5 +814,25 @@
 
     \"SELECT * FROM {{%s}}\""
   {:arglists '([driver card-template-tag-name])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti create-view-of-table!
+  "Create a new view in database.
+   The view should be a simple view of the table, like `select * from table`
+   `view-name` is the name of the new view
+   `table-name` is the name of the table.
+   `options` can have these keys
+    - `:materialized?` will be true if it should create a materialized view."
+  {:arglists '([driver database view-name table-name options])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti drop-view!
+  "Drop a view in database if it exists.
+   `view-name` is the name of the new view
+   `options` can have these keys
+    - `:materialized?` will be true if it should create a materialized view."
+  {:arglists '([driver database view-name options])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)

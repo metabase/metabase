@@ -11,7 +11,7 @@
    [iapetos.collector.ring :as collector.ring]
    [iapetos.core :as prometheus]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.server :as server]
+   [metabase.server.core :as server]
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
    [potemkin :as p]
@@ -213,7 +213,9 @@
                        {:description "Number of errors when processing metrics in the metrics adjust middleware."})
    (prometheus/counter :metabase-search/index
                        {:description "Number of entries indexed for search"
-                        :labels      [:model]})])
+                        :labels      [:model]})
+   (prometheus/counter :metabase-search/index-ms
+                       {:description "Total number of ms indexing took"})])
 
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it

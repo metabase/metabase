@@ -42,6 +42,8 @@
 
 (def ^:private default-search-row
   {:archived                   false
+   :dashboard_id               false
+   :dashboard                  nil
    :effective_location         nil
    :location                   nil
    :bookmark                   nil
@@ -317,9 +319,23 @@
     (testing "It can use an alternate search engine"
       (search/init-index! {:force-reset? false :re-populate? false})
       (with-search-items-in-root-collection "test"
-        (let [resp (search-request :crowberto :q "test" :search_engine "fulltext" :limit 1)]
+        (let [resp (search-request :crowberto :q "test" :search_engine "appdb" :limit 1)]
           ;; The index is not populated here, so there's not much interesting to assert.
-          (is (= "search.engine/fulltext" (:engine resp))))))))
+          (is (= "search.engine/appdb" (:engine resp))))))
+
+    (testing "It can use the old search engine name, e.g. for old cookies"
+      (search/init-index! {:force-reset? false :re-populate? false})
+      (with-search-items-in-root-collection "test"
+        (let [resp (search-request :crowberto :q "test" :search_engine "fulltext" :limit 1)]
+          (is (= "search.engine/fulltext" (:engine resp))))))
+
+    (testing "It will not use an unknown search engine"
+      (search/init-index! {:force-reset? false :re-populate? false})
+      (with-search-items-in-root-collection "test"
+        (let [resp (search-request :crowberto :q "test" :search_engine "wut" :limit 1)]
+          (is (#{"search.engine/in-place"
+                 "search.engine/appdb"}
+               (:engine resp))))))))
 
 (defn- get-available-models [& args]
   (set
@@ -338,7 +354,7 @@
 
 (deftest available-models-test
   ;; Porting these tests over earlier
-  (doseq [engine ["in-place" "fulltext"]]
+  (doseq [engine ["in-place" "appdb"]]
     (let [search-term "query-model-set"
           get-available-models #(apply get-available-models :search_engine engine %&)]
       (with-search-items-in-root-collection search-term
@@ -1590,7 +1606,7 @@
     (search.tu/with-temp-index-table
       (mt/with-temp [Card {id :id} {:name "It boggles the mind!"}]
         (mt/user-http-request :crowberto :post 200 "search/re-init")
-        (let [search-results #(:data (mt/user-http-request :rasta :get % "search" :q "boggle" :search_engine "fulltext"))]
+        (let [search-results #(:data (mt/user-http-request :rasta :get % "search" :q "boggle" :search_engine "appdb"))]
           (is (try (t2/delete! (search.index/active-table)) (catch Exception _ :already-deleted)))
           (is (empty? (search-results 200)))
           (mt/user-http-request :crowberto :post 200 "search/force-reindex")
@@ -1674,3 +1690,57 @@
 
       (finally
         (public-settings/experimental-search-weight-overrides! original-overrides)))))
+
+(deftest dashboard-questions
+  (testing "Dashboard questions get a dashboard_id when searched"
+    (let [search-name (random-uuid)
+          named #(str search-name "-" %)]
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name (named "dashboard")}
+                     :model/Card {card-id :id} {:dashboard_id dash-id :name (named "dashboard card")}
+                     :model/Card {reg-card-id :id} {:name (named "regular card")}
+                     ;; DQs aren't searchable without a DashboardCard (see later test)
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (testing "The card data includes the `dashboard_id`"
+          (is (= dash-id
+                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                      :data
+                      (filter #(= card-id (:id %)))
+                      first
+                      :dashboard_id))))
+        (testing "The card data also include `dashboard` info"
+          (is (= {:id dash-id
+                  :name (named "dashboard")
+                  :moderation_status nil}
+                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                      :data
+                      (filter #(= card-id (:id %)))
+                      first
+                      :dashboard))))
+        (testing "Regular cards don't have it"
+          (is (nil?
+               (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                    :data
+                    (filter #(= reg-card-id (:id %)))
+                    first
+                    :dashboard_id)))
+          (is (nil?
+               (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                    :data
+                    (filter #(= reg-card-id (:id %)))
+                    first
+                    :dashboard))))
+        (testing "Dashboard questions are only returned if you pass `include_dashboard_questions=true`"
+          (is (= []
+                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "false")
+                      :data
+                      (filter #(= card-id (:id %))))))))))
+  (testing "Dashboard questions aren't searchable without a DashboardCard"
+    (let [search-name (random-uuid)
+          named #(str search-name "-" %)]
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Dashboard"}
+                     :model/Card _ {:dashboard_id dash-id :name (named "dashboard card")}]
+        (is (= {:total 0
+                :data []}
+               (select-keys
+                (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                [:total :data])))))))

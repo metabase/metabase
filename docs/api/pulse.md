@@ -1,12 +1,18 @@
 ---
 title: "Pulse"
 summary: |
-  /api/pulse endpoints.
+  `/api/pulse` endpoints. These are all authenticated. For unauthenticated `/api/pulse/unsubscribe` endpoints,
+    see [[metabase.api.pulse.unsubscribe]].
+  
+    Deprecated: will soon be migrated to notification APIs.
 ---
 
 # Pulse
 
-/api/pulse endpoints.
+`/api/pulse` endpoints. These are all authenticated. For unauthenticated `/api/pulse/unsubscribe` endpoints,
+  see [[metabase.api.pulse.unsubscribe]].
+
+  Deprecated: will soon be migrated to notification APIs.
 
 ## `DELETE /api/pulse/:id/subscription`
 
@@ -78,7 +84,7 @@ Get PNG rendering of a Card with `id`.
 
 Get HTML rendering of a Dashboard with `id`.
 
-  This endpoint relies on a custom middleware defined in `metabase.pulse.preview/style-tag-nonce-middleware` to
+  This endpoint relies on a custom middleware defined in `metabase.channel.render.core/style-tag-nonce-middleware` to
   allow the style tag to render properly, given our Content Security Policy setup. This middleware is attached to these
   routes at the bottom of this namespace using `metabase.api.common/define-routes`.
 

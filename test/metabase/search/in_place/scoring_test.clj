@@ -223,7 +223,7 @@
     (testing "it treats stale items as being equally old"
       (let [stale search.config/stale-time-in-days]
         (is (= [1 2 3 4]
-               (->> [(item 1 (days-ago (+ stale 1)))
+               (->> [(item 1 (days-ago (inc stale)))
                      (item 2 (days-ago (+ stale 50)))
                      (item 3 nil)
                      (item 4 (days-ago stale))]

@@ -1,16 +1,5 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  commandPaletteSearch,
-  describeEE,
-  getCollectionActions,
-  getPartialPremiumFeatureError,
-  navigationSidebar,
-  openCollectionMenu,
-  openNewCollectionItemFlowFor,
-  popover,
-  restore,
-  setTokenFeatures,
-} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -22,9 +11,9 @@ const TEST_QUESTION_QUERY = {
   breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }]],
 };
 
-describeEE("official collections", () => {
+H.describeEE("official collections", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -41,7 +30,7 @@ describeEE("official collections", () => {
         },
       }).then(({ body, status, statusText }) => {
         expect(body).to.deep.include(
-          getPartialPremiumFeatureError("Official Collections"),
+          H.getPartialPremiumFeatureError("Official Collections"),
         );
         expect(status).to.eq(402);
         expect(statusText).to.eq("Payment Required");
@@ -50,20 +39,20 @@ describeEE("official collections", () => {
       // Gate the UI
       cy.visit("/collection/root");
 
-      openNewCollectionItemFlowFor("collection");
+      H.openNewCollectionItemFlowFor("collection");
       cy.findByTestId("new-collection-modal").then(modal => {
         assertNoCollectionTypeInput();
         cy.findByLabelText("Close").click();
       });
 
       openCollection("First collection");
-      openCollectionMenu();
+      H.openCollectionMenu();
       assertNoCollectionTypeOption();
     });
   });
 
   context("premium token with paid features", () => {
-    beforeEach(() => setTokenFeatures("all"));
+    beforeEach(() => H.setTokenFeatures("all"));
 
     it("should be able to manage collection authority level", () => {
       cy.visit("/collection/root");
@@ -95,14 +84,14 @@ describeEE("official collections", () => {
 
       openCollection("First collection");
 
-      openNewCollectionItemFlowFor("collection");
+      H.openNewCollectionItemFlowFor("collection");
       cy.findByTestId("new-collection-modal").then(modal => {
         assertNoCollectionTypeInput();
         cy.findByLabelText("Close").click();
       });
 
-      openCollectionMenu();
-      popover().within(() => {
+      H.openCollectionMenu();
+      H.popover().within(() => {
         assertNoCollectionTypeOption();
       });
     });
@@ -111,14 +100,14 @@ describeEE("official collections", () => {
       cy.visit("/collection/root");
 
       openCollection("Your personal collection");
-      getCollectionActions().within(() => {
+      H.getCollectionActions().within(() => {
         cy.icon("ellipsis").should("exist");
         cy.icon("ellipsis").click();
       });
 
-      popover().findByText("Make collection official").should("exist");
+      H.popover().findByText("Make collection official").should("exist");
 
-      openNewCollectionItemFlowFor("collection");
+      H.openNewCollectionItemFlowFor("collection");
       cy.findByTestId("new-collection-modal").then(modal => {
         assertHasCollectionTypeInput();
         cy.findByPlaceholderText("My new fantastic collection").type(
@@ -129,13 +118,13 @@ describeEE("official collections", () => {
 
       openCollection("Personal collection child");
 
-      getCollectionActions().within(() => {
+      H.getCollectionActions().within(() => {
         cy.icon("ellipsis").should("exist");
         cy.icon("ellipsis").click();
       });
-      popover().findByText("Make collection official").should("exist");
+      H.popover().findByText("Make collection official").should("exist");
 
-      openNewCollectionItemFlowFor("collection");
+      H.openNewCollectionItemFlowFor("collection");
       cy.findByTestId("new-collection-modal").then(modal => {
         assertHasCollectionTypeInput();
         cy.findByLabelText("Close").click();
@@ -144,7 +133,7 @@ describeEE("official collections", () => {
   });
 
   context("token expired or removed", () => {
-    beforeEach(() => setTokenFeatures("all"));
+    beforeEach(() => H.setTokenFeatures("all"));
 
     it("should not display official collection icon anymore", () => {
       testOfficialBadgePresence(false);
@@ -172,7 +161,7 @@ function testOfficialBadgePresence(expectBadge = true) {
       collection_id: collectionId,
     });
 
-    !expectBadge && setTokenFeatures("none");
+    !expectBadge && H.setTokenFeatures("none");
     cy.visit(`/collection/${collectionId}`);
   });
 
@@ -204,7 +193,7 @@ function testOfficialBadgeInSearch({
   question,
   expectBadge,
 }) {
-  commandPaletteSearch(searchQuery);
+  H.commandPaletteSearch(searchQuery);
 
   cy.findByTestId("search-app").within(() => {
     assertSearchResultBadge(collection, {
@@ -232,7 +221,7 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
     });
   });
 
-  !expectBadge && setTokenFeatures("none");
+  !expectBadge && H.setTokenFeatures("none");
 
   cy.visit("/collection/root");
   cy.findByText("Regular Dashboard").click();
@@ -243,24 +232,24 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
 }
 
 function openCollection(collectionName) {
-  navigationSidebar().findByText(collectionName).click();
+  H.navigationSidebar().findByText(collectionName).click();
 }
 
 function createAndOpenOfficialCollection({ name }) {
-  openNewCollectionItemFlowFor("collection");
+  H.openNewCollectionItemFlowFor("collection");
   cy.findByTestId("new-collection-modal").then(modal => {
     cy.findByPlaceholderText("My new fantastic collection").type(name);
     cy.findByText("Official").click();
     cy.findByText("Create").click();
   });
-  navigationSidebar().within(() => {
+  H.navigationSidebar().within(() => {
     cy.findByText(name).click();
   });
 }
 
 function changeCollectionTypeTo(type) {
-  openCollectionMenu();
-  popover().within(() => {
+  H.openCollectionMenu();
+  H.popover().within(() => {
     if (type === "official") {
       cy.findByText("Make collection official").click();
     } else {
@@ -287,7 +276,7 @@ function assertNoCollectionTypeOption() {
 }
 
 function assertSidebarIcon(collectionName, expectedIcon) {
-  navigationSidebar()
+  H.navigationSidebar()
     .findByText(collectionName)
     .parent()
     .within(() => {

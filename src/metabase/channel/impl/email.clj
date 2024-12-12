@@ -22,6 +22,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.markdown :as markdown]
+   [metabase.util.ui-logic :as ui-logic]
    [metabase.util.urls :as urls]
    [ring.util.codec :as codec]))
 
@@ -162,7 +163,7 @@
 ;;                                           Alerts                                                ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(mu/defmethod channel/render-notification [:channel/email :notification/alert] :- [:sequential EmailMessage]
+(mu/defmethod channel/render-notification [:channel/email :notification/card] :- [:sequential EmailMessage]
   [_channel-type {:keys [payload] :as notification-payload} template recipients]
   (let [{:keys [card_part
                 alert
@@ -173,6 +174,7 @@
         attachments        (concat [icon-attachment]
                                    (email-attachment rendered-card
                                                      (assoc-attachment-booleans [alert] [card_part])))
+        goal               (ui-logic/find-goal-value payload)
         message-context-fn (fn [non-user-email]
                              (assoc notification-payload
                                     :computed {:subject         (case (messages/pulse->alert-condition-kwd alert)
@@ -180,6 +182,7 @@
                                                                   :below (trs "Alert: {0} has gone below its goal" (:name card))
                                                                   :rows  (trs "Alert: {0} has results" (:name card)))
                                                :icon_cid        (:content-id icon-attachment)
+                                               :goal_value      goal
                                                :alert_content   (html (:content rendered-card))
                                                :alert_schedule  (messages/alert-schedule-text (:schedule alert))
                                                :management_text (if (nil? non-user-email)
@@ -235,7 +238,7 @@
       (for [row rows]
         [:tr {} row])])))
 
-(mu/defmethod channel/render-notification [:channel/email :notification/dashboard-subscription] :- [:sequential EmailMessage]
+(mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
   [_channel-type {:keys [payload] :as notification-payload} template recipients]
   (let [{:keys [dashboard_parts
                 dashboard_subscription

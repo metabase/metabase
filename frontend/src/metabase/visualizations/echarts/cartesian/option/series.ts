@@ -609,6 +609,7 @@ const buildEChartsLineAreaSeries = (
     },
     yAxisIndex,
     showSymbol: true,
+    showAllSymbol: true,
     symbolSize: CHART_STYLE.symbolSize,
     smooth: seriesSettings["line.interpolate"] === "cardinal",
     connectNulls: seriesSettings["line.missing"] === "interpolate",
