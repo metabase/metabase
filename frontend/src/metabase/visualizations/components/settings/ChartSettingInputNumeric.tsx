@@ -1,7 +1,7 @@
 import { useState } from "react";
 import _ from "underscore";
 
-import { NumberInput, Text } from "metabase/ui";
+import { NumberInput } from "metabase/ui";
 
 import type { ChartSettingWidgetProps } from "./types";
 
@@ -18,14 +18,12 @@ export const ChartSettingInputNumeric = ({
   onChange,
   value,
   options,
-  label,
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState<number | "">(value ?? "");
 
   return (
     <NumberInput
       type="number"
-      label={<Text>{label}</Text>}
       value={inputValue}
       onChange={setInputValue}
       precision={options?.isInteger ? 0 : undefined}
