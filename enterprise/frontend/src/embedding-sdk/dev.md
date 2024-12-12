@@ -44,6 +44,16 @@ Storybook will use the source files and not the built package.
 
 E2e tests for the sdk are currently done with cypress component tests.
 
+You'll need to have the following ENVs for running EE E2E tests:
+
+```bash
+MB_EDITION=ee
+CYPRESS_ALL_FEATURES_TOKEN=  ${usual token from password manager}
+CYPRESS_NO_FEATURES_TOKEN=  ${usual token from password manager}
+```
+
+And then run:
+
 ```bash
 yarn test-cypress-open-component-sdk
 ```
