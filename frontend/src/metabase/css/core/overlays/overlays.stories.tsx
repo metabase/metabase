@@ -136,6 +136,7 @@ export const LegacyModalCanLaunchMantineModal = {
     const body = canvasElement.parentElement as HTMLElement;
     const legacyModal = await getLegacyModal({ withinElement: body });
     await getMantineModal({ withinElement: legacyModal });
+    // TODO: Legacy modals aren't properly aria-labelled in this branch so this doesn't quite work yet
   },
 };
 
