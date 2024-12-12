@@ -4,7 +4,6 @@ import {
   type SetStateAction,
   memo,
   useState,
-  useEffect,
 } from "react";
 import _ from "underscore";
 
@@ -40,7 +39,8 @@ import {
 import { createMockUndo } from "metabase-types/api/mocks";
 
 import { BulkActionBarInner } from "../../../components/BulkActionBar/BulkActionBar";
-import { OverlaysDemoProps } from "./types";
+
+import type { OverlaysDemoProps } from "./types";
 
 const LauncherGroup = ({
   title,
@@ -66,7 +66,6 @@ const _Launchers = ({
   setSidesheetCount,
   setEntityPickerCount,
   setCommandPaletteCount,
-  isLegacyPopoverOpen,
 }: {
   nestedLaunchers: ReactNode;
   setUndoCount: Dispatch<SetStateAction<number>>;
@@ -78,7 +77,6 @@ const _Launchers = ({
   setEntityPickerCount: Dispatch<SetStateAction<number>>;
   setCommandPaletteCount: Dispatch<SetStateAction<number>>;
   setMantineModalWithTitlePropCount: Dispatch<SetStateAction<number>>;
-  isLegacyPopoverOpen: boolean;
 }) => {
   const mantinePopoverDropdownTitleId = _.uniqueId(
     "mantine-popover-dropdown-title",
@@ -145,7 +143,6 @@ const _Launchers = ({
           <Button>Legacy tooltip</Button>
         </TippyTooltip>
         <TippyPopover
-          visible={isLegacyPopoverOpen}
           content={
             <Paper p="md" aria-label="Legacy popover content">
               Legacy popover text content
@@ -195,10 +192,7 @@ const _Launchers = ({
   );
 };
 
-export const OverlaysDemo = ({
-  enableNesting,
-  overlaysToOpen = [],
-}: OverlaysDemoProps) => {
+export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
   const [legacyModalCount, setLegacyModalCount] = useState(0);
   const [mantineModalCount, setMantineModalCount] = useState(0);
   const [mantineModalWithTitlePropCount, setMantineModalWithTitlePropCount] =
@@ -209,19 +203,6 @@ export const OverlaysDemo = ({
   const [entityPickerCount, setEntityPickerCount] = useState(0);
   const [commandPaletteCount, setCommandPaletteCount] = useState(0);
   const [undoCount, setUndoCount] = useState(0);
-  const [isLegacyPopoverOpen, setIsLegacyPopoverOpen] = useState(false);
-
-  useEffect(() => {
-    const open: Partial<Record<string, () => void>> = {
-      //"Mantine Modal": () => setMantineModalCount(c => c + 1),
-      //"Legacy Modal": () => setLegacyModalCount(c => c + 1),
-      "Legacy Popover": () => setIsLegacyPopoverOpen(true),
-    };
-
-    for (const overlay of overlaysToOpen) {
-      open[overlay]?.();
-    }
-  }, []);
 
   const Launchers = () => (
     <_Launchers
@@ -234,7 +215,6 @@ export const OverlaysDemo = ({
       setEntityPickerCount={setEntityPickerCount}
       setCommandPaletteCount={setCommandPaletteCount}
       setMantineModalWithTitlePropCount={setMantineModalWithTitlePropCount}
-      isLegacyPopoverOpen={isLegacyPopoverOpen}
       nestedLaunchers={enableNesting ? <Launchers /> : <></>}
     />
   );

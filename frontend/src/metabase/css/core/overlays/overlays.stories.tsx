@@ -1,5 +1,6 @@
 import type { Store } from "@reduxjs/toolkit";
 import type { StoryFn } from "@storybook/react";
+import { userEvent, within } from "@storybook/testing-library";
 import { Provider } from "react-redux";
 import _ from "underscore";
 
@@ -17,7 +18,7 @@ import {
 } from "metabase-types/store/mocks";
 
 import { OverlaysDemo } from "./OverlaysDemo";
-import { OverlaysDemoProps } from "./types";
+import type { OverlaysDemoProps } from "./types";
 
 const mockCard = createMockCard();
 const storeInitialState = createMockState({
@@ -55,6 +56,11 @@ const Template: StoryFn<OverlaysDemoProps> = args => {
 type Scenario = {
   render: StoryFn<OverlaysDemoProps>;
   args: OverlaysDemoProps;
+  play?: ({
+    canvasElement,
+  }: {
+    canvasElement: HTMLCanvasElement;
+  }) => Promise<void>;
 };
 
 export const Default: Scenario = {
@@ -75,11 +81,49 @@ export default {
   },
 };
 
-export const MantineModalCanLaunchLegacyModal = {
+const getMantineModal = async ({
+  withinElement,
+}: {
+  withinElement: HTMLElement;
+}) => {
+  const context = within(withinElement);
+  await userEvent.click(
+    await context.findByRole("button", { name: "Mantine Modal" }),
+  );
+  await context.findByText("Mantine Modal text content");
+  const modal = await context.findByRole("dialog", {
+    name: /Mantine Modal content/i,
+  });
+  await within(modal).findByText("Mantine Modal text content");
+  return modal;
+};
+
+const getLegacyModal = async ({
+  withinElement,
+}: {
+  withinElement: HTMLElement;
+}) => {
+  const context = within(withinElement);
+  await userEvent.click(
+    await context.findByRole("button", { name: "Legacy modal" }),
+  );
+  await context.findByText("Legacy modal text content");
+  const modal = await context.findByRole("dialog", {
+    name: /Legacy modal content/i,
+  });
+  await within(modal).findByText("Legacy modal text content");
+  return modal;
+};
+
+export const MantineModalCanLaunchLegacyModal: Scenario = {
   render: Template,
   args: {
     enableNesting: true,
-    overlaysToOpen: ["Mantine Modal", "Legacy Modal"],
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const body = canvasElement.parentElement as HTMLElement;
+    const mantineModal = await getMantineModal({ withinElement: body });
+    await getLegacyModal({ withinElement: mantineModal });
   },
 };
 
@@ -87,7 +131,11 @@ export const LegacyModalCanLaunchMantineModal = {
   render: Template,
   args: {
     enableNesting: true,
-    overlaysToOpen: ["Legacy Modal", "Mantine Modal"],
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const body = canvasElement.parentElement as HTMLElement;
+    const legacyModal = await getLegacyModal({ withinElement: body });
+    await getMantineModal({ withinElement: legacyModal });
   },
 };
 

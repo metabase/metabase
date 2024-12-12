@@ -15,6 +15,7 @@ module.exports = {
       height: 768,
       deviceScaleFactor: 1,
       mobile: false,
+      readySelector: "body:not(.story-is-loading)",
     },
   },
   "looks-same": {
