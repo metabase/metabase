@@ -21,7 +21,8 @@
   [pulse-channel]
   (case (keyword (:channel_type pulse-channel))
     :slack
-    [(get-in pulse-channel [:details :channel])]
+    [{:type    :notification-recipient/raw-value
+      :details {:value (get-in pulse-channel [:details :channel])}}]
     :email
     (for [recipient (:recipients pulse-channel)]
       (if-not (:id recipient)

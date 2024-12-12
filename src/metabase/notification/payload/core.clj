@@ -131,7 +131,7 @@
    :style                {:button (button-style (channel.render/primary-color))}})
 
 (defmulti payload
-  "Given a notification info, return the notification content."
+  "Given a notification info, return the notification payload."
   :payload_type)
 
 (mu/defn notification-payload :- NotificationPayload

@@ -288,6 +288,7 @@
     :notification-recipient/group
     ;; TODO rename this to notification-recipient/raw-value so it's generic and can be used for slack channel
     :notification-recipient/external-email
+    :notification-recipient/raw-value
     :notification-recipient/template})
 
 (t2/deftransforms :model/NotificationRecipient
@@ -314,6 +315,12 @@
      [:map
       [:details                               [:map {:closed true}
                                                [:email ms/Email]]]
+      [:user_id              {:optional true} [:fn nil?]]
+      [:permissions_group_id {:optional true} [:fn nil?]]]]
+    [:notification-recipient/raw-value
+     [:map
+      [:details                               [:map {:closed true}
+                                               [:value :any]]]
       [:user_id              {:optional true} [:fn nil?]]
       [:permissions_group_id {:optional true} [:fn nil?]]]]
     [:notification-recipient/template

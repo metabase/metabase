@@ -101,7 +101,7 @@
   (case (:payload_type notification-info)
     (:notification/system-event :notification/testing :notification/card)
     (models.notification/hydrate-notification notification-info)
-    ;; :notification/dashboard are still on pulse, so we expect it to self-contained. see [[metabase.pulse.send]]
+    ;; :notification/dashboard is still on pulse, so we expect it to self-contained. see [[metabase.pulse.send]]
     notification-info))
 
 ;; TODO: should this be a multimethod?
