@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [metabase.models.setting :refer [defsetting]]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [deferred-trs]]))
 
@@ -81,3 +82,16 @@
            :else
            (respond request/response-forbidden)))
    (meta handler)))
+
+(defsetting show-google-sheets-integration
+  "Google OAuth2 client ID."
+  :visibility :public
+  :type :boolean
+  :export? false
+  :doc "When enabled, we show users a button to authenticate with Google to import data from Google Sheets."
+  :setter :none
+  :getter (fn []
+            (and
+             (premium-features/is-hosted?)
+             (premium-features/has-feature? :attached-dwh)
+             (some? (static-api-key)))))
