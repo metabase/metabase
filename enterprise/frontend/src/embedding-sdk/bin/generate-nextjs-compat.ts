@@ -52,7 +52,7 @@ const COMPONENTS_TO_EXPORT: ComponentDefinition[] = [
 
 const MetabaseProviderCode = `
 const MetabaseProvider = ({
-  config,
+  authConfig,
   children,
 }) => {
   const Provider = dynamic(
@@ -68,7 +68,7 @@ const MetabaseProvider = ({
     }
   );
 
-  return React.createElement(Provider, { config }, children);
+  return React.createElement(Provider, { authConfig }, children);
 };
 `;
 
@@ -146,7 +146,7 @@ const generateAllComponents = (type: "cjs" | "js") => {
 // nextjs-no-ssr.{cjs,js} => file marked as "use client" that re-exports the components wrapped in dynamic import with no ssr
 
 // we need to re-export these helpers so they can be used without importing the entire bundle, that will make next crash because window is undefined
-const defineMetabaseAuthConfig = "config => config";
+const defineMetabaseAuthConfig = "authConfig => authConfig";
 const defineMetabaseTheme = "theme => theme";
 
 const nextjs_cjs = `
