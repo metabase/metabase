@@ -20,12 +20,12 @@ export const MetabaseReduxProvider = ({
 type ConnectArgs = Parameters<typeof ReactRedux.connect>;
 
 export const connect = (
-  mapStateToProps: ConnectArgs[0],
-  mapDispatchToProps: ConnectArgs[1],
-  ownProps: ConnectArgs[2],
-  options: ConnectArgs[3],
+  mapStateToProps?: ConnectArgs[0],
+  mapDispatchToProps?: ConnectArgs[1],
+  mergeProps?: any,
+  options?: ConnectArgs[3],
 ) => {
-  return ReactRedux.connect(mapStateToProps, mapDispatchToProps, ownProps, {
+  return ReactRedux.connect(mapStateToProps, mapDispatchToProps, mergeProps, {
     context: MetabaseReduxContext,
     ...options,
   });
