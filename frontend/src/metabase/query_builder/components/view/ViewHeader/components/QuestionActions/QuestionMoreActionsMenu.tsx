@@ -133,7 +133,7 @@ export const QuestionMoreActionsMenu = ({
         </div>
       </Menu.Item>
     ),
-    hasCollectionPermissions && isQuestion && (
+    hasCollectionPermissions && !isDashboardQuestion && !isModel && (
       <Menu.Item
         key="turn_into_model"
         icon={<Icon name="model" />}
