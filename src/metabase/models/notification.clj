@@ -7,7 +7,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.models.interface :as mi]
-   [metabase.models.spec-update :as models.spec-update]
+   [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -90,7 +90,7 @@
 (def ^:private Notification
   [:merge
    [:map
-    [:payload_type (apply ms/enum-decode-keyword notification-types)]]
+    [:payload_type (ms/enum-decode-keyword notification-types)]]
    [:multi {:dispatch (comp keyword :payload_type)}
     [:notification/system-event
      [:map
@@ -152,7 +152,7 @@
 (def NotificationSubscription
   "Schema for :model/NotificationSubscription."
   [:merge [:map
-           [:type (apply ms/enum-decode-keyword subscription-types)]]
+           [:type (ms/enum-decode-keyword subscription-types)]]
    [:multi {:dispatch (comp keyword :type)}
     [:notification-subscription/system-event
      [:map
@@ -299,7 +299,7 @@
 (def NotificationRecipient
   "Schema for :model/NotificationRecipient."
   [:merge [:map
-           [:type (apply ms/enum-decode-keyword notification-recipient-types)]
+           [:type (ms/enum-decode-keyword notification-recipient-types)]
            [:notification_handler_id {:optional true} ms/PositiveInt]]
    [:multi {:dispatch (comp keyword :type)}
     [:notification-recipient/user
@@ -363,7 +363,7 @@
   "Schema for :model/NotificationCard."
   [:map
    [:card_id                         ms/PositiveInt]
-   [:send_condition {:optional true} (apply ms/enum-decode-keyword card-subscription-send-conditions)]
+   [:send_condition {:optional true} (ms/enum-decode-keyword card-subscription-send-conditions)]
    [:send_once      {:optional true} :boolean]])
 
 (t2/define-before-insert :model/NotificationCard
@@ -441,28 +441,29 @@
           (t2/insert! :model/NotificationRecipient (map #(assoc % :notification_handler_id handler-id) recipients))))
       instance)))
 
-(def ^:private notification-update-spec
+(models.u.spec-update/define-spec notification-update-spec
+  "Spec for updating a notification."
   {:model        :model/Notification
    ;; a function that takes a row and returns a map of the columns to compare
-   :compare-row  #(select-keys % [:active])
+   :compare-cols [:active]
    :nested-specs {:payload       {:model        :model/NotificationCard
-                                  :compare-row  #(select-keys % [:send_condition :send_once])}
+                                  :compare-cols [:send_condition :send_once]}
                   :subscriptions {:model        :model/NotificationSubscription
                                   ;; the foreign key column in the nested model with respect to the parent model
                                   :fk-column    :notification_id
-                                  :compare-row  #(select-keys % [:notification_id :type :event_name :cron_schedule])
+                                  :compare-cols [:notification_id :type :event_name :cron_schedule]
                                   ;; whether this nested model is a sequentials with respect to the parent model
                                   :multi-row?   true}
                   :handlers      {:model        :model/NotificationHandler
                                   :fk-column    :notification_id
-                                  :compare-row  #(select-keys % [:notification_id :channel_type :channel_id :template_id :active])
+                                  :compare-cols [:notification_id :channel_type :channel_id :template_id :active]
                                   :multi-row?   true
-                                  :nested-specs {:recipients {:model       :model/NotificationRecipient
-                                                              :fk-column   :notification_handler_id
-                                                              :compare-row #(select-keys % [:notification_handler_id :type :user_id :permissions_group_id :details])
-                                                              :multi-row?  true}}}}})
+                                  :nested-specs {:recipients {:model        :model/NotificationRecipient
+                                                              :fk-column    :notification_handler_id
+                                                              :compare-cols [:notification_handler_id :type :user_id :permissions_group_id :details]
+                                                              :multi-row?   true}}}}})
 
 (defn update-notification!
   "Update an existing notification with `new-notification`."
   [existing-notification new-notification]
-  (models.spec-update/do-update! existing-notification new-notification notification-update-spec))
+  (models.u.spec-update/do-update! existing-notification new-notification notification-update-spec))
