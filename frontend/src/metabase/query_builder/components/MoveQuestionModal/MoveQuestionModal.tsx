@@ -48,7 +48,10 @@ export const MoveQuestionModal = ({
     boolean | undefined
   >();
 
-  const handleMove = async (destination: MoveDestination) => {
+  const handleMove = async (
+    destination: MoveDestination,
+    _deleteOldDashcards?: boolean | undefined,
+  ) => {
     const update =
       destination.model === "dashboard"
         ? { dashboard_id: destination.id as number }
@@ -59,7 +62,7 @@ export const MoveQuestionModal = ({
 
     await updateQuestion({
       id: question.id(),
-      delete_old_dashcards: deleteOldDashcards,
+      delete_old_dashcards: _deleteOldDashcards,
       ...update,
     })
       .then(({ data: updatedCard }) => {
@@ -99,7 +102,8 @@ export const MoveQuestionModal = ({
 
   const handleMoveConfirm = () => {
     if (confirmMoveState?.destination) {
-      handleMove(confirmMoveState?.destination);
+      setDeleteOldDashcards(true);
+      handleMove(confirmMoveState?.destination, true);
     }
   };
 
@@ -128,7 +132,9 @@ export const MoveQuestionModal = ({
       <Modal>
         <ConfirmContent
           data-testid="dashboard-to-collection-move-confirmation"
-          onAction={() => handleMove(confirmMoveState?.destination)}
+          onAction={() =>
+            handleMove(confirmMoveState?.destination, deleteOldDashcards)
+          }
           onCancel={onClose}
           onClose={onClose}
           title={
@@ -172,7 +178,7 @@ export const MoveQuestionModal = ({
       <Modal>
         <ConfirmContent
           data-testid="dashboard-to-dashboard-move-confirmation"
-          onAction={() => handleMove(confirmMoveState.destination)}
+          onAction={() => handleMove(confirmMoveState.destination, true)}
           onCancel={onClose}
           onClose={onClose}
           title={

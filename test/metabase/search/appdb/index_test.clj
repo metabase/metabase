@@ -62,7 +62,6 @@
       (search.ingestion/populate-index! :search.engine/appdb)
       (is (= rows-before (count-rows))))))
 
-;; Disabled due to CI issue
 (deftest incremental-update-test
   (let [fulltext? (= :postgres (mdb/db-type))]
     (with-index
@@ -79,7 +78,6 @@
         #_(is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
         #_(is (= 0 (count (search.index/search "Protected Avenue"))))))))
 
-;; Disabled due to CI issue
 (deftest related-update-test
   (with-index
     (testing "The index is updated when model dependencies change"
