@@ -23,7 +23,6 @@ export interface EditorRef {
 }
 
 function getMode(): "ace" | "codemirror" {
-  // return "ace";
   return "codemirror";
 }
 
