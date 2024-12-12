@@ -51,9 +51,14 @@ export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
         return null;
       }
 
+      // Do not cache this in the rtk-query's cache, since there is no
+      // way to invalidate it. The autocomplete endpoint set caching headers
+      // so the request should be cached in the browser.
+      const shouldCache = false;
+
       const { data } = await getAutocompleteSuggestions(
         { databaseId, matchStyle, query: word.text.trim() },
-        false,
+        shouldCache,
       );
       if (!data) {
         return null;
@@ -151,10 +156,18 @@ export function useCardTagCompletion({ databaseId }: CardTagCompletionOptions) {
         return null;
       }
 
-      const { data } = await getCardAutocompleteSuggestions({
-        databaseId,
-        query,
-      });
+      // Do not cache this in the rtk-query's cache, since there is no
+      // way to invalidate it. The autocomplete endpoint set caching headers
+      // so the request should be cached in the browser.
+      const shouldCache = false;
+
+      const { data } = await getCardAutocompleteSuggestions(
+        {
+          databaseId,
+          query,
+        },
+        shouldCache,
+      );
       if (!data) {
         return null;
       }
@@ -199,8 +212,9 @@ export function useReferencedCardCompletion({
   const getCardColumns = useCallback(async (): Promise<
     { card: Card; field: Field }[]
   > => {
+    const shouldCache = true;
     const data = await Promise.all(
-      referencedQuestionIds.map(id => getCard({ id }, true)),
+      referencedQuestionIds.map(id => getCard({ id }, shouldCache)),
     );
     return data
       .map(item => item.data)
