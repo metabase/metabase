@@ -3,7 +3,6 @@ import { getIn } from "icepick";
 
 import type { MetabaseComponentTheme } from "embedding-sdk";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "embedding-sdk/lib/theme/embedding-color-palette";
-import { OVERLAY_Z_INDEX } from "metabase/css/core/overlays/constants";
 import type { MantineTheme } from "metabase/ui";
 
 /** Maps the CSS variable name to the corresponding theme key in the Embedding SDK theme. */
@@ -118,10 +117,6 @@ export const getThemeSpecificCssVariables = (theme: MantineTheme) => css`
   ${Object.entries(CSS_VARIABLES_TO_SDK_THEME_MAP)
     .map(([cssVar, themeKey]) => {
       const value = getIn(theme.other, themeKey.split("."));
-
-      if (cssVar === "--mb-overlay-z-index") {
-        return `${cssVar}: ${value ?? OVERLAY_Z_INDEX};`;
-      }
 
       return value ? `${cssVar}: ${value};` : "";
     })
