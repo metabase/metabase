@@ -22,6 +22,7 @@ export type WindowModalProps = BaseModalProps & {
   formModal?: boolean;
   style?: CSSProperties;
   "data-testid"?: string;
+  "aria-labelledby"?: string;
   zIndex?: number;
   trapFocus?: boolean;
 } & {
