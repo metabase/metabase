@@ -26,6 +26,7 @@ import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
 import { SettingsEditor } from "metabase/admin/settings/app/components/SettingsEditor";
 import { Help } from "metabase/admin/tasks/components/Help";
 import { Logs } from "metabase/admin/tasks/components/Logs";
+import { SearchTroubleShooting } from "metabase/admin/tasks/components/SearchTroubleshooting";
 import { JobInfoApp } from "metabase/admin/tasks/containers/JobInfoApp";
 import { JobTriggersModal } from "metabase/admin/tasks/containers/JobTriggersModal";
 import {
@@ -148,6 +149,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             />
           </Route>
           <Route path="logs" component={Logs} />
+          <Route path="search" component={SearchTroubleShooting} />
           {PLUGIN_ADMIN_TROUBLESHOOTING.EXTRA_ROUTES}
         </Route>
       </Route>

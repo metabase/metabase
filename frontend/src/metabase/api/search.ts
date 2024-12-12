@@ -24,7 +24,13 @@ export const searchApi = Api.injectEndpoints({
         }
       },
     }),
+    searchReindex: builder.mutation<void, void>({
+      query: () => ({
+        method: "POST",
+        url: "/api/search/force-reindex",
+      }),
+    }),
   }),
 });
 
-export const { useSearchQuery } = searchApi;
+export const { useSearchQuery, useSearchReindexMutation } = searchApi;
