@@ -7,6 +7,9 @@ interface Props {
   entityType: EntityType;
 }
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export const EntityName = <Entity, EntityWrapper>({
   entityType,
   entityId,
