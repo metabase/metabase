@@ -1,8 +1,8 @@
-export type EmbeddingSessionToken = {
+export type MetabaseEmbeddingSessionToken = {
   id: string;
   exp: number;
 };
 
-export type FetchRequestTokenFn = (
+export type MetabaseFetchRequestTokenFn = (
   url: string,
-) => Promise<EmbeddingSessionToken | null>;
+) => Promise<MetabaseEmbeddingSessionToken | null>;

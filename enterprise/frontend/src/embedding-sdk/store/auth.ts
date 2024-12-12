@@ -1,9 +1,9 @@
 import * as Yup from "yup";
 
 import type {
-  EmbeddingSessionToken,
-  FetchRequestTokenFn,
   MetabaseAuthConfig,
+  MetabaseEmbeddingSessionToken,
+  MetabaseFetchRequestTokenFn,
 } from "embedding-sdk";
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
@@ -87,7 +87,10 @@ export const initAuth = createAsyncThunk(
 
 export const refreshTokenAsync = createAsyncThunk(
   "sdk/token/REFRESH_TOKEN",
-  async (url: string, { getState }): Promise<EmbeddingSessionToken | null> => {
+  async (
+    url: string,
+    { getState },
+  ): Promise<MetabaseEmbeddingSessionToken | null> => {
     // The SDK user can provide a custom function to refresh the token.
     const customGetRefreshToken = getFetchRefreshTokenFn(
       getState() as SdkStoreState,
@@ -152,26 +155,27 @@ const safeStringify = (value: unknown) => {
  * The default implementation of the function to get the refresh token.
  * Only supports sessions by default.
  */
-export const defaultGetRefreshTokenFn: FetchRequestTokenFn = async url => {
-  const response = await fetch(url, {
-    method: "GET",
-    credentials: "include",
-  });
+export const defaultGetRefreshTokenFn: MetabaseFetchRequestTokenFn =
+  async url => {
+    const response = await fetch(url, {
+      method: "GET",
+      credentials: "include",
+    });
 
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch the session, HTTP status: ${response.status}`,
-    );
-  }
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch the session, HTTP status: ${response.status}`,
+      );
+    }
 
-  const asText = await response.text();
+    const asText = await response.text();
 
-  try {
-    return JSON.parse(asText);
-  } catch (ex) {
-    return asText;
-  }
-};
+    try {
+      return JSON.parse(asText);
+    } catch (ex) {
+      return asText;
+    }
+  };
 
 const sessionSchema = Yup.object({
   id: Yup.string().required(),

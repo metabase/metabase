@@ -100,6 +100,7 @@
     var(--mb-color-tooltip-background) 50%,
     #000
   );
+  --mb-color-syntax-parameters: var(--mb-base-color-mango-30);
 
   /**
     * Base colors
@@ -369,7 +370,8 @@
   background-color: var(--mb-color-bg-light);
 }
 
-.bgMedium {
+.bgMedium,
+.bgMediumHover:hover {
   background-color: var(--mb-color-bg-medium);
 }
 

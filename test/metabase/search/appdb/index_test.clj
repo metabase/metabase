@@ -2,13 +2,16 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
+   [metabase.db :as mdb]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.connection :as u.conn]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -21,21 +24,33 @@
   ;; Truncate to milliseconds as precision may be lost when roundtripping to the database.
   (t/truncate-to (t/offset-date-time) :millis))
 
+(defmacro with-fulltext-filtering [& body]
+  `(case (mdb/db-type)
+     :postgres
+     (do ~@body)
+     :h2
+     ;; Fulltext features not supported
+     nil))
+
 ;; These helpers only mutate the temp local AppDb.
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+;; TODO make this a :once fixture so that we avoid so much setup and tear down
 (defmacro with-index
   "Ensure a clean, small index."
   [& body]
   `(search.tu/with-temp-index-table
      (binding [search.ingestion/*force-sync* true]
        (mt/dataset ~(symbol "test-data")
-         (mt/with-temp [:model/Card     {}           {:name "Customer Satisfaction"          :collection_id 1}
-                        :model/Card     {}           {:name "The Latest Revenue Projections" :collection_id 1}
-                        :model/Card     {}           {:name "Projected Revenue"              :collection_id 1}
-                        :model/Card     {}           {:name "Employee Satisfaction"          :collection_id 1}
-                        :model/Card     {}           {:name "Projected Satisfaction"         :collection_id 1}
-                        :model/Database {db-id# :id} {:name "Indexed Database"}
-                        :model/Table    {}           {:name "Indexed Table", :db_id db-id#}]
+         ;; Sneaky trick so make sure we have a user with ID 1
+         (mt/with-temp [:model/User       {}            (when-not (t2/exists? :model/User 1) {:id 1})
+                        :model/Collection {col-id# :id} {:name "Collection"}
+                        :model/Card       {}            {:name "Customer Satisfaction"          :collection_id col-id#}
+                        :model/Card       {}            {:name "The Latest Revenue Projections" :collection_id col-id#}
+                        :model/Card       {}            {:name "Projected Revenue"              :collection_id col-id#}
+                        :model/Card       {}            {:name "Employee Satisfaction"          :collection_id col-id#}
+                        :model/Card       {}            {:name "Projected Satisfaction"         :collection_id col-id#}
+                        :model/Database   {db-id# :id}  {:name "Indexed Database"}
+                        :model/Table      {}            {:name "Indexed Table", :db_id db-id#}]
            (search.index/reset-index!)
            (search.ingestion/populate-index! :search.engine/appdb)
            ~@body)))))
@@ -49,19 +64,20 @@
 
 ;; Disabled due to CI issue
 (deftest incremental-update-test
-  (with-index
-    (testing "The index is updated when models change"
+  (let [fulltext? (= :postgres (mdb/db-type))]
+    (with-index
+      (testing "The index is updated when models change"
        ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
-      (is (= 2 (count (search.index/search "Projected Revenue"))))
-      (is (= 0 (count (search.index/search "Protected Avenue"))))
-      (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
-      (is (= 1 (count (search.index/search "Projected Revenue"))))
-      (is (= 1 (count (search.index/search "Protected Avenue"))))
+        (is (= (if fulltext? 2 1) (count (search.index/search "Projected Revenue"))))
+        (is (= 0 (count (search.index/search "Protected Avenue"))))
+        (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
+        (is (= (if fulltext? 1 0) (count (search.index/search "Projected Revenue"))))
+        (is (= 1 (count (search.index/search "Protected Avenue"))))
 
        ;; Delete hooks are remove for now, over performance concerns.
        ;(t2/delete! :model/Card :name "Protected Avenue")
-      #_(is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
-      #_(is (= 0 (count (search.index/search "Protected Avenue")))))))
+        #_(is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
+        #_(is (= 0 (count (search.index/search "Protected Avenue"))))))))
 
 ;; Disabled due to CI issue
 (deftest related-update-test
@@ -81,55 +97,59 @@
 
 (deftest partial-word-test
   (with-index
-    (testing "It does not match partial words"
+    (with-fulltext-filtering
+      (testing "It does not match partial words"
       ;; does not include revenue
-      (is (= #{"venues"} (into #{} (comp (map second) (map u/lower-case-en)) (search.index/search "venue")))))
+        (is (= #{"venues"} (into #{} (comp (map second) (map u/lower-case-en)) (search.index/search "venue")))))
 
     ;; no longer works without using the english dictionary
-    (testing "Unless their lexemes are matching"
-      (doseq [[a b] [["revenue" "revenues"]
-                     ["collect" "collection"]]]
-        (is (= (search.index/search a)
-               (search.index/search b)))))
+      (testing "Unless their lexemes are matching"
+        (doseq [[a b] [["revenue" "revenues"]
+                       ["collect" "collection"]]]
+          (is (= (search.index/search a)
+                 (search.index/search b)))))
 
-    (testing "Or we match a completion of the final word"
-      (is (seq (search.index/search "sat")))
-      (is (seq (search.index/search "satisf")))
-      (is (seq (search.index/search "employee sat")))
-      (is (seq (search.index/search "satisfaction empl")))
-      (is (empty? (search.index/search "sat employee")))
-      (is (empty? (search.index/search "emp satisfaction"))))))
+      (testing "Or we match a completion of the final word"
+        (is (seq (search.index/search "sat")))
+        (is (seq (search.index/search "satisf")))
+        (is (seq (search.index/search "employee sat")))
+        (is (seq (search.index/search "satisfaction empl")))
+        (is (empty? (search.index/search "sat employee")))
+        (is (empty? (search.index/search "emp satisfaction")))))))
 
 (deftest either-test
   (with-index
-    (testing "We get results for both terms"
-      (is (= 3 (index-hits "satisfaction")))
-      (is (<= 1 (index-hits "user"))))
-    (testing "But stop words are skipped"
-      (is (= 0 (index-hits "or")))
+    (with-fulltext-filtering
+      (testing "We get results for both terms"
+        (is (= 3 (index-hits "satisfaction")))
+        (is (<= 1 (index-hits "user"))))
+      (testing "But stop words are skipped"
+        (is (= 0 (index-hits "or")))
       ;; stop words depend on a dictionary
-      (is (= #_0 3 (index-hits "its the satisfaction of it"))))
-    (testing "We can combine the individual results"
-      (is (= (+ (index-hits "satisfaction")
-                (index-hits "user"))
-             (index-hits "satisfaction or user"))))))
+        (is (= #_0 3 (index-hits "its the satisfaction of it"))))
+      (testing "We can combine the individual results"
+        (is (= (+ (index-hits "satisfaction")
+                  (index-hits "user"))
+               (index-hits "satisfaction or user")))))))
 
 (deftest negation-test
   (with-index
-    (testing "We can filter out results"
-      (is (= 3 (index-hits "satisfaction")))
-      (is (= 1 (index-hits "customer")))
-      (is (= 1 (index-hits "satisfaction and customer")))
-      (is (= 2 (index-hits "satisfaction -customer"))))))
+    (with-fulltext-filtering
+      (testing "We can filter out results"
+        (is (= 3 (index-hits "satisfaction")))
+        (is (= 1 (index-hits "customer")))
+        (is (= 1 (index-hits "satisfaction and customer")))
+        (is (= 2 (index-hits "satisfaction -customer")))))))
 
 (deftest phrase-test
   (with-index
+    (with-fulltext-filtering
     ;; Less matches without an english dictionary
-    (is (= #_2 3 (index-hits "projected")))
-    (is (= 2 (index-hits "revenue")))
-    (is (= #_1 2 (index-hits "projected revenue")))
-    (testing "only sometimes do these occur sequentially in a phrase"
-      (is (= 1 (index-hits "\"projected revenue\""))))))
+      (is (= #_2 3 (index-hits "projected")))
+      (is (= 2 (index-hits "revenue")))
+      (is (= #_1 2 (index-hits "projected revenue")))
+      (testing "only sometimes do these occur sequentially in a phrase"
+        (is (= 1 (index-hits "\"projected revenue\"")))))))
 
 (defn ingest!
   [model where-clause]
@@ -490,3 +510,48 @@
           (is (not (#'search.index/exists? (#'search.index/pending-table)))))
         (finally
           (#'search.index/drop-table! related-table))))))
+
+;; We don't currently track database deletes in realtime in the search index.
+;; To do so, we would make use of the following mechanism to find downstream elements deleted by a cascade.
+;; For now, as we lack a low-impact way to decorate toucan2 to do such a thing, we simply track the relations as a test.
+;; This way we will at least be aware of the implication for staleness in the index whenever we change the specs.
+
+(def ^:private model->deleted-descendants
+  ;; Note that these refer to the table names, not the search-model names.
+  {"core_user"         #{"action" "collection" "model_index_value" "report_card" "report_dashboard" "segment"}
+   "model_index"       #{"model_index_value"}
+   "metabase_database" #{"action" "metabase_table" "model_index_value" "report_card" "segment"}
+   "metabase_table"    #{"action" "model_index_value" "report_card" "segment"}
+   "report_card"       #{"action" "model_index_value" "report_card"}
+   "report_dashboard"  #{"action" "model_index_value" "report_card"}})
+
+(defn- transitive*
+  "Borrows heavily from clojure.core/derive. Notably, however, this intentionally permits circular dependencies."
+  [h child parent]
+  (let [td (:descendants h {})
+        ta (:ancestors h {})
+        tf (fn [source sources target targets]
+             (reduce (fn [ret k]
+                       (assoc ret k
+                              (reduce conj (get targets k #{}) (cons target (targets target)))))
+                     targets (cons source (sources source))))]
+    {:ancestors   (tf child td parent ta)
+     :descendants (tf parent ta child td)}))
+
+(defn transitive
+  "Given a mapping from (say) parents to children, return the corresponding mapping from parents to descendants."
+  [adj-map]
+  (:descendants (reduce-kv (fn [h p children] (reduce #(transitive* %1 %2 p) h children)) nil adj-map)))
+
+(deftest search-model-cascade-text
+  (is (= model->deleted-descendants
+         (mt/with-empty-h2-app-db
+           (let [table->children    (u.conn/app-db-cascading-deletes (mdb/app-db) (map t2/table-name (descendants :metabase/model)))
+                 table->sub-tables  (into {} (for [[t cs] table->children] [t (map :child-table cs)]))
+                 table->descendants (transitive table->sub-tables)
+                 search-model?      (into #{} (map (comp name t2/table-name :model val)) (search.spec/specifications))]
+             (into {}
+                   (keep (fn [[p ds]]
+                           (when-let [ds (not-empty (into (sorted-set) (filter search-model? ds)))]
+                             [p ds])))
+                   table->descendants))))))

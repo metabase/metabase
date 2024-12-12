@@ -486,3 +486,8 @@
                    :type/DateTime       "yyyy-MM-dd'T'HH:mm:ss.SSS"
                    :type/Date           "yyyy-MM-dd")]
       (t/format format t))))
+
+(defn extract
+  "Extract a field such as `:minute-of-hour` from a temporal value `t`."
+  [t unit]
+  (u.date/extract t unit))
