@@ -59,6 +59,7 @@ const PinnedQuestionLoader = ({
   if (!question) {
     return children({
       error: getResponseErrorMessage(error),
+      errorIcon: "warning",
       loading: false,
     });
   }
