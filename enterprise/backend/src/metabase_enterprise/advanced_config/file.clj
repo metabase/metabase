@@ -219,10 +219,8 @@
       (str/join parts))))
 
 (defn- expand-templates-in-str [s]
-  (if (and (str/starts-with? s "{{{") (str/ends-with? s "}}}"))
-    (-> s
-        (subs 3 (- (count s) 3))
-        str/trim)
+  (if-let [[_, raw-string] (re-matches #"\{\{\{(.+)\}\}\}" s)]
+    (str/trim raw-string)
     (str/join (map expand-template-str-part (params.parse/parse s)))))
 
 (defn- expand-templates [m]
