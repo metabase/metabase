@@ -10080,73 +10080,6 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.CreateSampleContentV2"
 
   - changeSet:
-      id: v52.2024-12-10T10:00:00
-      author: qnkhuat
-      comment: add notification.internal_id
-      preConditions:
-        - not:
-          - columnExists:
-              tableName: notification
-              columnName: internal_id
-      changes:
-        - addColumn:
-            tableName: notification
-            columns:
-              - column:
-                  name: internal_id
-                  type: varchar(254)
-                  remarks: the internal id of the notification
-                  constraints:
-                    nullable: true
-                    unique: true
-
-  # Prior to this, we used to truncate then insert notifications on startup (#50127)
-  # But we can't do that anymore because pulses are migated to notification, so moving forward
-  # we'll insert/replace notifications on startup (see metabase.notification.seed)
-  # We need to do another truncate here so we have a clean slate for the new notifications
-  - changeSet:
-      id: v52.2024-12-10T10:00:10
-      author: qnkhuat
-      comment: Truncate the notification tables
-      rollback: # not needed
-      changes:
-        - sql:
-            dbms: postgresql
-            sql: >-
-              TRUNCATE TABLE notification RESTART IDENTITY CASCADE;
-              TRUNCATE TABLE notification_handler RESTART IDENTITY CASCADE;
-              TRUNCATE TABLE notification_subscription RESTART IDENTITY CASCADE;
-              TRUNCATE TABLE notification_recipient RESTART IDENTITY CASCADE;
-              TRUNCATE TABLE channel_template RESTART IDENTITY CASCADE;
-        - sql:
-            dbms: mysql,mariadb
-            sql: >-
-              DELETE FROM notification;
-              ALTER TABLE notification AUTO_INCREMENT = 1;
-              DELETE FROM notification_handler;
-              ALTER TABLE notification_handler AUTO_INCREMENT = 1;
-              DELETE FROM notification_subscription;
-              ALTER TABLE notification_subscription AUTO_INCREMENT = 1;
-              DELETE FROM notification_recipient;
-              ALTER TABLE notification_recipient AUTO_INCREMENT = 1;
-              DELETE FROM channel_template;
-              ALTER TABLE channel_template AUTO_INCREMENT = 1;
-
-        - sql:
-            dbms: h2
-            sql: >-
-              DELETE FROM notification;
-              DELETE FROM notification_handler;
-              DELETE FROM notification_subscription;
-              DELETE FROM notification_recipient;
-              DELETE FROM channel_template;
-              ALTER TABLE notification ALTER COLUMN id RESTART WITH 1;
-              ALTER TABLE notification_handler ALTER COLUMN id RESTART WITH 1;
-              ALTER TABLE notification_subscription ALTER COLUMN id RESTART WITH 1;
-              ALTER TABLE notification_recipient ALTER COLUMN id RESTART WITH 1;
-              ALTER TABLE channel_template ALTER COLUMN id RESTART WITH 1;
-
-  - changeSet:
       id: v52.2024-12-10T10:28:16
       author: johnswanson
       comment: Add `report_card.dashboard_id`
@@ -10203,6 +10136,75 @@ databaseChangeLog:
             columns:
               - column:
                   name: dashboard_id
+
+  - changeSet:
+      id: v53.2024-12-10T10:00:00
+      author: qnkhuat
+      comment: add notification.internal_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: notification
+              columnName: internal_id
+      changes:
+        - addColumn:
+            tableName: notification
+            columns:
+              - column:
+                  name: internal_id
+                  type: varchar(254)
+                  remarks: the internal id of the notification
+                  constraints:
+                    nullable: true
+                    unique: true
+
+  # Prior to this, we used to truncate then insert notifications on startup (#50127)
+  # But we can't do that anymore because pulses are migated to notification, so moving forward
+  # we'll insert/replace notifications on startup (see metabase.notification.seed)
+  # We need to do another truncate here so we have a clean slate for the new notifications
+  - changeSet:
+      id: v53.2024-12-10T10:00:10
+      author: qnkhuat
+      comment: Truncate the notification tables
+      rollback: # not needed
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              TRUNCATE TABLE notification RESTART IDENTITY CASCADE;
+              TRUNCATE TABLE notification_handler RESTART IDENTITY CASCADE;
+              TRUNCATE TABLE notification_subscription RESTART IDENTITY CASCADE;
+              TRUNCATE TABLE notification_recipient RESTART IDENTITY CASCADE;
+              TRUNCATE TABLE channel_template RESTART IDENTITY CASCADE;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DELETE FROM notification;
+              ALTER TABLE notification AUTO_INCREMENT = 1;
+              DELETE FROM notification_handler;
+              ALTER TABLE notification_handler AUTO_INCREMENT = 1;
+              DELETE FROM notification_subscription;
+              ALTER TABLE notification_subscription AUTO_INCREMENT = 1;
+              DELETE FROM notification_recipient;
+              ALTER TABLE notification_recipient AUTO_INCREMENT = 1;
+              DELETE FROM channel_template;
+              ALTER TABLE channel_template AUTO_INCREMENT = 1;
+
+        - sql:
+            dbms: h2
+            sql: >-
+              DELETE FROM notification;
+              DELETE FROM notification_handler;
+              DELETE FROM notification_subscription;
+              DELETE FROM notification_recipient;
+              DELETE FROM channel_template;
+              ALTER TABLE notification ALTER COLUMN id RESTART WITH 1;
+              ALTER TABLE notification_handler ALTER COLUMN id RESTART WITH 1;
+              ALTER TABLE notification_subscription ALTER COLUMN id RESTART WITH 1;
+              ALTER TABLE notification_recipient ALTER COLUMN id RESTART WITH 1;
+              ALTER TABLE channel_template ALTER COLUMN id RESTART WITH 1;
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
