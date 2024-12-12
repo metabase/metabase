@@ -549,6 +549,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
           "TokenField--focused": isFocused,
         })}
         onMouseDownCapture={this.onMouseDownCapture}
+        data-testid="token-field"
       >
         {!!prefix && (
           <PrefixContainer data-testid="input-prefix">{prefix}</PrefixContainer>

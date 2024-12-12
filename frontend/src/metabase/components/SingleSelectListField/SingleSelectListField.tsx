@@ -149,6 +149,7 @@ const SingleSelectListField = ({
           onChange={handleFilterChange}
           onKeyDown={handleKeyDown}
           onResetClick={handleResetClick}
+          data-testid="single-select-list-field"
         />
       </FilterInputContainer>
 
