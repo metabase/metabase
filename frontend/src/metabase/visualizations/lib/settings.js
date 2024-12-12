@@ -9,8 +9,8 @@ import ChartSettingInput from "metabase/visualizations/components/settings/Chart
 import ChartSettingInputGroup from "metabase/visualizations/components/settings/ChartSettingInputGroup";
 import { ChartSettingInputNumeric } from "metabase/visualizations/components/settings/ChartSettingInputNumeric";
 import { ChartSettingMultiSelect } from "metabase/visualizations/components/settings/ChartSettingMultiSelect";
-import ChartSettingRadio from "metabase/visualizations/components/settings/ChartSettingRadio";
 import { ChartSettingSegmentedControl } from "metabase/visualizations/components/settings/ChartSettingSegmentedControl";
+import { ChartSettingRadio } from "metabase/visualizations/components/settings/ChartSettingRadio";
 import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect";
 import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle";
 
