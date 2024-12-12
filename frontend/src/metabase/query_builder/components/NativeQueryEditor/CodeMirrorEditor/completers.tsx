@@ -41,7 +41,7 @@ export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
       });
 
       if (tag) {
-        // the cursor is inside in a variable, card or snippet tag
+        // the cursor is inside a variable, card or snippet tag
         // do not complete identifiers here
         return null;
       }

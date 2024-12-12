@@ -433,7 +433,7 @@ describe("issue 20625", { tags: "@quarantine" }, () => {
     cy.intercept("GET", "/api/database/*/autocomplete_suggestions**", {
       statusCode: 200,
       body: [
-        // This result has less 50 items, which is under the limit
+        // This result has less than 50 items, which is under the limit
         // as set by the backend.
         // It will not be necessary to trigger the second autocomplete.
         ["ORDERS", "Table"],
