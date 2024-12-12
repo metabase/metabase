@@ -1,0 +1,15 @@
+{
+    "name": "invite-user",
+    "description": "Invite a user to Metabase. Can only be used with valid and complete email address (username + @ + domain + TLD) like 'peter.pan@neverland.com'. This will fail if the email address is incomplete or missing a part like the TLD (e.g. 'peter.pan@neverland').",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "email": {
+                "type": "string",
+                "description": "A valid and complete email address (username + @ + domain + TLD) like 'peter.pan@neverland.com'. Cannot be used with incomplete emails (e.g. 'peter.pan@neverland'). If the email address is incomplete or missing a part like the TLD, ask the user for clarification before proceeding."
+            }
+        },
+        "required": ["email"],
+        "additionalProperties": false
+    }
+  }
