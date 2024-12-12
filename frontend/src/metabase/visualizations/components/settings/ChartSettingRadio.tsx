@@ -3,7 +3,6 @@ import { Radio, Stack, Text } from "metabase/ui";
 interface ChartSettingRadioProps {
   options: { name: string; value: string }[];
   value: string;
-  label: string;
   className?: string;
   onChange: (value: string) => void;
 }
@@ -13,18 +12,8 @@ export const ChartSettingRadio = ({
   onChange,
   options = [],
   className,
-  label,
 }: ChartSettingRadioProps) => (
-  <Radio.Group
-    label={
-      <Text mb="xs" fw="bold">
-        {label}
-      </Text>
-    }
-    value={value}
-    className={className}
-    onChange={onChange}
-  >
+  <Radio.Group value={value} className={className} onChange={onChange}>
     <Stack spacing="xs">
       {options.map(({ name, value: optionValue }) => (
         <Radio
