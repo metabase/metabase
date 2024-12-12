@@ -187,7 +187,12 @@ function TableSimpleInner({
     (rowIndex: number, index: number) => {
       const ref = index === 0 ? firstRowRef : null;
       return (
-        <tr key={rowIndex} ref={ref} data-testid="table-row">
+        <tr
+          key={rowIndex}
+          ref={ref}
+          data-testid="table-row"
+          data-allow-page-break-after
+        >
           {data.rows[rowIndex].map((value, columnIndex) => (
             <TableCell
               key={`${rowIndex}-${columnIndex}`}
