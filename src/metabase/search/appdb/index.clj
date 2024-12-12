@@ -3,12 +3,16 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
+   [metabase.db :as mdb]
    [metabase.models.setting :as settings :refer [defsetting]]
    [metabase.search.appdb.specialization.api :as specialization]
+   [metabase.search.appdb.specialization.h2 :as h2]
    [metabase.search.appdb.specialization.postgres :as postgres]
+   [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -17,6 +21,7 @@
    (org.postgresql.util PSQLException)))
 
 (comment
+  h2/keep-me
   postgres/keep-me)
 
 (def ^:private insert-batch-size 150)
@@ -51,23 +56,27 @@
   []
   (keyword (str/replace (str "search_index__" (random-uuid)) #"-" "_")))
 
-(defn- exists? [table-name]
-  (when table-name
-    (t2/exists? :information_schema.tables :table_name (name table-name))))
+(defn- table-name [kw]
+  (cond-> (name kw)
+    (= :h2 (mdb/db-type)) u/upper-case-en))
 
-(defn- drop-table! [table-name]
+(defn- exists? [table]
+  (when table
+    (t2/exists? :information_schema.tables :table_name (table-name table))))
+
+(defn- drop-table! [table]
   (boolean
-   (when (and table-name (exists? table-name))
-     (t2/query (sql.helpers/drop-table table-name)))))
+   (when (and table (exists? table))
+     (t2/query (sql.helpers/drop-table (keyword (table-name table)))))))
 
 (defn- existing-indexes []
-  (map (comp keyword :table_name)
+  (map (comp keyword u/lower-case-en :table_name)
        (t2/query {:select [:table_name]
                   :from   :information_schema.tables
                   :where  [:or
-                           [:like :table_name "search\\_index\\_\\_%"]
+                           [:like [:lower :table_name] "search\\_index\\_\\_%"]
                            ;; legacy table names
-                           [:in :table_name ["search_index" "search_index_next" "search_index_retired"]]]})))
+                           [:in [:lower :table_name] ["search_index" "search_index_next" "search_index_retired"]]]})))
 
 (defn- sync-metadata [_old-setting-raw new-setting-raw]
   ;; Oh dear, we get the raw setting. Save a little bit of overhead by not converting keys
@@ -123,11 +132,49 @@
 (comment
   (search-engine-appdb-index-state! nil))
 
+(defn- ->db-type [t]
+  (get {:pk :int, :timestamp :timestamp-with-time-zone} t t))
+
+(defn- ->db-column [c]
+  (or (get {:id         :model_id
+            :created-at :model_created_at
+            :updated-at :model_updated_at}
+           c)
+      (keyword (u/->snake_case_en (name c)))))
+
+(def ^:private not-null
+  #{:archived :name})
+
+(def ^:private default
+  {:archived false})
+
+;; If this fails, we'll need to increase the size of :model below
+(assert (>= 32 (transduce (map (comp count name)) max 0 search.config/all-models)))
+
+(def ^:private base-schema
+  (into [[:model [:varchar 32] :not-null]
+         [:display_data :text :not-null]
+         [:legacy_input :text :not-null]
+         ;; useful for tracking the speed and age of the index
+         [:created_at :timestamp-with-time-zone
+          [:default [:raw "CURRENT_TIMESTAMP"]]
+          :not-null]
+         [:updated_at :timestamp-with-time-zone :not-null]]
+        (keep (fn [[k t]]
+                (when t
+                  (into [(->db-column k) (->db-type t)]
+                        (concat
+                         (when (not-null k)
+                           [:not-null])
+                         (when-some [d (default k)]
+                           [[:default d]]))))))
+        search.spec/attr-types))
+
 (defn create-table!
   "Create an index table with the given name. Should fail if it already exists."
   [table-name]
   (-> (sql.helpers/create-table table-name)
-      (sql.helpers/with-columns (specialization/table-schema))
+      (sql.helpers/with-columns (specialization/table-schema base-schema))
       t2/query)
   (let [table-name (name table-name)]
     (doseq [stmt (specialization/post-create-statements table-name table-name)]

@@ -68,42 +68,42 @@
 
 (deftest ^:parallel basic-summary-columns-test
   (testing "Can we add source metadata for a source query that has breakouts/aggregations?"
-    (is (= (lib.tu.macros/mbql-query venues
-             {:source-query    {:source-table $$venues
-                                :aggregation  [[:count]]
-                                :breakout     [$price]}
-              :source-metadata (concat
-                                (venues-source-metadata :price)
-                                [{:name          "count"
-                                  :display_name  "Count"
-                                  :base_type     :type/Integer
-                                  :semantic_type :type/Quantity
-                                  :field_ref     [:aggregation 0]}])})
-           (add-source-metadata
-            (lib.tu.macros/mbql-query venues
-              {:source-query {:source-table $$venues
-                              :aggregation  [[:count]]
-                              :breakout     [$price]}}))))))
+    (is (=? (lib.tu.macros/mbql-query venues
+              {:source-query    {:source-table $$venues
+                                 :aggregation  [[:count]]
+                                 :breakout     [$price]}
+               :source-metadata (concat
+                                 (venues-source-metadata :price)
+                                 [{:name          "count"
+                                   :display_name  "Count"
+                                   :base_type     :type/Integer
+                                   :semantic_type :type/Quantity
+                                   :field_ref     [:aggregation 0]}])})
+            (add-source-metadata
+             (lib.tu.macros/mbql-query venues
+               {:source-query {:source-table $$venues
+                               :aggregation  [[:count]]
+                               :breakout     [$price]}}))))))
 
 (deftest ^:parallel basic-aggregation-with-field-test
   (testing "Can we add source metadata for a source query that has an aggregation for a specific Field?"
-    (is (= (lib.tu.macros/mbql-query venues
-             {:source-query    {:source-table $$venues
-                                :aggregation  [[:avg $id]]
-                                :breakout     [$price]}
-              :source-metadata (concat
-                                (venues-source-metadata :price)
-                                [{:name          "avg"
-                                  :display_name  "Average of ID"
-                                  :base_type     :type/Float
-                                  :semantic_type :type/PK
-                                  :settings      nil
-                                  :field_ref     [:aggregation 0]}])})
-           (add-source-metadata
-            (lib.tu.macros/mbql-query venues
-              {:source-query {:source-table $$venues
-                              :aggregation  [[:avg $id]]
-                              :breakout     [$price]}}))))))
+    (is (=? (lib.tu.macros/mbql-query venues
+              {:source-query    {:source-table $$venues
+                                 :aggregation  [[:avg $id]]
+                                 :breakout     [$price]}
+               :source-metadata (concat
+                                 (venues-source-metadata :price)
+                                 [{:name          "avg"
+                                   :display_name  "Average of ID"
+                                   :base_type     :type/Float
+                                   :semantic_type :type/PK
+                                   :settings      nil
+                                   :field_ref     [:aggregation 0]}])})
+            (add-source-metadata
+             (lib.tu.macros/mbql-query venues
+               {:source-query {:source-table $$venues
+                               :aggregation  [[:avg $id]]
+                               :breakout     [$price]}}))))))
 
 (defn- source-metadata [query]
   (get-in query [:query :source-metadata] query))
@@ -111,27 +111,27 @@
 (deftest ^:parallel named-aggregations-test
   (testing "adding source metadata for source queries with named aggregations"
     (testing "w/ `:name` and `:display-name`"
-      (is (= (lib.tu.macros/mbql-query venues
-               {:source-query    {:source-table $$venues
-                                  :aggregation  [[:aggregation-options
-                                                  [:avg $id]
-                                                  {:name "some_generated_name", :display-name "My Cool Ag"}]]
-                                  :breakout     [$price]}
-                :source-metadata (concat
-                                  (venues-source-metadata :price)
-                                  [{:name          "some_generated_name"
-                                    :display_name  "My Cool Ag"
-                                    :base_type     :type/Float
-                                    :semantic_type :type/PK
-                                    :settings      nil
-                                    :field_ref     [:aggregation 0]}])})
-             (add-source-metadata
-              (lib.tu.macros/mbql-query venues
-                {:source-query {:source-table $$venues
-                                :aggregation  [[:aggregation-options
-                                                [:avg $id]
-                                                {:name "some_generated_name", :display-name "My Cool Ag"}]]
-                                :breakout     [$price]}})))))))
+      (is (=? (lib.tu.macros/mbql-query venues
+                {:source-query    {:source-table $$venues
+                                   :aggregation  [[:aggregation-options
+                                                   [:avg $id]
+                                                   {:name "some_generated_name", :display-name "My Cool Ag"}]]
+                                   :breakout     [$price]}
+                 :source-metadata (concat
+                                   (venues-source-metadata :price)
+                                   [{:name          "some_generated_name"
+                                     :display_name  "My Cool Ag"
+                                     :base_type     :type/Float
+                                     :semantic_type :type/PK
+                                     :settings      nil
+                                     :field_ref     [:aggregation 0]}])})
+              (add-source-metadata
+               (lib.tu.macros/mbql-query venues
+                 {:source-query {:source-table $$venues
+                                 :aggregation  [[:aggregation-options
+                                                 [:avg $id]
+                                                 {:name "some_generated_name", :display-name "My Cool Ag"}]]
+                                 :breakout     [$price]}})))))))
 
 (deftest ^:parallel named-aggregations-name-only-test
   (testing "w/ `:name` only"
@@ -221,88 +221,88 @@
       ;; field ref for the count aggregation differs slightly depending on what level of the query we're at; at the
       ;; most-deeply-nested level we can use the `[:aggregation 0]` ref to refer to it; at higher levels we have to
       ;; refer to it with a field literal
-      (is (= (letfn [(metadata-with-count-field-ref [field-ref]
-                       (concat
-                        (venues-source-metadata :price)
-                        (let [[count-col] (results-metadata (qp.preprocess/query->expected-cols
-                                                             (lib.tu.macros/mbql-query venues
-                                                               {:aggregation [[:count]]})))]
-                          [(-> count-col
-                               (dissoc :effective_type)
-                               (assoc :field_ref field-ref
-                                      :base_type :type/Integer))])))]
+      (is (=? (letfn [(metadata-with-count-field-ref [field-ref]
+                        (concat
+                         (venues-source-metadata :price)
+                         (let [[count-col] (results-metadata (qp.preprocess/query->expected-cols
+                                                              (lib.tu.macros/mbql-query venues
+                                                                {:aggregation [[:count]]})))]
+                           [(-> count-col
+                                (dissoc :effective_type)
+                                (assoc :field_ref field-ref
+                                       :base_type :type/Integer))])))]
+                (lib.tu.macros/mbql-query venues
+                  {:source-query    {:source-query    {:source-query    {:source-table $$venues
+                                                                         :aggregation  [[:count]]
+                                                                         :breakout     [$price]}
+                                                       :source-metadata (metadata-with-count-field-ref [:aggregation 0])}
+                                     :source-metadata (metadata-with-count-field-ref *count/Integer)}
+                   :source-metadata (metadata-with-count-field-ref *count/Integer)}))
+              (add-source-metadata
                (lib.tu.macros/mbql-query venues
-                 {:source-query    {:source-query    {:source-query    {:source-table $$venues
-                                                                        :aggregation  [[:count]]
-                                                                        :breakout     [$price]}
-                                                      :source-metadata (metadata-with-count-field-ref [:aggregation 0])}
-                                    :source-metadata (metadata-with-count-field-ref *count/Integer)}
-                  :source-metadata (metadata-with-count-field-ref *count/Integer)}))
-             (add-source-metadata
-              (lib.tu.macros/mbql-query venues
-                {:source-query {:source-query {:source-query {:source-table $$venues
-                                                              :aggregation  [[:count]]
-                                                              :breakout     [$price]}}}})))))))
+                 {:source-query {:source-query {:source-query {:source-table $$venues
+                                                               :aggregation  [[:count]]
+                                                               :breakout     [$price]}}}})))))))
 
 (deftest ^:parallel nested-sources-with-source-native-query-test
   (testing "can we add `source-metadata` to the parent level if the source query has a native source query, but itself has `source-metadata`?"
-    (is (= (lib.tu.macros/mbql-query venues
-             {:source-query    {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
-                                :source-metadata (venues-source-metadata :id :name)}
-              :source-metadata (venues-source-metadata :id :name)})
-           (add-source-metadata
-            (lib.tu.macros/mbql-query venues
-              {:source-query {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
-                              :source-metadata (venues-source-metadata :id :name)}}))))))
+    (is (=? (lib.tu.macros/mbql-query venues
+              {:source-query    {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
+                                 :source-metadata (venues-source-metadata :id :name)}
+               :source-metadata (venues-source-metadata :id :name)})
+            (add-source-metadata
+             (lib.tu.macros/mbql-query venues
+               {:source-query {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
+                               :source-metadata (venues-source-metadata :id :name)}}))))))
 
 (deftest ^:parallel joins-test
   (testing "should work inside JOINS as well"
-    (is (= (lib.tu.macros/mbql-query venues
-             {:source-table $$venues
-              :joins        [{:source-query    {:source-table $$venues
-                                                :fields       [$id $name]}
-                              :source-metadata (venues-source-metadata :id :name)}]})
-           (add-source-metadata
-            (lib.tu.macros/mbql-query venues
+    (is (=? (lib.tu.macros/mbql-query venues
               {:source-table $$venues
-               :joins        [{:source-query {:source-table $$venues
-                                              :fields       [$id $name]}}]}))))))
+               :joins        [{:source-query    {:source-table $$venues
+                                                 :fields       [$id $name]}
+                               :source-metadata (venues-source-metadata :id :name)}]})
+            (add-source-metadata
+             (lib.tu.macros/mbql-query venues
+               {:source-table $$venues
+                :joins        [{:source-query {:source-table $$venues
+                                               :fields       [$id $name]}}]}))))))
 
 (deftest ^:parallel binned-fields-test
   (testing "source metadata should handle source queries that have binned fields"
     (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
                                       meta/metadata-provider
                                       {:settings {:breakout-bin-width 5.0}})
-      (is (= (lib.tu.macros/mbql-query venues
-               {:source-query    {:source-table $$venues
-                                  :aggregation  [[:count]]
-                                  :breakout     [[:field %latitude {:binning {:strategy :default}}]]}
-                :source-metadata (concat
-                                  (let [[lat-col]   (venues-source-metadata :latitude)
-                                        [count-col] (results-metadata (qp.preprocess/query->expected-cols
-                                                                       (lib.tu.macros/mbql-query venues
-                                                                         {:aggregation [[:count]]})))]
-                                    [(assoc lat-col
-                                            :field_ref [:field
-                                                        (meta/id :venues :latitude)
-                                                        {:binning {:strategy  :bin-width
-                                                                   :min-value 10.0
-                                                                   :max-value 45.0
-                                                                   :num-bins  7
-                                                                   :bin-width 5.0}}]
-                                            :display_name "Latitude: 5°")
-                                     ;; computed column doesn't have an effective type in middleware before query
-                                     (-> count-col
-                                         (dissoc :effective_type)
-                                         ;; the type that comes back from H2 is :type/BigInteger but the type that comes
-                                         ;; back from calculating it with MLv2 is just plain :type/Integer
-                                         (assoc :base_type :type/Integer))]))})
-             (add-source-metadata
-              (lib.tu.macros/mbql-query venues
-                {:source-query
-                 {:source-table $$venues
-                  :aggregation  [[:count]]
-                  :breakout     [[:field %latitude {:binning {:strategy :default}}]]}})))))))
+      (is (=? (lib.tu.macros/mbql-query venues
+                {:source-query    {:source-table $$venues
+                                   :aggregation  [[:count]]
+                                   :breakout     [[:field %latitude {:binning {:strategy :default}}]]}
+                 :source-metadata (concat
+                                   (let [[lat-col]   (venues-source-metadata :latitude)
+                                         [count-col] (results-metadata (qp.preprocess/query->expected-cols
+                                                                        (lib.tu.macros/mbql-query venues
+                                                                          {:aggregation [[:count]]})))]
+                                     [(assoc lat-col
+                                             :field_ref [:field
+                                                         (meta/id :venues :latitude)
+                                                         {:binning {:strategy  :bin-width
+                                                                    :min-value 10.0
+                                                                    :max-value 45.0
+                                                                    :num-bins  7
+                                                                    :bin-width 5.0}}]
+                                             :display_name "Latitude: 5°")
+                                      ;; computed column doesn't have an effective type in middleware before query
+                                      (-> count-col
+                                          (dissoc :effective_type)
+                                          ;; the type that comes back from H2 is :type/BigInteger but the type that comes
+                                          ;; back from calculating it with MLv2 is just plain :type/Integer
+                                          (assoc :base_type :type/Integer))]))})
+              (add-source-metadata
+               (lib.tu.macros/mbql-query venues
+                 {:source-query
+                  {:source-table $$venues
+                   :aggregation  [[:count]]
+                   :breakout     [[:field %latitude {:binning {:strategy :default}}]]}})))))))
 
 (deftest ^:parallel deduplicate-column-names-test
   (testing "Metadata that gets added to source queries should have deduplicated column names"

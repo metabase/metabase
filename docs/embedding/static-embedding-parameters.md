@@ -172,7 +172,7 @@ Because Metabase doesn't display locked parameters as filter widgets, you can us
 
 ![Look and feel: appearance settings on static embed](./images/04-preview.png)
 
-You can change the appearance of an embedded item by adding hash parameters to the end of the URL in your iframe's `src` attribute.
+You can change the appearance of an embedded item by adding hash parameters (e.g., `#theme=night`) to the end of the URL in your iframe's `src` attribute.
 
 For example, the following embedding URL will display an embedded item in dark mode, without a border, and with its original title:
 
@@ -186,6 +186,7 @@ You can preview appearance settings from your question or dashboard's embedded a
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `background`               | true (default), false. Dashboards only.                                                                                                        |
 | `bordered`                 | true (default), false.                                                                                                                         |
+| `locale\*`                 | E.g., `locale=ko`. See [list of locales](../configuring-metabase/localization.md#supported-languages)                                          |
 | `titled`                   | true (default), false.                                                                                                                         |
 | `theme`                    | null (default), night. `theme=transparent` should work, but is deprecated (see [Transparent backgrounds](#transparent-backgrounds-for-embeds)) |
 | `refresh` (dashboard only) | integer (seconds, e.g., `refresh=60`).                                                                                                         |
@@ -197,6 +198,24 @@ You can preview appearance settings from your question or dashboard's embedded a
 \*\* Disabling downloads is available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
+
+## Setting the language for a static embed
+
+{% include plans-blockquote.html feature="Locales for static embeds" %}
+
+To change the UI language for a static embed, you can set its [locale](../configuring-metabase/localization.md#supported-languages). For example, to set a public link's language to Korean, you could append `#locale=ko`.
+
+```
+https://metabase.example.com/public/dashboard/7b6e347b-6928-4aff-a56f-6cfa5b718c6b?category=&city=&state=#locale=ko
+```
+
+If you have multiple params, separated them with an ampersand `&`:
+
+```
+category=Gadget&state=Vermont#theme=night&locale=ko
+```
+
+The `locale` param only changes the language for Metabase UI elements. The _content_'s language is defined by whomever created the item. So for example Metabase wouldn't translate the name of a question, but Metabase _would_ translate the UI text "Export to PDF".
 
 ## Transparent backgrounds for embeds
 

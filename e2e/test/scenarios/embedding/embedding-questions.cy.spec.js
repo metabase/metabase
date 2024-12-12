@@ -1,6 +1,9 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 import {
   joinedQuestion,
@@ -28,6 +31,34 @@ describe("scenarios > embedding > questions", () => {
     });
   });
 
+  it("should display a dashboard question correctly", () => {
+    H.createQuestion(
+      {
+        name: "Total Orders",
+        dashboard_id: ORDERS_DASHBOARD_ID,
+        database_id: SAMPLE_DATABASE.id,
+        query: {
+          "source-table": SAMPLE_DATABASE.ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+        enable_embedding: true,
+      },
+      { visitQuestion: true },
+    );
+
+    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+
+    H.visitIframe();
+
+    cy.url().should("include", "embed");
+
+    cy.findByTestId("embed-frame").within(() => {
+      cy.findByText("Total Orders");
+      cy.findByText("18,760");
+    });
+  });
+
   it("should display the regular GUI question correctly", () => {
     const { name: title, description } = regularQuestion;
 
@@ -41,36 +72,33 @@ describe("scenarios > embedding > questions", () => {
 
     H.visitIframe();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(title);
+    cy.findByTestId("embed-frame").within(() => {
+      cy.findByText(title);
 
-    cy.icon("info").realHover();
+      cy.icon("info").realHover();
+    });
+
     H.popover().contains(description);
 
-    // Data model: Renamed column
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Product ID as Title");
-    // Data model: Display value changed to show FK
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Awesome Concrete Shoes");
-    // Custom column
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Math");
-    // Question settings: Renamed column
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Billed");
-    // Question settings: Column formating
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("€39.72");
-    // Question settings: Abbreviated date, day enabled, 24H clock with seconds
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Tue, Feb 11, 2025, 21:40:27");
-    // Question settings: Show mini-bar
-    cy.findAllByTestId("mini-bar");
+    cy.findByTestId("embed-frame").within(() => {
+      // Data model: Renamed column
+      cy.findByText("Product ID as Title");
+      // Data model: Display value changed to show FK
+      cy.findByText("Awesome Concrete Shoes");
+      // Custom column
+      cy.findByText("Math");
+      // Question settings: Renamed column
+      cy.findByText("Billed");
+      // Question settings: Column formating
+      cy.findByText("€39.72");
+      // Question settings: Abbreviated date, day enabled, 24H clock with seconds
+      cy.findByText("Tue, Feb 11, 2025, 21:40:27");
+      // Question settings: Show mini-bar
+      cy.findAllByTestId("mini-bar");
 
-    // Data model: Subtotal is turned off globally
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Subtotal").should("not.exist");
+      // Data model: Subtotal is turned off globally
+      cy.findByText("Subtotal").should("not.exist");
+    });
   });
 
   it("should display the GUI question with aggregation correctly", () => {

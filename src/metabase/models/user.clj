@@ -470,6 +470,15 @@
   :default    false
   :audit      :never)
 
+(defsetting dismissed-onboarding-sidebar-link
+  (deferred-tru "Whether the user has dismissed the onboarding link from the main sidebar.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    false
+  :audit      :never)
+
 (defsetting dismissed-browse-models-banner
   (deferred-tru "Whether the user has dismissed the explanatory banner about models that appears on the Browse Data page")
   :user-local :only

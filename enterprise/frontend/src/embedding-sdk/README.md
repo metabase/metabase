@@ -54,4 +54,4 @@ For more on the SDK, check out the [SDK docs](https://www.metabase.com/docs/late
 
 ## Development docs
 
-For developing the SDK, see the [dev docs](https://www.metabase.com/docs/latest/developers-guide/sdk).
+For developing the SDK, see the [dev docs](./dev.md).

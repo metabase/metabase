@@ -580,7 +580,7 @@ describe("scenarios > organization > entity picker", () => {
 
       cy.log("regular collection");
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalTab("Browse").click();
         cy.findByText("First collection").click();
         enterSearchText({
           text: "collection",
@@ -595,7 +595,7 @@ describe("scenarios > organization > entity picker", () => {
 
       cy.log("personal collection");
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalTab("Browse").click();
         cy.findByText(/Personal Collection/).click();
         enterSearchText({
           text: "personal collection 1",
@@ -654,7 +654,7 @@ describe("scenarios > organization > entity picker", () => {
 
       cy.log("personal collection");
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalTab("Browse").click();
         cy.findByText(/Personal Collection/).click();
         enterSearchText({
           text: "personal collection 2",
@@ -682,7 +682,7 @@ describe("scenarios > organization > entity picker", () => {
       H.popover().findByText("Move").click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalTab("Browse").click();
         cy.findByText("All personal collections").click();
         enterSearchText({
           text: "personal collection",

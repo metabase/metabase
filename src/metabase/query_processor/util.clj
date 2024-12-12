@@ -95,7 +95,7 @@
     (cond-> query
       (empty? constraints) (dissoc :constraints)
       (empty? parameters)  (dissoc :parameters)
-      true                 lib.schema.util/remove-lib-uuids
+      true                 lib.schema.util/remove-randomized-idents
       true                 walk-query-sort-maps)))
 
 (mu/defn query-hash :- bytes?
