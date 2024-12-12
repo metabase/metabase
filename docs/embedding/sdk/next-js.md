@@ -55,7 +55,7 @@ export const EmbeddingSdkProvider = ({
 };
 ```
 
-Then, we need to create a `index.tsx` file that will export all the lazy loaded components:
+Then, we need to create a `index.tsx` file that will export a lazy loaded version, with SSR disabled, and with the `use client` directive, of the `EmbeddingSdkProvider` component and all the other components you need.
 
 ```tsx
 "use client";
