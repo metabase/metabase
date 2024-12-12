@@ -3,11 +3,12 @@ import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 
+import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import Snippets from "metabase/entities/snippets";
-import { Icon } from "metabase/ui";
+import { Flex, Icon } from "metabase/ui";
 
-import { SnippetButton, SnippetContent } from "./SnippetRow.styled";
+import SnippetRowS from "./SnippetRow.module.css";
 
 class SnippetRowInner extends Component {
   constructor(props) {
@@ -43,7 +44,8 @@ class SnippetRowInner extends Component {
           )}
           onClick={() => this.setState({ isOpen: !isOpen })}
         >
-          <SnippetContent
+          <Flex
+            className={SnippetRowS.SnippetContent}
             onClick={
               snippet.archived
                 ? () => this.setState({ isOpen: true })
@@ -62,7 +64,7 @@ class SnippetRowInner extends Component {
               className={CS.hoverChild}
             />
             <span className={cx(CS.flexFull, CS.ml1)}>{snippet.name}</span>
-          </SnippetContent>
+          </Flex>
           <Icon
             name={isOpen ? "chevronup" : "chevrondown"}
             className={cx({ [CS.hoverChild]: !isOpen })}
@@ -89,7 +91,8 @@ class SnippetRowInner extends Component {
               {content}
             </pre>
             {canWrite && (
-              <SnippetButton
+              <Button
+                className={SnippetRowS.SnippetButton}
                 onClick={
                   snippet.archived
                     ? () => snippet.update({ archived: false })
@@ -100,7 +103,7 @@ class SnippetRowInner extends Component {
                 icon={snippet.archived ? "unarchive" : "pencil"}
               >
                 {snippet.archived ? t`Unarchive` : t`Edit`}
-              </SnippetButton>
+              </Button>
             )}
           </div>
         )}
