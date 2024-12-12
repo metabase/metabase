@@ -139,6 +139,8 @@ export const LegacyModalCanLaunchMantineModal = {
     // TODO: Legacy modals aren't properly aria-labelled in this branch so this doesn't quite work yet
     // NOTE: Actually Legacy models are, I think, now properly aria-labelled,
     // but I still need to see if this test works
+    // Storybook also keeps crashing. Probably I should comment out these
+    // stories to see if that helps.
   },
 };
 
