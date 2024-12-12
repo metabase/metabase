@@ -105,10 +105,14 @@
                                              :strategy :duration
                                              :refresh_automatically true
                                              :config {:unit "hours" :duration 1}}]
-          (let [param-val-1 "2024-12-02"
+          (let [param-val-1 "2024-12-01"
                 params-1    [{:type  :text
                               :target [:variable [:template-tag "date"]]
                               :value param-val-1}]
+                param-val-2 "2024-12-02"
+                params-2    [{:type  :text
+                              :target [:variable [:template-tag "date"]]
+                              :value param-val-2}]
                 to-rerun    (fn [card-id]
                               (let [queries (@#'task.cache/duration-queries-to-rerun)]
                                 (filter #(= (:card-id %) card-id) queries)))
@@ -139,7 +143,17 @@
             (is (= [[0]] (mt/rows (run-query-for-card-id card-id params-1))))
             ;; Manually 'expire' the cache entry again. Now the cache entry is rerunnable!
             (expire-most-recent-cache-entry!)
-            (is (=? [nil param-val-1] (map param-vals (to-rerun card-id))))))))))
+            (is (= [nil param-val-1] (map param-vals (to-rerun card-id))))
+
+            ;; Run a different parameterized query twice, to generate a cache entry and cache hit
+            (is (= [[0]] (mt/rows (run-query-for-card-id card-id params-2))))
+            (is (= [[0]] (mt/rows (run-query-for-card-id card-id params-2))))
+            (expire-most-recent-cache-entry!)
+            (is (= [nil param-val-2 param-val-1] (map param-vals (to-rerun card-id))))
+
+            (testing "Only base query + *parameterized-queries-to-rerun-per-card* queries are returned"
+              (binding [task.cache/*parameterized-queries-to-rerun-per-card* 1]
+                (is (= [nil param-val-2] (map param-vals (to-rerun card-id))))))))))))
 
 (deftest refresh-schedule-cache-card-e2e-test
   (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}
