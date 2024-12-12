@@ -47,12 +47,18 @@
                 (fn [query info]
                   (qp/process-query (qp/userland-query (assoc query :info info))))))))
 
+(defn- clear-query-tables!
+  "Wipes the the query, query_execution, and query_cache tables prior to a test run, to ensure we're testing a
+  consistent state. These are all auto-populated tables so clearing them shouldn't impact the functioning of Metabase."
+  []
+  (doall (map t2/delete! [:model/Query :model/QueryExecution :model/QueryCache])))
+
 (deftest scheduled-queries-to-rerun-test
   (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}
     (testing "Given a card, we rerun a limited number of variations of the card's query"
       (binding [qp.util/*execute-async?*             false
                 task.cache/*run-cache-refresh-async* false]
-        (doall (map t2/delete! [:model/Query :model/QueryExecution :model/QueryCache]))
+        (clear-query-tables!)
         (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
                                                   :dataset_query (parameterized-native-query)}]
           (let [param-val-1 "2024-12-01"
@@ -88,7 +94,7 @@
     (testing "We refresh expired :duration caches for queries that were run at least once in the last caching duration"
       (binding [qp.util/*execute-async?*             false
                 task.cache/*run-cache-refresh-async* false]
-        (doall (map t2/delete! [:model/Query :model/QueryExecution :model/QueryCache]))
+        (clear-query-tables!)
         (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
                                                   :dataset_query (parameterized-native-query)}
                        :model/CacheConfig _ {:model "question"
@@ -145,7 +151,7 @@
     (testing "Do we successfully execute a refresh query for a :schedule cache config on a card?"
       (binding [qp.util/*execute-async?*             false
                 task.cache/*run-cache-refresh-async* false]
-        (t2/delete! :model/QueryCache)
+        (clear-query-tables!)
         (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
                                                   :dataset_query (parameterized-native-query)}
                        :model/CacheConfig cc {:model "question"
@@ -167,7 +173,7 @@
     (testing "Do we successfully execute a refresh query for a :schedule cache config on a dashboard?"
       (binding [qp.util/*execute-async?*             false
                 task.cache/*run-cache-refresh-async* false]
-        (t2/delete! :model/QueryCache)
+        (clear-query-tables!)
         (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                        :model/Card {card-id :id} {:name "Cached card"
                                                   :dataset_query (parameterized-native-query)}
@@ -192,7 +198,7 @@
     (testing "Do we successfully execute a refresh query for a :duration cache config on a card?"
       (binding [qp.util/*execute-async?*             false
                 task.cache/*run-cache-refresh-async* false]
-        (doall (map t2/delete! [:model/Query :model/QueryExecution :model/QueryCache]))
+        (clear-query-tables!)
         (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
                                                   :dataset_query (parameterized-native-query)}
                        :model/CacheConfig _ {:model "question"
@@ -217,7 +223,7 @@
     (testing "Do we successfully execute a refresh query for a :duration cache config on a dashboard?"
       (binding [qp.util/*execute-async?* false
                 task.cache/*run-cache-refresh-async* false]
-        (doall (map t2/delete! [:model/Query :model/QueryExecution :model/QueryCache]))
+        (clear-query-tables!)
         (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                        :model/Card {card-id :id} {:name "Cached card"
                                                   :dataset_query (parameterized-native-query)}
