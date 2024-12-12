@@ -200,8 +200,8 @@
   (set-jdbc-backend-properties!)
   (let [scheduler (qs/initialize)]
     (qs/start scheduler)
-    (qs/delete-trigger scheduler (triggers/key "metabase.task.bootstrap.abandonment-emails.trigger"))
-    (qs/delete-job scheduler (jobs/key "metabase.task.bootstrap.abandonment-emails.job"))
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.abandonment-emails.trigger"))
+    (qs/delete-job scheduler (jobs/key "metabase.task.abandonment-emails.job"))
     (qs/shutdown scheduler)))
 
 (define-migration FillJSONUnfoldingDefault
@@ -1121,7 +1121,7 @@
     (let [scheduler (qs/initialize)]
       (qs/start scheduler)
       (doseq [db dbs]
-        (qs/delete-trigger scheduler (triggers/key (format "metabase.task.bootstrap.update-field-values.trigger.%d" (:id db)))))
+        (qs/delete-trigger scheduler (triggers/key (format "metabase.task.update-field-values.trigger.%d" (:id db)))))
       ;; use the table, not model/Database because we don't want to trigger the hooks
       (t2/update! :metabase_database :id [:in (map :id dbs)] {:cache_field_values_schedule nil})
       (qs/shutdown scheduler))))
@@ -1319,8 +1319,8 @@
   (set-jdbc-backend-properties!)
   (let [scheduler (qs/initialize)]
     (qs/start scheduler)
-    (qs/delete-trigger scheduler (triggers/key "metabase.task.bootstrap.truncate-audit-log.trigger"))
-    (qs/delete-job scheduler (jobs/key "metabase.task.bootstrap.truncate-audit-log.job"))
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.truncate-audit-log.trigger"))
+    (qs/delete-job scheduler (jobs/key "metabase.task.truncate-audit-log.job"))
     (qs/shutdown scheduler)))
 
 (define-migration DeleteSendPulsesTask
@@ -1328,8 +1328,8 @@
   (set-jdbc-backend-properties!)
   (let [scheduler (qs/initialize)]
     (qs/start scheduler)
-    (qs/delete-trigger scheduler (triggers/key "metabase.task.bootstrap.send-pulses.trigger"))
-    (qs/delete-job scheduler (jobs/key "metabase.task.bootstrap.send-pulses.job"))
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.send-pulses.trigger"))
+    (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.job"))
     (qs/shutdown scheduler)))
 
 ;; If someone upgraded to 50, then downgrade to 49, the send-pulse triggers will run into an error state due to
@@ -1343,7 +1343,7 @@
     (set-jdbc-backend-properties!)
     (let [scheduler (qs/initialize)]
       (qs/start scheduler)
-      (qs/delete-job scheduler (jobs/key "metabase.task.bootstrap.send-pulses.send-pulse.job"))
+      (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.send-pulse.job"))
       (qs/shutdown scheduler))))
 
 ;; The InitSendPulseTriggers is a migration in disguise, it runs once per instance
@@ -1357,7 +1357,7 @@
     (let [scheduler (qs/initialize)]
       (qs/start scheduler)
      ;; delete the job will also delete all of its triggers
-      (qs/delete-job scheduler (jobs/key "metabase.task.bootstrap.send-pulses.init-send-pulse-triggers.job"))
+      (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))
       (qs/shutdown scheduler))))
 
 ;; when card display is area or bar,
