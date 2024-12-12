@@ -34,6 +34,11 @@
       display: flex;
       align-items: center;
       justify-content: end;
+
+      span[title="Fold line"] {
+        position: relative;
+        top: -3px;
+      }
     }
 
     .cm-activeLineGutter {
