@@ -143,6 +143,7 @@ const _Launchers = ({
           <Button>Legacy tooltip</Button>
         </TippyTooltip>
         <TippyPopover
+          placement="bottom"
           content={
             <Paper p="md" aria-label="Legacy popover content">
               Legacy popover text content

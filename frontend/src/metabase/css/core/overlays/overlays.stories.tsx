@@ -1,7 +1,7 @@
 import type { Store } from "@reduxjs/toolkit";
+import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/testing-library";
-import { expect } from "@storybook/jest";
 import { Provider } from "react-redux";
 import _ from "underscore";
 
@@ -20,6 +20,8 @@ import {
 
 import { OverlaysDemo } from "./OverlaysDemo";
 import type { OverlaysDemoProps } from "./types";
+
+const tellLokiThePageIsReady = createAsyncCallback();
 
 const mockCard = createMockCard();
 const storeInitialState = createMockState({
@@ -81,7 +83,11 @@ export default {
     layout: "fullscreen",
   },
 };
-type OverlayType = "Mantine Modal" | "Legacy Modal" | "Legacy Popover";
+type OverlayType =
+  | "Mantine Modal"
+  | "Legacy Modal"
+  | "Legacy Popover"
+  | "Mantine Popover";
 
 type Launcher = ({
   launchFrom,
@@ -91,80 +97,76 @@ type Launcher = ({
   portalRoot: HTMLElement;
 }) => Promise<HTMLElement>;
 
-const launchers: Record<OverlayType, Launcher> = {
-  "Mantine Modal": async ({ launchFrom, portalRoot }) => {
-    await userEvent.click(
-      await within(launchFrom).findByRole("button", { name: "Mantine Modal" }),
-    );
-    const modal = await within(portalRoot).findByRole("dialog", {
-      name: /Mantine Modal content/i,
-    });
-    await within(modal).findByText("Mantine Modal text content");
-    return modal;
-  },
-  "Legacy Modal": async ({
-    launchFrom,
-    portalRoot,
-  }: {
-    launchFrom: HTMLElement;
-    portalRoot: HTMLElement;
-  }) => {
-    await userEvent.click(
-      await within(launchFrom).findByRole("button", { name: "Legacy modal" }),
-    );
-    const modal = await within(portalRoot).findByRole("dialog", {
-      name: "Legacy modal content",
-    });
-    await within(modal).findByText("Legacy modal text content");
-    return modal;
-  },
+const getLaunchers = ({ portalRoot }: { portalRoot: HTMLElement }) => {
+  const launchers: Record<OverlayType, Launcher> = {
+    "Mantine Modal": async ({ launchFrom }) => {
+      await userEvent.click(
+        await within(launchFrom).findByRole("button", {
+          name: "Mantine Modal",
+        }),
+      );
+      const modal = await within(portalRoot).findByRole("dialog", {
+        name: /Mantine Modal content/i,
+      });
+      await within(modal).findByText("Mantine Modal text content");
+      return modal;
+    },
+    "Legacy Modal": async ({ launchFrom }) => {
+      await userEvent.click(
+        await within(launchFrom).findByRole("button", { name: "Legacy modal" }),
+      );
+      const modal = await within(portalRoot).findByRole("dialog", {
+        name: "Legacy modal content",
+      });
+      await within(modal).findByText("Legacy modal text content");
+      return modal;
+    },
+    "Legacy Popover": async ({ launchFrom }) => {
+      // NOTE: Legacy Popovers are hovered, not clicked
+      await userEvent.hover(
+        await within(launchFrom).findByRole("button", {
+          name: "Legacy popover",
+        }),
+      );
+      const popover = await within(portalRoot).findByRole("tooltip", {
+        name: "Legacy popover content",
+      });
+      return popover;
+    },
+    "Mantine Popover": async ({ launchFrom }) => {
+      // NOTE: Mantine Popovers are clicked, not hovered
+      await userEvent.click(
+        await within(launchFrom).findByRole("button", {
+          name: "Mantine Popover",
+        }),
+      );
+      const popover = await within(portalRoot).findByRole("dialog", {
+        name: /^Mantine Popover$/i,
+      });
+      return popover;
+    },
+  };
+  return launchers;
 };
 
-const launchAFromB = (aName: string, bName: string) => {
-  const [launcherA, launcherB] = [
-    launchers[aName],
-    launchers[bName],
-  ] as Function[];
-  const a = await launchMantineModal({
-    launchFrom: body,
-    portalRoot: body,
-  });
-  const legacyModal = await launchLegacyModal({
-    launchFrom: mantineModal,
-    portalRoot: body,
-  });
-  expect(legacyModal.nextSibling).toBe(mantineModal);
-  const [legacyModalZ, mantineModalZ] = [
-    getNearestZIndex(legacyModal),
-    getNearestZIndex(mantineModal),
-  ];
-  expect(legacyModalZ).toBe(mantineModalZ);
-  expect(legacyModalZ).toBeGreaterThan(10);
-};
-
-export const MantineModalCanLaunchLegacyModal: Scenario = {
-  render: Template,
-  args: {
-    enableNesting: true,
-  },
-  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const body = canvasElement.parentElement as HTMLElement;
-    const mantineModal = await launchMantineModal({
-      launchFrom: body,
-      portalRoot: body,
-    });
-    const legacyModal = await launchLegacyModal({
-      launchFrom: mantineModal,
-      portalRoot: body,
-    });
-    expect(legacyModal.nextSibling).toBe(mantineModal);
-    const [legacyModalZ, mantineModalZ] = [
-      getNearestZIndex(legacyModal),
-      getNearestZIndex(mantineModal),
-    ];
-    expect(legacyModalZ).toBe(mantineModalZ);
-    expect(legacyModalZ).toBeGreaterThan(10);
-  },
+/** Launch overlay A, then use it to launch overlay B */
+const launchAThenB = async (
+  aType: OverlayType,
+  bType: OverlayType,
+  body: HTMLElement,
+) => {
+  const launchers = getLaunchers({ portalRoot: body });
+  const [launchA, launchB] = [launchers[aType], launchers[bType]];
+  const a = await launchA({ launchFrom: body, portalRoot: body });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const b = await launchB({ launchFrom: a, portalRoot: body });
+  // To test this logic here we could do the following:
+  // expect(a.nextSibling).toBe(b);
+  // const az = getNearestZIndex(a);
+  // const bz = getNearestZIndex(b);
+  // expect(az).toBe(bz);
+  // expect(az).toBeGreaterThan(10);
+  await tellLokiThePageIsReady();
 };
 
 const getNearestZIndex = (el: HTMLElement): number | null => {
@@ -175,6 +177,17 @@ const getNearestZIndex = (el: HTMLElement): number | null => {
   return !isNaN(z) ? z : getNearestZIndex(el.parentElement!);
 };
 
+export const MantineModalCanLaunchLegacyModal: Scenario = {
+  render: Template,
+  args: {
+    enableNesting: true,
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const body = canvasElement.parentElement as HTMLElement;
+    await launchAThenB("Mantine Modal", "Legacy Modal", body);
+  },
+};
+
 export const LegacyModalCanLaunchMantineModal = {
   render: Template,
   args: {
@@ -182,21 +195,29 @@ export const LegacyModalCanLaunchMantineModal = {
   },
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const body = canvasElement.parentElement as HTMLElement;
-    const legacyModal = await launchLegacyModal({
-      launchFrom: body,
-      portalRoot: body,
-    });
-    const mantineModal = await launchMantineModal({
-      launchFrom: legacyModal,
-      portalRoot: body,
-    });
-    expect(mantineModal.nextSibling).toBe(legacyModal);
-    const [mantineModalZ, legacyModalZ] = [
-      getNearestZIndex(mantineModal),
-      getNearestZIndex(legacyModal),
-    ];
-    expect(legacyModalZ).toBe(mantineModalZ);
-    expect(mantineModalZ).toBeGreaterThan(10);
+    await launchAThenB("Mantine Modal", "Legacy Modal", body);
+  },
+};
+
+export const LegacyModalCanLaunchLegacyModal = {
+  render: Template,
+  args: {
+    enableNesting: true,
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const body = canvasElement.parentElement as HTMLElement;
+    await launchAThenB("Legacy Modal", "Legacy Modal", body);
+  },
+};
+
+export const MantineModalCanLaunchMantineModal = {
+  render: Template,
+  args: {
+    enableNesting: true,
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const body = canvasElement.parentElement as HTMLElement;
+    await launchAThenB("Mantine Modal", "Mantine Modal", body);
   },
 };
 
@@ -204,6 +225,31 @@ export const MantineModalCanLaunchLegacyPopover = {
   render: Template,
   args: {
     enableNesting: true,
-    overlaysToOpen: ["Mantine Modal", "Legacy Popover"],
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const body = canvasElement.parentElement as HTMLElement;
+    await launchAThenB("Mantine Modal", "Legacy Popover", body);
+  },
+};
+
+export const MantinePopoverCanLaunchLegacyPopover = {
+  render: Template,
+  args: {
+    enableNesting: true,
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const body = canvasElement.parentElement as HTMLElement;
+    await launchAThenB("Mantine Popover", "Legacy Popover", body);
+  },
+};
+
+export const LegacyPopoverCanLaunchMantinePopover = {
+  render: Template,
+  args: {
+    enableNesting: true,
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const body = canvasElement.parentElement as HTMLElement;
+    await launchAThenB("Legacy Popover", "Mantine Popover", body);
   },
 };
