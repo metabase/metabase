@@ -24,7 +24,7 @@ export function nativeEditorCompletion(label: string) {
 }
 
 export function nativeEditorSelectAll() {
-  const isMac = navigator.platform.toLowerCase().includes("mac");
+  const isMac = Cypress.platform === "darwin";
   const metaKey = isMac ? "Meta" : "Control";
   focusNativeEditor().realPress([metaKey, "A"]);
   cy.get(".cm-selectionBackground").should("exist");
