@@ -23,12 +23,15 @@ import * as Errors from "metabase/lib/errors";
 import type { CollectionId, Dashboard } from "metabase-types/api";
 
 import { DashboardCopyModalShallowCheckboxLabel } from "../components/DashboardCopyModal/DashboardCopyModalShallowCheckboxLabel/DashboardCopyModalShallowCheckboxLabel";
-import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "../constants";
+import {
+  DASHBOARD_DESCRIPTION_MAX_LENGTH,
+  DASHBOARD_TITLE_MAX_LENGTH,
+} from "../constants";
 
 const DASHBOARD_SCHEMA = Yup.object({
   name: Yup.string()
     .required(Errors.required)
-    .max(100, Errors.maxLength)
+    .max(DASHBOARD_TITLE_MAX_LENGTH, Errors.maxLength)
     .default(""),
   description: Yup.string()
     .nullable()
