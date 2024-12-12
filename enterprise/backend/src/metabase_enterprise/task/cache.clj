@@ -91,57 +91,47 @@
                                    [:= :qe.dashboard_id model_id])
                                  ;; Is the existing cache entry for the query expired?
                                  [:<= :qc.updated_at rerun-cutoff]
-                                 ; ;; This is a safety check so that we don't scan all of query_execution -- if a query has not been excuted at
-                                 ; ;; all in the last month (including cache hits) we won't bother refreshing it again.
+                                 ;; This is a safety check so that we don't scan all of query_execution -- if a query
+                                 ;; has not been excuted at all in the last month (including cache hits) we won't bother
+                                 ;; refreshing it again.
                                  [:>= :qe.started_at (duration-ago {:duration 30 :unit "days"})]]))
                             cache-configs))
                      [:= :qe.parameterized false]
                      [:= :qe.error nil]
                      [:= :qe.is_sandboxed false]]})
 
-;; TODO how to limit this to 10 queries per card ID?
 (defn- duration-parameterized-queries-to-rerun-honeysql
   "HoneySQL query for selecting parameterized query definitions that should be rerun, given a list of :duration cache configs."
   [cache-configs]
-  {:select   [:q.query_hash :q.query [:qe.card_id :card-id]]
-   :from     [[(t2/table-name :model/Query) :q]]
-   :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]
-              [(t2/table-name :model/QueryCache) :qc] [:= :qc.query_hash :qe.cache_hash]]
-   :where    [:and
-              (into [:or]
-                    (map
-                     (fn [{:keys [config model model_id]}]
-                       (let [rerun-cutoff (duration-ago config)]
-                         [:and
-                          ;; Is the query_execution row associated with a cached card or dashboard?
-                          (if (= model "question")
-                            [:= :qe.card_id model_id]
-                            [:= :qe.dashboard_id model_id])
-                          ;; Is the existing cache entry for the query expired?
-                          [:<= :qc.updated_at rerun-cutoff]
-                          ;; Was the query executed at least once within the most recent cache duration?
-                          ;; (We won't refresh the cache for a query that hasn't been run recently by any user.)
-                          [:>= :qe.started_at rerun-cutoff]]))
-                     cache-configs))
-              [:not= :qe.context (name :cache-refresh)]
-              [:= :qe.parameterized true]
-              [:= :qe.error nil]
-              [:= :qe.cache_hit true]
-              [:= :qe.is_sandboxed false]]
-   :group-by [:q.query_hash :q.query :qe.card_id :qe.dashboard_id]})
-
-(defn- card-ids-to-refresh
-  [model model-id]
-  (case model
-    "question"  [model-id]
-    "dashboard" (let [dashcards (-> (t2/select-one :model/Dashboard :id model-id)
-                                    (t2/hydrate [:dashcards :card])
-                                    :dashcards)]
-                  ;; Only re-run an identical card once per dashboard
-                  (dedupe (map :id (map :card dashcards))))
-    (throw (ex-info "Unsupported model type for preemptive caching"
-                    {:model-id model-id
-                     :model model}))))
+  (let [queries
+        (for [{:keys [config model model_id]} cache-configs]
+          (let [rerun-cutoff (duration-ago config)]
+            {:nest
+             {:select   [[:q.query :query]
+                         [:qe.card_id :card_id]
+                         [[:count :q.query_hash] :count]]
+              :from     [[(t2/table-name :model/Query) :q]]
+              :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]
+                         [(t2/table-name :model/QueryCache) :qc] [:= :qc.query_hash :qe.cache_hash]]
+              :where    [:and
+                         (if (= model "question")
+                           [:= :qe.card_id model_id]
+                           [:= :qe.dashboard_id model_id])
+                         [:<= :qc.updated_at rerun-cutoff]
+                         ;; This is a safety check so that we don't scan all of query_execution -- if a query
+                         ;; has not been excuted at all in the last month (including cache hits) we won't bother
+                         ;; refreshing it again.
+                         [:>= :qe.started_at (duration-ago {:duration 30 :unit "days"})]
+                         [:= :qe.parameterized true]
+                         [:= :qe.cache_hit true]
+                         [:not= :qe.context (name :cache-refresh)]
+                         [:= :qe.error nil]
+                         [:= :qe.is_sandboxed false]]
+              :group-by [:q.query_hash :q.query :qe.card_id]
+              :order-by [[[:count :q.query_hash] :desc]]
+              :limit    *parameterized-queries-to-rerun-per-card*}}))]
+    {:select [:u.query :u.card_id]
+     :from   [[{:union queries} :u]]}))
 
 (defn- duration-queries-to-rerun
   []
@@ -212,6 +202,19 @@
                  parameterized-queries)
          (map :query)
          distinct)))
+
+(defn- card-ids-to-refresh
+  [model model-id]
+  (case model
+    "question"  [model-id]
+    "dashboard" (let [dashcards (-> (t2/select-one :model/Dashboard :id model-id)
+                                    (t2/hydrate [:dashcards :card])
+                                    :dashcards)]
+                  ;; Only re-run an identical card once per dashboard
+                  (dedupe (map :id (map :card dashcards))))
+    (throw (ex-info "Unsupported model type for preemptive caching"
+                    {:model-id model-id
+                     :model model}))))
 
 (defn- refresh-schedule-cache!
   "Given a cache config with the :schedule strategy, preemptively rerun the query (and a fixed number of parameterized
