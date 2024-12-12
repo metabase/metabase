@@ -76,7 +76,9 @@
   [{:keys [search-string] :as search-ctx}]
   (when-not (search.index/active-table)
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
-                    {:search-engine :postgres})))
+                    {:search-engine (:search-engine search-ctx)
+                     :db-type       (mdb/db-type)
+                     :index-state   (search.index/search-engine-appdb-index-state)})))
   (let [weights (search.config/weights search-ctx)
         scorers (search.scoring/scorers search-ctx)]
     (->> (search.index/search-query search-string search-ctx [:legacy_input])
