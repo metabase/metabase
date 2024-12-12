@@ -358,6 +358,8 @@
 (lib.common/defop not [x])
 (lib.common/defop = [x y & more])
 (lib.common/defop != [x y & more])
+(lib.common/defop in [x y & more])
+(lib.common/defop not-in [x y & more])
 (lib.common/defop < [x y])
 (lib.common/defop <= [x y])
 (lib.common/defop > [x y])
