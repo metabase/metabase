@@ -1,8 +1,4 @@
-import styled from "@emotion/styled";
-
-import ExternalLink from "metabase/core/components/ExternalLink";
-
-export const ModalExternalLink = styled(ExternalLink)`
+.ModalExternalLink {
   color: var(--mb-color-brand);
   font-size: 0.75rem;
   line-height: 1rem;
@@ -12,4 +8,4 @@ export const ModalExternalLink = styled(ExternalLink)`
   &:hover {
     text-decoration: underline;
   }
-`;
+}
