@@ -4,6 +4,7 @@
   - more than one subscriptions
   - more than one handlers where each handler has a channel, optionally a template, and more than one recpients."
   (:require
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.models.spec-update :as models.spec-update]
@@ -390,7 +391,8 @@
                                                     [:recipients {:optional true} [:sequential NotificationRecipient]]]]]]]
    [:multi {:dispatch (comp keyword :payload_type)}
     [:notification/card [:map
-                         [:payload NotificationCard]]]]])
+                         [:payload NotificationCard]]]
+    [::mc/default       :any]]])
 
 (mu/defn hydrate-notification :- FullyHydratedNotification
   "Fully hydrate notifictitons."

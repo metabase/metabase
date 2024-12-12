@@ -71,7 +71,7 @@
     {:id           (:id pulse)
      :payload_type :notification/card
      :creator_id   (:creator_id pulse)
-     :alert        (merge (assoc (select-keys pulse [:id :alert_condition :alert_above_goal :alert_first_only])
+     :payload      (merge (assoc (select-keys pulse [:id :alert_condition :alert_above_goal :alert_first_only])
                                  :card_id (some :id (:cards pulse))
                                  :schedule (select-keys pulse-channel [:schedule_type :schedule_hour :schedule_day :schedule_frame]))
                           (select-keys (-> pulse :cards first) [:include_xls :include_csv :pivot_results :format_rows]))

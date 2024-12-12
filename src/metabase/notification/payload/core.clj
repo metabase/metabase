@@ -37,9 +37,8 @@
         [:event_info  [:maybe :map]]]]]]
     [:notification/card
      [:map
-      [:payload       models.notification/NotificationCard]
-
-      [:creator_id ms/PositiveInt]]]
+      [:payload    {:optional true}  models.notification/NotificationCard]
+      [:creator_id                   ms/PositiveInt]]]
     [:notification/dashboard
      [:map
       [:creator_id ms/PositiveInt]
