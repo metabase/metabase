@@ -35,7 +35,7 @@
   align-items: center;
   border-radius: 6px;
 
-  :global(.base-bucket-picker-popover__trigger-button) {
+  .BucketTriggerButton {
     height: 100%;
   }
 }
@@ -55,7 +55,7 @@
       color: var(--mb-color-text-white);
     }
 
-    :global(.base-bucket-picker-popover__trigger-button) {
+    .BucketTriggerButton {
       opacity: 1;
       color: color-mix(in srgb, var(--mb-color-text-white), transparent 35%);
 
@@ -83,7 +83,7 @@
         background-color: var(--mb-color-bg-medium);
       }
 
-      :global(.base-bucket-picker-popover__trigger-button) {
+      .BucketTriggerButton {
         opacity: 1;
         color: var(--mb-color-text-light);
 
