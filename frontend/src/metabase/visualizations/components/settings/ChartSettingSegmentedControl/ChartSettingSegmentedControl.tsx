@@ -1,36 +1,31 @@
 import CS from "metabase/css/core/index.css";
-import { Button, Center, Icon, type IconName, Stack, Text } from "metabase/ui";
+import { Button, Center, Icon, type IconName } from "metabase/ui";
 
 interface ChartSettingSegmentedControlProps {
   options: { name: string; value: string; icon?: IconName }[];
   onChange: (value: string) => void;
   value: string;
-  label: string;
 }
 
 export const ChartSettingSegmentedControl = ({
-  label,
   options,
   onChange,
   value,
 }: ChartSettingSegmentedControlProps) => (
-  <Stack spacing="xs">
-    <Text fw="bold">{label}</Text>
-    <Button.Group>
-      {options.map(elem => (
-        <Button
-          className={CS.borderBrand}
-          fullWidth
-          py="sm"
-          variant={value === elem.value ? "filled" : "default"}
-          key={elem.value}
-          onClick={() => onChange(elem.value)}
-        >
-          <Center>
-            {elem.icon ? <Icon name={elem.icon} size={16}></Icon> : elem.name}
-          </Center>
-        </Button>
-      ))}
-    </Button.Group>
-  </Stack>
+  <Button.Group>
+    {options.map(elem => (
+      <Button
+        className={CS.borderBrand}
+        fullWidth
+        py="sm"
+        variant={value === elem.value ? "filled" : "default"}
+        key={elem.value}
+        onClick={() => onChange(elem.value)}
+      >
+        <Center>
+          {elem.icon ? <Icon name={elem.icon} size={16}></Icon> : elem.name}
+        </Center>
+      </Button>
+    ))}
+  </Button.Group>
 );
