@@ -193,9 +193,9 @@
 (def csv-attachment
   {:type         :attachment
    :content-type "text/csv"
-   :file-name    "Test card.csv",
+   :file-name    (format "%s.csv" default-card-name)
    :content      java.net.URL
-   :description  "More results for 'Test card'"
+   :description  (format "More results for '%s'" default-card-name)
    :content-id   false})
 
 (def xls-attachment

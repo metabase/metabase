@@ -20,7 +20,8 @@
           :recipient-type nil
           :message        [{notification.tu/default-card-name true}
                            ;; icon
-                           notification.tu/png-attachment]}
+                           notification.tu/png-attachment
+                           notification.tu/csv-attachment]}
          data))
 
 (def card-name-regex (re-pattern notification.tu/default-card-name))
@@ -51,7 +52,8 @@
                        {:message [{notification.tu/default-card-name true
                                    card-content                     true}
                                   ;; icon
-                                  notification.tu/png-attachment]})
+                                  notification.tu/png-attachment
+                                  notification.tu/csv-attachment]})
                       (mt/summarize-multipart-single-email
                        email
                        card-name-regex

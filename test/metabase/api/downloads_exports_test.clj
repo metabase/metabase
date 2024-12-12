@@ -174,6 +174,7 @@
                                                                :enabled      true}
                    :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                    :user_id          (mt/user->id :rasta)}]
+      ;; TODO make sure this works for card notification
       (alert-attachment* pulse))))
 
 (defn- subscription-attachment!

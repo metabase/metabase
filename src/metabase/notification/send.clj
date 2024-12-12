@@ -132,7 +132,6 @@
                                                      :filters    (when (= :notification/dashboard payload_type)
                                                                    (-> notification-info :dashboard_subscription :parameters))}})))))
 
-
 (mu/defn send-notification-sync!
   "Send the notification to all handlers synchronously. Do not use this directly, use *send-notification!* instead."
   [{notification-id :id :as notification-info} :- notification.payload/Notification]
