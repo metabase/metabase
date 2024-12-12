@@ -86,10 +86,10 @@ const nestedDashboard = createMockCollectionItem({
   ...createMockDashboard({
     name: "Nested Dashboard",
     collection_id: 3,
-    collection: {
+    collection: createMockCollection({
       id: 3,
       location: "/4/",
-    },
+    }),
   }),
   location: "/4/",
   id: 106,
