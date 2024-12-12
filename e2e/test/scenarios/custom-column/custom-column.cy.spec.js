@@ -711,11 +711,52 @@ describe("scenarios > question > custom column", () => {
   it("should allow to use `in` and `not-in` expressions", () => {
     H.openProductsTable({ mode: "notebook" });
 
-    cy.log("filters");
+    cy.log("custom columns - in");
+    H.getNotebookStep("data").button("Custom column").click();
+    H.popover()
+      .first()
+      .within(() => {
+        H.enterCustomColumnDetails({
+          formula: 'in("Gadget", [Vendor], [Category])',
+          name: "InColumn",
+        });
+        cy.button("Done").click();
+      });
+    H.getNotebookStep("expression").button("Filter").click();
+    H.popover().within(() => {
+      cy.findByText("InColumn").click();
+      cy.findByText("Add filter").click();
+    });
+    H.visualize();
+    H.assertQueryBuilderRowCount(53);
+
+    cy.log("custom columns - notIn");
+    H.openNotebook();
+    H.getNotebookStep("expression").findByText("InColumn").click();
+    H.popover()
+      .first()
+      .within(() => {
+        H.enterCustomColumnDetails({
+          formula: 'notIn("Gadget", [Vendor], [Category])',
+          name: "InColumn",
+        });
+        cy.button("Update").click();
+      });
+    H.visualize();
+    H.assertQueryBuilderRowCount(147);
+
+    cy.log("filters - in");
+    H.openNotebook();
+    H.getNotebookStep("expression")
+      .findByText("InColumn")
+      .icon("close")
+      .click();
     H.getNotebookStep("data").button("Filter").click();
-    H.popover().findByText("Custom Expression").click();
-    H.enterCustomColumnDetails({ formula: "in([ID], 1, 2, 3)" });
-    H.popover().button("Done").click();
+    H.popover().within(() => {
+      cy.findByText("Custom Expression").click();
+      H.enterCustomColumnDetails({ formula: "in([ID], 1, 2, 3)" });
+      cy.button("Done").click();
+    });
     H.visualize();
     H.assertQueryBuilderRowCount(3);
     H.openNotebook();
@@ -726,11 +767,49 @@ describe("scenarios > question > custom column", () => {
     });
     H.visualize();
     H.assertQueryBuilderRowCount(2);
+
+    cy.log("filters - notIn");
+    H.openNotebook();
+    H.getNotebookStep("filter").findByText("ID is 2 selections").click();
+    H.popover().within(() => {
+      cy.findByLabelText("Back").click();
+      cy.findByText("Custom Expression").click();
+      H.enterCustomColumnDetails({ formula: "notIn([ID], 1, 2, 3)" });
+      cy.button("Done").click();
+    });
+    H.visualize();
+    H.assertQueryBuilderRowCount(197);
+
+    cy.log("aggregations - in");
     H.openNotebook();
     H.getNotebookStep("filter")
-      .findByText("ID is 2 selections")
+      .findByText("ID is not 3 selections")
       .icon("close")
       .click();
+    H.getNotebookStep("data").button("Summarize").click();
+    H.popover().within(() => {
+      cy.findByText("Custom Expression").click();
+      H.enterCustomColumnDetails({
+        formula: "countIf(in([ID], 1, 2))",
+        name: "CountIfIn",
+      });
+      cy.button("Done").click();
+    });
+    H.visualize();
+    cy.findByTestId("scalar-value").should("have.text", "2");
+
+    cy.log("aggregations - notIn");
+    H.openNotebook();
+    H.getNotebookStep("summarize").findByText("CountIfIn").click();
+    H.popover().within(() => {
+      H.enterCustomColumnDetails({
+        formula: "countIf(notIn([ID], 1, 2))",
+        name: "CountIfIn",
+      });
+      cy.button("Update").click();
+    });
+    H.visualize();
+    cy.findByTestId("scalar-value").should("have.text", "198");
   });
 });
 
