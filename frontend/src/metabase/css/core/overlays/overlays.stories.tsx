@@ -1,8 +1,7 @@
 import type { Store } from "@reduxjs/toolkit";
-import type { StoryFn } from "@storybook/react";
+import type { StoryFn, StoryObj } from "@storybook/react";
 import { Provider } from "react-redux";
 import _ from "underscore";
-import { storiesOf } from "@storybook/react";
 
 import { getStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
@@ -85,7 +84,7 @@ const overlays: Overlay[] = [
     shouldBeInteractable: false,
   },
   {
-    name: "Legacy tooltip",
+    name: "Legacy Tooltip",
     targetEvent: "hover",
     targetText: "Legacy tooltip",
     textContent: "Legacy tooltip content",
@@ -101,7 +100,7 @@ const overlays: Overlay[] = [
     canLaunchOverlays: true,
   },
   {
-    name: "Legacy popover",
+    name: "Legacy Popover",
     targetEvent: "click",
     targetText: "Legacy popover",
     textContent: "Legacy popover text content",
@@ -117,7 +116,7 @@ const overlays: Overlay[] = [
     canLaunchOverlays: true,
   },
   {
-    name: "Legacy modal",
+    name: "Legacy Modal",
     targetEvent: "click",
     targetText: "Legacy modal",
     textContent: "Legacy modal text content",
@@ -125,7 +124,7 @@ const overlays: Overlay[] = [
     canLaunchOverlays: true,
   },
   {
-    name: "Undo-style toast",
+    name: "Undo-Style toast",
     targetEvent: "click",
     targetText: "Undo-style toast",
     textContent: "Undo-style toast text content",
@@ -133,7 +132,7 @@ const overlays: Overlay[] = [
     canLaunchOverlays: false,
   },
   {
-    name: "Action-style toast",
+    name: "Action-Style toast",
     targetEvent: "click",
     targetText: "Action-style toast",
     textContent: "Action-style toast text content",
@@ -141,7 +140,7 @@ const overlays: Overlay[] = [
     canLaunchOverlays: true,
   },
   {
-    name: "Toaster-style toast",
+    name: "Toaster-Style toast",
     targetEvent: "click",
     targetText: "Toaster-style toast",
     textContent: "Toaster-style toast text content",
@@ -217,23 +216,25 @@ launchers.forEach(launcher => {
         overlaysToOpen: [OverlayType.mantineModal, OverlayType.legacyModal],
       },
     };
-    const key = `${launcher.name.replace(/\s/, "")}Launches${launchee.name.replace(/\s/, "")}`;
+    const key = `${launcher.name} Launches ${launchee.name}`.replace(/\s/g, "");
     scenarios[key] = scenario;
   });
 });
 
-// export default {
-//   title: "Design System/Overlays!",
-//   component: (...args: any) => {
-//     return <OverlaysDemo {...args} />;
-//   },
-//   decorators: [ReduxDecorator],
-//   parameters: {
-//     layout: "fullscreen",
-//   },
-//   ...scenarios,
-// };
+export default {
+  title: "Design System/Overlays",
+  component: (...args: any) => {
+    return <OverlaysDemo {...args} />;
+  },
+  decorators: [ReduxDecorator],
+  parameters: {
+    layout: "fullscreen",
+  },
+};
 
-const cases = ["a", "b", "c"];
-const stories = storiesOf("Overlays", module);
-cases.forEach(label => stories.add(label, () => <>{label}</>));
+export const {
+  MantineModalLaunchesLegacyModal,
+  MantineModalLaunchesLegacyPopover,
+  MantineModalLaunchesLegacyTooltip,
+  MantineModalLaunchesCommandPalette,
+} = scenarios;

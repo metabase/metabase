@@ -211,17 +211,15 @@ export const OverlaysDemo = ({
     // I also need to ensure that tooltips open. For that we can just use a
     // boolean setter function, I believe.
 
-    const setters: Partial<Record<OverlayType, Setter>> = {
-      [OverlayType.legacyModal]: setLegacyModalCount,
-      [OverlayType.mantineModal]: setMantineModalCount,
-      [OverlayType.mantineModalWithTitleProp]:
-        setMantineModalWithTitlePropCount,
-      [OverlayType.toast]: setToastCount,
-      [OverlayType.actionToast]: setActionToastCount,
-      [OverlayType.sidesheet]: setSidesheetCount,
-      [OverlayType.entityPicker]: setEntityPickerCount,
-      [OverlayType.commandPalette]: setCommandPaletteCount,
-      [OverlayType.undo]: setUndoCount,
+    const setters: Partial<Record<string, Setter>> = {
+      "Legacy Modal": setLegacyModalCount,
+      "Mantine Modal With Title Prop": setMantineModalWithTitlePropCount,
+      Toast: setToastCount,
+      "Action Toast": setActionToastCount,
+      Sidesheet: setSidesheetCount,
+      "Entity Picker": setEntityPickerCount,
+      "Command Palette": setCommandPaletteCount,
+      Undo: setUndoCount,
     };
 
     const updateOverlaysSequentially = async () => {
