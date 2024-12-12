@@ -6,15 +6,14 @@
             [metabase.api.common :as api]
             [metabase.models.user-key-value :as user-key-value]
             [metabase.models.user-key-value.types :as types]
-            [metabase.util.malli.registry :as mr]
             [metabase.util.malli.schema :as ms]))
 
-(api/defendpoint PUT "/"
+(api/defendpoint PUT "/namespace/:namespace/key/:key"
   "Upsert a KV-pair for the user"
-  [:as {{k :key
-         namespace :namespace
-         v :value
-         expires_at :expires_at} :body}]
+  [:as {{v :value
+         expires_at :expires_at} :body
+        {namespace :namespace
+         k :key} :params}]
   {k ms/NonBlankString
    v :any
    namespace ms/NonBlankString
@@ -34,22 +33,27 @@
            (api/check-400 false))
          (throw e))))
 
-(api/defendpoint GET "/"
+(api/defendpoint GET "/namespace/:namespace/key/:key"
   "Get a value for the user"
   [namespace key]
-  {key (ms/QueryVectorOf ms/NonBlankString)
+  {key ms/NonBlankString
+   namespace ms/NonBlankString}
+  (user-key-value/retrieve api/*current-user-id* namespace key))
+
+(api/defendpoint GET "/namespace/:namespace"
+  "Get the value for multiple keys in a namespace"
+  [:as {{:strs [keyyy]}
+        :query-params :as prms}
+   namespace]
+  {keyyy [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    namespace ms/NonBlankString}
   (into {}
         (for [k key]
-          [k (user-key-value/retrieve api/*current-user-id* namespace k)])))
+          [k (user-key-value/retrieve api/*current-user-id* namespace key)])))
 
-(api/defendpoint DELETE "/"
+(api/defendpoint DELETE "/namespace/:namespace/key/:key"
   "Deletes a KV-pair for the user"
-  [:as {{k :key namespace :namespace} :body}]
-  (user-key-value/delete! api/*current-user-id*
-                          namespace
-                          k))
-
-(mr/resolve-schema ::types/user-key-value)
+  [namespace key]
+  (user-key-value/delete! api/*current-user-id* namespace key))
 
 (api/define-routes)
