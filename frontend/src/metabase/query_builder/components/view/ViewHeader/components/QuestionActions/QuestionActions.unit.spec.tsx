@@ -68,9 +68,7 @@ function setup({ card, hasDataPermissions = true }: SetupOpts) {
       onOpenModal={onOpenModal}
       onToggleBookmark={jest.fn()}
       onSetQueryBuilderMode={onSetQueryBuilderMode}
-      onTurnModelIntoQuestion={onTurnModelIntoQuestion}
       onInfoClick={jest.fn()}
-      onModelPersistenceChange={jest.fn()}
     />,
     { storeInitialState: state },
   );
