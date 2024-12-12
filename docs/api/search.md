@@ -11,7 +11,7 @@ API endpoints for Search.
 ## `GET /api/search/`
 
 Search for items in Metabase.
-  For the list of supported models, check [[metabase.search/all-models]].
+  For the list of supported models, check [[metabase.search.config/all-models]].
 
   Filters:
   - `archived`: set to true to search archived items only, default is false
@@ -76,13 +76,13 @@ Return the current weights being used to rank the search results.
 
 ## `POST /api/search/force-reindex`
 
-If fulltext search is enabled, this will trigger a synchronous reindexing operation.
+This will trigger an immediate reindexing, if we are using search index.
 
 You must be a superuser to do this.
 
 ## `POST /api/search/re-init`
 
-If fulltext search is enabled, this will blow away the index table, re-create it, and re-populate it.
+This will blow away any search indexes, re-create, and re-populate them.
 
 You must be a superuser to do this.
 

@@ -4,7 +4,12 @@ import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
 import { CollectionBrowserInner } from "embedding-sdk/components/public/CollectionBrowser/CollectionBrowser";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
@@ -36,6 +41,7 @@ const TEST_COLLECTIONS = [ROOT_TEST_COLLECTION, BOBBY_TEST_COLLECTION];
 describe("CollectionBrowser", () => {
   it("should render", async () => {
     await setup();
+    await waitForLoaderToBeRemoved();
 
     expect(screen.getByText("Type")).toBeInTheDocument();
     expect(screen.getByText("Name")).toBeInTheDocument();

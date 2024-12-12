@@ -14,6 +14,8 @@ export * from "./lib/plugins";
 
 export type { MetabaseAuthConfig } from "./types";
 
+export type { MetabaseQuestion } from "./types/public/question";
+
 export type {
   FetchRequestTokenFn,
   EmbeddingSessionToken,
