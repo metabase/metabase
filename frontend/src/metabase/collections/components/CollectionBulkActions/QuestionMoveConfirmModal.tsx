@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useLatest } from "react-use";
 import { jt, msgid, ngettext, t } from "ttag";
+import { first } from "underscore";
 
 import { useGetMultipleCardsDashboardsQuery } from "metabase/api";
 import { Button, Flex, List, Loader, Modal, Text, Title } from "metabase/ui";
@@ -47,10 +48,17 @@ export const QuestionMoveConfirmModal = ({
 
   const cardsThatAppearInOtherDashboards = useMemo(
     () =>
-      cardDashboards?.filter(
-        cd =>
-          cd.dashboards.length > 1 || cd.dashboards[0].id !== destination?.id,
-      ),
+      cardDashboards?.filter(cd => {
+        if (cd.dashboards.length === 0) {
+          return false;
+        }
+
+        if (cd.dashboards.length > 1) {
+          return true;
+        }
+
+        return first(cd.dashboards)?.id !== destination?.id;
+      }),
     [destination, cardDashboards],
   );
 

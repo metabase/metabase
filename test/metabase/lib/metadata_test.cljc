@@ -6,7 +6,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu])
+  #?@(:clj ((:import
+             metabase.lib.test_metadata.graph_provider.SimpleGraphMetadataProvider))))
 
 (comment lib/keep-me)
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -76,8 +78,9 @@
       ["PEOPLE" "ORDERS" "VENUES"])))
 
 (deftest ^:parallel editable?-test
-  (let [query lib.tu/query-with-join
-        metadata-graph (.-metadata-graph (:lib/metadata query))
+  (let [query          lib.tu/query-with-join
+        metadata       ^SimpleGraphMetadataProvider (:lib/metadata query)
+        metadata-graph (.-metadata-graph metadata)
         restricted-metadata-graph (update metadata-graph :tables #(into [] (remove (comp #{"CATEGORIES"} :name)) %))
         restricted-provider (meta.graph-provider/->SimpleGraphMetadataProvider restricted-metadata-graph)
         restritcted-query (assoc query :lib/metadata restricted-provider)]

@@ -1,5 +1,6 @@
 (ns metabase.query-analysis-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -109,3 +110,54 @@
                           :tables {(mt/id :orders) (mt/id :people)}}]
         (is (= "SELECT NAME FROM PEOPLE"
                (query-analysis/replace-fields-and-tables card replacements)))))))
+
+(defn- monstrous-name []
+  (str/replace (apply str (repeatedly 10 random-uuid)) "-" "_"))
+
+(defmacro with-analysis-on [& body]
+  `(mt/with-dynamic-redefs [query-analysis/enabled-type? (constantly true)]
+     (query-analysis/with-immediate-analysis
+       ~@body)))
+
+(deftest parse-crosstab-test
+  (with-analysis-on
+    (testing "Nested queries within crosstab expressions are ignored"
+      (let [sql "SELECT * FROM CROSSTAB($$ wat $$, $$ wut $$) AS ct(page INTEGER, \"foo\" FLOAT)"]
+        (mt/with-temp [Card {c-id :id} {:dataset_query (mt/native-query {:query sql})}]
+          (testing "We record that analysis was successful"
+            (is (t2/exists? :model/QueryAnalysis :card_id c-id)))
+          (testing "But there are no identifiers saved to the database"
+            (is (not (t2/exists? :model/QueryField :card_id c-id)))
+            (is (not (t2/exists? :model/QueryTable :card_id c-id)))))))))
+
+(deftest parse-long-column-test
+  (with-analysis-on
+    (testing "Long identifiers are truncated"
+      (let [long-column (monstrous-name)
+            long-table  (monstrous-name)]
+        (mt/with-temp [Card {c-id :id} {:dataset_query (mt/native-query {:query (format "SELECT c, %s FROM t, %s"
+                                                                                        long-column
+                                                                                        long-table)})}]
+          (let [columns (t2/select-fn-set :column :model/QueryField :card_id c-id)
+                tables  (t2/select-fn-set :table :model/QueryTable :card_id c-id)]
+            (is (= 2 (count columns)))
+            (is (contains? columns "c"))
+            (is (some (partial str/starts-with? long-column) columns))
+            (is (= 2 (count tables)))
+            (is (contains? tables "t"))
+            (is (some (partial str/starts-with? long-table) tables))))))))
+
+(deftest analysis-error-test
+  (with-analysis-on
+    (testing "Errors analyzing queries will not prevent cards being created or updated"
+      (mt/with-dynamic-redefs [query-analysis/update-query-analysis-for-card! (fn [& _] (throw (ex-info "Oh no!" {})))]
+        (mt/with-temp [Card {c-id :id} {:dataset_query (mt/native-query {:query "SELECT c FROM t"})}]
+          (testing "The card was created"
+            (is (t2/exists? :model/Card c-id)))
+          (testing "The analysis was not"
+            (is (not (t2/exists? :model/QueryAnalysis :card_id c-id)))
+            (is (not (t2/exists? :model/QueryField :card_id c-id)))
+            (is (not (t2/exists? :model/QueryTable :card_id c-id))))
+          (testing "We can also update it"
+            (t2/update! :model/Card c-id {:name "Spiffy"})
+            (is (= "Spiffy" (t2/select-one-fn :name :model/Card c-id)))))))))
