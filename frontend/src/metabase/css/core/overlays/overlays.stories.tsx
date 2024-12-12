@@ -213,7 +213,7 @@ launchers.forEach(launcher => {
       render: Template,
       args: {
         enableNesting: true,
-        overlaysToOpen: [OverlayType.mantineModal, OverlayType.legacyModal],
+        overlaysToOpen: [launcher.name, launchee.name],
       },
     };
     const key = `${launcher.name} Launches ${launchee.name}`.replace(/\s/g, "");
@@ -234,7 +234,5 @@ export default {
 
 export const {
   MantineModalLaunchesLegacyModal,
-  MantineModalLaunchesLegacyPopover,
-  MantineModalLaunchesLegacyTooltip,
-  MantineModalLaunchesCommandPalette,
+  LegacyModalLaunchesMantineModal,
 } = scenarios;

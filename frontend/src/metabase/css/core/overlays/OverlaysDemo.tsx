@@ -40,7 +40,7 @@ import {
 import { createMockUndo } from "metabase-types/api/mocks";
 
 import { BulkActionBarInner } from "../../../components/BulkActionBar/BulkActionBar";
-import { OverlaysDemoProps, OverlayType, Setter } from "./types";
+import { OverlaysDemoProps, Setter } from "./types";
 
 const LauncherGroup = ({
   title,
@@ -212,6 +212,7 @@ export const OverlaysDemo = ({
     // boolean setter function, I believe.
 
     const setters: Partial<Record<string, Setter>> = {
+      "Mantine Modal": setMantineModalCount,
       "Legacy Modal": setLegacyModalCount,
       "Mantine Modal With Title Prop": setMantineModalWithTitlePropCount,
       Toast: setToastCount,
