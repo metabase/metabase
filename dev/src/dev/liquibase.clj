@@ -27,7 +27,9 @@
                         ["--password" password])
                       ["--url" (.url data-source)]
                       (map str args)]))]
-    (metabase.db/setup-db! {:create-sample-content? false})
+    ;; when generating documentation we need to set up the DB and run migrations.
+    (when (= (first args) "dbDoc")
+      (metabase.db/setup-db! {:create-sample-content? false}))
     (println (colorize/green (str/join " " (cons "liquibase" (map pr-str args)))))
     ;; use reflection here instead of static method calls because `liquibase.integration.commandline.Main` fails to load
     ;; without having the `logback` dependency available. We add this as `:extra-deps` for the `:liquibase` profile. We
