@@ -118,12 +118,14 @@ export const getSankeyData = (
     const target = row[sankeyColumns.target.index];
     const value = row[sankeyColumns.value.index];
 
-    const sourceInfo = updateNode(source, 0, "source", row);
-    updateNode(target, sourceInfo.level + 1, "target", row);
+    const sourceNode = updateNode(source, 0, "source", row);
+    const targetNode = updateNode(target, sourceNode.level + 1, "target", row);
 
     const linkKey = `${NULL_CHAR}${source}->${target}`;
 
     const link: SankeyLink = linkMap.get(linkKey) ?? {
+      sourceNode,
+      targetNode,
       source,
       target,
       value: 0,

@@ -24,6 +24,8 @@ export interface SankeyData {
 }
 
 export interface SankeyLink {
+  sourceNode: SankeyNode;
+  targetNode: SankeyNode;
   source: RowValue;
   target: RowValue;
   value: RowValue;

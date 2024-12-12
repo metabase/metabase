@@ -1,7 +1,11 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
 import { renderToString } from "react-dom/server";
 
-import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
+import { formatPercent } from "metabase/static-viz/lib/numbers";
+import {
+  EChartsTooltip,
+  type EChartsTooltipRow,
+} from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import { getTooltipBaseOption } from "metabase/visualizations/echarts/tooltip";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { DatasetColumn } from "metabase-types/api";
@@ -24,29 +28,50 @@ const ChartItemTooltip = ({
   const data = params.data;
 
   let header = "";
-  let value = null;
+  let rows: EChartsTooltipRow[] = [];
   if (params.dataType === "edge") {
     header = `${formatters.source(data.source)} → ${formatters.target(data.target)}`;
-    value = params.value;
+    const sourceValue = Math.max(
+      data.sourceNode.inputColumnValues[metricColumnKey] ?? 0,
+      data.sourceNode.outputColumnValues[metricColumnKey] ?? 0,
+    );
+    const sourcePercent = params.value / sourceValue;
+
+    const targetValue = Math.max(
+      data.targetNode.inputColumnValues[metricColumnKey] ?? 0,
+      data.targetNode.outputColumnValues[metricColumnKey] ?? 0,
+    );
+    const targetPercent = params.value / targetValue;
+
+    rows = [
+      {
+        name: metricColumnName,
+        values: [formatters.value(params.value)],
+      },
+      {
+        name: `% of ${formatters.source(data.source)}`,
+        values: [formatPercent(sourcePercent)],
+      },
+      {
+        name: `% of ${formatters.target(data.target)}`,
+        values: [formatPercent(targetPercent)],
+      },
+    ];
   } else if (params.dataType === "node") {
     header = formatters.node(data);
-    value = Math.max(
+    const nodeValue = Math.max(
       data.inputColumnValues[metricColumnKey] ?? 0,
       data.outputColumnValues[metricColumnKey] ?? 0,
     );
+    rows = [
+      {
+        name: metricColumnName,
+        values: [formatters.value(nodeValue)],
+      },
+    ];
   }
 
-  return (
-    <EChartsTooltip
-      header={header}
-      rows={[
-        {
-          name: metricColumnName,
-          values: [formatters.value(value)],
-        },
-      ]}
-    />
-  );
+  return <EChartsTooltip header={header} rows={rows} />;
 };
 
 export const getTooltipOption = (
