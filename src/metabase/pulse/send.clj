@@ -3,6 +3,7 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as models.pulse]
+   [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -53,6 +54,8 @@
      :channel      channel
      :recipients   (channel-recipients pulse-channel)}))
 
+(defn- maybe-name [x] (some-> x name))
+
 (defn- notification-info
   [pulse dashboard pulse-channel]
   (if (= :pulse (alert-or-pulse pulse))
@@ -68,14 +71,22 @@
                                                                          (select-keys % [:include_xls :include_csv :pivot_results :format_rows]))
                                                                  (:cards pulse))}
      :handlers               [(get-notification-handler pulse-channel)]}
-    {:id           (:id pulse)
-     :payload_type :notification/card
-     :creator_id   (:creator_id pulse)
-     :payload      (merge (assoc (select-keys pulse [:id :alert_condition :alert_above_goal :alert_first_only])
-                                 :card_id (some :id (:cards pulse))
-                                 :schedule (select-keys pulse-channel [:schedule_type :schedule_hour :schedule_day :schedule_frame]))
-                          (select-keys (-> pulse :cards first) [:include_xls :include_csv :pivot_results :format_rows]))
-     :handlers     [(get-notification-handler pulse-channel)]}))
+    {:id            (:id pulse)
+     :payload_type  :notification/card
+     :creator_id    (:creator_id pulse)
+     :payload       {:id             (:id pulse)
+                     :card_id        (:id (-> pulse :cards first))
+                     :send_condition (cond
+                                       (= "rows" (:alert_condition pulse)) :has_result
+                                       (:alert_above_goal pulse)           :goal_above
+                                       :else                               :goal_below)}
+
+     :subscriptions [{:type :notification-subscription/cron
+                      :cron_schedule (u.cron/schedule-map->cron-string (-> pulse-channel
+                                                                           (update :schedule_type maybe-name)
+                                                                           (update :schedule_day maybe-name)
+                                                                           (update :schedule_frame maybe-name)))}]
+     :handlers      [(get-notification-handler pulse-channel)]}))
 
 (def ^:private send-notification! (requiring-resolve 'metabase.notification.core/send-notification!))
 

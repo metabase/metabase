@@ -96,11 +96,21 @@
     (catch Throwable e
       (log/errorf e "[Notification %d] Error sending notification!" notification-id))))
 
+(defn- maybe-hydrate-notification
+  [notification-info]
+  ;; skip hydrating if we already have the necessary keys
+  (let [already-included? (some #{:subscriptions :handlers :payload} (keys notification-info))]
+    (cond-> notification-info
+      already-included?
+      (t2/hydrate :creator)
+      (not already-included?)
+      models.notification/hydrate-notification)))
+
 (defn- hydrate-notification
   [notification-info]
   (case (:payload_type notification-info)
     (:notification/system-event :notification/testing :notification/card)
-    (models.notification/hydrate-notification notification-info)
+    (maybe-hydrate-notification notification-info)
     ;; :notification/dashboard is still on pulse, so we expect it to self-contained. see [[metabase.pulse.send]]
     notification-info))
 
