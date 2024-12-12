@@ -215,12 +215,11 @@ function tagDecorator() {
 
       return Decoration.mark({
         tagName: "span",
-        class: cx(
-          "cm-tag",
-          !isSnippet && !isCard && "cm-tag-variable",
-          isSnippet && "cm-tag-snippet",
-          isCard && "cm-tag-card",
-        ),
+        class: cx("cm-tag", {
+          "cm-tag-variable": !isSnippet && !isCard,
+          "cm-tag-snippet": isSnippet,
+          "cm-tag-card": isCard,
+        }),
         attributes: {
           "data-snippet": isSnippet.toString(),
           "data-card": isCard.toString(),
