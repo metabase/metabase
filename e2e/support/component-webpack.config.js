@@ -84,7 +84,9 @@ function resolveEmbeddingSdkPackage() {
   let isEmbeddingSdkPackageInstalled = false;
 
   try {
-    require.resolve("@metabase/embedding-sdk-react");
+    const resolvedPath = require.resolve("@metabase/embedding-sdk-react");
+    console.log("Resolved Embedding SDK at", resolvedPath);
+
     isEmbeddingSdkPackageInstalled = true;
   } catch (err) {}
 
