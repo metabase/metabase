@@ -63,6 +63,16 @@ describe("Dashboard > Dashboard Questions", () => {
     });
 
     it("can move an existing question between a dashboard and a collection", () => {
+      H.createQuestion({
+        name: "Total Orders that should stay",
+        dashboard_id: S.ORDERS_DASHBOARD_ID,
+        query: {
+          "source-table": SAMPLE_DATABASE.ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+      });
+
       H.createQuestion(
         {
           name: "Total Orders",
@@ -83,6 +93,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.entityPickerModal().button("Move").click();
       H.undoToast().findByText("Orders in a dashboard");
       cy.findByTestId("edit-bar").button("Save").click();
+
       H.dashboardCards().findByText("Total Orders").click();
       H.openQuestionActions();
       H.popover().findByText("Turn into a model").should("not.exist");
@@ -115,6 +126,31 @@ describe("Dashboard > Dashboard Questions", () => {
       H.undoToast().findByText("Second collection");
       H.visitDashboard(S.ORDERS_DASHBOARD_ID);
       H.dashboardCards().findByText("Total Orders").should("not.exist");
+
+      cy.log("test moving a question while keeping the dashcard");
+      H.dashboardCards().findByText("Total Orders that should stay").click();
+
+      H.openQuestionActions();
+      H.popover().findByText("Move").click();
+      H.entityPickerModalTab("Browse").click();
+      H.entityPickerModal().findByText("First collection").click();
+      H.entityPickerModal().findByText("Second collection").click();
+      H.entityPickerModal().button("Move").click();
+      H.modal().within(() => {
+        cy.findByText(/do you still want this question to appear/i).should(
+          "exist",
+        );
+        cy.findByRole("radio", {
+          name: /Yes, it should still appear there/i,
+        }).should("be.checked");
+        cy.button("Done").click();
+      });
+
+      H.undoToast().findByText("Second collection");
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      H.dashboardCards()
+        .findByText("Total Orders that should stay")
+        .should("exist");
     });
 
     it("can move a dashboard question between dashboards", () => {
@@ -724,9 +760,13 @@ describe("Dashboard > Dashboard Questions", () => {
         H.visitDashboard(purpleDashboardId);
       });
 
-      H.dashboardCards()
-        .findByText("Average Quantity by Month Question")
-        .should("not.exist");
+      //Wait for dashcard to load
+      H.dashboardCards().findByText("Created At: Month").should("exist");
+
+      H.dashboardCards().should(
+        "not.contain.text",
+        "Average Quantity by Month Question",
+      );
     });
   });
 
