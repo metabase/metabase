@@ -22,6 +22,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.markdown :as markdown]
+   [metabase.util.ui-logic :as ui-logic]
    [metabase.util.urls :as urls]
    [ring.util.codec :as codec]))
 
@@ -187,6 +188,7 @@
                                                      (assoc-attachment-booleans
                                                       [(assoc notification_card :include_csv true :format_rows true)]
                                                       [card_part])))
+        goal               (ui-logic/find-goal-value payload)
         message-context-fn (fn [non-user-email]
                              (assoc notification-payload
                                     :computed {:subject         (case (messages/pulse->alert-condition-kwd notification_card)
@@ -197,6 +199,7 @@
                                                :content         (html (:content rendered-card))
                                                ;; UI only allow one subscription per card notification
                                                :alert_schedule  (messages/notification-card-schedule-text (first subscriptions))
+                                               :goal_value      goal
                                                :management_text (if (nil? non-user-email)
                                                                   "Manage your subscriptions"
                                                                   "Unsubscribe")

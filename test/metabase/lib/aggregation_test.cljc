@@ -99,7 +99,13 @@
      :display-name "User-specified Name"}
 
     [:percentile {} (lib.tu/field-clause :venues :id) 0.95]
-    {:column-name "percentile", :display-name "0.95th percentile of ID"}))
+    {:column-name "percentile", :display-name "0.95th percentile of ID"}
+
+    [:case {} [[[:> (lib.tu/field-clause :venues :price) 10] "A"]]]
+    {:column-name "case", :display-name "Case"}
+
+    [:if {} [[[:> (lib.tu/field-clause :venues :price) 10] "A"]]]
+    {:column-name "if", :display-name "If"}))
 
 ;;; the following tests use raw legacy MBQL because they're direct ports of JavaScript tests from MLv1 and I wanted to
 ;;; make sure that given an existing query, the expected description was generated correctly.

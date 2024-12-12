@@ -140,7 +140,10 @@ describe("issue 9027", () => {
     H.focusNativeEditor().type("select 0");
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
-    saveQuestion(QUESTION_NAME);
+    H.saveQuestion(QUESTION_NAME, undefined, {
+      tab: "Browse",
+      path: ["Our analytics"],
+    });
   });
 
   it("should display newly saved question in the 'Saved Questions' list immediately (metabase#9027)", () => {
@@ -161,19 +164,6 @@ function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
     cy.findByText(questionName).should(exists ? "exist" : "not.exist");
     cy.button("Close").click();
   });
-}
-
-function saveQuestion(name) {
-  cy.intercept("POST", "/api/card").as("saveQuestion");
-  cy.findByText("Save").click();
-
-  cy.findByTestId("save-question-modal").within(modal => {
-    cy.findByLabelText("Name").clear().type(name);
-    cy.findByText("Save").click();
-  });
-
-  cy.button("Not now").click();
-  cy.wait("@saveQuestion");
 }
 
 function archiveQuestion(questionName) {
@@ -290,8 +280,10 @@ describe("issue 14957", { tags: "@external" }, () => {
     H.openNativeEditor({ databaseName: PG_DB_NAME }).type(
       "select pg_sleep(60)",
     );
-
-    saveQuestion("14957");
+    H.saveQuestion("14957", undefined, {
+      tab: "Browse",
+      path: ["Our analytics"],
+    });
     H.modal().should("not.exist");
   });
 });

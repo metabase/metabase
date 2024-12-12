@@ -33,19 +33,15 @@
               </tr>
             </table>
             {{{computed.content}}}
-            <p style="color: {{payload.style.color_text_medium}}; font-size: 12px; font-weight: 400">
-              {{#with payload.notification_card}}
+            {{#if computed.goal_value}}
+              <p style="color: {{payload.style.color_text_medium}}; font-size: 12px; font-weight: 400">
                 {{#if (equals send_condition "goal_above")}}
-                  when this question meets its goal
+                  This question has reached its goal of {{computed.goal_value}}.
                 {{else}}
-                  {{#if (equals send_condition "goal_below")}}
-                  when this question goes below its goal
-                  {{else}}
-                  whenever this question has any results
-                  {{/if}}
+                  This question has gone below its goal of {{computed.goal_value}}.
                 {{/if}}
-              {{/with}}
-            </p>
+              </p>
+            {{/if}}
             {{#if payload.notification_card.send_once}}
               <p style="color: {{payload.style.color_text_medium}}; font-size: 12px; font-weight: 400">
               We’ll stop sending you alerts about this question now.
