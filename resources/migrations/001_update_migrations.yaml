@@ -10142,6 +10142,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: add notification.internal_id
       preConditions:
+        - onFail: MARK_RAN
         - not:
           - columnExists:
               tableName: notification
