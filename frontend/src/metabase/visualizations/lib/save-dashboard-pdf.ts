@@ -39,7 +39,7 @@ const getSortedDashCardBounds = (node: HTMLElement): DashCardBounds[] => {
     .sort((a, b) => a.top - b.top);
 };
 
-const findPageBreakCandidates = (
+export const findPageBreakCandidates = (
   cards: DashCardBounds[],
   offset = 0,
 ): number[] => {
@@ -71,12 +71,12 @@ const findPageBreakCandidates = (
   return sortedBreaks.map(pageBreak => pageBreak + offset);
 };
 
-function getPageBreaks(
+export const getPageBreaks = (
   sortedCards: DashCardBounds[],
   optimalPageHeight: number,
   totalHeight: number,
   offset = 0,
-): number[] {
+): number[] => {
   if (sortedCards.length === 0) {
     return [];
   }
@@ -124,7 +124,7 @@ function getPageBreaks(
   }
 
   return result;
-}
+};
 
 const createHeaderElement = (dashboardName: string, marginBottom: number) => {
   const header = document.createElement("div");
