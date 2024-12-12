@@ -372,7 +372,13 @@ export function FieldValuesWidgetInner({
 
   if (!optionRenderer) {
     optionRenderer = (option: FieldValue) =>
-      renderValue({ fields, formatOptions, value: option[0], autoLoad: false });
+      renderValue({
+        fields,
+        formatOptions,
+        value: option[0],
+        autoLoad: false,
+        displayValue: option[1],
+      });
   }
 
   if (!layoutRenderer) {
@@ -618,19 +624,22 @@ function renderValue({
   value,
   autoLoad,
   compact,
+  displayValue,
 }: {
   fields: Field[];
   formatOptions: Record<string, any>;
   value: RowValue;
   autoLoad?: boolean;
   compact?: boolean;
+  displayValue?: string;
 }) {
   return (
     <ValueComponent
       value={value}
       column={fields[0]}
       maximumFractionDigits={20}
-      remap={showRemapping(fields)}
+      remap={displayValue || showRemapping(fields)}
+      displayValue={displayValue}
       {...formatOptions}
       autoLoad={autoLoad}
       compact={compact}
