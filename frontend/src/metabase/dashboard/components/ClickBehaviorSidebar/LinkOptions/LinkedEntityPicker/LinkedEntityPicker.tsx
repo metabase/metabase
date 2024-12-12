@@ -115,7 +115,7 @@ function TargetClickMappings({
     isLoading: dashboardIsLoading,
     error: dashboardError,
   } = useGetDashboardQuery(
-    clickBehavior.linkType === "dashboard" && clickBehavior.targetId != null
+    isDashboard && clickBehavior.targetId != null
       ? { id: clickBehavior.targetId }
       : skipToken,
   );
@@ -124,7 +124,7 @@ function TargetClickMappings({
     isLoading: cardIsLoading,
     error: cardError,
   } = useGetCardQuery(
-    clickBehavior.linkType === "question" && clickBehavior.targetId != null
+    !isDashboard && clickBehavior.targetId != null
       ? { id: clickBehavior.targetId }
       : skipToken,
   );
@@ -133,11 +133,9 @@ function TargetClickMappings({
     return card ? new Question(card, metadata) : undefined;
   }, [card, metadata]);
 
-  const object = clickBehavior.linkType === "dashboard" ? dashboard : question;
-  const isLoading =
-    clickBehavior.linkType === "dashboard" ? dashboardIsLoading : cardIsLoading;
-  const error =
-    clickBehavior.linkType === "dashboard" ? dashboardError : cardError;
+  const object = isDashboard ? dashboard : question;
+  const isLoading = isDashboard ? dashboardIsLoading : cardIsLoading;
+  const error = isDashboard ? dashboardError : cardError;
 
   if (error || isLoading) {
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
