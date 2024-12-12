@@ -15,7 +15,6 @@ import ChartSettingToggle from "metabase/visualizations/components/settings/Char
 
 const WIDGETS = {
   input: ChartSettingInput,
-  inputGroup: ChartSettingInputGroup,
   number: ChartSettingInputNumeric,
   radio: ChartSettingRadio,
   select: ChartSettingSelect,
