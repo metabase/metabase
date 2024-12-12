@@ -140,10 +140,16 @@
                               (lib.filter/= column "A" "B")
                               {:operator :=, :column column, :values ["A" "B"]}
 
+                              (lib.filter/in column "A" "B")
+                              {:operator :=, :column column, :values ["A" "B"]}
+
                               (lib.filter/!= column "A")
                               {:operator :!=, :column column, :values ["A"]}
 
                               (lib.filter/!= column "A" "B")
+                              {:operator :!=, :column column, :values ["A" "B"]}
+
+                              (lib.filter/not-in column "A" "B")
                               {:operator :!=, :column column, :values ["A" "B"]}
 
                               (lib.filter/contains column "A")
@@ -187,8 +193,10 @@
                               (lib.filter/not-null column)      {:operator :not-null, :column column}
                               (lib.filter/= column 10)          {:operator :=, :column column, :values [10]}
                               (lib.filter/= column 10 20)       {:operator :=, :column column, :values [10 20]}
+                              (lib.filter/in column 10 20)      {:operator :=, :column column, :values [10 20]}
                               (lib.filter/!= column 10)         {:operator :!=, :column column, :values [10]}
                               (lib.filter/!= column 10 20)      {:operator :!=, :column column, :values [10 20]}
+                              (lib.filter/not-in column 10 20)  {:operator :!=, :column column, :values [10 20]}
                               (lib.filter/> column 10)          {:operator :>, :column column, :values [10]}
                               (lib.filter/>= column 10)         {:operator :>=, :column column, :values [10]}
                               (lib.filter/< column 10)          {:operator :<, :column column, :values [10]}
@@ -214,8 +222,20 @@
       (doseq [[clause parts] {(lib.filter/= lat-column 10)
                               {:operator :=, :column lat-column, :values [10]}
 
-                              (lib.filter/!= lon-column 20)
-                              {:operator :!=, :column lon-column, :values [20]}
+                              (lib.filter/= lat-column 10 20)
+                              {:operator :=, :column lat-column, :values [10 20]}
+
+                              (lib.filter/in lat-column 10 20)
+                              {:operator :=, :column lat-column, :values [10 20]}
+
+                              (lib.filter/!= lon-column 10)
+                              {:operator :!=, :column lon-column, :values [10]}
+
+                              (lib.filter/!= lon-column 10 20)
+                              {:operator :!=, :column lon-column, :values [10 20]}
+
+                              (lib.filter/not-in lon-column 10 20)
+                              {:operator :!=, :column lon-column, :values [10 20]}
 
                               (lib.filter/> lat-column 10)
                               {:operator :>, :column lat-column, :values [10]}
@@ -420,6 +440,12 @@
                                :unit     :hour-of-day
                                :values   [0 23]}
 
+                              (lib.filter/not-in (lib.expression/get-hour column) 0 23)
+                              {:operator :!=
+                               :column   column
+                               :unit     :hour-of-day
+                               :values   [0 23]}
+
                               (lib.filter/!= (lib.expression/get-day-of-week column :iso) 1)
                               {:operator :!=
                                :column   column
@@ -432,13 +458,31 @@
                                :unit     :day-of-week
                                :values   [1 7]}
 
+                              (lib.filter/not-in (lib.expression/get-day-of-week column :iso) 1 7)
+                              {:operator :!=
+                               :column   column
+                               :unit     :day-of-week
+                               :values   [1 7]}
+
                               (lib.filter/!= (lib.expression/get-month column) 1 12)
                               {:operator :!=
                                :column   column
                                :unit     :month-of-year
                                :values   [1 12]}
 
+                              (lib.filter/not-in (lib.expression/get-month column) 1 12)
+                              {:operator :!=
+                               :column   column
+                               :unit     :month-of-year
+                               :values   [1 12]}
+
                               (lib.filter/!= (lib.expression/get-quarter column) 1 4)
+                              {:operator :!=
+                               :column   column
+                               :unit     :quarter-of-year
+                               :values   [1 4]}
+
+                              (lib.filter/not-in (lib.expression/get-quarter column) 1 4)
                               {:operator :!=
                                :column   column
                                :unit     :quarter-of-year
@@ -539,6 +583,7 @@
       "Q1" (lib/= (lib/get-quarter created-at) 1)
       "Excludes Q4" (lib/!= (lib/get-quarter created-at) 4)
       "Excludes Q4" (lib/!= (lib/with-temporal-bucket created-at :quarter-of-year) date-arg-1)
+      "Excludes Q4" (lib/not-in (lib/get-quarter created-at) 4)
       "Nov 2, 2023 – Jan 3, 2024" (lib/between created-at date-arg-1 date-arg-2)
       "After Nov 2, 2023" (lib/> created-at date-arg-1)
       "Before Nov 2, 2023" (lib/< created-at date-arg-1)

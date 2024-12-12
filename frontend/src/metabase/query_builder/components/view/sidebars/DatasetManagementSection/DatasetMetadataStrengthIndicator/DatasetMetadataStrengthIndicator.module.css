@@ -1,0 +1,14 @@
+.PercentageLabel {
+  user-select: none;
+  transition: all 0.4s;
+}
+
+.TooltipParagraph {
+  margin: 0;
+}
+
+.TooltipContent {
+  .TooltipParagraph:last-child {
+    margin-top: 1em;
+  }
+}
