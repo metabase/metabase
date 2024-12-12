@@ -227,28 +227,6 @@ export const LegacyModalCanLaunchMantineModal = {
   },
 };
 
-export const LegacyModalCanLaunchLegacyModal = {
-  render: Template,
-  args: {
-    enableNesting: true,
-  },
-  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const body = canvasElement.parentElement as HTMLElement;
-    await launchAThenB("Legacy Modal", "Legacy Modal", body);
-  },
-};
-
-export const MantineModalCanLaunchMantineModal = {
-  render: Template,
-  args: {
-    enableNesting: true,
-  },
-  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const body = canvasElement.parentElement as HTMLElement;
-    await launchAThenB("Mantine Modal", "Mantine Modal", body);
-  },
-};
-
 export const MantineModalCanLaunchLegacyPopover = {
   render: Template,
   args: {
