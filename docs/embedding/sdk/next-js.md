@@ -13,6 +13,7 @@ Some notes on using the Embedded analytics SDK with [Next.js](https://nextjs.org
 ## Making the SDK components work on Server Side Rendering (SSR) or React Server Components
 
 Currently, the SDK components only work on the browser, this means that using them directly from Server Side Rendering (SSR) or Server Components is not supported.
+To make them work, you can either use the compatibility layer or manually wrap the components.
 
 ### Compatibility layer
 
