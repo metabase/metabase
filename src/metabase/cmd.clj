@@ -16,16 +16,16 @@
   associated with each command's entrypoint function to generate descriptions for each command."
   (:refer-clojure :exclude [load import])
   (:require
-    [clojure.string :as str]
-    [clojure.tools.cli :as cli]
-    [environ.core :as env]
-    [metabase.config :as config]
-    [metabase.legacy-mbql.util :as mbql.u]
-    [metabase.plugins.classloader :as classloader]
-    [metabase.util :as u]
-    [metabase.util.encryption :as encryption]
-    [metabase.util.i18n :refer [trs]]
-    [metabase.util.log :as log]))
+   [clojure.string :as str]
+   [clojure.tools.cli :as cli]
+   [environ.core :as env]
+   [metabase.config :as config]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
