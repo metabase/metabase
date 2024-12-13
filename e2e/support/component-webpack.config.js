@@ -9,6 +9,14 @@ console.log(
   `Embedding SDK is ${isEmbeddingSdkPackageInstalled ? "installed" : 'NOT installed, using locally built version from "resources/embedding-sdk"'}`,
 );
 
+// FIXME: remove this after debugging
+const sdkPackagePath = path.resolve(
+  __dirname,
+  "../../resources/embedding-sdk/dist/main.bundle.js",
+);
+
+console.log(`SDK package path resolved to ${sdkPackagePath}`);
+
 module.exports = {
   mode: "development",
   devtool: false,
@@ -18,10 +26,7 @@ module.exports = {
       ...mainConfig.resolve.alias,
       ...(!isEmbeddingSdkPackageInstalled
         ? {
-            "@metabase/embedding-sdk-react": path.resolve(
-              __dirname,
-              "../../resources/embedding-sdk/dist/main.bundle.js",
-            ),
+            "@metabase/embedding-sdk-react": sdkPackagePath,
           }
         : null),
     },
