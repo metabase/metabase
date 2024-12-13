@@ -160,7 +160,7 @@
   [env-var]
   (not= :none (:setter env-var)))
 
-(defn- active?
+(defn active?
   "Used to filter our deprecated enviroment variables."
   [env-var]
   (nil? (:deprecated env-var)))
@@ -171,15 +171,19 @@
   (or (= (:user-local env-var) :only)
       (= (:database-local env-var) :only)))
 
+(defn filter-env-vars
+  "Filters for valid environment variables."
+  [settings]
+  (->> settings
+       (remove avoid?)
+       (remove only-local?)
+       (filter setter?)
+       (filter active?)))
+
 (defn format-env-var-docs
   "Preps relevant environment variable docs as a Markdown string."
   [settings]
-  (->> settings
-       (filter setter?)
-       (filter active?)
-       (remove avoid?)
-       (remove only-local?)
-       (map format-env-var-entry)))
+  (map format-env-var-entry (filter-env-vars settings)))
 
 (defn- format-intro
   "Exists just so we can write the intro in Markdown."

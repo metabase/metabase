@@ -156,10 +156,20 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       # Needed to omit newly added tests for functionality that is not yet released
-      - name: Checkout SDK release commit
+      - name: Sparse checkout tests from SDK release commit
         uses: actions/checkout@v4
         with:
           ref: embedding-sdk-${{ needs.resolve-sdk-version.outputs.sdk_version }}
+          path: sdk-release-e2e
+          sparse-checkout: e2e
+
+      - name: Move tests from the release commit into the repo
+        run: |
+          rm -rf ./e2e/support/helpers/*
+          mv ./sdk-release-e2e/e2e/support/helpers/* ./e2e/support/helpers
+          rm -rf ./e2e/test-component/*
+          mv ./sdk-release-e2e/e2e/test-component/* ./e2e/test-component
+        shell: bash
 
       - name: Retrieve uberjar artifact for ee
         uses: actions/download-artifact@v4

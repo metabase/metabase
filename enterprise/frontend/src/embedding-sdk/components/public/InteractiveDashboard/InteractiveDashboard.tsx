@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import _ from "underscore";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
@@ -23,10 +23,7 @@ import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/publi
 import { InteractiveDashboardProvider } from "./context";
 
 export type InteractiveDashboardProps = {
-  drillThroughQuestionHeight?: number;
   plugins?: SdkPluginsConfig;
-  className?: string;
-  style?: CSSProperties;
 
   /**
    * A custom React component to render the question layout.
@@ -36,6 +33,7 @@ export type InteractiveDashboardProps = {
    *       once we have a public-facing question context.
    */
   renderDrillThroughQuestion?: () => ReactNode;
+  drillThroughQuestionHeight?: number;
 } & SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
@@ -87,7 +85,7 @@ const InteractiveDashboardInner = ({
       {adhocQuestionUrl ? (
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}
-          withTitle={withTitle}
+          title={withTitle}
           height={drillThroughQuestionHeight}
           plugins={plugins}
           onNavigateBack={onNavigateBackToDashboard}

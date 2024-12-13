@@ -143,3 +143,13 @@ export const LoadingAndErrorTitle = styled.h2`
 export const PaddedSidebarLink = styled(SidebarLink)`
   padding-inline-start: 12px;
 `;
+
+export const PaddedSidebarLinkDismissible = styled(PaddedSidebarLink)`
+  & .dismiss {
+    display: none;
+  }
+
+  &:hover .dismiss {
+    display: block;
+  }
+`;
