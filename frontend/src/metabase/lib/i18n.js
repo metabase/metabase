@@ -12,9 +12,6 @@ export async function loadLocalization(locale) {
   // we need to be sure to set the initial localization before loading any files
   // so load metabase/services only when we need it
   // load and parse the locale
-
-  // Locales like xx-YY are stored as xx_YY.json
-
   const translationsObject =
     locale !== "en"
       ? // We don't use I18NApi.locale/the GET helper because those helpers adds custom headers,
