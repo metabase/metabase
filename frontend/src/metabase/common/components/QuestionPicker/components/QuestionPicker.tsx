@@ -146,11 +146,16 @@ export const QuestionPicker = ({
   useDeepCompareEffect(
     function setInitialPath() {
       if (currentDashboard?.id) {
+        const location =
+          currentDashboard.collection_id === null
+            ? "/"
+            : `${currentDashboard.collection?.location ?? ""}${currentDashboard.collection?.id ?? ""}/`;
+
         const idPath = getCollectionIdPath(
           {
             ...currentDashboard,
             model: "dashboard",
-            location: `${currentDashboard.collection?.location}${currentDashboard.collection_id}/`,
+            location,
           },
           userPersonalCollectionId,
         );

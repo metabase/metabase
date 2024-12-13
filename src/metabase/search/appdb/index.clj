@@ -81,6 +81,7 @@
 (defn- sync-metadata [_old-setting-raw new-setting-raw]
   ;; Oh dear, we get the raw setting. Save a little bit of overhead by not converting keys
   (let [new-setting                          (json/decode new-setting-raw)
+        _                                    (log/debug "Updated appdb search index state" new-setting)
         this-index-metadata                  #(get-in % ["versions" *index-version-id*])
         {:strs [active-table pending-table]} (this-index-metadata new-setting)
         ;; implicitly clear the pending table if we just activated it
@@ -240,10 +241,14 @@
   [documents]
   ;; Protect against tests that nuke the appdb
   (when config/is-test?
-    (when (and (active-table) (not (exists? (active-table))))
-      (reset! *active-table* nil))
-    (when (and (pending-table) (not (exists? (pending-table))))
-      (reset! *pending-table* nil)))
+    (when-let [table (active-table)]
+      (when (not (exists? table))
+        (log/warnf "Unable to find table %s and no longer tracking it as active", table)
+        (reset! *active-table* nil)))
+    (when-let [table (pending-table)]
+      (when (not (exists? table))
+        (log/warnf "Unable to find table %s and no longer tracking it as pending", table)
+        (reset! *pending-table* nil))))
 
   (let [entries          (map document->entry documents)
         ;; Optimization idea: if the updates are coming from the re-indexing worker, skip updating the active table.
