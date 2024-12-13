@@ -14,6 +14,7 @@ import { getQuestionIcon } from "./utils";
 interface Props {
   divider: ReactNode;
   question: Question;
+  variant: "head" | "subhead";
 }
 
 export function SourceDatasetBreadcrumbs({ question, ...props }: Props) {
