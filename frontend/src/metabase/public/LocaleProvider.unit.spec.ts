@@ -15,7 +15,7 @@ const expectLocale = ({
   });
 };
 
-const availableLocales = ["de", "en", "pt-BR", "zh-CN", "zh-HK", "zh-TW"];
+const availableLocales = ["de", "en", "pt_BR", "zh_CN", "zh_HK", "zh_TW"];
 
 describe("getLocaleToUse", () => {
   describe("when given a locale in the format $language-$country", () => {
@@ -23,7 +23,7 @@ describe("getLocaleToUse", () => {
       expectLocale({
         locale: "zh-TW",
         availableLocales,
-        expected: "zh-TW",
+        expected: "zh_TW",
       });
     });
 
@@ -39,7 +39,7 @@ describe("getLocaleToUse", () => {
       expectLocale({
         locale: "zh-XY",
         availableLocales,
-        expected: "zh-CN",
+        expected: "zh_CN",
       });
     });
 
@@ -65,7 +65,7 @@ describe("getLocaleToUse", () => {
       expectLocale({
         locale: "pt",
         availableLocales,
-        expected: "pt-BR",
+        expected: "pt_BR",
       });
     });
 
@@ -75,6 +75,26 @@ describe("getLocaleToUse", () => {
         availableLocales,
         expected: "en",
       });
+    });
+  });
+
+  describe("when given a non normalized locale, it should normalize it", () => {
+    expectLocale({
+      locale: "Zh-tW",
+      availableLocales,
+      expected: "zh_TW",
+    });
+
+    expectLocale({
+      locale: "Pt",
+      availableLocales,
+      expected: "pt_BR",
+    });
+
+    expectLocale({
+      locale: "DE",
+      availableLocales,
+      expected: "de",
     });
   });
 });

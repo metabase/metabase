@@ -1,9 +1,9 @@
 import { type PropsWithChildren, useEffect, useState } from "react";
 
+import { useSetting } from "metabase/common/hooks";
 import { setLocaleHeader } from "metabase/lib/api";
 import { loadLocalization, setUserLocale } from "metabase/lib/i18n";
 
-import localesData from "../../../../resources/locales.json";
 interface LocaleProviderProps {
   locale?: string | null;
   shouldWaitForLocale?: boolean;
@@ -17,12 +17,17 @@ export const LocaleProvider = ({
   const shouldLoadLocale = Boolean(locale);
   const [isLocaleLoading, setIsLocaleLoading] = useState(shouldLoadLocale);
 
+  const availableLocalesData = useSetting("available-locales");
+
   useEffect(() => {
-    if (shouldLoadLocale) {
-      const localeToLoad = getLocaleToUse(locale ?? null, localesData.locales);
+    if (shouldLoadLocale && availableLocalesData) {
+      const localeToLoad = getLocaleToUse(
+        locale ?? null,
+        availableLocalesData.map(([locale]) => locale) ?? [],
+      );
 
       setLocaleHeader(localeToLoad);
-      loadLocalization(localeToLoad.replace("-", "_"))
+      loadLocalization(localeToLoad)
         .then(translatedObject => {
           setIsLocaleLoading(false);
           setUserLocale(translatedObject);
@@ -31,7 +36,7 @@ export const LocaleProvider = ({
           setIsLocaleLoading(false);
         });
     }
-  }, [locale, shouldLoadLocale]);
+  }, [locale, shouldLoadLocale, availableLocalesData]);
 
   if (shouldWaitForLocale && isLocaleLoading) {
     return null;
@@ -47,28 +52,39 @@ export const LocaleProvider = ({
 // See `fallback-locale` in https://github.com/metabase/metabase/blob/master/src/metabase/util/i18n/impl.clj
 // for the original implementation
 export const getLocaleToUse = (
+  // locale is in the format `en-US` or `zh-TW`
   locale: string | null,
+  // availableLocales is an array of strings in the format `en` or `zh_TW`
+  // note: the backend uses `_` instead of `-`
   availableLocales: string[],
 ) => {
   if (!locale) {
     return "en";
   }
+  const [language, country] = locale.split("-");
 
-  // return the locale if it's available
-  if (availableLocales.includes(locale)) {
-    return locale;
+  const normalizedLanguage = language.toLowerCase();
+  const normalizedCountry = country?.toUpperCase();
+
+  const normalizedLocale = country
+    ? `${normalizedLanguage}_${normalizedCountry}`
+    : normalizedLanguage;
+
+  // given a locale aa_BB
+
+  // return the locale aa_BB if it's available
+  if (availableLocales.includes(normalizedLocale)) {
+    return normalizedLocale;
   }
-
-  const [language, _country] = locale.split("-");
 
   // return the `aa` if it's available
-  if (availableLocales.includes(language)) {
-    return language;
+  if (availableLocales.includes(normalizedLanguage)) {
+    return normalizedLanguage;
   }
 
-  // fallback to `aa-XX` if available
+  // fallback to the first `aa-XX` locale found, if any
   for (const availableLocale of availableLocales) {
-    if (availableLocale.startsWith(language)) {
+    if (availableLocale.startsWith(normalizedLanguage)) {
       return availableLocale;
     }
   }

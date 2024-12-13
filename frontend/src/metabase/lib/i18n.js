@@ -14,7 +14,6 @@ export async function loadLocalization(locale) {
   // load and parse the locale
 
   // Locales like xx-YY are stored as xx_YY.json
-  const localeFileName = locale.replace("-", "_");
 
   const translationsObject =
     locale !== "en"
@@ -22,7 +21,7 @@ export async function loadLocalization(locale) {
         // which will make the browser do the pre-flight request on the SDK.
         // The backend doesn't seem to support pre-flight request on the static assets, but even
         // if it supported them it's more performant to skip the pre-flight request
-        await fetch(`${api.basename}/app/locales/${localeFileName}.json`).then(
+        await fetch(`${api.basename}/app/locales/${locale}.json`).then(
           response => response.json(),
         )
       : // We don't serve en.json. Instead, use this object to fall back to theliterals.

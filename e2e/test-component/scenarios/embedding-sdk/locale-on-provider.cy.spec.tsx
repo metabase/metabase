@@ -68,6 +68,16 @@ describeEE("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
     getSdkRoot().findByText("Exportar como PDF").should("exist");
   });
 
+  it("when locale=zh-TW it use it as it's available", () => {
+    setup({ locale: "zh-TW" });
+
+    cy.request("/app/locales/zh_TW.json").then(response => {
+      expect(response.status).to.eq(200);
+    });
+
+    getSdkRoot().findByText("導出為 PDF").should("exist");
+  });
+
   it("when invalid locale, it should fallback to en", () => {
     setup({ locale: "XY" });
 
