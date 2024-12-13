@@ -132,7 +132,7 @@ const createHeaderElement = (dashboardName: string, marginBottom: number) => {
     font-family: "Lato", sans-serif;
     font-size: 24px;
     font-weight: 700;
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
     border-bottom: 1px solid var(--mb-color-border);
     padding: 24px 16px 16px 16px;
     margin-bottom: ${marginBottom}px;
@@ -170,6 +170,10 @@ export const saveDashboardPdf = async (
   const contentHeight = node.offsetHeight + headerHeight;
   const width = contentWidth + PAGE_PADDING * 2;
 
+  const backgroundColor = getComputedStyle(document.documentElement)
+    .getPropertyValue("--mb-color-bg-dashboard")
+    .trim();
+
   const { default: html2canvas } = await import("html2canvas-pro");
   const image = await html2canvas(node, {
     height: contentHeight,
@@ -177,6 +181,8 @@ export const saveDashboardPdf = async (
     useCORS: true,
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
+      node.style.height = `${contentHeight}px`;
+      node.style.backgroundColor = backgroundColor;
       node.insertBefore(pdfHeader, node.firstChild);
     },
   });
@@ -215,6 +221,10 @@ export const saveDashboardPdf = async (
       : Math.max(pageBreaksDiff + PAGE_PADDING * 2, optimalPageHeight);
 
     pdf.addPage([width, pageHeight]);
+
+    // Add background color to the page
+    pdf.setFillColor(backgroundColor);
+    pdf.rect(0, 0, width, pageHeight, "F");
 
     // Calculate the source and destination dimensions for this page slice
     const sourceY = prevBreak;
