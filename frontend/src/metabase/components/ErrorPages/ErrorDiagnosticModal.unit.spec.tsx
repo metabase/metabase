@@ -1,8 +1,14 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
+import { setupBugReportEndpoints } from "__support__/server-mocks/bug-report";
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders } from "__support__/ui";
 import {
   createMockCard,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { ErrorDiagnosticModal } from "./ErrorDiagnosticModal";
 import type { ErrorPayload, ReportableEntityName } from "./types";
@@ -44,6 +50,16 @@ const defaultErrorPayload: ErrorPayload = {
   localizedEntityName: "Question",
   entityInfo: createMockCard(),
   queryResults: createMockDatasetData({ rows: [[1]] }),
+  browserInfo: {
+    userAgent:
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    language: "en-US",
+    browserName: "Chrome",
+    browserVersion: "91.0.4472.124",
+    platform: "Mac",
+    os: "Mac OS X",
+    osVersion: "10.15.7",
+  },
   bugReportDetails: {
     "application-database": "h2",
     "application-database-details": {},
@@ -60,13 +76,14 @@ const defaultErrorPayload: ErrorPayload = {
   },
 };
 
-const setup = (errorInfo: ErrorPayload) => {
+const setup = (errorInfo: ErrorPayload, options = {}) => {
   renderWithProviders(
     <ErrorDiagnosticModal
       errorInfo={errorInfo}
       onClose={() => undefined}
       loading={false}
     />,
+    options,
   );
 };
 
@@ -87,7 +104,6 @@ describe("ErrorDiagnosticsModal", () => {
     "question",
     "dashboard",
     "collection",
-    "metric",
     "model",
   ];
 
@@ -140,15 +156,6 @@ describe("ErrorDiagnosticsModal", () => {
     expect(screen.queryByText(/query results/i)).not.toBeInTheDocument();
   });
 
-  it("should show query results checkbox for metrics", () => {
-    setup({
-      ...defaultErrorPayload,
-      entityName: "metric",
-      localizedEntityName: "Metric",
-    });
-    expect(screen.getByText(/query results/i)).toBeInTheDocument();
-  });
-
   it("should not show backend logs checkboxes when we don't have any logs", () => {
     setup({
       ...defaultErrorPayload,
@@ -163,5 +170,70 @@ describe("ErrorDiagnosticsModal", () => {
     expect(
       screen.queryByText(/server logs from the current user only/i),
     ).not.toBeInTheDocument();
+  });
+
+  describe("Bug Report Form", () => {
+    beforeEach(() => {
+      const state = createMockState({
+        settings: mockSettings({
+          "enable-embedding": true,
+          "slack-app-token": "test-token",
+          "slack-bug-report-channel": "test-channel",
+          "bug-reporting-enabled": true,
+          "slack-token-valid?": true,
+        }),
+      });
+
+      setupBugReportEndpoints();
+
+      setup(defaultErrorPayload, { storeInitialState: state });
+    });
+
+    it("should show bug report form when slack is configured", () => {
+      expect(screen.getByText(/report a bug/i)).toBeInTheDocument();
+      expect(screen.getByRole("textbox")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /submit report/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("should show description textarea with correct label", () => {
+      expect(
+        screen.getByText(
+          /what were you trying to do, and what steps did you take\? what was the expected result, and what happened instead\?/i,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("should show both submit and download buttons", () => {
+      expect(
+        screen.getByRole("button", { name: /submit report/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /download/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("should show edit/done toggle button for diagnostic info", async () => {
+      const toggleButton = screen.getByRole("button", { name: /edit/i });
+      expect(toggleButton).toBeInTheDocument();
+
+      await userEvent.click(toggleButton);
+      expect(screen.getByRole("button", { name: /done/i })).toBeInTheDocument();
+    });
+
+    it("should show success message after submission", async () => {
+      const submitButton = screen.getByRole("button", {
+        name: /submit report/i,
+      });
+      await userEvent.click(submitButton);
+
+      expect(
+        await screen.findByText(/thank you for your feedback/i),
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByText(/bug report submitted successfully/i),
+      ).toBeInTheDocument();
+    });
   });
 });

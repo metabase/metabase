@@ -1,11 +1,13 @@
-const fs = require("fs");
-
 const path = require("path");
 const webpack = require("webpack");
 
 const mainConfig = require("../../webpack.config");
 
 const { isEmbeddingSdkPackageInstalled } = resolveEmbeddingSdkPackage();
+
+console.log(
+  `Embedding SDK is ${isEmbeddingSdkPackageInstalled ? "installed" : 'NOT installed, using locally built version from "resources/embedding-sdk"'}`,
+);
 
 module.exports = {
   mode: "development",
@@ -80,26 +82,15 @@ module.exports = {
 
 function resolveEmbeddingSdkPackage() {
   let isEmbeddingSdkPackageInstalled = false;
-  let embeddingSdkVersion;
 
   try {
-    embeddingSdkVersion =
-      require("@metabase/embedding-sdk-react/package.json").version;
-    isEmbeddingSdkPackageInstalled = true;
-  } catch (err) {
-    const sdkPackageTemplateJson = fs.readFileSync(
-      path.resolve(
-        __dirname,
-        "../../enterprise/frontend/src/embedding-sdk/package.template.json",
-      ),
-      "utf-8",
-    );
-    const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
-    embeddingSdkVersion = JSON.stringify(sdkPackageTemplateJsonContent.version);
-  }
+    const packagePath = require.resolve("@metabase/embedding-sdk-react");
+    if (packagePath.includes("node_modules")) {
+      isEmbeddingSdkPackageInstalled = true;
+    }
+  } catch (err) {}
 
   return {
     isEmbeddingSdkPackageInstalled,
-    embeddingSdkVersion,
   };
 }

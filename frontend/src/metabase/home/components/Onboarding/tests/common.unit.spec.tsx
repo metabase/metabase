@@ -98,12 +98,23 @@ describe("Onboarding", () => {
 
   it("should be possible to open a different item", async () => {
     const { scrollIntoViewMock } = setup();
+    expect(scrollIntoViewMock).not.toHaveBeenCalled();
 
     expect(getItem("database")).toHaveAttribute("data-active", "true");
     await userEvent.click(getItemControl("Query with SQL"));
+    expect(scrollIntoViewMock).toHaveBeenCalled();
 
     expect(getItem("database")).not.toHaveAttribute("data-active");
     expect(getItem("sql")).toHaveAttribute("data-active", "true");
+  });
+
+  it("should scroll the last remembered item into view on page load", () => {
+    const { scrollIntoViewMock } = setup({ openItem: "sql" });
+
+    expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
+
+    // closing the item should not trigger `scrollIntoView` again
+    userEvent.click(getItemControl("Query with SQL"));
     expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
   });
 
