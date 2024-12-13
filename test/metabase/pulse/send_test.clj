@@ -165,7 +165,7 @@
     (testing message
       (do-test! (merge-with merge common m)))))
 
-(def ^:private test-card-result {pulse.test-util/card-name true})
+#_(def ^:private test-card-result {pulse.test-util/card-name true})
 (def ^:private test-card-regex (re-pattern pulse.test-util/card-name))
 
 (defn- produces-bytes? [{:keys [rendered-info]}]
@@ -305,22 +305,22 @@
 
 ;; Not really sure how this is significantly different from `xls-test`
 #_(deftest xls-test-2
-   (testing "Basic test, 1 card, 1 recipient, with XLS attachment"
-     (do-test!
-      {:card
-       (merge
-        (pulse.test-util/checkins-query-card {:breakout [!day.date]})
-        {:visualization_settings {:graph.dimensions ["DATE"]
-                                  :graph.metrics    ["count"]}})
-       :pulse-card {:include_xls true}
-       :assert
-       {:email
-        (fn [_ [email]]
-          (is (= (rasta-alert-message {:message [{pulse.test-util/card-name true}
-                                                 pulse.test-util/png-attachment
-                                                 pulse.test-util/png-attachment
-                                                 pulse.test-util/xls-attachment]})
-                 (mt/summarize-multipart-single-email email test-card-regex))))}})))
+    (testing "Basic test, 1 card, 1 recipient, with XLS attachment"
+      (do-test!
+       {:card
+        (merge
+         (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+         {:visualization_settings {:graph.dimensions ["DATE"]
+                                   :graph.metrics    ["count"]}})
+        :pulse-card {:include_xls true}
+        :assert
+        {:email
+         (fn [_ [email]]
+           (is (= (rasta-alert-message {:message [{pulse.test-util/card-name true}
+                                                  pulse.test-util/png-attachment
+                                                  pulse.test-util/png-attachment
+                                                  pulse.test-util/xls-attachment]})
+                  (mt/summarize-multipart-single-email email test-card-regex))))}})))
 
 (deftest ensure-constraints-test
   (testing "Validate pulse queries are limited by `default-query-constraints`"
@@ -812,12 +812,12 @@
         (testing "channel send task history task details include retry config"
           (with-redefs
            [channel/send! (constantly true)]
-           (send!)
-           (is (=? {:task         "channel-send"
-                    :db_id        nil
-                    :status       :success
-                    :task_details default-task-details}
-                   (latest-task-history-entry :channel-send)))))
+            (send!)
+            (is (=? {:task         "channel-send"
+                     :db_id        nil
+                     :status       :success
+                     :task_details default-task-details}
+                    (latest-task-history-entry :channel-send)))))
 
         (testing "retry errors are recorded when the task eventually succeeds"
           (with-redefs [channel/send! (tu/works-after 2 (constantly nil))]

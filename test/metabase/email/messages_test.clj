@@ -48,11 +48,11 @@
 
 (deftest alert-schedule-text-test
   (let [schedule-text (fn [cron-string]
-                       (-> cron-string
-                           u.cron/schedule-map->cron-string
-                           ((fn [cron-string] {:type :notification-subscription/cron
-                                               :cron_schedule cron-string}))
-                          (@#'messages/notification-card-schedule-text)))]
+                        (-> cron-string
+                            u.cron/schedule-map->cron-string
+                            ((fn [cron-string] {:type :notification-subscription/cron
+                                                :cron_schedule cron-string}))
+                            (@#'messages/notification-card-schedule-text)))]
     (testing "Alert schedules can be described as English strings, with the timezone included"
       (tu/with-temporary-setting-values [report-timezone "America/Pacific"]
         (is (= "Run hourly"

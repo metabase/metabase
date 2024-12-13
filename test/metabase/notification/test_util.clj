@@ -138,7 +138,7 @@
   {:channel/email (fn [thunk] (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                                                  email-smtp-port 587
                                                                  site-url        "https://metabase.com/testmb"]
-                               (thunk)))
+                                (thunk)))
    :channel/slack (fn [thunk] (with-redefs [slack/files-channel (constantly "FOO")]
                                 (thunk)))})
 

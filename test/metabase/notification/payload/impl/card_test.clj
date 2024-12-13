@@ -7,10 +7,10 @@
    [toucan2.core :as t2]))
 
 (use-fixtures
- :each
- (fn [thunk]
-   (binding [notification/*default-options* {:notification/sync? true}]
-     (thunk))))
+  :each
+  (fn [thunk]
+    (binding [notification/*default-options* {:notification/sync? true}]
+      (thunk))))
 
 (defn- rasta-email
   [& [data]]
@@ -44,48 +44,48 @@
                                     {:channel_type :channel/http
                                      :channel_id   http-channel-id}]}]
           (let [card-id (-> notification :payload :card_id)]
-           (notification.tu/test-send-notification!
-            notification
-            {:channel/email
-             (fn [[email]]
-               (is (= (rasta-email
-                       {:message [{notification.tu/default-card-name true
-                                   card-content                     true}
+            (notification.tu/test-send-notification!
+             notification
+             {:channel/email
+              (fn [[email]]
+                (is (= (rasta-email
+                        {:message [{notification.tu/default-card-name true
+                                    card-content                     true}
                                   ;; icon
-                                  notification.tu/png-attachment
-                                  notification.tu/csv-attachment]})
-                      (mt/summarize-multipart-single-email
-                       email
-                       card-name-regex
-                       (re-pattern card-content)))))
+                                   notification.tu/png-attachment
+                                   notification.tu/csv-attachment]})
+                       (mt/summarize-multipart-single-email
+                        email
+                        card-name-regex
+                        (re-pattern card-content)))))
 
-             :channel/slack
-             (fn [[message]]
-               (is (=? {:attachments [{:blocks [{:text {:emoji true
-                                                        :text "🔔 Card notification test card"
-                                                        :type "plain_text"}
-                                                 :type "header"}]}
-                                      {:attachment-name "image.png"
-                                       :channel-id "FOO"
-                                       :fallback "Card notification test card",
-                                       :rendered-info {:attachments false
-                                                       :content true
-                                                       :render/text true}
-                                       :title "Card notification test card"}]
-                        :channel-id "#general"}
-                       (notification.tu/slack-message->boolean message))))
+              :channel/slack
+              (fn [[message]]
+                (is (=? {:attachments [{:blocks [{:text {:emoji true
+                                                         :text "🔔 Card notification test card"
+                                                         :type "plain_text"}
+                                                  :type "header"}]}
+                                       {:attachment-name "image.png"
+                                        :channel-id "FOO"
+                                        :fallback "Card notification test card",
+                                        :rendered-info {:attachments false
+                                                        :content true
+                                                        :render/text true}
+                                        :title "Card notification test card"}]
+                         :channel-id "#general"}
+                        (notification.tu/slack-message->boolean message))))
 
-             :channel/http
-             (fn [[req]]
-               (is (=? {:body {:type               "alert"
-                               :alert_id           (-> notification :payload :id)
-                               :alert_creator_id   (-> notification :creator_id)
-                               :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id notification))
-                               :data               {:type          "question"
-                                                    :question_id   card-id
-                                                    :question_name notification.tu/default-card-name
+              :channel/http
+              (fn [[req]]
+                (is (=? {:body {:type               "alert"
+                                :alert_id           (-> notification :payload :id)
+                                :alert_creator_id   (-> notification :creator_id)
+                                :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id notification))
+                                :data               {:type          "question"
+                                                     :question_id   card-id
+                                                     :question_name notification.tu/default-card-name
                                                     ;:question_url  (mt/malli=? [:fn #(str/ends-with? % (str card-id))])
-                                                    #_:visualization #_(mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64")])
-                                                    :raw_data      {:cols ["MESSAGE"], :rows [["Hello world!!!"]]}}
-                               :sent_at            (mt/malli=? :any)}}
-                       req)))})))))))
+                                                     #_:visualization #_(mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64")])
+                                                     :raw_data      {:cols ["MESSAGE"], :rows [["Hello world!!!"]]}}
+                                :sent_at            (mt/malli=? :any)}}
+                        req)))})))))))
