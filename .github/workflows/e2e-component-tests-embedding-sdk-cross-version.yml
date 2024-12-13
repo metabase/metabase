@@ -116,12 +116,16 @@ jobs:
             const { getSdkVersionFromReleaseBranchName } = require('${{ github.workspace }}/release/dist/index.cjs');
             const branchName = '${{ github.base_ref || github.ref }}';
 
-            const sdk_version = await getSdkVersionFromReleaseBranchName({
-              github,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              branchName,
-            });
+            // FIXME: This is for debugging purposes only. TO DELETE.
+            const sdk_version = '0.51.11'
+            console.log("SDK version is", sdk_version);
+
+            // const sdk_version = await getSdkVersionFromReleaseBranchName({
+            //   github,
+            //   owner: context.repo.owner,
+            //   repo: context.repo.repo,
+            //   branchName,
+            // });
 
             return {
               sdk_version,
