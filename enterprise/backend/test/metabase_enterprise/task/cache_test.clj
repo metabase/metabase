@@ -145,7 +145,8 @@
             (expire-most-recent-cache-entry!)
             (is (= [nil param-val-1] (map param-vals (to-rerun card-id))))
 
-            ;; Run a different parameterized query twice, to generate a cache entry and cache hit
+            ;; Run a different parameterized query thrice, to generate a cache entry and two cache hits
+            (is (= [[0]] (mt/rows (run-query-for-card-id card-id params-2))))
             (is (= [[0]] (mt/rows (run-query-for-card-id card-id params-2))))
             (is (= [[0]] (mt/rows (run-query-for-card-id card-id params-2))))
             (expire-most-recent-cache-entry!)
