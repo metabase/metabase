@@ -244,7 +244,7 @@ jobs:
       needs.e2e-tests.result == 'skipped'
     runs-on: ubuntu-22.04
     timeout-minutes: 5
-    name: e2e-component-tests-embedding-sdk
+    name: e2e-component-tests-embedding-sdk-cross-version
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
