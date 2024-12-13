@@ -507,12 +507,12 @@ const getParameterMapping = ({ card_id }) => ({
 function setSearchFilter(label) {
   H.filterWidget().click();
   H.popover().within(() => {
-    H.multiAutocompleteInput().type(label);
+    H.fieldValuesInput().type(label);
   });
 
   H.popover().last().findByText(label).click();
   H.popover().within(() => {
-    H.multiAutocompleteValue(0).should("be.visible").should("contain", label);
+    H.fieldValuesValue(0).should("be.visible").should("contain", label);
     cy.button("Add filter").click();
   });
 

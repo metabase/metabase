@@ -351,6 +351,10 @@ export function fieldValuesInput(filter = ":eq(0)") {
   return cy.findAllByRole("textbox").filter(filter).get("input").last();
 }
 
+export function fieldValuesValue(index) {
+  return cy.findAllByTestId("token-field").eq(index);
+}
+
 export function removeFieldValuesValue(index) {
   return cy.findAllByTestId("token-field").icon("close").eq(index).click();
 }
