@@ -93,7 +93,13 @@ const setup = async (
     collectionItems: [],
   });
 
-  setupRecentViewsAndSelectionsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+  setupRecentViewsAndSelectionsEndpoints(
+    [],
+    ["selections", "views"],
+    {},
+    false,
+  );
 
   const settings = mockSettings();
 
