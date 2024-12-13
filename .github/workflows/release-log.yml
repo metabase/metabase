@@ -35,6 +35,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
       - uses: actions/checkout@v4
         with:
+          ref: master # this only works on master
           fetch-depth: 0 # we want all branches and tags
       - name: Install Dependencies
         run: yarn --cwd release --frozen-lockfile && npm i -g tsx
