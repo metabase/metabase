@@ -25,22 +25,10 @@ Check out our [upgrading instructions](https://metabase.com/docs/latest/operatio
 Docker image: {{oss-docker-tag}}
 JAR download: {{oss-download-url}}
 
-SHA-256 checksum for the open source JAR:
-
-\`\`\`
-{{oss-checksum}}
-\`\`\`
-
 ## Metabase Enterprise
 
 Docker image: {{ee-docker-tag}}
 JAR download: {{ee-download-url}}
-
-SHA-256 checksum for the enterprise JAR:
-
-\`\`\`
-{{ee-checksum}}
-\`\`\`
 
 ## Notes
 
@@ -229,13 +217,9 @@ export const categorizeIssues = (issues: Issue[]) => {
 
 export const generateReleaseNotes = ({
   version,
-  ee_checksum,
-  oss_checksum,
   issues,
 }: {
   version: string;
-  ee_checksum: string;
-  oss_checksum: string;
   issues: Issue[];
 }) => {
   const issuesByType = categorizeIssues(issues);
@@ -263,16 +247,11 @@ export const generateReleaseNotes = ({
     .replace("{{ee-docker-tag}}", getDockerTag(eeVersion))
     .replace("{{ee-download-url}}", getDownloadUrl(eeVersion))
     .replace("{{oss-docker-tag}}", getDockerTag(ossVersion))
-    .replace("{{oss-download-url}}", getDownloadUrl(ossVersion))
-    .replace("{{version}}", getGenericVersion(version))
-    .replace("{{oss-checksum}}", oss_checksum.split(" ")[0])
-    .replace("{{ee-checksum}}", ee_checksum.split(" ")[0]);
+    .replace("{{oss-download-url}}", getDownloadUrl(ossVersion));
 };
 
 export async function publishRelease({
   version,
-  oss_checksum,
-  ee_checksum,
   owner,
   repo,
   github,
@@ -288,7 +267,7 @@ export async function publishRelease({
     repo,
     tag_name: getOSSVersion(version),
     name: getReleaseTitle(version),
-    body: generateReleaseNotes({ version, oss_checksum, ee_checksum, issues }),
+    body: generateReleaseNotes({ version, issues }),
     draft: true,
     prerelease: isPreReleaseVersion(version), // this api arg has never worked, but maybe it will someday! 🤞
   };
@@ -322,8 +301,6 @@ export async function getChangelog({
 
   return generateReleaseNotes({
     version,
-    oss_checksum: "oss-checksum-placeholder",
-    ee_checksum: "ee-checksum-placeholder",
     issues,
   });
 }

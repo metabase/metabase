@@ -586,23 +586,6 @@ jobs:
           sparse-checkout: release
       - name: prepare release scripts
         run: cd release && yarn && yarn build
-      - uses: actions/download-artifact@v4
-        name: Retrieve ee uberjar artifact
-        with:
-          name: metabase-ee-uberjar
-          path: ee-artifact/
-      - uses: actions/download-artifact@v4
-        name: Retrieve oss uberjar artifact
-        with:
-          name: metabase-oss-uberjar
-          path: oss-artifact/
-      - name: Read Checksums
-        run: | # sh
-          EE_CHECKSUM=$(cat ee-artifact/SHA256.sum)
-          OSS_CHECKSUM=$(cat oss-artifact/SHA256.sum)
-
-          echo "EE_CHECKSUM=$EE_CHECKSUM" >> $GITHUB_ENV
-          echo "OSS_CHECKSUM=$OSS_CHECKSUM" >> $GITHUB_ENV
       - name: Publish draft release notes
         uses: actions/github-script@v7
         with:
@@ -617,8 +600,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               version,
-              oss_checksum: '${{ env.OSS_CHECKSUM }}',
-              ee_checksum: '${{ env.EE_CHECKSUM }}',
             }).then(() => {
               console.log('Successfully published release notes', '${{ inputs.version }}');
             }).catch((err) => {

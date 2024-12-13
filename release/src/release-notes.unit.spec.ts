@@ -66,16 +66,9 @@ describe("Release Notes", () => {
     it("should generate release notes", () => {
       const notes = generateReleaseNotes({
         version: "v1.2.3",
-        oss_checksum: "1234567890abcdef",
-        ee_checksum: "01234567890abcdef",
         issues,
       });
 
-      expect(notes).toContain("SHA-256 checksum for the open source JAR");
-      expect(notes).toContain("1234567890abcdef");
-
-      expect(notes).toContain("SHA-256 checksum for the enterprise JAR");
-      expect(notes).toContain("01234567890abcdef");
       expect(notes).toContain(
         "Get the most out of Metabase"
       );
