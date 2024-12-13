@@ -1,5 +1,7 @@
 ---
 title: Pivot table
+redirect_from:
+  - /docs/latest/questions/sharing/visualizations/pivot-table
 ---
 
 # Pivot table
@@ -11,7 +13,7 @@ Pivot tables are not currently available for the following databases in Metabase
 - Druid
 - MongoDB
 
-Pivot tables work for simple and custom questions with summarized data for all other [officially supported databases](../../../databases/connecting.md). They don't work for questions that lack aggregate data, and they don't work for questions written in SQL, as Metabase would need to modify your SQL code in order to calculate subtotals. If you really need to use SQL, the workaround here is to create your question in two steps: first do all the complex things you need to do in SQL, save the results as a question, then use that saved SQL question as the starting point for a new GUI question which summarizes that data.
+Pivot tables work for simple and custom questions with summarized data for all other [officially supported databases](../../databases/connecting.md). They don't work for questions that lack aggregate data, and they don't work for questions written in SQL, as Metabase would need to modify your SQL code in order to calculate subtotals. If you really need to use SQL, the workaround here is to create your question in two steps: first do all the complex things you need to do in SQL, save the results as a question, then use that saved SQL question as the starting point for a new GUI question which summarizes that data.
 
 In the settings for the Pivot Table visualization, you can assign fields to one of three "buckets":
 
@@ -21,11 +23,11 @@ In the settings for the Pivot Table visualization, you can assign fields to one 
 
 Let's say we ask the following question in the notebook editor:
 
-![Pivot table notebook](../../images/pivot-table-notebook.png)
+![Pivot table notebook](../images/pivot-table-notebook.png)
 
 From the `Orders` table, we've summarized by the count of orders and the average order total, and grouped by `User → State`, `Product → Category`, and `Created At` binned by year. Here's our question visualized as a pivot table:
 
-![Pivot table options](../../images/pivot-table-options.png)
+![Pivot table options](../images/pivot-table-options.png)
 
 We've assigned the fields `User → State` and `Created At` to table rows, and assigned the `Product -> Category` field to generate our columns: Doohickey, Gadget, and so on. We can drag and drop dimensions between the row and column buckets, and add aggregations to the table values bucket. For example, if we assign a field to the columns bucket, Metabase will pivot that field and render each unique value of that field as a column heading.
 

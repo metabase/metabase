@@ -1,5 +1,10 @@
 ---
 title: Tooltips
+redirect_from:
+  - /docs/latest/questions/sharing/visualizations/tooltips
+---
+
+
 ---
 
 # Tooltips

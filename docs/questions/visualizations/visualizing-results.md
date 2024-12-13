@@ -2,6 +2,7 @@
 title: Visualizing data
 redirect_from:
   - /docs/latest/users-guide/05-visualizing-results
+  - /docs/latest/questions/sharing/visualizing-results
 ---
 
 # Visualizing data

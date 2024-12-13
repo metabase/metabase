@@ -2,6 +2,7 @@
 title: Alerts
 redirect_from:
   - /docs/latest/users-guide/15-alerts
+  - /docs/latest/questions/sharing/alerts
 ---
 
 # Alerts

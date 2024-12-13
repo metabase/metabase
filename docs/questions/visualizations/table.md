@@ -1,5 +1,7 @@
 ---
 title: Tables
+redirect_from:
+  - /docs/latest/questions/sharing/visualizations/table
 ---
 
 # Tables
@@ -14,7 +16,7 @@ To manage these columns, including columns from linked tables, just click **add 
 
 To rearrange the order of the columns, simply click and drag any of the columns in the sidebar. You can also click on a column's heading in the table and drag the column to another position in the table.
 
-> Changing these options doesn't change the actual table itself; these changes create a custom view of the table that you can save as a **question** in Metabase and refer to later, share with others, or add to a [dashboard](../../../dashboards/start.md).
+> Changing these options doesn't change the actual table itself; these changes create a custom view of the table that you can save as a **question** in Metabase and refer to later, share with others, or add to a [dashboard](../../dashboards/start.md).
 
 ## Column heading options for filtering and summarizing
 
@@ -82,7 +84,7 @@ Add up all the values and group by a time period, generally by month.
 
 To format the display of any column in a table, click on the column heading and choose the `Formatting` option (you can also get there by clicking on the gear on any column when in the `Columns` tab of the visualization settings).
 
-![Column formatting](../../images/column-header-formatting.png)
+![Column formatting](../images/column-header-formatting.png)
 
 The options you see will differ depending on the type of column you're viewing:
 
@@ -207,7 +209,7 @@ Lets you toggle between showing the currency label in the column heading or in e
 
 Sometimes it's helpful to highlight certain rows or columns in your tables when they meet a specific condition. You can set up conditional formatting rules by going to the visualization settings while looking at any table, then clicking on the **Conditional Formatting** tab.
 
-![Conditional formatting](../../images/conditional-formatting.png)
+![Conditional formatting](../images/conditional-formatting.png)
 
 When you add a new rule, you'll first need to pick which column(s) should be affected. Your columns can be formatted in one of two ways:
 
@@ -220,6 +222,6 @@ You can set as many rules on a table as you want. If two or more rules disagree 
 
 If your table is a result that contains one numeric column and two grouping columns, Metabase will also automatically "pivot" your table, like in the example below. Pivoting takes one of your columns and rotates it 90 degrees ("pivots" it) so that each of its values becomes a column heading. If you open up the visualization settings by clicking the gear icon, you can choose which column to pivot in case Metabase got it wrong; or you can also turn the pivoting behavior off entirely.
 
-![Pivot table](../../images/pivot.png)
+![Pivot table](../images/pivot.png)
 
 This auto-pivoting is distinct from the [pivot table](./pivot-table.md) visualization.

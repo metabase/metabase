@@ -39,6 +39,6 @@ Monitoring access sets permissions for the following:
 This setting determines who can set up:
 
 - [Dashboard subscriptions](../dashboards/subscriptions.md)
-- [Alerts](../questions/sharing/alerts.md)
+- [Alerts](../questions/alerts.md)
 
 People will need to be in groups with either view or edit access to the collection that contains the dashboard or question in order to set up alerts. See [Collection permissions](../permissions/collections.md).

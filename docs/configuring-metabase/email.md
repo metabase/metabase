@@ -97,7 +97,7 @@ Check if [email quotas](https://docs.aws.amazon.com/ses/latest/dg/quotas.html) a
 
 {% include plans-blockquote.html feature="Approved domains for notifications" %}
 
-Allowed email address domain(s) for new [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/sharing/alerts.md).
+Allowed email address domain(s) for new [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/alerts.md).
 
 Adding approved domains allows you to restrict which email addresses people can send alerts and subscriptions to. This restriction only applies to sending email to people who lack an account with that Metabase. People with accounts in a Metabase who aren't [sandboxed](../permissions/data-sandboxes.md) will be able to email any other person with an account in that same Metabase.
 
@@ -113,7 +113,7 @@ You can also set this property using the environment variable [`MB_SUBSCRIPTION_
 
 {% include plans-blockquote.html feature="Configuring suggested recipients" %}
 
-Control which recipients people can see when they create a new [dashboard subscription](../dashboards/subscriptions.md) or [alert](../questions/sharing/alerts.md). For example, you may want to restrict people to viewing potential recipients that belong to the same [groups](../people-and-groups/managing.md#groups) they are a member of.
+Control which recipients people can see when they create a new [dashboard subscription](../dashboards/subscriptions.md) or [alert](../questions/alerts.md). For example, you may want to restrict people to viewing potential recipients that belong to the same [groups](../people-and-groups/managing.md#groups) they are a member of.
 
 Options include:
 
@@ -125,7 +125,7 @@ People who are sandboxed won't see suggestions.
 
 ## Further reading
 
-- [Alerts](../questions/sharing/alerts.md)
+- [Alerts](../questions/alerts.md)
 - [Dashboard subscriptions](../dashboards/subscriptions.md)
 - [Notification permissions](../permissions/notifications.md)
 - [Setting up Slack](./slack.md)

@@ -89,7 +89,7 @@ Metabase's reference documentation.
 #### Sharing
 
 - [Sharing answers](./questions/sharing/answers.md)
-- [Alerts](./questions/sharing/alerts.md)
+- [Alerts](./questions/alerts.md)
 - [Public sharing](./questions/sharing/public-links.md)
 - [Exporting data](./questions/sharing/exporting-results.md)
 

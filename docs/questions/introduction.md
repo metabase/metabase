@@ -7,7 +7,7 @@ redirect_from:
 
 # Questions
 
-Questions in Metabase are queries, their results, and their visualization. You can think about them as saved queries that you can display as tables or charts, and organize into collections and dashboards.
+Questions in Metabase are queries, their results, and their visualization. Questions are the basic analytical unit in Metabase. You can think about them as saved queries that you can display as tables or charts, and organize into collections and dashboards. You can embed questions, share links to them, export their results, and have them alert you when results are interesting.
 
 ## Creating a new question
 
@@ -24,15 +24,22 @@ Even if you know SQL, you should check out the [graphical query builder](./query
 
 ### From an existing question
 
-You can also build a new question from an existing question. You won't overwrite the existing question, so feel free to play around. You can use either the [query builder](./query-builder/editor.md) or the [native code editor](./native-editor/writing-sql.md).
+You can also build a new question from an existing question. You won't overwrite the existing question, so feel free to play around. You can use either the [query builder](./query-builder/editor.md) or the [native code editor](./native-editor/referencing-saved-questions-in-queries.md).
 
-## Saving questions to dashboards or collections
+Some kinds of saved questions, however, can't be used as source data:
 
-Once you've built your query and [visualized its results], you can save a question to a [dashboard](../../dashboards/introduction.md) (the default), or to a [collection](../../exploration-and-organization/collections.md). You'll need to name the question, and include an optional description.
+- Druid questions
+- Mongo questions
+- Questions that use `Cumulative Sum` or `Cumulative Count` aggregations
+- Questions that have columns that are named the same or similar thing, like `Count` and `Count 2`
+
+## Saving questions
+
+Once you've built your query and [visualized its results](./visualizations/visualizing-results.md), you can save a question to a [dashboard](../../dashboards/introduction.md) (the default), or to a [collection](../../exploration-and-organization/collections.md). You'll need to name the question, include an optional description, and save it to a dashboard or a collection.
 
 ### Saving questions to dashboards
 
-Questions that live in a dashboard are only visible in that dashboard. They can't be used in other dashboards.
+Questions that live in a dashboard are only visible in that dashboard. They can't be used in other dashboards. If you save it to a dashboard, you'll need to arrange the card on one of the dashboard's tab, then save the dashboard.
 
 ### Saving questions to collections
 
@@ -47,11 +54,7 @@ You can move the question from a collection into a dashboard if:
 - No other dashboards use that question.
 - The other dashboards that use that question live in collections you have curate access to. In this case, Metabase will tell you which other dashboards use that question, and you'll have to decide whether you're okay with removing the question from those dashboards.
 
-If, however, dashboards that use that question are in collections that you lack curate access to, you won't be able to move that question into a dashboard.
-
-## Bookmark a question
-
-Click the **bookmark** icon to pin a question to your Metabase sidebar. See [Bookmarks](../../exploration-and-organization/exploration.md#bookmarks).
+If, however, dashboards that use that question are in collections that you _lack_ curate access to, you won't be able to move that question into a dashboard.
 
 ## Info about your question
 
@@ -69,7 +72,7 @@ Once you save a question, you can click on the **info** icon in the upper right 
 
 ### History tab
 
-See [History](../../exploration-and-organization/history.md).
+See [history](../../exploration-and-organization/history.md).
 
 ## Downloading your question's results
 
@@ -79,6 +82,10 @@ See [exporting results](./exporting-results.md).
 
 See [content verification](../exploration-and-organization/content-verification.md).
 
+## Bookmark a question
+
+Click the **bookmark** icon to pin a question to your Metabase sidebar. See [Bookmarks](../../exploration-and-organization/exploration.md#bookmarks).
+
 ## Turning a question into a model
 
 You can turn a question into a model to let others know that the results make a good starting point for new questions. See [models](../data-modeling/models.md).
@@ -87,7 +94,7 @@ You can turn a question into a model to let others know that the results make a 
 
 {% include plans-blockquote.html feature="Caching question results" %}
 
-See [Caching per question](../../configuring-metabase/caching.md#question-caching-policy).
+See [caching per question](../../configuring-metabase/caching.md#question-caching-policy).
 
 ## Setting up alerts
 
@@ -95,7 +102,7 @@ You can set up questions to run periodically and notify you if the results are i
 
 ## Viewing events on your chart
 
-If your results are a time series, you can display events. See [Events and timelines](../exploration-and-organization/events-and-timelines.md).
+If your results are a time series, you can display events on along the x-axis. See [events and timelines](../exploration-and-organization/events-and-timelines.md).
 
 ## Deleting a question
 
