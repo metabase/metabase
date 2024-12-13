@@ -4,10 +4,10 @@ on:
   push:
     branches:
       - "fix-sdk-e2e-workflows-for-52"
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    branches:
-      - "release-**"
+#  pull_request:
+#    types: [opened, synchronize, reopened, ready_for_review]
+#    branches:
+#      - "release-**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
