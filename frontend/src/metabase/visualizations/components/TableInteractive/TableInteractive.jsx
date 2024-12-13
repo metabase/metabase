@@ -1045,7 +1045,7 @@ class TableInteractive extends Component {
       return;
     }
 
-    const scrollOffset = this.gridRef.current?.props?.scrollTop || 0;
+    const scrollOffset = this.gridRef.current?.state?.scrollTop || 0;
 
     // infer row index from mouse position when we hover the gutter column
     if (event?.currentTarget?.id === "gutter-column") {
@@ -1169,6 +1169,7 @@ class TableInteractive extends Component {
             } else {
               mainGridProps.scrollLeft = scrollLeft;
             }
+
             return (
               <TableInteractiveRoot
                 bg={backgroundColor}
