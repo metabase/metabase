@@ -1,21 +1,20 @@
+const fs = require("fs");
+
 const path = require("path");
 const webpack = require("webpack");
 
 const mainConfig = require("../../webpack.config");
 
-const { isEmbeddingSdkPackageInstalled } = resolveEmbeddingSdkPackage();
+const { isEmbeddingSdkPackageInstalled, embeddingSdkPath } =
+  resolveEmbeddingSdkPackage();
+
+const SDK_PACKAGE_NAME = "@metabase/embedding-sdk-react";
 
 console.log(
   `Embedding SDK is ${isEmbeddingSdkPackageInstalled ? "installed" : 'NOT installed, using locally built version from "resources/embedding-sdk"'}`,
 );
 
-// FIXME: remove this after debugging
-const sdkLocalPackagePath = path.resolve(
-  __dirname,
-  "../../resources/embedding-sdk/dist/main.bundle.js",
-);
-
-console.log(`SDK local package path resolved to ${sdkLocalPackagePath}`);
+console.log(`SDK path alias resolved to ${embeddingSdkPath}`);
 
 module.exports = {
   mode: "development",
@@ -24,11 +23,7 @@ module.exports = {
     extensions: [".ts", ".tsx", ".js", ".jsx", ".css", ".svg"],
     alias: {
       ...mainConfig.resolve.alias,
-      ...(!isEmbeddingSdkPackageInstalled
-        ? {
-            "@metabase/embedding-sdk-react": sdkLocalPackagePath,
-          }
-        : null),
+      ...(embeddingSdkPath ? { [SDK_PACKAGE_NAME]: embeddingSdkPath } : null),
     },
     fallback: { path: false, fs: false }, // FIXME: this might break file download tests, we might need to implement this properly
   },
@@ -86,30 +81,51 @@ module.exports = {
 };
 
 function resolveEmbeddingSdkPackage() {
-  let isEmbeddingSdkPackageInstalled = false;
-
   try {
-    const searchPath = path.resolve(__dirname, "../../node_modules");
-    console.log("module search path set to:", searchPath);
+    const nodeModulesPath = path.resolve(__dirname, "../../node_modules");
 
-    const packagePath = require.resolve("@metabase/embedding-sdk-react", {
-      paths: [searchPath],
-    });
-    console.log("resolved SDK package with require.resolve to:", packagePath);
+    const sdkInNodeModulesPath = path.resolve(
+      nodeModulesPath,
+      SDK_PACKAGE_NAME,
+    );
 
-    console.log(`dirname = '${__dirname}', cwd = '${process.cwd()}'`);
+    // Try to resolve the package from the ancestor node_modules folder
+    const hasEmbeddingSdkInNodeModules = fs.existsSync(sdkInNodeModulesPath);
 
-    if (packagePath.includes("node_modules")) {
-      isEmbeddingSdkPackageInstalled = true;
+    if (hasEmbeddingSdkInNodeModules) {
+      return {
+        isEmbeddingSdkPackageInstalled: true,
+        embeddingSdkPath: sdkInNodeModulesPath,
+      };
+    }
+
+    // Try to resolve the package with `require.resolve`
+    const requirePackagePath = require.resolve(SDK_PACKAGE_NAME);
+    console.log(
+      "resolved SDK package with require.resolve:",
+      requirePackagePath,
+    );
+
+    if (requirePackagePath.includes("node_modules")) {
+      return {
+        isEmbeddingSdkPackageInstalled: true,
+        embeddingSdkPath: requirePackagePath,
+      };
     }
   } catch (err) {
     console.error(
-      "Cannot resolve installed @metabase/embedding-sdk-react via require.resolve:",
+      `Cannot resolve ${SDK_PACKAGE_NAME} via require.resolve:`,
       err,
     );
   }
 
+  const sdkLocalPackagePath = path.resolve(
+    __dirname,
+    "../../resources/embedding-sdk/dist/main.bundle.js",
+  );
+
   return {
-    isEmbeddingSdkPackageInstalled,
+    isEmbeddingSdkPackageInstalled: false,
+    embeddingSdkPath: sdkLocalPackagePath,
   };
 }
