@@ -3,7 +3,7 @@ name: E2E Cross-version Component Tests for Embedding SDK
 on:
   push:
     branches:
-      - "release-**"
+      - "fix-sdk-e2e-workflows-for-52"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     branches:
