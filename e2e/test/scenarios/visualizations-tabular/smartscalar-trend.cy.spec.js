@@ -360,7 +360,9 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("viz-settings-button").click();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findByText("Display").click();
-      cy.findByLabelText("Switch positive / negative colors?").click();
+      cy.findByLabelText("Switch positive / negative colors?").click({
+        force: true,
+      });
     });
     cy.icon("arrow_down").should(
       "have.css",
