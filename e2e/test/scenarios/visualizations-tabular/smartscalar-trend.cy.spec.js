@@ -410,13 +410,13 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     cy.findByTestId("chartsettings-sidebar")
       .findByLabelText("Compact number")
-      .click();
+      .click({ force: true });
     cy.findByTestId("scalar-container").findByText("3.4M");
     cy.findByTestId("scalar-previous-value").findByText("5.3M");
 
     cy.findByTestId("chartsettings-sidebar")
       .findByLabelText("Compact number")
-      .click();
+      .click({ force: true });
     cy.findByTestId("scalar-container").findByText("3,440,000");
     cy.findByTestId("scalar-previous-value").findByText("5,270,000");
   });
