@@ -376,6 +376,7 @@ describe(
       });
 
       runActionFor(SAMPLE_QUERY_ACTION.name);
+      cy.wait("@getAction");
 
       H.modal().within(() => {
         cy.findByLabelText(TEST_PARAMETER.name).type("1");
