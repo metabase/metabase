@@ -141,6 +141,9 @@ const createHeaderElement = (dashboardName: string, marginBottom: number) => {
   return header;
 };
 
+const HEADER_MARGIN_BOTTOM = 8;
+const PAGE_PADDING = 16;
+
 export const saveDashboardPdf = async (
   selector: string,
   dashboardName: string,
@@ -156,21 +159,21 @@ export const saveDashboardPdf = async (
   }
   const cardsBounds = getSortedDashCardBounds(node);
 
-  const headerMarginBottom = 8;
-  const pdfHeader = createHeaderElement(dashboardName, headerMarginBottom);
+  const pdfHeader = createHeaderElement(dashboardName, HEADER_MARGIN_BOTTOM);
 
   node.appendChild(pdfHeader);
   const headerHeight =
-    pdfHeader.getBoundingClientRect().height + headerMarginBottom;
+    pdfHeader.getBoundingClientRect().height + HEADER_MARGIN_BOTTOM;
   node.removeChild(pdfHeader);
 
-  const height = node.offsetHeight + headerHeight;
-  const width = node.offsetWidth;
+  const contentWidth = node.offsetWidth;
+  const contentHeight = node.offsetHeight + headerHeight;
+  const width = contentWidth + PAGE_PADDING * 2;
 
   const { default: html2canvas } = await import("html2canvas-pro");
   const image = await html2canvas(node, {
-    height,
-    width,
+    height: contentHeight,
+    width: contentWidth,
     useCORS: true,
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
@@ -183,8 +186,8 @@ export const saveDashboardPdf = async (
   const optimalPageHeight = Math.round(width * TARGET_ASPECT_RATIO);
   const pageBreaks = getPageBreaks(
     cardsBounds,
-    optimalPageHeight,
-    height,
+    optimalPageHeight - PAGE_PADDING * 2,
+    contentHeight,
     headerHeight,
   );
 
@@ -196,7 +199,9 @@ export const saveDashboardPdf = async (
   // Remove initial empty page
   pdf.deletePage(1);
 
-  const pageEnds = [...pageBreaks, height];
+  const scale = window.devicePixelRatio || 1;
+
+  const pageEnds = [...pageBreaks, contentHeight];
   let prevBreak = 0;
 
   pageEnds.forEach((pageBreak, index) => {
@@ -206,11 +211,44 @@ export const saveDashboardPdf = async (
     // Special case for the last page: if it is too short expand its height
     // to optimalPageHeight to avoid its being trimmed horizontally
     const pageHeight = !isLastPage
-      ? pageBreaksDiff
-      : Math.max(pageBreaksDiff, optimalPageHeight);
+      ? pageBreaksDiff + PAGE_PADDING * 2
+      : Math.max(pageBreaksDiff + PAGE_PADDING * 2, optimalPageHeight);
 
     pdf.addPage([width, pageHeight]);
-    pdf.addImage(image, "JPEG", 0, -prevBreak, width, height);
+
+    // Calculate the source and destination dimensions for this page slice
+    const sourceY = prevBreak;
+    const sourceHeight = pageBreaksDiff;
+
+    // Single page canvas
+    const pageCanvas = document.createElement("canvas");
+
+    pageCanvas.width = contentWidth * scale;
+    pageCanvas.height = sourceHeight * scale;
+    const ctx = pageCanvas.getContext("2d");
+
+    if (ctx) {
+      ctx.drawImage(
+        image,
+        0,
+        sourceY * scale,
+        contentWidth * scale,
+        sourceHeight * scale,
+        0,
+        0,
+        contentWidth * scale,
+        sourceHeight * scale,
+      );
+
+      pdf.addImage(
+        pageCanvas,
+        "JPEG",
+        PAGE_PADDING,
+        PAGE_PADDING,
+        contentWidth,
+        sourceHeight,
+      );
+    }
 
     prevBreak = pageBreak;
   });
