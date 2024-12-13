@@ -309,8 +309,6 @@ describe(
 
       runActionFor(actionName);
 
-      cy.wait("@getAction");
-
       H.modal().within(() => {
         cy.findByLabelText("ID").type("1");
         cy.findByLabelText("User ID").type("999999");
@@ -376,7 +374,6 @@ describe(
       });
 
       runActionFor(SAMPLE_QUERY_ACTION.name);
-      cy.wait("@getAction");
 
       H.modal().within(() => {
         cy.findByLabelText(TEST_PARAMETER.name).type("1");
@@ -848,6 +845,7 @@ function runActionFor(actionName) {
   cy.findByRole("listitem", { name: actionName }).within(() => {
     cy.icon("play").click();
   });
+  cy.wait("@getAction");
 }
 
 function openActionMenuFor(actionName) {
