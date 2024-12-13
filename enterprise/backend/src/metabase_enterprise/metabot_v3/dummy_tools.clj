@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.table :as api.table]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -55,38 +56,43 @@
                                    (into #{} (keep :fk_target_field_id))
                                    not-empty)]
     (->> (t2/select-fn-set :table_id :model/Field :id [:in target-field-ids])
-         (mapv #(table-details % {:include-foreign-key-tables? false})))))
+         (into [] (keep #(table-details % {:include-foreign-key-tables? false})))
+         not-empty)))
 
 (defn- table-details
   "Loads the details of a table with ID `id`. If the option `include-foreign-key-tables?` is truthy,
   the details of tables referred to by foreign keys are also loaded. Does N+1 DB queries."
   [id {:keys [include-foreign-key-tables?]}]
-  (let [base (-> (t2/select-one [:model/Table :id :name :description] id)
-                 (t2/hydrate :fields :metrics)
-                 (assoc :id id))
+  (let [table (t2/select-one [:model/Table :id :name :description] id)
+        base (when (mi/can-read? table)
+               (-> table
+                   (t2/hydrate :fields :metrics)
+                   (assoc :id id)))
         fields (remove (comp #{:hidden :sensitive} :visibility_type) (:fields base))]
-    (-> base
-        (assoc :fields (mapv convert-field fields))
-        (update :metrics #(mapv convert-metric %))
-        (cond-> include-foreign-key-tables? (assoc :queryable_foreign_key_tables (foreign-key-tables fields))))))
+    (some-> base
+            (assoc :fields (mapv convert-field fields))
+            (update :metrics #(mapv convert-metric %))
+            (cond-> include-foreign-key-tables? (assoc :queryable_foreign_key_tables (foreign-key-tables fields))))))
 
 (defn- card-details
   [id]
   (let [base (first (api.table/batch-fetch-card-query-metadatas [id]))
         fields (remove (comp #{:hidden :sensitive} :visibility_type) (:fields base))]
-    (-> base
-        (select-keys [:id :description])
-        (assoc :fields (mapv convert-field fields)
-               :name (:display_name base))
-        (update :metrics #(mapv convert-metric %))
-        (assoc :queryable_foreign_key_tables (foreign-key-tables fields)))))
+    (some-> base
+            (select-keys [:id :description])
+            (assoc :fields (mapv convert-field fields)
+                   :name (:display_name base))
+            (update :metrics #(mapv convert-metric %))
+            (assoc :queryable_foreign_key_tables (foreign-key-tables fields)))))
 
 (defn- get-table-details
   [_ {:keys [table_id]} context]
-  {:output (if-let [[_ card-id] (re-matches #"card__(\d+)" table_id)]
-             (card-details (parse-long card-id))
-             (table-details (parse-long table_id) {:include-foreign-key-tables? true}))
-   :context context})
+  (let [details (if-let [[_ card-id] (re-matches #"card__(\d+)" table_id)]
+                  (card-details (parse-long card-id))
+                  (table-details (parse-long table_id) {:include-foreign-key-tables? true}))]
+    {:output (or details
+                 "table not found")
+     :context context}))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]
