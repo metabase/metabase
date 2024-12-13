@@ -6,13 +6,9 @@ import * as ReactRedux from "react-redux";
 
 import { isEmbeddingSdk } from "metabase/env";
 
-export const MetabaseReduxContext = (() => {
-  try {
-    return isEmbeddingSdk ? createContext<any>(null) : ReactReduxContext;
-  } catch (e) {
-    return ReactReduxContext;
-  }
-})();
+export const MetabaseReduxContext = isEmbeddingSdk
+  ? createContext<any>(null)
+  : ReactReduxContext;
 
 export const MetabaseReduxProvider = ({
   children,
