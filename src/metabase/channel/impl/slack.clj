@@ -72,9 +72,9 @@
                                   (-> (f attachment-data)
                                       (assoc :text (:render/text rendered-info)))
                                   (let [image-bytes (channel.render/png-from-render-info rendered-info slack-width)
-                                        image-url   (slack/upload-file! image-bytes attachment-name channel-id)]
+                                        {:keys [url]} (slack/upload-file! image-bytes attachment-name channel-id)]
                                     (-> (f attachment-data)
-                                        (assoc :image_url image-url)))))))
+                                        (assoc :image_url url)))))))
             []
             attachments)))
 

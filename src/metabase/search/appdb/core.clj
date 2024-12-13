@@ -14,6 +14,7 @@
    [metabase.search.permissions :as search.permissions]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
@@ -27,10 +28,14 @@
 ;; Make sure the legacy cookies still work.
 (derive :search.engine/fulltext :search.engine/appdb)
 
+(def supported-db?
+  "All the databases which we have implemented fulltext search for."
+  #{:postgres :h2})
+
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
   (and (or (not config/is-prod?)
            (= "appdb" (some-> (public-settings/search-engine) name)))
-       (= (mdb/db-type) :postgres)))
+       (supported-db? (mdb/db-type))))
 
 (defn- parse-datetime [s]
   (when s (OffsetDateTime/parse s)))
@@ -69,10 +74,20 @@
       personal-clause (sql.helpers/where (or-null personal-clause)))))
 
 (defmethod search.engine/results :search.engine/appdb
-  [{:keys [search-string] :as search-ctx}]
+  [{:keys [search-engine search-string] :as search-ctx}]
   (when-not (search.index/active-table)
+    (when config/is-prod?
+      (log/warnf "Triggering a late initialization of the %s search index." search-engine)
+      (try
+        (future
+          (search.engine/init! search-engine {:force-reset? false}))
+        (catch Exception e
+          (log/error e))))
+    ;; Even if the index exists now, return an error so that we track the issue.
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
-                    {:search-engine :postgres})))
+                    {:search-engine search-engine
+                     :db-type       (mdb/db-type)
+                     :index-state   (search.index/search-engine-appdb-index-state)})))
   (let [weights (search.config/weights search-ctx)
         scorers (search.scoring/scorers search-ctx)]
     (->> (search.index/search-query search-string search-ctx [:legacy_input])
@@ -101,8 +116,11 @@
       (search.ingestion/populate-index! :search.engine/appdb))))
 
 (defmethod search.engine/reindex! :search.engine/appdb
-  [_]
+  [_ {:keys [in-place?]}]
   (search.index/ensure-ready! false)
-  (search.index/maybe-create-pending!)
+  (if in-place?
+    (when-let [table (search.index/active-table)]
+      (t2/delete! table))
+    (search.index/maybe-create-pending!))
   (u/prog1 (search.ingestion/populate-index! :search.engine/appdb)
     (search.index/activate-table!)))

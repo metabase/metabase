@@ -8,6 +8,7 @@
   (:require
    [clojure.string :as str]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.ident :as lib.ident]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
@@ -81,16 +82,18 @@
                                       inner-mbql)]
                    (-> inner-mbql
                        (dissoc :aggregation :order-by)
-                       (assoc :breakout [value-field-ref])
+                       (assoc :breakout        [value-field-ref]
+                              :breakout-idents (lib.ident/indexed-idents 1))
                        (update :limit (fnil min *max-rows*) *max-rows*)
                        (update :filter (fn [old]
                                          (cond->> new-filter
                                            old (conj [:and old]))))))
                  ;; Model or Native query - wrap it with a new MBQL stage.
-                 {:source-table (format "card__%d" (:id card))
-                  :breakout     [value-field-ref]
-                  :limit        *max-rows*
-                  :filter       new-filter})
+                 {:source-table    (format "card__%d" (:id card))
+                  :breakout        [value-field-ref]
+                  :breakout-idents (lib.ident/indexed-idents 1)
+                  :limit           *max-rows*
+                  :filter          new-filter})
      :middleware {:disable-remaps? true}}))
 
 (mu/defn values-from-card
