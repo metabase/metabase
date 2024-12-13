@@ -21,6 +21,7 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
     signInAsAdminAndEnableEmbeddingSdk();
 
     const textCard = getTextCardDetails({ col: 16, text: "Text text card" });
+
     const questionCard = {
       id: ORDERS_DASHBOARD_DASHCARD_ID,
       card_id: ORDERS_QUESTION_ID,
@@ -28,6 +29,14 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
       col: 0,
       size_x: 16,
       size_y: 8,
+
+      visualization_settings: {
+        click_behavior: {
+          type: "link",
+          linkType: "url",
+          linkTemplate: "https://metabase.com",
+        },
+      },
     };
 
     cy.createDashboard(
@@ -70,5 +79,13 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
       cy.contains("Orders").should("be.visible");
       cy.contains("This is a custom question layout.");
     });
+  });
+
+  it("should not trigger url click behaviours when clicking on sdk cards (metabase#51099)", () => {
+    cy.get<string>("@dashboardId").then(dashboardId => {
+      mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+    });
+
+    getSdkRoot().within(() => {});
   });
 });

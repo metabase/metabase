@@ -14,13 +14,14 @@ export function performAction(
     const reduxAction = action.action();
     if (reduxAction) {
       dispatch(reduxAction);
+
       didPerform = true;
     }
   }
   if (action.url) {
     // (metabase#51099) disable url click behavior
     if (isEmbeddingSdk) {
-      return;
+      return true;
     }
 
     const url = action.url();
