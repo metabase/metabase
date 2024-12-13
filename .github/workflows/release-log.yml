@@ -1,15 +1,18 @@
 name: Update Release Log
-run-name: Update Release Log ${{ inputs.version }}
+run-name: Update Release Log ${{ inputs.version || github.ref_name }}
 
 on:
+  push:
+    branches:
+      - release-x.*
+    tags:
+      - v*
   workflow_dispatch:
     inputs:
       version:
         description: 'Major Metabase version (e.g. 45, 52, 68)'
         type: number
         required: true
-  schedule:
-    - cron: '45 * * * *' # hourly
   workflow_call:
     inputs:
       version:
@@ -21,11 +24,8 @@ jobs:
   update-release-log:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # don't run this workflow on a cron for forks
-    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
-    env:
-      VERSION: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call')
-        && inputs.version || vars.CURRENT_VERSION }}
+    # don't run this workflow for forks
+    if: ${{ github.event_name != 'push' || github.repository == 'metabase/metabase' }}
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -38,6 +38,33 @@ jobs:
           fetch-depth: 0 # we want all branches and tags
       - name: Install Dependencies
         run: yarn --cwd release --frozen-lockfile && npm i -g tsx
+      - name: Build release scripts
+        run: yarn --cwd release build
+      - name: Get version number
+        uses: actions/github-script@v7
+        with:
+          script: | # js
+            const {
+              getVersionFromReleaseBranch,
+              getMajorVersion,
+            } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            console.log({ context });
+
+            // if the version is explicitly set, use that
+            if (context.payload?.inputs?.version) {
+              core.exportVariable('VERSION', context.payload.inputs.version);
+              return;
+            }
+
+            // otherwise, get the version from the release branch name
+            const branch = context.payload.ref;
+            const version = getVersionFromReleaseBranch(branch);
+            const majorVersion = getMajorVersion(version);
+
+            console.log({ branch, version, majorVersion });
+            core.exportVariable('VERSION', majorVersion);
+
       - name: generate release Log
         run: cd release && tsx ./src/release-log-run.ts $VERSION > v$VERSION.html
       - name: generate release channel log

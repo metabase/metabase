@@ -1,6 +1,4 @@
 (ns metabase.api.search
-  ;; Allowing search.config to be accessed for developer API to set weights
-  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [clojure.string :as str]
    [compojure.core :refer [GET]]
@@ -9,9 +7,11 @@
    [metabase.config :as config]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.request.core :as request]
+   ;; Allowing search.config to be accessed for developer API to set weights
+   ^{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
-   [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.task :as task]
    [metabase.task.search-index :as task.search-index]
    [metabase.util.malli.schema :as ms]
@@ -69,7 +69,7 @@
 (defn- set-weights! [context overrides]
   (api/check-superuser)
   (when (= context :all)
-    (throw (ex-info (str "Cannot set weights for all context")
+    (throw (ex-info "Cannot set weights for all context"
                     {:status-code 400})))
   (let [known-ranker?   (set (keys (:default @#'search.config/static-weights)))
         rankers         (into #{} (map (fn [k] (keyword (first (str/split (name k) #"/"))))) (keys overrides))
@@ -114,7 +114,7 @@
   A search query that has both filters applied will only return models and cards."
   [q context archived created_at created_by table_db_id models last_edited_at last_edited_by
    filter_items_in_personal_collection model_ancestors search_engine search_native_query
-   verified ids calculate_available_models]
+   verified ids calculate_available_models include_dashboard_questions]
   {q                                   [:maybe ms/NonBlankString]
    context                             [:maybe :keyword]
    archived                            [:maybe :boolean]
@@ -130,8 +130,9 @@
    search_native_query                 [:maybe true?]
    verified                            [:maybe true?]
    ids                                 [:maybe (ms/QueryVectorOf ms/PositiveInt)]
-   calculate_available_models          [:maybe true?]}
-  (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
+   calculate_available_models          [:maybe true?]
+   include_dashboard_questions         [:maybe :boolean]}
+  (api/check-valid-page-params (request/limit) (request/offset))
   (search/search
    (search/search-context
     {:archived                            archived
@@ -146,16 +147,17 @@
      :filter-items-in-personal-collection filter_items_in_personal_collection
      :last-edited-at                      last_edited_at
      :last-edited-by                      (set last_edited_by)
-     :limit                               mw.offset-paging/*limit*
+     :limit                               (request/limit)
      :model-ancestors?                    model_ancestors
      :models                              (not-empty (set models))
-     :offset                              mw.offset-paging/*offset*
+     :offset                              (request/offset)
      :search-engine                       search_engine
      :search-native-query                 search_native_query
      :search-string                       q
      :table-db-id                         table_db_id
      :verified                            verified
      :ids                                 (set ids)
-     :calculate-available-models?         calculate_available_models})))
+     :calculate-available-models?         calculate_available_models
+     :include-dashboard-questions?        include_dashboard_questions})))
 
 (api/define-routes +engine-cookie)

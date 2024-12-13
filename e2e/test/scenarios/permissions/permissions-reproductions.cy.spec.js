@@ -498,7 +498,7 @@ describe("issue 22727", () => {
       cy.findByText(/^Replace original qeustion/).should("not.exist");
 
       // This part is an actual repro for https://github.com/metabase/metabase/issues/22727
-      cy.findByLabelText(/Which collection should this go in/)
+      cy.findByLabelText(/Where do you want to save this/)
         .invoke("text")
         .should("not.eq", "Our analytics");
     });
@@ -543,7 +543,7 @@ describe("issue 23981", () => {
       cy.findByText("Our analytics").should("not.exist");
       cy.log('ensure that "Collections" is not selectable');
       cy.findByText("Collections").should("be.visible").click();
-      cy.button("Select").should("be.disabled");
+      cy.button("Select this collection").should("be.disabled");
     });
   });
 });

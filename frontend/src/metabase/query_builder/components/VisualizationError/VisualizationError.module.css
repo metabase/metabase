@@ -1,0 +1,41 @@
+.QueryErrorTitle {
+  flex: 1 1 auto;
+  color: var(--mb-color-text-dark);
+  font-size: 1.25rem;
+  line-height: 1.5rem;
+  font-weight: bold;
+}
+
+.QueryErrorIcon {
+  flex: 0 0 auto;
+  color: var(--mb-color-error);
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.75rem;
+}
+
+.QueryErrorMessage {
+  margin: 0 2rem;
+  padding: 1rem;
+  max-width: 31.25rem;
+  font-family: Monaco, monospace;
+  font-size: 0.75rem;
+  line-height: 1.125rem;
+  border: 1px solid var(--mb-color-brand);
+  border-radius: 0.5rem;
+  background-color: var(--mb-color-bg-light);
+  overflow-wrap: break-word;
+}
+
+.QueryErrorLink {
+  color: var(--mb-color-brand);
+  margin: 1rem 0;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: bold;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}

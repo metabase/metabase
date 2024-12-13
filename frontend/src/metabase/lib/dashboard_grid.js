@@ -1,3 +1,8 @@
+// NOTE: If we make changes to the algorithm or default values below we should change
+// [the backend version](https://github.com/metabase/metabase/blob/master/src/metabase/util/autoplace.clj).
+
+// If you change this, please change `default-grid-width` in
+// https://github.com/metabase/metabase/blob/master/src/metabase/util/autoplace.clj
 export const GRID_WIDTH = 24;
 export const GRID_ASPECT_RATIO = 10 / 9;
 
@@ -13,12 +18,15 @@ export const GRID_COLUMNS = {
   mobile: 1,
 };
 
+// If you change this, please change `default-card-size` in
+// https://github.com/metabase/metabase/blob/master/src/metabase/util/autoplace.clj
 export const DEFAULT_CARD_SIZE = { width: 4, height: 4 };
 
 export const MIN_ROW_HEIGHT = 40;
 
-// returns the first available position from left to right, top to bottom,
-// based on the existing cards,  item size, and grid width
+// returns the first available position from left to right, top to bottom, based on the existing cards, item size, and
+// grid width. NOTE: If you change the way this function works, please change `get-position-for-new-dashcard` in
+// https://github.com/metabase/metabase/blob/master/src/metabase/util/autoplace.clj
 export function getPositionForNewDashCard(
   cards,
   size_x = DEFAULT_CARD_SIZE.width,

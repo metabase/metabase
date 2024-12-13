@@ -4,6 +4,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase.lib.ident :as lib.ident]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.task :as task]
@@ -44,7 +45,8 @@
   (let [query       {:database db-id
                      :type     :query
                      :query    {:source-table table-id
-                                :aggregation  [(:aggregation config) [:field field-id nil]]}}
+                                :aggregation  [(:aggregation config) [:field field-id nil]]
+                                :aggregation-idents (lib.ident/indexed-idents 2)}}
         result      (-> (qp/process-query query) :data :rows ffirst)
         now         (t/offset-date-time)
         next-run-at (calc-next-run (:schedule config) now)
@@ -85,9 +87,7 @@
    (triggers/with-identity (triggers/key "metabase-enterprise.cache.trigger"))
    (triggers/start-now)
    (triggers/with-schedule
-    (cron/schedule
-      ;; run every minute
-     (cron/cron-schedule "0 * * * * ? *")))))
+    (cron/cron-schedule "0 * * * * ? *"))))
 
 (defenterprise init-cache-task!
   "Inits periodical task checking for cache expiration"

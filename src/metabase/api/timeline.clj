@@ -5,7 +5,7 @@
    [metabase.api.common :as api]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
-   [metabase.models.timeline :as timeline :refer [Timeline]]
+   [metabase.models.timeline :refer [Timeline]]
    [metabase.models.timeline-event
     :as timeline-event
     :refer [TimelineEvent]]

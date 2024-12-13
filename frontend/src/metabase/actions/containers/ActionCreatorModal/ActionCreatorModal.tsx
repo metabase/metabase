@@ -6,7 +6,7 @@ import { replace } from "react-router-redux";
 import _ from "underscore";
 
 import { skipToken, useGetActionQuery } from "metabase/api";
-import Models from "metabase/entities/questions";
+import Questions from "metabase/entities/questions";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
 import type Question from "metabase-lib/v1/Question";
@@ -105,7 +105,7 @@ function getModelId(state: State, props: OwnProps) {
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
-  Models.load({
+  Questions.load({
     id: getModelId,
     entityAlias: "model",
   }),

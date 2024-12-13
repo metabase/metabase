@@ -81,7 +81,8 @@
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
-(def ^:private static-weights
+(def static-weights
+  "Strength of the various scorers."
   {:default
    {:pinned              0
     :bookmarked          1
@@ -254,7 +255,8 @@
    [:table-db-id                         {:optional true} ms/PositiveInt]
    ;; true to search for verified items only, nil will return all items
    [:verified                            {:optional true} true?]
-   [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]])
+   [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:include-dashboard-questions?        {:optional true} :boolean]])
 
 (defmulti column->string
   "Turn a complex column into a string"

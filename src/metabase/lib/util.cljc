@@ -15,6 +15,7 @@
    [metabase.lib.database.methods :as lib.database.methods]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.ident :as lib.ident]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -95,7 +96,7 @@
       (lib.options/update-options (fn [opts]
                                     (-> opts
                                         (assoc :lib/expression-name a-name
-                                               :ident (u/generate-nano-id))
+                                               :ident (lib.ident/random-ident))
                                         (dissoc :name :display-name))))))
 
 (defmulti custom-name-method

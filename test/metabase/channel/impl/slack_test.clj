@@ -8,7 +8,8 @@
   (let [slack-uploader (fn [storage]
                          (fn [_bytes attachment-name _channel-id]
                            (swap! storage conj attachment-name)
-                           (str "http://uploaded/" attachment-name)))]
+                           {:url (str "http://uploaded/" attachment-name)
+                            :id (str "ID_" attachment-name)}))]
     (testing "Uploads files"
       (let [titles         (atom [])
             attachments    [{:title           "a"
@@ -26,7 +27,8 @@
         (is (= [{:title "a", :image_url "http://uploaded/a.png"}
                 {:title "b", :image_url "http://uploaded/b.png"}]
                processed))
-        (is (= @titles ["a.png" "b.png"]))))
+        (is (= ["a.png" "b.png"]
+               @titles))))
     (testing "Uses the raw text when present"
       (let [titles         (atom [])
             attachments    [{:title           "a"
@@ -45,4 +47,5 @@
         (is (= [{:title "a", :image_url "http://uploaded/a.png"}
                 {:title "b", :text "hi again"}]
                processed))
-        (is (= @titles ["a.png"]))))))
+        (is (= ["a.png"]
+               @titles))))))

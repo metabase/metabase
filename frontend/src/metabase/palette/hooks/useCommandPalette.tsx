@@ -72,6 +72,7 @@ export const useCommandPalette = ({
     {
       q: debouncedSearchText,
       context: "command-palette",
+      include_dashboard_questions: true,
       limit: 20,
     },
     {
@@ -307,14 +308,28 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
         }}
       />
     )} ${wrappedSearchResult.model_name}`;
+  } else if (wrappedSearchResult.model === "table") {
+    return wrappedSearchResult.table_schema
+      ? `${wrappedSearchResult.database_name} (${wrappedSearchResult.table_schema})`
+      : wrappedSearchResult.database_name;
+  } else if (
+    wrappedSearchResult.model === "card" &&
+    wrappedSearchResult.dashboard
+  ) {
+    return (
+      <>
+        <Icon
+          name="dashboard"
+          style={{
+            verticalAlign: "bottom",
+            marginInline: "0.25rem",
+          }}
+        />
+        {wrappedSearchResult.dashboard.name}
+      </>
+    );
   } else {
-    if (wrappedSearchResult.model === "table") {
-      return wrappedSearchResult.table_schema
-        ? `${wrappedSearchResult.database_name} (${wrappedSearchResult.table_schema})`
-        : wrappedSearchResult.database_name;
-    } else {
-      return wrappedSearchResult.getCollection().name;
-    }
+    return wrappedSearchResult.getCollection().name;
   }
 };
 
@@ -323,9 +338,26 @@ export const getRecentItemSubtext = (item: RecentItem) => {
     return item.table_schema
       ? `${item.database.name} (${item.table_schema})`
       : item.database.name;
+  } else if (item.dashboard) {
+    return (
+      <>
+        <Icon name="dashboard" size={12} style={{ marginInline: "0.25rem" }} />
+        {item.dashboard.name}
+      </>
+    );
   } else if (item.parent_collection.id === null) {
-    return ROOT_COLLECTION.name;
+    return (
+      <>
+        <Icon name="collection" size={12} style={{ marginInline: "0.25rem" }} />
+        {ROOT_COLLECTION.name}
+      </>
+    );
   } else {
-    return item.parent_collection.name;
+    return (
+      <>
+        <Icon name="collection" size={12} style={{ marginInline: "0.25rem" }} />
+        {item.parent_collection.name}
+      </>
+    );
   }
 };

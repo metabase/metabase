@@ -10,7 +10,6 @@ import * as Lib from "metabase-lib";
 
 import {
   ChevronDown,
-  Content,
   MoreButton,
   SelectListItem,
   TriggerButton,
@@ -41,6 +40,7 @@ export interface BaseBucketPickerPopoverProps {
   checkBucketIsSelected: (item: BucketListItem) => boolean;
   renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => ReactNode;
   onSelect: (column: Lib.Bucket | NoBucket) => void;
+  className?: string;
 }
 
 function _BaseBucketPickerPopover({
@@ -56,6 +56,7 @@ function _BaseBucketPickerPopover({
   renderTriggerContent,
   onSelect,
   hasChevronDown,
+  className,
 }: BaseBucketPickerPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
   const [isExpanded, setIsExpanded] = useState(
@@ -97,14 +98,20 @@ function _BaseBucketPickerPopover({
     <Popover opened={isOpened} position="right" onClose={handlePopoverClose}>
       <Popover.Target>
         <TriggerButton
+          className={className}
           aria-label={triggerLabel}
-          // Compat with E2E tests around MLv1-based components
-          // Prefer using a11y role selectors
           data-testid="dimension-list-item-binning"
           onClick={event => {
             event.stopPropagation();
             setIsOpened(!isOpened);
           }}
+          px="sm"
+          miw="35%"
+          maw="50%"
+          py={0}
+          variant="subtle"
+          color="white"
+          styles={{ label: { display: "flex", gap: "0.5rem" } }}
         >
           <Ellipsified>
             {renderTriggerContent(triggerContentBucketDisplayInfo)}
@@ -116,27 +123,35 @@ function _BaseBucketPickerPopover({
         </TriggerButton>
       </Popover.Target>
       <Popover.Dropdown>
-        <Content>
-          <SelectList>
-            {visibleItems.map(item => (
-              <SelectListItem
-                id={item.displayName}
-                key={item.displayName}
-                name={item.displayName}
-                activeColor={color}
-                isSelected={checkBucketIsSelected(item)}
-                onSelect={(_id, event) => {
-                  event.stopPropagation();
-                  onSelect(item.bucket);
-                  handlePopoverClose();
-                }}
-              />
-            ))}
-          </SelectList>
+        <SelectList p="sm" miw="10rem">
+          {visibleItems.map(item => (
+            <SelectListItem
+              id={item.displayName}
+              key={item.displayName}
+              name={item.displayName}
+              activeColor={color}
+              isSelected={checkBucketIsSelected(item)}
+              onSelect={(_id, event) => {
+                event.stopPropagation();
+                onSelect(item.bucket);
+                handlePopoverClose();
+              }}
+            />
+          ))}
           {hasMoreButton && (
-            <MoreButton onClick={handleExpand}>{t`More…`}</MoreButton>
+            <MoreButton
+              onClick={handleExpand}
+              variant="subtle"
+              color="brand"
+              fullWidth
+              px="md"
+              py="sm"
+              styles={{
+                inner: { display: "flex", justifyContent: "flex-start" },
+              }}
+            >{t`More…`}</MoreButton>
           )}
-        </Content>
+        </SelectList>
       </Popover.Dropdown>
     </Popover>
   );
