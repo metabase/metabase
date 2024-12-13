@@ -76,6 +76,9 @@ describe("Release Notes", () => {
 
       expect(notes).toContain("SHA-256 checksum for the enterprise JAR");
       expect(notes).toContain("01234567890abcdef");
+      expect(notes).toContain(
+        "Get the most out of Metabase"
+      );
 
       expect(notes).toContain(
         "### Enhancements\n\n**Querying**\n\n- Feature Issue (#2)",
