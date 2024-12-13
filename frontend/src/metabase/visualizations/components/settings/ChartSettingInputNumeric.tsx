@@ -28,6 +28,7 @@ interface ChartSettingInputProps extends ChartSettingWidgetProps<number> {
     isInteger?: boolean;
     isNonNegative?: boolean;
   };
+  id?: string;
   placeholder?: string;
   getDefault?: () => string;
 }
