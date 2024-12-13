@@ -153,13 +153,13 @@
 (defn- select-parameterized-queries
   [parameterized-queries]
   (apply concat
-   (-> (group-by :card-id parameterized-queries)
-       (update-vals
-        (fn [queries]
-          (->> queries
-               (sort-by :count >)
-               (take *parameterized-queries-to-rerun-per-card*))))
-       vals)))
+         (-> (group-by :card-id parameterized-queries)
+             (update-vals
+              (fn [queries]
+                (->> queries
+                     (sort-by :count >)
+                     (take *parameterized-queries-to-rerun-per-card*))))
+             vals)))
 
 (defn- duration-queries-to-rerun
   []
