@@ -14,6 +14,7 @@ import {
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
 
+import { DataSourceCrumbs } from "./DataSourceCrumbs";
 import { getDataSourceParts, getQuestionIcon } from "./utils";
 
 QuestionDataSource.propTypes = {
@@ -82,21 +83,6 @@ export function QuestionDataSource({
       }}
     </Questions.Loader>
   );
-}
-
-DataSourceCrumbs.propTypes = {
-  question: PropTypes.object,
-  variant: PropTypes.oneOf(["head", "subhead"]),
-  isObjectDetail: PropTypes.bool,
-};
-
-function DataSourceCrumbs({ question, variant, isObjectDetail, ...props }) {
-  const parts = getDataSourceParts({
-    question,
-    subHead: variant === "subhead",
-    isObjectDetail,
-  });
-  return <HeadBreadcrumbs parts={parts} variant={variant} {...props} />;
 }
 
 SourceDatasetBreadcrumbs.propTypes = {
