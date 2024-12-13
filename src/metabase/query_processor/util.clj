@@ -89,7 +89,7 @@
 (mu/defn- sort-parameter-values
   "Return the sequence of parameter maps, but with any :value keys sorted if they are a sequence"
   [params :- [:or :nil [:sequential :any]]]
-  (mapv #(if (sequential? (:value %)) (update % :value sort) %) params))
+  (map #(if (sequential? (:value %)) (update % :value sort) %) params))
 
 (mu/defn- select-keys-for-hashing
   "Return `query` with only the keys relevant to hashing kept.
