@@ -1728,10 +1728,9 @@
                                         :name "Metric"
                                         :database_id (mt/id)
                                         :collection_id (:id coll)
-                                        :dataset_query {:type :query
-                                                        :database (mt/id)
-                                                        :query {:source-table (str "card__" (:id card-1))
-                                                                :aggregation [[:count]]}}}
+                                        :dataset_query (mt/mbql-query nil
+                                                         {:source-table (str "card__" (:id card-1))
+                                                          :aggregation [[:count]]})}
                      Card       card-2 (assoc (card-with-native-query "Card 2")
                                               :type :model)
                      Card       _card-3 (assoc (card-with-native-query "error")

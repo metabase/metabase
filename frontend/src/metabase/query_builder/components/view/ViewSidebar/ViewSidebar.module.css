@@ -1,0 +1,26 @@
+.ViewSidebarAside {
+  overflow-x: hidden;
+  overflow-y: auto;
+  position: relative;
+  width: 0;
+
+  &.rightSide {
+    border-left: none;
+
+    &.isOpen {
+      border-left: 1px solid var(--mb-color-border);
+    }
+
+    @media screen and (max-width: 40em) {
+      margin-left: auto;
+    }
+  }
+
+  &.leftSide {
+    border-right: none;
+
+    &.isOpen {
+      border-right: 1px solid var(--mb-color-border);
+    }
+  }
+}
