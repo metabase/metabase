@@ -38,11 +38,12 @@
       (lib.types.isa/temporal? db-field)              "date")))
 
 (defn- convert-field
-  [db-field]
-  (-> db-field
-      (select-keys [:id :name :description])
-      (update :id #(str "field_" %))
-      (assoc :type (convert-field-type db-field))))
+  ([db-field] (convert-field db-field ""))
+  ([db-field prefix]
+   (-> db-field
+       (select-keys [:id :name :description])
+       (update :id #(str "field_" prefix %))
+       (assoc :type (convert-field-type db-field)))))
 
 (defn- convert-metric
   [db-metric]
@@ -80,7 +81,7 @@
         fields (remove (comp #{:hidden :sensitive} :visibility_type) (:fields base))]
     (some-> base
             (select-keys [:id :description])
-            (assoc :fields (mapv convert-field fields)
+            (assoc :fields (mapv #(convert-field % (str "[card__" id "]_")) fields)
                    :name (:display_name base))
             (update :metrics #(mapv convert-metric %))
             (assoc :queryable_foreign_key_tables (foreign-key-tables fields)))))
