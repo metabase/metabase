@@ -89,13 +89,13 @@ function resolveEmbeddingSdkPackage() {
   let isEmbeddingSdkPackageInstalled = false;
 
   try {
-    const packagePath = require.resolve("@metabase/embedding-sdk-react");
-    console.log("resolved SDK package with require.resolve to:", packagePath);
+    const searchPath = path.resolve(__dirname, "../../node_modules");
+    console.log("module search path set to:", searchPath);
 
-    console.log(
-      "module paths:",
-      require.resolve.paths("@metabase/embedding-sdk-react"),
-    );
+    const packagePath = require.resolve("@metabase/embedding-sdk-react", {
+      paths: [searchPath],
+    });
+    console.log("resolved SDK package with require.resolve to:", packagePath);
 
     console.log(`dirname = '${__dirname}', cwd = '${process.cwd()}'`);
 
