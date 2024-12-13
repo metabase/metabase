@@ -84,7 +84,7 @@
    (meta handler)))
 
 (defsetting show-google-sheets-integration
-  "Google OAuth2 client ID."
+  "Whether or not to show the user a button that sets up Google Sheets integration."
   :visibility :public
   :type :boolean
   :export? false
@@ -94,4 +94,5 @@
             (and
              (premium-features/is-hosted?)
              (premium-features/has-feature? :attached-dwh)
+             (premium-features/has-feature? :etl-connections)
              (some? (static-api-key)))))
