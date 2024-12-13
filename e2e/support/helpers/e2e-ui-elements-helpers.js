@@ -352,11 +352,7 @@ export function fieldValuesInput(filter = ":eq(0)") {
 }
 
 export function removeFieldValuesValue(index) {
-  return cy
-    .findAllByTestId("token-field")
-    .findByLabelText("close icon")
-    .eq(index)
-    .click();
+  return cy.findAllByTestId("token-field").icon("close").eq(index).click();
 }
 
 export function multiAutocompleteValue(index, filter = ":eq(0)") {
