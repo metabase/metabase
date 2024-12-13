@@ -9,10 +9,8 @@
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.tools :as metabot-v3.tools]
-   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
@@ -31,14 +29,6 @@
   :export?    false)
 
 (def ^:dynamic ^:private *debug* false)
-
-(mu/defn- ^:dynamic *instance-info* :- ::metabot-v3.client.schema/request.instance-info
-  []
-  {:token            (premium-features/premium-embedding-token)
-   :site-uuid        (public-settings/site-uuid-for-premium-features-token-checks)
-   :created-at       (snowplow/instance-creation)
-   :analytics-uuid   (snowplow/analytics-uuid)
-   :metabase-version (public-settings/version)})
 
 (defn- encode-request-body [body]
   (mc/encode ::metabot-v3.client.schema/request
@@ -61,8 +51,7 @@
     :context       context
     :tools         (metabot-v3.tools/applicable-tools (metabot-v3.tools/*tools-metadata*) context)
     :session-id    session-id
-    :user-id       api/*current-user-id*
-    :instance-info (*instance-info*)}))
+    :user-id       api/*current-user-id*}))
 
 (defn- ->json-bytes ^bytes [x]
   (with-open [os (java.io.ByteArrayOutputStream.)
@@ -70,13 +59,15 @@
     (json/generate-stream x w)
     (.toByteArray os)))
 
-(def ^:private request-headers
-  {"Accept"       "application/json"
-   "Content-Type" "application/json;charset=UTF-8"})
+(defn- request-headers
+  []
+  {"Accept"                    "application/json"
+   "Content-Type"              "application/json;charset=UTF-8"
+   "x-metabase-instance-token" (premium-features/premium-embedding-token)})
 
 (defn- build-request-options [body]
   (merge
-   {:headers          request-headers
+   {:headers          (request-headers)
     :body             (->json-bytes body)
     :follow-redirects true
     :throw-exceptions false}
