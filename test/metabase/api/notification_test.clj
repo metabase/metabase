@@ -183,3 +183,36 @@
             (mt/user-http-request :crowberto :put 400 "notification/1" {:creator_id   (mt/user->id :crowberto)
                                                                         :payload      {}
                                                                         :payload_type "notification/card"})))))
+
+(deftest send-notification-by-id-api-test
+  (mt/with-temp [:model/Channel {http-channel-id :id} {:type    :channel/http
+                                                       :details {:url         "https://metabase.com/testhttp"
+                                                                 :auth-method "none"}}]
+    (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
+      (notification.tu/with-card-notification
+        [notification {:handlers [{:channel_type :channel/email
+                                   :recipients   [{:type    :notification-recipient/user
+                                                   :user_id (mt/user->id :crowberto)}]}
+                                  {:channel_type :channel/slack
+                                   :recipients   [{:type    :notification-recipient/raw-value
+                                                   :details {:value "#general"}}]}
+                                  {:channel_type :channel/http
+                                   :channel_id   http-channel-id}]}]
+        ;; this test only check that channel will send, the content are tested in [[metabase.notification.payload.impl.card-test]]
+        (testing "send to all handlers"
+          (is (=? {:channel/email [{:message    (mt/malli=? some?)
+                                    :recipients ["crowberto@metabase.com"]}]
+                   :channel/slack [{:attachments (mt/malli=? some?)
+                                    :channel-id  "#general"}]
+                   :channel/http [{:body (mt/malli=? some?)}]}
+                  (notification.tu/with-captured-channel-send!
+                    (mt/user-http-request :crowberto :post 204 (format "notification/%d/send" (:id notification)))))))
+
+        (testing "select handlers"
+          (let [handler-ids (->> (:handlers notification)
+                                 (filter (comp #{:channel/slack :channel/http} :channel_type))
+                                 (map :id))]
+            (is (=? #{:channel/slack :channel/http}
+                    (set (keys (notification.tu/with-captured-channel-send!
+                                 (mt/user-http-request :crowberto :post 204 (format "notification/%d/send" (:id notification))
+                                                       {:handler_ids handler-ids}))))))))))))
