@@ -37,6 +37,8 @@
 /deploy/artifacts/*
 /frontend/test/snapshots/*
 /e2e/snapshots/*
+/e2e/support/.nyc_output
+/e2e/support/coverage
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot
@@ -85,6 +87,7 @@ dev/serialization_deltas/
 /frontend/src/cljs_release
 .shadow-cljs
 .clerk
+.nycrc
 
 # lsp: ignore all but the config file
 .lsp/*

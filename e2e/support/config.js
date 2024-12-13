@@ -154,6 +154,8 @@ const defaultConfig = {
         : undefined,
     };
 
+    require("@cypress/code-coverage/task")(on, config);
+
     require("@cypress/grep/src/plugin")(config);
 
     return config;

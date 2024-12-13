@@ -5,6 +5,7 @@ on:
     branches:
       - "master"
       - "release-**"
+      - "coverage-experiment"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 

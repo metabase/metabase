@@ -136,7 +136,15 @@ const config = {
       {
         test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs|css\/core\/fonts\.styled\.ts/,
-        use: [SWC_LOADER],
+        use: [
+          process.env.CYPRESS_COVERAGE
+            ? {
+                loader: "@jsdevtools/coverage-istanbul-loader",
+                options: { produceSourceMap: devMode }
+              }
+            : null,
+          SWC_LOADER
+        ].filter(Boolean),
         type: "javascript/auto",
       },
       {
@@ -294,6 +302,13 @@ const config = {
       /.\/use-popover.js/,
       `${SRC_PATH}/ui/components/overlays/Popover/use-popover`,
     ),
+    ...(process.env.CYPRESS_COVERAGE
+      ? [
+          new rspack.DefinePlugin({
+            global: "window",
+          }),
+        ]
+      : []),
   ],
 };
 

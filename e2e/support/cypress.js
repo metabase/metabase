@@ -7,6 +7,7 @@ import { configure } from "@testing-library/cypress";
 import "cypress-real-events/support";
 import addContext from "mochawesome/addContext";
 import "./commands";
+import "@cypress/code-coverage/support";
 
 const isCI = Cypress.env("CI");
 

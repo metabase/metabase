@@ -5,6 +5,7 @@ on:
     branches:
       - "master"
       - "release-**"
+      - "coverage-experiment"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
@@ -84,6 +85,7 @@ jobs:
         edition: [oss, ee]
     env:
       MB_EDITION: ${{ matrix.edition }}
+      CYPRESS_COVERAGE: true
       INTERACTIVE: false
       # make sure that builds on release branches get licenses, because we use them for releases
       SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
@@ -251,6 +253,24 @@ jobs:
             ./cypress
             ./logs/test.log
           if-no-files-found: ignore
+
+      - name: Upload Coverage Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-recording-${{ matrix.name }}-${{ matrix.edition }}
+          path: |
+            ./e2e/support/coverage
+          if-no-files-found: ignore
+
+      - name: Merge and Upload Coverage Reports
+        if: always()
+        run: |
+          if [ -d "e2e/support/coverage" ]; then
+            mkdir -p coverage/e2e
+            cp -r e2e/support/coverage/* coverage/e2e/
+            yarn nyc merge coverage coverage/merged-coverage.json
+            yarn nyc report --reporter=lcov --reporter=text --temp-dir coverage --report-dir coverage/merged-report
+          fi
 
       - name: Publish Summary
         if: failure()
