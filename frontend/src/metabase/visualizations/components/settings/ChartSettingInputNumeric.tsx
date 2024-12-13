@@ -37,15 +37,15 @@ export const ChartSettingInputNumeric = ({
   value,
   placeholder,
   options,
-  ...props
+  id,
+  getDefault,
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState<string>(value?.toString() ?? "");
-  const defaultValueProps = props.getDefault
-    ? { defaultValue: props.getDefault() }
-    : {};
+  const defaultValueProps = getDefault ? { defaultValue: getDefault() } : {};
 
   return (
     <TextInput
+      id={id}
       {...defaultValueProps}
       placeholder={placeholder}
       type="text"
