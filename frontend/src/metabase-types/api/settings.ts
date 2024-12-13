@@ -354,6 +354,10 @@ interface PublicSettings {
   engines: Record<string, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
+  gsheets: {
+    status: "no-auth" | "auth-complete" | "folder-saved";
+    folder_name: string | null;
+  };
   "has-user-setup": boolean;
   "help-link": HelpLinkSetting;
   "help-link-custom-destination": string;
