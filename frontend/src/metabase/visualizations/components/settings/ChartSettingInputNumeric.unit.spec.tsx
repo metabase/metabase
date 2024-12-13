@@ -4,8 +4,6 @@ import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 
 import { ChartSettingInputNumeric } from "./ChartSettingInputNumeric";
 
-console.error = () => null;
-
 function setup({
   value,
   options,
