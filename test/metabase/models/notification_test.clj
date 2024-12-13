@@ -254,29 +254,29 @@
                                 (insert! {:type                 :notification-recipient/group
                                           :permissions_group_id (t2/select-one-pk :model/PermissionsGroup)
                                           :details              {:something :new}})))))
-      (testing "notifciation-recipient/external-email"
-        (testing "success with email"
-          (is (some? (insert! {:type    :notification-recipient/external-email
-                               :details {:email "ngoc@metabase.com"}}))))
+      (testing "notifciation-recipient/raw-value"
+        (testing "success with value"
+          (is (some? (insert! {:type    :notification-recipient/raw-value
+                               :details {:value "ngoc@metabase.com"}}))))
 
         (testing "fail if details does not match schema"
           (is (thrown-with-msg? Exception #"Value does not match schema"
-                                (insert! {:type    :notification-recipient/external-email
-                                          :details {:email     "ngoc@metabase.com"
-                                                    :not-email true}}))))
-        (testing "fail without email"
+                                (insert! {:type    :notification-recipient/raw-value
+                                          :details {:value "ngoc@metabase.com"
+                                                    :extra true}}))))
+        (testing "fail without value"
           (is (thrown-with-msg? Exception #"Value does not match schema"
-                                (insert! {:type :notification-recipient/external-email}))))
+                                (insert! {:type :notification-recipient/raw-value}))))
         (testing "if has user_id"
           (is (thrown-with-msg? Exception #"Value does not match schema"
-                                (insert! {:type    :notification-recipient/external-email
+                                (insert! {:type    :notification-recipient/raw-value
                                           :user_id 1
-                                          :details {:email "ngoc@metabase.com"}}))))
+                                          :details {:value "ngoc@metabase.com"}}))))
         (testing "if has permissions_group_id"
           (is (thrown-with-msg? Exception #"Value does not match schema"
-                                (insert! {:type                 :notification-recipient/external-email
+                                (insert! {:type                 :notification-recipient/raw-value
                                           :permissions_group_id 1
-                                          :details              {:email "ngoc@metabase.com"}}))))))))
+                                          :details              {:value "ngoc@metabase.com"}}))))))))
 
 (defn- send-notification-triggers
   [subscription-id]

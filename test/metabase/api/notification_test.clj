@@ -113,8 +113,8 @@
                      :handlers          [{:channel_type :channel/email
                                           :recipients   [{:type    :notification-recipient/user
                                                           :user_id (mt/user->id :crowberto)}
-                                                         {:type    :notification-recipient/external-email
-                                                          :details {:email "ngoc@metabase.com"}}]
+                                                         {:type    :notification-recipient/raw-value
+                                                          :details {:value "ngoc@metabase.com"}}]
                                           :template_id  tmpl-id}]}]
       (let [notification        (atom notification)
             notification-id     (:id @notification)
