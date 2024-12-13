@@ -1,6 +1,5 @@
 (ns metabase.db.custom-migrations.pulse-to-notification
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [toucan2.core :as t2]))
 
@@ -82,7 +81,7 @@
 (defn- pulse->notification!
   "Create a new notification with `subsciptions`.
   Return the created notification."
-  [pulse alert-template-id]
+  [pulse]
   (let [pulse-id   (:id pulse)
         pcs        (hydrate-recipients (t2/select :pulse_channel :pulse_id pulse-id))
         ;; alerts have one pulse-card, but to be safe we select the latest one by id
@@ -114,7 +113,7 @@
                                   (case (:channel_type pc)
                                     "email"
                                     {:channel_type "channel/email"
-                                     :template_id  alert-template-id
+                                     :template_id  nil
                                      :recipients   (concat
                                                     (map (fn [recipient]
                                                            {:type "notification-recipient/user"
@@ -134,19 +133,10 @@
 (defn migrate-alerts!
   "Migrate alerts from `pulse` to `notification`."
   []
-  (let [alert-template-id (t2/insert-returning-pk! :channel_template
-                                                   {:name         "Alert"
-                                                    :channel_type "channel/email"
-                                                    :details      (json/generate-string
-                                                                   {:type    :email/handlebars-resource
-                                                                    :subject "{{computed.subject}}"
-                                                                    :path    "metabase/email/alert.hbs"})
-                                                    :created_at   :%now
-                                                    :updated_at   :%now})]
-    (run! #(pulse->notification! % alert-template-id)
-          (t2/reducible-query {:select [:*]
-                               :from   [:pulse]
-                               :where  [:in :alert_condition ["rows" "goal"]]}))))
+  (run! pulse->notification!
+        (t2/reducible-query {:select [:*]
+                             :from   [:pulse]
+                             :where  [:in :alert_condition ["rows" "goal"]]})))
 
 (comment
   (t2/delete! :model/Notification)
