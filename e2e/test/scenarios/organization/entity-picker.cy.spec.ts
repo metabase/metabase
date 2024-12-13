@@ -747,6 +747,29 @@ describe("scenarios > organization > entity picker", () => {
         );
       });
     });
+
+    it("should show dashboards in personal collections when apropriate, even if there are no sub collections", () => {
+      cy.signInAsAdmin();
+      H.createDashboard({
+        collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+      });
+
+      H.openTable({ table: ORDERS_ID });
+      cy.button("Save").click();
+      H.modal().findByLabelText("Where do you want to save this?").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Browse").click();
+        H.entityPickerModalItem(
+          0,
+          "Bobby Tables's Personal Collection",
+        ).click();
+        H.entityPickerModalItem(1, "Test Dashboard").should("exist").click();
+        cy.button("Select this dashboard").click();
+      });
+      H.modal()
+        .findByLabelText("Where do you want to save this?")
+        .should("contain.text", "Test Dashboard");
+    });
   });
 
   describe("dashboard picker", () => {

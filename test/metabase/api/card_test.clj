@@ -3887,7 +3887,19 @@
       (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id dash-id)
       ;; unarchive it, it gets autoplaced
       (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived false})
-      (is (dashcard-exists?)))))
+      (is (dashcard-exists?))))
+  (testing "it works when the dashboard has an empty tab"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/DashboardTab {dt-id :id} {:dashboard_id dash-id}
+                   :model/Card {card-id :id} {}]
+      (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:dashboard_id dash-id})
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :dashboard_tab_id dt-id :card_id card-id))
+      (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived true})
+      (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id dash-id)
+
+      (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived false})
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :dashboard_tab_id dt-id :card_id card-id)))))
 
 (deftest moving-dashboard-questions
   (testing "We can move a dashboard question to a collection"
