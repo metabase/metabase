@@ -203,6 +203,8 @@ describe("Dashboard > Dashboard Questions", () => {
     });
 
     it("can bulk move questions into a dashboard", () => {
+      cy.intercept("PUT", "/api/card/*").as("updateCard");
+
       new Array(20).fill("pikachu").forEach((_, i) => {
         H.createQuestion({
           name: `Question ${i + 1}`,
