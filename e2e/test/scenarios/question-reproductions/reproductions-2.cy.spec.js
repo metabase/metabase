@@ -722,7 +722,7 @@ describe("Custom columns visualization settings", () => {
     goToExpressionSidebarVisualizationSettings();
     H.popover().within(() => {
       const miniBarSwitch = cy.findByLabelText("Show a mini bar chart");
-      miniBarSwitch.click();
+      miniBarSwitch.click({ force: true });
       miniBarSwitch.should("be.checked");
     });
     saveModifiedQuestion();
@@ -752,7 +752,7 @@ describe("Custom columns visualization settings", () => {
     });
     H.popover().within(() => {
       const miniBarSwitch = cy.findByLabelText("Show a mini bar chart");
-      miniBarSwitch.click();
+      miniBarSwitch.click({ force: true });
       miniBarSwitch.should("be.checked");
     });
 
