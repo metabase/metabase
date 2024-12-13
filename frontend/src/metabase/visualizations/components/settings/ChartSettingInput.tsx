@@ -5,6 +5,7 @@ import { TextInput } from "metabase/ui";
 
 interface ChartSettingInputProps {
   value: string;
+  placeholder: string;
   onChange: (value: string) => void;
   id?: string;
 }
@@ -12,13 +13,16 @@ interface ChartSettingInputProps {
 export const ChartSettingInput = ({
   value,
   onChange,
-  ...props
+  placeholder,
+  id,
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState(value);
 
   return (
     <TextInput
-      data-testid={props.id}
+      id={id}
+      data-testid={id}
+      placeholder={placeholder}
       value={inputValue}
       onChange={e => setInputValue(e.target.value)}
       onBlur={() => {
