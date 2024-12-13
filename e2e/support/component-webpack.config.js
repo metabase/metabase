@@ -5,10 +5,10 @@ const webpack = require("webpack");
 
 const mainConfig = require("../../webpack.config");
 
+const SDK_PACKAGE_NAME = "@metabase/embedding-sdk-react";
+
 const { isEmbeddingSdkPackageInstalled, embeddingSdkPath } =
   resolveEmbeddingSdkPackage();
-
-const SDK_PACKAGE_NAME = "@metabase/embedding-sdk-react";
 
 console.log(
   `Embedding SDK is ${isEmbeddingSdkPackageInstalled ? "installed" : 'NOT installed, using locally built version from "resources/embedding-sdk"'}`,
