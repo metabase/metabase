@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMemo } from "react";
 import { connect } from "react-redux";
 import { msgid, ngettext, t } from "ttag";
@@ -14,6 +15,7 @@ import {
   getIsResultDirty,
   getQuestion,
 } from "metabase/query_builder/selectors";
+import { Box } from "metabase/ui";
 import type { Limit } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -21,7 +23,7 @@ import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import type { Dataset } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { RowCountButton, RowCountStaticLabel } from "./QuestionRowCount.styled";
+import QuestionRowCountS from "./QuestionRowCount.module.css";
 
 const POPOVER_ID = "limit-popover";
 
@@ -123,6 +125,7 @@ function QuestionRowCount({
 
 function RowCountLabel({
   disabled,
+  className,
   ...props
 }: {
   children: string;
@@ -132,9 +135,21 @@ function RowCountLabel({
 }) {
   const label = t`Row count`;
   return disabled ? (
-    <RowCountStaticLabel {...props} aria-label={label} />
+    <Box
+      component="span"
+      className={cx(QuestionRowCountS.RowCountStaticLabel, className)}
+      {...props}
+      aria-label={label}
+    />
   ) : (
-    <RowCountButton
+    <button
+      className={cx(
+        QuestionRowCountS.RowCountButton,
+        {
+          [QuestionRowCountS.isHighlighted]: props.highlighted,
+        },
+        className,
+      )}
       {...props}
       aria-label={label}
       aria-haspopup="dialog"
