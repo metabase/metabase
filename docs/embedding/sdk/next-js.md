@@ -10,26 +10,23 @@ title: Embedded analytics SDK - Using the SDK with Next.js
 
 Some notes on using the Embedded analytics SDK with [Next.js](https://nextjs.org/). The SDK is tested to work with Next.js 14, although it may work with other versions.
 
-## Making the SDK components work on Server Side Rendering (SSR) or React Server Components
+## SDK components with Server Side Rendering (SSR) or React Server Components
 
-Currently, the SDK components only work on the browser, this means that using them directly from Server Side Rendering (SSR) or Server Components is not supported.
-To make them work, you can either use the compatibility layer or manually wrap the components.
+For now, the SDK components are only supported for client-side rendering. To use the SDK components with server-side rendering, or with React Server components, you can either use a compatibility layer or manually wrap the components.
 
-### Compatibility layer
+### Compatibility layer for server-side rendering (SSR) (EXPERIMENTAL)
 
-On the latest releases of the sdk do provide an experimental compatibility layer that wraps all the components with [dynamic imports and disable SSR](https://nextjs.org/docs/pages/building-your-application/optimizing/lazy-loading#with-no-ssr) for them. The compatibility layer also uses `use client` so that it will work with the app router.
+To use SDK components with Next.js, the SDK provides an experimental compatibility layer that [wraps all the components with dynamic imports and disables SSR](https://nextjs.org/docs/pages/building-your-application/optimizing/lazy-loading#with-no-ssr). To work with the app router, this compatibility layer uses `use client`.
 
-To use the compatibility layer you can change your imports from `@metabase/embedding-sdk-react` to `@metabase/embedding-sdk-react/nextjs`.
+To use the compatibility layer, change your imports from `@metabase/embedding-sdk-react` to `@metabase/embedding-sdk-react/nextjs`.
 
-This is the easiest way to get up and running with the SDK in Next.js, you can find [sample apps using this approach on github](https://github.com/metabase/metabase-nextjs-sdk-embedding-sample).
+See a  [sample Next.js app that uses this compatibility layer](https://github.com/metabase/metabase-nextjs-sdk-embedding-sample).
 
 ## Manual wrapping of the components
 
-If the compatibility layer doesn't work for your use case, for example because you want to customize the loading of the components, you can create your own wrapper.
-Here's a suggested way to do it.
+If you want to customize the loading of the components, you can create your own wrapper.
 
-First, create a `metabase` folder, and inside it create a file created `EmbeddingSdkProvider.tsx`.
-This file will contain the provider with the appropriate configuration.
+In your app, create a `metabase` directory, and add a `EmbeddingSdkProvider.tsx` file to that directory. This file will contain the provider with the appropriate configuration.
 
 ```tsx
 "use client";
@@ -55,7 +52,7 @@ export const EmbeddingSdkProvider = ({
 };
 ```
 
-Then, we need to create a `index.tsx` file that will export a lazy loaded version, with SSR disabled, and with the `use client` directive, of the `EmbeddingSdkProvider` component and all the other components you need.
+Next, add an `index.tsx` file to that `metabase` directory. This file will include the `use client` directive, and it'll export a lazy-loaded version of the `EmbeddingSdkProvider` with  SSR disabled.
 
 ```tsx
 "use client";
@@ -110,7 +107,7 @@ export const StaticDashboard = dynamic(
 );
 ```
 
-You can now use the components in your pages or components like this:
+You can now import components like so:
 
 ```tsx
 import { StaticQuestion } from "@/metabase"; // path to the folder created earlier
