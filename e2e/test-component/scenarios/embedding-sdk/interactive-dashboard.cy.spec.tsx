@@ -4,12 +4,7 @@ import {
 } from "@metabase/embedding-sdk-react";
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  describeEE,
-  getTextCardDetails,
-  popover,
-  POPOVER_ELEMENT,
-} from "e2e/support/helpers";
+import { describeEE, popover, POPOVER_ELEMENT } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
@@ -17,7 +12,6 @@ import {
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { Stack } from "metabase/ui";
-import { H } from "e2e/support";
 
 describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
   beforeEach(() => {
