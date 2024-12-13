@@ -194,24 +194,26 @@ function addTableAvoidingDuplicates(tables, tableId) {
   return tables.includes(tableId) ? tables : [...tables, tableId];
 }
 
-const useGetQuery = ({ id, ...args }) => {
-  const [dbId, schemaName, opts] = parseSchemaId(id);
+const useGetQuery = query => {
+  const { id, ...args } = query;
+  const [dbId, schemaName, options] = parseSchemaId(id);
 
-  if (!dbId || schemaName === undefined) {
+  if (query !== skipToken && (!dbId || schemaName === undefined)) {
     throw new Error("Schemas ID is of the form dbId:schemaName");
   }
 
-  const query = { id: dbId, schema: schemaName, ...args };
+  const finalQuery =
+    query === skipToken ? skipToken : { id: dbId, schema: schemaName, ...args };
 
   const virtualDatabaseTables = useListVirtualDatabaseTablesQuery(
-    opts?.isDatasets ? query : skipToken,
+    options?.isDatasets ? finalQuery : skipToken,
   );
 
   const databaseSchemaTables = useListDatabaseSchemaTablesQuery(
-    opts?.isDatasets ? skipToken : query,
+    options?.isDatasets ? skipToken : finalQuery,
   );
 
-  const tables = opts?.isDatasets
+  const tables = options?.isDatasets
     ? virtualDatabaseTables
     : databaseSchemaTables;
 
