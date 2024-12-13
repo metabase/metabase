@@ -29,6 +29,7 @@ export const ColorPill = ({
   pillSize = "medium",
   onClick,
   onSelect,
+  "data-testid": dataTestId,
 }: ColorPillProps) => {
   const handleClick = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
@@ -40,6 +41,7 @@ export const ColorPill = ({
 
   return (
     <Center
+      data-testid={dataTestId}
       aria-label={ariaLabel}
       role="button"
       onClick={handleClick}
