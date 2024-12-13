@@ -27,7 +27,7 @@ function setup({
     />,
   );
 
-  const input = screen.getByRole("spinbutton");
+  const input = screen.getByRole("textbox");
 
   return { input, onChange };
 }
@@ -65,9 +65,8 @@ describe("ChartSettingInputNumber", () => {
     // multiple decimal places should call onChange with
     // undefined since it's an invalid value
     await type({ input, value: "1.2.3" });
-    // the mantine input won't allow users to add a second decimal
-    expect(input).toHaveDisplayValue("1.23");
-    expect(onChange).toHaveBeenCalledWith(1.23);
+    expect(input).toHaveDisplayValue("1.2.3");
+    expect(onChange).toHaveBeenCalledWith(undefined);
   });
 
   it("allows scientific notation", async () => {
