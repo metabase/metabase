@@ -2,12 +2,10 @@ import type { ChangeEventHandler } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
+import { skipToken, useGetFieldQuery, useGetTableQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import Fields from "metabase/entities/fields";
-import Tables from "metabase/entities/tables";
+import { checkNotNull } from "metabase/lib/types";
 import { Box, Switch } from "metabase/ui";
-import type Field from "metabase-lib/v1/metadata/Field";
-import type Table from "metabase-lib/v1/metadata/Table";
 import type { FieldId, Parameter, ParameterId } from "metabase-types/api";
 
 import { usableAsLinkedFilter } from "../../utils/linked-filters";
@@ -272,20 +270,36 @@ interface LinkedFieldProps {
 }
 
 const LinkedField = ({ fieldId }: LinkedFieldProps) => {
+  const {
+    data: field,
+    error: fieldError,
+    isLoading: fieldIsLoading,
+  } = useGetFieldQuery({ id: fieldId });
+  const {
+    data: table,
+    error: tableError,
+    isLoading: tableIsLoading,
+  } = useGetTableQuery(field ? { id: field.table_id } : skipToken);
+
+  if (fieldError || fieldIsLoading) {
+    return (
+      <LoadingAndErrorWrapper error={fieldError} loading={fieldIsLoading} />
+    );
+  }
+
   return (
-    <Fields.Loader id={fieldId}>
-      {({ field }: { field: Field }) => (
-        <FieldRoot>
-          <FieldLabel>
-            <Tables.Loader id={field.table_id}>
-              {({ table }: { table: Table }) => (
-                <span>{table.display_name}</span>
-              )}
-            </Tables.Loader>
-          </FieldLabel>
-          <div>{field.display_name}</div>
-        </FieldRoot>
-      )}
-    </Fields.Loader>
+    <FieldRoot>
+      <FieldLabel>
+        {(tableError || tableIsLoading) && (
+          <LoadingAndErrorWrapper error={tableError} loading={tableIsLoading} />
+        )}
+
+        {!tableError && !tableIsLoading && (
+          <span>{checkNotNull(table).display_name}</span>
+        )}
+      </FieldLabel>
+
+      <div>{checkNotNull(field).display_name}</div>
+    </FieldRoot>
   );
 };
