@@ -42,18 +42,29 @@ function DashCardPlaceholderInner({
   return (
     <>
       <Flex
-        align="center"
-        justify="center"
         p={2}
         style={{ flex: 1, pointerEvents }}
         opacity={isEditingParameter ? 0.25 : 1}
       >
         {isEditing && (
-          <Button
-            onClick={() => setQuestionPickerOpen(true)}
-            onMouseDown={preventDragging}
-            style={{ pointerEvents }}
-          >{t`Select question`}</Button>
+          <Flex
+            direction="column"
+            align="center"
+            justify="center"
+            gap="sm"
+            w="100%"
+          >
+            <Button
+              onClick={() => setQuestionPickerOpen(true)}
+              onMouseDown={preventDragging}
+              style={{ pointerEvents }}
+            >{t`Select question`}</Button>
+            <Button
+              onClick={() => setQuestionPickerOpen(true)}
+              onMouseDown={preventDragging}
+              style={{ pointerEvents }}
+            >{t`Visualize`}</Button>
+          </Flex>
         )}
       </Flex>
       {isQuestionPickerOpen && (
