@@ -48,10 +48,6 @@ interface OwnProps {
   onClose?: () => void;
 }
 
-interface ActionLoaderProps {
-  initialAction?: WritebackAction;
-}
-
 interface ModelLoaderProps {
   model?: Question;
 }
@@ -67,11 +63,7 @@ interface DispatchProps {
 
 export type ActionCreatorProps = OwnProps;
 
-type Props = OwnProps &
-  ActionLoaderProps &
-  ModelLoaderProps &
-  StateProps &
-  DispatchProps;
+type Props = OwnProps & ModelLoaderProps & StateProps & DispatchProps;
 
 const mapStateToProps = (state: State) => ({
   metadata: getMetadata(state),
@@ -218,7 +210,6 @@ function ensureAceEditorClosed() {
 }
 
 function ActionCreatorWithContext({
-  // initialAction,
   metadata,
   databaseId,
   action,
