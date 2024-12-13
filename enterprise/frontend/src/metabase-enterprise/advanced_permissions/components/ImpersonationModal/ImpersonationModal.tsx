@@ -12,7 +12,7 @@ import {
 import { useDatabaseQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { getParentPath } from "metabase/hoc/ModalRoute";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
 import { getImpersonation } from "metabase-enterprise/advanced_permissions/selectors";
 import type {
@@ -24,6 +24,7 @@ import { getImpersonatedDatabaseId } from "metabase-enterprise/advanced_permissi
 import { ImpersonationApi } from "metabase-enterprise/services";
 import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
 import { getUserAttributes } from "metabase-enterprise/shared/selectors";
+import { useEnterpriseSelector } from "metabase-enterprise/shared/types";
 import type { Impersonation, UserAttribute } from "metabase-types/api";
 
 import { ImpersonationModalView } from "./ImpersonationModalView";
@@ -75,11 +76,14 @@ const _ImpersonationModal = ({ route, params }: ImpersonationModalProps) => {
     id: databaseId,
   });
 
-  const attributes = useSelector(getUserAttributes);
-  const draftImpersonation = useSelector<
-    AdvancedPermissionsStoreState,
-    Impersonation | undefined
-  >(getImpersonation(databaseId, groupId));
+  const attributes = useEnterpriseSelector(getUserAttributes);
+  const draftImpersonation = useEnterpriseSelector(state =>
+    getImpersonation(
+      databaseId,
+      groupId,
+      // TODO: find a way to not have to do `as`
+    )(state as AdvancedPermissionsStoreState),
+  );
 
   const selectedAttribute =
     draftImpersonation?.attribute ?? impersonation?.attribute;

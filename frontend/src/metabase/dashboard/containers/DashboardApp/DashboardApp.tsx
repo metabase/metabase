@@ -1,6 +1,7 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback, useEffect } from "react";
+import type { ConnectedProps } from "react-redux";
 import type { Route, WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { useUnmount } from "react-use";
@@ -22,7 +23,6 @@ import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
 import { parseHashOptions } from "metabase/lib/browser";
-import type { ConnectedProps } from "metabase/lib/redux";
 import { connect, useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, setErrorPage } from "metabase/redux/app";
