@@ -55,8 +55,10 @@ jobs:
             } = require('${{ github.workspace }}/release/dist/index.cjs');
             const targetBranchName = '${{ github.base_ref || github.ref }}';
 
-            const version = getVersionFromReleaseBranch(targetBranchName);
-            const requirements = getBuildRequirements(version);
+            // FIXME: revert this once the CI issue is fixed
+            // const version = getVersionFromReleaseBranch(targetBranchName);
+            // const requirements = getBuildRequirements(version);
+            const requirements = getBuildRequirements("v0.52.1");
 
             return {
               java_version: requirements.java,
