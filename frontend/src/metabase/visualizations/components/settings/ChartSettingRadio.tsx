@@ -1,5 +1,4 @@
 import { Radio, Stack, Text } from "metabase/ui";
-
 interface ChartSettingRadioProps {
   options: { name: string; value: string }[];
   value: string;
