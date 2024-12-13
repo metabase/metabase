@@ -102,22 +102,18 @@ function QuestionPickerInner({
 
       <Flex gap="sm" mb="md">
         <Button
-          color="text-dark"
           variant="outline"
+          className={S.newButton}
           leftIcon={<Icon name="insight" />}
           onClick={() => onNewQuestion("notebook")}
-          style={{ borderColor: "#F0F0F0" }}
-          w="100%"
         >
           {t`New Question`}
         </Button>
         <Button
-          color="text-dark"
           variant="outline"
+          className={S.newButton}
           leftIcon={<Icon name="sql" />}
           onClick={() => onNewQuestion("native")}
-          style={{ borderColor: "#F0F0F0" }}
-          w="100%"
         >
           {t`New SQL query`}
         </Button>
