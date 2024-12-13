@@ -7,6 +7,7 @@ import { isPublicCollection } from "metabase/collections/utils";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import SelectList from "metabase/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/components/SelectList/BaseSelectListItem";
+import Input from "metabase/core/components/Input";
 import { getDashboard } from "metabase/dashboard/selectors";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
@@ -19,11 +20,7 @@ import { Button, Flex, Icon, type IconProps } from "metabase/ui";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { QuestionList } from "./QuestionList";
-import {
-  BreadcrumbsWrapper,
-  QuestionPickerRoot,
-  SearchInput,
-} from "./QuestionPicker.styled";
+import S from "./QuestionPicker.module.css";
 
 interface QuestionPickerInnerProps {
   onSelect: BaseSelectListItemProps["onSelect"];
@@ -91,8 +88,9 @@ function QuestionPickerInner({
   };
 
   return (
-    <QuestionPickerRoot>
-      <SearchInput
+    <div className={S.questionPickerRoot}>
+      <Input
+        className={S.searchInput}
         fullWidth
         autoFocus
         data-autofocus
@@ -127,9 +125,9 @@ function QuestionPickerInner({
 
       {!debouncedSearchText && (
         <>
-          <BreadcrumbsWrapper>
+          <div className={S.breadcrumbsWrapper}>
             <Breadcrumbs crumbs={crumbs} />
-          </BreadcrumbsWrapper>
+          </div>
 
           {collections.length > 0 && (
             <SelectList>
@@ -168,7 +166,7 @@ function QuestionPickerInner({
         onSelect={onSelect}
         showOnlyPublicCollections={showOnlyPublicCollections}
       />
-    </QuestionPickerRoot>
+    </div>
   );
 }
 
