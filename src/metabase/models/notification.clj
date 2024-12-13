@@ -6,6 +6,7 @@
   (:require
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.models.channel :as models.channel]
    [metabase.models.interface :as mi]
    [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.util :as u]
@@ -261,11 +262,11 @@
 (def ^:private NotificationHandler
   [:map
    ;; optional during insertion
-   [:notification_id {:optional true} ms/PositiveInt]
-   [:channel_type                     [:fn #(= "channel" (-> % keyword namespace))]]
-   [:channel_id      {:optional true} [:maybe ms/PositiveInt]]
-   [:template_id     {:optional true} [:maybe ms/PositiveInt]]
-   [:active          {:optional true} [:maybe :boolean]]])
+   [:notification_id {:optional true}       ms/PositiveInt]
+   [:channel_type    {:decode/json keyword} [:fn #(= "channel" (-> % keyword namespace))]]
+   [:channel_id      {:optional true}       [:maybe ms/PositiveInt]]
+   [:template_id     {:optional true}       [:maybe ms/PositiveInt]]
+   [:active          {:optional true}       [:maybe :boolean]]])
 
 (defn- validate-notification-handler
   [notification-handler]
@@ -390,8 +391,8 @@
     [:handlers      {:optional true} [:sequential [:merge
                                                    NotificationHandler
                                                    [:map
-                                                    [:template   {:optional true} [:maybe :map]]
-                                                    [:channel    {:optional true} [:maybe :map]]
+                                                    [:template   {:optional true} [:maybe models.channel/ChannelTemplate]]
+                                                    [:channel    {:optional true} [:maybe models.channel/Channel]]
                                                     [:recipients {:optional true} [:sequential NotificationRecipient]]]]]]]
    [:multi {:dispatch (comp keyword :payload_type)}
     [:notification/card [:map

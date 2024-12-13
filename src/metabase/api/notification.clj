@@ -53,6 +53,12 @@
       (update :handlers (fn [handlers] (filter (comp (set handler_ids) :id) handlers)))
 
       true
-      notification/send-notification!)))
+      (notification/send-notification! :notification/sync? true))))
+
+(api/defendpoint POST "/send"
+  "Send an unsaved notification."
+  [:as {body :body}]
+  {body models.notification/FullyHydratedNotification}
+  (notification/send-notification! body :notification/sync? true))
 
 (api/define-routes)
