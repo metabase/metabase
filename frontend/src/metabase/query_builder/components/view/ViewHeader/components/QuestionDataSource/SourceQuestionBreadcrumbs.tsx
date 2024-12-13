@@ -1,8 +1,10 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 
-import Questions from "metabase/entities/questions";
+import { skipToken, useGetCardQuery } from "metabase/api";
+import { useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import { DataSourceCrumbs } from "./DataSourceCrumbs";
@@ -21,32 +23,29 @@ export function SourceQuestionBreadcrumbs({
 }: Props) {
   const query = question.query();
   const sourceTableId = Lib.sourceTableOrCardId(query);
-
   const sourceQuestionId = getQuestionIdFromVirtualTableId(sourceTableId);
 
-  return (
-    <Questions.Loader id={sourceQuestionId} loadingAndErrorWrapper={false}>
-      {({ question: sourceQuestion }) => {
-        if (!sourceQuestion) {
-          return null;
-        }
-
-        if (
-          sourceQuestion.type() === "model" ||
-          sourceQuestion.type() === "metric"
-        ) {
-          return (
-            <SourceDatasetBreadcrumbs
-              question={sourceQuestion}
-              variant={variant}
-              {...props}
-            />
-          );
-        }
-        return (
-          <DataSourceCrumbs question={question} variant={variant} {...props} />
-        );
-      }}
-    </Questions.Loader>
+  const { data: sourceCard } = useGetCardQuery(
+    sourceQuestionId != null ? { id: sourceQuestionId } : skipToken,
   );
+  const metadata = useSelector(getMetadata);
+  const sourceQuestion = useMemo(() => {
+    return sourceCard ? new Question(sourceCard, metadata) : undefined;
+  }, [sourceCard, metadata]);
+
+  if (!sourceQuestion) {
+    return null;
+  }
+
+  if (sourceQuestion.type() === "model" || sourceQuestion.type() === "metric") {
+    return (
+      <SourceDatasetBreadcrumbs
+        question={sourceQuestion}
+        variant={variant}
+        {...props}
+      />
+    );
+  }
+
+  return <DataSourceCrumbs question={question} variant={variant} {...props} />;
 }
