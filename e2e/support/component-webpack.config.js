@@ -101,10 +101,7 @@ function resolveEmbeddingSdkPackage() {
 
     // Try to resolve the package with `require.resolve`
     const requirePackagePath = require.resolve(SDK_PACKAGE_NAME);
-    console.log(
-      "resolved SDK package with require.resolve:",
-      requirePackagePath,
-    );
+    console.log("require.resolve resolves sdk package to:", requirePackagePath);
 
     if (requirePackagePath.includes("node_modules")) {
       return {
@@ -113,10 +110,7 @@ function resolveEmbeddingSdkPackage() {
       };
     }
   } catch (err) {
-    console.error(
-      `Cannot resolve ${SDK_PACKAGE_NAME} via require.resolve:`,
-      err,
-    );
+    console.log(`Cannot resolve ${SDK_PACKAGE_NAME} via require.resolve:`, err);
   }
 
   const sdkLocalPackagePath = path.resolve(
@@ -124,8 +118,14 @@ function resolveEmbeddingSdkPackage() {
     "../../resources/embedding-sdk/dist/main.bundle.js",
   );
 
-  return {
-    isEmbeddingSdkPackageInstalled: false,
-    embeddingSdkPath: sdkLocalPackagePath,
-  };
+  if (fs.existsSync(sdkLocalPackagePath)) {
+    return {
+      isEmbeddingSdkPackageInstalled: false,
+      embeddingSdkPath: sdkLocalPackagePath,
+    };
+  }
+
+  throw new Error(
+    `FATAL: Cannot resolve ${SDK_PACKAGE_NAME} via node_modules, require or locally built package!`,
+  );
 }
