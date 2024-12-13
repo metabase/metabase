@@ -16,6 +16,10 @@ console.log(
 
 console.log(`SDK path alias resolved to ${embeddingSdkPath}`);
 
+console.log(
+  `CYPRESS_IS_EMBEDDING_SDK = '${process.env.CYPRESS_IS_EMBEDDING_SDK}'`,
+);
+
 module.exports = {
   mode: "development",
   devtool: false,
@@ -125,7 +129,12 @@ function resolveEmbeddingSdkPackage() {
     };
   }
 
-  throw new Error(
+  console.error(
     `FATAL: Cannot resolve ${SDK_PACKAGE_NAME} via node_modules, require or locally built package!`,
   );
+
+  return {
+    isEmbeddingSdkPackageInstalled: false,
+    embeddingSdkPath: null,
+  };
 }
