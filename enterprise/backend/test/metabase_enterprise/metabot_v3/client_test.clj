@@ -5,8 +5,7 @@
    [metabase-enterprise.metabot-v3.tools :as metabot-v3.tools]))
 
 (deftest ^:parallel build-request-body-test
-  (binding [metabot-v3.client/*instance-info* (constantly {})
-            metabot-v3.tools/*tools-metadata* (constantly
+  (binding [metabot-v3.tools/*tools-metadata* (constantly
                                                [{:name "invite_user"
                                                  :description "Invite a user to Metabase. Requires a valid email address."
                                                  :parameters {:type                  :object

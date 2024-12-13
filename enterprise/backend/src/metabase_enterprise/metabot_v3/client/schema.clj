@@ -8,13 +8,6 @@
 (mr/def ::request.tools
   [:sequential ::metabot-v3.tools.interface/metadata])
 
-(mr/def ::request.instance-info
-  "Instance info for billing purposes."
-  [:map
-   {:encode/api-request #(update-keys % u/->snake_case_en)}
-   [:site-uuid :string]
-   [:token :string]])
-
 (mr/def ::role
   [:enum
    {:encode/api-request u/->snake_case_en
@@ -54,7 +47,6 @@
    [:messages      ::messages]
    [:tools         ::request.tools]
    [:context       {:default {}} :map]
-   [:instance-info ::request.instance-info]
    [:user-id       integer?]])
 
 (mr/def ::ai-proxy.response
