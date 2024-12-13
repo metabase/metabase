@@ -86,6 +86,11 @@
        x))
    x))
 
+(mu/defn- sort-parameter-values
+  "Return the sequence of parameter maps, but with any :value keys sorted if they are a sequence"
+  [params :- [:or :nil [:sequential :any]]]
+  (map #(if (sequential? (:value %)) (update % :value sort) %) params))
+
 (mu/defn- select-keys-for-hashing
   "Return `query` with only the keys relevant to hashing kept.
   (This is done so irrelevant info or options that don't affect query results doesn't result in the same query
@@ -94,6 +99,7 @@
   (let [{:keys [constraints parameters], :as query} (select-keys query [:database :lib/type :stages :parameters :constraints])]
     (cond-> query
       (empty? constraints) (dissoc :constraints)
+      true                 (update :parameters sort-parameter-values)
       (empty? parameters)  (dissoc :parameters)
       true                 lib.schema.util/remove-randomized-idents
       true                 walk-query-sort-maps)))
