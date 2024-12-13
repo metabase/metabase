@@ -465,7 +465,7 @@
          (let [value (.next val-it)
                col (.next col-it)
                styles (.next sty-it)
-               id-or-name   (or (:name col) (:id col))
+               id-or-name   (or (:id col) (:name col))
                settings     (or (get col-settings {::mb.viz/field-id id-or-name})
                                 (get col-settings {::mb.viz/column-name id-or-name}))
                ;; value can be a column header (a string), so if the column is scaled, it'll try to do (* "count" 7)
