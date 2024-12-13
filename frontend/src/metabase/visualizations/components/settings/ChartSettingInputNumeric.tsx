@@ -26,9 +26,22 @@ export const ChartSettingInputNumeric = ({
       type="number"
       value={inputValue}
       onChange={setInputValue}
-      precision={options?.isInteger ? 0 : undefined}
-      min={options?.isNonNegative ? 0 : undefined}
-      onBlur={() => onChange(inputValue || undefined)}
+      onBlur={e => {
+        let num = e.target.value !== "" ? Number(e.target.value) : Number.NaN;
+        if (options?.isInteger) {
+          num = Math.round(num);
+        }
+        if (options?.isNonNegative && num < 0) {
+          num *= -1;
+        }
+
+        if (isNaN(num)) {
+          onChange(undefined);
+        } else {
+          onChange(num);
+          setInputValue(num);
+        }
+      }}
     />
   );
 };
