@@ -1,21 +1,15 @@
 import PropTypes from "prop-types";
-import { t } from "ttag";
 
-import { skipToken, useGetCollectionQuery } from "metabase/api";
-import Tooltip from "metabase/core/components/Tooltip";
 import Questions from "metabase/entities/questions";
-import { color } from "metabase/lib/colors";
-import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
 import {
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 
-import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
-
 import { DataSourceCrumbs } from "./DataSourceCrumbs";
-import { getDataSourceParts, getQuestionIcon } from "./utils";
+import { SourceDatasetBreadcrumbs } from "./SourceDatasetBreadcrumbs";
+import { getDataSourceParts } from "./utils";
 
 QuestionDataSource.propTypes = {
   question: PropTypes.object,
@@ -82,60 +76,6 @@ export function QuestionDataSource({
         );
       }}
     </Questions.Loader>
-  );
-}
-
-SourceDatasetBreadcrumbs.propTypes = {
-  question: PropTypes.object.isRequired,
-};
-
-function SourceDatasetBreadcrumbs({ question, ...props }) {
-  const collectionId = question?.collectionId();
-
-  const { data: collection, isFetching } = useGetCollectionQuery(
-    collectionId ? { id: collectionId } : skipToken,
-  );
-
-  if (isFetching) {
-    return null;
-  }
-
-  return (
-    <HeadBreadcrumbs
-      {...props}
-      parts={[
-        <HeadBreadcrumbs.Badge
-          key="dataset-collection"
-          to={Urls.collection(collection)}
-          icon={getQuestionIcon(question)}
-          inactiveColor="text-light"
-        >
-          {collection?.name || t`Our analytics`}
-        </HeadBreadcrumbs.Badge>,
-        question.isArchived() ? (
-          <Tooltip
-            key="dataset-name"
-            tooltip={t`This model is archived and shouldn't be used.`}
-            maxWidth="auto"
-            placement="bottom"
-          >
-            <HeadBreadcrumbs.Badge
-              inactiveColor="text-light"
-              icon={{ name: "warning", color: color("danger") }}
-            >
-              {question.displayName()}
-            </HeadBreadcrumbs.Badge>
-          </Tooltip>
-        ) : (
-          <HeadBreadcrumbs.Badge
-            to={Urls.question(question.card())}
-            inactiveColor="text-light"
-          >
-            {question.displayName()}
-          </HeadBreadcrumbs.Badge>
-        ),
-      ]}
-    />
   );
 }
 
