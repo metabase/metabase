@@ -4,6 +4,7 @@ import type { Route } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { skipToken, useGetActionQuery } from "metabase/api";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import type {
@@ -217,12 +218,15 @@ function ensureAceEditorClosed() {
 }
 
 function ActionCreatorWithContext({
-  initialAction,
+  // initialAction,
   metadata,
   databaseId,
   action,
   ...props
 }: Props) {
+  const { data: initialAction } = useGetActionQuery(
+    props.actionId != null ? { id: props.actionId } : skipToken,
+  );
   // This is needed in case we already have an action and pass it from the outside
   const contextAction = action || initialAction;
 
@@ -244,11 +248,6 @@ function ActionCreatorWithContext({
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
-  Actions.load({
-    id: (state: State, props: OwnProps) => props.actionId,
-    loadingAndErrorWrapper: false,
-    entityAlias: "initialAction",
-  }),
   Questions.load({
     id: (state: State, props: OwnProps) => props?.modelId,
     entityAlias: "model",
