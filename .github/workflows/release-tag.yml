@@ -278,7 +278,7 @@ jobs:
       run: | # sh
 
         if [[ "${{ matrix.edition }}" == "ee" ]]; then
-          git tag -f ${{ inputs.tag_name }}-ee ${{ needs.check-version.outputs.ee }}
+          git tag -f ${{ inputs.tag_name }}-ee ${{ needs.check-version.outputs.oss }}
           git push origin -f ${{ inputs.tag_name }}-ee
         elif [[ "${{ matrix.edition }}" == "oss" ]]; then
           git tag -f ${{ inputs.tag_name }}-oss ${{ needs.check-version.outputs.oss }}
