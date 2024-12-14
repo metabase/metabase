@@ -6,81 +6,92 @@ import {
   EChartsTooltip,
   type EChartsTooltipRow,
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import { getTooltipBaseOption } from "metabase/visualizations/echarts/tooltip";
+import {
+  getMarkerColorClass,
+  getTooltipBaseOption,
+} from "metabase/visualizations/echarts/tooltip";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import type { DatasetColumn } from "metabase-types/api";
 
-import type { SankeyFormatters } from "../model/types";
+import type { SankeyChartModel } from "../model/types";
+import { getPercent } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
+import { t } from "ttag";
+import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 
 interface ChartItemTooltipProps {
-  metricColumnKey: string;
-  metricColumnName: string;
-  formatters: SankeyFormatters;
+  chartModel: SankeyChartModel;
   params: any;
 }
 
-const ChartItemTooltip = ({
-  metricColumnKey,
-  metricColumnName,
-  formatters,
-  params,
-}: ChartItemTooltipProps) => {
+const ChartItemTooltip = ({ chartModel, params }: ChartItemTooltipProps) => {
+  const valueColumn = chartModel.sankeyColumns.value.column;
+  const { formatters } = chartModel;
+  const valueColumnKey = getColumnKey(valueColumn);
+
   const data = params.data;
 
   let header = "";
+  let node = null;
   let rows: EChartsTooltipRow[] = [];
-  if (params.dataType === "edge") {
+  let footer = undefined;
+
+  if (params.dataType === "node") {
+    node = chartModel.data.nodes.find(node => node.rawName === data.rawName)!;
+    header = formatters.node(node);
+  } else if (params.dataType === "edge") {
+    node = chartModel.data.nodes.find(node => node.rawName === data.source)!;
     header = `${formatters.source(data.source)} → ${formatters.target(data.target)}`;
-    const sourceValue = Math.max(
-      data.sourceNode.inputColumnValues[metricColumnKey] ?? 0,
-      data.sourceNode.outputColumnValues[metricColumnKey] ?? 0,
-    );
-    const sourcePercent = params.value / sourceValue;
-
-    const targetValue = Math.max(
-      data.targetNode.inputColumnValues[metricColumnKey] ?? 0,
-      data.targetNode.outputColumnValues[metricColumnKey] ?? 0,
-    );
-    const targetPercent = params.value / targetValue;
-
-    rows = [
-      {
-        name: metricColumnName,
-        values: [formatters.value(params.value)],
-      },
-      {
-        name: `% of ${formatters.source(data.source)}`,
-        values: [formatPercent(sourcePercent)],
-      },
-      {
-        name: `% of ${formatters.target(data.target)}`,
-        values: [formatPercent(targetPercent)],
-      },
-    ];
-  } else if (params.dataType === "node") {
-    header = formatters.node(data);
-    const nodeValue = Math.max(
-      data.inputColumnValues[metricColumnKey] ?? 0,
-      data.outputColumnValues[metricColumnKey] ?? 0,
-    );
-    rows = [
-      {
-        name: metricColumnName,
-        values: [formatters.value(nodeValue)],
-      },
-    ];
   }
 
-  return <EChartsTooltip header={header} rows={rows} />;
+  if (!node) {
+    console.warn(`Node has not been found ${JSON.stringify(params)}`);
+    return null;
+  }
+
+  const nodeValue = Math.max(
+    getNumberOr(node.inputColumnValues[valueColumnKey], 0),
+    getNumberOr(node.outputColumnValues[valueColumnKey], 0),
+  );
+  const formattedNodeValue = formatters.value(nodeValue);
+
+  rows = Array.from(node.outputLinkByTarget.values()).map(link => {
+    const color = chartModel.nodeColors[String(link.targetNode.rawName)];
+    const isFocused = params.dataType === "edge" && data.target === link.target;
+    return {
+      isFocused,
+      name: formatters.target(link.target),
+      values: [
+        formatters.value(link.value),
+        formatPercent(getPercent(nodeValue, link.value) ?? 0),
+      ],
+      markerColorClass: getMarkerColorClass(color),
+    };
+  });
+
+  const isEndNode = rows.length === 0;
+  if (isEndNode) {
+    rows = [
+      {
+        name: formatters.target(node.rawName),
+        markerColorClass: getMarkerColorClass(
+          chartModel.nodeColors[String(node.rawName)],
+        ),
+        values: [formattedNodeValue],
+      },
+    ];
+  } else {
+    footer = {
+      name: t`Total`,
+      values: [formattedNodeValue, formatPercent(1)],
+    };
+  }
+
+  return <EChartsTooltip header={header} rows={rows} footer={footer} />;
 };
 
 export const getTooltipOption = (
   containerRef: React.RefObject<HTMLDivElement>,
-  metricColumn: DatasetColumn,
-  formatters: SankeyFormatters,
+  chartModel: SankeyChartModel,
 ): TooltipOption => {
-  const metricColumnName = metricColumn.display_name;
-  const metricColumnKey = getColumnKey(metricColumn);
   return {
     ...getTooltipBaseOption(containerRef),
     trigger: "item",
@@ -91,12 +102,7 @@ export const getTooltipOption = (
       }
 
       return renderToString(
-        <ChartItemTooltip
-          params={params}
-          metricColumnName={metricColumnName}
-          metricColumnKey={metricColumnKey}
-          formatters={formatters}
-        />,
+        <ChartItemTooltip params={params} chartModel={chartModel} />,
       );
     },
   };

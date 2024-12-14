@@ -11,6 +11,8 @@ import type { ClickObject } from "metabase-lib";
 import type { BaseCartesianChartModel } from "../cartesian/model/types";
 import type { PieChartModel, SliceTreeNode } from "../pie/model/types";
 import { getArrayFromMapValues } from "../pie/util";
+import { SankeyChartModel } from "../graph/sankey/model/types";
+import { getObjectValues } from "metabase/lib/objects";
 
 export const TOOLTIP_POINTER_MARGIN = 10;
 
@@ -146,6 +148,17 @@ export const useCartesianChartSeriesColorsClasses = (
     ].filter(isNotNull);
 
     return [...seriesColors, ...settingColors];
+  }, [chartModel, settings]);
+
+  return useInjectSeriesColorsClasses(hexColors);
+};
+
+export const useSankeyChartColorsClasses = (
+  chartModel: SankeyChartModel,
+  settings: ComputedVisualizationSettings,
+) => {
+  const hexColors = useMemo(() => {
+    return getObjectValues(chartModel.nodeColors).filter(isNotNull);
   }, [chartModel, settings]);
 
   return useInjectSeriesColorsClasses(hexColors);

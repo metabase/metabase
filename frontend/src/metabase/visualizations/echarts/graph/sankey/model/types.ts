@@ -16,6 +16,7 @@ export interface SankeyNode {
   hasOutputs: boolean;
   inputColumnValues: Record<ColumnKey, RowValue>;
   outputColumnValues: Record<ColumnKey, RowValue>;
+  outputLinkByTarget: Map<RowValue, SankeyLink>;
 }
 
 export interface SankeyData {
