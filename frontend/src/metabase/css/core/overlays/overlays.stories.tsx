@@ -87,7 +87,6 @@ type OverlayType =
   | "Mantine Modal"
   | "Mantine Popover"
   | "Mantine HoverCard"
-  | "Mantine Select"
   | "Legacy Tooltip"
   | "Legacy Modal"
   | "Legacy Popover"
@@ -177,13 +176,6 @@ const getLaunchers = ({ portalRoot }: { portalRoot: HTMLElement }) => {
       return await within(portalRoot).findByRole("dialog", {
         name: /^Mantine Hovercard$/i,
       });
-    },
-    "Mantine Select": async ({ launchFrom }) => {
-      await userEvent.click(
-        await within(launchFrom).findByDisplayValue(/Mantine Select option 1/),
-      );
-      await within(portalRoot).findAllByRole("option");
-      return await within(portalRoot).findByRole("listbox");
     },
   };
   return launchers;
@@ -286,18 +278,10 @@ export const MantineModalCanLaunchLegacySelect = {
   },
 };
 
-// export const MantineModalCanLaunchMantineHovercard = {
-//   ...scenarioDefaults,
-//   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-//     const body = canvasElement.parentElement as HTMLElement;
-//     await launchAThenB("Mantine Modal", "Mantine HoverCard", body);
-//   },
-// };
-
-export const MantineModalCanLaunchMantineSelect = {
+export const MantineModalCanLaunchMantineHovercard = {
   ...scenarioDefaults,
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const body = canvasElement.parentElement as HTMLElement;
-    await launchAThenB("Mantine Modal", "Mantine Select", body);
+    await launchAThenB("Mantine Modal", "Mantine HoverCard", body);
   },
 };
