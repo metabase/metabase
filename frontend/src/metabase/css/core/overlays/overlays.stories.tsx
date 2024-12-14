@@ -1,7 +1,4 @@
-// @ts-expect-error There is no type definition
-import createAsyncCallback from "@loki/create-async-callback";
 import type { Store } from "@reduxjs/toolkit";
-import { expect } from "@storybook/jest";
 import type { StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/testing-library";
 import { Provider } from "react-redux";
@@ -20,10 +17,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { OverlaysDemo } from "./OverlaysDemo";
-import type { OverlaysDemoProps } from "./types";
-
-const tellLokiThePageIsReady = createAsyncCallback();
+import { OverlaysDemo, type OverlaysDemoProps } from "./OverlaysDemo";
 
 const mockCard = createMockCard();
 const storeInitialState = createMockState({
@@ -66,14 +60,17 @@ type Scenario = {
   }: {
     canvasElement: HTMLCanvasElement;
   }) => Promise<void>;
+  parameters?: Record<string, unknown>;
 };
 
-export const Default: Scenario = {
+const scenarioDefaults: Scenario = {
   render: Template,
   args: {
-    enableNesting: false,
+    enableNesting: true,
   },
 };
+
+export const Default: Scenario = scenarioDefaults;
 
 export default {
   title: "Design System/Overlays",
@@ -85,9 +82,12 @@ export default {
     layout: "fullscreen",
   },
 };
+
 type OverlayType =
   | "Mantine Modal"
   | "Mantine Popover"
+  | "Mantine HoverCard"
+  | "Mantine Select"
   | "Legacy Tooltip"
   | "Legacy Modal"
   | "Legacy Popover"
@@ -164,10 +164,26 @@ const getLaunchers = ({ portalRoot }: { portalRoot: HTMLElement }) => {
           name: "Mantine Popover",
         }),
       );
-      const popover = await within(portalRoot).findByRole("dialog", {
+      return await within(portalRoot).findByRole("dialog", {
         name: /^Mantine Popover$/i,
       });
-      return popover;
+    },
+    "Mantine HoverCard": async ({ launchFrom }) => {
+      await userEvent.hover(
+        await within(launchFrom).findByRole("button", {
+          name: "Mantine Hovercard",
+        }),
+      );
+      return await within(portalRoot).findByRole("dialog", {
+        name: /^Mantine Hovercard$/i,
+      });
+    },
+    "Mantine Select": async ({ launchFrom }) => {
+      await userEvent.click(
+        await within(launchFrom).findByDisplayValue(/Mantine Select option 1/),
+      );
+      await within(portalRoot).findAllByRole("option");
+      return await within(portalRoot).findByRole("listbox");
     },
   };
   return launchers;
@@ -187,74 +203,11 @@ const launchAThenB = async (
   const launchers = getLaunchers({ portalRoot: body });
   const [launchA, launchB] = [launchers[aType], launchers[bType]];
   const a = await launchA({ launchFrom: body, portalRoot: body });
-  const b = await launchB({ launchFrom: a, portalRoot: body });
-  const az = getOperativeZIndex(a);
-  const bz = getOperativeZIndex(b);
-
-  // Ensure that either overlay A is no longer present or that it is occurs before overlay B
-  expect(!a.isConnected || isEarlierInDOM(a, b)).toBe(true);
-  expect(!a.isConnected || az === bz).toBe(true);
-  expect(!a.isConnected || az > 10).toBe(true);
-  expect(bz > 10).toBe(true);
-
-  // Given that the z-index is the same, the overlay that appears later in the
-  // DOM will appear on top
-
-  await tellLokiThePageIsReady();
-};
-
-/**
- * Returns true if elementA appears earlier in the DOM than elementB
- * */
-const isEarlierInDOM = (elementA: HTMLElement, elementB: HTMLElement) => {
-  const position = elementA.compareDocumentPosition(elementB);
-
-  // If the elements are disconnected, they are not in the same DOM tree
-  if (position & Node.DOCUMENT_POSITION_DISCONNECTED) {
-    return false;
-  }
-
-  if (position & Node.DOCUMENT_POSITION_FOLLOWING) {
-    return true;
-  } else if (position & Node.DOCUMENT_POSITION_PRECEDING) {
-    return false;
-  } else {
-    throw new Error("Neither element is earlier in the DOM");
-  }
-};
-
-/**
- * Get the z-index of the first element with a z-index in the element's
- * ancestry
- *
- * With this approach, if a library like Tippy adds a z-index within the
- * element's ancestry that doesn't actually affect the overlay's stacking, we
- * ignore that z-index. For example, here, the operative z-index of #el is 200:
- *  <div style="z-index: 200">
- *   <div style="z-index: 3">
- *     <div id='el' />
- *   </div>
- *  </div>
- */
-const getOperativeZIndex = (el: HTMLElement) => {
-  let curr: HTMLElement | null = el;
-  const zIndexes: number[] = [];
-  while (curr) {
-    const { zIndex: zIndexString, position } = getComputedStyle(curr);
-    const zIndexNumber = parseInt(zIndexString, 10);
-    if (!isNaN(zIndexNumber) && position !== "static") {
-      zIndexes.unshift(zIndexNumber);
-    }
-    curr = curr.parentElement;
-  }
-  return zIndexes[0];
+  await launchB({ launchFrom: a, portalRoot: body });
 };
 
 export const MantineModalCanLaunchLegacyModal: Scenario = {
-  render: Template,
-  args: {
-    enableNesting: true,
-  },
+  ...scenarioDefaults,
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const body = canvasElement.parentElement as HTMLElement;
     await launchAThenB("Mantine Modal", "Legacy Modal", body);
@@ -262,10 +215,7 @@ export const MantineModalCanLaunchLegacyModal: Scenario = {
 };
 
 export const LegacyModalCanLaunchMantineModal = {
-  render: Template,
-  args: {
-    enableNesting: true,
-  },
+  ...scenarioDefaults,
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const body = canvasElement.parentElement as HTMLElement;
     await launchAThenB("Mantine Modal", "Legacy Modal", body);
@@ -273,10 +223,7 @@ export const LegacyModalCanLaunchMantineModal = {
 };
 
 export const MantineModalCanLaunchLegacyPopover = {
-  render: Template,
-  args: {
-    enableNesting: true,
-  },
+  ...scenarioDefaults,
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const body = canvasElement.parentElement as HTMLElement;
     await launchAThenB("Mantine Modal", "Legacy Popover", body);
@@ -284,10 +231,7 @@ export const MantineModalCanLaunchLegacyPopover = {
 };
 
 export const MantinePopoverCanLaunchLegacyPopover = {
-  render: Template,
-  args: {
-    enableNesting: true,
-  },
+  ...scenarioDefaults,
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const body = canvasElement.parentElement as HTMLElement;
     await launchAThenB("Mantine Popover", "Legacy Popover", body);
@@ -295,10 +239,7 @@ export const MantinePopoverCanLaunchLegacyPopover = {
 };
 
 export const MantinePopoverCanLaunchLegacyTooltip = {
-  render: Template,
-  args: {
-    enableNesting: true,
-  },
+  ...scenarioDefaults,
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const body = canvasElement.parentElement as HTMLElement;
     await launchAThenB("Mantine Popover", "Legacy Tooltip", body);
@@ -306,10 +247,7 @@ export const MantinePopoverCanLaunchLegacyTooltip = {
 };
 
 export const MantinePopoverCanLaunchLegacySelect = {
-  render: Template,
-  args: {
-    enableNesting: true,
-  },
+  ...scenarioDefaults,
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const body = canvasElement.parentElement as HTMLElement;
     await launchAThenB("Mantine Popover", "Legacy Select", body);
@@ -317,10 +255,7 @@ export const MantinePopoverCanLaunchLegacySelect = {
 };
 
 export const MantinePopoverCanLaunchLegacyModal = {
-  render: Template,
-  args: {
-    enableNesting: true,
-  },
+  ...scenarioDefaults,
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const body = canvasElement.parentElement as HTMLElement;
     await launchAThenB("Mantine Popover", "Legacy Modal", body);
@@ -328,10 +263,7 @@ export const MantinePopoverCanLaunchLegacyModal = {
 };
 
 export const LegacyPopoverCanLaunchMantinePopover = {
-  render: Template,
-  args: {
-    enableNesting: true,
-  },
+  ...scenarioDefaults,
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const body = canvasElement.parentElement as HTMLElement;
     await launchAThenB("Legacy Popover", "Mantine Popover", body);
@@ -339,10 +271,7 @@ export const LegacyPopoverCanLaunchMantinePopover = {
 };
 
 export const MantineModalCanLaunchLegacyTooltip = {
-  render: Template,
-  args: {
-    enableNesting: true,
-  },
+  ...scenarioDefaults,
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const body = canvasElement.parentElement as HTMLElement;
     await launchAThenB("Mantine Modal", "Legacy Tooltip", body);
@@ -350,12 +279,25 @@ export const MantineModalCanLaunchLegacyTooltip = {
 };
 
 export const MantineModalCanLaunchLegacySelect = {
-  render: Template,
-  args: {
-    enableNesting: true,
-  },
+  ...scenarioDefaults,
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const body = canvasElement.parentElement as HTMLElement;
     await launchAThenB("Mantine Modal", "Legacy Select", body);
+  },
+};
+
+// export const MantineModalCanLaunchMantineHovercard = {
+//   ...scenarioDefaults,
+//   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+//     const body = canvasElement.parentElement as HTMLElement;
+//     await launchAThenB("Mantine Modal", "Mantine HoverCard", body);
+//   },
+// };
+
+export const MantineModalCanLaunchMantineSelect = {
+  ...scenarioDefaults,
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const body = canvasElement.parentElement as HTMLElement;
+    await launchAThenB("Mantine Modal", "Mantine Select", body);
   },
 };

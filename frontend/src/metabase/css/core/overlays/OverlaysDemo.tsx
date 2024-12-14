@@ -40,8 +40,6 @@ import { createMockUndo } from "metabase-types/api/mocks";
 
 import { BulkActionBarInner } from "../../../components/BulkActionBar/BulkActionBar";
 
-import type { OverlaysDemoProps } from "./types";
-
 const LauncherGroup = ({
   title,
   children,
@@ -191,6 +189,10 @@ const _Launchers = ({
       </LauncherGroup>
     </Group>
   );
+};
+
+export type OverlaysDemoProps = {
+  enableNesting: boolean;
 };
 
 export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
