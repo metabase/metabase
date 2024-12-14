@@ -87,6 +87,7 @@ type OverlayType =
   | "Mantine Modal"
   | "Mantine Popover"
   | "Mantine HoverCard"
+  | "Mantine Select"
   | "Legacy Tooltip"
   | "Legacy Modal"
   | "Legacy Popover"
@@ -170,16 +171,29 @@ const getLaunchers = ({ portalRoot }: { portalRoot: HTMLElement }) => {
     "Mantine HoverCard": async ({ launchFrom }) => {
       await userEvent.hover(
         await within(launchFrom).findByRole("button", {
-          name: "Mantine Hovercard",
+          name: "Mantine HoverCard",
         }),
       );
       return await within(portalRoot).findByRole("dialog", {
-        name: /^Mantine Hovercard$/i,
+        name: /^Mantine HoverCard$/i,
+        ...hidden,
       });
+    },
+    "Mantine Select": async ({ launchFrom }) => {
+      await userEvent.click(
+        await within(launchFrom).findByDisplayValue(/Mantine Select option 1/),
+      );
+      await within(portalRoot).findAllByRole("option", hidden);
+      return await within(portalRoot).findByRole("listbox", hidden);
     },
   };
   return launchers;
 };
+
+/** This is a workaround for a bug in Mantine: when certain Mantine overlays
+ * appear above a Mantine Modal, only the Modal's portal has
+ * aria-hidden="false", while the higher overlay's aria-hidden is "true" */
+const hidden = { hidden: true };
 
 /** Launch overlay A, then use it to launch overlay B
  *
@@ -283,5 +297,13 @@ export const MantineModalCanLaunchMantineHovercard = {
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const body = canvasElement.parentElement as HTMLElement;
     await launchAThenB("Mantine Modal", "Mantine HoverCard", body);
+  },
+};
+
+export const MantineModalCanLaunchMantineSelect = {
+  ...scenarioDefaults,
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const body = canvasElement.parentElement as HTMLElement;
+    await launchAThenB("Mantine Modal", "Mantine Select", body);
   },
 };
