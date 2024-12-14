@@ -18,6 +18,8 @@ import {
 } from "metabase-types/store/mocks";
 
 import { OverlaysDemo, type OverlaysDemoProps } from "./OverlaysDemo";
+import { hidden } from "./constants";
+import { findListboxWithOption } from "./utils";
 
 const mockCard = createMockCard();
 const storeInitialState = createMockState({
@@ -70,7 +72,7 @@ const scenarioDefaults: Scenario = {
   },
 };
 
-export const Default: Scenario = scenarioDefaults;
+export const AllOverlays: Scenario = scenarioDefaults;
 
 export default {
   title: "Design System/Overlays",
@@ -183,17 +185,15 @@ const getLaunchers = ({ portalRoot }: { portalRoot: HTMLElement }) => {
       await userEvent.click(
         await within(launchFrom).findByDisplayValue(/Mantine Select option 1/),
       );
-      await within(portalRoot).findAllByRole("option", hidden);
-      return await within(portalRoot).findByRole("listbox", hidden);
+      await within(portalRoot).findByRole("option", {
+        name: "Mantine Select option 2",
+        ...hidden,
+      });
+      return await findListboxWithOption(portalRoot, /Mantine Select option 2/);
     },
   };
   return launchers;
 };
-
-/** This is a workaround for a bug in Mantine: when certain Mantine overlays
- * appear above a Mantine Modal, only the Modal's portal has
- * aria-hidden="false", while the higher overlay's aria-hidden is "true" */
-const hidden = { hidden: true };
 
 /** Launch overlay A, then use it to launch overlay B
  *
@@ -204,8 +204,9 @@ const hidden = { hidden: true };
 const launchAThenB = async (
   aType: OverlayType,
   bType: OverlayType,
-  body: HTMLElement,
+  { canvasElement }: { canvasElement: HTMLElement },
 ) => {
+  const body = canvasElement.parentElement as HTMLElement;
   const launchers = getLaunchers({ portalRoot: body });
   const [launchA, launchB] = [launchers[aType], launchers[bType]];
   const a = await launchA({ launchFrom: body, portalRoot: body });
@@ -214,96 +215,60 @@ const launchAThenB = async (
 
 export const MantineModalCanLaunchLegacyModal: Scenario = {
   ...scenarioDefaults,
-  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const body = canvasElement.parentElement as HTMLElement;
-    await launchAThenB("Mantine Modal", "Legacy Modal", body);
-  },
+  play: props => launchAThenB("Mantine Modal", "Legacy Modal", props),
 };
 
-export const LegacyModalCanLaunchMantineModal = {
+export const LegacyModalCanLaunchMantineModal: Scenario = {
   ...scenarioDefaults,
-  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const body = canvasElement.parentElement as HTMLElement;
-    await launchAThenB("Mantine Modal", "Legacy Modal", body);
-  },
+  play: props => launchAThenB("Legacy Modal", "Mantine Modal", props),
 };
 
-export const MantineModalCanLaunchLegacyPopover = {
+export const MantineModalCanLaunchLegacyPopover: Scenario = {
   ...scenarioDefaults,
-  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const body = canvasElement.parentElement as HTMLElement;
-    await launchAThenB("Mantine Modal", "Legacy Popover", body);
-  },
+  play: props => launchAThenB("Mantine Modal", "Legacy Popover", props),
 };
 
-export const MantinePopoverCanLaunchLegacyPopover = {
+export const MantinePopoverCanLaunchLegacyPopover: Scenario = {
   ...scenarioDefaults,
-  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const body = canvasElement.parentElement as HTMLElement;
-    await launchAThenB("Mantine Popover", "Legacy Popover", body);
-  },
+  play: props => launchAThenB("Mantine Popover", "Legacy Popover", props),
 };
 
-export const MantinePopoverCanLaunchLegacyTooltip = {
+export const MantinePopoverCanLaunchLegacyTooltip: Scenario = {
   ...scenarioDefaults,
-  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const body = canvasElement.parentElement as HTMLElement;
-    await launchAThenB("Mantine Popover", "Legacy Tooltip", body);
-  },
+  play: props => launchAThenB("Mantine Popover", "Legacy Tooltip", props),
 };
 
-export const MantinePopoverCanLaunchLegacySelect = {
+export const MantinePopoverCanLaunchLegacySelect: Scenario = {
   ...scenarioDefaults,
-  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const body = canvasElement.parentElement as HTMLElement;
-    await launchAThenB("Mantine Popover", "Legacy Select", body);
-  },
+  play: props => launchAThenB("Mantine Popover", "Legacy Select", props),
 };
 
-export const MantinePopoverCanLaunchLegacyModal = {
+export const MantinePopoverCanLaunchLegacyModal: Scenario = {
   ...scenarioDefaults,
-  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const body = canvasElement.parentElement as HTMLElement;
-    await launchAThenB("Mantine Popover", "Legacy Modal", body);
-  },
+  play: props => launchAThenB("Mantine Popover", "Legacy Modal", props),
 };
 
-export const LegacyPopoverCanLaunchMantinePopover = {
+export const LegacyPopoverCanLaunchMantinePopover: Scenario = {
   ...scenarioDefaults,
-  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const body = canvasElement.parentElement as HTMLElement;
-    await launchAThenB("Legacy Popover", "Mantine Popover", body);
-  },
+  play: props => launchAThenB("Legacy Popover", "Mantine Popover", props),
 };
 
-export const MantineModalCanLaunchLegacyTooltip = {
+export const MantineModalCanLaunchLegacyTooltip: Scenario = {
   ...scenarioDefaults,
-  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const body = canvasElement.parentElement as HTMLElement;
-    await launchAThenB("Mantine Modal", "Legacy Tooltip", body);
-  },
+  play: props => launchAThenB("Mantine Modal", "Legacy Tooltip", props),
 };
 
-export const MantineModalCanLaunchLegacySelect = {
+export const MantineModalCanLaunchLegacySelect: Scenario = {
   ...scenarioDefaults,
-  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const body = canvasElement.parentElement as HTMLElement;
-    await launchAThenB("Mantine Modal", "Legacy Select", body);
-  },
+  play: props => launchAThenB("Mantine Modal", "Legacy Select", props),
 };
 
-export const MantineModalCanLaunchMantineHovercard = {
+export const MantineModalCanLaunchMantineHovercard: Scenario = {
   ...scenarioDefaults,
-  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const body = canvasElement.parentElement as HTMLElement;
-    await launchAThenB("Mantine Modal", "Mantine HoverCard", body);
-  },
+  play: props => launchAThenB("Mantine Modal", "Mantine HoverCard", props),
 };
 
-export const MantineModalCanLaunchMantineSelect = {
+export const MantineModalCanLaunchMantineSelect: Scenario = {
   ...scenarioDefaults,
-  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const body = canvasElement.parentElement as HTMLElement;
-    await launchAThenB("Mantine Modal", "Mantine Select", body);
-  },
+  play: props => launchAThenB("Mantine Modal", "Mantine Select", props),
 };
