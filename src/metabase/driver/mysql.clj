@@ -928,7 +928,6 @@
    (map (fn [col]
           (-> col
               (update :pk? pos?)
-              (update :database-position int) ;; Comes in as biginteger
               (update :database-required pos?)
               (update :database-is-auto-increment pos?))))
    (apply (get-method driver/describe-fields :sql-jdbc) driver database args)))
