@@ -7,7 +7,6 @@
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
-   [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.tools :as metabot-v3.tools]
    [metabase.api.common :as api]
    [metabase.models.setting :refer [defsetting]]
@@ -47,7 +46,7 @@
    messages :- [:maybe ::metabot-v3.client.schema/messages]
    session-id :- :string]
   (encode-request-body
-   {:messages      (into (metabot-v3.dummy-tools/invoke-dummy-tools context) messages)
+   {:messages      messages
     :context       context
     :tools         (metabot-v3.tools/applicable-tools (metabot-v3.tools/*tools-metadata*) context)
     :session-id    session-id

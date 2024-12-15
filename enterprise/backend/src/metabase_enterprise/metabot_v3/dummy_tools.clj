@@ -15,6 +15,7 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- get-current-user
@@ -24,13 +25,13 @@
                         (t2/select-one [:model/User :id :email :first_name :last_name] api/*current-user-id*))]
              {:id id
               :name (str first_name " " last_name)
-              :email_address email}
+              :email-address email}
              {:error "current user not found"})
    :context context})
 
 (defn- get-dashboard-details
-  [_ {:keys [dashboard_id]} context]
-  {:output (or (t2/select-one [:model/Dashboard :id :description :name] dashboard_id)
+  [_ {:keys [dashboard-id]} context]
+  {:output (or (t2/select-one [:model/Dashboard :id :description :name] dashboard-id)
                {:error "dashboard not found"})
    :context context})
 
@@ -69,7 +70,7 @@
     (some-> base
             (assoc :fields (mapv convert-field fields))
             (update :metrics #(mapv convert-metric %))
-            (cond-> include-foreign-key-tables? (assoc :queryable_foreign_key_tables (foreign-key-tables fields))))))
+            (cond-> include-foreign-key-tables? (assoc :queryable-foreign-key-tables (foreign-key-tables fields))))))
 
 (defn- card-details
   [id]
@@ -80,13 +81,13 @@
             (assoc :fields (mapv convert-field fields)
                    :name (:display_name base))
             (update :metrics #(mapv convert-metric %))
-            (assoc :queryable_foreign_key_tables (foreign-key-tables fields)))))
+            (assoc :queryable-foreign-key-tables (foreign-key-tables fields)))))
 
 (defn- get-table-details
-  [_ {:keys [table_id]} context]
-  (let [details (if-let [[_ card-id] (re-matches #"card__(\d+)" table_id)]
+  [_ {:keys [table-id]} context]
+  (let [details (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
                   (card-details (parse-long card-id))
-                  (table-details (parse-long table_id) {:include-foreign-key-tables? true}))]
+                  (table-details (parse-long table-id) {:include-foreign-key-tables? true}))]
     {:output (or details
                  "table not found")
      :context context}))
@@ -114,10 +115,10 @@
       {:id external-id
        :name (:name card)
        :description (:description card)
-       :default_time_dimension_field_id (some-> default-temporal-breakout
+       :default-time-dimension-field-id (some-> default-temporal-breakout
                                                 (metabot-v3.tools.u/->result-column field-id-prefix)
                                                 :id)
-       :queryable_dimensions (mapv #(metabot-v3.tools.u/->result-column % field-id-prefix) filterable-cols)})))
+       :queryable-dimensions (mapv #(metabot-v3.tools.u/->result-column % field-id-prefix) filterable-cols)})))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]
@@ -125,8 +126,8 @@
   -)
 
 (defn- get-metric-details
-  [_ {:keys [metric_id]} context]
-  (let [details (if-let [[_ card-id] (re-matches #"card__(\d+)" metric_id)]
+  [_ {:keys [metric-id]} context]
+  (let [details (if-let [[_ card-id] (re-matches #"card__(\d+)" metric-id)]
                   (metric-details (parse-long card-id))
                   "invalid metric_id")]
     {:output (or details
@@ -135,16 +136,16 @@
 
 (defn- dummy-tool-messages
   [tool-id arguments content]
-  (let [call-id (random-uuid)]
+  (let [call-id (str "call_" (u/generate-nano-id))]
     [{:content    nil
       :role       :assistant
-      :tool_calls [{:id        call-id
+      :tool-calls [{:id        call-id
                     :name      tool-id
-                    :arguments (json/generate-string arguments)}]}
+                    :arguments arguments}]}
 
      {:content      (json/generate-string content)
       :role         :tool
-      :tool_call_id call-id}]))
+      :tool-call-id call-id}]))
 
 (defn- dummy-get-current-user
   [context]
@@ -154,19 +155,19 @@
 (def ^:private detail-getters
   {:dashboard {:id :get-dashboard-details
                :fn get-dashboard-details
-               :id-name :dashboard_id}
+               :id-name :dashboard-id}
    :table {:id :get-table-details
            :fn (fn [tool-id args context]
-                 (get-table-details tool-id (update args :table_id str) context))
-           :id-name :table_id}
+                 (get-table-details tool-id (update args :table-id str) context))
+           :id-name :table-id}
    :model {:id :get-table-details
            :fn (fn [tool-id args context]
-                 (get-table-details tool-id (update args :table_id #(str "card__" %)) context))
-           :id-name :table_id}
+                 (get-table-details tool-id (update args :table-id #(str "card__" %)) context))
+           :id-name :table-id}
    :metric {:id :get-metric-details
             :fn (fn [tool-id args context]
-                  (get-metric-details tool-id (update args :metric_id #(str "card__" %)) context))
-            :id-name :metric_id}})
+                  (get-metric-details tool-id (update args :metric-id #(str "card__" %)) context))
+            :id-name :metric-id}})
 
 (defn- dummy-get-item-details
   [context]

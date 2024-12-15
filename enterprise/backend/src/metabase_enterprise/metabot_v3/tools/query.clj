@@ -192,7 +192,7 @@
   (reduce apply-filter query filters))
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/filter-data
-  [_tool-name {:keys [filters]} {:keys [query] :as context}]
+  [_tool-name {:keys [filters]} {:keys [query] :as context} _full-history]
   (try
     {:output  "success"
      :context (merge context {:query      (apply-filters query filters)
@@ -245,7 +245,7 @@
     query))
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/aggregate-data
-  [_tool-name {:keys [summarize group-by]} {:keys [query] :as context}]
+  [_tool-name {:keys [summarize group-by]} {:keys [query] :as context} _full-history]
   (try
     {:output "success"
      :context (merge context {:query      (-> query (apply-summarize summarize) (apply-group-by group-by))
