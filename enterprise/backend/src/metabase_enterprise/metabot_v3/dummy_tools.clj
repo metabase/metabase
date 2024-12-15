@@ -1,14 +1,20 @@
 (ns metabase-enterprise.metabot-v3.dummy-tools
   (:require
    [cheshire.core :as json]
+   [medley.core :as m]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.query]
+   [metabase-enterprise.metabot-v3.tools.query-metric]
+   [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.metabot-v3.tools.who-is-your-favorite]
+   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.table :as api.table]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- get-current-user
@@ -28,21 +34,12 @@
                {:error "dashboard not found"})
    :context context})
 
-(defn- convert-field-type
-  [db-field]
-  (let [db-field (u/normalize-map db-field)]
-    (cond
-      (lib.types.isa/boolean? db-field)               "boolean"
-      (lib.types.isa/string-or-string-like? db-field) "string"
-      (lib.types.isa/numeric? db-field)               "number"
-      (lib.types.isa/temporal? db-field)              "date")))
-
 (defn- convert-field
   [db-field]
   (-> db-field
       (select-keys [:id :name :description])
       (update :id #(str "field_" %))
-      (assoc :type (convert-field-type db-field))))
+      (assoc :type (metabot-v3.tools.u/convert-field-type db-field))))
 
 (defn- convert-metric
   [db-metric]
@@ -100,17 +97,53 @@
       (get-table-details :get-table-details {:table_id id} {})))
   -)
 
+(defn- metric-details
+  [id]
+  (when-let [card (api.card/get-card id)]
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
+          metric-query (lib/query mp (lib.metadata/card mp id))
+          breakouts (lib/breakouts metric-query)
+          base-query (lib/remove-all-breakouts metric-query)
+          filterable-cols (lib/filterable-columns base-query)
+          breakoutable-cols (lib/breakoutable-columns base-query)
+          default-temporal-breakout (->> breakouts
+                                         (map #(lib/find-matching-column % breakoutable-cols))
+                                         (m/find-first lib.types.isa/temporal?))
+          external-id (str "card__" id)
+          field-id-prefix (str "field_[" external-id "]_")]
+      {:id external-id
+       :name (:name card)
+       :description (:description card)
+       :default_time_dimension_field_id (some-> default-temporal-breakout
+                                                (metabot-v3.tools.u/->result-column field-id-prefix)
+                                                :id)
+       :queryable_dimensions (mapv #(metabot-v3.tools.u/->result-column % field-id-prefix) filterable-cols)})))
+
+(comment
+  (binding [api/*current-user-permissions-set* (delay #{"/"})]
+    (metric-details 135))
+  -)
+
+(defn- get-metric-details
+  [_ {:keys [metric_id]} context]
+  (let [details (if-let [[_ card-id] (re-matches #"card__(\d+)" metric_id)]
+                  (metric-details (parse-long card-id))
+                  "invalid metric_id")]
+    {:output (or details
+                 "metric not found")
+     :context context}))
+
 (defn- dummy-tool-messages
   [tool-id arguments content]
   (let [call-id (random-uuid)]
     [{:content    nil
-      :role       :assistant,
+      :role       :assistant
       :tool_calls [{:id        call-id
                     :name      tool-id
                     :arguments (json/generate-string arguments)}]}
 
      {:content      (json/generate-string content)
-      :role         :tool,
+      :role         :tool
       :tool_call_id call-id}]))
 
 (defn- dummy-get-current-user
@@ -129,7 +162,11 @@
    :model {:id :get-table-details
            :fn (fn [tool-id args context]
                  (get-table-details tool-id (update args :table_id #(str "card__" %)) context))
-           :id-name :table_id}})
+           :id-name :table_id}
+   :metric {:id :get-metric-details
+            :fn (fn [tool-id args context]
+                  (get-metric-details tool-id (update args :metric_id #(str "card__" %)) context))
+            :id-name :metric_id}})
 
 (defn- dummy-get-item-details
   [context]
@@ -160,7 +197,9 @@
                                        {:type :table
                                         :ref 27}
                                        {:type :model
-                                        :ref 137}]})]
+                                        :ref 137}
+                                       {:type :metric
+                                        :ref 135}]})]
     (reduce (fn [messages tool]
               (into messages (tool context)))
             []
