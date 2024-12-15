@@ -9,14 +9,10 @@ export const GreetingRoot = styled.div`
 `;
 
 export const GreetingLogo = styled(MetabotLogo)<{ isCool: boolean }>`
-  height: 2.5rem;
   position: absolute;
   top: 0;
   opacity: ${props => (props.isCool ? 1 : 0)};
-
-  ${breakpointMinExtraLarge} {
-    height: 3rem;
-  }
+  width: 100%;
 `;
 
 export interface GreetingMessageProps {
