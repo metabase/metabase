@@ -5,6 +5,7 @@ on:
     branches:
       - "master"
       - "release-**"
+      - "fix-sdk-e2e-workflow-for-51-branch"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
