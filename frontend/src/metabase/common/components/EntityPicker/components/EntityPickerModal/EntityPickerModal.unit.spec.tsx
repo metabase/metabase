@@ -54,7 +54,7 @@ const TEST_CARD_TAB: SampleTab = {
   id: "cards-tab",
   icon: "audit",
   displayName: "All the foo",
-  model: "card",
+  models: ["card"],
   folderModels: ["collection" as const],
   render: () => <TestPicker name="foo" />,
 };
@@ -63,7 +63,7 @@ const TEST_TABLE_TAB: SampleTab = {
   id: "tables-tab",
   icon: "audit",
   displayName: "All the bar",
-  model: "table",
+  models: ["table"],
   folderModels: ["collection" as const],
   render: () => <TestPicker name="bar" />,
 };

@@ -42,6 +42,22 @@ Sync a new table without running a full database sync. Requires `schema_name` an
 
 -  **`table_name`** value must be a non-blank string.
 
+## `POST /api/notify/db/attached_datawarehouse`
+
+Sync the attached datawarehouse. Can provide in the body:
+  - table_name and schema_name: both strings. Will look for an existing table and sync it, otherwise will try to find a
+  new table with that name and sync it. If it cannot find a table it will throw an error. If table_name is empty or
+  blank, will sync the entire database.
+  - synchronous?: is a boolean value to indicate if this should block on the result.
+
+### PARAMS:
+
+-  **`table_name`** nullable value must be a non-blank string.
+
+-  **`schema_name`** nullable string.
+
+-  **`synchronous?`** nullable value must be a valid boolean string ('true' or 'false').
+
 ---
 
 [<< Back to API index](../api-documentation.md)

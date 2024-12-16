@@ -1,8 +1,7 @@
 /* eslint-disable react/prop-types */
-import EntityLink from "./EntityLink";
 import EntityListLoader, { entityListLoader } from "./EntityListLoader";
 import { EntityName } from "./EntityName";
-import EntityObjectLoader, { entityObjectLoader } from "./EntityObjectLoader";
+import { entityObjectLoader } from "./EntityObjectLoader";
 import { entityObjectLoaderRtkQuery } from "./rtk-query";
 
 export function addEntityContainers(entity) {
@@ -12,8 +11,6 @@ export function addEntityContainers(entity) {
    * @deprecated HOCs are deprecated
    */
   entity.load = ({ id, query, ...props } = {}) => {
-    // TODO: define rtk mappings for all remaining entities
-    // https://github.com/metabase/metabase/issues/50323
     if (!entity.rtk) {
       return entity.loadLegacy({ id, query, ...props });
     }
@@ -39,11 +36,6 @@ export function addEntityContainers(entity) {
       ...props,
     });
 
-  entity.Loader = ({ id, ...props }) => (
-    <EntityObjectLoader entityType={entity.name} entityId={id} {...props} />
-  );
-  entity.Loader.displayName = `${ObjectName}.Loader`;
-
   /**
    * @deprecated HOCs are deprecated
    */
@@ -59,9 +51,4 @@ export function addEntityContainers(entity) {
     <EntityName entityType={entity.name} entityId={id} {...props} />
   );
   entity.Name.displayName = `${ObjectName}.Name`;
-
-  entity.Link = ({ id, ...props }) => (
-    <EntityLink entityType={entity.name} entityId={id} {...props} />
-  );
-  entity.Link.displayName = `${ObjectName}.Link`;
 }

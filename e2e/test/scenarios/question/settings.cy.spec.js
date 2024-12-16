@@ -454,6 +454,11 @@ describe("scenarios > question > settings", () => {
       H.openOrdersTable();
 
       cy.findByTestId("qb-header").contains("Save").click();
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.findByLabelText(/Where do you want to save this/).click();
+      });
+      H.pickEntity({ tab: "Browse", path: ["Our analytics"], select: false });
+      H.entityPickerModal().findByText("Select this collection").click();
       cy.findByTestId("save-question-modal").findByText("Save").click();
       H.modal().findByText("Yes please!").click();
       H.entityPickerModal().within(() => {

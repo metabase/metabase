@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
+import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
 import FormFooter from "metabase/core/components/FormFooter";
 import {
   Form,
@@ -13,7 +13,8 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { Button } from "metabase/ui";
+import { Button, DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";
 
 const QUESTION_SCHEMA = Yup.object({
@@ -34,8 +35,8 @@ type CopyQuestionProperties = {
 interface CopyQuestionFormProps {
   initialValues: Partial<CopyQuestionProperties>;
   onCancel: () => void;
-  onSubmit: (vals: CopyQuestionProperties) => void;
-  onSaved: () => void;
+  onSubmit: (vals: CopyQuestionProperties) => Promise<Question>;
+  onSaved: (newQuestion: Question) => void;
 }
 
 export const CopyQuestionForm = ({
@@ -53,8 +54,8 @@ export const CopyQuestionForm = ({
   );
 
   const handleDuplicate = async (vals: CopyQuestionProperties) => {
-    await onSubmit(vals);
-    onSaved?.();
+    const newQuestion = await onSubmit(vals);
+    onSaved?.(newQuestion);
   };
 
   return (
@@ -80,9 +81,11 @@ export const CopyQuestionForm = ({
           mb="1.5rem"
           minRows={4}
         />
-        <FormCollectionPicker
-          name="collection_id"
-          title={t`Which collection should this go in?`}
+        <FormCollectionAndDashboardPicker
+          collectionIdFieldName="collection_id"
+          dashboardIdFieldName="dashboard_id"
+          title={t`Where do you want to save this?`}
+          zIndex={DEFAULT_MODAL_Z_INDEX + 1}
         />
         <FormFooter>
           <FormErrorMessage inline />

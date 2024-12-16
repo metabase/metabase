@@ -480,14 +480,8 @@ describe("issue 30165", () => {
 
   it("should not autorun native queries after updating a question (metabase#30165)", () => {
     H.openNativeEditor();
-    H.focusNativeEditor().type("SELECT * FROM ORDERS");
-    H.queryBuilderHeader().findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(() => {
-      cy.findByLabelText("Name").clear().type("Q1");
-      cy.findByText("Save").click();
-    });
-    cy.wait("@createQuestion");
-    cy.button("Not now").click();
+    cy.findByTestId("native-query-editor").type("SELECT * FROM ORDERS");
+    H.saveQuestionToCollection("Q1");
 
     H.focusNativeEditor().type(" WHERE TOTAL < 20");
     H.queryBuilderHeader().findByText("Save").click();
@@ -521,7 +515,7 @@ describe("issue 30610", () => {
     H.openOrdersTable();
     H.openNotebook();
     removeSourceColumns();
-    H.saveQuestion("New orders");
+    H.saveQuestionToCollection("New orders");
     createAdHocQuestion("New orders");
     visualizeAndAssertColumns();
   });
@@ -728,7 +722,7 @@ describe("Custom columns visualization settings", () => {
     goToExpressionSidebarVisualizationSettings();
     H.popover().within(() => {
       const miniBarSwitch = cy.findByLabelText("Show a mini bar chart");
-      miniBarSwitch.click();
+      miniBarSwitch.click({ force: true });
       miniBarSwitch.should("be.checked");
     });
     saveModifiedQuestion();
@@ -758,7 +752,7 @@ describe("Custom columns visualization settings", () => {
     });
     H.popover().within(() => {
       const miniBarSwitch = cy.findByLabelText("Show a mini bar chart");
-      miniBarSwitch.click();
+      miniBarSwitch.click({ force: true });
       miniBarSwitch.should("be.checked");
     });
 

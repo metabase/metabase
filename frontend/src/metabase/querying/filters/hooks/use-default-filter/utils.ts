@@ -23,14 +23,14 @@ export function getAvailableOptions(
 export function getDefaultOperator(
   availableOptions: OperatorOption[],
   hasInitialOperator: boolean,
-): Lib.DefaultFilterOperatorName | undefined {
+): Lib.DefaultFilterOperator | undefined {
   return hasInitialOperator
     ? getDefaultAvailableOperator(availableOptions)
     : undefined;
 }
 
 export function getFilterClause(
-  operator: Lib.DefaultFilterOperatorName | undefined,
+  operator: Lib.DefaultFilterOperator | undefined,
   column: Lib.ColumnMetadata,
 ) {
   if (operator) {

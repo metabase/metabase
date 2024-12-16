@@ -1,0 +1,21 @@
+.FieldLabel {
+  display: flex;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+  font-size: 0.83em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mb-color-text-light);
+}
+
+.Footer {
+  padding: 0.5rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.RemoveLink {
+  padding-right: 1rem;
+}
