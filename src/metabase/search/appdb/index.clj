@@ -37,7 +37,7 @@
 
 (defonce ^:private next-sync-at (atom nil))
 
-(defonce ^:dynamic ^:private *indexes* {:active nil, :pending nil})
+(defonce ^:dynamic ^:private *indexes* (atom {:active nil, :pending nil}))
 
 (def ^:private ^:dynamic *mocking-tables* false)
 
@@ -94,7 +94,7 @@
                             ;; legacy table names
                             [:in [:lower :table_name]
                              (mapv #(vector :inline %) ["search_index" "search_index_next" "search_index_retired"])]]
-                           [:not-in :table_name
+                           [:not-in [:lower :table_name]
                             [:raw
                              (str "("
                                   (first (sql/format {:select [:index_name]

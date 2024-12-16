@@ -8,7 +8,8 @@
 (methodical/defmethod t2/table-name :model/SearchIndexMetadata [_model] :search_index_metadata)
 
 (doto :model/SearchIndexMetadata
-  (derive :metabase/model))
+  (derive :metabase/model)
+  (derive :hook/timestamped?))
 
 (t2/deftransforms :model/SearchIndexMetadata
   {:engine mi/transform-keyword
