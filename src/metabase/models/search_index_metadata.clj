@@ -74,6 +74,7 @@
                                  [:and
                                   [:not= :version (first recent-versions)]
                                   [:< :updated_at
-                                   (if (= :h2 (mdb/db-type))
-                                     [:raw "DATEADD(DAY, -1, CURRENT_TIMESTAMP)"]
-                                     [:raw "CURRENT_TIMESTAMP - INTERVAL '1 day'"])]]]})))
+                                   (case (mdb/db-type)
+                                     :h2       [:raw "DATEADD(DAY, -1, CURRENT_TIMESTAMP)"]
+                                     :postgres [:raw "CURRENT_TIMESTAMP - INTERVAL '1 day'"]
+                                     :mysql    [:raw "CURRENT_TIMESTAMP - INTERVAL 1 day"])]]]})))
