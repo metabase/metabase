@@ -142,18 +142,27 @@
    :channel/slack (fn [thunk] (with-redefs [slack/files-channel (constantly "FOO")]
                                 (thunk)))})
 
+(defn apply-channel-fixtures
+  [channel-types thunk]
+  ((reduce (fn [handler fixture] #(fixture handler))
+           thunk
+           (keep channel-type->fixture channel-types))))
+
+(defmacro with-channel-fixtures
+  "Macro that applies the given channel fixtures to the body of the macro."
+  [channel-types & body]
+  `(apply-channel-fixtures ~channel-types (fn [] ~@body)))
+
 (defn test-send-notification!
   "Test sending a notification with the given channel-type->assert-fn map."
   [notification channel-type->assert-fn]
-  (let [fixtures                       (keep channel-type->fixture (keys channel-type->assert-fn))
-        channel-type->captured-message ((reduce (fn [handler fixture] #(fixture handler))
-                                                #(with-captured-channel-send!
-                                                   (notification/send-notification! notification))
-                                                fixtures))]
+  (with-channel-fixtures (keys channel-type->assert-fn)
+    (let [channel-type->captured-message (with-captured-channel-send!
+                                           (notification/send-notification! notification))]
 
-    (doseq [[channel-type assert-fn] channel-type->assert-fn]
-      (testing (format "chanel-type = %s" channel-type)
-        (assert-fn (get channel-type->captured-message channel-type))))))
+      (doseq [[channel-type assert-fn] channel-type->assert-fn]
+        (testing (format "chanel-type = %s" channel-type)
+          (assert-fn (get channel-type->captured-message channel-type)))))))
 
 (defn slack-message->boolean [{:keys [attachments] :as result}]
   (assoc result :attachments (for [attachment-info attachments]
