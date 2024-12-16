@@ -22,9 +22,10 @@ driver:
       required: true
       visible-if:
         use-hostname: false
-    - name: use-username-password
-      display-name: "Use user and password"
-      description: Snowflake will soon block user and password authentication.
+    - user
+    - name: use-password
+      display-name: "Use password"
+      description: Snowflake will soon block password authentication.
       type: boolean
       default: false
     - name: private-key
@@ -32,17 +33,12 @@ driver:
       type: secret
       secret-kind: pem-cert
       visible-if:
-        use-username-password: false
+        use-password: false
       required: true
-    - merge:
-      - user
-      - visible-if:
-          use-username-password: true
-        required: true
     - merge:
       - password
       - visible-if:
-          use-username-password: true
+          use-password: true
         required: true
     - name: warehouse
       display-name: Warehouse
