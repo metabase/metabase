@@ -1,5 +1,4 @@
 import type { Location } from "history";
-import type { ReactNode } from "react";
 import type { InjectedRouter, Route } from "react-router";
 import { withRouter } from "react-router";
 
@@ -13,11 +12,6 @@ interface Props {
   isLocationAllowed?: (location?: Location) => boolean;
   route: Route;
   router: InjectedRouter;
-  children?: (props: {
-    nextLocation: Location | undefined;
-    onAction?: () => void;
-    onClose?: () => void;
-  }) => ReactNode;
 }
 
 const LeaveConfirmationModalBase = ({
@@ -25,9 +19,8 @@ const LeaveConfirmationModalBase = ({
   isLocationAllowed,
   route,
   router,
-  children,
 }: Props) => {
-  const { opened, close, confirm, nextLocation } = useConfirmLeaveModal({
+  const { opened, close, confirm } = useConfirmLeaveModal({
     isEnabled,
     isLocationAllowed,
     route,
@@ -36,15 +29,7 @@ const LeaveConfirmationModalBase = ({
 
   return (
     <Modal isOpen={opened}>
-      {children ? (
-        children({
-          nextLocation,
-          onAction: confirm,
-          onClose: close,
-        })
-      ) : (
-        <LeaveConfirmationModalContent onAction={confirm} onClose={close} />
-      )}
+      <LeaveConfirmationModalContent onAction={confirm} onClose={close} />
     </Modal>
   );
 };
