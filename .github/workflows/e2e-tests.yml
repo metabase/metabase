@@ -303,7 +303,7 @@ jobs:
           echo "Didn't run due to conditional filtering"
 
   merge-coverage:
-    needs: [build, e2e-matrix-builder]
+    needs: [e2e-tests, e2e-matrix-builder]
     runs-on: ${{ matrix.runner }}
     if: always()
     timeout-minutes: 10
