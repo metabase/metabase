@@ -22,7 +22,7 @@ import {
 } from "./ChartSettingFieldPicker.styled";
 import ChartSettingSelect from "./ChartSettingSelect";
 
-const ChartSettingFieldPicker = ({
+export const ChartSettingFieldPicker = ({
   value,
   label,
   options,
@@ -199,5 +199,3 @@ const ChartSettingFieldPicker = ({
     </Stack>
   );
 };
-
-export default ChartSettingFieldPicker;
