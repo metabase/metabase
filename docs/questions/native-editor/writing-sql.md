@@ -34,7 +34,7 @@ GROUP BY created_at;
 
 Don't worry if you don't understand this just yet. Click the blue **Run query** button to execute your query.
 
-You'll notice that the table that comes back is the same as if you had used the [query builder][asking-questions] to ask for the sum of `Subtotal` in the `Orders` table, grouped by the `Created At` date.
+You'll notice that the table that comes back is the same as if you had used the [query builder](../query-builder/editor.md) to ask for the sum of `Subtotal` in the `Orders` table, grouped by the `Created At` date.
 
 ### Running query selections
 
@@ -104,7 +104,6 @@ See [Caching question policies](../../configuring-metabase/caching.md#question-c
 - [Best practices for writing SQL queries](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-best-practices)
 - [SQL troubleshooting guide][troubleshooting-sql].
 
-[asking-questions]: ../query-builder/editor.md)
 [learn-sql]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql
 [ref-models]: ./referencing-saved-questions-in-queries.md
 [sample-database-gloss]: https://www.metabase.com/glossary/sample_database
