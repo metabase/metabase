@@ -61,7 +61,6 @@
                            {:name       (mt/random-name)
                             :engine     "h2"
                             :details    "{}"})
-
       :report_card       (with-timestamped
                            {:name                   (mt/random-name)
                             :dataset_query          "{}"

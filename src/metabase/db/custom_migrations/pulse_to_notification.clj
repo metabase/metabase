@@ -1,6 +1,7 @@
 (ns metabase.db.custom-migrations.pulse-to-notification
   (:require
    [clojure.string :as str]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (defn- cron-string
@@ -67,76 +68,83 @@
                            (dissoc :recipients)
                            (assoc :notification_id notification-id))
             handler-id (t2/insert-returning-pk! :notification_handler handler)]
-        (t2/insert! :notification_recipient (map #(assoc % :notification_handler_id handler-id) recipients))))
-    1))
+        (when (seq recipients)
+          (t2/insert! :notification_recipient (map #(assoc % :notification_handler_id handler-id) recipients)))))
+    instance))
 
 (defn- hydrate-recipients
   [pcs]
-  (let [pc-id->recipients (group-by :pulse_channel_id
-                                    (t2/select :pulse_channel_recipient :pulse_channel_id [:in (map :id pcs)]))]
-    (map (fn [pc]
-           (assoc pc :recipients (get pc-id->recipients (:id pc))))
-         pcs)))
+  (when (seq pcs)
+    (let [pc-id->recipients (group-by :pulse_channel_id
+                                     (t2/select :pulse_channel_recipient :pulse_channel_id [:in (map :id pcs)]))]
+       (map (fn [pc]
+              (assoc pc :recipients (get pc-id->recipients (:id pc))))
+            pcs))))
 
-(defn- pulse->notification!
+(defn- alert->notification!
   "Create a new notification with `subsciptions`.
-  Return the created notification."
+  Return the created notifications."
   [pulse]
   (let [pulse-id   (:id pulse)
-        pcs        (hydrate-recipients (t2/select :pulse_channel :pulse_id pulse-id))
+        pcs        (hydrate-recipients (t2/select :pulse_channel :pulse_id pulse-id :enabled true))
         ;; alerts have one pulse-card, but to be safe we select the latest one by id
         pulse-card (t2/select-one :pulse_card :pulse_id pulse-id {:order-by [[:id :desc]]})]
     ;; the old schema allow one alert to have multiple pulse-channels. Practically they all have the same schedule
     ;; but to be safe we group them by schedule and create a notification for each group
-    (doseq [pcs (vals (group-by (juxt :schedule_type :schedule_hour :schedule_day :schedule_frame) pcs))]
-      (let [notification  {:payload_type "notification/alert"
-                           :payload      {:card_id        (:id pulse-card)
-                                          :run_once       (:alert_first_only pulse)
-                                          :skip_if_empty  (:skip_if_empty pulse)
-                                          :send_condition (if (= "goal" (:alert_condition pulse))
-                                                            (if (:alert_above_goal pulse)
-                                                              "above_goal"
-                                                              "below_goal")
-                                                            "has_result")
-                                          :created_at     :%now
-                                          :updated_at     :%now}
-                           :active       (not (:archived pulse))
-                           :creator_id   (:creator_id pulse)
-                           :created_at   :%now
-                           :updated_at   :%now}
-            subscriptions [{:type          "notification-subscription/cron"
-                            :cron_schedule (schedule-map->cron-string (first pcs))
-                            :created_at    :%now}]
-            handlers      (map (fn [pc]
-                                 (merge
-                                  {:active (:enabled pc)}
-                                  (case (:channel_type pc)
-                                    "email"
-                                    {:channel_type "channel/email"
-                                     :template_id  nil
-                                     :recipients   (concat
-                                                    (map (fn [recipient]
-                                                           {:type "notification-recipient/user"
-                                                            :user_id (:user_id recipient)})
-                                                         (:recipients pc))
-                                                    [])}
-                                    "slack"
-                                    {:channel_type "channel/slack"
-                                     :template_id  nil
-                                     :recipients   [{:type "notification-recipient/slack-channel"
-                                                     :details {:channel (get-in pc [:details :channel])}}]}
-                                    "http"
-                                    nil)))
-                               pcs)]
-        (create-notification! notification subscriptions handlers)))))
+    (doall
+      (for [pcs (vals (group-by (juxt :schedule_type :schedule_hour :schedule_day :schedule_frame) pcs))]
+        (let [notification  {:payload_type "notification/card"
+                             :payload      {:card_id        (:card_id pulse-card)
+                                            :send_once      (true? (:alert_first_only pulse))
+                                            :send_condition (if (= "goal" (:alert_condition pulse))
+                                                              (if (:alert_above_goal pulse)
+                                                                "goal_above"
+                                                                "goal_below")
+                                                              "has_result")
+                                            :created_at     :%now
+                                            :updated_at     :%now}
+                             :active       (not (:archived pulse))
+                             :creator_id   (:creator_id pulse)
+                             :created_at   :%now
+                             :updated_at   :%now}
+              subscriptions [{:type          "notification-subscription/cron"
+                              :cron_schedule (schedule-map->cron-string (first pcs))
+                              :created_at    :%now}]
+              handlers      (map (fn [pc]
+                                   (merge
+                                    {:active (:enabled pc)}
+                                    (case (:channel_type pc)
+                                      "email"
+                                      {:channel_type "channel/email"
+                                       :template_id  nil
+                                       :recipients   (concat
+                                                      (map (fn [recipient]
+                                                             {:type "notification-recipient/user"
+                                                              :user_id (:user_id recipient)})
+                                                           (:recipients pc))
+                                                      (map (fn [email]
+                                                             {:type "notification-recipient/raw-value"
+                                                              :details (json/encode {:value email})})
+                                                           (some-> pc :details json/decode (get "emails"))))}
+                                      "slack"
+                                      {:channel_type "channel/slack"
+                                       :template_id  nil
+                                       :recipients   [{:type "notification-recipient/raw-value"
+                                                       :details (json/encode {:value (-> pc :details json/decode (get "channel"))})}]}
+                                      "http"
+                                      {:channel_type "channel/http"
+                                       :channel_id    (:channel_id pc)})))
+                                 pcs)]
+          (create-notification! notification subscriptions handlers))))))
 
 (defn migrate-alerts!
   "Migrate alerts from `pulse` to `notification`."
   []
-  (run! pulse->notification!
+  (run! alert->notification!
         (t2/reducible-query {:select [:*]
                              :from   [:pulse]
-                             :where  [:in :alert_condition ["rows" "goal"]]})))
+                             :where  [:and [:in :alert_condition ["rows" "goal"]] [:not :archived]]})))
+
 
 (comment
   (t2/delete! :model/Notification)
