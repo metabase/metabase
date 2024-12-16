@@ -176,7 +176,6 @@ export class WindowModal extends Component<WindowModalProps> {
                 )}
                 style={style}
                 data-testid={dataTestId}
-                aria-labelledby={ariaLabelledBy}
               >
                 {this._modalComponent()}
               </div>
