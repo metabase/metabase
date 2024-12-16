@@ -1,3 +1,31 @@
+## [0.52.4-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.3-nightly...embedding-sdk-0.52.4-nightly) (2024-12-16)
+
+
+### Bug Fixes
+
+* **sdk:** Fix alignment of ColorSelector in SDK Chart Settings ([#51000](https://github.com/metabase/metabase/issues/51000)) ([4bbd4cc](https://github.com/metabase/metabase/commit/4bbd4cc2aadd7c702ce09622badb5b859c2aa130))
+* **sdk:** introduce `.mb-wrapper` to scope down our css ([#50466](https://github.com/metabase/metabase/issues/50466)) ([2d9d447](https://github.com/metabase/metabase/commit/2d9d4474925830ee427b3bb6c07d45c6e362e029))
+* **sdk:** remove Error.captureStackTrace as it errors on firefox ([#50773](https://github.com/metabase/metabase/issues/50773)) ([4c27ad5](https://github.com/metabase/metabase/commit/4c27ad5fa36507f180696313cd39ec000989f3bb))
+* **sdk:** wrap InteractiveDashboard with renderOnlyInSdkProvider ([#51224](https://github.com/metabase/metabase/issues/51224)) ([86b994e](https://github.com/metabase/metabase/commit/86b994e7a5d56cff460ad7bcd670ecfefead6652))
+
+
+### Features
+
+* **sdk:** add style and className to static dashboards ([#50860](https://github.com/metabase/metabase/issues/50860)) ([3391546](https://github.com/metabase/metabase/commit/33915469e39f158e64eae3f4f26e6fe6b82ac468))
+* **sdk:** add withChartTypeSelector prop to InteractiveQuestion ([#50664](https://github.com/metabase/metabase/issues/50664)) ([6e407f1](https://github.com/metabase/metabase/commit/6e407f15aacfdf97bc92eaf7669ba682d14ad04d))
+* **sdk:** combine title props in interactive question ([#50660](https://github.com/metabase/metabase/issues/50660)) ([fba8aab](https://github.com/metabase/metabase/commit/fba8aab8ac2dff97b9e737e061ff48d6263266e2))
+* **sdk:** detect if session.id is not a string ([#50890](https://github.com/metabase/metabase/issues/50890)) ([179554e](https://github.com/metabase/metabase/commit/179554e5640d8c5c831027e029d7a3dcc3c7ef8e))
+* **sdk:** Modify Interactive Question Layout ([#50152](https://github.com/metabase/metabase/issues/50152)) ([b88e743](https://github.com/metabase/metabase/commit/b88e7431b6b7c6699d396aae8c97fe4c7fa7454b))
+* **sdk:** move non-auth config options to provider ([#50585](https://github.com/metabase/metabase/issues/50585)) ([9f3e0bc](https://github.com/metabase/metabase/commit/9f3e0bc68acd572f3f7cc690649c3a6166ca48ab))
+* **sdk:** next sdk compatibility layer ([#50230](https://github.com/metabase/metabase/issues/50230)) ([c0eab44](https://github.com/metabase/metabase/commit/c0eab4452eb50fe9fce915b27d00f64e3b8ee710)), closes [#50736](https://github.com/metabase/metabase/issues/50736)
+* **sdk:** rename prop names to be clear and explicit ([#50656](https://github.com/metabase/metabase/issues/50656)) ([35ec452](https://github.com/metabase/metabase/commit/35ec452c6ccc1a0751e0b1842e7d0a094cb48ccc))
+* **sdk:** support sql parameters in interactive questions ([#50728](https://github.com/metabase/metabase/issues/50728)) ([5313e01](https://github.com/metabase/metabase/commit/5313e018e80705f689a0bcabcc7bb3fa50bab026))
+* **sdk:** use metabase type prefix and re-export types ([#50862](https://github.com/metabase/metabase/issues/50862)) ([c40657f](https://github.com/metabase/metabase/commit/c40657ff3ac437a69c08ca910d9bbcd814fed7ff))
+* **sdk:** use public-facing question type in event handlers ([#50867](https://github.com/metabase/metabase/issues/50867)) ([dbd60f5](https://github.com/metabase/metabase/commit/dbd60f5c4751ce9b0d6301609502aa491ef25bb5))
+* **sdk:** use string types for specifying entity ids instead of internal nanoid type ([#50663](https://github.com/metabase/metabase/issues/50663)) ([87b60ba](https://github.com/metabase/metabase/commit/87b60ba547f95020afcf4be5bc8da9196cb35f96))
+
+
+
 ## [0.52.3-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.2-nightly...embedding-sdk-0.52.3-nightly) (2024-11-29)
 
 
