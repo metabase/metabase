@@ -2,7 +2,7 @@ import type { StoryFn } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
 
-import ColorPill, { type ColorPillProps } from "./ColorPill";
+import { ColorPill, type ColorPillProps } from "./ColorPill";
 
 export default {
   title: "Core/ColorPill",

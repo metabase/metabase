@@ -1,8 +1,9 @@
 /* eslint-disable react/prop-types */
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { NativeQueryEditorContainer } from "./ViewNativeQueryEditor.styled";
+import NativeQueryEditorS from "./ViewNativeQueryEditor.module.css";
 
 export const ViewNativeQueryEditor = props => {
   const {
@@ -30,7 +31,7 @@ export const ViewNativeQueryEditor = props => {
   }
 
   return (
-    <NativeQueryEditorContainer>
+    <Box className={NativeQueryEditorS.NativeQueryEditorContainer}>
       <NativeQueryEditor
         {...props}
         query={legacyQuery}
@@ -41,6 +42,6 @@ export const ViewNativeQueryEditor = props => {
         setParameterValueToDefault={setParameterValueToDefault}
         onSetDatabaseId={onSetDatabaseId}
       />
-    </NativeQueryEditorContainer>
+    </Box>
   );
 };

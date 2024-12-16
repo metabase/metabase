@@ -94,7 +94,7 @@ describe("issue 19737", () => {
     cy.findByText("Question").should("be.visible").click();
 
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Models").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText(personalCollectionName).click();
       cy.findByText(modelName);
     });
@@ -118,7 +118,7 @@ describe("issue 19737", () => {
 
     // Open question picker (this is crucial) so the collection list are loaded.
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Models").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("First collection").click();
       cy.findByText(modelName);
     });
@@ -166,7 +166,13 @@ describe("issue 19776", { tags: "@OSS" }, () => {
 
     cy.findByTestId("app-bar").button("New").click();
     H.popover().findByText("Question").click();
-    H.entityPickerModalTab("Models").should("be.visible"); // now you see it
+    H.entityPickerModalTab("Collections").click(); // now you see it
+    H.entityPickerModal()
+      .button(/Filter/)
+      .click();
+
+    H.popover().findByText("Models").should("exist");
+
     H.entityPickerModal().findByLabelText("Close").click();
 
     // navigate without a page load
@@ -182,7 +188,12 @@ describe("issue 19776", { tags: "@OSS" }, () => {
 
     cy.findByTestId("app-bar").button("New").click();
     H.popover().findByText("Question").click();
-    H.entityPickerModalTab("Models").should("not.exist"); // now you don't
+    H.entityPickerModalTab("Collections").click(); // now you don't
+    H.entityPickerModal()
+      .button(/Filter/)
+      .click();
+
+    H.popover().findByText("Models").should("not.exist");
   });
 });
 
@@ -813,7 +824,7 @@ describe("issue 25537", () => {
 
     H.startNewQuestion();
     H.entityPickerModal().within(() => {
-      cy.findByText(/Modelle/i).click();
+      H.entityPickerModalTab("Sammlungen").click();
       cy.wait("@getCollectionContent");
       cy.findByText(questionDetails.name).should("exist");
     });
@@ -855,7 +866,7 @@ describe("issue 26091", () => {
 
     startNewQuestion();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Models").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("New model").should("be.visible");
       cy.findByText("Old model").should("be.visible");
       cy.findByText("Orders Model").should("be.visible");

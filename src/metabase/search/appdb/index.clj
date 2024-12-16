@@ -81,8 +81,11 @@
 (defn- sync-metadata [_old-setting-raw new-setting-raw]
   ;; Oh dear, we get the raw setting. Save a little bit of overhead by not converting keys
   (let [new-setting                          (json/decode new-setting-raw)
-        _                                    (log/debug "Updated appdb search index state" new-setting)
         this-index-metadata                  #(get-in % ["versions" *index-version-id*])
+        _                                    (log/debug "Updated appdb search index state"
+                                                        *index-version-id*
+                                                        (pr-str (dissoc new-setting "versions" "active-table" "pending-table"))
+                                                        (pr-str (this-index-metadata new-setting)))
         {:strs [active-table pending-table]} (this-index-metadata new-setting)
         ;; implicitly clear the pending table if we just activated it
         pending-table                        (when (not= active-table pending-table) pending-table)]

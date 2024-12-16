@@ -22,7 +22,7 @@
     "@mantine/dates": "^6.0.13",
     "@mantine/hooks": "^6.0.13",
     "@react-oauth/google": "^0.11.1",
-    "@reduxjs/toolkit": "^2.3.0",
+    "@reduxjs/toolkit": "^2.5.0",
     "@snowplow/browser-tracker": "^3.1.6",
     "@tanstack/react-virtual": "^3.1.2",
     "@tippyjs/react": "^4.2.6",

@@ -10,12 +10,12 @@
 
   Requirements:
 
-  - No aggregation or breakout clauses in the query
+  - Column not aggregation or breakout sourced
   - Column not `type/PK`, `type/SerializedJSON`, `type/Description`, `type/Comment`
 
   Query transformation (last stage only):
 
-  - Remove all aggregation, breakout, orderBy, limit clauses
+  - Remove all aggregation, breakout, order-by, limit clauses
 
   - Aggregate by \"count\" operator
 
@@ -34,6 +34,7 @@
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
@@ -50,12 +51,12 @@
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (nil? value)
-             (not= (:lib/source column) :source/aggregations)
+             (not (lib.drill-thru.common/aggregation-sourced? query column))
              (not (lib.types.isa/primary-key? column))
              (not (lib.types.isa/structured?  column))
              (not (lib.types.isa/comment?     column))
              (not (lib.types.isa/description? column))
-             (not (lib.breakout/breakout-column? query stage-number column)))
+             (not (lib.breakout/breakout-column? query (lib.underlying/top-level-stage-number query) column)))
     {:lib/type  :metabase.lib.drill-thru/drill-thru
      :type      :drill-thru/distribution
      :column    column}))

@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { IconName } from "metabase/ui";
 import type { SearchResult, SearchResultId } from "metabase-types/api";
 
@@ -50,9 +52,9 @@ export type EntityPickerTab<
    * Recents & Search tabs don't have models associated with them - hence null
    * (they provide the same models as the other tabs combined).
    */
-  models: Model[] | null;
-  additionalModels?: Model[];
+  models: Model[];
   folderModels: Model[];
+  extraButtons?: ReactNode[];
 };
 
 export type EntityPickerSearchScope = "everywhere" | "folder";
