@@ -280,6 +280,7 @@ interface SettingsManagerSettings {
   "openai-organization": string | null;
   "session-cookie-samesite": SessionCookieSameSite;
   "slack-app-token": string | null;
+  "slack-bug-report-channel": string | null;
   "slack-files-channel": string | null;
   "slack-token": string | null;
   "slack-token-valid?": boolean;
@@ -295,6 +296,7 @@ interface PublicSettings {
   "application-name": string;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
+  "bug-reporting-enabled": boolean;
   "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
