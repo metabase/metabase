@@ -1,9 +1,12 @@
 import { match } from "ts-pattern";
 
-import { nonUserFacingLabels, hiddenLabels } from "./constants";
+import { hiddenLabels, nonUserFacingLabels } from "./constants";
 import { getMilestoneIssues, hasBeenReleased } from "./github";
 import type { Issue, ReleaseProps } from "./types";
 import {
+  getEnterpriseVersion,
+  getGenericVersion,
+  getOSSVersion,
   isEnterpriseVersion,
   isPreReleaseVersion,
   isValidVersionString,
@@ -15,16 +18,19 @@ const releaseTemplate = `## Upgrading
 
 Check out our [upgrading instructions](https://metabase.com/docs/latest/operations-guide/upgrading-metabase).
 
-Docker image: {{docker-tag}}
-Download the JAR here: {{download-url}}
+[Get the most out of Metabase](https://www.metabase.com/pricing?utm_source=github-release-notes). Learn more about advanced features, managed cloud, and first-class support.
+
+## Metabase Open Source
+
+Docker image: {{oss-docker-tag}}
+JAR download: {{oss-download-url}}
+
+## Metabase Enterprise
+
+Docker image: {{ee-docker-tag}}
+JAR download: {{ee-download-url}}
 
 ## Notes
-
-SHA-256 checksum for the {{version}} JAR:
-
-\`\`\`
-{{checksum}}
-\`\`\`
 
 <details>
 <summary><h2>Changelog</h2></summary>
@@ -92,11 +98,7 @@ export const getDownloadUrl = (version: string) => {
 };
 
 export const getReleaseTitle = (version: string) => {
-  if (isEnterpriseVersion(version)) {
-    return `Metabase® Enterprise Edition™ ${version}`;
-  }
-
-  return `Metabase ${version}`;
+  return `Metabase ${getGenericVersion(version)}`;
 };
 
 enum IssueType {
@@ -215,14 +217,15 @@ export const categorizeIssues = (issues: Issue[]) => {
 
 export const generateReleaseNotes = ({
   version,
-  checksum,
   issues,
 }: {
   version: string;
-  checksum: string;
   issues: Issue[];
 }) => {
   const issuesByType = categorizeIssues(issues);
+
+  const ossVersion = getOSSVersion(version);
+  const eeVersion = getEnterpriseVersion(version);
 
   return releaseTemplate
     .replace(
@@ -241,19 +244,18 @@ export const generateReleaseNotes = ({
       "{{under-the-hood}}",
       formatIssues(issuesByType.underTheHoodIssues),
     )
-    .replace("{{docker-tag}}", getDockerTag(version))
-    .replace("{{download-url}}", getDownloadUrl(version))
-    .replace("{{version}}", version)
-    .replace("{{checksum}}", checksum.split(" ")[0]);
+    .replace("{{ee-docker-tag}}", getDockerTag(eeVersion))
+    .replace("{{ee-download-url}}", getDownloadUrl(eeVersion))
+    .replace("{{oss-docker-tag}}", getDockerTag(ossVersion))
+    .replace("{{oss-download-url}}", getDownloadUrl(ossVersion));
 };
 
 export async function publishRelease({
   version,
-  checksum,
   owner,
   repo,
   github,
-}: ReleaseProps & { checksum: string }) {
+}: ReleaseProps & { oss_checksum: string, ee_checksum: string }) {
   if (!isValidVersionString(version)) {
     throw new Error(`Invalid version string: ${version}`);
   }
@@ -263,9 +265,9 @@ export async function publishRelease({
   const payload = {
     owner,
     repo,
-    tag_name: version,
+    tag_name: getOSSVersion(version),
     name: getReleaseTitle(version),
-    body: generateReleaseNotes({ version, checksum, issues }),
+    body: generateReleaseNotes({ version, issues }),
     draft: true,
     prerelease: isPreReleaseVersion(version), // this api arg has never worked, but maybe it will someday! 🤞
   };
@@ -299,7 +301,6 @@ export async function getChangelog({
 
   return generateReleaseNotes({
     version,
-    checksum: "checksum-placeholder",
     issues,
   });
 }
