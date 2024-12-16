@@ -49,6 +49,7 @@
   com.h2database/h2                         ^:antq/exclude                      ; https://metaboat.slack.com/archives/CKZEMT1MJ/p1727191010259979
                                             {:mvn/version "2.1.214"}            ; embedded SQL database
   com.gfredericks/test.chuck                {:mvn/version "0.2.14"}             ; generating strings from regex
+  com.mchange/c3p0                          {:mvn/version "0.10.1"}             ; DB connection pool
   com.snowplowanalytics/snowplow-java-tracker ^:antq/exclude                    ; 2+ depend on apache httpclient 5.x, but saml and clj-http depend on 4.x
                                             {:mvn/version "1.0.1"}              ; Snowplow analytics
   com.taoensso/nippy                        {:mvn/version "3.4.2"}              ; Fast serialization (i.e., GZIP) library for Clojure

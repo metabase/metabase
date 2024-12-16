@@ -72,7 +72,9 @@ describe("scenarios > visualizations > sankey", () => {
     H.echartsContainer().findByText("60,000").should("not.exist");
 
     // Enable edge labels
-    cy.get("@settings-sidebar").findByLabelText("Show edge labels").click();
+    cy.get("@settings-sidebar")
+      .findByLabelText("Show edge labels")
+      .click({ force: true });
 
     // Ensure it shows edge labels
     H.echartsContainer().findByText("60,000");

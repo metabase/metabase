@@ -5,18 +5,16 @@ import ChartSettingColorsPicker from "metabase/visualizations/components/setting
 import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
 import ChartSettingFieldsPartition from "metabase/visualizations/components/settings/ChartSettingFieldsPartition";
 import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
-import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput";
-import ChartSettingInputGroup from "metabase/visualizations/components/settings/ChartSettingInputGroup";
+import { ChartSettingInput } from "metabase/visualizations/components/settings/ChartSettingInput";
 import { ChartSettingInputNumeric } from "metabase/visualizations/components/settings/ChartSettingInputNumeric";
 import { ChartSettingMultiSelect } from "metabase/visualizations/components/settings/ChartSettingMultiSelect";
-import ChartSettingRadio from "metabase/visualizations/components/settings/ChartSettingRadio";
-import ChartSettingSegmentedControl from "metabase/visualizations/components/settings/ChartSettingSegmentedControl";
+import { ChartSettingRadio } from "metabase/visualizations/components/settings/ChartSettingRadio";
+import { ChartSettingSegmentedControl } from "metabase/visualizations/components/settings/ChartSettingSegmentedControl";
 import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect";
-import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle";
+import { ChartSettingToggle } from "metabase/visualizations/components/settings/ChartSettingToggle";
 
 const WIDGETS = {
   input: ChartSettingInput,
-  inputGroup: ChartSettingInputGroup,
   number: ChartSettingInputNumeric,
   radio: ChartSettingRadio,
   select: ChartSettingSelect,

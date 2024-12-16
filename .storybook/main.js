@@ -86,9 +86,18 @@ function resolveEmbeddingSdkPackage() {
   let embeddingSdkVersion;
 
   try {
-    embeddingSdkVersion =
-      require("@metabase/embedding-sdk-react/package.json").version;
-    isEmbeddingSdkPackageInstalled = true;
+    const packagePath = require.resolve("@metabase/embedding-sdk-react");
+    if (packagePath.includes("node_modules")) {
+      isEmbeddingSdkPackageInstalled = true;
+    }
+
+    const packageJsonContent = fs.readFileSync(
+      path.join(packagePath, "package.json"),
+      "utf-8",
+    );
+    embeddingSdkVersion = JSON.stringify(
+      JSON.parse(packageJsonContent)?.version,
+    );
   } catch (err) {
     const sdkPackageTemplateJson = fs.readFileSync(
       path.resolve(

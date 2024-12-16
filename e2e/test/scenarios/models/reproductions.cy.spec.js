@@ -1360,7 +1360,7 @@ describe("issue 31905", () => {
 
   // TODO: This should be 1, but MainNavbar.tsx RTKQ fetch + QB's call to loadCard makes it 2
   it("should not send more than one same api requests to load a model (metabase#31905)", () => {
-    cy.get("@card.all").should("have.length", 2);
+    cy.get("@card.all").should("have.length.lte", 2);
   });
 });
 

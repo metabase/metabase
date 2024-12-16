@@ -1,0 +1,26 @@
+.Well {
+  display: flex;
+  align-items: center;
+  padding: 4px 6px;
+  border-radius: 99px;
+  background-color: var(--mb-color-bg-medium);
+  transition: background 300ms linear;
+
+  &:hover {
+    background-color: color-mix(in srgb, var(--mb-color-bg-medium), black 5%);
+  }
+}
+
+.ToggleIcon {
+  display: flex;
+  padding: 4px 8px;
+  cursor: pointer;
+  background-color: transparent;
+  color: inherit;
+  border-radius: 99px;
+
+  &.active {
+    background-color: var(--mb-color-brand);
+    color: var(--mb-color-text-white);
+  }
+}

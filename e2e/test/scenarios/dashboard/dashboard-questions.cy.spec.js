@@ -259,6 +259,52 @@ describe("Dashboard > Dashboard Questions", () => {
       H.dashboardCards().findByText("Orders, Count");
     });
 
+    it("should tell users which dashboards will be affected when doing bulk question moves", () => {
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "Sample Question",
+          collection_id: S.THIRD_COLLECTION_ID,
+          query: {
+            "source-table": SAMPLE_DATABASE.PRODUCTS_ID,
+            limit: 1,
+          },
+          display: "scalar",
+        },
+        dashboardDetails: {
+          collection_id: S.THIRD_COLLECTION_ID,
+          name: "Test Dashboard",
+        },
+      });
+
+      H.visitCollection(S.THIRD_COLLECTION_ID);
+      selectCollectionItem("Sample Question");
+
+      cy.findByTestId("toast-card").button("Move").click();
+
+      H.entityPickerModal().within(() => {
+        cy.findByRole("button", { name: /Orders in a dashboard/ }).click();
+        cy.button("Move").click();
+      });
+
+      cy.findByRole("dialog", { name: /Move this question/ }).should("exist");
+
+      H.modal().within(() => {
+        cy.findByText("Sample Question").should("exist");
+        cy.findByText("Test Dashboard").should("exist");
+
+        cy.button("Move it").should("exist").click();
+      });
+
+      H.collectionTable().findByText("Test Dashboard").click();
+
+      cy.findByTestId("dashboard-empty-state")
+        .findByText("This dashboard is looking empty.")
+        .should("exist");
+
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      H.dashboardCards().findByText("Sample Question").should("exist");
+    });
+
     it("can edit a dashboard question", () => {
       cy.intercept("PUT", "/api/card/*").as("updateCard");
       H.createQuestion(
@@ -748,11 +794,34 @@ describe("Dashboard > Dashboard Questions", () => {
       H.entityPickerModal().findByText("Orders in a dashboard").click();
       H.entityPickerModal().button("Move").click();
 
+      let shouldError = true;
+
+      // Simulate an error to ensure that it's passed back and shown in the modal.
+      cy.get("@avgQuanityQuestionId").then(questionId => {
+        cy.intercept("PUT", `**/api/card/${questionId}**`, req => {
+          if (shouldError === true) {
+            shouldError = false;
+            req.reply({
+              statusCode: 400,
+              body: {
+                message: "Ryan said no",
+              },
+            });
+          } else {
+            req.continue();
+          }
+        });
+      });
+
       // should warn about removing from 2 dashboards
       H.modal().within(() => {
         cy.findByText(/will be removed from/i);
         cy.findByText(/purple dashboard/i);
         cy.findByText(/blue dashboard/i);
+        cy.button("Move it").click();
+        cy.findByText("Ryan said no");
+
+        //Continue with the expected behavior
         cy.button("Move it").click();
       });
 

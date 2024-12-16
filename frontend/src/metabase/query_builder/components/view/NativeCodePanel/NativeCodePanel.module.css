@@ -1,0 +1,56 @@
+.CodeContainer {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--mb-color-border);
+  background-color: var(--mb-color-bg-light);
+  border-radius: 0.5rem;
+  overflow: auto;
+
+  &.isHighlighted {
+    background-color: var(--mb-color-brand-light);
+    border: 1px solid var(--mb-color-brand);
+  }
+}
+
+.CodeText {
+  display: block;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  font-size: 0.75rem;
+  line-height: 1.125rem;
+  white-space: pre;
+  overflow-wrap: break-word;
+}
+
+.CodeRoot {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+
+  &:hover {
+    .CodeCopyButton {
+      visibility: visible;
+    }
+  }
+}
+
+.CodeCopyButton {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 1rem;
+  height: 1rem;
+  color: var(--mb-color-brand);
+  visibility: hidden;
+  background-color: var(--mb-color-bg-light);
+
+  &.isHighlighted {
+    background-color: var(--mb-color-brand-light);
+  }
+}
