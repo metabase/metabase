@@ -524,8 +524,13 @@
              :assert
              {:email
               (fn [_ [email]]
-                (is (= (rasta-alert-message {:subject "Alert: Test card has reached its goal"})
-                       (mt/summarize-multipart-single-email email test-card-regex))))}}
+                (is (= (rasta-alert-message {:subject "Alert: Test card has reached its goal"
+                                             :message [{pulse.test-util/card-name true
+                                                        "This question has reached its goal of 5\\.9\\." true}
+                                                       pulse.test-util/png-attachment
+                                                       pulse.test-util/png-attachment]})
+                       (mt/summarize-multipart-single-email email test-card-regex
+                                                            #"This question has reached its goal of 5\.9\."))))}}
 
             "no data"
             {:card
@@ -574,8 +579,13 @@
              :assert
              {:email
               (fn [_ [email]]
-                (is (= (rasta-alert-message {:subject "Alert: Test card has gone below its goal"})
-                       (mt/summarize-multipart-single-email email test-card-regex))))}}
+                (is (= (rasta-alert-message {:subject "Alert: Test card has gone below its goal"
+                                             :message [{pulse.test-util/card-name true
+                                                        "This question has gone below its goal of 1\\.1\\." true}
+                                                       pulse.test-util/png-attachment
+                                                       pulse.test-util/png-attachment]})
+                       (mt/summarize-multipart-single-email email test-card-regex
+                                                            #"This question has gone below its goal of 1\.1\."))))}}
 
             "with no satisfying data"
             {:card
