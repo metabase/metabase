@@ -26,7 +26,6 @@ import {
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
 import { Box, Button, Modal } from "metabase/ui";
-import Question from "metabase-lib/v1/Question";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
