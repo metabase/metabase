@@ -10,7 +10,7 @@ import { ChartSettingInputNumeric } from "metabase/visualizations/components/set
 import { ChartSettingMultiSelect } from "metabase/visualizations/components/settings/ChartSettingMultiSelect";
 import { ChartSettingRadio } from "metabase/visualizations/components/settings/ChartSettingRadio";
 import { ChartSettingSegmentedControl } from "metabase/visualizations/components/settings/ChartSettingSegmentedControl";
-import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect";
+import { ChartSettingSelect } from "metabase/visualizations/components/settings/ChartSettingSelect";
 import { ChartSettingToggle } from "metabase/visualizations/components/settings/ChartSettingToggle";
 
 const WIDGETS = {
