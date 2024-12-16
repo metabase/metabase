@@ -3,7 +3,8 @@ name: E2E Component Tests for Embedding SDK
 on:
   push:
     branches:
-      - "fix-sdk-add-package-json-to-exports-block"
+      - "master"
+      - "release-**"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 

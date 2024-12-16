@@ -3,11 +3,11 @@ name: E2E Cross-version Component Tests for Embedding SDK
 on:
   push:
     branches:
-      - "fix-sdk-add-package-json-to-exports-block"
-#  pull_request:
-#    types: [opened, synchronize, reopened, ready_for_review]
-#    branches:
-#      - "release-**"
+      - "release-**"
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - "release-**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -55,10 +55,8 @@ jobs:
             } = require('${{ github.workspace }}/release/dist/index.cjs');
             const targetBranchName = '${{ github.base_ref || github.ref }}';
 
-            // FIXME: revert this once the CI issue is fixed
-            // const version = getVersionFromReleaseBranch(targetBranchName);
-            // const requirements = getBuildRequirements(version);
-            const requirements = getBuildRequirements("v0.52.3");
+            const version = getVersionFromReleaseBranch(targetBranchName);
+            const requirements = getBuildRequirements(version);
 
             return {
               java_version: requirements.java,
@@ -118,16 +116,12 @@ jobs:
             const { getSdkVersionFromReleaseBranchName } = require('${{ github.workspace }}/release/dist/index.cjs');
             const branchName = '${{ github.base_ref || github.ref }}';
 
-            // FIXME: This is for debugging purposes only. TO DELETE.
-            const sdk_version = '0.52.3-nightly'
-            console.log("SDK version is", sdk_version);
-
-            // const sdk_version = await getSdkVersionFromReleaseBranchName({
-            //   github,
-            //   owner: context.repo.owner,
-            //   repo: context.repo.repo,
-            //   branchName,
-            // });
+            const sdk_version = await getSdkVersionFromReleaseBranchName({
+              github,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branchName,
+            });
 
             return {
               sdk_version,
