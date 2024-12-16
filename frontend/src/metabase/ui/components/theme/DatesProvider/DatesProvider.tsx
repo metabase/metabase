@@ -12,7 +12,6 @@ export function DatesProvider({ children }: DatesProviderProps) {
     locale: dayjs().locale(),
     firstDayOfWeek: dayjs().startOf("week").day() as DayOfWeek,
   };
-
   return (
     <MantineDatesProvider settings={settings}>{children}</MantineDatesProvider>
   );
