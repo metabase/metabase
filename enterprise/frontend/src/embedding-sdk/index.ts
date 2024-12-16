@@ -29,4 +29,4 @@ export type {
 
 export type { Dashboard as MetabaseDashboard } from "metabase-types/api";
 
-// REVERT ME - bogus file change to trigger CI's conditional filtering
+// REVERT ME - bogus file change to trigger conditional filtering

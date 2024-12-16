@@ -5,6 +5,7 @@ on:
     branches:
       - "master"
       - "release-**"
+      - "fix-sdk-add-package-json-to-exports-block"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
