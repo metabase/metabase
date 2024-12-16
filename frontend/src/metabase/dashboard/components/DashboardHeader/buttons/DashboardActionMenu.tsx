@@ -1,7 +1,7 @@
 import { type JSX, type MouseEvent, useState } from "react";
 import { withRouter } from "react-router";
 import type { WithRouterProps } from "react-router/lib/withRouter";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -83,7 +83,7 @@ const DashboardActionMenuInner = ({
               icon={<Icon name="move" />}
               component="a"
               href={`${location?.pathname}/move`}
-            >{t`Move`}</Menu.Item>
+            >{c("A verb, not a noun").t`Move`}</Menu.Item>
           </>
         )}
 
@@ -91,7 +91,7 @@ const DashboardActionMenuInner = ({
           icon={<Icon name="clone" />}
           component="a"
           href={`${location?.pathname}/copy`}
-        >{t`Duplicate`}</Menu.Item>
+        >{c("A verb, not a noun").t`Duplicate`}</Menu.Item>
 
         {canEdit && (
           <>

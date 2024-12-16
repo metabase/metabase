@@ -1,5 +1,5 @@
 import { type JSX, useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
@@ -171,7 +171,7 @@ export const QuestionMoreActionsMenu = ({
           data-testid={MOVE_TESTID}
           onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
         >
-          {t`Move`}
+          {c("A verb, not a noun").t`Move`}
         </Menu.Item>
       </>
     ),
@@ -182,7 +182,7 @@ export const QuestionMoreActionsMenu = ({
         data-testid={CLONE_TESTID}
         onClick={() => onOpenModal(MODAL_TYPES.CLONE)}
       >
-        {t`Duplicate`}
+        {c("A verb, not a noun").t`Duplicate`}
       </Menu.Item>
     ),
     hasCollectionPermissions && (

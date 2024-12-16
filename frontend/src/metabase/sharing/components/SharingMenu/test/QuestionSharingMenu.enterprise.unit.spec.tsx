@@ -14,7 +14,7 @@ describe("QuestionSharingMenu > Enterprise", () => {
       isAdmin: false,
     });
     await openMenu();
-    expect(screen.getByText("Create alerts")).toBeInTheDocument();
+    expect(screen.getByText("Create alert")).toBeInTheDocument();
   });
 
   describe("alerts permission disabled", () => {
@@ -25,7 +25,7 @@ describe("QuestionSharingMenu > Enterprise", () => {
         isEnterprise: true,
       });
       await openMenu();
-      expect(screen.queryByText("Create alerts")).not.toBeInTheDocument();
+      expect(screen.queryByText("Create alert")).not.toBeInTheDocument();
     });
 
     it('should show a "Public link" button item if public sharing is enabled and the user lacks alerts permissions', async () => {

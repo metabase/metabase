@@ -164,7 +164,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
 function openAlertForQuestion(id) {
   H.visitQuestion(id);
-  H.openSharingMenu("Create alerts");
+  H.openSharingMenu("Create alert");
 }
 
 function saveAlert() {
@@ -176,6 +176,6 @@ function saveAlert() {
   });
   cy.wait("@saveCard");
 
-  H.openSharingMenu("Create alerts");
+  H.openSharingMenu("Create alert");
   H.modal().button("Done").click();
 }

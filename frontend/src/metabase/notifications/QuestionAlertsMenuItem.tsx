@@ -29,7 +29,7 @@ export function QuestionAlertsMenuItem({
 
   return (
     <CommonNotificationsMenuItem
-      title={hasAlerts ? t`Edit alerts` : t`Create alerts`}
+      title={hasAlerts ? t`Edit alerts` : t`Create alert`}
       iconName={hasAlerts ? "alert_filled" : "alert"}
       onClick={onClick}
     />
