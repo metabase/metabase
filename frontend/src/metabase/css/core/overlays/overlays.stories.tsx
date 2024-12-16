@@ -195,12 +195,7 @@ const getLaunchers = ({ portalRoot }: { portalRoot: HTMLElement }) => {
   return launchers;
 };
 
-/** Launch overlay A, then use it to launch overlay B
- *
- * For convenience and to clarify the expected behavior, this function makes
- * several expect() assertions with storybook/jest. These assertions do not run
- * in CI. The expected behavior is validated in CI via visual regression tests.
- */
+/** Launch overlay A, then use it to launch overlay B */
 const launchAThenB = async (
   aType: OverlayType,
   bType: OverlayType,
