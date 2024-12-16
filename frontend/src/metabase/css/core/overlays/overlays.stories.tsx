@@ -1,4 +1,3 @@
-// FIXME: Let modals finish animations before launching the next item in the sequence - or enable prefers-reduced-motion
 import type { Store } from "@reduxjs/toolkit";
 import type { StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/testing-library";
