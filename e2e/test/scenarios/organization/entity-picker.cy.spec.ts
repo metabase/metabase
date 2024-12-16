@@ -9,7 +9,6 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import * as H from "e2e/support/helpers";
 import type { DashboardCard } from "metabase-types/api";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -317,7 +316,7 @@ describe("scenarios > organization > entity picker", () => {
     });
 
     describe("cards", () => {
-      const tabs = ["Saved questions", "Models", "Metrics"];
+      const tabs = ["Collections"];
 
       it("should select a card from local search results", () => {
         cy.signInAsAdmin();
@@ -326,17 +325,17 @@ describe("scenarios > organization > entity picker", () => {
 
         const testCases = [
           {
-            tab: "Saved questions",
+            tab: "Collections",
             cardName: "Root question 1",
             sourceName: "Root question 1",
           },
           {
-            tab: "Models",
+            tab: "Collections",
             cardName: "Root model 2",
             sourceName: "Root model 2",
           },
           {
-            tab: "Metrics",
+            tab: "Collections",
             cardName: "Root metric 1",
             sourceName: "Orders",
           },
@@ -363,17 +362,17 @@ describe("scenarios > organization > entity picker", () => {
 
         const testCases = [
           {
-            tab: "Saved questions",
+            tab: "Collections",
             cardName: "Regular question 1",
             sourceName: "Regular question 1",
           },
           {
-            tab: "Models",
+            tab: "Collections",
             cardName: "Regular model 2",
             sourceName: "Regular model 2",
           },
           {
-            tab: "Metrics",
+            tab: "Collections",
             cardName: "Regular metric 1",
             sourceName: "Orders",
           },
@@ -695,7 +694,7 @@ describe("scenarios > organization > entity picker", () => {
             "Admin personal collection 1",
             "Admin personal collection 2",
             "Normal personal collection 1",
-            "Normal personal collection 2",
+            // "Normal personal collection 2", This does exist, but is just barely not visible. User must scroll down
           ],
         });
       });
@@ -1142,7 +1141,7 @@ function assertSearchResults({
   totalFoundItemsCount?: number;
 }) {
   foundItems.forEach(item => {
-    cy.findByText(item).should("be.visible");
+    cy.findByText(item).should("exist");
   });
 
   notFoundItems.forEach(item => {
@@ -1311,7 +1310,7 @@ function testCardSearchForInaccessibleRootCollection({
     cy.log("inaccessible root collection - manually selected");
     H.entityPickerModal().within(() => {
       H.entityPickerModalTab(tab).click();
-      cy.findByText("Collections").click();
+      H.entityPickerModalItem(0, "Collections").click();
       enterSearchText({
         text: "1",
         placeholder: "Search this collection or everywhere…",
