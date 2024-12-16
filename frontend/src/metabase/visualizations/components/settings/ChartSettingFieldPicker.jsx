@@ -134,14 +134,15 @@ export const ChartSettingFieldPicker = ({
           iconWidth="auto"
           rightSectionWidth="auto"
           rightSection={
-            <Group noWrap spacing="xs" pl="xs" pr="xs">
+            <Group noWrap spacing="sm" p="xs" mr="sm">
               {!disabled && (
-                <ActionIcon c="text-medium" size="sm" radius="xl">
+                <ActionIcon c="text-medium" size="sm" radius="xl" p={0}>
                   <Icon name="chevrondown" />
                 </ActionIcon>
               )}
               {menuWidgetInfo && (
                 <ActionIcon
+                  p={0}
                   c="text-medium"
                   size="sm"
                   radius="xl"
@@ -158,6 +159,7 @@ export const ChartSettingFieldPicker = ({
                 <ActionIcon
                   c="text-medium"
                   size="sm"
+                  p={0}
                   radius="xl"
                   data-testid={`remove-${value}`}
                   onClick={onRemove}
@@ -187,7 +189,7 @@ export const ChartSettingFieldPicker = ({
                 backgroundColor: "var(--mb-color-bg-white) !important",
               },
               border: "none",
-              width: "auto",
+              width: "100%",
               lineHeight: theme.lineHeight,
             },
             rightSection: {
