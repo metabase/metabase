@@ -116,11 +116,9 @@ const InteractiveQuestion = withPublicComponentWrapper(
 InteractiveQuestion.BackButton = BackButton;
 InteractiveQuestion.Filter = Filter;
 InteractiveQuestion.FilterDropdown = FilterDropdown;
-InteractiveQuestion.FilterButton = FilterButton;
 InteractiveQuestion.ResetButton = QuestionResetButton;
 InteractiveQuestion.Title = Title;
 InteractiveQuestion.Summarize = Summarize;
-InteractiveQuestion.SummarizeButton = SummarizeButton;
 InteractiveQuestion.SummarizeDropdown = SummarizeDropdown;
 /** @deprecated Use `InteractiveQuestion.Editor` instead */
 InteractiveQuestion.Notebook = Editor;
