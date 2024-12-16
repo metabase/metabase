@@ -1,0 +1,44 @@
+.ViewButton {
+  --view-button-color: var(--mb-color-brand);
+
+  border: none;
+  transition:
+    background 300ms linear,
+    border 300ms linear;
+  background-color: var(--view-button-color);
+  color: var(--mb-color-text-white);
+
+  &.inactive {
+    /* background-color: alpha(var, 0.2); */
+    background-color: color-mix(
+      in srgb,
+      var(--view-button-color),
+      transparent 20%
+    );
+    color: var(--view-button-color);
+
+    &:hover {
+      /* background-color: alpha(color, 0.35); */
+      background-color: color-mix(
+        in srgb,
+        var(--view-button-color),
+        transparent 35%
+      );
+      color: var(--view-button-color);
+    }
+  }
+
+  &:hover {
+    /* background-color: alpha(color, 0.8); */
+    background-color: color-mix(
+      in srgb,
+      var(--view-button-color),
+      transparent 80%
+    );
+    color: var(--mb-color-text-white);
+  }
+
+  > :global(.Icon) {
+    opacity: 0.6;
+  }
+}
