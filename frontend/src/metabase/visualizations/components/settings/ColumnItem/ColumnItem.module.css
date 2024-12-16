@@ -1,0 +1,24 @@
+.ColumnItemRoot {
+  overflow: hidden;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
+
+  &.dragging {
+    cursor: grabbing;
+    pointer-events: auto !important;
+  }
+}
+
+.ColumnItemDragHandle {
+  flex-shrink: 0;
+}
+
+.ColumnItemRoot.Draggable {
+  cursor: grab;
+
+  &:hover {
+    .ColumnItemDragHandle {
+      color: var(--mb-color-brand);
+    }
+  }
+}
