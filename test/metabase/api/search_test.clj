@@ -1344,7 +1344,7 @@
         {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
 
        ;; TODO investigate why the actions don't get indexed automatically
-       (search/reindex!)
+        (search/reindex!)
 
         (testing "by default do not search for native content"
           (is (= #{["card" mbql-card]
