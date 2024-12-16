@@ -156,7 +156,7 @@
   "Create a search index table if one doesn't exist. Record and return the name of the table, regardless."
   []
   (if *mocking-tables*
-    ;; The atoms are the source of truth, create a new table if necessary.
+    ;; The atoms are the only source of truth, create a new table if necessary.
     (or @*pending-table*
         (let [table-name (gen-table-name)]
           (create-table! table-name)
@@ -175,20 +175,20 @@
   "Make the pending index active if it exists. Returns true if it did so."
   []
   (if *mocking-tables*
-    ;; don't update metadata
+    ;; The atoms are the only source of truth, we must not update the metadata.
     (if-let [pending @*pending-table*]
       (do (reset! *active-table* pending)
           (reset! *pending-table* nil)
           true)
       false)
-    ;; update metadata and prune tables
+    ;; Ensure the metadata is updated and pruned.
     (let [{:keys [pending]} (sync-tracking-atoms!)]
       (when pending
         (reset! *active-table* (search-index-metadata/active-pending! :appdb *index-version-id*))
         (reset! *pending-table* nil))
-      ;; clean up while we're here
+      ;; Clean up while we're here
       (delete-obsolete-tables!)
-      ;; did *we* do a rotation?
+      ;; Did *we* do a rotation?
       (boolean pending))))
 
 (defn- document->entry [entity]
