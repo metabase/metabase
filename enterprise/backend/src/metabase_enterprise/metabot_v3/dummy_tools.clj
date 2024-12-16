@@ -98,7 +98,8 @@
       (get-table-details :get-table-details {:table_id id} {})))
   -)
 
-(defn- metric-details
+(defn metric-details
+  "Get metric details as returned by tools."
   [id]
   (when-let [card (api.card/get-card id)]
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
