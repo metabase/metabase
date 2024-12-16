@@ -304,23 +304,24 @@ jobs:
 
   merge-coverage:
     needs: [e2e-tests]
+    runs-on: ${{ matrix.runner }}
     if: always()
     timeout-minutes: 10
     steps:
 
-      - name: Download all coverage artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: cypress-coverage-*
-          path: coverage/e2e
-          merge-multiple: true
+    - name: Download all coverage artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: cypress-coverage-*
+        path: coverage/e2e
+        merge-multiple: true
 
-      - name: Merge and Upload Coverage Reports
-        run: |
-          if [ -d "coverage/e2e" ]; then
-            yarn nyc merge coverage/e2e coverage/merged-coverage.json
-            yarn nyc report --reporter=lcov --reporter=text --temp-dir coverage --report-dir coverage/merged-report
-          fi
+    - name: Merge and Upload Coverage Reports
+      run: |
+        if [ -d "coverage/e2e" ]; then
+          yarn nyc merge coverage/e2e coverage/merged-coverage.json
+          yarn nyc report --reporter=lcov --reporter=text --temp-dir coverage --report-dir coverage/merged-report
+        fi
 
   pr-env:
     needs: [build]
