@@ -19,6 +19,7 @@ export interface ColorPillProps extends ColorPillAttributes {
   isSelected?: boolean;
   onSelect?: (newColor: string) => void;
   pillSize?: PillSize;
+  "data-testid"?: string;
 }
 
 export const ColorPill = ({
