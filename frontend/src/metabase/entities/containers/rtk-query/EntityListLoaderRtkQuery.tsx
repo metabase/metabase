@@ -69,7 +69,7 @@ const defaultTransformResponse = (data: unknown, _query: EntityQuery) => data;
  *
  * @deprecated use "metabase/api" instead
  */
-export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
+export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   ComposedComponent,
   dispatchApiErrorEvent = true,
   entityAlias,
@@ -265,12 +265,12 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
 /**
  * @deprecated HOCs are deprecated
  */
-export const entityObjectLoaderRtkQuery =
+export const entityListLoaderRtkQuery =
   (eolProps: any) =>
   (ComposedComponent: (props: any) => ReactNode) =>
   // eslint-disable-next-line react/display-name
   (props: any): ReactNode => (
-    <EntityObjectLoaderRtkQuery
+    <EntityListLoaderRtkQuery
       ComposedComponent={ComposedComponent}
       {...props}
       {...eolProps}
