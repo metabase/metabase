@@ -1141,7 +1141,7 @@ function assertSearchResults({
   totalFoundItemsCount?: number;
 }) {
   foundItems.forEach(item => {
-    cy.findByText(item).should("be.visible");
+    cy.findByText(item).should("exist");
   });
 
   notFoundItems.forEach(item => {

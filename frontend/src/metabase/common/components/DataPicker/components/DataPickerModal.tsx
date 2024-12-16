@@ -54,6 +54,7 @@ const QUESTION_PICKER_MODELS: CollectionItemModel[] = [
   "card",
   "dataset",
   "metric",
+  "dashboard",
 ];
 
 const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
