@@ -1,16 +1,10 @@
 (ns metabase.db.custom-migrations.pulse-to-notification-test
   (:require
-   [clojure.test :refer [deftest is testing use-fixtures]]
-   [malli.error :as me]
+   [clojure.test :refer :all]
    [metabase.db.custom-migrations.pulse-to-notification :as pulse-to-notification]
-   [metabase.db.schema-migrations-test.impl :as impl]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.models.notification :as models.notification]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
-   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (defn- sort-handlers
@@ -143,18 +137,18 @@
   (testing "migrate alert with different send conditions"
     (mt/with-model-cleanup [:model/Pulse :model/Notification]
       (mt/with-temp [:model/Card {card-id :id} {}]
-        (doseq [{:keys [expected alert-props]} [{:expected {:send_condition :has_result
-                                                            :send_once      false}
+        (doseq [{:keys [expected alert-props]} [{:expected    {:send_condition :has_result
+                                                               :send_once      false}
                                                  :alert-props {:alert_condition "rows"
                                                                :alert_above_goal nil
                                                                :alert_first_only false}}
-                                                {:expected {:send_condition :goal_above
-                                                            :send_once       false}
+                                                {:expected    {:send_condition :goal_above
+                                                               :send_once       false}
                                                  :alert-props {:alert_condition "goal"
                                                                :alert_above_goal true
                                                                :alert_first_only false}}
-                                                {:expected {:send_condition :goal_below
-                                                            :send_once       true}
+                                                {:expected    {:send_condition :goal_below
+                                                               :send_once       true}
                                                  :alert-props {:alert_condition "goal"
                                                                :alert_above_goal false
                                                                :alert_first_only true}}]]

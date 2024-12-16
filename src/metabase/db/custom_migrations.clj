@@ -1214,9 +1214,8 @@
    cause timeouts."
   true)
 
-(define-migration CreateSampleContent
+(define-migration CreateSampleContent)
   ;; Does nothing. This is left in so we do not alter the liquibase migration history. See: [[CreateSampleContentV2]].
-  )
 
 (defn- replace-temporals [v]
   (if (isa? (type v) java.time.temporal.Temporal)
