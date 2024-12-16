@@ -14,7 +14,7 @@ redirect_from:
 
 A dashboard comprises a set of cards arranged on a grid. These cards can be:
 
-- Questions, such as [tables, charts, or maps](../questions/sharing/visualizing-results.md)
+- Questions, such as [tables, charts, or maps](../questions/visualizations/visualizing-results.md)
 - [Text and header cards](#adding-headings-or-descriptions-with-text-cards)
 - [Link cards](#link-cards)
 
@@ -257,7 +257,7 @@ See [Caching per dashboard](../configuring-metabase/caching.md#dashboard-caching
 
 ## Sharing dashboards with public links
 
-If your Metabase administrator has enabled [public sharing](../questions/sharing/answers.md) on a saved question or dashboard, you can go to that question or dashboard and click on the **sharing** icon to find its public links.
+If your Metabase administrator has enabled [public sharing](../embedding/public-links.md) on a saved question or dashboard, you can go to that question or dashboard and click on the **sharing** icon to find its public links.
 
 ![Share icon](./images/share-icon.png)
 
@@ -265,7 +265,7 @@ Public links can be viewed by anyone, even if they don't have access to Metabase
 
 ## Exporting results from a dashboard
 
-See [Exporting results](../questions/sharing/exporting-results.md#exporting-results-of-a-dashboard).
+See [Exporting results](../questions/exporting-results.md).
 
 ## Configuring a dashboard through its URL
 

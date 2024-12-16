@@ -8,7 +8,7 @@ Questions are queries plus their visualization. You can ask questions using Meta
 
 ## Query builder
 
-### [Asking questions](./query-builder/introduction.md)
+### [Asking questions](./query-builder/editor.md)
 
 An introduction to Metabase's graphical query builder.
 

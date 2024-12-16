@@ -35,7 +35,7 @@ Some kinds of saved questions, however, can't be used as source data:
 
 ## Saving questions
 
-Once you've built your query and [visualized its results](./visualizations/visualizing-results.md), you can save a question to a [dashboard](../../dashboards/introduction.md) (the default), or to a [collection](../../exploration-and-organization/collections.md). You'll need to name the question, include an optional description, and save it to a dashboard or a collection.
+Once you've built your query and [visualized its results](./visualizations/visualizing-results.md), you can save a question to a [dashboard](../dashboards/introduction.md) (the default), or to a [collection](../exploration-and-organization/collections.md). You'll need to name the question, include an optional description, and save it to a dashboard or a collection.
 
 ### Saving questions to dashboards
 
@@ -68,11 +68,11 @@ Once you save a question, you can click on the **info** icon in the upper right 
 - Who created the question, and who edited it last
 - The collection or dashboard the question is saved in
 - The data the question is based on.
-- The question's Entity ID (which you can use with [Serialization](../../installation-and-operation/serialization.md) to keep IDs consistent across multiple Metabases).
+- The question's Entity ID (which you can use with [Serialization](../installation-and-operation/serialization.md) to keep IDs consistent across multiple Metabases).
 
 ### History tab
 
-See [history](../../exploration-and-organization/history.md).
+See [history](../exploration-and-organization/history.md).
 
 ## Downloading your question's results
 
@@ -84,7 +84,7 @@ See [content verification](../exploration-and-organization/content-verification.
 
 ## Bookmark a question
 
-Click the **bookmark** icon to pin a question to your Metabase sidebar. See [Bookmarks](../../exploration-and-organization/exploration.md#bookmarks).
+Click the **bookmark** icon to pin a question to your Metabase sidebar. See [Bookmarks](../exploration-and-organization/exploration.md#bookmarks).
 
 ## Turning a question into a model
 
@@ -94,7 +94,7 @@ You can turn a question into a model to let others know that the results make a 
 
 {% include plans-blockquote.html feature="Caching question results" %}
 
-See [caching per question](../../configuring-metabase/caching.md#question-caching-policy).
+See [caching per question](../configuring-metabase/caching.md#question-caching-policy).
 
 ## Setting up alerts
 

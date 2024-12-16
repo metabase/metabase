@@ -82,7 +82,7 @@ To prevent Metabase from running syncs and scans against a specific table, chang
 2. Hover over the table name in the sidebar.
 3. Click the **eye** icon.
 
-> Hiding a table will also prevent it from showing up in the [query builder](../questions/query-builder/introduction.md) and [data reference](../exploration-and-organization/data-model-reference.md). People can still query hidden tables from the [SQL editor](../questions/native-editor/writing-sql.md).
+> Hiding a table will also prevent it from showing up in the [query builder](../questions/query-builder/editor.md) and [data reference](../exploration-and-organization/data-model-reference.md). People can still query hidden tables from the [SQL editor](../questions/native-editor/writing-sql.md).
 
 ## Syncing and scanning using the API
 

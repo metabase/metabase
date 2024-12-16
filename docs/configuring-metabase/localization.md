@@ -95,7 +95,7 @@ Report timezone is only supported for the following databases:
 
 ## First day of the week
 
-If you need to, you can change the first day of the week for your instance (the default is Sunday). Setting the first day of the week affects things like grouping by week and filtering in questions built using the [query builder](../questions/query-builder/introduction.md). This setting doesn't affect [SQL queries](../questions/native-editor/writing-sql.md).
+If you need to, you can change the first day of the week for your instance (the default is Sunday). Setting the first day of the week affects things like grouping by week and filtering in questions built using the [query builder](../questions/query-builder/editor.md). This setting doesn't affect [SQL queries](../questions/native-editor/writing-sql.md).
 
 ## Localization options
 

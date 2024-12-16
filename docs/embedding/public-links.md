@@ -55,7 +55,7 @@ See docs for the [export format endpoint](https://www.metabase.com/docs/latest/a
 
 Metabase's automatic [drill-through](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) won't work on public dashboards because public links don't give people access to your raw data.
 
-You can simulate drill-through on a public dashboard by setting up a [custom click behavior](../../dashboards/interactive.md) that sends people from one public link to another public link.
+You can simulate drill-through on a public dashboard by setting up a [custom click behavior](../dashboards/interactive.md) that sends people from one public link to another public link.
 
 1. Create a second dashboard to act as the destination dashboard.
 2. [Create a public link](#create-a-public-link-for-a-dashboard) for the destination dashboard.
@@ -104,7 +104,7 @@ See [appearance parameters](./static-embedding-parameters.md#customizing-the-app
 
 ## Filter parameters
 
-You can display a filtered view of your question or dashboard in a public embed. Make sure you've set up a [question filter](../query-builder/filters.md) or [dashboard filter](../dashboards/filters.md) first.
+You can display a filtered view of your question or dashboard in a public embed. Make sure you've set up a [question filter](../questions/query-builder/filters.md) or [dashboard filter](../dashboards/filters.md) first.
 
 To apply a filter to your embedded question or dashboard, add a _query_ parameter to the end of the link in your iframe's `src` attribute, like this:
 
@@ -187,5 +187,5 @@ Admins can see all publicly shared questions, dashboards, and actions in **Admin
 ## Further reading
 
 - [Publishing data visualizations to the web](https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards).
-- [Customizing Metabase's appearance](../../configuring-metabase/appearance.md).
-- [Embedding introduction](../../embedding/start.md).
+- [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
+- [Embedding introduction](../embedding/start.md).

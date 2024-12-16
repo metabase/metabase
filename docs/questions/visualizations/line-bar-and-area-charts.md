@@ -1,7 +1,7 @@
 ---
 title: Line charts, bar charts, and area charts
 redirect_from:
-  - /docs/latest/questions/sharing/visualizations/line-bar-and-area-charts
+  - /docs/latest/questions/visualizations/line-bar-and-area-charts
 ---
 
 # Line charts, bar charts, and area charts

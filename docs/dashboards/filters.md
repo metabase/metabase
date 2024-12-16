@@ -60,7 +60,7 @@ Single Date and Date Range will provide a calendar widget, while the other optio
 
 You can add a time grouping widget to a dashboard to change how charts are grouped by time. For example, you may want to look at the time series charts grouped by month by default, but give people the option to view the results by other groupings: by week, by quarter, and so on.
 
-> Time grouping parameter widget can only be connected to questions built with the [graphical query builder](../questions/query-builder/introduction.md).
+> Time grouping parameter widget can only be connected to questions built with the [graphical query builder](../questions/query-builder/editor.md).
 
 This widget doesn't filter data in the charts; the widget just changes the time granularity for any cards that have a datetime field connected to the widget.
 

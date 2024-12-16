@@ -32,7 +32,7 @@ Also known as signed embedding, [static embedding](./static-embedding.md) is a s
 
 ## Public links and embeds
 
-If you'd like to share your data with the good people of the internet, admins can create a [public link](../questions/sharing/public-links.md) or embed a question or dashboard directly in your website.
+If you'd like to share your data with the good people of the internet, admins can create a [public link](./public-links.md) or embed a question or dashboard directly in your website.
 
 **When to use public links and embeds**: public links and embeds are good for one-off charts and dashboards. Admins can use them when you just need to show someone a chart or dashboard without giving people access to your Metabase. And you don't care who sees the data; you want to make those stats available to everyone.
 

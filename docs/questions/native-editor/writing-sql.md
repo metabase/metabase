@@ -92,7 +92,7 @@ On saved SQL questions without [parameters](./sql-parameters.md), you'll get the
 
 Visualizations created with SQL have limited [drill-through][drill-through] capabilities:
 
-- You can filter results of SQL queries by clicking on data points, zoom in on time series or maps, and use some [column header actions](../sharing/visualizations/table.md#column-heading-options-for-filtering-and-summarizing).
+- You can filter results of SQL queries by clicking on data points, zoom in on time series or maps, and use some [column header actions](../visualizations/table.md#column-heading-options-for-filtering-and-summarizing).
 - You won't be able to drill down to unaggregated records, change time granularity, or break out by categories or locations.
 
 ## Caching results

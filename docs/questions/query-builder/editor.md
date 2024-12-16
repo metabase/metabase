@@ -80,7 +80,7 @@ Check out [visualizing results](../visualizations/visualizing-results.md).
 
 ## Column heading drill-through
 
-When viewing a [table](../sharing/visualizations/table.md), clicking on the heading of a column gives you different options, depending on the columns data type. See [table](../sharing/visualizations/table.md#column-heading-options-for-filtering-and-summarizing).
+When viewing a [table](../visualizations/table.md), clicking on the heading of a column gives you different options, depending on the columns data type. See [table](../visualizations/table.md#column-heading-options-for-filtering-and-summarizing).
 
 ## Custom expressions
 

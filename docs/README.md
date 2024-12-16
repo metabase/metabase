@@ -72,7 +72,7 @@ Metabase's reference documentation.
 
 #### Query builder
 
-- [Asking questions](./questions/query-builder/introduction.md)
+- [Asking questions](./questions/query-builder/editor.md)
 - [Visualizing data](./questions/sharing/visualizing-results.md)
 - [Custom expressions](./questions/query-builder/expressions.md)
 - [List of expressions](./questions/query-builder/expressions-list.md)
