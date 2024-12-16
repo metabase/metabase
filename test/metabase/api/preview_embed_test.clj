@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase.api.preview-embed-test
   (:require
    [buddy.sign.jwt :as jwt]
-   [cheshire.core :as json]
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
    [metabase.api.dashboard-test :as api.dashboard-test]
@@ -13,6 +12,7 @@
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -401,10 +401,8 @@
   (mt/test-driver :postgres
     (testing "Make sure that ID params correctly get converted to numbers as needed (Postgres-specific)..."
       (embed-test/with-embedding-enabled-and-new-secret-key!
-        (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
-                                                            :type     :query
-                                                            :query    {:source-table (mt/id :venues)
-                                                                       :aggregation  [:count]}}}]
+        (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues
+                                                             {:aggregation [:count]})}]
           (embed-test/with-temp-dashcard [dashcard {:dash     {:parameters [{:name "Venue ID"
                                                                              :slug "venue_id"
                                                                              :id   "_VENUE_ID_"
@@ -616,26 +614,26 @@
             (let [url (card-query-url card {:_embedding_params {:LIKED "enabled"}})]
               (is (= [[3 "The Dentist" false]]
                      (-> (mt/user-http-request :crowberto :get 202 url
-                                               :parameters (json/generate-string {:LIKED false}))
+                                               :parameters (json/encode {:LIKED false}))
                          :data
                          :rows)))
               (is (= [[1 "Tempest" true]
                       [2 "Bullit" true]]
                      (-> (mt/user-http-request :crowberto :get 202 url
-                                               :parameters (json/generate-string {:LIKED true}))
+                                               :parameters (json/encode {:LIKED true}))
                          :data
                          :rows)))))
           (testing "for dashboard embeds"
             (let [url (dashcard-url dashcard {:_embedding_params {:LIKED "enabled"}})]
               (is (= [[3 "The Dentist" false]]
                      (-> (mt/user-http-request :crowberto :get 202 url
-                                               :parameters (json/generate-string {:LIKED false}))
+                                               :parameters (json/encode {:LIKED false}))
                          :data
                          :rows)))
               (is (= [[1 "Tempest" true]
                       [2 "Bullit" true]]
                      (-> (mt/user-http-request :crowberto :get 202 url
-                                               :parameters (json/generate-string {:LIKED true}))
+                                               :parameters (json/encode {:LIKED true}))
                          :data
                          :rows))))))))))
 
@@ -665,6 +663,6 @@
             (let [url (dashcard-url dashcard {:_embedding_params {:NAME "enabled"}})]
               (is (= [["Cheongju International Airport/Cheongju Air Base (K-59/G-513)"]]
                      (-> (mt/user-http-request :crowberto :get 202 url
-                                               :parameters (json/generate-string {:NAME "513"}))
+                                               :parameters (json/encode {:NAME "513"}))
                          :data
                          :rows))))))))))

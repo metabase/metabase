@@ -47,10 +47,9 @@ export const getVersionType = (versionString: string) => {
   }
 
   const versionPartsCount = versionString
-    .replace(/\-\w.+/ig, "") // pre-release suffix
+    .replace(/\-\w.+/gi, "") // pre-release suffix
     .replace(/\.0$/, "") // majors have a trailing .0
-    .split(".")
-    .length;
+    .split(".").length;
 
   switch (versionPartsCount) {
     case 2: // x.88
@@ -86,14 +85,108 @@ export const getReleaseBranch = (versionString: string) => {
 };
 
 export const getVersionFromReleaseBranch = (branch: string) => {
+  const majorVersion = getMajorVersionNumberFromReleaseBranch(branch);
+
+  return `v0.${majorVersion}.0`;
+};
+
+export const getSdkVersionFromReleaseTagName = (tagName: string) => {
+  const match = /embedding-sdk-(0\.\d+\.\d+(-nightly)?)/.exec(tagName);
+
+  if (!match) {
+    throw new Error(`Invalid sdk release tag: ${tagName}`);
+  }
+
+  return match[1];
+};
+
+export const getSdkVersionFromReleaseBranchName = async ({
+  github,
+  owner,
+  repo,
+  branchName,
+}: GithubProps & { branchName: string }) => {
+  const majorVersion = getMajorVersionNumberFromReleaseBranch(branchName);
+
+  let sdkVersion: string;
+
+  console.log(
+    `Resolved latest major release version - ${Number(majorVersion)}`,
+  );
+
+  console.log(
+    `Looking for git tag - "embedding-sdk-0.${Number(majorVersion)}.*"`,
+  );
+
+  const latestSdkTagForMajorRelease = await getLastEmbeddingSdkReleaseTag({
+    github,
+    owner,
+    repo,
+    majorVersion,
+  });
+
+  console.log(
+    `Resolved SDK latest release tag for v${majorVersion} - ${latestSdkTagForMajorRelease}`,
+  );
+
+  if (latestSdkTagForMajorRelease) {
+    sdkVersion = getSdkVersionFromReleaseTagName(latestSdkTagForMajorRelease);
+
+    console.log(
+      `Resolved SDK latest release version for v${majorVersion} - ${sdkVersion}`,
+    );
+
+    return sdkVersion;
+  }
+
+  const latestSdkTag = await getLastEmbeddingSdkReleaseTag({
+    github,
+    owner,
+    repo,
+  });
+
+  sdkVersion = getSdkVersionFromReleaseTagName(latestSdkTag);
+
+  console.warn(
+    `Failed to resolve latest SDK package version! Using latest SDK version available - ${sdkVersion}`,
+  );
+
+  return sdkVersion;
+};
+
+/**
+ * queries the github api to get all embedding sdk version tags
+ */
+export async function getLastEmbeddingSdkReleaseTag({
+  github,
+  owner,
+  repo,
+  majorVersion = "",
+}: GithubProps & {
+  majorVersion?: string;
+}) {
+  const tags = await github.paginate(github.rest.git.listMatchingRefs, {
+    owner,
+    repo,
+    ref: `tags/embedding-sdk-0.${majorVersion}`,
+  });
+
+  const lastRelease = getLastReleaseFromTags({
+    tags,
+  });
+
+  return lastRelease;
+}
+
+export const getMajorVersionNumberFromReleaseBranch = (branch: string) => {
   const match = /release-x\.(\d+)\.x$/.exec(branch);
 
   if (!match) {
     throw new Error(`Invalid release branch: ${branch}`);
   }
-  const majorVersion = match[1];
-  return `v0.${majorVersion}.0`;
-}
+
+  return match[1];
+};
 
 export const versionRequirements: Record<
   number,
@@ -167,8 +260,7 @@ export const getNextVersions = (versionString: string): string[] => {
 
 // our milestones don't have the v prefix or a .0 suffix
 export const getMilestoneName = (version: string) => {
-  const [_prefix, major, minor] = getOSSVersion(version)
-    .split(/\.|\-/g)
+  const [_prefix, major, minor] = getOSSVersion(version).split(/\.|\-/g);
 
   return Number(minor) ? `0.${major}.${minor}` : `0.${major}`;
 };
@@ -176,7 +268,7 @@ export const getMilestoneName = (version: string) => {
 // for auto-setting milestones, we don't ever want to auto-set a patch milestone
 // which we release VERY rarely
 export function ignorePatches(version: string) {
-  return version.split('.').length < 4;
+  return version.split(".").length < 4;
 }
 
 export function isPatchVersion(version: string) {
@@ -185,12 +277,15 @@ export function isPatchVersion(version: string) {
 }
 
 const normalizeVersionForSorting = (version: string) =>
-  version.replace(/^(v?)(0|1)\./, '');
+  version.replace(/^(v?)(0|1)\./, "");
 
 export function versionSort(a: string, b: string) {
-  const [aMajor, aMinor, aPatch] = normalizeVersionForSorting(a).split('.').map(Number);
-  const [bMajor, bMinor, bPatch] = normalizeVersionForSorting(b).split('.').map(Number);
-
+  const [aMajor, aMinor, aPatch] = normalizeVersionForSorting(a)
+    .split(".")
+    .map(Number);
+  const [bMajor, bMinor, bPatch] = normalizeVersionForSorting(b)
+    .split(".")
+    .map(Number);
 
   if (aMajor !== bMajor) {
     return aMajor - bMajor;
@@ -212,14 +307,14 @@ export function getLastReleaseFromTags({
   ignorePatches = false,
   ignorePreReleases = false,
 }: {
-  tags: Tag[],
-  ignorePatches?: boolean,
-  ignorePreReleases?: boolean,
+  tags: Tag[];
+  ignorePatches?: boolean;
+  ignorePreReleases?: boolean;
 }) {
   return tags
-    .map(tag => tag.ref.replace('refs/tags/', ''))
+    .map(tag => tag.ref.replace("refs/tags/", ""))
     .filter(ignorePreReleases ? tag => !isPreReleaseVersion(tag) : () => true)
-    .filter(ignorePatches ? v => !isPatchVersion(v) :  () => true)
+    .filter(ignorePatches ? v => !isPatchVersion(v) : () => true)
     .sort(versionSort)
     .reverse()[0];
 }
@@ -232,17 +327,25 @@ export async function getLastReleaseTag({
   github,
   owner,
   repo,
-  version = '',
+  version = "",
   ignorePatches,
   ignorePreReleases,
-}: GithubProps & { version?: string, ignorePatches?: boolean, ignorePreReleases?: boolean }) {
-  const tags =  await github.paginate(github.rest.git.listMatchingRefs, {
+}: GithubProps & {
+  version?: string;
+  ignorePatches?: boolean;
+  ignorePreReleases?: boolean;
+}) {
+  const tags = await github.paginate(github.rest.git.listMatchingRefs, {
     owner,
     repo,
-    ref: `tags/v0.${version ? getMajorVersion(version) : ''}`,
+    ref: `tags/v0.${version ? getMajorVersion(version) : ""}`,
   });
 
-  const lastRelease = getLastReleaseFromTags({ tags, ignorePatches, ignorePreReleases });
+  const lastRelease = getLastReleaseFromTags({
+    tags,
+    ignorePatches,
+    ignorePreReleases,
+  });
 
   return lastRelease;
 }
@@ -261,9 +364,7 @@ export const findNextPatchVersion = (version: string) => {
 
   const baseVersion = `v0.${major}.${minor || 0}.${(patch || 0) + 1}`;
 
-  return suffix ?
-    `${baseVersion}-${suffix}`
-    : baseVersion;
+  return suffix ? `${baseVersion}-${suffix}` : baseVersion;
 };
 
 export const getNextPatchVersion = async ({
@@ -273,7 +374,9 @@ export const getNextPatchVersion = async ({
   majorVersion,
 }: GithubProps & { majorVersion: number }) => {
   const lastRelease = await getLastReleaseTag({
-    github, owner, repo,
+    github,
+    owner,
+    repo,
     version: `v0.${majorVersion.toString()}.0`,
     ignorePatches: false,
     ignorePreReleases: false,
@@ -282,4 +385,4 @@ export const getNextPatchVersion = async ({
   const nextPatch = findNextPatchVersion(lastRelease);
 
   return nextPatch;
-}
+};

@@ -37,7 +37,7 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
-   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -465,12 +465,13 @@
                                :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis"
                                :metabase.query-processor.util.add-alias-info/position      1}]
               compile-res    (qp.compile/compile
-                              {:database 1
-                               :type     :query
-                               :query    {:source-table 1
-                                          :aggregation  [[:count]]
-                                          :breakout     [field-bucketed]
-                                          :order-by     [[:asc field-bucketed]]}})]
+                              (mt/query nil
+                                {:database 1
+                                 :type     :query
+                                 :query    {:source-table 1
+                                            :aggregation  [[:count]]
+                                            :breakout     [field-bucketed]
+                                            :order-by     [[:asc field-bucketed]]}}))]
           (is (= ["SELECT"
                   "  DATE_TRUNC("
                   "    'month',"
@@ -516,11 +517,12 @@
    {:cards [{:name          "Model with JSON"
              :id            123
              :database-id   1
-             :dataset-query {:database 1
-                             :type     :query
-                             :query    {:source-table 1
-                                        :aggregation  [[:count]]
-                                        :breakout     [[:field 1 nil]]}}}]}))
+             :dataset-query (mt/query nil
+                              {:database 1
+                               :type     :query
+                               :query    {:source-table 1
+                                          :aggregation  [[:count]]
+                                          :breakout     [[:field 1 nil]]}})}]}))
 
 (deftest ^:parallel json-breakout-in-model-test
   (mt/test-driver :postgres
@@ -792,19 +794,22 @@
 (def ^:private enums-db-sql
   (str/join
    \newline
-   ["CREATE TYPE \"bird type\" AS ENUM ('toucan', 'pigeon', 'turkey');"
+   ["CREATE SCHEMA bird_schema;"
+    "CREATE TYPE \"bird type\" AS ENUM ('toucan', 'pigeon', 'turkey');"
     "CREATE TYPE bird_status AS ENUM ('good bird', 'angry bird', 'delicious bird');"
+    "CREATE TYPE bird_schema.bird_status AS ENUM ('sad bird', 'baby bird', 'big bird');"
     "CREATE TABLE birds ("
     "  name varchar PRIMARY KEY NOT NULL,"
     "  status bird_status NOT NULL,"
+    "  other_status bird_schema.bird_status NOT NULL,"
     "  type \"bird type\" NOT NULL"
     ");"
     "INSERT INTO"
-    "  birds (\"name\", status, \"type\")"
+    "  birds (\"name\", status, other_status, \"type\")"
     "VALUES"
-    "  ('Rasta', 'good bird', 'toucan'),"
-    "  ('Lucky', 'angry bird', 'pigeon'),"
-    "  ('Theodore', 'delicious bird', 'turkey');"]))
+    "  ('Rasta', 'good bird', 'sad bird', 'toucan'),"
+    "  ('Lucky', 'angry bird', 'baby bird', 'pigeon'),"
+    "  ('Theodore', 'delicious bird', 'big bird', 'turkey');"]))
 
 (defn- create-enums-db!
   "Create a Postgres database called `enums_test` that has a couple of enum types and a couple columns of those types.
@@ -834,7 +839,7 @@
     (do-with-enums-db!
      (fn [db]
        (testing "check that we can actually fetch the enum types from a DB"
-         (is (= #{"bird type" "bird_status"}
+         (is (= #{"\"bird_schema\".\"bird_status\"" "bird type" "bird_status"}
                 (#'postgres/enum-types db))))
 
        (testing "check that describe-table properly describes the database & base types of the enum fields"
@@ -859,10 +864,19 @@
                    :json-unfolding             false}
                   {:table-schema               "public"
                    :table-name                 "birds"
+                   :name                       "other_status"
+                   :database-type              "\"bird_schema\".\"bird_status\""
+                   :base-type                  :type/PostgresEnum
+                   :database-position          2
+                   :database-required          true
+                   :database-is-auto-increment false
+                   :json-unfolding             false}
+                  {:table-schema               "public"
+                   :table-name                 "birds"
                    :name                       "type"
                    :database-type              "bird type"
                    :base-type                  :type/PostgresEnum
-                   :database-position          2
+                   :database-position          3
                    :database-required          true
                    :database-is-auto-increment false
                    :json-unfolding             false}]
@@ -874,16 +888,18 @@
          (let [table-id (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")]
            (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
                     {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
-                    {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
+                    {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}
+                    {:name "other_status", :database_type "\"bird_schema\".\"bird_status\"", :base_type :type/PostgresEnum}}
                   (set (map (partial into {})
                             (t2/select [Field :name :database_type :base_type] :table_id table-id)))))))
 
        (testing "End-to-end check: make sure everything works as expected when we run an actual query"
          (let [table-id           (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")
                bird-type-field-id (t2/select-one-pk Field :table_id table-id, :name "type")]
-           (is (= {:rows        [["Rasta" "good bird" "toucan"]]
+           (is (= {:rows        [["Rasta" "good bird" "sad bird" "toucan"]]
                    :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
                                               " \"public\".\"birds\".\"status\" AS \"status\","
+                                              " \"public\".\"birds\".\"other_status\" AS \"other_status\","
                                               " \"public\".\"birds\".\"type\" AS \"type\" "
                                               "FROM \"public\".\"birds\" "
                                               "WHERE \"public\".\"birds\".\"type\" = CAST('toucan' AS \"bird type\") "
@@ -902,8 +918,7 @@
   (mt/test-driver :postgres
     (do-with-enums-db!
      (fn [db]
-       (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec db)
-                      [(sql.tx/create-materialized-view-of-table-sql driver/*driver* db "birds_m" "birds")])
+       (tx/create-view-of-table! driver/*driver* db "birds_m" "birds" true)
        (sync/sync-database! db)
 
        (testing "check that describe-table properly describes the database & base types of the enum fields"
@@ -928,10 +943,19 @@
                    :json-unfolding             false}
                   {:table-schema               "public"
                    :table-name                 "birds_m"
+                   :name                       "other_status"
+                   :database-type              "\"bird_schema\".\"bird_status\""
+                   :base-type                  :type/PostgresEnum
+                   :database-position          2
+                   :database-required          false
+                   :database-is-auto-increment false
+                   :json-unfolding             false}
+                  {:table-schema               "public"
+                   :table-name                 "birds_m"
                    :name                       "type"
                    :database-type              "bird type"
                    :base-type                  :type/PostgresEnum
-                   :database-position          2
+                   :database-position          3
                    :database-required          false
                    :database-is-auto-increment false
                    :json-unfolding             false}]
@@ -943,6 +967,7 @@
          (let [table-id (t2/select-one-pk Table :db_id (u/the-id db), :name "birds_m")]
            (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
                     {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
+                    {:name "other_status", :database_type "\"bird_schema\".\"bird_status\"", :base_type :type/PostgresEnum}
                     {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
                   (set (map (partial into {})
                             (t2/select [Field :name :database_type :base_type] :table_id table-id)))))))
@@ -950,9 +975,10 @@
        (testing "End-to-end check: make sure everything works as expected when we run an actual query"
          (let [table-id           (t2/select-one-pk Table :db_id (u/the-id db), :name "birds_m")
                bird-type-field-id (t2/select-one-pk Field :table_id table-id, :name "type")]
-           (is (= {:rows        [["Rasta" "good bird" "toucan"]]
+           (is (= {:rows        [["Rasta" "good bird" "sad bird" "toucan"]]
                    :native_form {:query  (str "SELECT \"public\".\"birds_m\".\"name\" AS \"name\","
                                               " \"public\".\"birds_m\".\"status\" AS \"status\","
+                                              " \"public\".\"birds_m\".\"other_status\" AS \"other_status\","
                                               " \"public\".\"birds_m\".\"type\" AS \"type\" "
                                               "FROM \"public\".\"birds_m\" "
                                               "WHERE \"public\".\"birds_m\".\"type\" = CAST('toucan' AS \"bird type\") "
@@ -988,13 +1014,14 @@
                    (is (= columns action-targets))))
                (testing "Can create new records with an enum value"
                  (is (= {:created-row
-                         {:name "new bird", :status "good bird", :type "turkey"}}
+                         {:name "new bird", :status "good bird", :other_status "sad bird" :type "turkey"}}
                         (mt/user-http-request :crowberto
                                               :post 200
                                               (format "action/%s/execute" action-id)
-                                              {:parameters {"name"   "new bird"
-                                                            "status" "good bird"
-                                                            "type"   "turkey"}}))))))))))))
+                                              {:parameters {"name"         "new bird"
+                                                            "status"       "good bird"
+                                                            "other_status" "sad bird"
+                                                            "type"         "turkey"}}))))))))))))
 
 ;; API tests are in [[metabase.api.action-test]]
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test

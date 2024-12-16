@@ -13,9 +13,9 @@ You can style your embedded Metabase components with a theme.
 Here's an example that includes the various styling options available:
 
 ```js
-import {defineEmbeddingSdkTheme} from "@metabase/embedding-sdk-react";
+import { defineMetabaseTheme } from "@metabase/embedding-sdk-react";
 
-const theme = defineEmbeddingSdkTheme({
+const theme = defineMetabaseTheme({
   // Specify a font to use from the set of fonts supported by Metabase.
   // You can set the font to "Custom" to use the custom font
   // configured in your Metabase instance.
@@ -113,6 +113,21 @@ const theme = defineEmbeddingSdkTheme({
       backgroundColor: "#2D2D30",
     },
 
+    // Tooltips
+    tooltip: {
+      // Tooltip text color.
+      textColor: "#FFFFFF",
+
+      // Secondary text color shown in the tooltip, e.g. for tooltip headers and percentage changes.
+      secondaryTextColor: "#949AAB",
+
+      // Tooltip background color.
+      backgroundColor: "#2E353B",
+
+      // Tooltip background color for focused rows.
+      focusedBackgroundColor: "#0A0E10",
+    },
+
     // Data table
     table: {
       cell: {
@@ -188,13 +203,15 @@ const theme = defineEmbeddingSdkTheme({
 
 ### Customizing loader and error components
 
-You can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` in the config.
+You can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` as props to `MetabaseProvider`.
 
 ```tsx
-import { defineEmbeddingSdkConfig } from "@metabase/embedding-sdk-react";
+import { MetabaseProvider, StaticDashboard } from "@metabase/embedding-sdk-react";
 
-const config = defineEmbeddingSdkConfig({
-  loaderComponent: () => <div>Analytics is loading...</div>,
-  errorComponent: ({ message }) => <div>There was an error: {message}</div>,
-});
+<MetabaseProvider
+  loaderComponent={() => <div>Analytics is loading...</div>}
+  errorComponent={({ message }) => <div>There was an error: {message}</div>}
+>
+  <StaticDashboard dashboardId={1} />
+</MetabaseProvider>
 ```

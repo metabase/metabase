@@ -19,7 +19,7 @@
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.setup :as setup]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
@@ -145,7 +145,7 @@
         (events/publish-event! :event/user-joined {:user-id user-id}))
       (snowplow/track-event! ::snowplow/account {:event :new-user-created} user-id)
       ;; return response with session ID and set the cookie as well
-      (mw.session/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
+      (request/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
 
 ;;; Admin Checklist
 

@@ -1,7 +1,7 @@
 (ns metabase.search.impl
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
+   [metabase.config :as config]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.models.collection :as collection]
@@ -10,6 +10,7 @@
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.permissions.util :as perms.u]
+   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config
     :as search.config
@@ -18,7 +19,9 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru deferred-tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -181,7 +184,7 @@
                                     {:effective_ancestors collection_effective_ancestors})))
          :scores          (remove-thunks all-scores))
         (update :dataset_query (fn [dataset-query]
-                                 (when-let [query (some-> dataset-query json/parse-string)]
+                                 (when-let [query (some-> dataset-query json/decode)]
                                    (if (get query "type")
                                      (mbql.normalize/normalize query)
                                      (not-empty (lib/normalize query))))))
@@ -204,6 +207,17 @@
     (not (zero? v))
     v))
 
+(defn default-engine
+  "In the absence of an explicit engine argument in a request, which engine should be used?"
+  []
+  (if config/is-test?
+    ;; TODO The API tests have not yet been ported to reflect the new search's results.
+    :search.engine/in-place
+    (if-let [s (public-settings/search-engine)]
+      (u/prog1 (keyword "search.engine" (name s))
+        (assert (search.engine/supported-engine? <>)))
+      :search.engine/in-place)))
+
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)
         (let [engine (keyword "search.engine" value)]
@@ -216,12 +230,12 @@
 
             :else
             engine)))
-      (search.engine/default-engine)))
+      (default-engine)))
 
 ;; This forwarding is here for tests, we should clean those up.
 
 (defn- apply-default-engine [{:keys [search-engine] :as search-ctx}]
-  (let [default (search.engine/default-engine)]
+  (let [default (default-engine)]
     (when (= default search-engine)
       (throw (ex-info "Missing implementation for default search-engine" {:search-engine search-engine})))
     (log/debugf "Missing implementation for %s so instead using %s" search-engine default)
@@ -257,7 +271,8 @@
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
-   [:calculate-available-models?         {:optional true} [:maybe :boolean]]])
+   [:calculate-available-models?         {:optional true} [:maybe :boolean]]
+   [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -272,6 +287,7 @@
            ids
            is-impersonated-user?
            is-sandboxed-user?
+           include-dashboard-questions?
            is-superuser?
            last-edited-at
            last-edited-by
@@ -290,7 +306,7 @@
     (premium-features/assert-has-any-features
      [:content-verification :official-collections]
      (deferred-tru "Content Management or Official Collections")))
-  (let [models (if (string? models) [models] models)
+  (let [models (if (seq models) models search.config/all-models)
         engine (parse-engine search-engine)
         fvalue (fn [filter-key] (search.config/filter-default engine context filter-key))
         ctx    (cond-> {:archived?                           (boolean (or archived (fvalue :archived)))
@@ -317,6 +333,7 @@
                  (some? offset)                              (assoc :offset-int offset)
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
+                 (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
                  (seq ids)                                   (assoc :ids ids))]
     (when (and (seq ids)
                (not= (count models) 1))
@@ -359,7 +376,7 @@
 (defn- normalize-result-more
   "Additional normalization that is done after we've filtered by permissions, as its more expensive."
   [search-ctx result]
-  (->> (update result :pk_ref json/parse-string)
+  (->> (update result :pk_ref json/decode)
        (add-can-write search-ctx)))
 
 (defn- search-results [search-ctx model-set-fn total-results]
@@ -385,6 +402,10 @@
       (:calculate-available-models? search-ctx)
       (assoc :available_models (model-set-fn search-ctx)))))
 
+(defn- hydrate-dashboards [results]
+  (->> (t2/hydrate results [:dashboard :moderation_status])
+       (map (fn [row] (update row :dashboard #(when % (select-keys % [:id :name :moderation_status])))))))
+
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."
   [search-ctx :- search.config/SearchContext]
@@ -397,6 +418,7 @@
                            (map (partial normalize-result-more search-ctx))
                            (keep #(search.engine/score scoring-ctx %)))
         total-results     (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
+                            true hydrate-dashboards
                             true hydrate-user-metadata
                             (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
                             true (add-collection-effective-location)

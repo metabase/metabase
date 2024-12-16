@@ -1,12 +1,15 @@
 (ns build-drivers.create-uberjar
+  "Create the uberjar for an individual driver."
   (:require
    [build-drivers.common :as c]
    [clojure.java.io :as io]
+   [clojure.tools.build.api :as b]
+   [clojure.tools.build.tasks.uber] ;; workaround for (#50940)
    [clojure.tools.deps.alpha :as deps]
    [clojure.tools.deps.alpha.util.dir :as deps.dir]
    [colorize.core :as colorize]
-   [hf.depstar.api :as depstar]
-   [metabuild-common.core :as u]))
+   [metabuild-common.core :as u]
+   [org.corfield.log4j2-conflict-handler :refer [log4j2-conflict-handler]]))
 
 (set! *warn-on-reflection* true)
 
@@ -77,8 +80,13 @@
   [driver edition]
   (u/step (format "Write %s %s uberjar -> %s" driver edition (c/driver-jar-destination-path driver))
     (let [start-time-ms (System/currentTimeMillis)]
-      (depstar/uber
-       {:class-dir (c/compiled-source-target-dir driver)
-        :uber-file (c/driver-jar-destination-path driver)
-        :basis     (uberjar-basis driver edition)})
+      (b/uber
+       {:class-dir         (c/compiled-source-target-dir driver)
+        :uber-file         (c/driver-jar-destination-path driver)
+        :basis             (uberjar-basis driver edition)
+        ;; merge Log4j2Plugins.dat files. (#50721)
+        :conflict-handlers log4j2-conflict-handler
+        ;; we need to skip this file since on MacOS it conflicts with other licenses, see:
+        ;; https://ask.clojure.org/index.php/13231/switch-tools-build-pull-from-jars-rather-than-exploding-onto
+        :exclude           ["META-INF/LICENSE"]})
       (u/announce "Created uberjar in %d ms." (- (System/currentTimeMillis) start-time-ms)))))

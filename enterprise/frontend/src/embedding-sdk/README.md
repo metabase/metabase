@@ -1,6 +1,6 @@
 # Metabase embedded analytics SDK
 
-![Metabase logo](../../../../docs/images/metabase-logo.svg)
+![Metabase logo](https://raw.githubusercontent.com/metabase/metabase/refs/heads/master/docs/images/metabase-logo.svg)
 
 > This SDK is in public beta and actively being developed. You can expect some changes to the API, especially during the beta. The SDK currently only works with a Metabase 1.51 or higher.
 
@@ -29,7 +29,7 @@ docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:latest
 You can also [download the JAR](https://downloads.metabase.com/enterprise/latest/metabase.jar), and run it like so:
 
 ```sh
-java -jar metabase.jar
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 By default, Metabase will run at `http://localhost:3000`.
@@ -54,4 +54,4 @@ For more on the SDK, check out the [SDK docs](https://www.metabase.com/docs/late
 
 ## Development docs
 
-For developing the SDK, see the [dev docs](https://www.metabase.com/docs/latest/developers-guide/sdk).
+For developing the SDK, see the [dev docs](./dev.md).

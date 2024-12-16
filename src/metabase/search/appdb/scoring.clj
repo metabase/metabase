@@ -1,10 +1,12 @@
 (ns metabase.search.appdb.scoring
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -15,6 +17,16 @@
   "Prefer it when a (potentially nullable) boolean is true."
   [column]
   [:coalesce [:cast column :integer] [:inline 0]])
+
+(defn equal
+  "Prefer it when it matches a specific (non-null) value"
+  [column value]
+  [:coalesce [:case [:= column value] [:inline 1] :else [:inline 0]] [:inline 0]])
+
+(defn prefix
+  "Prefer it when the given value is a completion of a specific (non-null) value"
+  [column value]
+  [:coalesce [:case [:like column (str (str/replace value "%" "%%") "%")] [:inline 1] :else [:inline 0]] [:inline 0]])
 
 (defn size
   "Prefer items whose value is larger, up to some saturation point. Items beyond that point are equivalent."
@@ -69,16 +81,6 @@
    [[(sum-columns (map (partial weighted-score context) scorers))
      :total_score]]))
 
-;; See https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING
-;;  0 (the default) ignores the document length
-;;  1 divides the rank by 1 + the logarithm of the document length
-;;  2 divides the rank by the document length
-;;  4 divides the rank by the mean harmonic distance between extents (this is implemented only by ts_rank_cd)
-;;  8 divides the rank by the number of unique words in document
-;; 16 divides the rank by 1 + the logarithm of the number of unique words in document
-;; 32 divides the rank by itself + 1
-(def ^:private ts-rank-normalization 0)
-
 ;; TODO move these to the spec definitions
 (def ^:private bookmarked-models [:card :collection :dashboard])
 
@@ -101,17 +103,11 @@
               [:= :search_index.model [:inline "metric"]] [:inline "card"]
               :else :search_index.model]]]})
 
-;; TODO this will need to be abstracted for other appdbs
-(defn- view-count-percentile-query [p-value]
-  (let [expr [:raw "percentile_cont(" [:lift p-value] ") WITHIN GROUP (ORDER BY view_count)"]]
-    {:select   [:search_index.model [expr :vcp]]
-     :from     [[search.index/*active-table* :search_index]]
-     :group-by [:search_index.model]
-     :having   [:is-not expr nil]}))
-
 (defn- view-count-percentiles*
   [p-value]
-  (into {} (for [{:keys [model vcp]} (t2/query (view-count-percentile-query p-value))]
+  (into {} (for [{:keys [model vcp]} (t2/query (specialization/view-count-percentile-query
+                                                (search.index/active-table)
+                                                p-value))]
              [(keyword model) vcp])))
 
 (def ^{:private true
@@ -125,7 +121,7 @@
 (defn- view-count-expr [percentile]
   (let [views (view-count-percentiles percentile)
         cases (for [[sm v] views]
-                [[:= :search_index.model [:inline (name sm)]] (max v 1)])]
+                [[:= :search_index.model [:inline (name sm)]] (max (or v 0) 1)])]
     (size :view_count (if (seq cases)
                         (into [:case] cat cases)
                         1))))
@@ -144,15 +140,28 @@
 
 (defn base-scorers
   "The default constituents of the search ranking scores."
-  [search-ctx]
-  {:text         [:ts_rank :search_vector :query [:inline ts-rank-normalization]]
-   :view-count   (view-count-expr search.config/view-count-scaling-percentile)
-   :pinned       (truthy :pinned)
-   :bookmarked   bookmark-score-expr
-   :recency      (inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
-   :user-recency (inverse-duration (user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
-   :dashboard    (size :dashboardcard_count search.config/dashboard-count-ceiling)
-   :model        (model-rank-exp search-ctx)})
+  [{:keys [search-string limit-int] :as search-ctx}]
+  (if (and limit-int (zero? limit-int))
+    {:model       [:inline 1]}
+    ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
+    ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
+    {:text         (specialization/text-score)
+     :view-count   (view-count-expr search.config/view-count-scaling-percentile)
+     :pinned       (truthy :pinned)
+     :bookmarked   bookmark-score-expr
+     :recency      (inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
+     :user-recency (inverse-duration (user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
+     :dashboard    (size :dashboardcard_count search.config/dashboard-count-ceiling)
+     :model        (model-rank-exp search-ctx)
+     :mine         (equal :search_index.creator_id (:current-user-id search-ctx))
+     :exact        (if search-string
+                     ;; perform the lower casing within the database, in case it behaves differently to our helper
+                     (equal [:lower :search_index.name] [:lower search-string])
+                     [:inline 0])
+     :prefix       (if search-string
+                     ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
+                     (prefix [:lower :search_index.name] (u/lower-case-en search-string))
+                     [:inline 0])}))
 
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."

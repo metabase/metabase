@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.analyze.classifiers.name :as classifiers.name]
    [metabase.models.interface :as mi]
-   [metabase.models.table :as table :refer [Table]]))
+   [metabase.models.table :refer [Table]]))
 
 (deftest ^:parallel semantic-type-for-name-and-base-type-test
   (doseq [[input expected] {["id"      :type/Integer] :type/PK

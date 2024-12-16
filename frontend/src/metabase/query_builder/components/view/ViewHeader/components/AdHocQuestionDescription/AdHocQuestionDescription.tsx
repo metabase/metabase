@@ -1,10 +1,9 @@
 import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-
-import { AggregationAndBreakoutDescription } from "./AdHocQuestionDescription.styled";
 
 type AdHocQuestionDescriptionProps = {
   onClick?: () => void;
@@ -85,9 +84,9 @@ export const AdHocQuestionDescription = ({
   }
 
   return (
-    <AggregationAndBreakoutDescription onClick={onClick}>
+    <span className={onClick ? CS.cursorPointer : ""} onClick={onClick}>
       {adHocDescription}
-    </AggregationAndBreakoutDescription>
+    </span>
   );
 };
 

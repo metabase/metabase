@@ -13,6 +13,7 @@ describe("metabase-lib/v1/expressions/recursive-parser", () => {
   const A = ["segment", "A"];
   const B = ["dimension", "B"];
   const C = ["dimension", "C"];
+  const D = ["dimension", "D"];
 
   it("should parse numeric literals", () => {
     expect(process("0")).toEqual(0);
@@ -107,24 +108,61 @@ describe("metabase-lib/v1/expressions/recursive-parser", () => {
     ]);
   });
 
+  it("should handle IF expression", () => {
+    expect(process("IF(A,B)")).toEqual(["if", [[A, B]]]);
+    expect(process("IF(A,B,X,Y)")).toEqual([
+      "if",
+      [
+        [A, B],
+        [X, Y],
+      ],
+    ]);
+    expect(process("IF(A,B,C)")).toEqual(["if", [[A, B]], { default: C }]);
+    expect(process("IF(A,B,X,Y,C)")).toEqual([
+      "if",
+      [
+        [A, B],
+        [X, Y],
+      ],
+      { default: C },
+    ]);
+  });
+
   it("should use MBQL canonical function names", () => {
     expect(process("regexextract(B,C)")).toEqual(["regex-match-first", B, C]);
   });
 
-  it("should handle function options", () => {
-    expect(filter("contains(B, C, 'case-insensitive')")).toEqual([
-      "contains",
-      B,
-      C,
-      { "case-sensitive": false },
-    ]);
-    expect(filter("interval(B, -1, 'days', 'include-current')")).toEqual([
-      "time-interval",
-      B,
-      -1,
-      "days",
-      { "include-current": true },
-    ]);
+  it.each([
+    {
+      source: "contains(B, C, 'case-insensitive')",
+      expression: ["contains", B, C, { "case-sensitive": false }],
+    },
+    {
+      source: "contains(B, C, D)",
+      expression: ["contains", {}, B, C, D],
+    },
+    {
+      source: "contains(B, C, D, 'case-insensitive')",
+      expression: ["contains", { "case-sensitive": false }, B, C, D],
+    },
+    {
+      source: "doesNotContain(B, C, D, 'case-insensitive')",
+      expression: ["does-not-contain", { "case-sensitive": false }, B, C, D],
+    },
+    {
+      source: "startsWith(B, C, D, 'case-insensitive')",
+      expression: ["starts-with", { "case-sensitive": false }, B, C, D],
+    },
+    {
+      source: "endsWith(B, C, D, 'case-insensitive')",
+      expression: ["ends-with", { "case-sensitive": false }, B, C, D],
+    },
+    {
+      source: "interval(B, -1, 'days', 'include-current')",
+      expression: ["time-interval", B, -1, "days", { "include-current": true }],
+    },
+  ])("should handle function options: $source", ({ source, expression }) => {
+    expect(filter(source)).toEqual(expression);
   });
 
   it("should use MBQL negative shorthands", () => {

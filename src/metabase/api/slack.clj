@@ -1,7 +1,6 @@
 (ns metabase.api.slack
   "/api/slack endpoints"
   (:require
-   [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [compojure.core :refer [PUT]]
@@ -10,6 +9,7 @@
    [metabase.config :as config]
    [metabase.integrations.slack :as slack]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
@@ -20,12 +20,16 @@
   (let [metabase-info (get-in diagnostic-info [:bugReportDetails :metabase-info])
         system-info (get-in diagnostic-info [:bugReportDetails :system-info])
         version-info (get-in diagnostic-info [:bugReportDetails :metabase-info :version])
+        description (get diagnostic-info :description)
         file-url (if (string? file-info)
                    file-info
-                   (get file-info :url_private))]
+                   (:url file-info))]
     [{:type "section"
       :text {:type "mrkdwn"
              :text "A new bug report has been submitted. Please check it out!"}}
+     {:type "section"
+      :text {:type "mrkdwn"
+             :text (str "*Description:*\n" (or description "N/A"))}}
      {:type "section"
       :fields [{:type "mrkdwn"
                 :text (str "*URL:*\n" (get diagnostic-info :url "N/A"))}
@@ -46,7 +50,7 @@
                            (get system-info :os.version "N/A"))}
                {:type "mrkdwn"
                 :text (str "*Version info:*\n```"
-                           (json/generate-string version-info {:pretty true})
+                           (json/encode version-info {:pretty true})
                            "```")}]}
      {:type "divider"}
      {:type "actions"
@@ -57,7 +61,7 @@
                   :url (str "https://metabase-debugger.vercel.app/?fileId="
                             (if (string? file-info)
                               (last (str/split file-info #"/"))  ; Extract file ID from URL
-                              (get file-info :id)))
+                              (:id file-info)))
                   :style "primary"}
                  {:type "button"
                   :text {:type "plain_text"
@@ -141,7 +145,7 @@
   (try
     (let [files-channel (slack/files-channel)
           bug-report-channel (slack/bug-report-channel)
-          file-content (.getBytes (json/generate-string diagnosticInfo {:pretty true}))
+          file-content (.getBytes (json/encode diagnosticInfo {:pretty true}))
           file-info (slack/upload-file! file-content
                                         "diagnostic-info.json"
                                         files-channel)]

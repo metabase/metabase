@@ -1,6 +1,5 @@
 (ns metabase.integrations.slack-test
   (:require
-   [cheshire.core :as json]
    [clj-http.fake :as http-fake]
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -9,6 +8,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
+   [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
    (java.nio.charset Charset)
@@ -25,7 +25,7 @@
 
 (defn- mock-paged-response-body [{:keys [query-string], :as request} response-body]
   (if (string? response-body)
-    (recur request (json/parse-string response-body true))
+    (recur request (json/decode+kw response-body))
     (let [{:keys [cursor]} (parse-query-string query-string)]
       ;; if the mock handler is called without a `cursor` param, return response with a `next_cursor`; if passed that
       ;; `cursor`, remove the `next_cursor`. That way we should get two pages total for testing paging
@@ -45,7 +45,7 @@
   {:status 200
    :body   (if (string? body)
              body
-             (json/generate-string body))})
+             (json/encode body))})
 
 (defn- test-no-auth-token!
   "Test that a Slack API endpoint function returns `nil` if a Slack API token isn't configured."
@@ -193,7 +193,8 @@
       (http-fake/with-fake-routes fake-upload-routes
         (tu/with-temporary-setting-values [slack-token "test-token"
                                            slack-app-token nil]
-          (is (= "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
+          (is (= {:url "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
+                  :id "DDDDDDDDD-EEEEEEEEE"}
                  (slack/upload-file! image-bytes filename channel-id)))))
       ;; Slack app token requires joining the `metabase_files` channel before uploading a file
       (http-fake/with-fake-routes
@@ -202,7 +203,8 @@
                (fn [_] (mock-200-response (slurp "./test_resources/slack_conversations_join_response.json"))))
         (tu/with-temporary-setting-values [slack-token nil
                                            slack-app-token "test-token"]
-          (is (= "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
+          (is (= {:url "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
+                  :id "DDDDDDDDD-EEEEEEEEE"}
                  (slack/upload-file! image-bytes filename channel-id))))
         (testing (str "upload-file! will attempt to join channels by internal slack id"
                       " but we can continue to use the channel name for posting")
@@ -228,7 +230,7 @@
                                        (case endpoint
                                          "files.completeUploadExternal"
                                          (if @joined?
-                                           (json/parse-string (slurp "./test_resources/slack_upload_file_response.json") keyword)
+                                           (json/decode+kw (slurp "./test_resources/slack_upload_file_response.json"))
                                            (throw (ex-info "Not in that channel"
                                                            {:error-code "not_in_channel"})))
                                          "conversations.join"

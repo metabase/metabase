@@ -4,12 +4,13 @@
    [clojure.string :as str]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.ident :as lib.ident]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
-   [metabase.search :as search]
+   [metabase.search.core :as search]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
@@ -98,6 +99,7 @@
                   :type     :query
                   :query    {:source-table (format "card__%d" (:id model))
                              :breakout     [pk-ref value-ref]
+                             :breakout-idents (lib.ident/indexed-idents 2)
                              :limit        (inc max-indexed-values)}})
                 :data :rows (filter valid-tuples?))]
       (catch Exception e

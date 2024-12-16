@@ -191,6 +191,24 @@
   table-or-card-dependent-metadata
   expression-clause
   expression-parts
+  string-filter-clause
+  string-filter-parts
+  number-filter-clause
+  number-filter-parts
+  coordinate-filter-clause
+  coordinate-filter-parts
+  boolean-filter-clause
+  boolean-filter-parts
+  specific-date-filter-clause
+  specific-date-filter-parts
+  relative-date-filter-clause
+  relative-date-filter-parts
+  exclude-date-filter-clause
+  exclude-date-filter-parts
+  time-filter-clause
+  time-filter-parts
+  default-filter-clause
+  default-filter-parts
   filter-args-display-name]
  [lib.field
   add-field
@@ -215,6 +233,7 @@
   = !=
   < <=
   > >=
+  in not-in
   between
   inside
   is-null not-null

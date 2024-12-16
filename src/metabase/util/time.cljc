@@ -15,6 +15,9 @@
   local-date-regex
   local-datetime-regex
   local-time-regex
+  matches-date?
+  matches-date-time?
+  matches-time?
   offset-datetime-regex
   offset-time-regex
   to-range
@@ -30,6 +33,7 @@
   unit-diff
   truncate
   add
+  extract
   format-for-base-type
   local-date
   local-date-time

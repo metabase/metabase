@@ -262,7 +262,7 @@
                                         ["varargs"
                                          #js [(name tag) (clj->js opts) js-field "hotel" "motel"]
                                          [tag opts field "hotel" "motel"]]]]
-    (testing (str (str tag) " in " label " form with" (when (empty? opts) "out") " options")
+    (testing (str tag " in " label " form with" (when (empty? opts) "out") " options")
       (let [legacy-query      #js {:type  "query"
                                    :query #js {:source_table (meta/id :venues)
                                                :filter       legacy-expr}}
@@ -420,11 +420,20 @@
     [:get-week {} [:field {} int?]]
     (lib.js/expression-clause "get-week" [(meta/field-metadata :products :created-at)] nil)
 
+    [:get-day-of-week {} [:field {} int?] :iso]
+    (lib.js/expression-clause "get-day-of-week" [(meta/field-metadata :products :created-at) "iso"] nil)
+
+    [:get-day-of-week {} [:field {} int?]]
+    (lib.js/expression-clause "get-day-of-week" [(meta/field-metadata :products :created-at)] nil)
+
     [:temporal-extract {} [:field {} int?] :day-of-week]
     (lib.js/expression-clause "temporal-extract" [(meta/field-metadata :products :created-at) "day-of-week"] nil)
 
     [:temporal-extract {} [:field {} int?] :day-of-week :iso]
     (lib.js/expression-clause "temporal-extract" [(meta/field-metadata :products :created-at) "day-of-week" "iso"] nil)
+
+    [:during {} [:field {} int?] "2024-12-05T22:13:54" :minute]
+    (lib.js/expression-clause "during" [(meta/field-metadata :products :created-at) "2024-12-05T22:13:54" "minute"] nil)
 
     [:datetime-diff {} [:field {} int?] [:field {} int?] :day]
     (lib.js/expression-clause "datetime-diff" [(meta/field-metadata :products :created-at) (meta/field-metadata :products :created-at) "day"] nil))

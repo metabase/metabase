@@ -12,7 +12,8 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import {
-  adjustCase,
+  adjustCaseOrIf,
+  adjustMultiArgOptions,
   adjustOffset,
   adjustOptions,
   useShorthands,
@@ -230,7 +231,8 @@ function prattCompiler({
       adjustOptions,
       useShorthands,
       adjustOffset,
-      adjustCase,
+      adjustCaseOrIf,
+      adjustMultiArgOptions,
       expression =>
         resolve({
           expression,

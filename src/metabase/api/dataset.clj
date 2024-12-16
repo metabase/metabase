@@ -1,7 +1,6 @@
 (ns metabase.api.dataset
   "/api/dataset endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
@@ -14,7 +13,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.card :refer [Card]]
-   [metabase.models.database :as database :refer [Database]]
+   [metabase.models.database :refer [Database]]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.table :refer [Table]]
@@ -28,6 +27,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -136,9 +136,9 @@
    format_rows            [:maybe ms/BooleanValue]
    pivot_results          [:maybe ms/BooleanValue]
    export-format          ExportFormat}
-  (let [{:keys [was-pivot] :as query} (json/parse-string query keyword)
+  (let [{:keys [was-pivot] :as query} (json/decode+kw query)
         query                         (dissoc query :was-pivot)
-        viz-settings                  (-> (json/parse-string visualization_settings viz-setting-key-fn)
+        viz-settings                  (-> (json/decode visualization_settings viz-setting-key-fn)
                                           (update :table.columns mbql.normalize/normalize)
                                           mb.viz/norm->db)
         query                         (-> query

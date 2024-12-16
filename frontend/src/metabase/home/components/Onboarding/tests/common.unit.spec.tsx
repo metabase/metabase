@@ -22,7 +22,7 @@ describe("Onboarding", () => {
     jest.clearAllMocks();
   });
 
-  it("should have four sections by default", () => {
+  it("should have four sections by default for admins", () => {
     setup();
 
     [
@@ -37,7 +37,28 @@ describe("Onboarding", () => {
     });
   });
 
-  it("'database' accordion item should be open by default", () => {
+  it("should not render the 'Set up' section for non-admins", () => {
+    setup({ isAdmin: false });
+
+    [
+      "Start visualizing your data",
+      "Get email updates and alerts",
+      "Get the most out of Metabase",
+    ].forEach(section => {
+      expect(
+        screen.getByRole("heading", { name: section }),
+      ).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByRole("heading", { name: "Set up your Metabase" }),
+    ).not.toBeInTheDocument();
+
+    expect(screen.queryByTestId("database-item")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("invite-item")).not.toBeInTheDocument();
+  });
+
+  it("'database' accordion item should be open by default for admins", () => {
     const { scrollIntoViewMock } = setup();
 
     const databaseItem = getItem("database");
@@ -62,14 +83,38 @@ describe("Onboarding", () => {
     expect(scrollIntoViewMock).not.toHaveBeenCalled();
   });
 
+  it("'x-ray' accordion item should be open by default for non-admins", () => {
+    const { scrollIntoViewMock } = setup({ isAdmin: false });
+
+    const xRayItem = getItem("x-ray");
+    const xRayItemControl = getItemControl("Create automatic dashboards");
+
+    expect(xRayItem).toHaveAttribute("data-active", "true");
+    expect(xRayItemControl).toHaveAttribute("data-active", "true");
+    expect(xRayItemControl).toHaveAttribute("aria-expanded", "true");
+
+    expect(scrollIntoViewMock).not.toHaveBeenCalled();
+  });
+
   it("should be possible to open a different item", async () => {
     const { scrollIntoViewMock } = setup();
+    expect(scrollIntoViewMock).not.toHaveBeenCalled();
 
     expect(getItem("database")).toHaveAttribute("data-active", "true");
     await userEvent.click(getItemControl("Query with SQL"));
+    expect(scrollIntoViewMock).toHaveBeenCalled();
 
     expect(getItem("database")).not.toHaveAttribute("data-active");
     expect(getItem("sql")).toHaveAttribute("data-active", "true");
+  });
+
+  it("should scroll the last remembered item into view on page load", () => {
+    const { scrollIntoViewMock } = setup({ openItem: "sql" });
+
+    expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
+
+    // closing the item should not trigger `scrollIntoView` again
+    userEvent.click(getItemControl("Query with SQL"));
     expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
   });
 
@@ -84,6 +129,23 @@ describe("Onboarding", () => {
 
     expect(databaseItemControl).toHaveAttribute("aria-expanded", "false");
     expect(sqlItemControl).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it.each<ChecklistItemValue>([
+    "x-ray",
+    "notebook",
+    "sql",
+    "dashboard",
+    "subscription",
+    "alert",
+  ])("%s CTA should not be visible to non-admins", item => {
+    setup({ isAdmin: false, openItem: item });
+
+    expect(screen.getByTestId(`${item}-item`)).toHaveAttribute(
+      "data-active",
+      "true",
+    );
+    expect(screen.queryByTestId(`${item}-cta`)).not.toBeInTheDocument();
   });
 
   describe("'Set up your Metabase' section", () => {
@@ -173,6 +235,20 @@ describe("Onboarding", () => {
       expect(
         within(getItem("x-ray")).queryByTestId("x-ray-cta"),
       ).not.toBeInTheDocument();
+    });
+
+    it("copy for disabled x-rays should be slightly different for non-admins", () => {
+      setup({ openItem: "x-ray", enableXrays: false, isAdmin: false });
+      expect(
+        within(getItem("x-ray")).queryByText(
+          /Hover over a table and click the yellow lightning bolt/,
+        ),
+      ).not.toBeInTheDocument();
+      expect(
+        within(getItem("x-ray")).getByText(
+          /An admin needs to enable this feature first./,
+        ),
+      ).toBeInTheDocument();
     });
 
     it("'notebook' item should render properly", () => {
@@ -389,13 +465,16 @@ describe("Onboarding", () => {
       );
     });
 
-    it("should not render the 'help' section", () => {
+    it("should not render the premium 'help' section", () => {
       setup();
 
       const footer = screen.getByRole("contentinfo");
-      expect(
-        within(footer).queryByTestId("help-section"),
-      ).not.toBeInTheDocument();
+      const helpSection = within(footer).getByTestId("help-section");
+      expect(helpSection).toBeInTheDocument();
+      expect(within(helpSection).getByRole("link")).toHaveProperty(
+        "href",
+        "https://www.metabase.com/help?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=v1",
+      );
     });
   });
 });

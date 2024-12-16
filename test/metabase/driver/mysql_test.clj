@@ -539,11 +539,10 @@
             (sync/sync-table! table)
             (let [field (t2/select-one Field :table_id (u/id table) :name "json_bit → 1234")
                   compile-res (qp.compile/compile
-                               {:database (u/the-id (mt/db))
-                                :type     :query
-                                :query    {:source-table (u/the-id table)
-                                           :aggregation  [[:count]]
-                                           :breakout     [[:field (u/the-id field) nil]]}})]
+                               (mt/mbql-query nil
+                                 {:source-table (u/the-id table)
+                                  :aggregation  [[:count]]
+                                  :breakout     [[:field (u/the-id field) nil]]}))]
               (is (= ["SELECT"
                       "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), DECIMAL) AS `json_bit → 1234`,"
                       "  COUNT(*) AS `count`"
@@ -751,11 +750,11 @@
         (let [details          (tx/dbdef->connection-details :mysql :db {:database-name "table_privileges_test"})
               spec             (sql-jdbc.conn/connection-details->spec :mysql details)
               get-privileges   (fn []
-                                 (let [new-connection-details (cond-> (assoc details
-                                                                             :user "table_privileges_test_user",
-                                                                             :password "password"
-                                                                             :ssl true
-                                                                             :additional-options "trustServerCertificate=true"))]
+                                 (let [new-connection-details (assoc details
+                                                                     :user "table_privileges_test_user",
+                                                                     :password "password"
+                                                                     :ssl true
+                                                                     :additional-options "trustServerCertificate=true")]
                                    (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                     [spec [:mysql new-connection-details]]
                                      (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]

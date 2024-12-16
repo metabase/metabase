@@ -1,17 +1,17 @@
 (ns metabase-enterprise.billing.billing
   "`/api/ee/billing/` endpoint(s)"
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
-   [compojure.core :as compojure :refer [GET]]
+   [compojure.core :refer [GET]]
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.date-2.parse :as u.date.parse]
    [metabase.util.i18n :as i18n]
+   [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
    [com.fasterxml.jackson.core JsonParseException]))
@@ -29,7 +29,7 @@
                              :language     language
                              :content-type :json})
                   :body
-                  (json/parse-string keyword))
+                  json/decode+kw)
           (catch JsonParseException _
             {:content nil})))
    :ttl/threshold (u/minutes->ms 5)))

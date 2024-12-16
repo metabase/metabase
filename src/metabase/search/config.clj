@@ -1,12 +1,12 @@
 (ns metabase.search.config
   (:require
-   [cheshire.core :as json]
    [metabase.api.common :as api]
    [metabase.models.setting :refer [defsetting]]
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
@@ -81,18 +81,37 @@
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
-(def ^:private static-weights
+(def static-weights
+  "Strength of the various scorers."
   {:default
    {:pinned              0
-    :bookmarked          2
-    :recency             1.5
-    :user-recency        1.5
-    :dashboard           0.5
+    :bookmarked          1
+    :recency             1
+    :user-recency        5
+    :dashboard           0
     :model               2
-    :official-collection 2
-    :verified            2
+    :official-collection 1
+    :verified            1
     :view-count          2
-    :text                10}})
+    :text                5
+    :mine                1
+    :exact               5
+    :prefix              0}
+   :command-palette
+   {:prefix               5
+    :model/collection     1
+    :model/dashboard      1
+    :model/metric         1
+    :model/dataset        0.8
+    :model/table          0.8
+    :model/indexed-entity 0.5
+    :model/database       0.5
+    :model/question       0}
+   :entity-picker
+   {:model/table    1
+    :model/dataset  1
+    :model/metric   1
+    :model/question 0}})
 
 (def ^:private FilterDef
   "A relaxed definition, capturing how we can write the filter - with some fields omitted."
@@ -236,7 +255,8 @@
    [:table-db-id                         {:optional true} ms/PositiveInt]
    ;; true to search for verified items only, nil will return all items
    [:verified                            {:optional true} true?]
-   [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]])
+   [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:include-dashboard-questions?        {:optional true} :boolean]])
 
 (defmulti column->string
   "Turn a complex column into a string"
@@ -249,7 +269,7 @@
 
 (defmethod column->string [:card :dataset_query]
   [value _ _]
-  (let [query (json/parse-string value true)]
+  (let [query (json/decode+kw value)]
     (if (= "native" (:type query))
       (-> query :native :query)
       "")))

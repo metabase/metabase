@@ -6,7 +6,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.store :as qp.store]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -47,7 +47,7 @@
   "Preprocess a `source-query` so we can determine the result columns."
   [source-query :- mbql.s/MBQLQuery]
   (try
-    (let [cols (mw.session/as-admin
+    (let [cols (request/as-admin
                  ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
                   {:database (:id (lib.metadata/database (qp.store/metadata-provider)))
                    :type     :query

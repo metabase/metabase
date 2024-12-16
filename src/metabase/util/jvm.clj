@@ -6,31 +6,13 @@
    [clojure.string :as str]
    [clojure.tools.namespace.find :as ns.find]
    [metabase.util.format :as u.format]
-   [metabase.util.log :as log]
-   [nano-id.core :as nano-id])
+   [metabase.util.log :as log])
   (:import
    (java.net InetAddress InetSocketAddress Socket)
-   (java.util Base64 Base64$Decoder Base64$Encoder Locale PriorityQueue Random)
+   (java.util Base64 Base64$Decoder Base64$Encoder Locale PriorityQueue)
    (java.util.concurrent TimeoutException)))
 
 (set! *warn-on-reflection* true)
-
-(defn generate-nano-id
-  "Generates a random NanoID string. Usually these are used for the entity_id field of various models.
-  If an argument is provided, it's taken to be an identity-hash string and used to seed the RNG,
-  producing the same value every time."
-  ([] (nano-id/nano-id))
-  ([seed-str]
-   (let [seed (Long/parseLong seed-str 16)
-         rnd  (Random. seed)
-         gen  (nano-id/custom
-               "_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-               21
-               (fn [len]
-                 (let [ba (byte-array len)]
-                   (.nextBytes rnd ba)
-                   ba)))]
-     (gen))))
 
 (defmacro varargs
   "Make a properly-tagged Java interop varargs argument. This is basically the same as `into-array` but properly tags
@@ -58,7 +40,7 @@
     (catch Throwable _ false)))
 
 (defn host-up?
-  "Returns true if the host given by hostname is reachable, false otherwise "
+  "Returns true if the host given by hostname is reachable, false otherwise"
   [^String hostname]
   (try
     (let [host-addr (InetAddress/getByName hostname)]
@@ -116,8 +98,7 @@
   (=
     (take-last 2 (sort-by identity kompare coll))
     (transduce (map identity) (u/sorted-take 2 kompare) coll))
-  But the entire collection is not in memory, just at most
-  "
+  But the entire collection is not in memory, just at most"
   [size kompare]
   (fn bounded-heap-acc
     ([] (PriorityQueue. size kompare))

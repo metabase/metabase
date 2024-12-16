@@ -1085,24 +1085,23 @@
                                           :breakout    [!month.&Products.products.created_at]
                                           :aggregation [[:distinct &Products.products.id]]
                                           :filter      [:= &Products.products.category "Gizmo"]})])
-      (let [query {:database (mt/id)
-                   :type     :query
-                   :query    {:source-table "card__1"
-                              :joins        [{:fields       :all
-                                              :strategy     :left-join
-                                              :alias        "Card_2"
-                                              :condition    [:=
-                                                             [:field
-                                                              "CREATED_AT"
-                                                              {:base-type :type/DateTime, :temporal-unit :month}]
-                                                             [:field
-                                                              (mt/id :products :created_at)
-                                                              {:base-type     :type/DateTime
-                                                               :temporal-unit :month
-                                                               :join-alias    "Card_2"}]]
-                                              :source-table "card__2"}]
-                              :order-by     [[:asc [:field "CREATED_AT" {:base-type :type/DateTime}]]]
-                              :limit        2}}]
+      (let [query (mt/mbql-query nil
+                    {:source-table "card__1"
+                     :joins        [{:fields       :all
+                                     :strategy     :left-join
+                                     :alias        "Card_2"
+                                     :condition    [:=
+                                                    [:field
+                                                     "CREATED_AT"
+                                                     {:base-type :type/DateTime, :temporal-unit :month}]
+                                                    [:field
+                                                     (mt/id :products :created_at)
+                                                     {:base-type     :type/DateTime
+                                                      :temporal-unit :month
+                                                      :join-alias    "Card_2"}]]
+                                     :source-table "card__2"}]
+                     :order-by     [[:asc [:field "CREATED_AT" {:base-type :type/DateTime}]]]
+                     :limit        2})]
         (mt/with-native-query-testing-context query
           (is (= [["2016-05-01T00:00:00Z" 3 nil                    nil]
                   ["2016-06-01T00:00:00Z" 2 "2016-06-01T00:00:00Z" 1]]

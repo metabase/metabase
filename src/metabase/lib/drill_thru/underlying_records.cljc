@@ -34,6 +34,7 @@
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
@@ -53,9 +54,9 @@
 
   There is another quite different case: clicking the legend of a chart with multiple bars or lines broken out by
   category. Then `column` is nil!"
-  [query                                                      :- ::lib.schema/query
-   stage-number                                               :- :int
-   {:keys [column column-ref dimensions value], :as _context} :- ::lib.schema.drill-thru/context]
+  [query                                                          :- ::lib.schema/query
+   stage-number                                                   :- :int
+   {:keys [column column-ref dimensions row value], :as _context} :- ::lib.schema.drill-thru/context]
   ;; Clicking on breakouts is weird. Clicking on Count(People) by State: Minnesota yields a FE `clicked` with:
   ;; - column is COUNT
   ;; - row[0] has col: STATE, value: "Minnesota"
@@ -63,18 +64,27 @@
   ;; - dimensions which is [{column: STATE, value: "MN"}]
   ;; - value: the aggregated value (the count, the sum, etc.)
   ;; So dimensions is exactly what we want.
-  ;; It returns the table name and row count, since that's used for pluralization of the name.
 
   ;; Clicking on a single-row aggregation, there's no dimensions, but we should support underlying records.
+
+  ;; Clicking on a table cell for an aggregated column when there are additional query stages (e.g. filters) after the
+  ;; underyling breakouts/aggregations stage results in a context like:
+  ;; - (:lib/source column) is NOT :source/aggregations
+  ;; - (:lib/source (lib.underlying/top-level-column query column) IS :source/aggregations
+  ;; - column-ref is similarly NOT an :aggregation ref
+  ;; - dimensions is nil
+  ;; - rows is not nil and can be used to construct the breakout dimensions
 
   ;; Clicking on a chart legend for eg. COUNT(Orders) by Products.CATEGORY and Orders.CREATED_AT has a context like:
   ;; - column is nil
   ;; - value is nil
   ;; - dimensions holds only the legend's column, eg. Products.CATEGORY.
+
+  ;; This function returns the table name and row count, since that's used for pluralization of the name.
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              (lib.underlying/has-aggregation-or-breakout? query)
              ;; Either we clicked the aggregation, or there are dimensions.
-             (or (= (:lib/source column) :source/aggregations)
+             (or (lib.drill-thru.common/aggregation-sourced? query column)
                  (not-empty dimensions))
              ;; Either we need both column and value (cell/map/data point click) or neither (chart legend click).
              (or (and column (some? value))
@@ -92,8 +102,16 @@
      :table-name (when-let [table-or-card (or (some->> query lib.util/source-table-id (lib.metadata/table query))
                                               (some->> query lib.util/source-card-id  (lib.metadata/card  query)))]
                    (lib.metadata.calculation/display-name query stage-number table-or-card))
-     :dimensions dimensions
-     :column-ref column-ref}))
+     ;; If no dimensions were provided but the underlying column comes from an aggregation, then construct the
+     ;; dimensions from the row data.
+     :dimensions (or (not-empty dimensions)
+                     (lib.drill-thru.common/dimensions-from-breakout-columns query column row))
+     ;; If the underlying column comes from an aggregation, then the column-ref needs to be updated as well to the
+     ;; corresponding aggregation ref so that [[drill-underlying-records]] knows to extract the filter implied by
+     ;; aggregations like sum-where.
+     :column-ref (if (lib.drill-thru.common/strictly-underyling-aggregation? query column)
+                   (lib.aggregation/column-metadata->aggregation-ref (lib.underlying/top-level-column query column))
+                   column-ref)}))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/underlying-records
   [_query _stage-number {:keys [row-count table-name]}]
@@ -151,20 +169,27 @@
         ;; The column-ref should be an aggregation ref - look up the full aggregation.
         aggregation (when-let [agg-uuid (last column-ref)]
                       (m/find-first #(= (lib.options/uuid %) agg-uuid)
-                                    (lib.aggregation/aggregations query -1)))]
-    ;; Apply the filters derived from the aggregation.
-    (reduce #(lib.filter/filter %1 -1 %2)
-            filtered
-            ;; If we found an aggregation, check if it implies further filtering.
-            ;; Simple aggregations like :sum don't add more filters; metrics or fancy aggregations like :sum-where do.
-            (when aggregation
-              (case (first aggregation)
-                ;; Fancy aggregations that filter the input - the filter is the last part of the aggregation.
-                (:sum-where :count-where :share)
-                [(last aggregation)]
+                                    (lib.aggregation/aggregations query -1)))
+        ;; Apply the filters derived from the aggregation.
+        agg-filtered (reduce #(lib.filter/filter %1 -1 %2)
+                             filtered
+                             ;; If we found an aggregation, check if it implies further filtering.
+                             ;; Simple aggregations like :sum don't add more filters; metrics or fancy aggregations like :sum-where do.
+                             (when aggregation
+                               (case (first aggregation)
+                                 ;; Fancy aggregations that filter the input - the filter is the last part of the aggregation.
+                                 (:sum-where :count-where :share)
+                                 [(last aggregation)]
 
-                ;; Default: no filters to add.
-                nil)))))
+                                 ;; Default: no filters to add.
+                                 nil)))
+        ;; make all joins include all fields
+        new-joins (mapv #(lib.join/with-join-fields % :all)
+                        (lib.join/joins agg-filtered))]
+    ;; if we have new joins to add, update query with the new joins
+    (if (empty? new-joins)
+      agg-filtered
+      (lib.util/update-query-stage agg-filtered -1 assoc :joins new-joins))))
 
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/underlying-records
   [query _stage-number context & _]
