@@ -20,7 +20,7 @@ To use SDK components with Next.js, the SDK provides an experimental compatibili
 
 To use the compatibility layer, change your imports from `@metabase/embedding-sdk-react` to `@metabase/embedding-sdk-react/nextjs`.
 
-See a  [sample Next.js app that uses this compatibility layer](https://github.com/metabase/metabase-nextjs-sdk-embedding-sample).
+See a [sample Next.js app that uses this compatibility layer](https://github.com/metabase/metabase-nextjs-sdk-embedding-sample).
 
 ## Manual wrapping of the components
 
