@@ -1746,7 +1746,7 @@
                 (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
                 [:total :data])))))))
 
-(deftest prometheus-metrics-test
+(deftest prometheus-response-metrics-test
   (testing "Prometheus counters get incremented for error responses"
     (let [calls (atom nil)]
       (mt/with-dynamic-redefs [prometheus/inc! #(swap! calls conj %)]
