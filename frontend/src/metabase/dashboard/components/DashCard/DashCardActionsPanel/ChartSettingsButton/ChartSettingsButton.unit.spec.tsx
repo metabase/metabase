@@ -68,8 +68,8 @@ describe("ChartSettingsButton", () => {
     expect(screen.getByTestId("chartsettings-sidebar")).toBeInTheDocument();
     expect(screen.getByTestId("visualization-root")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByText("Linear Interpolated"));
+    await userEvent.click(screen.getByDisplayValue("Linear Interpolated"));
 
-    expect(screen.getByTestId("popover")).toBeInTheDocument();
+    expect(screen.getByTestId("select-dropdown")).toBeInTheDocument();
   });
 });

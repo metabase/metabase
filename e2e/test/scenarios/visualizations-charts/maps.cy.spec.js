@@ -32,19 +32,32 @@ describe("scenarios > visualizations > maps", () => {
 
     // When the settings sidebar opens, both latitude and longitude selects are
     // open. That makes it difficult to select each in Cypress, so we click
-    // outside twice to close both of them before reopening them one-by-one. :(
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("New question").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("New question").click();
+    // inside both of them before reopening them one-by-one. :(
+    // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
+    ["Latitude field", "Longitude field"].map(field =>
+      H.leftSidebar()
+        .findByText(field)
+        .parent()
+        .within(() => {
+          cy.findByPlaceholderText("Select a field").click();
+        }),
+    );
 
     // select both columns
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Latitude field").next().click();
+    H.leftSidebar()
+      .findByText("Latitude field")
+      .parent()
+      .within(() => {
+        cy.findByPlaceholderText("Select a field").click();
+      });
     H.popover().contains("LAT").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Longitude field").next().click();
+    H.leftSidebar()
+      .findByText("Longitude field")
+      .parent()
+      .within(() => {
+        cy.findByPlaceholderText("Select a field").click();
+      });
     H.popover().contains("LNG").click();
 
     // check that a map appears
