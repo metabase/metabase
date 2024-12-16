@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import Schemas from "metabase/entities/schemas";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -42,23 +41,19 @@ export function FieldMappingSelect({
 
       {(!hasSelectedDimensionField ||
         (hasSelectedDimensionField && fieldMetadataLoaded)) && (
-        <Schemas.Loader id={table?.schema?.id}>
-          {() => (
-            <SchemaTableAndFieldDataSelector
-              databases={databases}
-              selectedDatabase={database || null}
-              selectedDatabaseId={database?.id || null}
-              selectedTable={table || null}
-              selectedTableId={table?.id || null}
-              selectedField={field || null}
-              selectedFieldId={
-                hasSelectedDimensionField ? tag?.dimension?.[1] : null
-              }
-              setFieldFn={setFieldFn}
-              isInitiallyOpen={!tag.dimension}
-            />
-          )}
-        </Schemas.Loader>
+        <SchemaTableAndFieldDataSelector
+          databases={databases}
+          selectedDatabase={database || null}
+          selectedDatabaseId={database?.id || null}
+          selectedTable={table || null}
+          selectedTableId={table?.id || null}
+          selectedField={field || null}
+          selectedFieldId={
+            hasSelectedDimensionField ? tag?.dimension?.[1] : null
+          }
+          setFieldFn={setFieldFn}
+          isInitiallyOpen={!tag.dimension}
+        />
       )}
     </InputContainer>
   );
