@@ -1,0 +1,303 @@
+{
+  "stats": {
+    "suites": 2,
+    "tests": 9,
+    "passes": 8,
+    "pending": 0,
+    "failures": 1,
+    "start": "2024-09-02T13:18:49.383Z",
+    "end": "2024-09-02T13:19:16.363Z",
+    "duration": 26980,
+    "testsRegistered": 10,
+    "passPercent": 80,
+    "pendingPercent": 0,
+    "other": 0,
+    "hasOther": false,
+    "skipped": 1,
+    "hasSkipped": true
+  },
+  "results": [
+    {
+      "uuid": "e0fdfb15-b6c2-40a2-89e3-ef4f8b834be4",
+      "title": "",
+      "fullFile": "e2e/test/scenarios/dashboard/dashboard-back-navigation.cy.spec.js",
+      "file": "e2e/test/scenarios/dashboard/dashboard-back-navigation.cy.spec.js",
+      "beforeHooks": [],
+      "afterHooks": [],
+      "tests": [],
+      "suites": [
+        {
+          "uuid": "939aadb8-6360-4d49-89b6-46d168db50c0",
+          "title": "scenarios > dashboard > dashboard back navigation",
+          "fullFile": "",
+          "file": "",
+          "beforeHooks": [],
+          "afterHooks": [],
+          "tests": [
+            {
+              "title": "should display a back to the dashboard button when navigating to a question",
+              "fullTitle": "scenarios > dashboard > dashboard back navigation should display a back to the dashboard button when navigating to a question",
+              "timedOut": null,
+              "duration": 5067,
+              "state": "passed",
+              "speed": "medium",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "const dashboardName = \"Orders in a dashboard\";\nconst backButtonLabel = `Back to ${dashboardName}`;\nvisitDashboard(ORDERS_DASHBOARD_ID);\ncy.wait(\"@dashboard\");\ncy.findByTestId(\"dashcard\").findByText(\"Orders\").click();\ncy.wait(\"@cardQuery\");\ncy.findByLabelText(backButtonLabel).should(\"be.visible\");\nopenNotebook();\nsummarize({ mode: \"notebook\" });\npopover().findByText(\"Count of rows\").click();\ncy.findByLabelText(backButtonLabel).should(\"be.visible\");\nvisualize();\ncy.findByLabelText(backButtonLabel).click();\nmodal().button(\"Discard changes\").click();\ncy.findByTestId(\"dashboard-header\").findByText(dashboardName).should(\"be.visible\");\ngetDashboardCard().realHover();\ngetDashboardCardMenu().click();\npopover().findByText(\"Edit question\").click();\ncy.findByLabelText(backButtonLabel).click();\ncy.findByTestId(\"dashboard-header\").findByText(dashboardName).should(\"be.visible\");\nappBar().findByText(\"Our analytics\").click();\ncy.findByTestId(\"collection-table\").findByText(\"Orders\").click();\ncy.findByLabelText(backButtonLabel).should(\"not.exist\");",
+              "err": {},
+              "uuid": "d17f8754-ba8d-4c04-bf17-15dfacc7fd0f",
+              "parentUUID": "939aadb8-6360-4d49-89b6-46d168db50c0",
+              "isHook": false,
+              "skipped": false
+            },
+            {
+              "title": "should expand the native editor when editing a question from a dashboard",
+              "fullTitle": "scenarios > dashboard > dashboard back navigation should expand the native editor when editing a question from a dashboard",
+              "timedOut": null,
+              "duration": 3502,
+              "state": "passed",
+              "speed": "fast",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "createDashboardWithNativeCard();\nvisitDashboard(\"@dashboardId\");\ngetDashboardCard().realHover();\ngetDashboardCardMenu().click();\npopover().findByText(\"Edit question\").click();\ncy.findByTestId(\"native-query-editor\").should(\"be.visible\");\nqueryBuilderHeader().findByLabelText(\"Back to Test Dashboard\").click();\ngetDashboardCard().findByText(\"Orders SQL\").click();\ncy.findByTestId(\"native-query-top-bar\").findByText(\"This question is written in SQL.\").should(\"be.visible\");\ncy.findByTestId(\"native-query-editor\").should(\"not.be.visible\");",
+              "err": {},
+              "uuid": "af36ef5a-6733-4baf-a3f1-f657d6548b6e",
+              "parentUUID": "939aadb8-6360-4d49-89b6-46d168db50c0",
+              "isHook": false,
+              "skipped": false
+            },
+            {
+              "title": "should display a back to the dashboard button in table x-ray dashboards",
+              "fullTitle": "scenarios > dashboard > dashboard back navigation should display a back to the dashboard button in table x-ray dashboards",
+              "timedOut": null,
+              "duration": 1950,
+              "state": "passed",
+              "speed": "fast",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "const cardTitle = \"Total transactions\";\ncy.visit(`/auto/dashboard/table/${ORDERS_ID}?#show=${MAX_CARDS}`);\ncy.wait(\"@dataset\", { timeout: MAX_XRAY_WAIT_TIMEOUT });\ngetDashboardCards().filter(`:contains(\"${cardTitle}\")`).findByText(cardTitle).click();\ncy.wait(\"@dataset\");\nqueryBuilderHeader().findByLabelText(/Back to .*Orders.*/).click();\ngetDashboardCards().filter(`:contains(\"${cardTitle}\")`).should(\"exist\");",
+              "err": {},
+              "uuid": "c5c2ed03-9308-4012-9015-f081d57d691c",
+              "parentUUID": "939aadb8-6360-4d49-89b6-46d168db50c0",
+              "isHook": false,
+              "skipped": false
+            },
+            {
+              "title": "should display a back to the dashboard button in model x-ray dashboards",
+              "fullTitle": "scenarios > dashboard > dashboard back navigation should display a back to the dashboard button in model x-ray dashboards",
+              "timedOut": null,
+              "duration": 1894,
+              "state": "passed",
+              "speed": "fast",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "const cardTitle = \"Orders by Subtotal\";\ncy.request(\"PUT\", `/api/card/${ORDERS_QUESTION_ID}`, { type: \"model\" });\ncy.visit(`/auto/dashboard/model/${ORDERS_QUESTION_ID}?#show=${MAX_CARDS}`);\ncy.wait(\"@dataset\", { timeout: MAX_XRAY_WAIT_TIMEOUT });\ngetDashboardCards().filter(`:contains(\"${cardTitle}\")`).findByText(cardTitle).click();\ncy.wait(\"@dataset\");\nqueryBuilderHeader().findByLabelText(/Back to .*Orders.*/).click();\ngetDashboardCards().filter(`:contains(\"${cardTitle}\")`).should(\"exist\");",
+              "err": {},
+              "uuid": "6d280466-4d65-4653-be75-e6cc2d57ae4a",
+              "parentUUID": "939aadb8-6360-4d49-89b6-46d168db50c0",
+              "isHook": false,
+              "skipped": false
+            },
+            {
+              "title": "should preserve query results when navigating between the dashboard and the query builder",
+              "fullTitle": "scenarios > dashboard > dashboard back navigation should preserve query results when navigating between the dashboard and the query builder",
+              "timedOut": null,
+              "duration": 2787,
+              "state": "passed",
+              "speed": "fast",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "createDashboardWithCards();\nvisitDashboard(\"@dashboardId\");\ncy.wait(\"@dashboard\");\ncy.wait(\"@dashcardQuery\");\ngetDashboardCard().within(() => {\n  cy.findByText(\"110.93\").should(\"be.visible\");\n  cy.findByText(\"Orders\").click();\n  cy.wait(\"@cardQuery\");\n});\nqueryBuilderHeader().findByLabelText(\"Back to Test Dashboard\").click();\ngetDashboardCard(0).findByText(\"110.93\").should(\"be.visible\");\ngetDashboardCard(1).findByText(\"Text card\").should(\"be.visible\");\ngetDashboardCard(2).findByText(\"Action card\").should(\"be.visible\");\ncy.get(\"@dashboard.all\").should(\"have.length\", 1);\ncy.get(\"@dashcardQuery.all\").should(\"have.length\", 1);\nappBar().findByText(\"Our analytics\").click();\ncollectionTable().within(() => {\n  cy.findByText(\"Test Dashboard\").click();\n  cy.wait(\"@dashboard\");\n  cy.wait(\"@dashcardQuery\");\n  cy.get(\"@dashcardQuery.all\").should(\"have.length\", 2);\n});",
+              "err": {},
+              "uuid": "6e08d36c-8163-4ddb-8fcf-9e3a2344b588",
+              "parentUUID": "939aadb8-6360-4d49-89b6-46d168db50c0",
+              "isHook": false,
+              "skipped": false
+            },
+            {
+              "title": "should not preserve query results when the question changes during navigation",
+              "fullTitle": "scenarios > dashboard > dashboard back navigation should not preserve query results when the question changes during navigation",
+              "timedOut": null,
+              "duration": 6169,
+              "state": "passed",
+              "speed": "medium",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "visitDashboard(ORDERS_DASHBOARD_ID);\ncy.wait(\"@dashboard\");\ncy.wait(\"@dashcardQuery\");\ngetDashboardCard().within(() => {\n  cy.findByText(\"134.91\").should(\"be.visible\");\n  cy.findByText(\"Orders\").click();\n  cy.wait(\"@cardQuery\");\n});\nqueryBuilderHeader().within(() => {\n  cy.findByDisplayValue(\"Orders\").clear().type(\"Orders question\").blur();\n  cy.wait(\"@updateCard\");\n  cy.button(\"Summarize\").click();\n});\nrightSidebar().within(() => {\n  cy.findByText(\"Total\").click();\n});\nqueryBuilderHeader().within(() => {\n  cy.findByText(\"Save\").click();\n});\ncy.findByTestId(\"save-question-modal\").within(() => {\n  cy.findByText(\"Save\").click();\n  cy.wait(\"@updateCard\");\n});\nqueryBuilderHeader().within(() => {\n  cy.findByLabelText(\"Back to Orders in a dashboard\").click();\n  cy.wait(\"@dashcardQuery\");\n  cy.get(\"@dashboard.all\").should(\"have.length\", 1);\n});\ngetDashboardCard().within(() => {\n  cy.findByText(\"Orders question\").should(\"be.visible\");\n  cy.findByText(\"Count\").should(\"be.visible\");\n});",
+              "err": {},
+              "uuid": "72564eba-18ee-4458-858f-f575ae19bfc5",
+              "parentUUID": "939aadb8-6360-4d49-89b6-46d168db50c0",
+              "isHook": false,
+              "skipped": false
+            },
+            {
+              "title": "should navigate back to a dashboard with permission errors",
+              "fullTitle": "scenarios > dashboard > dashboard back navigation should navigate back to a dashboard with permission errors",
+              "timedOut": null,
+              "duration": 1906,
+              "state": "passed",
+              "speed": "fast",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "createDashboardWithPermissionError();\ncy.signInAsNormalUser();\nvisitDashboard(\"@dashboardId\");\ncy.wait(\"@dashboard\");\ncy.wait(\"@dashcardQuery\");\ngetDashboardCard(1).findByText(PERMISSION_ERROR);\ngetDashboardCard(0).findByText(\"Orders 1\").click();\ncy.wait(\"@card\");\nqueryBuilderHeader().findByLabelText(\"Back to Orders in a dashboard\").click();\ngetDashboardCard(1).findByText(PERMISSION_ERROR);\ncy.get(\"@dashboard.all\").should(\"have.length\", 1);\ncy.get(\"@dashcardQuery.all\").should(\"have.length\", 1);",
+              "err": {},
+              "uuid": "47d634bd-748b-47f5-ae59-ea9e96b9f1e0",
+              "parentUUID": "939aadb8-6360-4d49-89b6-46d168db50c0",
+              "isHook": false,
+              "skipped": false
+            },
+            {
+              "title": "should return to dashboard with specific tab selected",
+              "fullTitle": "scenarios > dashboard > dashboard back navigation should return to dashboard with specific tab selected",
+              "timedOut": null,
+              "duration": 2853,
+              "state": "passed",
+              "speed": "fast",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "visitDashboardAndCreateTab({\n  dashboardId: ORDERS_DASHBOARD_ID,\n  save: false\n});\ncy.icon(\"pencil\").click();\nopenQuestionsSidebar();\nsidebar().within(() => {\n  cy.findByText(\"Orders, Count\").click();\n});\nsaveDashboard();\ngetDashboardCard().within(() => {\n  cy.findByText(\"Orders, Count\").click();\n  cy.wait(\"@card\");\n});\nqueryBuilderHeader().findByLabelText(\"Back to Orders in a dashboard\").click();\ncy.findByRole(\"tab\", { selected: true }).should(\"have.text\", \"Tab 2\");",
+              "err": {},
+              "uuid": "e980b94e-ca4a-4df4-b0f6-4b6a2fdb556b",
+              "parentUUID": "939aadb8-6360-4d49-89b6-46d168db50c0",
+              "isHook": false,
+              "skipped": false
+            }
+          ],
+          "suites": [],
+          "passes": [
+            "d17f8754-ba8d-4c04-bf17-15dfacc7fd0f",
+            "af36ef5a-6733-4baf-a3f1-f657d6548b6e",
+            "c5c2ed03-9308-4012-9015-f081d57d691c",
+            "6d280466-4d65-4653-be75-e6cc2d57ae4a",
+            "6e08d36c-8163-4ddb-8fcf-9e3a2344b588",
+            "72564eba-18ee-4458-858f-f575ae19bfc5",
+            "47d634bd-748b-47f5-ae59-ea9e96b9f1e0",
+            "e980b94e-ca4a-4df4-b0f6-4b6a2fdb556b"
+          ],
+          "failures": [],
+          "pending": [],
+          "skipped": [],
+          "duration": 26128,
+          "root": false,
+          "rootEmpty": false,
+          "_timeout": 2000
+        },
+        {
+          "uuid": "5fc66bf2-24bd-466c-8900-11cce6741694",
+          "title": "scenarios > dashboard > dashboard back navigation",
+          "fullFile": "",
+          "file": "",
+          "beforeHooks": [],
+          "afterHooks": [],
+          "tests": [
+            {
+              "title": "should preserve filter value when navigating between the dashboard and the question without re-fetch",
+              "fullTitle": "scenarios > dashboard > dashboard back navigation should preserve filter value when navigating between the dashboard and the question without re-fetch",
+              "timedOut": null,
+              "duration": 67,
+              "state": "failed",
+              "speed": null,
+              "pass": false,
+              "fail": true,
+              "pending": false,
+              "context": "[\n  {\n    \"title\": \"Screenshot\",\n    \"value\": \"../../screenshots/dashboard-back-navigation.cy.spec.js/scenarios  dashboard  dashboard back navigation -- should preserve filter value when navigating between the dashboard and the question without re-fetch (failed).png\"\n  },\n  {\n    \"title\": \"Video\",\n    \"value\": \"../../videos/dashboard-back-navigation.cy.spec.js.mp4\"\n  }\n]",
+              "code": "createDashboardWithSlowCard();\ncy.get(\"@dashboardId\").then((dashboardId) => {\n  cy.visit(`/dashboard/${dashboardId}`);\n  cy.wait(\"@dashboard\");\n  cy.wait(\"@dashcardQuery\");\n});\ncy.get(\"@dashcardQuery.all\").should(\"have.length\", 1);\nfilterWidget().findByPlaceholderText(\"sleep\").clear().type(\"1{enter}\");\ncy.wait(\"@dashcardQuery\");\ncy.get(\"@dashcardQuery.all\").should(\"have.length\", 2);\ncy.log(\"drill down to the question\");\ngetDashboardCard().within(() => {\n  cy.findByText(\"Sleep card\").click();\n});\nfilterWidget().findByPlaceholderText(\"sleep\").should(\"have.value\", \"1\");\ncy.wait(\"@card\");\ncy.log(\"navigate back to the dashboard\");\nqueryBuilderHeader().findByLabelText(\"Back to Sleep dashboard\").click();\ngetDashboardCard().within(() => {\n  cy.findByText(\"Sleep card\").should(\"be.visible\");\n});\nfilterWidget().findByPlaceholderText(\"sleep\").should(\"have.value\", \"1\");\ncy.get(\"@dashcardQuery.all\").should(\"have.length\", 2);",
+              "err": {
+                "message": "CypressError: `cy.request()` failed on:\n\nhttp://localhost:4000/api/testing/restore/postgres-12\n\nThe response we received from your web server was:\n\n  > 404: Not Found\n\nThis was considered a failure because the status code was not `2xx` or `3xx`.\n\nIf you do not want status codes to cause failures pass the option: `failOnStatusCode: false`\n\n-----------------------------------------------------------\n\nThe request we sent was:\n\nMethod: POST\nURL: http://localhost:4000/api/testing/restore/postgres-12\nHeaders: {\n  \"Connection\": \"keep-alive\",\n  \"user-agent\": \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/128.0.0.0 Safari/537.36\",\n  \"accept\": \"*/*\",\n  \"accept-encoding\": \"gzip, deflate\",\n  \"content-length\": 0\n}\n\n-----------------------------------------------------------\n\nThe response we got was:\n\nStatus: 404 - Not Found\nHeaders: {\n  \"date\": \"Mon, 02 Sep 2024 13:19:16 GMT\",\n  \"x-frame-options\": \"DENY\",\n  \"x-xss-protection\": \"1; mode=block\",\n  \"last-modified\": \"Mon, 2 Sep 2024 06:19:16 -0700\",\n  \"strict-transport-security\": \"max-age=31536000\",\n  \"set-cookie\": [\n    \"metabase.DEVICE=9abd06c3-54e6-4b1d-a89f-c45635b2837a; HttpOnly; Path=/; Expires=Fri, 2 Sep 2044 06:19:16 -0700; SameSite=Lax\"\n  ],\n  \"x-permitted-cross-domain-policies\": \"none\",\n  \"cache-control\": \"max-age=0, no-cache, must-revalidate, proxy-revalidate\",\n  \"x-content-type-options\": \"nosniff\",\n  \"content-security-policy\": \"default-src 'none'; script-src 'self' https://maps.google.com https://accounts.google.com https://www.google-analytics.com   'sha256-9uFLu5CG8mWlvx0LK6lgendCxUX57TuWk3wkgZpBeWU=' 'sha256-isH538cVBUY8IMlGYGbWtBwr+cGqkc4mN6nLcA7lUjE=' 'sha256-3N2Z+Nu++/yNMVHIl863JigVmt2Nr9gt2doEMJT2Wzk='; child-src 'self' https://accounts.google.com; style-src 'self'    https://accounts.google.com; font-src *; img-src * 'self' data:; connect-src 'self' https://accounts.google.com metabase.us10.list-manage.com https://sp.metabase.com  ; manifest-src 'self';  frame-ancestors 'none';\",\n  \"content-type\": \"text/plain\",\n  \"expires\": \"Tue, 03 Jul 2001 06:00:00 GMT\",\n  \"transfer-encoding\": \"chunked\",\n  \"server\": \"Jetty(11.0.20)\"\n}\nBody: Not found.\n\n\nhttps://on.cypress.io/request\n\nBecause this error occurred during a `before each` hook we are skipping the remaining tests in the current suite: `scenarios > dashboard > das...`",
+                "estack": "CypressError: `cy.request()` failed on:\n\nhttp://localhost:4000/api/testing/restore/postgres-12\n\nThe response we received from your web server was:\n\n  > 404: Not Found\n\nThis was considered a failure because the status code was not `2xx` or `3xx`.\n\nIf you do not want status codes to cause failures pass the option: `failOnStatusCode: false`\n\n-----------------------------------------------------------\n\nThe request we sent was:\n\nMethod: POST\nURL: http://localhost:4000/api/testing/restore/postgres-12\nHeaders: {\n  \"Connection\": \"keep-alive\",\n  \"user-agent\": \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/128.0.0.0 Safari/537.36\",\n  \"accept\": \"*/*\",\n  \"accept-encoding\": \"gzip, deflate\",\n  \"content-length\": 0\n}\n\n-----------------------------------------------------------\n\nThe response we got was:\n\nStatus: 404 - Not Found\nHeaders: {\n  \"date\": \"Mon, 02 Sep 2024 13:19:16 GMT\",\n  \"x-frame-options\": \"DENY\",\n  \"x-xss-protection\": \"1; mode=block\",\n  \"last-modified\": \"Mon, 2 Sep 2024 06:19:16 -0700\",\n  \"strict-transport-security\": \"max-age=31536000\",\n  \"set-cookie\": [\n    \"metabase.DEVICE=9abd06c3-54e6-4b1d-a89f-c45635b2837a; HttpOnly; Path=/; Expires=Fri, 2 Sep 2044 06:19:16 -0700; SameSite=Lax\"\n  ],\n  \"x-permitted-cross-domain-policies\": \"none\",\n  \"cache-control\": \"max-age=0, no-cache, must-revalidate, proxy-revalidate\",\n  \"x-content-type-options\": \"nosniff\",\n  \"content-security-policy\": \"default-src 'none'; script-src 'self' https://maps.google.com https://accounts.google.com https://www.google-analytics.com   'sha256-9uFLu5CG8mWlvx0LK6lgendCxUX57TuWk3wkgZpBeWU=' 'sha256-isH538cVBUY8IMlGYGbWtBwr+cGqkc4mN6nLcA7lUjE=' 'sha256-3N2Z+Nu++/yNMVHIl863JigVmt2Nr9gt2doEMJT2Wzk='; child-src 'self' https://accounts.google.com; style-src 'self'    https://accounts.google.com; font-src *; img-src * 'self' data:; connect-src 'self' https://accounts.google.com metabase.us10.list-manage.com https://sp.metabase.com  ; manifest-src 'self';  frame-ancestors 'none';\",\n  \"content-type\": \"text/plain\",\n  \"expires\": \"Tue, 03 Jul 2001 06:00:00 GMT\",\n  \"transfer-encoding\": \"chunked\",\n  \"server\": \"Jetty(11.0.20)\"\n}\nBody: Not found.\n\n\nhttps://on.cypress.io/request\n\nBecause this error occurred during a `before each` hook we are skipping the remaining tests in the current suite: `scenarios > dashboard > das...`\n    at <unknown> (http://localhost:4000/__cypress/runner/cypress_runner.js:133550:72)\n    at tryCatcher (http://localhost:4000/__cypress/runner/cypress_runner.js:1807:23)\n    at Promise._settlePromiseFromHandler (http://localhost:4000/__cypress/runner/cypress_runner.js:1519:31)\n    at Promise._settlePromise (http://localhost:4000/__cypress/runner/cypress_runner.js:1576:18)\n    at Promise._settlePromise0 (http://localhost:4000/__cypress/runner/cypress_runner.js:1621:10)\n    at Promise._settlePromises (http://localhost:4000/__cypress/runner/cypress_runner.js:1701:18)\n    at _drainQueueStep (http://localhost:4000/__cypress/runner/cypress_runner.js:2407:12)\n    at _drainQueue (http://localhost:4000/__cypress/runner/cypress_runner.js:2400:9)\n    at Async._drainQueues (http://localhost:4000/__cypress/runner/cypress_runner.js:2416:5)\n    at Async.drainQueues (http://localhost:4000/__cypress/runner/cypress_runner.js:2286:14)\nFrom Your Spec Code:\n    at restore (../../../../../../../../../../../../p/metabase/e2e/support/helpers/e2e-setup-helpers.js:25:5)\n    at Context.eval (../../../../../../../../../../../../p/metabase/e2e/test/scenarios/dashboard/dashboard-back-navigation.cy.spec.js:268:6)",
+                "diff": null
+              },
+              "uuid": "21bd82f1-d0d5-4adb-9306-6294452d6305",
+              "parentUUID": "5fc66bf2-24bd-466c-8900-11cce6741694",
+              "isHook": false,
+              "skipped": false
+            },
+            {
+              "title": "should restore a dashboard with loading cards and re-fetch query data",
+              "fullTitle": "scenarios > dashboard > dashboard back navigation should restore a dashboard with loading cards and re-fetch query data",
+              "timedOut": null,
+              "duration": 0,
+              "state": "skipped",
+              "speed": null,
+              "pass": false,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "createDashboardWithSlowCard();\ncy.get(\"@dashboardId\").then((dashboardId) => {\n  cy.visit({\n    url: `/dashboard/${dashboardId}`,\n    qs: { sleep: 60 }\n  });\n});\ncy.wait(\"@dashboard\");\ngetDashboardCard().within(() => {\n  cy.findByTestId(\"loading-indicator\").should(\"be.visible\");\n  cy.findByText(\"Sleep card\").click();\n  cy.wait(\"@card\");\n});\nqueryBuilderHeader().within(() => {\n  cy.findByLabelText(\"Back to Sleep dashboard\").click();\n});\ngetDashboardCard().within(() => {\n  cy.findByText(\"Sleep card\").should(\"be.visible\");\n});\ncy.get(\"@dashboard.all\").should(\"have.length\", 1);\ncy.get(\"@dashcardQuery.all\").should(\"have.length\", 2);",
+              "err": {},
+              "uuid": "cc063a2a-8e03-40a7-85f9-609f92fd8192",
+              "parentUUID": "5fc66bf2-24bd-466c-8900-11cce6741694",
+              "isHook": false,
+              "skipped": true
+            }
+          ],
+          "suites": [],
+          "passes": [],
+          "failures": [
+            "21bd82f1-d0d5-4adb-9306-6294452d6305"
+          ],
+          "pending": [],
+          "skipped": [
+            "cc063a2a-8e03-40a7-85f9-609f92fd8192"
+          ],
+          "duration": 67,
+          "root": false,
+          "rootEmpty": false,
+          "_timeout": 2000
+        }
+      ],
+      "passes": [],
+      "failures": [],
+      "pending": [],
+      "skipped": [],
+      "duration": 0,
+      "root": true,
+      "rootEmpty": true,
+      "_timeout": 2000
+    }
+  ],
+  "meta": {
+    "mocha": {
+      "version": "7.0.1"
+    },
+    "mochawesome": {
+      "options": {
+        "quiet": true,
+        "reportFilename": "[status]-[name]",
+        "saveHtml": true,
+        "saveJson": true,
+        "consoleReporter": "spec",
+        "useInlineDiffs": false,
+        "code": true
+      },
+      "version": "7.1.3"
+    },
+    "marge": {
+      "options": {
+        "id": "default",
+        "reportDir": "cypress/reports/mochareports",
+        "reportFilename": "[status]-[name]",
+        "quiet": true,
+        "html": true,
+        "json": true
+      },
+      "version": "6.2.0"
+    }
+  }
+}
