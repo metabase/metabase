@@ -44,7 +44,7 @@ Format options will apply to both the result of the query and the goal value:
 
 ![Progress bar with format applied](../images/progress-with-format.png)
 
-Selecting "**Style**: Percent" in format options will only change how the result of the query is formatted: for example, `17` will be formatted as `1700%`. If you instead want to display the query result as a percentage of the goal, you'll need to calculate that percentage in your query. For example, to display the count of orders as a percentage of the goal of `20`, use [custom expressions](../../query-builder/expressions.md) to return "Count of orders divided by 20", and format the result as a percentage.
+Selecting "**Style**: Percent" in format options will only change how the result of the query is formatted: for example, `17` will be formatted as `1700%`. If you instead want to display the query result as a percentage of the goal, you'll need to calculate that percentage in your query. For example, to display the count of orders as a percentage of the goal of `20`, use [custom expressions](../query-builder/expressions.md) to return "Count of orders divided by 20", and format the result as a percentage.
 
 ## Limitations and alternatives
 

@@ -21,7 +21,7 @@ The visualization settings on a card are independent of the settings on the orig
 
 ## Visualizing SQL questions
 
-Go to your SQL question and [change the visualization type](../questions/sharing/visualizing-results.md) to a table. Then, check if any of the following situations apply to the raw query results:
+Go to your SQL question and [change the visualization type](../questions/visualizations/visualizing-results.md) to a table. Then, check if any of the following situations apply to the raw query results:
 
 - [Aggregations (counts, sums, etc.) are wrong](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-logic#aggregated-results-counts-sums-etc-are-wrong).
 - [Results have duplicated rows](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-logic-duplicated-data).

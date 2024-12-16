@@ -38,7 +38,7 @@ If you'd like to share your data with the good people of the internet, admins ca
 
 ## Comparison of embedding types
 
-| Action                                                                                                                          | [Embedding SDK](./sdk/introduction.md) | [Interactive](./interactive-embedding.md) | [Static](./static-embedding.md) | [Public](../questions/sharing/public-links.md) |
+| Action                                                                                                                          | [Embedding SDK](./sdk/introduction.md) | [Interactive](./interactive-embedding.md) | [Static](./static-embedding.md) | [Public](../embedding/public-links.md) |
 | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ----------------------------------------- | ------------------------------- | ---------------------------------------------- |
 | Display charts and dashboards                                                                                                   | ✅                                     | ✅                                        | ✅                              | ✅                                             |
 | Display interactive [filter widgets](https://www.metabase.com/glossary/filter_widget)                                           | ✅                                     | ✅                                        | ✅                              | ✅                                             |

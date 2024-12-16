@@ -8,7 +8,7 @@ redirect_from:
 
 Sankey charts show how data flows through multi-dimensional steps. They're useful for showing which elements, called nodes, contribute to the overall flow.
 
-![Left-aligned sankey chart](../../images/sankey-left-aligned.png)
+![Left-aligned sankey chart](../images/sankey-left-aligned.png)
 
 ## Sankey data shape
 

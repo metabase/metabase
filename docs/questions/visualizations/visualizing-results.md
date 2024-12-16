@@ -30,117 +30,117 @@ To change the settings for a specific chart, for example a row chart, you could 
 
 ## Area charts
 
-[Area charts](./visualizations/line-bar-and-area-charts.md) are useful when comparing the proportions of two metrics over time. Both bar and area charts can be stacked.
+[Area charts](./line-bar-and-area-charts.md) are useful when comparing the proportions of two metrics over time. Both bar and area charts can be stacked.
 
 ![Stacked area chart](../images/area.png)
 
 ## Bar charts
 
-[Bar charts](./visualizations/line-bar-and-area-charts.md) are great for displaying a number grouped by a category (e.g., the number of users you have by country).
+[Bar charts](./line-bar-and-area-charts.md) are great for displaying a number grouped by a category (e.g., the number of users you have by country).
 
 ![Bar chart](../images/bar.png)
 
 ## Combo charts
 
-[Combo charts](./visualizations/combo-chart.md) let you combine bars and lines (or areas) on the same chart.
+[Combo charts](./combo-chart.md) let you combine bars and lines (or areas) on the same chart.
 
 ![Line + bar](../images/combo-chart.png)
 
 ## Detail
 
-The [Detail](./visualizations/detail.md) visualization shows a single result record (row) in an easy-to-read, two-column display.
+The [Detail](./detail.md) visualization shows a single result record (row) in an easy-to-read, two-column display.
 
 ![Detail of a record in the account table](../images/detail.png)
 
 ## Funnel charts
 
-[Funnels](./visualizations/funnel.md) are commonly used in e-commerce or sales to visualize how many customers are present within each step of a checkout flow or sales cycle. At their most general, funnels show you values broken out by steps, and the percent decrease between each successive step.
+[Funnels](./funnel.md) are commonly used in e-commerce or sales to visualize how many customers are present within each step of a checkout flow or sales cycle. At their most general, funnels show you values broken out by steps, and the percent decrease between each successive step.
 
 ![Funnel](../images/funnel.png)
 
 ## Gauges
 
-[Gauges](./visualizations/gauge.md) allow you to show a single number in the context of a set of colored ranges that you can specify.
+[Gauges](./gauge.md) allow you to show a single number in the context of a set of colored ranges that you can specify.
 
 ![Gauge](../images/gauge.png)
 
 ## Line charts
 
-[Line charts](./visualizations/line-bar-and-area-charts.md) are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/line-charts) and [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series) tutorials.
+[Line charts](./line-bar-and-area-charts.md) are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/line-charts) and [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series) tutorials.
 
 ![Trend lines](../images/trend-lines.png)
 
 ## Maps
 
-When you select the [Map](./visualizations/map.md) visualization, Metabase will automatically try and pick the best kind of map to use based on the table or result set.
+When you select the [Map](./map.md) visualization, Metabase will automatically try and pick the best kind of map to use based on the table or result set.
 
 ![Region map](../images/map.png)
 
 ## Numbers
 
-The [Numbers](./visualizations/numbers.md) option is for displaying a single number, nice and big.
+The [Numbers](./numbers.md) option is for displaying a single number, nice and big.
 
 ![Number](../images/number.png)
 
 ## Pie, donut, and sunburst charts
 
-A [pie chart or donut chart](./visualizations/pie-or-donut-chart.md) can be used when breaking out a metric by a single dimension, especially when the number of possible breakouts is small, like accounts by plan.
+A [pie chart or donut chart](./pie-or-donut-chart.md) can be used when breaking out a metric by a single dimension, especially when the number of possible breakouts is small, like accounts by plan.
 
-A [sunburst chart](./visualizations/pie-or-donut-chart.md) is a pie chart with more than one ring to show the data broken out by additional dimensions.
+A [sunburst chart](./pie-or-donut-chart.md) is a pie chart with more than one ring to show the data broken out by additional dimensions.
 
 ![Donut](../images/pie-sunburst-demo.png)
 
 ## Pivot tables
 
-[Pivot tables](./visualizations/pivot-table.md) allow you swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions.
+[Pivot tables(./pivot-table.md) allow you swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions.
 
 ![Pivot table options](../images/pivot-table-options.png)
 
 ## Progress bars
 
-[Progress bars](./visualizations/progress-bar.md) are for comparing a single number to a goal value that you set.
+[Progress bars](./progress-bar.md) are for comparing a single number to a goal value that you set.
 
 ![Progress bar](../images/progress.png)
 
 ## Row charts
 
-[Row charts](./visualizations/line-bar-and-area-charts.md) are good for visualizing data grouped by a column that has a lot of possible values, like a Vendor or Product Title field.
+[Row charts](./line-bar-and-area-charts.md) are good for visualizing data grouped by a column that has a lot of possible values, like a Vendor or Product Title field.
 
 ![Row chart](../images/row.png)
 
 ## Tables
 
-The [Table](./visualizations/table.md) option is good for looking at tabular data (duh), or for lists of things like users or orders.
+The [Table](./table.md) option is good for looking at tabular data (duh), or for lists of things like users or orders.
 
 ![Conditional formatting](../images/conditional-formatting.png)
 
 ## Trends
 
-The [Trend](./visualizations/trend.md) visualization is great for displaying how a single number has changed between two time periods.
+The [Trend](./trend.md) visualization is great for displaying how a single number has changed between two time periods.
 
 ![Trend settings](../images/trend-settings.png)
 
 ## Histograms
 
-If you have a bar chart like Count of Users by Age, where the x-axis is a number, you'll get a special kind of bar chart called a [histogram](./visualizations/line-bar-and-area-charts.md) where each bar represents a range of values (called a "bin").
+If you have a bar chart like Count of Users by Age, where the x-axis is a number, you'll get a special kind of bar chart called a [histogram](./line-bar-and-area-charts.md) where each bar represents a range of values (called a "bin").
 
 ![Histogram](../images/histogram.png)
 
 ## Sankey charts
 
-[Sankey charts](./visualizations/sankey.md) show how data flows through multi-dimensional steps.
+[Sankey charts](./sankey.md) show how data flows through multi-dimensional steps.
 
 ![Left-aligned sankey chart](../images/sankey-left-aligned.png)
 
 ## Waterfall charts
 
-[Waterfall charts](./visualizations/waterfall-chart.md) are a kind of bar chart useful for visualizing results that contain both positive and negative values.
+[Waterfall charts](./waterfall-chart.md) are a kind of bar chart useful for visualizing results that contain both positive and negative values.
 
 ![Waterfall chart](../images/waterfall-chart.png)
 
 ## Scatterplots and bubble charts
 
-[Scatterplots](./visualizations/scatterplot-or-bubble-chart.md) are useful for visualizing the correlation between two variables, like comparing the age of your people using your app vs. how many dollars they've spent on your products.
+[Scatterplots](./scatterplot-or-bubble-chart.md) are useful for visualizing the correlation between two variables, like comparing the age of your people using your app vs. how many dollars they've spent on your products.
 
 ![Scatter](../images/scatter.png)
 

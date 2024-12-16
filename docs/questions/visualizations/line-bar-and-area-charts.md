@@ -141,7 +141,7 @@ Here you'll find additional settings for configuring your x and y axes (as in ax
 - Scale: Linear, power, or log.
 - Show lines and marks
 - Unpin from zero. Allows you to "Zoom in" on charts with values well above zero. Here's an example (note the y-axis starts at 20,000):
-  ![y-axis unpinned from zero](../../images/unpinned-from-zero-y-axis.png)
+  ![y-axis unpinned from zero](../images/unpinned-from-zero-y-axis.png)
 
 ## Chart legend
 

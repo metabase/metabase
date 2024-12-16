@@ -23,7 +23,7 @@ Settings access defines which groups can view and edit the settings under the Ad
 - [Maps](../configuring-metabase/custom-maps.md)
 - [Localization](../configuring-metabase/localization.md)
 - [Appearance](../configuring-metabase/appearance.md)
-- [Public sharing](../questions/sharing/public-links.md)
+- [Public sharing](../embedding/public-links.md)
 - [Embedding in other applications](../embedding/start.md)
 - [Caching](../configuring-metabase/caching.md)
 
