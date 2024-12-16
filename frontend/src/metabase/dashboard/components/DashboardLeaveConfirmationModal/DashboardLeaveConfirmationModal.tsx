@@ -1,13 +1,11 @@
 import { type Route, type WithRouterProps, withRouter } from "react-router";
 import { t } from "ttag";
 
-import ConfirmContent from "metabase/components/ConfirmContent";
-import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import { updateDashboardAndCards } from "metabase/dashboard/actions/save";
 import { useConfirmLeaveModal } from "metabase/hooks/use-confirm-leave-modal";
 import { useDispatch } from "metabase/lib/redux";
 import { dismissAllUndo } from "metabase/redux/undo";
-import { Modal } from "metabase/ui";
+import { Button, Flex, Modal, Text } from "metabase/ui";
 
 import { isNavigatingToCreateADashboardQuestion } from "./utils";
 
@@ -35,28 +33,58 @@ export const DashboardLeaveConfirmationModal = withRouter(
     const onSave = async () => {
       dispatch(dismissAllUndo());
       await dispatch(updateDashboardAndCards());
+      confirm?.();
     };
 
+    const content = isNavigatingToCreateADashboardQuestion(nextLocation)
+      ? {
+          title: t`Save your changes?`,
+          message: t`You’ll need to save your changes before leaving to create a new question.`,
+          actionBtn: {
+            color: "primary",
+            message: t`Save changes`,
+          },
+        }
+      : {
+          title: t`Discard your changes?`,
+          message: t`Your changes haven't been saved, so you'll lose them if you navigate away.`,
+          actionBtn: {
+            color: "danger",
+            message: t`Discard changes`,
+          },
+        };
+
     return (
-      <Modal opened={opened} onClose={close} size="md">
-        {isNavigatingToCreateADashboardQuestion(nextLocation) ? (
-          <ConfirmContent
-            cancelButtonText={t`Cancel`}
-            confirmButtonText={t`Save changes and go`}
-            confirmButtonPrimary
-            data-testid="leave-for-new-dashboard-question-confirmation"
-            message={t`That’ll keep things tidy.`}
-            title={t`Let’s save your changes and create your new question`}
-            onAction={async () => {
-              await onSave();
-              confirm?.();
-            }}
-            onClose={close}
-          />
-        ) : (
-          <LeaveConfirmationModalContent onAction={confirm} onClose={close} />
-        )}
-      </Modal>
+      <Modal.Root
+        opened={opened}
+        onClose={close}
+        size={"28.5rem"}
+        data-testid="leave-confirmation"
+      >
+        <Modal.Overlay />
+        <Modal.Content>
+          <Modal.Header p="2.5rem 3rem" mb="sm">
+            <Modal.Title fz="1rem" color="text-primary">
+              {content.title}
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body p="2.5rem 3rem">
+            <Text lh="1.5rem" mb={"lg"}>
+              {content.message}
+            </Text>
+            <Flex justify="flex-end" gap="md">
+              <Button onClick={close}>{t`Cancel`}</Button>
+              <Button
+                color={content.actionBtn.color}
+                variant="filled"
+                onClick={onSave}
+              >
+                {content.actionBtn.message}
+              </Button>
+            </Flex>
+          </Modal.Body>
+        </Modal.Content>
+      </Modal.Root>
     );
   },
 );
