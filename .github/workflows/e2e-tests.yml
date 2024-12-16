@@ -257,7 +257,7 @@ jobs:
       - name: Upload Coverage Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: cypress-recording-${{ matrix.name }}-${{ matrix.edition }}
+          name: cypress-coverage-${{ matrix.name }}-${{ matrix.edition }}
           path: |
             ./e2e/support/coverage
           if-no-files-found: ignore
@@ -288,7 +288,7 @@ jobs:
              await core.summary.addRaw(summary).write();
 
   e2e-tests-skipped-stub:
-    needs: [e2e-tests, e2e-matrix-builder]
+    needs: [e2e-tests]
     if: |
       !cancelled() &&
       needs.e2e-tests.result == 'skipped'
@@ -301,6 +301,26 @@ jobs:
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
+
+  merge-coverage:
+    needs: [e2e-tests]
+    if: always()
+    timeout-minutes: 10
+    steps:
+
+      - name: Download all coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: cypress-coverage-*
+          path: coverage/e2e
+          merge-multiple: true
+
+      - name: Merge and Upload Coverage Reports
+        run: |
+          if [ -d "coverage/e2e" ]; then
+            yarn nyc merge coverage/e2e coverage/merged-coverage.json
+            yarn nyc report --reporter=lcov --reporter=text --temp-dir coverage --report-dir coverage/merged-report
+          fi
 
   pr-env:
     needs: [build]
