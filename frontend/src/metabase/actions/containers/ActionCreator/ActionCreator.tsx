@@ -227,12 +227,7 @@ function ActionCreatorWithContext({
       databaseId={databaseId}
       metadata={metadata}
     >
-      <ActionCreator
-        {...props}
-        initialAction={initialAction}
-        databaseId={databaseId}
-        metadata={metadata}
-      />
+      <ActionCreator {...props} databaseId={databaseId} metadata={metadata} />
     </ActionContext>
   );
 }
