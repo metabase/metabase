@@ -11,7 +11,7 @@
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
-   [metabase.db.data-source :as mdb.data-source]
+   [metabase.db.encryption :as mdb.encryption]
    [metabase.db.env :as mdb.env]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.liquibase :as liquibase]
@@ -85,6 +85,7 @@
               auto-migrate? (config/config-bool :mb-db-automigrate)]
           (mdb.setup/setup-db! db-type data-source auto-migrate? create-sample-content?))
         (reset! (:status mdb.connection/*application-db*) ::setup-finished))))
+  (mdb.encryption/setup-encryption)
   :done)
 
 (defn release-migration-locks!
@@ -125,3 +126,11 @@
   {:style/indent [:defn]}
   [application-db & body]
   `(do-with-application-db ~application-db (^:once fn* [] ~@body)))
+
+(defn encrypt
+  "Encrypt the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data, and passed `to-key` to re-encrypt.
+  If no to-key is passed, it encrypts with the current MB_ENCRYPTION_SECRET_KEY value.
+  If passed to-key is empty string, it decrypts the entire database"
+  ([] (encrypt nil))
+  ([new-key]
+   (mdb.encryption/encrypt new-key)))
