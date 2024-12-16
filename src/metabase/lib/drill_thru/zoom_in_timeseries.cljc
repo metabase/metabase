@@ -14,7 +14,8 @@
   - `dimensions` have a date or datetime column with `year`, `quarter`, `month`, `week`, `day`, `hour` temporal unit.
     For other units, or when there is no temporal bucketing, this drill cannot be applied. Changing `hour` to `minute`
     ends the sequence for datetime columns (`week` to `day` for date columns). Only the first matching column would be
-    used in query transformation.
+    used in query transformation. If `dimensions` are not provided, `row` data will instead be used to try to find a
+    `matching-breakout-dimension`.
 
   - `displayInfo` returns `displayName` with `See this {0} by {1}` string using the current and the next available
     temporal unit.
@@ -45,6 +46,7 @@
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
@@ -62,14 +64,22 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    dimensions   :- [:sequential ::lib.schema.drill-thru/context.row.value]]
-  (first (for [breakout (lib.breakout/breakouts query stage-number)
-               :when (and (lib.util/clause-of-type? breakout :field)
-                          (lib.temporal-bucket/temporal-bucket breakout))
+  (first (for [[breakout-ref breakout-col] (map vector
+                                                (lib.breakout/breakouts query stage-number)
+                                                (lib.breakout/breakouts-metadata query stage-number))
+               :when (and (lib.util/clause-of-type? breakout-ref :field)
+                          (lib.temporal-bucket/temporal-bucket breakout-ref))
                {:keys [column] :as dimension} dimensions
-               :when (and (lib.equality/find-matching-column breakout [column])
-                          (= (lib.temporal-bucket/temporal-bucket breakout)
-                             (lib.temporal-bucket/temporal-bucket column)))]
-           (assoc dimension :column-ref breakout))))
+               :when (and (lib.equality/find-matching-column breakout-ref [column])
+                          (= (lib.temporal-bucket/raw-temporal-bucket breakout-ref)
+                             (or (lib.temporal-bucket/raw-temporal-bucket column)
+                                 ;; If query is multi-stage and column comes from a call
+                                 ;; to [[lib.calculation/returned-columns]], then it may have an
+                                 ;; :inherited-temporal-unit instead of a :temporal-unit.
+                                 (:inherited-temporal-unit column))))]
+           ;; If stage-number is not -1, then the column from the input dimension will be from the last stage,
+           ;; whereas breakout-col will be the corresponding breakout column from [[lib.underlying/top-level-stage]].
+           (assoc dimension :column breakout-col :column-ref breakout-ref))))
 
 (mu/defn- next-breakout-unit :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries.next-unit]
   [query :- ::lib.schema/query
@@ -96,27 +106,34 @@
   For example: The month of a year, days or weeks of a quarter, smaller lat/long regions, etc.
 
   This is different from the `:drill-thru/zoom` type, which is for showing the details of a single object."
-  [query                              :- ::lib.schema/query
-   stage-number                       :- :int
-   {:keys [dimensions], :as _context} :- ::lib.schema.drill-thru/context]
-  (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             (not-empty dimensions))
-    (when-let [{:keys [value column-ref], :as dimension} (matching-breakout-dimension query stage-number dimensions)]
-      (when value
-        (when-let [next-unit (next-breakout-unit query stage-number column-ref)]
-          {:lib/type     :metabase.lib.drill-thru/drill-thru
-           :display-name (describe-next-unit next-unit)
-           :type         :drill-thru/zoom-in.timeseries
-           :dimension    dimension
-           :next-unit    next-unit})))))
+  [query                                         :- ::lib.schema/query
+   _stage-number                                 :- :int
+   {:keys [column dimensions row], :as _context} :- ::lib.schema.drill-thru/context]
+  ;; For multi-stage queries, we want the stage-number of the underlying stage with breakouts or aggregations.
+  ;; In such cases, the FE will not pass dimensions, so use the row data instead, if available.
+  (let [stage-number (lib.underlying/top-level-stage-number query)
+        dimensions   (or (not-empty dimensions)
+                         (lib.drill-thru.common/dimensions-from-breakout-columns query column row))]
+    (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
+               dimensions)
+      (when-let [{:keys [value column-ref], :as dimension}
+                 (matching-breakout-dimension query stage-number dimensions)]
+        (when value
+          (when-let [next-unit (next-breakout-unit query stage-number column-ref)]
+            {:lib/type     :metabase.lib.drill-thru/drill-thru
+             :display-name (describe-next-unit next-unit)
+             :type         :drill-thru/zoom-in.timeseries
+             :dimension    dimension
+             :next-unit    next-unit}))))))
 
 (mu/defmethod lib.drill-thru.common/drill-thru-method :drill-thru/zoom-in.timeseries
   [query                         :- ::lib.schema/query
-   stage-number                  :- :int
+   _stage-number                 :- :int
    {:keys [dimension next-unit]} :- ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries]
   (let [{:keys [column value]} dimension
         old-breakout           (:column-ref dimension)
-        new-breakout           (lib.temporal-bucket/with-temporal-bucket old-breakout next-unit)]
+        new-breakout           (lib.temporal-bucket/with-temporal-bucket old-breakout next-unit)
+        stage-number           (lib.underlying/top-level-stage-number query)]
     (-> query
         (lib.filter/filter stage-number (lib.filter/= column value))
         (lib.remove-replace/replace-clause stage-number old-breakout new-breakout))))

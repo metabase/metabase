@@ -169,9 +169,9 @@ describe("scenarios > visualizations > maps", () => {
     cy.get(".leaflet-interactive").trigger("mousemove");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Latitude:");
+    cy.findByText("Latitude: 10°:");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Longitude:");
+    cy.findByText("Longitude: 10°:");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1");
   });
