@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import { ChartSettingColorPicker } from "metabase/visualizations/components/settings/ChartSettingColorPicker";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
-import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
+import { ChartSettingFieldPicker } from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
 import ChartSettingFieldsPartition from "metabase/visualizations/components/settings/ChartSettingFieldsPartition";
 import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
 import { ChartSettingInput } from "metabase/visualizations/components/settings/ChartSettingInput";
