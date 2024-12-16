@@ -122,7 +122,7 @@ export const Help = () => {
             }
           />
           <HelpLink
-            title={t`File a bug report`}
+            title={t`Report an issue`}
             description={t`Create a GitHub issue (includes the diagnostic info below)`}
             link={githubIssueLink(detailString)}
           />
