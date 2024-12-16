@@ -7,20 +7,27 @@ redirect_from:
 
 # Questions
 
-Questions in Metabase are queries, their results, and their visualization. Questions are the basic analytical unit in Metabase. You can think about them as saved queries that you can display as tables or charts, and organize into collections and dashboards. You can embed questions, share links to them, export their results, and have them alert you when results are interesting.
+![Metabase question](./images/question.png)
+
+Questions in Metabase are queries, their results, and their visualization. Questions are the basic analytical unit in Metabase. You can think about questions as saved queries that you can display as tables or charts. You can organize questions into collections and dashboards. You can [embed questions](../embedding/start.md), share links to them, export their results, and have them alert you when results are interesting.
 
 ## Creating a new question
 
-You can create a new question from scratch, or build off of an existing question.
+You can create a new question from scratch, or build off of an existing question. To create a question from scratch, you can click on **+ New** and select how you want to query your data: either with the graphical query builder, or the SQL/native editor.
 
-### From scratch
+### Query builder
 
-To create a question from scratch, you can click on **+ New** and select how you want to query your data:
+![Query builder editor](./images/editor.png)
 
-- [Question](./query-builder/editor.md), which takes you to the graphical query builder.
-- [SQL/native code](./native-editor/writing-sql.md), which takes you to the native code editor.
+Selecting **Question** will take you to the [editor in the graphical query builder](./query-builder/editor.md).
 
-Even if you know SQL, you should check out the [graphical query builder](./query-builder/editor.md), as you can use it to build interactive charts.
+### Native editor
+
+![Native editor](./images/native-editor.png)
+
+Selecting **SQL/native code** will open the [native code editor](./native-editor/writing-sql.md).
+
+Even if you know SQL, you should still check out the [graphical query builder](./query-builder/editor.md), as you can use it to build [interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
 
 ### From an existing question
 
@@ -39,7 +46,7 @@ Once you've built your query and [visualized its results](./visualizations/visua
 
 ### Saving questions to dashboards
 
-Questions that live in a dashboard are only visible in that dashboard. They can't be used in other dashboards. If you save it to a dashboard, you'll need to arrange the card on one of the dashboard's tab, then save the dashboard.
+Questions that live in a dashboard are only visible in that dashboard. These questions can't be used in other dashboards. When you save a question to a dashboard, you'll need to arrange the card on one of the dashboard's tab, then save the dashboard.
 
 ### Saving questions to collections
 
