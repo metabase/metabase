@@ -45,7 +45,7 @@ export function getEmbeddingThemeOverride(
       fontSize: theme.fontSize ?? SDK_BASE_FONT_SIZE,
     },
 
-    components: getEmbeddingComponentOverrides(theme.components),
+    components: getEmbeddingComponentOverrides(),
   };
 
   if (theme.colors) {

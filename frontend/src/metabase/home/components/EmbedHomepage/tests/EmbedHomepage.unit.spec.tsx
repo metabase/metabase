@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, waitForElementToBeRemoved } from "__support__/ui";
+import { screen } from "__support__/ui";
 
 import {
   getLastFeedbackCall,
@@ -136,8 +136,6 @@ describe("EmbedHomepage (OSS)", () => {
       await userEvent.click(screen.getByText("Cancel"));
 
       expect(getLastHomepageSettingSettingCall()).toBeUndefined();
-
-      await waitForElementToBeRemoved(() => queryFeedbackModal());
     });
 
     it("should dismiss when submitting feedback - even if empty, should not actually send the feedback", async () => {
@@ -150,7 +148,7 @@ describe("EmbedHomepage (OSS)", () => {
       const body = await lastCall?.request?.json();
       expect(body).toEqual({ value: "dismissed-run-into-issues" });
 
-      await waitForElementToBeRemoved(() => queryFeedbackModal());
+      expect(queryFeedbackModal()).not.toBeInTheDocument();
 
       // when both fields are empty, the button says "Skip" and
       // we should not make the http call
