@@ -41,9 +41,7 @@
   (when s (OffsetDateTime/parse s)))
 
 (defn- rehydrate [weights active-scorers index-row]
-  (-> (merge
-       (json/decode+kw (:legacy_input index-row))
-       (select-keys index-row [:pinned]))
+  (-> (json/decode+kw (:legacy_input index-row))
       (assoc
        :score      (:total_score index-row 1)
        :all-scores (mapv (fn [k]

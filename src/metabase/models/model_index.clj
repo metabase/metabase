@@ -157,7 +157,9 @@
                        :error      nil
                        :state      (if (> (count values-to-index) max-indexed-values)
                                      "overflow"
-                                     "indexed")}))
+                                     "indexed")})
+          ;; TODO hack here to update the index?
+          )
         (catch Exception e
           (log/errorf e "Error saving model-index values for model-index: %d, model: %d"
                       (:id model-index) (:model_id model-index))
