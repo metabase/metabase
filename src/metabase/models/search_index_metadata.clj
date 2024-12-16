@@ -1,5 +1,6 @@
 (ns metabase.models.search-index-metadata
   (:require
+   [metabase.db :as mdb]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -71,4 +72,7 @@
                                  [:not-in :version recent-versions]
                                  [:and
                                   [:not= :version (first recent-versions)]
-                                  [:< :updated_at [:raw "CURRENT_TIMESTAMP - INTERVAL '1 day'"]]]]})))
+                                  [:< :updated_at
+                                   (case (mdb/db-type)
+                                     :postgres [:raw "CURRENT_TIMESTAMP - INTERVAL '1 day'"]
+                                     :h2       [:raw "DATEADD(DAY, -1, CURRENT_TIMESTAMP)"])]]]})))
