@@ -3,15 +3,18 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
 
+import { useListRecentsQuery } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { FormProvider } from "metabase/forms";
 import { isNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, RecentCollectionItem } from "metabase-types/api";
 
 import { SAVE_QUESTION_SCHEMA } from "./schema";
 import type { FormValues, SaveQuestionProps } from "./types";
@@ -57,6 +60,7 @@ export const SaveQuestionProvider = ({
   multiStep = false,
   saveToCollectionId,
   children,
+  initialDashboardTabId,
 }: PropsWithChildren<SaveQuestionProps>) => {
   const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
 
@@ -64,9 +68,54 @@ export const SaveQuestionProvider = ({
     originalQuestion?.collectionId(),
   );
 
+  const [hasLoadedRecentItems, setHasLoadedRecentItems] = useState(false);
+  const { data: recentItems, isLoading } = useListRecentsQuery(
+    { context: ["selections", "views"] },
+    { skip: hasLoadedRecentItems },
+  );
+  // We need to stop refetching recent items as the user makes selections in the ui that could cause a refetch
+  // This causes new initial values getting calculated, which combined with Formik's `enableReinitialize`
+  // prop, results in a dirty form getting values replaced within initial state.
+  useEffect(() => {
+    if (!isLoading) {
+      setHasLoadedRecentItems(true);
+    }
+  }, [isLoading]);
+
+  const lastUsedDashboard = recentItems?.find(
+    item => item.model === "dashboard",
+  ) as RecentCollectionItem | undefined;
+
+  // analytics questions should not default to saving in dashboard
+  const isAnalytics = isInstanceAnalyticsCollection(question.collection());
+
+  const initialDashboardId =
+    question.type() === "question" &&
+    !isAnalytics &&
+    lastUsedDashboard?.can_write
+      ? lastUsedDashboard?.id
+      : undefined;
+
+  const initialCollectionId = isAnalytics
+    ? defaultCollectionId
+    : (lastUsedDashboard?.parent_collection.id ?? defaultCollectionId);
+
   const initialValues: FormValues = useMemo(
-    () => getInitialValues(originalQuestion, question, defaultCollectionId),
-    [originalQuestion, defaultCollectionId, question],
+    () =>
+      getInitialValues(
+        originalQuestion,
+        question,
+        initialCollectionId,
+        initialDashboardId,
+        initialDashboardTabId,
+      ),
+    [
+      originalQuestion,
+      initialCollectionId,
+      initialDashboardId,
+      question,
+      initialDashboardTabId,
+    ],
   );
 
   const handleSubmit = useCallback(

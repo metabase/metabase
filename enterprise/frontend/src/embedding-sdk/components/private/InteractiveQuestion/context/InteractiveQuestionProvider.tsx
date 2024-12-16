@@ -76,7 +76,7 @@ export const InteractiveQuestionProvider = ({
     }
   };
 
-  const handleCreate = async (question: Question) => {
+  const handleCreate = async (question: Question): Promise<Question> => {
     if (isSaveEnabled) {
       const saveContext = { isNewQuestion: true };
       const sdkQuestion = transformSdkQuestion(question);
@@ -88,7 +88,10 @@ export const InteractiveQuestionProvider = ({
 
       // Set the latest saved question object to update the question title.
       replaceQuestion(createdQuestion);
+      return createdQuestion;
     }
+
+    return question;
   };
 
   const {

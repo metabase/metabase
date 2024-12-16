@@ -97,7 +97,6 @@ export const ActionExecuteModal = ({
       <ActionParametersInputForm
         action={loadedAction}
         initialValues={initialValues}
-        prefetchesInitialValues
         onCancel={onClose}
         onSubmit={handleSubmit}
         onSubmitSuccess={handleSubmitSuccess}

@@ -545,10 +545,6 @@ function setDashboardParameterValuesEndpoint(prefix) {
 }
 
 export const ActionsApi = {
-  list: GET("/api/action"),
-  get: GET("/api/action/:id"),
-  create: POST("/api/action"),
-  update: PUT("/api/action/:id"),
   execute: POST("/api/action/:id/execute"),
   prefetchValues: GET("/api/action/:id/execute"),
   prefetchDashcardValues: GET(
@@ -557,9 +553,6 @@ export const ActionsApi = {
   executeDashcardAction: POST(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
-  createPublicLink: POST("/api/action/:id/public_link"),
-  deletePublicLink: DELETE("/api/action/:id/public_link"),
-  listPublic: GET("/api/action/public"),
 };
 
 export const MetabotApi = {

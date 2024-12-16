@@ -4,12 +4,15 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { skipToken, useGetCollectionQuery } from "metabase/api";
-import { useQuestionQuery } from "metabase/common/hooks";
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetCollectionQuery,
+} from "metabase/api";
 import { getDashboard } from "metabase/dashboard/selectors";
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
-import type Question from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
 import type { CollectionId, Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -76,9 +79,13 @@ function MainNavbar({
   onChangeLocation,
   ...props
 }: Props) {
-  const { data: question } = useQuestionQuery({
-    id: questionId,
-  });
+  const { data: card } = useGetCardQuery(
+    questionId
+      ? {
+          id: questionId,
+        }
+      : skipToken,
+  );
 
   const { data: collection } = useGetCollectionQuery(
     collectionId ? { id: collectionId } : skipToken,
@@ -101,17 +108,17 @@ function MainNavbar({
     };
   }, [isOpen, openNavbar, closeNavbar]);
 
-  const selectedItems = useMemo<SelectedItem[]>(
-    () =>
-      getSelectedItems({
-        pathname: location.pathname,
-        params,
-        question,
-        collection,
-        dashboard,
-      }),
-    [location, params, question, dashboard, collection],
-  );
+  const selectedItems = useMemo<SelectedItem[]>(() => {
+    const question = new Question(card);
+
+    return getSelectedItems({
+      pathname: location.pathname,
+      params,
+      question,
+      collection,
+      dashboard,
+    });
+  }, [location, params, card, dashboard, collection]);
 
   return (
     <Sidebar

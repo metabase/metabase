@@ -3,6 +3,7 @@ import {
   getLastReleaseTag,
   getMilestoneName,
   getNextVersions,
+  getOSSVersion,
 } from "./version-helpers";
 
 export const getMilestones = async ({
@@ -118,11 +119,14 @@ export const hasBeenReleased = async ({
   repo,
   version,
 }: ReleaseProps) => {
+  // we only create a git tag for the open source version number as of Dec 2024
+  const ossVersion = getOSSVersion(version);
+
   const previousRelease = await github.rest.git
     .getRef({
       owner,
       repo,
-      ref: "tags/" + version,
+      ref: "tags/" + ossVersion,
     })
     .then(() => true)
     .catch(() => false);
@@ -137,16 +141,18 @@ export const tagRelease = async ({
   owner,
   repo,
 }: ReleaseProps & { commitHash: string }) => {
-  // create new ref
+  // we only create a git tag for the open source version number as of Dec 2024
+  const ossVersion = getOSSVersion(version);
+
   const newRef = await github.rest.git.createRef({
     owner,
     repo,
-    ref: `refs/tags/${version}`,
+    ref: `refs/tags/${ossVersion}`,
     sha: commitHash,
   });
 
   if (newRef.status !== 201) {
-    throw new Error(`failed to tag release ${version}`);
+    throw new Error(`failed to tag release ${ossVersion}`);
   }
 };
 

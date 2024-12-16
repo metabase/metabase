@@ -1,5 +1,6 @@
 import { H } from "e2e/support";
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
@@ -233,6 +234,49 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         mainPage()
           .findAllByText(/No (questions|dashboards) have been embedded yet./)
           .should("have.length", 2);
+      });
+    });
+
+    it("should be able to publish/embed a dashboard with a dashboard question saved within it", () => {
+      H.createQuestion({
+        name: "Total Orders",
+        dashboard_id: ORDERS_DASHBOARD_ID,
+        database_id: SAMPLE_DATABASE.id,
+        query: {
+          "source-table": SAMPLE_DATABASE.ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+        enable_embedding: true,
+      });
+
+      cy.request("PUT", "/api/setting/enable-embedding-static", {
+        value: true,
+      });
+
+      cy.intercept("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`).as(
+        "embedObject",
+      );
+      cy.intercept("GET", "/api/dashboard/embeddable").as(
+        "currentlyEmbeddedObject",
+      );
+
+      visitAndEnableSharing("dashboard");
+
+      H.modal().within(() => {
+        cy.findByRole("tab", { name: "Look and Feel" }).click();
+        cy.button("Publish").click();
+
+        cy.wait("@embedObject");
+      });
+
+      H.visitIframe();
+      cy.url().should("contain", "/embed/dashboard/");
+
+      cy.findByTestId("embed-frame").within(() => {
+        cy.findByRole("heading", { name: "Orders in a dashboard" });
+        cy.findByText("Total Orders");
+        cy.findByText("18,760");
       });
     });
 

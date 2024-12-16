@@ -791,10 +791,16 @@ describe("scenarios > question > filter", () => {
     H.cartesianChartCircleWithColors(["#88BF4D", "#509EE3", "#A989C5"]);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
-      cy.findByText("Save").click();
+    cy.findByTestId("save-question-modal")
+      .findByLabelText(/Where do you want to save this/)
+      .click();
+    H.pickEntity({
+      tab: "Browse",
+      path: ["Our analytics"],
     });
-    cy.button("Not now").click();
+    H.entityPickerModal().findByText("Select this collection").click();
+    cy.findByTestId("save-question-modal").button("Save").click();
+
     assertOnLegendLabels();
 
     H.cartesianChartCircleWithColors(["#88BF4D", "#509EE3", "#A989C5"]);

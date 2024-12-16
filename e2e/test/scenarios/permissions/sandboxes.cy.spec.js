@@ -191,6 +191,71 @@ H.describeEE("formatting > sandboxes", () => {
       preparePermissions();
     });
 
+    it("should allow using a dashboard question as a sandbox source", () => {
+      const USER_ATTRIBUTE = "User ID";
+      const ATTRIBUTE_VALUE = "3";
+      const TTAG_NAME = "cid";
+      const QUESTION_NAME = "Joined test";
+
+      // Add user attribute to existing ("normal" / id:2) user
+      cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, {
+        login_attributes: { [USER_ATTRIBUTE]: ATTRIBUTE_VALUE },
+      });
+
+      // Orders join Products
+      createJoinedQuestion(QUESTION_NAME);
+
+      cy.sandboxTable({
+        table_id: ORDERS_ID,
+        group_id: DATA_GROUP,
+        attribute_remappings: {
+          [USER_ATTRIBUTE]: ["dimension", ["field", ORDERS.USER_ID, null]],
+        },
+      });
+
+      cy.createNativeQuestion({
+        name: "sql param in a dashboard",
+        dashboard_id: ORDERS_DASHBOARD_ID,
+        native: {
+          query: `select id,name,address,email from people where {{${TTAG_NAME}}}`,
+          "template-tags": {
+            [TTAG_NAME]: {
+              id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
+              name: TTAG_NAME,
+              "display-name": "CID",
+              type: "dimension",
+              dimension: ["field", PEOPLE.ID, null],
+              "widget-type": "id",
+            },
+          },
+        },
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.sandboxTable({
+          table_id: PEOPLE_ID,
+          card_id: QUESTION_ID,
+          group_id: DATA_GROUP,
+          attribute_remappings: {
+            [USER_ATTRIBUTE]: ["dimension", ["template-tag", TTAG_NAME]],
+          },
+        });
+      });
+
+      cy.signOut();
+      cy.signInAsNormalUser();
+
+      // see that the question is in the dashboard
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.dashboardCards().findByText("sql param in a dashboard").should("exist");
+
+      H.openPeopleTable();
+      // 1 row filtered on User ID
+      cy.findAllByText(ATTRIBUTE_VALUE).should("have.length", 1);
+      H.assertDatasetReqIsSandboxed({
+        columnId: PEOPLE.USER_ID,
+        columnAssertion: ATTRIBUTE_VALUE,
+      });
+    });
+
     it("should allow joins to the sandboxed table (metabase-enterprise#154)", () => {
       cy.updatePermissionsGraph({
         [COLLECTION_GROUP]: {

@@ -154,6 +154,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: be-tests
+          java-version: "${{ matrix.java-version }}"
       # Depending on which files changed, we might either have to build static-viz
       # from scratch or download the previously built artifact
       - name: Build static-viz frontend
