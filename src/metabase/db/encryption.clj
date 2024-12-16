@@ -14,7 +14,8 @@
   The passed make-encrypt-fn is used to generate the encryption/decryption function to use by passing versions of encryption/maybe-encrypt to it."
   [db-type data-source encrypting? make-encrypt-fn]
   (let [encrypt-str-fn (make-encrypt-fn encryption/maybe-encrypt)
-        encrypt-bytes-fn (make-encrypt-fn encryption/maybe-encrypt-bytes)]
+        encrypt-bytes-fn (make-encrypt-fn encryption/maybe-encrypt-bytes)
+        encrypt-for-stream-fn (make-encrypt-fn encryption/maybe-encrypt-for-stream)]
     (t2/with-transaction [conn {:datasource data-source}]
       (doseq [[id details] (t2/select-pk->fn :details :model/Database)]
         (when (encryption/possibly-encrypted-string? details)
@@ -40,7 +41,11 @@
           (throw (ex-info (trs "Can''t decrypt secret value with MB_ENCRYPTION_SECRET_KEY") {:secret-id id})))
         (t2/update! :conn conn :secret
                     {:id id}
-                    {:value (encrypt-bytes-fn value)})))))
+                    {:value (encrypt-bytes-fn value)}))
+      (doseq [[query-hash result](t2/select-pk->fn :results :model/QueryCache)]
+        (t2/update! :conn conn :model/QueryCache
+                    {:query_hash query-hash}
+                    {:results (encrypt-for-stream-fn (encryption/maybe-decrypt-for-stream result))})))))
 
 (defn encrypt-db
   "Encrypt the db using the current `MB_ENCRYPTION_SECRET_KEY` to read existing data, and the passed `to-key` to re-encrypt.
@@ -54,6 +59,6 @@
                                              (partial maybe-encrypt-fn (encryption/validate-and-hash-secret-key to-key))))))
 
 (defn decrypt-db
-  "Decrypts the database usign the current `MB_ENCRYPTION_SECRET_KEY` to read existing data"
+  "Decrypts the database using the current `MB_ENCRYPTION_SECRET_KEY` to read existing data"
   [db-type data-source]
   (do-encryption db-type data-source false (constantly identity)))

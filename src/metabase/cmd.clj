@@ -21,6 +21,7 @@
    [environ.core :as env]
    [metabase.config :as config]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.models]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
@@ -28,6 +29,11 @@
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
+
+;; Fool the linters into thinking these namespaces are used
+(comment
+  metabase.models ; without importing models, table names are not correctly converted
+  )
 
 ;; Command processing and option parsing utilities, etc.
 
