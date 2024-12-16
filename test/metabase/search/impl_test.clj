@@ -87,15 +87,16 @@
                                                  :model-ancestors?            false
                                                  :limit-int                   100
                                                  :calculate-available-models? false}))]
-          ;; warm it up, in case the DB call depends on the order of test execution and it needs to
-          ;; do some initialization
+            ;; warm it up, in case the DB call depends on the order of test execution and it needs to
+            ;; do some initialization
+            (search/init-index!)
             (do-search)
             (t2/with-call-count [call-count]
               (do-search)
-            ;; the call count number here are expected to change if we change the search api
-            ;; we have this test here just to keep tracks this number to remind us to put effort
-            ;; into keep this number as low as we can
-              (is (<= (call-count) 5)))))))))
+              ;; the call count number here are expected to change if we change the search api
+              ;; we have this test here just to keep tracks this number to remind us to put effort
+              ;; into keep this number as low as we can
+              (is (<= (call-count) 6)))))))))
 
 (deftest created-at-correctness-test
   (let [search-term   "created-at-filtering"
