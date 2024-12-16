@@ -167,7 +167,7 @@ jobs:
         with:
           # FIXME - revert this! hard-coding to debug a Cypress test.
           # ref: embedding-sdk-${{ needs.resolve-sdk-version.outputs.sdk_version }}
-          ref: fix-e2e-workflows-for-52
+          ref: fix-sdk-e2e-workflows-for-52
           path: sdk-release-e2e
           sparse-checkout: e2e
 
