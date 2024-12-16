@@ -345,7 +345,13 @@ export function EntityPickerModal<
     { capture: true, once: true },
   );
 
+<<<<<<< HEAD
+  const titleId = useUniqueId();
+||||||| parent of 85a40c97ef (Move getPortalRootElement and use useUniqueID)
+  const titleId = useMemo(() => _.uniqueId("entity-picker-modal-title-"), []);
+=======
   const titleId = useUniqueId("entity-picker-modal-title-");
+>>>>>>> 85a40c97ef (Move getPortalRootElement and use useUniqueID)
 
   return (
     <Modal.Root

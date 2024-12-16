@@ -4,8 +4,8 @@ import { merge } from "icepick";
 import { useCallback, useMemo, useState } from "react";
 import type * as tippy from "tippy.js";
 
-import { getPortalRootElement } from "embedding-sdk/config";
 import EventSandbox from "metabase/components/EventSandbox";
+import { getPortalRootElement } from "metabase/css/core/overlays/utils";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { isCypressActive } from "metabase/env";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
