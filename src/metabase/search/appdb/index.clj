@@ -31,31 +31,25 @@
     (:hash config/mb-version-info)
     (str (random-uuid))))
 
-(defonce ^:dynamic ^:private *active-table* (atom nil))
-
-(defonce ^:dynamic ^:private *pending-table* (atom nil))
+(defonce ^:dynamic ^:private *indexes* {:active nil, :pending nil})
 
 (def ^:private ^:dynamic *mocking-tables* false)
 
 (defn active-table
   "The table against which we should currently make search queries."
   []
-  @*active-table*)
+  (:active @*indexes*))
 
 (defn- pending-table
   "A partially populated table that will take over from [[active-table]] when it is done."
   []
-  @*pending-table*)
+  (:pending @*indexes*))
 
 (defmethod search.engine/reset-tracking! :search.engine/appdb [_]
-  (reset! *active-table* nil)
-  (reset! *pending-table* nil))
+  (reset! *indexes* nil))
 
 (defn- sync-tracking-atoms! []
-  (let [{:keys [active pending] :as indexes} (search-index-metadata/indexes :appdb *index-version-id*)]
-    (reset! *pending-table* pending)
-    (reset! *active-table* active)
-    indexes))
+  (reset! *indexes* (search-index-metadata/indexes :appdb *index-version-id*)))
 
 (defn gen-table-name
   "Generate a unique table name to use as a search index table."
@@ -157,35 +151,32 @@
   []
   (if *mocking-tables*
     ;; The atoms are the only source of truth, create a new table if necessary.
-    (or @*pending-table*
+    (or (pending-table)
         (let [table-name (gen-table-name)]
           (create-table! table-name)
-          (reset! *pending-table* table-name)))
+          (swap! *indexes* assoc :pending table-name)))
     ;; The database is the source of truth
     (let [{:keys [pending]} (sync-tracking-atoms!)]
       (or pending
           (let [table-name (gen-table-name)]
-            (if (search-index-metadata/create-pending! :appdb *index-version-id* table-name)
-              (do (create-table! table-name)
-                  (reset! *pending-table* table-name))
-              ;; we were unable to insert metadata for a new pending row, probably due to a race with another instance.
-              (:pending (sync-tracking-atoms!))))))))
+            ;; We may fail to insert a new metadata row if we lose a race with another instance.
+            (when (search-index-metadata/create-pending! :appdb *index-version-id* table-name)
+              (create-table! table-name))
+            (:pending (sync-tracking-atoms!)))))))
 
 (defn activate-table!
   "Make the pending index active if it exists. Returns true if it did so."
   []
   (if *mocking-tables*
     ;; The atoms are the only source of truth, we must not update the metadata.
-    (if-let [pending @*pending-table*]
-      (do (reset! *active-table* pending)
-          (reset! *pending-table* nil)
-          true)
-      false)
+    (boolean
+     (when-let [pending (:pending @*indexes*)]
+       (reset! *indexes* {:pending nil, :active pending})))
     ;; Ensure the metadata is updated and pruned.
     (let [{:keys [pending]} (sync-tracking-atoms!)]
       (when pending
-        (reset! *active-table* (search-index-metadata/active-pending! :appdb *index-version-id*))
-        (reset! *pending-table* nil))
+        (reset! *indexes* {:pending nil
+                           :active (search-index-metadata/active-pending! :appdb *index-version-id*)}))
       ;; Clean up while we're here
       (delete-obsolete-tables!)
       ;; Did *we* do a rotation?
@@ -234,11 +225,11 @@
     (when-let [table (active-table)]
       (when (not (exists? table))
         (log/warnf "Unable to find table %s and no longer tracking it as active", table)
-        (reset! *active-table* nil)))
+        (swap! *indexes* assoc :active nil)))
     (when-let [table (pending-table)]
       (when (not (exists? table))
         (log/warnf "Unable to find table %s and no longer tracking it as pending", table)
-        (reset! *pending-table* nil))))
+        (swap! *indexes* assoc :pending nil))))
 
   (let [entries          (map document->entry documents)
         ;; Optimization idea: if the updates are coming from the re-indexing worker, skip updating the active table.
@@ -276,7 +267,7 @@
   (when-let [table-name (pending-table)]
     (when-not *mocking-tables*
       (search-index-metadata/delete-index! :appdb *index-version-id* table-name))
-    (reset! *pending-table* nil))
+    (swap! *indexes* assoc :pending nil))
   (maybe-create-pending!)
   (activate-table!))
 
@@ -284,7 +275,7 @@
   "Ensure the index is ready to be populated. Return false if it was already ready."
   [& {:keys [force-reset?]}]
   ;; Be extra careful against races on initializing the setting
-  (locking *active-table*
+  (locking *indexes*
     (when-not *mocking-tables*
       (when (nil? (active-table))
         (sync-tracking-atoms!)))
@@ -298,8 +289,7 @@
   [& body]
   `(let [table-name# (gen-table-name)]
      (binding [*mocking-tables* true
-               *pending-table*  (atom nil)
-               *active-table*   (atom table-name#)]
+               *indexes*        (atom {:active table-name#})]
        (try
          (create-table! table-name#)
          ~@body
