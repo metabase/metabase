@@ -17,7 +17,7 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
     mockAuthProviderAndJwtSignIn();
   });
 
-  it.skip("can create a question via the CreateQuestion component", () => {
+  it("can create a question via the CreateQuestion component", () => {
     cy.intercept("POST", "/api/card").as("createCard");
 
     mountSdkContent(
