@@ -4,7 +4,7 @@ import {
 } from "@metabase/embedding-sdk-react";
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { describeEE, popover, POPOVER_ELEMENT } from "e2e/support/helpers";
+import { POPOVER_ELEMENT, describeEE, popover } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
