@@ -2,7 +2,7 @@
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
-import { Select, Stack, Text } from "metabase/ui";
+import { Select, Stack } from "metabase/ui";
 
 export const ChartSettingSelect = ({
   // Use null if value is undefined. If we pass undefined, Select will create an
@@ -17,7 +17,6 @@ export const ChartSettingSelect = ({
   id,
   searchProp,
   footer,
-  label,
   ...selectProps
 }) => {
   const disabled =
@@ -58,7 +57,6 @@ export const ChartSettingSelect = ({
           fontWeight: "bold",
         },
       }}
-      label={label && <Text fw="bold">{label}</Text>}
       {...selectProps}
     />
   );
