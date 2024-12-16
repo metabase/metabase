@@ -441,21 +441,7 @@ jobs:
           const { tagRelease } = require('${{ github.workspace }}/release/dist/index.cjs');
 
           const OSSversion = '${{ needs.check-version.outputs.oss }}';
-          const EEversion = '${{ needs.check-version.outputs.ee }}';
 
-          // push EE tag
-          await tagRelease({
-            github,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            version: EEversion,
-            commitHash: '${{ inputs.commit }}',
-          }).catch((err) => {
-            console.error('Failed to tag release', EEversion, err);
-            process.exit(1);
-          });
-
-          // push OSS tag
           await tagRelease({
             github,
             owner: context.repo.owner,
@@ -466,11 +452,7 @@ jobs:
             console.error('Failed to tag release', OSSversion, err);
             process.exit(1);
           });
-    - name: Reorder release tags to put OSS first
-      run: |
-        git config user.name github-actions
-        git config user.email github-actions@github.com
-        $GITHUB_WORKSPACE/release/reorder-tags.sh ${{ needs.check-version.outputs.ee }} ${{ inputs.commit }}
+
 
   trigger-docs-update:
     if: ${{ !inputs.auto }}
@@ -598,41 +580,26 @@ jobs:
       AWS_S3_DOWNLOADS_BUCKET: ${{ vars.AWS_S3_DOWNLOADS_BUCKET }}
       DOCKERHUB_OWNER: ${{ vars.DOCKERHUB_OWNER }}
       DOCKERHUB_REPO: ${{ vars.DOCKERHUB_REPO }}
-    strategy:
-      matrix:
-        edition: [oss, ee]
     steps:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: release
       - name: prepare release scripts
         run: cd release && yarn && yarn build
-      - uses: actions/download-artifact@v4
-        name: Retrieve uberjar artifact
-        with:
-          name: metabase-${{ matrix.edition }}-uberjar
-      - name: Read Checksum
-        run: |
-          CHECKSUM=$(cat SHA256.sum)
-          echo "CHECKSUM=$CHECKSUM" >> $GITHUB_ENV
       - name: Publish draft release notes
         uses: actions/github-script@v7
         with:
           result-encoding: string
-          script: |
+          script: | # js
             const { publishRelease, getCanonicalVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
 
             const version = '${{ inputs.version }}';
-            const edition = '${{ matrix.edition }}';
-
-            const canonical_version = getCanonicalVersion(version, edition);
 
             await publishRelease({
               github,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              version: canonical_version,
-              checksum: '${{ env.CHECKSUM }}',
+              version,
             }).then(() => {
               console.log('Successfully published release notes', '${{ inputs.version }}');
             }).catch((err) => {
