@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
 import {
@@ -61,6 +62,11 @@ describe("ActionCreator > Sharing", () => {
           screen.queryByRole("textbox", { name: "Public action form URL" }),
         ).not.toBeInTheDocument();
 
+        fetchMock.getOnce(
+          `path:/api/action/${privateAction.id}`,
+          { ...privateAction, public_uuid: mockUuid },
+          { overwriteRoutes: true },
+        );
         await userEvent.click(
           screen.getByRole("switch", { name: "Make public" }),
         );
@@ -101,6 +107,12 @@ describe("ActionCreator > Sharing", () => {
         expect(
           screen.getByRole("heading", { name: "Disable this public link?" }),
         ).toBeInTheDocument();
+
+        fetchMock.getOnce(
+          `path:/api/action/${publicAction.id}`,
+          { ...publicAction, public_uuid: null },
+          { overwriteRoutes: true },
+        );
         await userEvent.click(screen.getByRole("button", { name: "Yes" }));
 
         await waitFor(() => {
