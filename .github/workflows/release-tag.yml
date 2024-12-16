@@ -285,13 +285,6 @@ jobs:
           git push origin -f ${{ inputs.tag_name }}-oss
         fi
 
-  update-release-log:
-    needs: check-version
-    uses: ./.github/workflows/release-log.yml
-    with:
-      version: ${{ fromJSON(vars.CURRENT_VERSION) }} # cast string to number
-    secrets: inherit
-
   update-version-info:
     runs-on: ubuntu-22.04
     needs: check-version
