@@ -253,7 +253,7 @@ describe("scenarios > question > settings", () => {
 
       cy.findByTestId("viz-settings-button").click(); // open settings sidebar
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Conditional Formatting"); // confirm it's open
+      cy.findByText("Conditional formatting"); // confirm it's open
 
       // cy.get(".test-TableInteractive").findByText("Subtotal").scrollIntoView();
       H.tableHeaderClick("Subtotal"); // open subtotal column header actions
