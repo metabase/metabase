@@ -24,32 +24,46 @@
   h2/keep-me
   postgres/keep-me)
 
+(set! *warn-on-reflection* true)
+
 (def ^:private insert-batch-size 150)
+
+(def ^:private sync-tracking-period (long (* 5 #_minutes 60e9)))
 
 (defonce ^:dynamic ^:private *index-version-id*
   (if config/is-prod?
     (:hash config/mb-version-info)
     (str (random-uuid))))
 
+(defonce ^:private next-sync-at (atom nil))
+
 (defonce ^:dynamic ^:private *indexes* {:active nil, :pending nil})
 
 (def ^:private ^:dynamic *mocking-tables* false)
-
-(defn active-table
-  "The table against which we should currently make search queries."
-  []
-  (:active @*indexes*))
-
-(defn- pending-table
-  "A partially populated table that will take over from [[active-table]] when it is done."
-  []
-  (:pending @*indexes*))
 
 (defmethod search.engine/reset-tracking! :search.engine/appdb [_]
   (reset! *indexes* nil))
 
 (defn- sync-tracking-atoms! []
   (reset! *indexes* (search-index-metadata/indexes :appdb *index-version-id*)))
+
+(defn- sync-tracking-atoms-if-stale! []
+  (when-not *mocking-tables*
+    (when (or (not @next-sync-at) (> (System/nanoTime) @next-sync-at))
+      (reset! next-sync-at (+ (System/nanoTime) sync-tracking-period))
+      (sync-tracking-atoms!))))
+
+(defn active-table
+  "The table against which we should currently make search queries."
+  []
+  (sync-tracking-atoms-if-stale!)
+  (:active @*indexes*))
+
+(defn- pending-table
+  "A partially populated table that will take over from [[active-table]] when it is done."
+  []
+  (sync-tracking-atoms-if-stale!)
+  (:pending @*indexes*))
 
 (defn gen-table-name
   "Generate a unique table name to use as a search index table."
