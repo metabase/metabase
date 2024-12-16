@@ -6,6 +6,7 @@ import {
   EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
 } from "embedding-sdk/config";
 import type { DeepPartial } from "embedding-sdk/types/utils";
+import { OVERLAY_Z_INDEX } from "metabase/css/core/overlays/constants";
 import type { MantineThemeOverride } from "metabase/ui";
 
 export const DEFAULT_SDK_FONT_SIZE = 14;
@@ -87,6 +88,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     goalLine: {
       label: { fontSize: FONT_SIZES.goalLabel.px },
     },
+  },
+  popover: {
+    zIndex: OVERLAY_Z_INDEX,
   },
 };
 
