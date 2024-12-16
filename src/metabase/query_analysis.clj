@@ -129,41 +129,40 @@
   [{card-id :id, query :dataset_query}]
   (let [query-type (lib/normalized-query-type query)]
     (when (enabled-type? query-type)
-      (t2/with-transaction [_conn]
-        (let [analysis-id (t2/insert-returning-pk! :model/QueryAnalysis {:card_id card-id :status "running"})
-              result      (query-references query query-type)
-              safely      (fn [f] (fn [m] (update-vals (f m) truncate-string)))
-              table->row  (safely
-                           (fn [{:keys [schema table table-id]}]
-                             {:card_id     card-id
-                              :analysis_id analysis-id
-                              :schema      schema
-                              :table       table
-                              :table_id    table-id}))
-              field->row  (safely
-                           (fn [{:keys [schema table column table-id field-id explicit-reference]}]
-                             {:card_id            card-id
-                              :analysis_id        analysis-id
-                              :schema             schema
-                              :table              table
-                              :column             column
-                              :table_id           table-id
-                              :field_id           field-id
-                              :explicit_reference explicit-reference}))]
-          (if (contains? result :error)
-            ;; TODO we should track cases where the driver is disabled or not-supported differently.
-            (t2/update! :model/QueryAnalysis analysis-id {:status "failed"})
-            (do
-              (t2/insert! :model/QueryField (map field->row (:fields result)))
-              (t2/insert! :model/QueryTable (map table->row (:tables result)))
-              (t2/update! :model/QueryAnalysis analysis-id {:status "complete"})))
+      (let [analysis-id (t2/insert-returning-pk! :model/QueryAnalysis {:card_id card-id :status "running"})
+            result      (query-references query query-type)
+            safely      (fn [f] (fn [m] (update-vals (f m) truncate-string)))
+            table->row  (safely
+                         (fn [{:keys [schema table table-id]}]
+                           {:card_id     card-id
+                            :analysis_id analysis-id
+                            :schema      schema
+                            :table       table
+                            :table_id    table-id}))
+            field->row  (safely
+                         (fn [{:keys [schema table column table-id field-id explicit-reference]}]
+                           {:card_id            card-id
+                            :analysis_id        analysis-id
+                            :schema             schema
+                            :table              table
+                            :column             column
+                            :table_id           table-id
+                            :field_id           field-id
+                            :explicit_reference explicit-reference}))]
+        (if (contains? result :error)
+          ;; TODO we should track cases where the driver is disabled or not-supported differently.
+          (t2/update! :model/QueryAnalysis analysis-id {:status "failed"})
+          (do
+            (t2/insert! :model/QueryField (map field->row (:fields result)))
+            (t2/insert! :model/QueryTable (map table->row (:tables result)))
+            (t2/update! :model/QueryAnalysis analysis-id {:status "complete"})))
 
-          (t2/delete! :model/QueryAnalysis
-                      {:where [:and
-                               [:= :card_id card-id]
-                               [:not= :id analysis-id]]})
+        (t2/delete! :model/QueryAnalysis
+                    {:where [:and
+                             [:= :card_id card-id]
+                             [:not= :id analysis-id]]})
 
-          result)))))
+        result))))
 
 (defn- replaced-inner-query-for-native-card
   "Substitute new references for certain fields and tables, based upon the given mappings."
