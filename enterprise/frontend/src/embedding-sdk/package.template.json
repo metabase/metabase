@@ -17,7 +17,8 @@
       "types": "./dist/nextjs.d.ts",
       "require": "./dist/nextjs.cjs",
       "import": "./dist/nextjs.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "typesVersions": {
     "*": {
