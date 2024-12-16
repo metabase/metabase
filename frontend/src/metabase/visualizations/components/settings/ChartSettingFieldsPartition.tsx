@@ -9,9 +9,9 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
-import Label from "metabase/components/type/Label";
 import { DragDropContext } from "metabase/core/components/DragDropContext";
 import CS from "metabase/css/core/index.css";
+import { Box, Text, useMantineTheme } from "metabase/ui";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import type { Partition } from "metabase/visualizations/visualizations/PivotTable/partitions";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
@@ -20,11 +20,7 @@ import type {
   DatasetColumn,
 } from "metabase-types/api";
 
-import {
-  DroppableContainer,
-  EmptyColumnPlaceholder,
-  FieldPartitionColumn,
-} from "./ChartSettingFieldsPartition.styled";
+import { ColumnItem } from "./ColumnItem";
 
 const columnMove = (columns: string[], from: number, to: number) => {
   const columnCopy = [...columns];
@@ -58,6 +54,8 @@ export const ChartSettingFieldsPartition = ({
   columns: RemappingHydratedDatasetColumn[];
   partitions: Partition[];
 }) => {
+  const theme = useMantineTheme();
+
   const handleEditFormatting = (
     column: RemappingHydratedDatasetColumn,
     targetElement: HTMLElement,
@@ -144,20 +142,30 @@ export const ChartSettingFieldsPartition = ({
         const updatedColumns = updatedValue[partitionName] ?? [];
         const partitionType = getPartitionType(partitionName);
         return (
-          <div
+          <Box
             className={cx(CS.py2, { [CS.borderTop]: index > 0 })}
             key={partitionName}
           >
-            <Label color="medium">{title}</Label>
+            <Text c="text-medium">{title}</Text>
             <Droppable droppableId={partitionName} type={partitionType}>
               {(provided, snapshot) => (
-                <DroppableContainer
+                <Box
                   {...provided.droppableProps}
+                  bg={snapshot.draggingFromThisWith ? "border" : "none"}
                   ref={provided.innerRef}
-                  isDragSource={!!snapshot.draggingFromThisWith}
+                  mih="2.5rem"
+                  pos="relative"
+                  style={{ borderRadius: theme.radius.md }}
                 >
                   {updatedColumns.length === 0 ? (
-                    <EmptyColumnPlaceholder>{t`Drag fields here`}</EmptyColumnPlaceholder>
+                    <Box
+                      pos="absolute"
+                      w="100%"
+                      p="0.75rem"
+                      bg="bg-light"
+                      c="text-medium"
+                      style={{ borderRadius: theme.radius.md }}
+                    >{t`Drag fields here`}</Box>
                   ) : (
                     updatedColumns.map((col, index) => (
                       <Draggable
@@ -166,7 +174,7 @@ export const ChartSettingFieldsPartition = ({
                         index={index}
                       >
                         {provided => (
-                          <div
+                          <Box
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
@@ -178,16 +186,16 @@ export const ChartSettingFieldsPartition = ({
                               onEditFormatting={handleEditFormatting}
                               title={getColumnTitle(col)}
                             />
-                          </div>
+                          </Box>
                         )}
                       </Draggable>
                     ))
                   )}
                   {provided.placeholder}
-                </DroppableContainer>
+                </Box>
               )}
             </Droppable>
-          </div>
+          </Box>
         );
       })}
     </DragDropContext>
@@ -206,10 +214,10 @@ const Column = ({
     target: HTMLElement,
   ) => void;
 }) => (
-  <FieldPartitionColumn
+  <ColumnItem
     title={title}
     onEdit={target => onEditFormatting?.(column, target)}
     draggable
-    isDisabled={false}
+    className={CS.m0}
   />
 );
