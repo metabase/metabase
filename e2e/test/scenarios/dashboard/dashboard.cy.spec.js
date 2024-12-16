@@ -1108,7 +1108,7 @@ describe("scenarios > dashboard", () => {
     cy.findByRole("dialog").within(() => {
       cy.findByRole("switch", {
         name: "Hide this card if there are no results",
-      }).click();
+      }).click({ force: true });
       cy.button("Done").click();
     });
 
@@ -1231,9 +1231,9 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
       cy.findByRole("switch", {
         name: "Hide this card if there are no results",
       })
-        .click() // enable
-        .click() // disable
-        .click(); // enable
+        .click({ force: true }) // enable
+        .click({ force: true }) // disable
+        .click({ force: true }); // enable
 
       H.expectGoodSnowplowEvent(
         {
