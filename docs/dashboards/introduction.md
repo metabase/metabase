@@ -28,10 +28,21 @@ In the top right of the screen, click the **+ New** > **Dashboard**. Give your n
 
 ## Adding questions to a dashboard
 
-There are two ways to add questions to a dashboard: from the dashboard, or from the question you want to add.
+There are different ways to add questions to a dashboard:
 
-- **From a question**: You can add a newly saved question to a dashboard directly from the modal that pops up after you save the question for the first time. You can also add a question to a dashboard by clicking on the ellipsis (**...**) at the top right of a question and selecting **Add to dashboard**.
-- **From a dashboard**: Click on the **pencil** icon to **edit the dashboard**. Then click the **+** icon in the top right of the dashboard editing interface (not the **+** in the main navigation bar) to add any of your saved questions to the dashboard, regardless of which collection the questions are in.
+### Saving questions to a dashboard
+
+When you save a question, you can [save the question directly to a dashboard](../questions/introduction.md#saving-questions-to-dashboards). Only that dashboard will be able to include that question.
+
+### Adding a question in a collection
+
+Visit a collection and click on the question. Click on the three-dot menu (**...**) at the top right of a question and select **Add to dashboard**.
+
+### From a dashboard
+
+When viewing a dashboard, click on the **pencil** icon to **edit the dashboard**. Then click the **+** icon in the top right of the dashboard editing interface (not the **+** in the main navigation bar).
+
+Keep in mind, you can't add questions that are saved to other dashboards. If you want to use a question in more than one dashboard, you should saved it to a collection. You could also duplicate a question, and save that duplicate to your dashboard.
 
 > If your question is saved to your personal collection, you'll only be able to add that question to dashboards in your personal collection. If you want to add the question to a dashboard in a public collection, you'll need to move your question to that collection (or any other public collection).
 
