@@ -1,0 +1,72 @@
+.ColumnItemRoot {
+  margin: 0.5rem 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
+  background: var(--mb-color-bg-white);
+
+  &.dragging {
+    cursor: grabbing;
+    pointer-events: auto !important;
+  }
+
+  color: var(--mb-color-text-medium);
+}
+
+.ColumnItemRoot.Draggable {
+  cursor: grab;
+
+  &:hover {
+    .ColumnItemDragHandle {
+      color: var(--mb-color-brand);
+    }
+  }
+}
+
+.ColumnItemSpan {
+  word-break: break-word;
+  word-wrap: anywhere;
+  font-weight: 700;
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1rem;
+  flex: auto;
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.ColumnItemContent {
+  padding: 0 0.5rem;
+  position: relative;
+  align-items: center;
+  display: flex;
+  flex: auto;
+}
+
+.ColumnItemContainer {
+  padding: 0.75rem 0.5rem;
+  position: relative;
+  flex: auto;
+  display: flex;
+  align-items: center;
+}
+
+.ColumnItemIcon {
+  margin-left: 1rem;
+  padding: 0;
+
+  &:hover {
+    background-color: unset;
+  }
+}
+
+.ColumnItemDragHandle {
+  flex-shrink: 0;
+}
+
+.ColumnItemColorPicker {
+  margin-bottom: 0;
+  margin-left: 0.25rem;
+}

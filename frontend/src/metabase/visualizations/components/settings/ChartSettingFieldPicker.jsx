@@ -8,6 +8,7 @@ import { ActionIcon, Group, Icon, useMantineTheme } from "metabase/ui";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
+import { ChartSettingActionIcon } from "./ChartSettingActionIcon";
 import { ChartSettingColorPicker } from "./ChartSettingColorPicker";
 import {
   ChartSettingFieldPickerRoot,
@@ -131,32 +132,20 @@ export const ChartSettingFieldPicker = ({
               </ActionIcon>
             )}
             {menuWidgetInfo && (
-              <ActionIcon
-                p={0}
-                c="text-medium"
-                size="sm"
-                radius="xl"
+              <ChartSettingActionIcon
+                icon="ellipsis"
                 data-testid={`settings-${value}`}
-                className={CS.pointerEventsAll}
                 onClick={e => {
                   onShowWidget(menuWidgetInfo, e.target);
                 }}
-              >
-                <Icon name="ellipsis" />
-              </ActionIcon>
+              />
             )}
             {onRemove && (
-              <ActionIcon
-                c="text-medium"
-                size="sm"
-                p={0}
-                radius="xl"
+              <ChartSettingActionIcon
+                icon="close"
                 data-testid={`remove-${value}`}
                 onClick={onRemove}
-                className={CS.pointerEventsAll}
-              >
-                <Icon name="close" />
-              </ActionIcon>
+              />
             )}
           </Group>
         }
