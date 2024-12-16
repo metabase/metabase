@@ -30,10 +30,6 @@ export default function UserAvatar({
   return <StyledAvatar {...props}>{userInitials(user) || "?"}</StyledAvatar>;
 }
 
-export function Avatar({ children, ...props }: { children: string }) {
-  return <StyledAvatar {...props}>{initial(children) ?? "?"}</StyledAvatar>;
-}
-
 function initial(name?: string | null) {
   return name ? name.charAt(0).toUpperCase() : "";
 }

@@ -43,19 +43,6 @@ export function equals(a: unknown, b: unknown) {
   return _.isEqual(a, b);
 }
 
-export function propertiesEqual(
-  a: Record<string, unknown>,
-  b: Record<string, unknown>,
-  properties = [...Object.keys(a), ...Object.keys(b)],
-) {
-  for (const property of properties) {
-    if (a[property] !== b[property]) {
-      return false;
-    }
-  }
-  return true;
-}
-
 export function copy(a: unknown) {
   // FIXME: ugghhhhhhhhh
   return JSON.parse(JSON.stringify(a));

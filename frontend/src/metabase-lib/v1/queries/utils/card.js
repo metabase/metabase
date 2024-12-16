@@ -37,14 +37,6 @@ export function cardIsEquivalent(cardA, cardB) {
   );
 }
 
-export function getQuery(card) {
-  if (card.dataset_query.type === "query") {
-    return card.dataset_query.query;
-  } else {
-    return null;
-  }
-}
-
 // NOTE Atte Keinänen 7/5/17: Still used in dashboards and public questions.
 // Query builder uses `Question.getResults` which contains similar logic.
 export function applyParameters(

@@ -44,7 +44,7 @@ const CUSTOM_EXPRESSION_SECTION: Section = {
   icon: "filter",
 };
 
-export const isSegmentListItem = (
+const isSegmentListItem = (
   item: ColumnListItem | SegmentListItem,
 ): item is SegmentListItem => {
   return (item as SegmentListItem).segment != null;

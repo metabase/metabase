@@ -70,11 +70,6 @@ export const dateTimeRelativeUnits = [
   "quarter-of-year",
 ] as const;
 
-export const dateTimeUnits = [
-  ...dateTimeAbsoluteUnits,
-  ...dateTimeRelativeUnits,
-] as const;
-
 export type DateTimeAbsoluteUnit = (typeof dateTimeAbsoluteUnits)[number];
 export type DateTimeRelativeUnit = (typeof dateTimeRelativeUnits)[number];
 export type DatetimeUnit =

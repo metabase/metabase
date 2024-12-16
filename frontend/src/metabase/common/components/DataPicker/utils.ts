@@ -146,12 +146,6 @@ export const isValueItem = (
   return ["table", "card", "dataset", "metric"].includes(item.model);
 };
 
-export const isFolderItem = (
-  item: DataPickerItem,
-): item is DataPickerFolderItem => {
-  return ["collection", "database", "schema"].includes(item.model);
-};
-
 export const createShouldShowItem = (
   models: CollectionItemModel[],
   databaseId?: DatabaseId,
@@ -186,7 +180,7 @@ const hasDatabaseId = (
   return typeof value === "object" && value != null && "database_id" in value;
 };
 
-export const castQuestionPickerItemToDataPickerItem = (
+const castQuestionPickerItemToDataPickerItem = (
   item: QuestionPickerItem,
 ): DataPickerItem => {
   // see comment for QuestionPickerItem definition to see why we need this cast

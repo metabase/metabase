@@ -798,7 +798,7 @@ export function formatDateToRangeForParameter(
     : `${start.format("YYYY-MM-DD")}~${end.format("YYYY-MM-DD")}`;
 }
 
-export function normalizeDateTimeRangeWithUnit(
+function normalizeDateTimeRangeWithUnit(
   values: [DateVal] | [DateVal, DateVal],
   unit: DatetimeUnit,
   options: OptionsType = {},
@@ -1016,7 +1016,7 @@ function replaceDateFormatNames(format: string, options: OptionsType) {
     .replace(/\bdddd\b/g, getDayFormat(options));
 }
 
-export function formatDateTimeWithFormats(
+function formatDateTimeWithFormats(
   value: number | string | Date | Moment,
   dateFormat: string,
   timeFormat: string | null,

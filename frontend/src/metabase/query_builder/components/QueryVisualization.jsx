@@ -93,7 +93,7 @@ export default function QueryVisualization(props) {
   );
 }
 
-export const VisualizationEmptyState = ({ className }) => (
+const VisualizationEmptyState = ({ className }) => (
   <div
     className={cx(
       className,
@@ -133,7 +133,7 @@ export function VisualizationRunningState({ className = "" }) {
   );
 }
 
-export const VisualizationDirtyState = ({
+const VisualizationDirtyState = ({
   className,
   result,
   isRunnable,

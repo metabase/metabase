@@ -134,7 +134,7 @@ function formatSingleDate(date: Moment) {
   }
 }
 
-export function formatRangeWidget(value: string): string | null {
+function formatRangeWidget(value: string): string | null {
   const { start, end } = parseDateRangeValue(value);
   return start.isValid() && end.isValid()
     ? formatSingleDate(start) + " - " + formatSingleDate(end)
@@ -177,11 +177,8 @@ export function formatDateValue(
   }, null);
 }
 
-// This should miror the logic in `metabase.models.params.shared`
-export function formatDateValueForType(
-  value: string,
-  type: string,
-): string | null {
+// This should mirror the logic in `metabase.models.params.shared`
+function formatDateValueForType(value: string, type: string): string | null {
   switch (type) {
     case "date/range":
       return formatRangeWidget(value);

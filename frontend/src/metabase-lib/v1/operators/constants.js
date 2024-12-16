@@ -285,19 +285,6 @@ export const FILTER_OPERATORS_BY_TYPE_ORDERED = {
   [UNKNOWN]: DEFAULT_FILTER_OPERATORS,
 };
 
-export const MORE_VERBOSE_NAMES = {
-  "equal to": "is equal to",
-  "not equal to": "is not equal to",
-  before: "is before",
-  after: "is after",
-  "not empty": "is not empty",
-  "not null": "is not null",
-  "less than": "is less than",
-  "greater than": "is greater than",
-  "less than or equal to": "is less than or equal to",
-  "greater than or equal to": "is greater than or equal to",
-};
-
 // Breakouts and Aggregation options
 function allFields(fields) {
   return fields;

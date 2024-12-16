@@ -155,7 +155,7 @@ function CheckboxGridPicker({
   );
 }
 
-export function AutocompletePicker({
+function AutocompletePicker({
   fieldValues,
   selectedValues,
   placeholder,

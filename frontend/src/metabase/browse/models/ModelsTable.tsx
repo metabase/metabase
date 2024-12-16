@@ -42,7 +42,7 @@ export interface ModelsTableProps {
   skeleton?: boolean;
 }
 
-export const itemsTableContainerName = "ItemsTableContainer";
+const itemsTableContainerName = "ItemsTableContainer";
 
 const descriptionProps: ResponsiveProps = {
   hideAtContainerBreakpoint: "sm",

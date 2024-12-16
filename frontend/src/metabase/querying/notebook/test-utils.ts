@@ -9,7 +9,7 @@ import {
 
 import type { NotebookStep } from "./types";
 
-export const metadata = createMockMetadata({
+const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
   questions: [createSavedStructuredCard({ id: 1 })],
 });

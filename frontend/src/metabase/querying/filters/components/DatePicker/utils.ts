@@ -21,7 +21,7 @@ export function isDatePickerUnit(unit: string): unit is DatePickerUnit {
   return isDatePickerTruncationUnit(unit) || isDatePickerExtractionUnit(unit);
 }
 
-export function isDatePickerTruncationUnit(
+function isDatePickerTruncationUnit(
   unit: string,
 ): unit is DatePickerTruncationUnit {
   const units: ReadonlyArray<string> = DATE_PICKER_TRUNCATION_UNITS;

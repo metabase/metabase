@@ -27,7 +27,7 @@ const getValueForSorting = (
   }
 };
 
-export const isValidSortColumn = (
+const isValidSortColumn = (
   sort_column: string,
 ): sort_column is keyof MetricResult => {
   return ["name", "collection", "description"].includes(sort_column);
@@ -77,7 +77,7 @@ export function isDatasetScalar(dataset: Dataset) {
   return dataset.data.cols.length === 1 && dataset.data.rows.length === 1;
 }
 
-export function isDatasetTemporalMetric(dataset: Dataset) {
+function isDatasetTemporalMetric(dataset: Dataset) {
   if (dataset.error) {
     return false;
   }
@@ -107,7 +107,7 @@ export function getDatasetValueForMetric(dataset: Dataset) {
   return null;
 }
 
-export function getMetricValueForScalarMetric(dataset: Dataset) {
+function getMetricValueForScalarMetric(dataset: Dataset) {
   const { cols, rows } = dataset.data;
 
   const lastRow = rows?.at(-1) ?? [];
@@ -129,7 +129,7 @@ export function getMetricValueForScalarMetric(dataset: Dataset) {
   };
 }
 
-export function getMetricValueForTemporalMetric(dataset: Dataset) {
+function getMetricValueForTemporalMetric(dataset: Dataset) {
   // This returns the last row of the dataset, which usually represents the latest
   // value of a metric with a temporal breakout.
   // However, if the metric has values in the future, or a sort clause that changes

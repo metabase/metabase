@@ -34,8 +34,6 @@ export const collapseFormula = createAction(COLLAPSE_FORMULA);
 //TODO: consider making an app-wide modal state reducer and related actions
 export const showDashboardModal = createAction(SHOW_DASHBOARD_MODAL);
 
-export const hideDashboardModal = createAction(HIDE_DASHBOARD_MODAL);
-
 // Helper functions. This is meant to be a transitional state to get things out of tryFetchData() and friends
 
 const fetchDataWrapper = (props, fn) => {

@@ -111,7 +111,7 @@ export const SettingsSetting = props => {
   );
 };
 
-export const SetByEnvVar = ({ setting }) => {
+const SetByEnvVar = ({ setting }) => {
   const { url: docsUrl } = useGetEnvVarDocsUrl(setting.env_name);
 
   return (

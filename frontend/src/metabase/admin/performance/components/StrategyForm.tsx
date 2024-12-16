@@ -502,7 +502,7 @@ const StrategySelector = ({
   );
 };
 
-export const PositiveNumberInput = ({
+const PositiveNumberInput = ({
   strategyType,
   ...props
 }: {

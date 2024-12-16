@@ -89,7 +89,7 @@ interface ExcludeOptionPickerProps {
   onBack: () => void;
 }
 
-export function ExcludeOptionPicker({
+function ExcludeOptionPicker({
   value,
   availableOperators,
   availableUnits,

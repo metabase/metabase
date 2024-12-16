@@ -62,7 +62,7 @@ const UserCanAccessSettings = connectedReduxRedirect<Props, State>({
   redirectAction: routerActions.replace,
 });
 
-export const UserCanAccessOnboarding = connectedReduxRedirect<Props, State>({
+const UserCanAccessOnboarding = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserCanAccessOnboarding",
   redirectPath: "/",
   allowRedirectBack: false,

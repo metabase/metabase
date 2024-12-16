@@ -91,7 +91,7 @@ function SidebarContent({
   );
 }
 
-export const PaneContent = (props: BoxProps) => {
+const PaneContent = (props: BoxProps) => {
   return <Box px="lg" {...props} />;
 };
 

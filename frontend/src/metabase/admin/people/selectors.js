@@ -7,7 +7,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 
 export const getMemberships = state => state.admin.people.memberships;
 
-export const getMembershipsList = createSelector(
+const getMembershipsList = createSelector(
   [getMemberships],
   memberships => Object.values(memberships) || [],
 );

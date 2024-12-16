@@ -1,4 +1,4 @@
-export const virtualCardDisplayTypes = [
+const virtualCardDisplayTypes = [
   "action",
   "heading",
   "link",

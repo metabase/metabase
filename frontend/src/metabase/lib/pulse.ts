@@ -108,28 +108,11 @@ export function recipientIsValid(recipient: User) {
   );
 }
 
-export function pulseIsValid(pulse: Pulse, channelSpecs: ChannelSpecs) {
-  return (
-    (pulse.name &&
-      pulse.cards.length > 0 &&
-      pulseChannelsAreValid(pulse, channelSpecs)) ||
-    false
-  );
-}
-
 export function dashboardPulseIsValid(
   pulse: Pulse,
   channelSpecs: ChannelSpecs,
 ) {
   return pulseChannelsAreValid(pulse, channelSpecs);
-}
-
-export function emailIsEnabled(pulse: Pulse) {
-  return (
-    pulse.channels.filter(
-      channel => channel.channel_type === "email" && channel.enabled,
-    ).length > 0
-  );
 }
 
 export function cleanPulse(pulse: Pulse, channelSpecs: any) {

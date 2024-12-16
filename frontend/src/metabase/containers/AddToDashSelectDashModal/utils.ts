@@ -1,38 +1,7 @@
-import {
-  coerceCollectionId,
-  isPublicCollection,
-} from "metabase/collections/utils";
+import { isPublicCollection } from "metabase/collections/utils";
 import type { DashboardPickerItem } from "metabase/common/components/DashboardPicker";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
-import type {
-  CollectionId,
-  Dashboard,
-  RecentItem,
-  SearchResult,
-} from "metabase-types/api";
-
-interface GetInitialOpenCollectionIdProps {
-  isQuestionInPersonalCollection: boolean;
-  mostRecentlyViewedDashboard: Dashboard | undefined;
-}
-
-export const getInitialOpenCollectionId = ({
-  isQuestionInPersonalCollection,
-  mostRecentlyViewedDashboard,
-}: GetInitialOpenCollectionIdProps): undefined | CollectionId => {
-  if (!mostRecentlyViewedDashboard) {
-    return undefined;
-  }
-
-  if (
-    isQuestionInPersonalCollection &&
-    isInPublicCollection(mostRecentlyViewedDashboard)
-  ) {
-    return ROOT_COLLECTION.id;
-  }
-
-  return coerceCollectionId(mostRecentlyViewedDashboard.collection_id);
-};
+import type { Dashboard, RecentItem, SearchResult } from "metabase-types/api";
 
 export function isInPublicCollection(dashboard: Dashboard | undefined) {
   return isPublicCollection(dashboard?.collection ?? ROOT_COLLECTION);

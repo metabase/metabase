@@ -35,10 +35,7 @@ const LoadingText = () => (
   >{t`Loading…`}</Text>
 );
 
-export const InfoTextTableLink = ({
-  result,
-  showLinks,
-}: InfoTextAssetLinkProps) => {
+const InfoTextTableLink = ({ result, showLinks }: InfoTextAssetLinkProps) => {
   const {
     data: table,
     isLoading,
@@ -65,7 +62,7 @@ export const InfoTextTableLink = ({
   );
 };
 
-export const DatabaseLink = ({
+const DatabaseLink = ({
   database,
   showLinks,
 }: {
@@ -77,7 +74,7 @@ export const DatabaseLink = ({
   </SearchResultLink>
 );
 
-export const TableLink = ({ result, showLinks }: InfoTextAssetLinkProps) => {
+const TableLink = ({ result, showLinks }: InfoTextAssetLinkProps) => {
   const link = browseSchema({
     db: { id: result.database_id },
     schema_name: result.table_schema,
@@ -90,10 +87,7 @@ export const TableLink = ({ result, showLinks }: InfoTextAssetLinkProps) => {
   );
 };
 
-export const InfoTextTablePath = ({
-  result,
-  showLinks,
-}: InfoTextAssetLinkProps) => {
+const InfoTextTablePath = ({ result, showLinks }: InfoTextAssetLinkProps) => {
   const {
     data: database,
     isLoading: isDatabaseLoading,

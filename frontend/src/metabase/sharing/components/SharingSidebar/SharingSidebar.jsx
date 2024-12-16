@@ -34,11 +34,6 @@ import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { UserApi } from "metabase/services";
 import { isVirtualCardDisplayType } from "metabase-types/api/visualization";
 
-export const CHANNEL_ICONS = {
-  email: "mail",
-  slack: "slack",
-};
-
 const EDITING_MODES = {
   ADD_EMAIL: "add-edit-email",
   ADD_SLACK: "add-edit-slack",

@@ -115,7 +115,7 @@ export const storeInitialState = createMockState({
   }),
 });
 
-export const metadata = getMetadata(storeInitialState);
+const metadata = getMetadata(storeInitialState);
 
 export function createQuery() {
   return _createQuery({ metadata });

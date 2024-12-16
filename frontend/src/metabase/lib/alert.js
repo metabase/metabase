@@ -1,6 +1,6 @@
 import { recipientIsValid, scheduleIsValid } from "metabase/lib/pulse";
 
-export function channelIsValid(channel) {
+function channelIsValid(channel) {
   switch (channel.channel_type) {
     case "email":
       return (

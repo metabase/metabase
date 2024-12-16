@@ -138,7 +138,7 @@ interface ScrollArrowProps {
   onClick: () => void;
 }
 
-export function ScrollArrow({ direction, onClick }: ScrollArrowProps) {
+function ScrollArrow({ direction, onClick }: ScrollArrowProps) {
   return (
     <ScrollButton
       onClick={onClick}

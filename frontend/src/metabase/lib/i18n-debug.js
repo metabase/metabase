@@ -34,7 +34,7 @@ const obfuscateString = (original, string) => {
   }
 };
 
-export function enableTranslatedStringReplacement() {
+function enableTranslatedStringReplacement() {
   const c3po = require("ttag");
 
   const _t = c3po.t;

@@ -4,7 +4,7 @@ import { DataPermission, DataPermissionValue } from "../../types";
 
 // Database 2 contains an imaginary multi-schema database (like Redshift for instance)
 // Database 3 contains an imaginary database which doesn't have any schemas (like MySQL)
-export const normalizedMetadata = {
+const normalizedMetadata = {
   metrics: {},
   segments: {},
   databases: {
@@ -139,7 +139,7 @@ export const normalizedMetadata = {
   questions: {},
 };
 
-export const initialPermissions = {
+const initialPermissions = {
   1: {
     // Sample database
     1: {

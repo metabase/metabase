@@ -131,7 +131,7 @@ export function provideApiKeyListTags(
   return [listTag("api-key"), ...apiKeys.flatMap(provideApiKeyTags)];
 }
 
-export function provideApiKeyTags(apiKey: ApiKey): TagDescription<TagType>[] {
+function provideApiKeyTags(apiKey: ApiKey): TagDescription<TagType>[] {
   return [idTag("api-key", apiKey.id)];
 }
 
@@ -315,9 +315,7 @@ export function provideDashboardQueryMetadataTags(
   ];
 }
 
-export function provideFieldListTags(
-  fields: Field[],
-): TagDescription<TagType>[] {
+function provideFieldListTags(fields: Field[]): TagDescription<TagType>[] {
   return [listTag("field"), ...fields.flatMap(provideFieldTags)];
 }
 

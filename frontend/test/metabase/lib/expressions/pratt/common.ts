@@ -15,8 +15,6 @@ import {
 } from "metabase-lib/v1/expressions/recursive-parser";
 import { resolve } from "metabase-lib/v1/expressions/resolver";
 
-import { generateExpression } from "../generator";
-
 type Type = "expression" | "boolean";
 
 interface Opts {
@@ -49,11 +47,11 @@ export function compile(source: string, type: Type, opts: Opts = {}) {
   );
 }
 
-export function mockResolve(kind: any, name: string): Expr {
+function mockResolve(kind: any, name: string): Expr {
   return ["dimension", name];
 }
 
-export function oracle(source: string, type: Type) {
+function oracle(source: string, type: Type) {
   let mbql = null;
   try {
     mbql = oldParser(source);
@@ -77,16 +75,5 @@ export function compare(
 ): { oracle: any; compiled: any } {
   const _oracle = oracle(source, type);
   const compiled = compile(source, type, opts);
-  return { oracle: _oracle, compiled };
-}
-
-export function compareSeed(
-  seed: number,
-  type: Type,
-  opts: Opts = {},
-): { oracle: any; compiled: any } {
-  const { expression } = generateExpression(seed, type);
-  const _oracle = oracle(expression, type);
-  const compiled = compile(expression, type, opts);
   return { oracle: _oracle, compiled };
 }

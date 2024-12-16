@@ -92,7 +92,6 @@ export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
 });
 
 export const SHOW_CHART_SETTINGS = "metabase/qb/SHOW_CHART_SETTINGS";
-export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
 
 export const NAVIGATE_BACK_TO_DASHBOARD =
   "metabase/qb/NAVIGATE_BACK_TO_DASHBOARD";

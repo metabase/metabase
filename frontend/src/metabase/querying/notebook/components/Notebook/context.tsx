@@ -6,7 +6,7 @@ export type NotebookContextType = {
   modelsFilterList: DataPickerValue["model"][];
 };
 
-export const NotebookContext = createContext<NotebookContextType | undefined>(
+const NotebookContext = createContext<NotebookContextType | undefined>(
   undefined,
 );
 

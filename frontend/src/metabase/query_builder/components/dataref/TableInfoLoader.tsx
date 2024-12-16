@@ -49,7 +49,7 @@ function useDependentTableMetadata({
   return hasFetchedMetadata;
 }
 
-export function TableInfoLoader({
+function TableInfoLoader({
   table,
   fetchForeignKeys,
   fetchMetadata,

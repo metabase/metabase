@@ -17,14 +17,14 @@ export const getStartedVisibleStates = new Set<InternalCloudMigrationState>([
   "error",
 ]);
 
-export const progressStates = new Set<InternalCloudMigrationState>([
+const progressStates = new Set<InternalCloudMigrationState>([
   "init",
   "setup",
   "dump",
   "upload",
 ]);
 
-export const isInProgressState = (
+const isInProgressState = (
   state: InternalCloudMigrationState,
 ): state is InProgressStates => {
   return progressStates.has(state);

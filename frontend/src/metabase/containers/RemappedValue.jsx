@@ -45,7 +45,7 @@ const RemappedValueContent = ({
   }
 };
 
-export const AutoLoadRemappedValue = AutoLoadRemapped(RemappedValueContent);
+const AutoLoadRemappedValue = AutoLoadRemapped(RemappedValueContent);
 
 export const FieldRemappedValue = props => (
   <RemappedValueContent
@@ -62,6 +62,3 @@ const RemappedValue = ({ autoLoad = true, ...props }) =>
   );
 
 export default RemappedValue;
-
-// test version doesn't use metabase/hoc/Remapped which requires a redux store
-export const TestRemappedValue = RemappedValueContent;

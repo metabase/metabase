@@ -27,7 +27,7 @@ interface BehaviorOptionProps {
   onClick: () => void;
 }
 
-export const BehaviorOption = ({
+const BehaviorOption = ({
   value,
   dashcard,
   icon,

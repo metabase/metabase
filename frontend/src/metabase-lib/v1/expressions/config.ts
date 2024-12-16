@@ -585,7 +585,7 @@ const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);
 // operators in which order of operands doesn't matter
 export const EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY = new Set(["+", "*"]);
 
-export const FILTER_OPERATORS = new Set(["!=", "<=", ">=", "<", ">", "="]);
+const FILTER_OPERATORS = new Set(["!=", "<=", ">=", "<", ">", "="]);
 
 const BOOLEAN_UNARY_OPERATORS = new Set(["not"]);
 const LOGICAL_AND_OPERATOR = new Set(["and"]);

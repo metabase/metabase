@@ -57,10 +57,7 @@ export type CollectionIdProps = {
   namespace?: string;
 };
 
-export const getCurrentCollectionId = (
-  _state: State,
-  props: CollectionIdProps,
-) => {
+const getCurrentCollectionId = (_state: State, props: CollectionIdProps) => {
   if (props.params.collectionId == null) {
     return undefined;
   }
@@ -90,7 +87,7 @@ const getCollectionsTree = createSelector([getCollections], collections => {
   return [getRootCollectionTreeItem(), ...buildCollectionTree(collections)];
 });
 
-export function buildCollectionTree(
+function buildCollectionTree(
   collections: Collection[] | null,
 ): CollectionTreeItem[] {
   if (collections == null) {

@@ -42,11 +42,11 @@ const PATHS_WITH_COLLECTION_BREADCRUMBS = [
 ];
 const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
 
-export const getRouterPath = (state: State, props: RouterProps) => {
+const getRouterPath = (state: State, props: RouterProps) => {
   return props?.location?.pathname ?? window.location.pathname;
 };
 
-export const getRouterHash = (state: State, props: RouterProps) => {
+const getRouterHash = (state: State, props: RouterProps) => {
   return props?.location?.hash ?? window.location.hash;
 };
 

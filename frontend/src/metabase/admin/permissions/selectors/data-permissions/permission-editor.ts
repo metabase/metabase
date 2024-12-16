@@ -85,7 +85,7 @@ const getRouteParams = (
   };
 };
 
-export const getDataPermissions = (state: State) =>
+const getDataPermissions = (state: State) =>
   state.admin.permissions.dataPermissions;
 
 const getOriginalDataPermissions = (state: State) =>

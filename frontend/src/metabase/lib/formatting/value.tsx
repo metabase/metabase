@@ -127,7 +127,7 @@ function formatStringFallback(value: any, options: OptionsType = {}) {
   return value;
 }
 
-export function formatValueRaw(
+function formatValueRaw(
   value: unknown,
   options: OptionsType = {},
 ): React.ReactElement | string | number | null {
