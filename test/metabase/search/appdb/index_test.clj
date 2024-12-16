@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [metabase.db :as mdb]
+   [metabase.models.search-index-metadata :as search-index-metadata]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -527,3 +528,28 @@
                            (when-let [ds (not-empty (into (sorted-set) (filter search-model? ds)))]
                              [p ds])))
                    table->descendants))))))
+
+(defn- active-table-after [simulated-delay-ns]
+  (mt/with-dynamic-redefs [search.index/now (constantly (+ simulated-delay-ns (System/nanoTime)))]
+    (search.index/active-table)))
+
+(deftest auto-refresh-test
+  (binding [search.index/*index-version-id* "auto-refresh-test"]
+    (try
+      (reset! @#'search.index/next-sync-at nil)
+      (search.index/reset-index!)
+      (let [active-before (search.index/active-table)
+            active-after  (str (random-uuid))
+            pending-after (str (random-uuid))
+            period        @#'search.index/sync-tracking-period
+            version       @#'search.index/*index-version-id*]
+        (search-index-metadata/create-pending! :appdb version active-after)
+        (search-index-metadata/active-pending! :appdb version)
+        (search-index-metadata/create-pending! :appdb version pending-after)
+        (testing "We continue using our cached references for some time"
+          (is (= active-before (active-table-after 100)))
+          (is (= active-before (active-table-after (/ period 2)))))
+        (testing "But eventually we refresh")
+        (is (= active-after (active-table-after period))))
+      (finally
+        (t2/delete! :model/SearchIndexMetadata :version "auto-refresh-test")))))

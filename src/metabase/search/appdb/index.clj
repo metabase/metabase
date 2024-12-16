@@ -47,10 +47,13 @@
 (defn- sync-tracking-atoms! []
   (reset! *indexes* (search-index-metadata/indexes :appdb *index-version-id*)))
 
+;; This exists only to be mocked.
+(defn- now [] (System/nanoTime))
+
 (defn- sync-tracking-atoms-if-stale! []
   (when-not *mocking-tables*
-    (when (or (not @next-sync-at) (> (System/nanoTime) @next-sync-at))
-      (reset! next-sync-at (+ (System/nanoTime) sync-tracking-period))
+    (when (or (not @next-sync-at) (> (now) @next-sync-at))
+      (reset! next-sync-at (+ (now) sync-tracking-period))
       (sync-tracking-atoms!))))
 
 (defn active-table
