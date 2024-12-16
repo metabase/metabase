@@ -1,6 +1,12 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
+import { getNextId } from "__support__/utils";
+import type {
+  WritebackImplicitQueryAction,
+  WritebackQueryAction,
+} from "metabase-types/api";
 import {
   createMockImplicitQueryAction,
   createMockQueryAction,
@@ -17,10 +23,24 @@ async function setup({
   return { action };
 }
 
+function getQueryAction(params?: Partial<WritebackQueryAction>) {
+  return createMockQueryAction({
+    id: getNextId(),
+    ...params,
+  });
+}
+
+function getImplicitAction(params?: Partial<WritebackImplicitQueryAction>) {
+  return createMockImplicitQueryAction({
+    id: getNextId(),
+    ...params,
+  });
+}
+
 describe("ActionCreator > Sharing", () => {
   describe.each([
-    ["query", createMockQueryAction],
-    ["implicit", createMockImplicitQueryAction],
+    ["query", getQueryAction],
+    ["implicit", getImplicitAction],
   ])(`%s actions`, (_, getAction) => {
     describe("admin users and has public sharing enabled", () => {
       const mockUuid = "mock-uuid";
@@ -50,6 +70,11 @@ describe("ActionCreator > Sharing", () => {
           screen.getByRole("button", { name: "Action settings" }),
         );
 
+        await waitFor(() => {
+          expect(
+            screen.getByTestId("sidebar-header-title"),
+          ).toBeInTheDocument();
+        });
         const headerTitle = await screen.findByTestId("sidebar-header-title");
         expect(headerTitle).toBeInTheDocument();
         expect(headerTitle).toHaveTextContent("Action settings");
@@ -61,6 +86,11 @@ describe("ActionCreator > Sharing", () => {
           screen.queryByRole("textbox", { name: "Public action form URL" }),
         ).not.toBeInTheDocument();
 
+        fetchMock.getOnce(
+          `path:/api/action/${privateAction.id}`,
+          { ...privateAction, public_uuid: mockUuid },
+          { overwriteRoutes: true },
+        );
         await userEvent.click(
           screen.getByRole("switch", { name: "Make public" }),
         );
@@ -85,6 +115,11 @@ describe("ActionCreator > Sharing", () => {
           screen.getByRole("button", { name: "Action settings" }),
         );
 
+        await waitFor(() => {
+          expect(
+            screen.getByTestId("sidebar-header-title"),
+          ).toBeInTheDocument();
+        });
         const headerTitle = await screen.findByTestId("sidebar-header-title");
         expect(headerTitle).toBeInTheDocument();
         expect(headerTitle).toHaveTextContent("Action settings");
@@ -101,6 +136,12 @@ describe("ActionCreator > Sharing", () => {
         expect(
           screen.getByRole("heading", { name: "Disable this public link?" }),
         ).toBeInTheDocument();
+
+        fetchMock.getOnce(
+          `path:/api/action/${publicAction.id}`,
+          { ...publicAction, public_uuid: null },
+          { overwriteRoutes: true },
+        );
         await userEvent.click(screen.getByRole("button", { name: "Yes" }));
 
         await waitFor(() => {

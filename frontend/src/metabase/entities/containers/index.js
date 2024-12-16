@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import EntityListLoader, { entityListLoader } from "./EntityListLoader";
 import { EntityName } from "./EntityName";
-import EntityObjectLoader, { entityObjectLoader } from "./EntityObjectLoader";
+import { entityObjectLoader } from "./EntityObjectLoader";
 import { entityObjectLoaderRtkQuery } from "./rtk-query";
 
 export function addEntityContainers(entity) {
@@ -35,11 +35,6 @@ export function addEntityContainers(entity) {
       entityQuery: query,
       ...props,
     });
-
-  entity.Loader = ({ id, ...props }) => (
-    <EntityObjectLoader entityType={entity.name} entityId={id} {...props} />
-  );
-  entity.Loader.displayName = `${ObjectName}.Loader`;
 
   /**
    * @deprecated HOCs are deprecated

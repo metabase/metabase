@@ -1,5 +1,11 @@
 import { useWindowEvent } from "@mantine/hooks";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useDebounce, usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
@@ -40,7 +46,6 @@ import { SearchTab } from "../SearchTab";
 
 import { ButtonBar } from "./ButtonBar";
 import {
-  GrowFlex,
   ModalBody,
   ModalContent,
   SinglePickerView,
@@ -98,6 +103,7 @@ export interface EntityPickerModalProps<
   onConfirm?: () => void;
   onItemSelect: (item: Item) => void;
   isLoadingTabs?: boolean;
+  searchExtraButtons?: ReactNode[];
 }
 
 export function EntityPickerModal<
@@ -134,6 +140,7 @@ export function EntityPickerModal<
       },
     );
   const searchModels = useMemo(() => getSearchModels(passedTabs), [passedTabs]);
+
   const folderModels = useMemo(
     () => getSearchFolderModels(passedTabs),
     [passedTabs],
@@ -218,7 +225,7 @@ export function EntityPickerModal<
     if (hasRecentsTab || shouldOptimisticallyAddRecentsTabWhileLoading) {
       computedTabs.push({
         id: RECENTS_TAB_ID,
-        models: null,
+        models: [],
         folderModels: [],
         displayName: t`Recents`,
         icon: "clock",
@@ -238,7 +245,7 @@ export function EntityPickerModal<
     if (hasSearchTab) {
       computedTabs.push({
         id: SEARCH_TAB_ID,
-        models: null,
+        models: [],
         folderModels: [],
         displayName: getSearchTabText(finalSearchResults, searchQuery),
         icon: "search",
@@ -353,35 +360,34 @@ export function EntityPickerModal<
       h="100vh"
       trapFocus={trapFocus}
       closeOnEscape={false} // we're doing this manually in useWindowEvent
-      xOffset="10vw"
       yOffset="10dvh"
       zIndex={ENTITY_PICKER_Z_INDEX} // needs to be above popovers and bulk actions
     >
       <Modal.Overlay />
-      <ModalContent h="100%">
+      <ModalContent h="100%" maw="57.5rem" mah="40rem">
         <Modal.Header
-          px="1.5rem"
+          px="2.5rem"
           pt="1rem"
           pb={hasTabs ? "1rem" : "1.5rem"}
           bg="var(--mb-color-background)"
         >
-          <GrowFlex justify="space-between">
-            <Modal.Title lh="2.5rem">{title}</Modal.Title>
-            {hydratedOptions.showSearch && (
+          <Modal.Title lh="2.5rem">{title}</Modal.Title>
+          <Modal.CloseButton size={21} pos="relative" top="1px" />
+        </Modal.Header>
+        <ModalBody p="0">
+          {hydratedOptions.showSearch && (
+            <Box px="2.5rem" mb="1.5rem">
               <TextInput
+                data-autofocus
                 type="search"
                 icon={<Icon name="search" size={16} />}
                 miw={400}
-                mr="2rem"
                 placeholder={getSearchInputPlaceholder(selectedFolder)}
                 value={searchQuery}
                 onChange={e => handleQueryChange(e.target.value ?? "")}
               />
-            )}
-          </GrowFlex>
-          <Modal.CloseButton size={21} pos="relative" top="1px" />
-        </Modal.Header>
-        <ModalBody p="0">
+            </Box>
+          )}
           {!isLoadingTabs && !isLoadingRecentItems ? (
             <ErrorBoundary>
               {hasTabs ? (

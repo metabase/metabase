@@ -69,6 +69,13 @@
   [clause]
   (lib.options/update-options clause update :ident #(or % (lib.ident/random-ident))))
 
+(defn preserve-ident-of
+  "Given two clauses, preserve the `original`'s `:ident` on `replacement`."
+  [replacement original]
+  (if-let [ident (lib.options/ident original)]
+    (lib.options/update-options replacement assoc :ident ident)
+    replacement))
+
 (defn defop-create
   "Impl for [[defop]]."
   [op-name args]

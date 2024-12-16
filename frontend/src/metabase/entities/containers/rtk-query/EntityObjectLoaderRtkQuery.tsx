@@ -49,11 +49,11 @@ export interface Props<Entity, EntityWrapper> {
   dispatchApiErrorEvent?: boolean;
   entityAlias?: string;
   entityId: EntityId | EntityIdSelector | undefined;
-  entityQuery: EntityQuery | EntityQuerySelector;
+  entityQuery?: EntityQuery | EntityQuerySelector;
   entityType: EntityType | EntityTypeSelector;
   fetchType?: FetchType;
   loadingAndErrorWrapper?: boolean;
-  LoadingAndErrorWrapper: ComponentType<LoadingAndErrorWrapperProps>;
+  LoadingAndErrorWrapper?: ComponentType<LoadingAndErrorWrapperProps>;
   reload?: boolean;
   requestType?: RequestType;
   selectorName?: string;
