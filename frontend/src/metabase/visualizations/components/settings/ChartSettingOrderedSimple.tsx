@@ -6,13 +6,11 @@ import { t } from "ttag";
 import type { DragEndEvent } from "metabase/core/components/Sortable";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { isEmpty } from "metabase/lib/validate";
+import { Box } from "metabase/ui";
 import type { Series } from "metabase-types/api";
 
+import { ChartSettingMessage } from "./ChartSettingMessage";
 import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
-import {
-  ChartSettingMessage,
-  ChartSettingOrderedSimpleRoot,
-} from "./ChartSettingOrderedSimple.styled";
 
 interface SortableItem {
   key: string;
@@ -104,7 +102,7 @@ export const ChartSettingOrderedSimple = ({
   const nonHiddenItems = orderedItems.filter(item => !item.hidden);
 
   return (
-    <ChartSettingOrderedSimpleRoot>
+    <Box pl="md" pb="sm">
       {orderedItems.length > 0 ? (
         <ChartSettingOrderedItems
           items={nonHiddenItems}
@@ -119,6 +117,6 @@ export const ChartSettingOrderedSimple = ({
       ) : (
         <ChartSettingMessage>{t`Nothing to order`}</ChartSettingMessage>
       )}
-    </ChartSettingOrderedSimpleRoot>
+    </Box>
   );
 };
