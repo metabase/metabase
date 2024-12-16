@@ -37,8 +37,8 @@ const HoursMinutesInput = ({
         is24HourMode
           ? String(hours)
           : hours % 12 === 0
-          ? "12"
-          : String(hours % 12)
+            ? "12"
+            : String(hours % 12)
       }
       onChange={
         is24HourMode

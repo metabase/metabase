@@ -967,7 +967,7 @@
                                             :type          :query
                                             :dataset_query (mt/mbql-query users {:limit 1})
                                             :database_id   (:id db)})]
-            (reset! serialized (into [] (serdes.extract/extract {})))
+            (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))
             (let [action-serialized (first (filter (fn [{[{:keys [model id]}] :serdes/meta}]
                                                      (and (= model "Action") (= id eid)))
                                                    @serialized))]
@@ -1179,18 +1179,23 @@
                             :visualization_settings {:click_behavior {:type     "link"
                                                                       :linkType "dashboard"
                                                                       :targetId (:id dash1)}})
+          card-2 (ts/create! :model/Card :name "card-2" :dashboard_id (:id dash1))
           ser   (into [] (serdes.extract/extract {:no-settings   true
                                                   :no-data-model true}))]
       (t2/delete! DashboardCard :id [:in (map :id [dc1 dc2 dc3])])
       (testing "Circular dependencies are loaded correctly"
         (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
         (let [select-target #(-> % :visualization_settings :click_behavior :targetId)]
+
           (is (= (:id dash2)
                  (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc1))))
           (is (= (:id dash3)
                  (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc2))))
           (is (= (:id dash1)
-                 (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc3)))))))))
+                 (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc3)))))
+        (testing "Circular dependencies work for Dashboard Questions as well"
+          (is (= (:id dash1)
+                 (t2/select-one-fn :dashboard_id :model/Card :entity_id (:entity_id card-2)))))))))
 
 (deftest continue-on-error-test
   (let [change-ser    (fn [ser changes] ;; kind of like left-join, but right side is indexed
@@ -1336,3 +1341,37 @@
                     (testing (format "%s has identity hash in the db" model)
                       (is (= (serdes/identity-hash e)
                              (serdes/entity-id (name model) e))))))))))))))
+
+(deftest identically-named-fields-test
+  (mt/with-empty-h2-app-db
+    (let [db (ts/create! Database :name "mydb")
+          t  (ts/create! Table :name "table" :db_id (:id db))
+          f1 (ts/create! Field :name "field" :table_id (:id t))
+          ;; name is the same, but parent_id is different
+          f2 (ts/create! Field :name "field" :table_id (:id t) :parent_id (:id f1))
+          f3 (ts/create! Field :name "field" :table_id (:id t) :parent_id (:id f2)
+                         :description "desc")
+
+          ser (into [] (serdes.extract/extract {}))]
+
+      (is (=? {:parent_id   ["mydb" nil "table" "field"]
+               :serdes/meta [{:model "Database" :id "mydb"}
+                             {:model "Table" :id "table"}
+                             {:model "Field" :id "field"}
+                             {:model "Field" :id "field"}]}
+              (ts/extract-one "Field" (:id f2))))
+
+      (is (=? {:parent_id   ["mydb" nil "table" "field" "field"],
+               :serdes/meta [{:model "Database" :id "mydb"}
+                             {:model "Table" :id "table"}
+                             {:model "Field" :id "field"}
+                             {:model "Field" :id "field"}
+                             {:model "Field" :id "field"}]}
+              (ts/extract-one "Field" (:id f3))))
+
+      (t2/update! :model/Field (:id f3) {:description "some new one"})
+
+      (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+
+      (is (= "desc"
+             (t2/select-one-fn :description :model/Field (:id f3)))))))

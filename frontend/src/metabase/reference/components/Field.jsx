@@ -16,9 +16,12 @@ import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
 import F from "./Field.module.css";
 
 const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
-  <div className={cx(S.item, CS.pt1, CS.borderTop)}>
-    <div className={S.itemBody} style={{ maxWidth: "100%", borderTop: "none" }}>
-      <div className={F.field}>
+  <div className={cx(S.item, CS.py1, CS.borderTop)}>
+    <div
+      className={cx(S.itemBody, CS.flexColumn)}
+      style={{ maxWidth: "100%", borderTop: "none" }}
+    >
+      <div className={F.field} style={{ flexGrow: "1" }}>
         <div className={cx(S.itemTitle, F.fieldName)}>
           {isEditing ? (
             <input
@@ -59,7 +62,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
               optionSectionFn={o => o.section}
             />
           ) : (
-            <div className={CS.flex}>
+            <div className={cx(CS.flex, CS.alignCenter)}>
               <div className={S.leftIcons}>
                 {icon && <Icon className={S.chartIcon} name={icon} size={20} />}
               </div>
@@ -83,7 +86,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         </div>
         <div className={F.fieldDataType}>{field.base_type}</div>
       </div>
-      <div className={cx(S.itemSubtitle, F.fieldSecondary, { [CS.mt1]: true })}>
+      <div className={cx(S.itemSubtitle, { [CS.mt1]: true })}>
         <div className={F.fieldForeignKey}>
           {isEditing
             ? (isTypeFK(formField.semantic_type.value) ||
@@ -107,13 +110,12 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
                 </span>
               )}
         </div>
-        <div className={F.fieldOther} />
+        {field.description && (
+          <div className={cx(S.itemSubtitle, CS.mb2, { [CS.mt1]: isEditing })}>
+            {field.description}
+          </div>
+        )}
       </div>
-      {field.description && (
-        <div className={cx(S.itemSubtitle, CS.mb2, { [CS.mt1]: isEditing })}>
-          {field.description}
-        </div>
-      )}
     </div>
   </div>
 );

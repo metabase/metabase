@@ -1,0 +1,48 @@
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Box, Stack, Title } from "metabase/ui";
+import * as TitleStories from "./Title.stories";
+
+<Meta of={TitleStories} />
+
+# Title
+
+Our themed wrapper around [Mantine Title](https://v6.mantine.dev/core/title/).
+
+## When to use Title
+
+TBD
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/SEQS7bshKQ4y4V5FwvdROv/Typography-%2F-Title?type=design&node-id=1-96&mode=design&t=2eUYOsqZZeMc4OGT-0)
+- [Mantine Title Docs](https://v6.mantine.dev/core/title/)
+
+## Examples
+
+<Canvas>
+  <Story of={TitleStories.Default} />
+</Canvas>
+
+### Sizes
+
+<Canvas>
+  <Story of={TitleStories.Sizes} />
+</Canvas>
+
+### Underlined
+
+<Canvas>
+  <Story of={TitleStories.Underlined} />
+</Canvas>
+
+### Truncated
+
+<Canvas>
+  <Story of={TitleStories.Truncated} />
+</Canvas>
+
+### Truncated and underlined
+
+<Canvas>
+  <Story of={TitleStories.TruncatedAndUnderlined} />
+</Canvas>

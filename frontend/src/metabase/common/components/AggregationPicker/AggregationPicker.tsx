@@ -20,28 +20,28 @@ import { ExpressionWidgetHeader } from "metabase/query_builder/components/expres
 import { getQuestion } from "metabase/query_builder/selectors";
 import { trackColumnCompareViaShortcut } from "metabase/querying/analytics";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Flex, Icon } from "metabase/ui";
+import { Box, Flex, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
 
 import {
-  ColumnPickerContainer,
   ColumnPickerHeaderContainer,
-  ColumnPickerHeaderTitle,
   ColumnPickerHeaderTitleContainer,
 } from "./AggregationPicker.styled";
 
-interface AggregationPickerProps {
+export interface AggregationPickerProps {
   className?: string;
   query: Lib.Query;
   stageIndex: number;
   clause?: Lib.AggregationClause;
   clauseIndex?: number;
   operators: Lib.AggregationOperator[];
-  hasExpressionInput?: boolean;
+  allowCustomExpressions?: boolean;
+  allowTemporalComparisons?: boolean;
   onClose?: () => void;
   onQueryChange: (query: Lib.Query) => void;
+  onBack?: () => void;
 }
 
 type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
@@ -74,9 +74,11 @@ export function AggregationPicker({
   clause,
   clauseIndex,
   operators,
-  hasExpressionInput = true,
+  allowCustomExpressions = false,
+  allowTemporalComparisons = false,
   onClose,
   onQueryChange,
+  onBack,
 }: AggregationPickerProps) {
   const question = useSelector(getQuestion);
   const metadata = useSelector(getMetadata);
@@ -133,7 +135,9 @@ export function AggregationPicker({
     const metrics = Lib.availableMetrics(query, stageIndex);
     const databaseId = Lib.databaseID(query);
     const database = metadata.database(databaseId);
-    const canUseExpressions = database?.hasFeature("expression-aggregations");
+    const supportsCustomExpressions = database?.hasFeature(
+      "expression-aggregations",
+    );
 
     if (operators.length > 0) {
       const operatorItems = operators.map(operator =>
@@ -142,7 +146,7 @@ export function AggregationPicker({
 
       sections.push({
         key: "operators",
-        name: t`Basic Metrics`,
+        name: t`Basic functions`,
         items: operatorItems,
         icon: "table2",
       });
@@ -151,7 +155,7 @@ export function AggregationPicker({
     if (metrics.length > 0) {
       sections.push({
         key: "metrics",
-        name: t`Common Metrics`,
+        name: t`Metrics`,
         items: metrics.map(metric =>
           getMetricListItem(query, stageIndex, metric, clauseIndex),
         ),
@@ -159,7 +163,10 @@ export function AggregationPicker({
       });
     }
 
-    if (canAddTemporalCompareAggregation(query, stageIndex)) {
+    if (
+      allowTemporalComparisons &&
+      canAddTemporalCompareAggregation(query, stageIndex)
+    ) {
       sections.push({
         type: "action",
         key: "compare",
@@ -169,7 +176,7 @@ export function AggregationPicker({
       });
     }
 
-    if (hasExpressionInput && canUseExpressions) {
+    if (allowCustomExpressions && supportsCustomExpressions) {
       sections.push({
         key: "custom-expression",
         name: t`Custom Expression`,
@@ -180,7 +187,15 @@ export function AggregationPicker({
     }
 
     return sections;
-  }, [metadata, query, stageIndex, clauseIndex, operators, hasExpressionInput]);
+  }, [
+    metadata,
+    query,
+    stageIndex,
+    clauseIndex,
+    operators,
+    allowCustomExpressions,
+    allowTemporalComparisons,
+  ]);
 
   const checkIsItemSelected = useCallback(
     (item: ListItem) => item.selected,
@@ -202,7 +217,8 @@ export function AggregationPicker({
 
   const handleResetOperator = useCallback(() => {
     setOperator(null);
-  }, []);
+    onBack?.();
+  }, [onBack]);
 
   const handleColumnSelect = useCallback(
     (column: Lib.ColumnMetadata) => {
@@ -314,9 +330,11 @@ export function AggregationPicker({
     const columns = Lib.aggregationOperatorColumns(operator);
     const columnGroups = Lib.groupColumns(columns);
     return (
-      <ColumnPickerContainer
+      <Box
         className={className}
+        mih="18.75rem"
         data-testid="aggregation-column-picker"
+        c="summarize"
       >
         <ColumnPickerHeader onClick={handleResetOperator}>
           {operatorInfo.displayName}
@@ -331,12 +349,12 @@ export function AggregationPicker({
           onSelect={handleColumnSelect}
           onClose={onClose}
         />
-      </ColumnPickerContainer>
+      </Box>
     );
   }
 
   return (
-    <Box className={className} c="summarize">
+    <Box className={className} c="summarize" data-testid="aggregation-picker">
       <AccordionList
         sections={sections}
         onChange={handleChange}
@@ -367,7 +385,9 @@ function ColumnPickerHeader({
     <ColumnPickerHeaderContainer>
       <ColumnPickerHeaderTitleContainer onClick={onClick} aria-label={t`Back`}>
         <Icon name="chevronleft" size={18} />
-        <ColumnPickerHeaderTitle>{children}</ColumnPickerHeaderTitle>
+        <Text fz="lg" fw="bold" lh="normal" c="inherit">
+          {children}
+        </Text>
       </ColumnPickerHeaderTitleContainer>
     </ColumnPickerHeaderContainer>
   );
@@ -404,7 +424,7 @@ function renderItemIcon(item: ListItem) {
       >
         <span aria-label={t`More info`}>
           <PopoverDefaultIcon name="empty" size={18} />
-          <PopoverHoverTarget name="info_filled" hasDescription size={18} />
+          <PopoverHoverTarget name="info_filled" size={18} />
         </span>
       </Popover>
     </Flex>

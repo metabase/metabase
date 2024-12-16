@@ -32,6 +32,7 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as helpers]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.ident :as lib.ident]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -40,6 +41,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.query-processor.middleware.large-int-id :as-alias large-int-id]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -189,7 +191,7 @@
    [:query  mbql.s/Query]])
 
 (defn- add-fk-remaps-one-level
-  [{:keys [fields order-by breakout], {source-query-remaps ::remaps} :source-query, :as query}]
+  [{:keys [fields order-by breakout breakout-idents], {source-query-remaps ::remaps} :source-query, :as query}]
   (let [query (m/dissoc-in query [:source-query ::remaps])]
     ;; fetch remapping column pairs if any exist...
     (if-let [infos (not-empty (remap-column-infos (concat fields breakout)))]
@@ -207,13 +209,16 @@
                                                   (remove (comp existing-normalized-fields-set mbql.u/remove-namespaced-options)))
                                             infos)
             new-breakout                   (add-fk-remaps-rewrite-breakout original->remapped breakout)
+            new-breakout-idents            (merge (lib.ident/indexed-idents new-breakout)
+                                                  breakout-idents)
             new-order-by                   (add-fk-remaps-rewrite-order-by original->remapped order-by)
             remaps                         (into [] (comp cat (distinct)) [source-query-remaps (map :dimension infos)])]
         ;; return the Dimensions we are using and the query
         (cond-> query
           (seq fields)   (assoc :fields new-fields)
           (seq order-by) (assoc :order-by new-order-by)
-          (seq breakout) (assoc :breakout new-breakout)
+          (seq breakout) (assoc :breakout new-breakout
+                                :breakout-idents new-breakout-idents)
           (seq remaps)   (assoc ::remaps remaps)))
       ;; otherwise return query as-is
       (cond-> query
@@ -392,15 +397,20 @@
 
 (defn- transform-values-for-col
   "Converts `values` to a type compatible with the `base-type` found for `col`. These values should be directly
-  comparable with the values returned from the database for the given `col`."
-  [{:keys [base-type], :as _column-metadata} values]
+  comparable with the values returned from the database for the given `col`.
+
+  When `large-int-id` has converted a would-be `BigInteger` column to strings, `stringified?` is truthy; in that case
+  the values are further transformed to strings."
+  [{:keys [base-type]} values stringified?]
   (let [transform (condp #(isa? %2 %1) base-type
                     :type/Decimal    bigdec
                     :type/Float      double
                     :type/BigInteger bigint
                     :type/Integer    int
                     :type/Text       str
-                    identity)]
+                    identity)
+        transform (cond->> transform
+                    stringified? (comp str))]
     (map #(some-> % transform) values)))
 
 (defn- infer-human-readable-values-type
@@ -431,11 +441,13 @@
    {{:keys [values human-readable-values], remap-to :name} :lib/internal-remap
     :as                                                    col} :- ColumnMetadataWithOptionalBaseType]
   (when (seq values)
-    (let [remap-from (:name col)]
+    (let [remap-from       (:name col)
+          stringified-mask (qp.store/miscellaneous-value [::large-int-id/field-index-mask])]
       {:col-index       idx
        :from            remap-from
        :to              remap-to
-       :value->readable (zipmap (transform-values-for-col col values)
+       :value->readable (zipmap (transform-values-for-col col values
+                                                          (and stringified-mask (nth stringified-mask idx)))
                                 human-readable-values)
        :new-column      (create-remapped-col remap-to
                                              remap-from

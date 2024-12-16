@@ -109,8 +109,6 @@
                                                 actual-arg-count)
                                :type :metabase/validate-logging)))))
 
-
-
 (defn infof
   "Valid logf, debugf, etc."
   [{:keys [node], :as x}]

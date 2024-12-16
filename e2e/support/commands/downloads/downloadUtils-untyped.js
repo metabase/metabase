@@ -4,7 +4,11 @@ const path = require("path");
 
 const removeDirectory = path => {
   try {
-    fs.rmdirSync(path, { maxRetries: 10, recursive: true });
+    if (fs.existsSync(path)) {
+      fs.rmdirSync(path, { maxRetries: 10, recursive: true });
+    } else {
+      console.log("Directory does not exist in `removeDirectory`:", path);
+    }
   } catch (error) {
     console.log("Error while removing directory", path, error);
   }

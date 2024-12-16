@@ -1,4 +1,4 @@
-(ns metabase.driver.sql-jdbc-test
+(ns ^:mb/driver-tests metabase.driver.sql-jdbc-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -14,6 +14,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definition-test :as dataset-definition-test]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -100,11 +101,10 @@
                      (some-> (.getCause e) recur))))))))))
 
 (defn- test-spliced-count-of [table filter-clause expected]
-  (let [query        {:database (mt/id)
-                      :type     :query
-                      :query    {:source-table (mt/id table)
-                                 :aggregation  [[:count]]
-                                 :filter       filter-clause}}
+  (let [query        (mt/mbql-query nil
+                       {:source-table (mt/id table)
+                        :aggregation  [[:count]]
+                        :filter       filter-clause})
         native-query (qp.compile/compile-with-inline-parameters query)]
     (testing (format "\nnative query =\n%s" (u/pprint-to-str native-query))
       (is (= expected
@@ -213,7 +213,9 @@
                     (mt/sql-jdbc-drivers)
                     (mt/normal-drivers-with-feature :uuid-type))
     (let [uuid (random-uuid)
-          uuid-query (mt/native-query {:query (format "select cast('%s' as uuid) as x" uuid)})
+          uuid-query (mt/native-query {:query (format "select cast('%s' as %s) as x"
+                                                      uuid
+                                                      (sql.tx/field-base-type->sql-type driver/*driver* :type/UUID))})
           results (qp/process-query uuid-query)
           result-metadata (get-in results [:data :results_metadata :columns])
           col-metadata (first result-metadata)]

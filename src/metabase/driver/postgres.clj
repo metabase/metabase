@@ -19,6 +19,7 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.quoting :refer [with-quoting quote-columns quote-identifier]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -60,6 +61,9 @@
 
 ;; Features that are supported by Postgres and all of its child drivers like Redshift
 (doseq [[feature supported?] {:connection-impersonation true
+                              :describe-fields          true
+                              :describe-fks             true
+                              :describe-indexes         true
                               :convert-timezone         true
                               :datetime-diff            true
                               :now                      true
@@ -204,16 +208,14 @@
   (cond-> [typname]
     (not= nspname "public") (conj (format "\"%s\".\"%s\"" nspname typname))))
 
-(defn- enum-types [_driver database]
+(defn- enum-types
+  [database]
   (into #{}
-        (comp (mapcat get-typenames)
-              (map keyword))
+        (mapcat get-typenames)
         (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                     [(str "SELECT nspname, typname "
                           "FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace "
                           "WHERE t.oid IN (SELECT DISTINCT enumtypid FROM pg_enum e)")])))
-
-(def ^:private ^:dynamic *enum-types* nil)
 
 (defn- get-tables-sql
   [schemas table-names]
@@ -278,13 +280,147 @@
   ;; memory in a set like this
   {:tables (into #{} (describe-syncable-tables database))})
 
+(defmethod sql-jdbc.sync/describe-fields-sql :postgres
+  ;; The implementation is based on `getColumns` in https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java
+  [driver & {:keys [schema-names table-names]}]
+  (sql/format
+   {:union-all
+    [{:select [[:c.column_name :name]
+               [[:case
+                 [:in :c.udt_schema [[:inline "public"] [:inline "pg_catalog"]]]
+                 [:format [:inline "%s"] :c.udt_name]
+                 :else
+                 [:format [:inline "\"%s\".\"%s\""] :c.udt_schema :c.udt_name]]
+                :database-type]
+               [[:- :c.ordinal_position [:inline 1]] :database-position]
+               [:c.table_schema :table-schema]
+               [:c.table_name :table-name]
+               [[:not= :pk.column_name nil] :pk?]
+               [[:col_description
+                 [:cast [:cast [:format [:inline "%I.%I"] [:cast :c.table_schema :text] [:cast :c.table_name :text]] :regclass] :oid]
+                 :c.ordinal_position]
+                :field-comment]
+               [[:and
+                 [:or [:= :column_default nil] [:= [:lower :column_default] [:inline "null"]]]
+                 [:= :is_nullable [:inline "NO"]]
+                  ;;_ IS_AUTOINCREMENT from: https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L1852-L1856
+                 [:not [:or
+                        [:and [:!= :column_default nil] [:like :column_default [:inline "%nextval(%"]]]
+                        [:!= :is_identity [:inline "NO"]]]]]
+                :database-required]
+               [[:or
+                 [:and [:!= :column_default nil] [:like :column_default [:inline "%nextval(%"]]]
+                 [:!= :is_identity [:inline "NO"]]]
+                :database-is-auto-increment]]
+      :from [[:information_schema.columns :c]]
+      :left-join [[{:select [:tc.table_schema
+                             :tc.table_name
+                             :kc.column_name]
+                    :from [[:information_schema.table_constraints :tc]]
+                    :join [[:information_schema.key_column_usage :kc]
+                           [:and
+                            [:= :tc.constraint_name :kc.constraint_name]
+                            [:= :tc.table_schema :kc.table_schema]
+                            [:= :tc.table_name :kc.table_name]]]
+                    :where [:= :tc.constraint_type [:inline "PRIMARY KEY"]]}
+                   :pk]
+                  [:and
+                   [:= :c.table_schema :pk.table_schema]
+                   [:= :c.table_name :pk.table_name]
+                   [:= :c.column_name :pk.column_name]]]
+      :where [:and
+              [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
+              (when schema-names [:in :c.table_schema schema-names])
+              (when table-names [:in :c.table_name table-names])]}
+     {:select [[:pa.attname :name]
+               [[:case
+                 [:in :ptn.nspname [[:inline "public"] [:inline "pg_catalog"]]]
+                 [:format [:inline "%s"] :pt.typname]
+                 :else
+                 [:format [:inline "\"%s\".\"%s\""] :ptn.nspname :pt.typname]]
+                :database-type]
+               [[:- :pa.attnum [:inline 1]] :database-position]
+               [:pn.nspname :table-schema]
+               [:pc.relname :table-name]
+               [false :pk?]
+               [nil :field-comment]
+               [false :database-required]
+               [false :database-is-auto-increment]]
+      :from [[:pg_catalog.pg_class :pc]]
+      :join [[:pg_catalog.pg_namespace :pn] [:= :pn.oid :pc.relnamespace]
+             [:pg_catalog.pg_attribute :pa] [:= :pa.attrelid :pc.oid]
+             [:pg_catalog.pg_type :pt] [:= :pt.oid :pa.atttypid]
+             [:pg_catalog.pg_namespace :ptn] [:= :ptn.oid :pt.typnamespace]]
+      :where [:and
+              [:= :pc.relkind [:inline "m"]]
+              [:>= :pa.attnum [:inline 1]]
+              (when schema-names [:in :pn.nspname schema-names])
+              (when table-names [:in :pc.relname table-names])]}]
+    :order-by [:table-schema :table-name :database-position]}
+   :dialect (sql.qp/quote-style driver)))
+
+(defmethod sql-jdbc.sync/describe-fks-sql :postgres
+  [driver & {:keys [schema-names table-names]}]
+  (sql/format {:select (vec
+                        {:fk_ns.nspname       "fk-table-schema"
+                         :fk_table.relname    "fk-table-name"
+                         :fk_column.attname   "fk-column-name"
+                         :pk_ns.nspname       "pk-table-schema"
+                         :pk_table.relname    "pk-table-name"
+                         :pk_column.attname   "pk-column-name"})
+               :from   [[:pg_constraint :c]]
+               :join   [[:pg_class     :fk_table]  [:= :c.conrelid :fk_table.oid]
+                        [:pg_namespace :fk_ns]     [:= :c.connamespace :fk_ns.oid]
+                        [:pg_attribute :fk_column] [:= :c.conrelid :fk_column.attrelid]
+                        [:pg_class     :pk_table]  [:= :c.confrelid :pk_table.oid]
+                        [:pg_namespace :pk_ns]     [:= :pk_table.relnamespace :pk_ns.oid]
+                        [:pg_attribute :pk_column] [:= :c.confrelid :pk_column.attrelid]]
+               :where  [:and
+                        [:raw "fk_ns.nspname !~ '^information_schema|catalog_history|pg_'"]
+                        [:= :c.contype [:raw "'f'::char"]]
+                        [:= :fk_column.attnum [:raw "ANY(c.conkey)"]]
+                        [:= :pk_column.attnum [:raw "ANY(c.confkey)"]]
+                        (when table-names [:in :fk_table.relname table-names])
+                        (when schema-names [:in :fk_ns.nspname schema-names])]
+               :order-by [:fk-table-schema :fk-table-name]}
+              :dialect (sql.qp/quote-style driver)))
+
+(defmethod sql-jdbc.sync/describe-indexes-sql :postgres
+  [driver & {:keys [schema-names table-names]}]
+  ;; From https://github.com/pgjdbc/pgjdbc/blob/master/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L2662
+  (sql/format {:select [:tmp.table-schema
+                        :tmp.table-name
+                        [[:trim :!both [:inline "\""] :!from [:pg_catalog.pg_get_indexdef :tmp.ci_oid :tmp.pos false]] :field-name]]
+               :from [[{:select [[:n.nspname :table-schema]
+                                 [:ct.relname :table-name]
+                                 [:ci.oid :ci_oid]
+                                 [[:. [:composite [:information_schema._pg_expandarray :i.indkey]] :n] :pos]]
+                        :from [[:pg_catalog.pg_class :ct]]
+                        :join [[:pg_catalog.pg_namespace :n] [:= :ct.relnamespace :n.oid]
+                               [:pg_catalog.pg_index :i] [:= :ct.oid :i.indrelid]
+                               [:pg_catalog.pg_class :ci] [:= :ci.oid :i.indexrelid]]
+                        :where [:and
+                                ;; No filtered indexes
+                                [:= [:pg_catalog.pg_get_expr :i.indpred :i.indrelid] nil]
+                                [:raw "n.nspname !~ '^information_schema|catalog_history|pg_'"]
+                                (when (seq schema-names) [:in :n.nspname schema-names])
+                                (when (seq table-names) [:in :ct.relname table-names])]}
+                       :tmp]]
+               ;; The only column or the first column in a composite index
+               :where [:= :tmp.pos 1]}
+              :dialect (sql.qp/quote-style driver)))
+
 ;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
-;; name, but first fetches database enum types so we have access to them. These are simply binded to the dynamic var
-;; and used later in `database-type->base-type`, which you will find below.
-(defmethod driver/describe-table :postgres
-  [driver database table]
-  (binding [*enum-types* (enum-types driver database)]
-    (sql-jdbc.sync/describe-table driver database table)))
+;; name, but first fetches database enum types so we have access to them.
+(defmethod driver/describe-fields :postgres
+  [driver database & args]
+  (let [enums (enum-types database)]
+    (eduction
+     (map (fn [{:keys [database-type] :as col}]
+            (cond-> col
+              (contains? enums database-type)
+              (assoc :base-type :type/PostgresEnum))))
+     (apply (get-method driver/describe-fields :sql-jdbc) driver database args))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
@@ -699,10 +835,8 @@
    (keyword "timestamp without time zone") :type/DateTime})
 
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
-  [_driver column]
-  (if (contains? *enum-types* column)
-    :type/PostgresEnum
-    (default-base-types column)))
+  [_driver database-type]
+  (default-base-types database-type))
 
 (defmethod sql-jdbc.sync/column->semantic-type :postgres
   [_driver database-type _column-name]
@@ -860,12 +994,17 @@
 
 (defmethod sql-jdbc.sync/alter-columns-sql :postgres
   [driver table-name column-definitions]
-  (first (sql/format {:alter-table  (keyword table-name)
-                      :alter-column (map (fn [[column-name type-and-constraints]]
-                                           (vec (cons column-name (cons :type type-and-constraints))))
-                                         column-definitions)}
-                     :quoted true
-                     :dialect (sql.qp/quote-style driver))))
+  (with-quoting driver
+    (first (sql/format {:alter-table  (keyword table-name)
+                        :alter-column (map (fn [[column-name type-and-constraints]]
+                                             (vec (list* (quote-identifier column-name)
+                                                         :type
+                                                         (if (string? type-and-constraints)
+                                                           [[:raw type-and-constraints]]
+                                                           type-and-constraints))))
+                                           column-definitions)}
+                       :quoted true
+                       :dialect (sql.qp/quote-style driver)))))
 
 (defmethod driver/table-name-length-limit :postgres
   [_driver]
@@ -911,7 +1050,7 @@
     (let [copy-manager (CopyManager. (.unwrap ^Connection (:connection conn) PgConnection))
           dialect      (sql.qp/quote-style driver)
           [sql & _] (sql/format {::copy       (keyword table-name)
-                                 :columns     (sql-jdbc.common/quote-columns dialect column-names)
+                                 :columns     (quote-columns driver column-names)
                                  ::from-stdin "''"}
                                 :quoted true
                                 :dialect dialect)

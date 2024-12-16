@@ -57,9 +57,8 @@ function useDependentTableMetadata({
   const isMissingFields = !table?.numFields();
   const isMissingFks = table?.fks === undefined;
   const shouldFetchMetadata = isMissingFields || isMissingFks;
-  const [hasFetchedMetadata, setHasFetchedMetadata] = useState(
-    !shouldFetchMetadata,
-  );
+  const [hasFetchedMetadata, setHasFetchedMetadata] =
+    useState(!shouldFetchMetadata);
   const fetchDependentData = useSafeAsyncFunction(() => {
     return Promise.all([
       isMissingFields && fetchMetadata({ id: tableId }),

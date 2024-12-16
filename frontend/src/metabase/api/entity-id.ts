@@ -25,12 +25,12 @@ const validEntityTypes = [
   "user",
 ] as const;
 
-export type EntityType = typeof validEntityTypes[number];
+export type EntityType = (typeof validEntityTypes)[number];
 
 type TranslateEntityIdRequest = Partial<Record<EntityType, BaseEntityId[]>>;
 
 export type TranslateEntityIdResponseSuccess = {
-  status: "success";
+  status: "ok";
   id: string | number;
   type: EntityType;
 };

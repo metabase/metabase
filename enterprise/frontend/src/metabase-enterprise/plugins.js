@@ -1,10 +1,6 @@
-import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 
 // SETTINGS OVERRIDES:
-
-// NOTE: temporarily use "latest" for Enterprise Edition docs
-MetabaseSettings.docsTag = () => "latest";
 PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
 
 import "./shared";
@@ -20,6 +16,7 @@ import "./collections";
 import "./content_verification";
 import "./whitelabel";
 import "./embedding";
+import "./embedding-sdk";
 import "./snippets";
 import "./sharing";
 import "./moderation";

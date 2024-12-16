@@ -21,7 +21,20 @@ const USER_FACING_ENTITY_NAMES = [
   "model",
 ] as const;
 
-type UserFacingEntityName = typeof USER_FACING_ENTITY_NAMES[number];
+type UserFacingEntityName = (typeof USER_FACING_ENTITY_NAMES)[number];
+
+type CollectionBrowserListColumns =
+  | "type"
+  | "name"
+  | "lastEditedBy"
+  | "lastEditedAt";
+
+const COLLECTION_BROWSER_LIST_COLUMNS: CollectionBrowserListColumns[] = [
+  "type",
+  "name",
+  "lastEditedBy",
+  "lastEditedAt",
+];
 
 const ENTITY_NAME_MAP: Partial<
   Record<UserFacingEntityName, CollectionItemModel>
@@ -32,12 +45,13 @@ const ENTITY_NAME_MAP: Partial<
   model: "dataset",
 };
 
-type CollectionBrowserProps = {
+export type CollectionBrowserProps = {
   collectionId?: RegularCollectionId;
   onClick?: (item: CollectionItem) => void;
   pageSize?: number;
   visibleEntityTypes?: UserFacingEntityName[];
   EmptyContentComponent?: ComponentType | null;
+  visibleColumns?: CollectionBrowserListColumns[];
   className?: string;
   style?: CSSProperties;
 };
@@ -48,6 +62,7 @@ export const CollectionBrowserInner = ({
   pageSize = COLLECTION_PAGE_SIZE,
   visibleEntityTypes = [...USER_FACING_ENTITY_NAMES],
   EmptyContentComponent = null,
+  visibleColumns = COLLECTION_BROWSER_LIST_COLUMNS,
   className,
   style,
 }: CollectionBrowserProps) => {
@@ -85,7 +100,7 @@ export const CollectionBrowserInner = ({
         onClick={onClickItem}
         pageSize={pageSize}
         models={collectionTypes}
-        showActionMenu={false}
+        visibleColumns={visibleColumns}
         EmptyContentComponent={EmptyContentComponent ?? undefined}
       />
     </Stack>

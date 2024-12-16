@@ -1,6 +1,7 @@
 (ns metabase.api.notify
   "/api/notify/* endpoints which receive inbound etl server notifications."
   (:require
+   [clojure.string :as str]
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -33,18 +34,60 @@
         table-sync-fn (if schema? sync-metadata/sync-table-metadata! sync/sync-table!)
         db-sync-fn    (if schema? sync-metadata/sync-db-metadata! sync/sync-database!)]
     (api/let-404 [database (t2/select-one Database :id id)]
-      (cond-> (cond
-                table_id   (api/let-404 [table (t2/select-one Table :db_id id, :id (int table_id))]
-                             (future (table-sync-fn table)))
-                table_name (api/let-404 [table (t2/select-one Table :db_id id, :name table_name)]
-                             (future (table-sync-fn table)))
-                :else      (future (db-sync-fn database)))
-        synchronous? deref)))
+      (let [table (cond
+                    table_id   (api/check-404 (t2/select-one Table :db_id id, :id (int table_id)))
+                    table_name (api/check-404 (t2/select-one Table :db_id id, :name table_name)))]
+        (cond-> (future (if table
+                          (table-sync-fn table)
+                          (db-sync-fn database)))
+          synchronous? deref))))
   {:success true})
 
 (defn- without-stacktrace [^Throwable throwable]
   (doto throwable
     (.setStackTrace (make-array StackTraceElement 0))))
+
+(defn- find-and-sync-new-table
+  [database table-name schema-name]
+  (let [driver (driver.u/database->driver database)
+        {db-tables :tables} (driver/describe-database driver database)]
+    (if-let [table (some (fn [table-in-db]
+                           (when (and (= schema-name (:schema table-in-db))
+                                      (= table-name (:name table-in-db)))
+                             table-in-db))
+                         db-tables)]
+      (let [created (sync-tables/create-or-reactivate-table! database table)]
+        (doto created
+          sync/sync-table!
+          sync-util/set-initial-table-sync-complete!))
+      (throw (without-stacktrace
+              (ex-info (trs "Unable to identify table ''{0}.{1}''"
+                            schema-name table-name)
+                       {:status-code 404
+                        :schema_name schema-name
+                        :table_name  table-name}))))))
+
+(api/defendpoint POST "/db/attached_datawarehouse"
+  "Sync the attached datawarehouse. Can provide in the body:
+  - table_name and schema_name: both strings. Will look for an existing table and sync it, otherwise will try to find a
+  new table with that name and sync it. If it cannot find a table it will throw an error. If table_name is empty or
+  blank, will sync the entire database.
+  - synchronous?: is a boolean value to indicate if this should block on the result."
+  [:as {{:keys [table_name schema_name synchronous?]} :body}]
+  {table_name   [:maybe ms/NonBlankString]
+   schema_name  [:maybe string?]
+   synchronous? [:maybe ms/BooleanValue]}
+  (api/let-404 [database (t2/select-one :model/Database :is_attached_dwh true)]
+    (if (str/blank? table_name)
+      (cond-> (future (sync-metadata/sync-db-metadata! database))
+        synchronous? deref)
+      (if-let [table (t2/select-one Table :db_id (:id database), :name table_name :schema schema_name)]
+        (cond-> (future (sync-metadata/sync-table-metadata! table))
+          synchronous? deref)
+        ;; find and sync is always synchronous. And we want it to be so since the "can't find this table" error is
+        ;; rather informative. If it's on a future we won't see it.
+        (find-and-sync-new-table database table_name schema_name))))
+  {:success true})
 
 (api/defendpoint POST "/db/:id/new-table"
   "Sync a new table without running a full database sync. Requires `schema_name` and `table_name`. Will throw an error
@@ -55,23 +98,7 @@
    table_name  ms/NonBlankString}
   (api/let-404 [database (t2/select-one Database :id id)]
     (if-not (t2/select-one Table :db_id id :name table_name :schema schema_name)
-      (let [driver (driver.u/database->driver database)
-            {db-tables :tables} (driver/describe-database driver database)]
-        (if-let [table (some (fn [table-in-db]
-                               (when (and (= schema_name (:schema table-in-db))
-                                          (= table_name (:name table-in-db)))
-                                 table-in-db))
-                             db-tables)]
-          (let [created (sync-tables/create-or-reactivate-table! database table)]
-            (doto created
-              sync/sync-table!
-              sync-util/set-initial-table-sync-complete!))
-          (throw (without-stacktrace
-                  (ex-info (trs "Unable to identify table ''{0}.{1}''"
-                                schema_name table_name)
-                           {:status-code 404
-                            :schema_name schema_name
-                            :table_name  table_name})))))
+      (find-and-sync-new-table database table_name schema_name)
       (throw (without-stacktrace
               (ex-info (trs "Table ''{0}.{1}'' already exists"
                             schema_name table_name)

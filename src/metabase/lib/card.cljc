@@ -11,9 +11,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/card
@@ -82,31 +82,37 @@
    card
    field]
   (let [col (-> col
-                (update-keys u/->kebab-case-en))]
-    (cond-> (merge
-             {:base-type :type/*, :lib/type :metadata/column}
-             field
-             col
-             {:lib/type                :metadata/column
-              :lib/source              :source/card
-              :lib/source-column-alias ((some-fn :lib/source-column-alias :name) col)})
-      card-id
-      (assoc :lib/card-id card-id)
+                (update-keys u/->kebab-case-en))
+        col-meta (cond-> (merge
+                          {:base-type :type/*, :lib/type :metadata/column}
+                          field
+                          col
+                          {:lib/type                :metadata/column
+                           :lib/source              :source/card
+                           :lib/source-column-alias ((some-fn :lib/source-column-alias :name) col)})
+                   card-id
+                   (assoc :lib/card-id card-id)
 
-      (and *force-broken-card-refs*
-            ;; never force broken refs for Models, because Models can have give columns with completely
-            ;; different names the Field ID of a different column, somehow. See #22715
-           (or
-             ;; we can only do this check if `card-id` is passed in.
-            (not card-id)
-            (not= (:type card) :model)))
-      (assoc ::force-broken-id-refs true)
+                   (:metabase.lib.field/temporal-unit col)
+                   (assoc :inherited-temporal-unit (:metabase.lib.field/temporal-unit col))
 
-       ;; If the incoming col doesn't have `:semantic-type :type/FK`, drop `:fk-target-field-id`.
-       ;; This comes up with metadata on SQL cards, which might be linked to their original DB field but should not be
-       ;; treated as FKs unless the metadata is configured accordingly.
-      (not= (:semantic-type col) :type/FK)
-      (assoc :fk-target-field-id nil))))
+                   (and *force-broken-card-refs*
+                        ;; never force broken refs for Models, because Models can have give columns with completely
+                        ;; different names the Field ID of a different column, somehow. See #22715
+                        (or
+                         ;; we can only do this check if `card-id` is passed in.
+                         (not card-id)
+                         (not= (:type card) :model)))
+                   (assoc ::force-broken-id-refs true)
+
+                   ;; If the incoming col doesn't have `:semantic-type :type/FK`, drop `:fk-target-field-id`.
+                   ;; This comes up with metadata on SQL cards, which might be linked to their original DB field but should not be
+                   ;; treated as FKs unless the metadata is configured accordingly.
+                   (not= (:semantic-type col) :type/FK)
+                   (assoc :fk-target-field-id nil))]
+    ;; :effective-type is required, but not always set, see e.g.,
+    ;; metabase.api.table/card-result-metadata->virtual-fields
+    (u/assoc-default col-meta :effective-type (:base-type col-meta))))
 
 (mu/defn ->card-metadata-columns :- [:sequential ::lib.schema.metadata/column]
   "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata."

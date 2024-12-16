@@ -5,6 +5,7 @@ import _ from "underscore";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
+  DatePickerUnit,
   ExcludeDatePickerOperator,
   ExcludeDatePickerValue,
 } from "../types";
@@ -18,7 +19,7 @@ import type {
 
 export function getExcludeUnitOptions(
   availableOperators: ReadonlyArray<DatePickerOperator>,
-  availableUnits: ReadonlyArray<DatePickerExtractionUnit>,
+  availableUnits: ReadonlyArray<DatePickerUnit>,
 ): ExcludeUnitOption[] {
   if (!availableOperators.includes("!=")) {
     return [];
@@ -56,8 +57,8 @@ export function getExcludeValueOptionGroups(
       return [_.range(1, 8).map(getExcludeDayOption)];
     case "month-of-year":
       return [
-        _.range(0, 6).map(getExcludeMonthOption),
-        _.range(6, 12).map(getExcludeMonthOption),
+        _.range(1, 7).map(getExcludeMonthOption),
+        _.range(7, 13).map(getExcludeMonthOption),
       ];
     case "quarter-of-year":
       return [getExcludeQuarterOptions()];
@@ -75,7 +76,8 @@ function getExcludeDayOption(day: number): ExcludeValueOption {
 }
 
 function getExcludeMonthOption(month: number): ExcludeValueOption {
-  const date = dayjs().month(month);
+  // month is 1-12, but dayjs accepts 0-11
+  const date = dayjs().month(month - 1);
   return { value: month, label: date.format("MMMM") };
 }
 

@@ -10,7 +10,7 @@
                             Field NativeQuerySnippet Pulse PulseCard Segment Table User]]
    [metabase.models.collection :as collection]
    [metabase.models.serialization :as serdes]
-   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
@@ -111,7 +111,7 @@
 
 (defn do-with-random-dump-dir [prefix f]
   (let [dump-dir (random-dump-dir (or prefix ""))]
-    (testing (format "\nDump dir = %s" (pr-str dump-dir))
+    (testing (format "\nDump dir = %s\n" (pr-str dump-dir))
       (try
         (f dump-dir)
         (finally
@@ -180,9 +180,12 @@
                                                             :query {:source-table table-id
                                                                     :filter [:= [:field category-field-id nil] 2]
                                                                     :aggregation [:sum [:field numeric-field-id nil]]
+                                                                    :aggregation-idents {0 "ptB0TYWlsl8qVQGLMXknK"}
                                                                     :breakout [[:field category-field-id nil]]
+                                                                    :breakout-idents {0 "v2gFszquoclWC505vvmhY"}
                                                                     :joins [{:source-table table-id-categories
                                                                              :alias "cat"
+                                                                             :ident     "-7CAEDVYQlvLuiikYiCxf"
                                                                              :fields    "all"
                                                                              :condition [:=
                                                                                          [:field category-field-id nil]
@@ -197,14 +200,17 @@
                                                                  :database db-id
                                                                  :query {:source-table table-id
                                                                          :aggregation [:sum [:field numeric-field-id nil]]
-                                                                         :breakout [[:field category-field-id nil]]}}}
+                                                                         :aggregation-idents {0 "ptB0TYWlsl8qVQGLMXknK"}
+                                                                         :breakout [[:field category-field-id nil]]
+                                                                         :breakout-idents {0 "v2gFszquoclWC505vvmhY"}}}}
                   Card       {card-id-root :id} {:table_id table-id
                                                  ;; https://en.wikipedia.org/wiki/Filename#Reserved_characters_and_words
                                                  :name root-card-name
                                                  :dataset_query {:type :query
                                                                  :database db-id
                                                                  :query {:source-table table-id
-                                                                         :expressions  {"Price Known" [:> [:field numeric-field-id nil] 0]}}}}
+                                                                         :expressions  {"Price Known" [:> [:field numeric-field-id nil] 0]}
+                                                                         :expression-idents {"Price Known" "ptB0TYWlsl8qVQGLMXknK"}}}}
                   Card       {card-id-nested :id} {:table_id table-id
                                                    :name "My Nested Card"
                                                    :collection_id collection-id
@@ -331,8 +337,12 @@
                                                                                                  [[:aggregation-options
                                                                                                    [:count]
                                                                                                    {:name "num_per_type"}]]
+                                                                                                 :aggregation-idents
+                                                                                                 {0 "vb1xlvyOHJQSJJGEiDgYx"}
                                                                                                  :breakout
-                                                                                                 [[:field category-field-id nil]]}
+                                                                                                 [[:field category-field-id nil]]
+                                                                                                 :breakout-idents
+                                                                                                 {0 "VZQg03VY_GHx1R-d9PVd8"}}
                                                                                   :filter [:>
                                                                                            [:field-literal "num_per_type" :type/Integer]
                                                                                            4]}}}
@@ -345,11 +355,15 @@
                                                                                                     table-id-checkins
                                                                                                     :aggregation
                                                                                                     [[:count]]
+                                                                                                    :aggregation-idents
+                                                                                                    {0 "iTOso6duTmJp2Kl__jlLp"}
                                                                                                     :breakout
                                                                                                     [[:field last-login-field-id {:source-field
                                                                                                                                   user-id-field-id
                                                                                                                                   :temporal-unit
-                                                                                                                                  :month}]]}}}}
+                                                                                                                                  :month}]]
+                                                                                                    :breakout-idents
+                                                                                                    {0 "ufD_PFrEGPQExr_lVpw6u"}}}}}
                   NativeQuerySnippet {snippet-id :id} {:content     "price > 2"
                                                        :description "Predicate on venues table for price > 2"
                                                        :name        "Pricey Venues"}
@@ -392,6 +406,7 @@
                                                                               :query   {:source-table table-id-checkins
                                                                                         :joins [{:source-table (str "card__" card-id-root)
                                                                                                  :alias        "v"
+                                                                                                 :ident        "rfuo5Et_zy91PhOIyMOsS"
                                                                                                  :fields       "all"
                                                                                                  :condition    [:=
                                                                                                                 [:field
@@ -407,11 +422,14 @@
                                                                                 :database db-id
                                                                                 :query {:source-table table-id
                                                                                         :aggregation [:sum [:field latitude-field-id nil]]
-                                                                                        :breakout [[:field category-field-id nil]]}}
+                                                                                        :aggregation-idents {0 "Nmb2tQjRgQ5PZybzMnHo3"}
+                                                                                        :breakout [[:field category-field-id nil]]
+                                                                                        :breakout-idents {0 "WSlL0FYI9ANx1fiokqzG-"}}}
+
                                                                 :visualization_settings
-                                                                {:pivot_table.column_split {:columns [["field" latitude-field-id nil]]
-                                                                                            :rows    [["field" latitude-field-id nil]]
-                                                                                            :values  [["aggregation" 0]]}}}]
+                                                                {:pivot_table.column_split {:columns ["LATITUDE"]
+                                                                                            :rows    ["LONGITUDE"]
+                                                                                            :values  ["sum"]}}}]
     (f {:card-arch-id                 card-arch-id
         :card-id                      card-id
         :card-id-collection-to-root   card-id-collection-to-root

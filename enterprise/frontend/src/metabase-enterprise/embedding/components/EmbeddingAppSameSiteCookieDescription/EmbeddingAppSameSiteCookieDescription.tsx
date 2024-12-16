@@ -23,6 +23,7 @@ export const EmbeddingAppSameSiteCookieDescription = () => {
   const embeddingAuthorizedOrigins = useSetting("embedding-app-origin");
 
   const shouldDisplayNote =
+    embeddingAuthorizedOrigins &&
     embeddingSameSiteCookieSetting !== "none" &&
     authorizedOriginsContainsNonInstanceDomain(embeddingAuthorizedOrigins);
 

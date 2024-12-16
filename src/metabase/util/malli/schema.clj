@@ -1,10 +1,8 @@
 (ns metabase.util.malli.schema
   "TODO: Consider refacor this namespace by defining custom schema with [[mr/def]] instead.
 
-  For example the PositiveInt can be defined as (mr/def ::positive-int pos-int?)
-  "
+  For example the PositiveInt can be defined as (mr/def ::positive-int pos-int?)"
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [malli.core :as mc]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -15,6 +13,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.password :as u.password]))
 
@@ -58,6 +57,14 @@
                      count)))]
        maps-schema]
       (deferred-tru "value must be seq of maps in which {0}s are unique" (name k))))))
+
+(defn enum-keywords-and-strings
+  "Returns an enum schema that accept both keywords and strings.
+    (enum-keywords-and-strings :foo :bar)
+    ;; => [:enum :foo :bar \"foo\" \"bar\"]"
+  [& keywords]
+  (assert (every? keyword? keywords))
+  (vec (concat [:enum] keywords (map u/qualified-name keywords))))
 
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
@@ -253,7 +260,7 @@
    [:and
     :string
     [:fn #(try
-            (json/parse-string %)
+            (json/decode %)
             true
             (catch Throwable _
               false))]]

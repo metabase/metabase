@@ -21,7 +21,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-interface PublicOrEmbeddedQuestionViewProps {
+export interface PublicOrEmbeddedQuestionViewProps {
   initialized: boolean;
   card: Card<DatasetQuery> | null;
   metadata: Metadata;
@@ -58,15 +58,16 @@ export function PublicOrEmbeddedQuestionView({
   downloadsEnabled,
 }: PublicOrEmbeddedQuestionViewProps) {
   const question = new Question(card, metadata);
-  const actionButtons = result && downloadsEnabled && (
-    <QueryDownloadWidget
-      className={cx(CS.m1, CS.textMediumHover)}
-      question={question}
-      result={result}
-      uuid={uuid}
-      token={token}
-    />
-  );
+  const actionButtons =
+    result && downloadsEnabled ? (
+      <QueryDownloadWidget
+        className={cx(CS.m1, CS.textMediumHover)}
+        question={question}
+        result={result}
+        uuid={uuid}
+        token={token}
+      />
+    ) : null;
 
   return (
     <EmbedFrame
@@ -85,6 +86,7 @@ export function PublicOrEmbeddedQuestionView({
       hide_parameters={hide_parameters}
       theme={theme}
       titled={titled}
+      downloadsEnabled={downloadsEnabled}
     >
       <LoadingAndErrorWrapper
         className={CS.flexFull}

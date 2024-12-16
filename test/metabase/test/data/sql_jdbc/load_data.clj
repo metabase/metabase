@@ -263,7 +263,9 @@
    (spec/dbdef->spec driver :db dbdef)
    {:write? true}
    (fn [^java.sql.Connection conn]
-     (.setAutoCommit conn true)
+     (try (.setAutoCommit conn true)
+          (catch Throwable _
+            (log/debugf "`.setAutoCommit` failed with engine `%s`" (name driver))))
      (create-db-execute-db-ddl-statements! driver conn dbdef options)
      (create-db-load-data! driver conn dbdef))))
 

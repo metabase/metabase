@@ -58,7 +58,9 @@
     [#"RAW"         :type/*]
     [#"CHAR"        :type/Text]
     [#"CLOB"        :type/OracleCLOB]
-    [#"DATE"        :type/Date]
+    ;; Yes, the DATE is mapped to `:type/DateTime`. Oracle's DATE can store also a time part.
+    ;; See the docs - https://docs.oracle.com/en/database/oracle/oracle-database/19/nlspg/datetime-data-types-and-time-zone-support.html#GUID-3A1B7AC6-2EDB-4DDC-9C9D-223D4C72AC74
+    [#"DATE"        :type/DateTime]
     [#"DOUBLE"      :type/Float]
     ;; Expression filter type
     [#"^EXPRESSION" :type/*]
@@ -475,6 +477,10 @@
 (defmethod sql.qp/->honeysql [:oracle Boolean]
   [_ bool]
   [:inline (if bool 1 0)])
+
+(defmethod sql.qp/->honeysql [:sql ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
 
 (defmethod driver/humanize-connection-error-message :oracle
   [_ message]

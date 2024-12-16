@@ -14,13 +14,14 @@ import { DataStepIconButton } from "./DataStep.styled";
 export const DataStep = ({
   query,
   step,
-  readOnly,
+  readOnly = false,
   color,
   updateQuery,
 }: NotebookStepProps) => {
-  const { stageIndex } = step;
+  const { question, stageIndex } = step;
   const tableId = Lib.sourceTableOrCardId(query);
   const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : undefined;
+  const isMetric = question.type() === "metric";
 
   const isRaw = useMemo(() => {
     return (
@@ -36,7 +37,12 @@ export const DataStep = ({
     metadataProvider: Lib.MetadataProvider,
   ) => {
     const newQuery = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
-    await updateQuery(newQuery);
+    const newAggregations = Lib.aggregations(newQuery, stageIndex);
+    if (isMetric && newAggregations.length === 0) {
+      await updateQuery(Lib.aggregateByCount(newQuery, stageIndex));
+    } else {
+      await updateQuery(newQuery);
+    }
   };
 
   return (
@@ -54,15 +60,17 @@ export const DataStep = ({
           )
         }
         containerStyle={{ padding: 0 }}
-        rightContainerStyle={{ width: 37, height: 37, padding: 0 }}
+        rightContainerStyle={{ width: 37, padding: 0 }}
         data-testid="data-step-cell"
       >
         <NotebookDataPicker
-          title={t`Pick your starting data`}
           query={query}
           stageIndex={stageIndex}
           table={table}
+          title={t`Pick your starting data`}
+          canChangeDatabase
           hasMetrics
+          isDisabled={readOnly}
           onChange={handleTableChange}
         />
       </NotebookCellItem>

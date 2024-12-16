@@ -1,7 +1,7 @@
 import { action } from "@storybook/addon-actions";
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
-import PinnedItemCard from "./PinnedItemCard";
+import PinnedItemCard, { type PinnedItemCardProps } from "./PinnedItemCard";
 
 export default {
   title: "Collections/PinnedItemCard",
@@ -22,70 +22,79 @@ const collection = {
 const onCopy = action("onCopy");
 const onMove = action("onMove");
 
-const Template: ComponentStory<typeof PinnedItemCard> = args => {
+const Template: StoryFn<PinnedItemCardProps> = args => {
   return <PinnedItemCard {...args} />;
 };
 
-export const Question = Template.bind({});
-Question.args = {
-  collection,
-  item: {
-    id: 1,
-    collection_position: 1,
-    collection_id: null,
-    model: "card",
-    name: "Question",
-    description: "This is a description of the question",
-    getIcon: () => ({ name: "question" }),
-    getUrl: () => "/question/1",
-    setArchived: action("setArchived"),
-    setPinned: action("setPinned"),
-    copy: true,
-    setCollection: action("setCollection"),
-    archived: false,
+export const Question = {
+  render: Template,
+
+  args: {
+    collection,
+    item: {
+      id: 1,
+      collection_position: 1,
+      collection_id: null,
+      model: "card",
+      name: "Question",
+      description: "This is a description of the question",
+      getIcon: () => ({ name: "question" }),
+      getUrl: () => "/question/1",
+      setArchived: action("setArchived"),
+      setPinned: action("setPinned"),
+      copy: true,
+      setCollection: action("setCollection"),
+      archived: false,
+    },
+    onCopy,
+    onMove,
   },
-  onCopy,
-  onMove,
 };
 
-export const Dashboard = Template.bind({});
-Dashboard.args = {
-  collection,
-  item: {
-    id: 1,
-    model: "dashboard",
-    collection_position: 1,
-    collection_id: null,
-    name: "Dashboard",
-    description: Array(20)
-      .fill("This is a description of the dashboard.")
-      .join(" "),
-    getIcon: () => ({ name: "dashboard" }),
-    getUrl: () => "/dashboard/1",
-    setArchived: action("setArchived"),
-    setPinned: action("setPinned"),
-    archived: false,
+export const Dashboard = {
+  render: Template,
+
+  args: {
+    collection,
+    item: {
+      id: 1,
+      model: "dashboard",
+      collection_position: 1,
+      collection_id: null,
+      name: "Dashboard",
+      description: Array(20)
+        .fill("This is a description of the dashboard.")
+        .join(" "),
+      getIcon: () => ({ name: "dashboard" }),
+      getUrl: () => "/dashboard/1",
+      setArchived: action("setArchived"),
+      setPinned: action("setPinned"),
+      archived: false,
+    },
+    onCopy,
+    onMove,
   },
-  onCopy,
-  onMove,
 };
 
-export const Model = Template.bind({});
-Model.args = {
-  collection,
-  item: {
-    id: 1,
-    model: "dataset",
-    collection_position: 1,
-    collection_id: null,
-    name: "Model",
-    description: "This is a description of the model",
-    getIcon: () => ({ name: "model" }),
-    getUrl: () => "/question/1",
-    setArchived: action("setArchived"),
-    setPinned: action("setPinned"),
-    archived: false,
+export const Model = {
+  render: Template,
+
+  args: {
+    collection,
+    item: {
+      id: 1,
+      model: "dataset",
+      collection_position: 1,
+      collection_id: null,
+      name: "Model",
+      description: "This is a description of the model",
+      getIcon: () => ({ name: "model" }),
+      getUrl: () => "/question/1",
+      setArchived: action("setArchived"),
+      setPinned: action("setPinned"),
+      archived: false,
+    },
+    onCopy,
+    onMove,
   },
-  onCopy,
-  onMove,
 };

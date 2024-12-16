@@ -146,10 +146,6 @@ class EntityObjectLoaderInner extends Component {
       },
     );
   };
-
-  remove = () => {
-    return this.props.delete(this.props.object);
-  };
 }
 
 const EntityObjectLoader = _.compose(
@@ -196,14 +192,13 @@ export const entityObjectLoader =
   eolProps =>
   ComposedComponent =>
   // eslint-disable-next-line react/display-name
-  props =>
-    (
-      <EntityObjectLoader {...props} {...eolProps}>
-        {childProps => (
-          <ComposedComponent
-            {..._.omit(props, ...CONSUMED_PROPS)}
-            {...childProps}
-          />
-        )}
-      </EntityObjectLoader>
-    );
+  props => (
+    <EntityObjectLoader {...props} {...eolProps}>
+      {childProps => (
+        <ComposedComponent
+          {..._.omit(props, ...CONSUMED_PROPS)}
+          {...childProps}
+        />
+      )}
+    </EntityObjectLoader>
+  );

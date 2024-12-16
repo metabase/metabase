@@ -53,9 +53,8 @@ describe("QueryBuilder", () => {
         await setup({
           card: TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
         });
-        const timeSeriesModeFooter = await screen.findByTestId(
-          "timeseries-chrome",
-        );
+        const timeSeriesModeFooter =
+          await screen.findByTestId("timeseries-chrome");
         expect(timeSeriesModeFooter).toBeInTheDocument();
         expect(
           within(timeSeriesModeFooter).getByText("by"),
@@ -70,9 +69,8 @@ describe("QueryBuilder", () => {
           card: TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD,
         });
 
-        const timeSeriesModeFooter = await screen.findByTestId(
-          "timeseries-chrome",
-        );
+        const timeSeriesModeFooter =
+          await screen.findByTestId("timeseries-chrome");
         expect(timeSeriesModeFooter).toBeInTheDocument();
         expect(
           within(timeSeriesModeFooter).getByText("by"),
@@ -168,8 +166,9 @@ describe("QueryBuilder", () => {
       expect(inputArea).toHaveValue("SELECT 1");
 
       await userEvent.click(screen.getByTestId("download-button"));
+      await userEvent.click(await screen.findByLabelText(".csv"));
       await userEvent.click(
-        await screen.findByRole("button", { name: ".csv" }),
+        await screen.findByTestId("download-results-button"),
       );
 
       expect(mockDownloadEndpoint.called()).toBe(true);
@@ -196,8 +195,9 @@ describe("QueryBuilder", () => {
       expect(inputArea).toHaveValue("SELECT 1 union SELECT 2");
 
       await userEvent.click(screen.getByTestId("download-button"));
+      await userEvent.click(await screen.findByLabelText(".csv"));
       await userEvent.click(
-        await screen.findByRole("button", { name: ".csv" }),
+        await screen.findByTestId("download-results-button"),
       );
 
       const [url, options] = mockDownloadEndpoint.lastCall() as MockCall;

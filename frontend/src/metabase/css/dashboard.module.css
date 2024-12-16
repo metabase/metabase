@@ -38,7 +38,9 @@
 /* Night mode transition */
 .Dashboard.DashboardFullscreen,
 .Dashboard.DashboardFullscreen .DashCard .Card {
-  transition: background-color 1s linear, border 1s linear;
+  transition:
+    background-color 1s linear,
+    border 1s linear;
 }
 
 .DashEditing {
@@ -46,7 +48,9 @@
 }
 
 .DashEditing .DashCard .Card {
-  transition: border 0.3s, background-color 0.3s;
+  transition:
+    border 0.3s,
+    background-color 0.3s;
 }
 
 .DashEditing .CardTitle:first-of-type {

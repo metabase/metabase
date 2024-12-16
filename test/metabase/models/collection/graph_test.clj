@@ -307,7 +307,7 @@
   "`graph/update-graph!` updates the before and after values in the graph asyncronously, so we need to wait for them to be written"
   ([new-graph] (update-graph-and-wait! nil new-graph))
   ([namespaze new-graph]
-   (when-let [future (graph/update-graph! namespaze new-graph)]
+   (when-let [future (graph/update-graph! namespaze new-graph false)]
      ;; Block until the entire graph has been `filled-in!`
      @future)))
 
@@ -368,7 +368,7 @@
 
             (testing "Should be able to update the graph for a non-default namespace.\n"
               (let [before (graph/graph :currency)]
-                @(graph/update-graph! :currency (assoc (graph/graph) :groups {group-id {default-a :write, currency-a :write}}))
+                @(graph/update-graph! :currency (assoc (graph/graph) :groups {group-id {default-a :write, currency-a :write}}) false)
                 (is (= {"Currency A" :write, "Currency A -> B" :read, :root :none}
                        (nice-graph (graph/graph :currency))))
 

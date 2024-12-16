@@ -59,7 +59,7 @@ describe("CollectionInstanceAnalyticsIcon", () => {
         expect(queryOfficialIcon()).toBeInTheDocument();
         await userEvent.hover(queryOfficialIcon());
         expect(screen.getByRole("tooltip")).toHaveTextContent(
-          `This is a read-only Metabase Analytics ${entity}`,
+          `This is a read-only Usage Analytics ${entity}`,
         );
       });
     });

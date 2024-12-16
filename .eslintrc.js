@@ -142,6 +142,7 @@ module.exports = {
     "plugin:import/warnings",
     "plugin:import/typescript",
     "plugin:depend/recommended",
+    "plugin:storybook/recommended",
   ],
   settings: {
     "import/internal-regex": "^metabase/|^metabase-lib/",
@@ -234,8 +235,9 @@ module.exports = {
         "plugin:jest/recommended",
         "plugin:jest-dom/recommended",
         "plugin:testing-library/react",
+        "plugin:jest-formatting/recommended",
       ],
-      plugins: ["jest", "jest-dom", "testing-library"],
+      plugins: ["jest", "jest-dom", "testing-library", "jest-formatting"],
       files: [
         "*.unit.spec.ts",
         "*.unit.spec.tsx",
@@ -244,6 +246,42 @@ module.exports = {
       ],
       rules: {
         "jest/valid-title": ["error", { ignoreTypeOfDescribeName: true }],
+      },
+    },
+    {
+      // Enable jest formatting for cypress tests too, the plugin logic just works
+      extends: ["plugin:jest-formatting/recommended"],
+      files: ["*.cy.spec.ts", "*.cy.spec.js"],
+    },
+    {
+      files: ["frontend/src/**/*"],
+      rules: {
+        "no-restricted-syntax": [
+          "error",
+          {
+            selector: "Literal[value=/mb-base-color-/]",
+            message:
+              "You may not use base colors in the application, use semantic colors instead. (see colors.module.css)",
+          },
+        ],
+      },
+    },
+    {
+      files: ["frontend/src/metabase/**/*"],
+      rules: {
+        "no-restricted-syntax": [
+          "error",
+          {
+            selector: "Literal[value=/mb-base-color-/]",
+            message:
+              "You may not use base colors in the application, use semantic colors instead. (see colors.module.css)",
+          },
+          {
+            selector:
+              "CallExpression[callee.property.name='legacyQuery'] > ObjectExpression > Property[key.name='useStructuredQuery'][value.value=true]",
+            message: "StructuredQuery usage is forbidden. Use MLv2",
+          },
+        ],
       },
     },
   ],

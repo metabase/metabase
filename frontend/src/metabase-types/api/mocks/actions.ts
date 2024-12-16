@@ -41,7 +41,7 @@ export const createMockQueryAction = ({
     description: null,
     model_id: 1,
     database_id: 1,
-    parameters: [],
+    parameters: undefined,
     creator_id: creator.id,
     creator,
     archived: false,
@@ -66,7 +66,7 @@ export const createMockImplicitQueryAction = ({
   description: "",
   model_id: 1,
   database_id: 1,
-  parameters: [],
+  parameters: undefined,
   visualization_settings: undefined,
   creator_id: creator.id,
   creator,
@@ -141,4 +141,4 @@ export const createMockImplicitActionFieldSettings = (
     id: "",
     hidden: false,
     ...opts,
-  } as FieldSettings);
+  }) as FieldSettings;

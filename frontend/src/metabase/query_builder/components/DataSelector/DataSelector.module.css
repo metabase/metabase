@@ -1,0 +1,45 @@
+.TableSearchContainer {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.TriggerContainer {
+  width: 100%;
+  position: relative;
+  padding: 0.5rem 2.625rem 0.5rem 0.6875rem;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.TriggerContainerIcon {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  right: -1px;
+  top: 0;
+  width: 2.5rem;
+  height: 100%;
+}
+
+.TextSchema {
+  font-size: 0.75em;
+  color: var(--mb-color-text-light);
+  line-height: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.BackButtonLabel {
+  font-size: 16px;
+  color: var(--mb-color-text-dark);
+  margin-left: 0.5rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  word-wrap: anywhere;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}

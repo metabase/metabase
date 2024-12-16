@@ -61,6 +61,7 @@
 
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
+  :encryption :no
   :visibility :settings-manager
   :export?    true
   :audit      :getter
@@ -344,6 +345,20 @@
   Currently we only sync single column indexes or the first column of a composite index.
   Results should match the [[metabase.sync.interface/TableIndexMetadata]] schema."
   {:added "0.49.0" :arglists '([driver database table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti describe-indexes
+  "Returns a reducible collection of maps, each containing information about the indexes of a database.
+  Currently we only sync single column indexes or the first column of a composite index. We currently only support
+   indexes on unnested fields (i.e., where parent_id is null).
+
+  Takes keyword arguments to narrow down the results to a set of
+  `schema-names` or `table-names`.
+
+  Results match [[metabase.sync.interface/FieldIndexMetadata]].
+  Results are optionally filtered by `schema-names` and `table-names` provided."
+  {:added "0.51.4" :arglists '([driver database & {:keys [schema-names table-names]}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -655,6 +670,10 @@
     ;; if so, `metabase.driver/describe-fields` must be implemented instead of `metabase.driver/describe-table`
     :describe-fields
 
+    ;; Does the driver support a faster `sync-indexes` step by fetching all index metadata in a single collection?
+    ;; If true, `metabase.driver/describe-indexes` must be implemented instead of `metabase.driver/describe-table-indexes`
+    :describe-indexes
+
     ;; Does the driver support automatically adding a primary key column to a table for uploads?
     ;; If so, Metabase will add an auto-incrementing primary key column called `_mb_row_id` for any table created or
     ;; updated with CSV uploads, and ignore any `_mb_row_id` column in the CSV file.
@@ -676,6 +695,11 @@
     ;; Does this driver support UUID type
     :uuid-type
 
+    ;; True if this driver requires `:temporal-unit :default` on all temporal field refs, even if no temporal
+    ;; bucketing was specified in the query.
+    ;; Generally false, but a few time-series based analytics databases (eg. Druid) require it.
+    :temporal/requires-default-unit
+
     ;; Does this driver support window functions like cumulative count and cumulative sum? (default: false)
     :window-functions/cumulative
 
@@ -684,7 +708,12 @@
     :window-functions/offset
 
     ;; Does this driver support parameterized sql, eg. in prepared statements?
-    :parameterized-sql})
+    :parameterized-sql
+
+    ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
+    ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
+    ;; against except for Athena and Databricks which currently require test data to be loaded separately.
+    :test/dynamic-dataset-loading})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -724,7 +753,8 @@
                               :schemas                                true
                               :test/jvm-timezone-setting              true
                               :fingerprint                            true
-                              :upload-with-auto-pk                    true}]
+                              :upload-with-auto-pk                    true
+                              :test/dynamic-dataset-loading           true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 ;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND

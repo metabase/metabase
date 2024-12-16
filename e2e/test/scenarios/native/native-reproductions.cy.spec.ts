@@ -1,13 +1,8 @@
-import {
-  adhocQuestionHash,
-  createNativeQuestion,
-  openNativeEditor,
-  restore,
-  runNativeQuery,
-  withDatabase,
-} from "e2e/support/helpers";
+import { H } from "e2e/support";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("issue 11727", { tags: "@external" }, () => {
   const PG_DB_ID = 2;
@@ -21,18 +16,19 @@ describe("issue 11727", { tags: "@external" }, () => {
       },
     },
   };
+
   beforeEach(() => {
-    restore("postgres-12");
+    H.restore("postgres-12");
     cy.signInAsAdmin();
     cy.intercept("GET", "/api/database").as("getDatabases");
   });
 
   it("should cancel the native query via the keyboard shortcut (metabase#11727)", () => {
-    withDatabase(PG_DB_ID, () => {
-      cy.visit("/question#" + adhocQuestionHash(questionDetails));
+    H.withDatabase(PG_DB_ID, () => {
+      cy.visit("/question#" + H.adhocQuestionHash(questionDetails));
       cy.wait("@getDatabases");
 
-      runNativeQuery({ wait: false });
+      H.runNativeQuery({ wait: false });
       cy.findByText("Doing science...").should("be.visible");
       cy.get("body").type("{cmd}{enter}");
       cy.findByText("Here's where your results will appear").should(
@@ -44,7 +40,7 @@ describe("issue 11727", { tags: "@external" }, () => {
 
 describe("issue 16584", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
   });
 
@@ -54,7 +50,7 @@ describe("issue 16584", () => {
     // - the issue is unrelated to using a date filter, using a text filter works too
     // - the issue is unrelated to whether or not the parameter is required or if default value is set
     // - the space at the end of the query is not needed to reproduce this issue
-    openNativeEditor()
+    H.openNativeEditor()
       .type(
         "SELECT COUNTRY FROM ACCOUNTS WHERE COUNTRY = {{ country }} LIMIT 1",
         {
@@ -66,7 +62,7 @@ describe("issue 16584", () => {
 
     cy.findByPlaceholderText("Country").type("NL", { delay: 0 });
 
-    runNativeQuery();
+    H.runNativeQuery();
 
     cy.findByTestId("query-visualization-root")
       .findByText("NL")
@@ -94,12 +90,12 @@ describe("issue 38083", () => {
   };
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("should not show the revert to default icon when the default value is selected (metabase#38083)", () => {
-    createNativeQuestion(QUESTION, {
+    H.createNativeQuestion(QUESTION, {
       visitQuestion: true,
     });
 
@@ -107,20 +103,20 @@ describe("issue 38083", () => {
       .contains(QUESTION.native["template-tags"].state["display-name"])
       .parent("fieldset")
       .within(() => {
-        cy.icon("time_history").should("not.exist");
+        cy.icon("revert").should("not.exist");
       });
   });
 });
 
 describe("issue 33327", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("should recover from a visualization error (metabase#33327)", () => {
     const query = "SELECT 1";
-    createNativeQuestion(
+    H.createNativeQuestion(
       { native: { query }, display: "scalar" },
       {
         visitQuestion: true,
@@ -130,27 +126,58 @@ describe("issue 33327", () => {
     cy.findByTestId("scalar-value").should("have.text", "1");
 
     cy.findByTestId("visibility-toggler").click();
-    cy.findByTestId("native-query-editor")
-      .should("contain", query)
-      .type("{leftarrow}--");
+    H.focusNativeEditor().should("contain", query).type("{leftarrow}--");
 
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.findByTestId("native-query-editor").should("contain", "SELECT --1");
+    H.nativeEditor().should("be.visible").and("contain", "SELECT --1");
     getRunQueryButton().click();
     cy.wait("@dataset");
 
     cy.findByTestId("visualization-root").icon("warning").should("be.visible");
     cy.findByTestId("scalar-value").should("not.exist");
 
-    cy.findByTestId("native-query-editor")
+    H.focusNativeEditor()
       .should("contain", "SELECT --1")
-      .type("{leftarrow}{backspace}{backspace}");
-    cy.findByTestId("native-query-editor").should("contain", query);
+      .type("{leftarrow}{backspace}{backspace}")
+      .should("contain", query);
 
     getRunQueryButton().click();
     cy.wait("@dataset");
 
     cy.findByTestId("scalar-value").should("have.text", "1");
     cy.findByTestId("visualization-root").icon("warning").should("not.exist");
+  });
+});
+
+describe("issue 49454", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createQuestion({
+      name: "Test Metric 49454",
+      type: "metric",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+      },
+    });
+    H.createQuestion({
+      name: "Test Question 49454",
+      type: "question",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+      },
+    });
+  });
+
+  it("should be possible to use metrics in native queries (metabase#49454)", () => {
+    H.openNativeEditor().type("select * from {{ #test");
+
+    H.nativeEditorCompletions().within(() => {
+      cy.findByText("-question-49454").should("be.visible");
+      cy.findByText("-metric-49454").should("be.visible");
+    });
   });
 });

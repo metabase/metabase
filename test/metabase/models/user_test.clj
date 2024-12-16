@@ -5,8 +5,7 @@
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.db.schema-migrations-test.impl
-    :as schema-migrations-test.impl]
+   [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.http-client :as client]
    [metabase.integrations.google]
    [metabase.models
@@ -27,9 +26,11 @@
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
    [metabase.models.user :as user]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.notification.test-util :as notification.tu]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
+   [metabase.test.fixtures :as fixtures]
    [metabase.test.integrations.ldap :as ldap.test]
    [metabase.util :as u]
    [metabase.util.password :as u.password]
@@ -37,6 +38,10 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures
+  :once
+  (fixtures/initialize :test-users :notifications))
 
 (comment
   ;; this has to be loaded for the Google Auth tests to work
@@ -136,68 +141,69 @@
 ;; admin shouldn't get email saying user joined until they accept the invite (i.e., reset their password)
 
 (deftest new-user-emails-test
-  (testing "New user should get an invite email"
-    (is (= {"<New User>" ["You're invited to join Metabase's Metabase"]}
-           (invite-user-accept-and-check-inboxes! :invitor default-invitor, :accept-invite? false))))
+  (notification.tu/with-send-notification-sync
+    (testing "New user should get an invite email"
+      (is (= {"<New User>" ["You're invited to join Metabase's Metabase"]}
+             (invite-user-accept-and-check-inboxes! :invitor default-invitor, :accept-invite? false))))
 
-  (testing "admin should get an email when a new user joins..."
-    (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
-            "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]}
-           (-> (invite-user-accept-and-check-inboxes! :invitor default-invitor)
-               (select-keys ["<New User>" "crowberto@metabase.com"]))))
+    (testing "admin should get an email when a new user joins..."
+      (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
+              "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]}
+             (-> (invite-user-accept-and-check-inboxes! :invitor default-invitor)
+                 (select-keys ["<New User>" "crowberto@metabase.com"]))))
 
-    (testing "...including the site admin if it is set..."
-      (mt/with-temporary-setting-values [admin-email "cam2@metabase.com"]
-        (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
-                "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]
-                "cam2@metabase.com"      ["<New User> accepted their Metabase invite"]}
-               (-> (invite-user-accept-and-check-inboxes! :invitor default-invitor)
-                   (select-keys ["<New User>" "crowberto@metabase.com" "cam2@metabase.com"])))))
-
-      (testing "... but if that admin is inactive they shouldn't get an email"
-        (t2.with-temp/with-temp [User inactive-admin {:is_superuser true, :is_active false}]
+      (testing "...including the site admin if it is set..."
+        (mt/with-temporary-setting-values [admin-email "cam2@metabase.com"]
           (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
-                  "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]}
-                 (-> (invite-user-accept-and-check-inboxes! :invitor (assoc inactive-admin :is_active false))
-                     (select-keys ["<New User>" "crowberto@metabase.com" (:email inactive-admin)]))))))))
+                  "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]
+                  "cam2@metabase.com"      ["<New User> accepted their Metabase invite"]}
+                 (-> (invite-user-accept-and-check-inboxes! :invitor default-invitor)
+                     (select-keys ["<New User>" "crowberto@metabase.com" "cam2@metabase.com"])))))
 
-  (testing "for google auth, all admins should get an email..."
-    (t2.with-temp/with-temp [User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
-      (is (= {"crowberto@metabase.com"        ["<New User> created a Metabase account"]
-              "some_other_admin@metabase.com" ["<New User> created a Metabase account"]}
-             (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
-                 (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"])))))
+        (testing "... but if that admin is inactive they shouldn't get an email"
+          (t2.with-temp/with-temp [User inactive-admin {:is_superuser true, :is_active false}]
+            (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
+                    "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]}
+                   (-> (invite-user-accept-and-check-inboxes! :invitor (assoc inactive-admin :is_active false))
+                       (select-keys ["<New User>" "crowberto@metabase.com" (:email inactive-admin)]))))))))
 
-    (testing "...including the site admin if it is set..."
-      (mt/with-temporary-setting-values [admin-email "cam2@metabase.com"]
-        (t2.with-temp/with-temp [User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
-          (is (= {"crowberto@metabase.com"        ["<New User> created a Metabase account"]
-                  "some_other_admin@metabase.com" ["<New User> created a Metabase account"]
-                  "cam2@metabase.com"             ["<New User> created a Metabase account"]}
-                 (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
-                     (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com" "cam2@metabase.com"]))))))
+    (testing "for google auth, all admins should get an email..."
+      (t2.with-temp/with-temp [User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
+        (is (= {"crowberto@metabase.com"        ["<New User> created a Metabase account"]
+                "some_other_admin@metabase.com" ["<New User> created a Metabase account"]}
+               (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                   (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"])))))
 
-      (testing "...unless they are inactive..."
-        (t2.with-temp/with-temp [User user {:is_superuser true, :is_active false}]
-          (is (= {"crowberto@metabase.com" ["<New User> created a Metabase account"]}
-                 (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
-                     (select-keys ["crowberto@metabase.com" (:email user)])))))
+      (testing "...including the site admin if it is set..."
+        (mt/with-temporary-setting-values [admin-email "cam2@metabase.com"]
+          (t2.with-temp/with-temp [User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
+            (is (= {"crowberto@metabase.com"        ["<New User> created a Metabase account"]
+                    "some_other_admin@metabase.com" ["<New User> created a Metabase account"]
+                    "cam2@metabase.com"             ["<New User> created a Metabase account"]}
+                   (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                       (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com" "cam2@metabase.com"]))))))
 
-        (testing "...or if setting is disabled"
-          (mt/with-premium-features #{:sso-ldap}
-            (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "false"]
-              (t2.with-temp/with-temp [User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
-                (is (= (if config/ee-available? {} {"crowberto@metabase.com" ["<New User> created a Metabase account"],
-                                                    "some_other_admin@metabase.com" ["<New User> created a Metabase account"]})
-                       (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
-                           (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"])))))))))))
+        (testing "...unless they are inactive..."
+          (t2.with-temp/with-temp [User user {:is_superuser true, :is_active false}]
+            (is (= {"crowberto@metabase.com" ["<New User> created a Metabase account"]}
+                   (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                       (select-keys ["crowberto@metabase.com" (:email user)])))))
 
-  (testing "if sso enabled and password login is disabled, email should send a link to sso login"
-    (mt/with-premium-features #{:disable-password-login}
-      (mt/with-temporary-setting-values [enable-password-login false]
-        (ldap.test/with-ldap-server!
-          (invite-user-accept-and-check-inboxes! :invitor default-invitor , :accept-invite? false)
-          (is (seq (mt/regex-email-bodies #"/auth/login"))))))))
+          (testing "...or if setting is disabled"
+            (mt/with-premium-features #{:sso-ldap}
+              (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "false"]
+                (t2.with-temp/with-temp [User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
+                  (is (= (if config/ee-available? {} {"crowberto@metabase.com" ["<New User> created a Metabase account"],
+                                                      "some_other_admin@metabase.com" ["<New User> created a Metabase account"]})
+                         (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                             (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"])))))))))))
+
+    (testing "if sso enabled and password login is disabled, email should send a link to sso login"
+      (mt/with-premium-features #{:disable-password-login}
+        (mt/with-temporary-setting-values [enable-password-login false]
+          (ldap.test/with-ldap-server!
+            (invite-user-accept-and-check-inboxes! :invitor default-invitor , :accept-invite? false)
+            (is (seq (mt/regex-email-bodies #"/auth/login")))))))))
 
 (deftest ldap-user-passwords-test
   (testing (str "LDAP users should not persist their passwords. Check that if somehow we get passed an LDAP user "
@@ -529,7 +535,7 @@
   (testing "last-acknowledged-version is automatically set for new users"
     (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.47.1")]
       (t2.with-temp/with-temp [User {user-id :id} {}]
-        (mw.session/with-current-user user-id
+        (request/with-current-user user-id
           (is (= "v0.47.1" (setting/get :last-acknowledged-version))))))))
 
 (deftest last-used-native-database-id-can-be-read-and-set

@@ -312,12 +312,12 @@
       "viz-settings": {
         "table.column_widths": [null, 226],
         "graph.show_values": true,
-        "metabase.shared.models.visualization-settings/column-settings": {},
+        "metabase.models.visualization-settings/column-settings": {},
         "graph.series_order_dimension": null,
         "graph.y_axis.scale": "linear",
         "graph.metrics": ["total_accident"],
         "graph.series_order": null,
-        "metabase.shared.models.visualization-settings/global-column-settings": {},
+        "metabase.models.visualization-settings/global-column-settings": {},
         "series_settings": { "total_accident": { "color": "#227FD2" } },
         "graph.dimensions": ["date"],
         "waterfall.show_total": true

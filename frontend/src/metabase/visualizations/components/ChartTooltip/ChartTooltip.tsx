@@ -61,8 +61,8 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
   const target = hasTargetElement
     ? hovered?.element
     : hasTargetEvent
-    ? getEventTarget(hovered.event)
-    : null;
+      ? getEventTarget(hovered.event)
+      : null;
 
   return target ? (
     <Tooltip

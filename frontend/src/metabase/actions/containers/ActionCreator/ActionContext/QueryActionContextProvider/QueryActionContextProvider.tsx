@@ -72,6 +72,7 @@ function convertActionToQuestionCard(
     public_uuid: null,
     collection_id: null,
     collection_position: null,
+    dashboard: null,
     result_metadata: [],
     cache_ttl: null,
     last_query_start: null,
@@ -80,6 +81,9 @@ function convertActionToQuestionCard(
     enable_embedding: false,
     embedding_params: null,
     initially_published_at: null,
+    can_manage_db: true,
+    dashboard_count: null,
+    dashboard_id: null,
   };
 }
 

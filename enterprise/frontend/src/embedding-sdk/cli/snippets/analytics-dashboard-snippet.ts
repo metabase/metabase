@@ -2,13 +2,12 @@ import { SDK_PACKAGE_NAME } from "../constants/config";
 import type { DashboardInfo } from "../types/dashboard";
 
 interface Options {
-  instanceUrl: string;
   dashboards: DashboardInfo[];
   userSwitcherEnabled: boolean;
 }
 
 export const getAnalyticsDashboardSnippet = (options: Options) => {
-  const { instanceUrl, dashboards, userSwitcherEnabled } = options;
+  const { dashboards, userSwitcherEnabled } = options;
 
   let imports = `import { ThemeSwitcher } from './theme-switcher'`;
 
@@ -17,48 +16,62 @@ export const getAnalyticsDashboardSnippet = (options: Options) => {
   }
 
   return `
-import { useState, useContext } from 'react'
-import { InteractiveDashboard } from '${SDK_PACKAGE_NAME}'
+import { useState, useContext, useReducer } from 'react'
+import { InteractiveDashboard, CreateQuestion } from '${SDK_PACKAGE_NAME}'
 import { AnalyticsContext } from "./analytics-provider"
 
 ${imports}
 
 export const AnalyticsDashboard = () => {
-  const {email} = useContext(AnalyticsContext)
+  const {email, themeKey} = useContext(AnalyticsContext)
   const [dashboardId, setDashboardId] = useState(DASHBOARDS[0].id)
 
-  const editLink = \`${instanceUrl}/dashboard/\${dashboardId}\`
+  const [isCreateQuestion, toggleCreateQuestion] = useReducer((s) => !s, false)
+
+  const isDashboard = !isCreateQuestion
 
   return (
-    <div className="analytics-container">
-      <div className="analytics-header">
-        <div>
-          <select
-            className="dashboard-select"
-            onChange={(e) => setDashboardId(e.target.value)}
-          >
-            {DASHBOARDS.map((dashboard) => (
-              <option key={dashboard.id} value={dashboard.id}>
-                {dashboard.name}
-              </option>
-            ))}
-          </select>
+    <div className={\`analytics-root theme-\${themeKey}\`}>
+      <div className="analytics-container">
+        <div className="analytics-header">
+          <div>
+            ${userSwitcherEnabled ? "<UserSwitcher />" : ""}
+          </div>
 
-          ${userSwitcherEnabled ? "<UserSwitcher />" : ""}
+          <div className="analytics-header-right">
+            {isDashboard && (
+              <select
+                className="dashboard-select"
+                onChange={(e) => setDashboardId(e.target.value)}
+              >
+                {DASHBOARDS.map((dashboard) => (
+                  <option key={dashboard.id} value={dashboard.id}>
+                    {dashboard.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            <a href="#!" onClick={toggleCreateQuestion}>
+              {isCreateQuestion ? 'Back to dashboard' : 'Create Question'}
+            </a>
+
+            <ThemeSwitcher />
+          </div>
         </div>
 
-        <div className="analytics-header-right">
-          {/** TODO: Remove. This is just a link to edit the dashboard in Metabase for your convenience. */}
-          <a href={editLink} target="_blank">
-            Edit this dashboard
-          </a>
+        {/** Reload the dashboard when user changes with the key prop */}
+        {isDashboard && (
+          <InteractiveDashboard
+            dashboardId={dashboardId}
+            withTitle
+            withDownloads
+            key={email}
+          />
+        )}
 
-          <ThemeSwitcher />
-        </div>
+        {isCreateQuestion && <CreateQuestion />}
       </div>
-
-      {/** Reload the dashboard when user changes with the key prop */}
-      <InteractiveDashboard dashboardId={dashboardId} withTitle withDownloads key={email} />
     </div>
   )
 }

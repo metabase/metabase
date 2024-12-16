@@ -68,6 +68,23 @@ export const getIsCollectionPathVisible = createSelector(
   },
 );
 
+export const getIsContainingDashboardPathVisible = createSelector(
+  [getIsCollectionPathVisible, getQuestion, getRouterPath],
+  (isCollectionPathVisible, question, path) => {
+    if (!isCollectionPathVisible) {
+      return false;
+    }
+
+    const isOnQuestionPage = /\/question\//.test(path);
+    const isSavedDashboardQuestion =
+      question != null &&
+      question.isSaved() &&
+      typeof question?.dashboardId() === "number";
+
+    return isSavedDashboardQuestion && isOnQuestionPage;
+  },
+);
+
 export const getIsQuestionLineageVisible = createSelector(
   [getIsSavedQuestionChanged, getRouterPath],
   (isSavedQuestionChanged, path) =>
@@ -224,3 +241,6 @@ export const getCustomHomePageDashboardId = createSelector(
 export const getHasDismissedCustomHomePageToast = (state: State) => {
   return getSetting(state, "dismissed-custom-dashboard-toast");
 };
+
+export const getIsErrorDiagnosticModalOpen = (state: State) =>
+  state.app.isErrorDiagnosticsOpen;

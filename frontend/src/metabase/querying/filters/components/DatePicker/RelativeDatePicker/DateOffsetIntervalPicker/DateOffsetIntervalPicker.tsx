@@ -11,6 +11,7 @@ import {
   Text,
 } from "metabase/ui";
 
+import type { DatePickerUnit } from "../../types";
 import type { DateIntervalValue, DateOffsetIntervalValue } from "../types";
 import {
   formatDateRange,
@@ -32,6 +33,7 @@ import {
 
 interface DateOffsetIntervalPickerProps {
   value: DateOffsetIntervalValue;
+  availableUnits: ReadonlyArray<DatePickerUnit>;
   isNew: boolean;
   onChange: (value: DateIntervalValue) => void;
   onSubmit: () => void;
@@ -39,14 +41,15 @@ interface DateOffsetIntervalPickerProps {
 
 export function DateOffsetIntervalPicker({
   value,
+  availableUnits,
   isNew,
   onChange,
   onSubmit,
 }: DateOffsetIntervalPickerProps) {
   const interval = getInterval(value);
-  const unitOptions = getUnitOptions(value);
+  const unitOptions = getUnitOptions(value, availableUnits);
   const offsetInterval = getOffsetInterval(value);
-  const offsetUnitOptions = getOffsetUnitOptions(value);
+  const offsetUnitOptions = getOffsetUnitOptions(value, availableUnits);
   const directionText = getDirectionText(value);
   const dateRangeText = formatDateRange(value);
 

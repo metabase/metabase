@@ -1,7 +1,7 @@
 import type { Story } from "@storybook/react";
 import * as jose from "jose";
 
-import { MetabaseProvider, type SDKConfig } from "embedding-sdk";
+import { type MetabaseAuthConfig, MetabaseProvider } from "embedding-sdk";
 
 import { USERS } from "../../../../../e2e/support/cypress_data";
 const METABASE_INSTANCE_URL =
@@ -11,9 +11,12 @@ const METABASE_JWT_SHARED_SECRET =
 
 const secret = new TextEncoder().encode(METABASE_JWT_SHARED_SECRET);
 
-const DEFAULT_CONFIG: SDKConfig = {
+/**
+ * SDK auth config that signs the jwt on the FE
+ */
+export const storybookSdkAuthDefaultConfig: MetabaseAuthConfig = {
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
-  jwtProviderUri: `${METABASE_INSTANCE_URL}/sso/metabase`,
+  authProviderUri: `${METABASE_INSTANCE_URL}/sso/metabase`,
   fetchRequestToken: async () => {
     try {
       const signedUserData = await new jose.SignJWT({
@@ -34,12 +37,13 @@ const DEFAULT_CONFIG: SDKConfig = {
       return response.json();
     } catch (e) {
       console.error("Failed to generate JWT", e);
+      return `Failed to generate JWT for storybook: ${e}`;
     }
   },
 };
 
 export const CommonSdkStoryWrapper = (Story: Story) => (
-  <MetabaseProvider config={DEFAULT_CONFIG}>
+  <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
     <Story />
   </MetabaseProvider>
 );

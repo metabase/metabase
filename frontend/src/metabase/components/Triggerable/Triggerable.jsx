@@ -157,7 +157,7 @@ const Triggerable = ComposedComponent =>
               !isOpen && triggerClassesClose,
               CS.noDecoration,
               {
-                [CS.cursorDefault]: this.props.disabled,
+                [CS.cursorInherit]: this.props.disabled,
               },
             )}
             aria-disabled={this.props.disabled}

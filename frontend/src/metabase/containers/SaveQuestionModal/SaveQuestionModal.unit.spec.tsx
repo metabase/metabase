@@ -71,7 +71,7 @@ const setup = async (
     collectionEndpoints?: CollectionEndpoints;
   } = {},
 ) => {
-  const onCreateMock = jest.fn(() => Promise.resolve());
+  const onCreateMock = jest.fn(question => Promise.resolve(question));
   const onSaveMock = jest.fn(() => Promise.resolve());
   const onCloseMock = jest.fn();
 
@@ -110,7 +110,8 @@ const setup = async (
       originalQuestion={originalQuestion}
       onCreate={onCreateMock}
       onSave={onSaveMock}
-      onCancel={onCloseMock}
+      onClose={onCloseMock}
+      opened={true}
     />,
     {
       storeInitialState: state,
@@ -125,7 +126,8 @@ const setup = async (
         originalQuestion={originalQuestion}
         onCreate={onCreateMock}
         onSave={onSaveMock}
-        onCancel={onCloseMock}
+        onClose={onCloseMock}
+        opened={true}
       />,
     );
   };
@@ -685,12 +687,19 @@ describe("SaveQuestionModal", () => {
 
   describe("Cache TTL field", () => {
     const query = Question.create({
-      databaseId: SAMPLE_DB_ID,
-      tableId: ORDERS_ID,
       metadata,
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+      },
+      // eslint-disable-next-line no-restricted-syntax
     }).legacyQuery({ useStructuredQuery: true }) as StructuredQuery;
 
-    const question = query.aggregate(["count"]).question();
+    const question = query.question();
 
     describe("OSS", () => {
       it("is not shown", async () => {
@@ -718,7 +727,8 @@ describe("SaveQuestionModal", () => {
   });
 
   describe("new collection modal", () => {
-    const collDropdown = () => screen.getByLabelText(/Which collection/);
+    const collDropdown = () =>
+      screen.getByLabelText(/Where do you want to save this/);
     const newCollBtn = () =>
       screen.getByRole("button", {
         name: /new collection/i,
@@ -783,8 +793,11 @@ describe("SaveQuestionModal", () => {
     it("should have a new collection button in the collection picker", async () => {
       await setup(getQuestion());
       await userEvent.click(collDropdown());
-      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
+      await waitFor(() => {
+        expect(newCollBtn()).toBeInTheDocument();
+      });
     });
+
     it("should open new collection modal and return to dashboard modal when clicking close", async () => {
       await setup(getQuestion());
       await userEvent.click(collDropdown());
@@ -795,6 +808,7 @@ describe("SaveQuestionModal", () => {
       await userEvent.click(cancelBtn());
       await waitFor(() => expect(questionModalTitle()).toBeInTheDocument());
     });
+
     describe("new collection location", () => {
       beforeEach(async () => {
         await setup(getQuestion(), null, {
@@ -804,6 +818,7 @@ describe("SaveQuestionModal", () => {
           },
         });
       });
+
       it("should create collection inside nested folder", async () => {
         await userEvent.click(collDropdown());
         await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
@@ -815,6 +830,7 @@ describe("SaveQuestionModal", () => {
         await userEvent.click(newCollBtn());
         await screen.findByText("Give it a name");
       });
+
       it("should create collection inside root folder", async () => {
         await userEvent.click(collDropdown());
         await waitFor(() => expect(newCollBtn()).toBeInTheDocument());

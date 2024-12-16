@@ -1,15 +1,17 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { createCachedSelector } from "re-reselect";
-import { createSelectorCreator, lruMemoize } from "reselect";
 import _ from "underscore";
 
 import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
-import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import { LOAD_COMPLETE_FAVICON } from "metabase/hooks/use-favicon";
 import * as Urls from "metabase/lib/urls";
-import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
+import {
+  getDashboardQuestions,
+  getDashboardUiParameters,
+} from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
@@ -17,7 +19,7 @@ import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { getIsWebApp } from "metabase/selectors/web-app";
-import { mergeSettings } from "metabase/visualizations/lib/settings";
+import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import Question from "metabase-lib/v1/Question";
 import {
   getValuePopulatedParameters as _getValuePopulatedParameters,
@@ -25,7 +27,6 @@ import {
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
-  CardId,
   DashCardId,
   Dashboard,
   DashboardCard,
@@ -62,8 +63,6 @@ function isEditParameterSidebar(
 ): sidebar is EditParameterSidebarState {
   return sidebar.name === SIDEBAR_NAME.editParameter;
 }
-
-const createDeepEqualSelector = createSelectorCreator(lruMemoize, _.isEqual);
 
 export const getDashboardBeforeEditing = (state: State) =>
   state.dashboard.editingDashboard;
@@ -146,6 +145,11 @@ export const getIsShowDashboardInfoSidebar = createSelector(
   sidebar => sidebar.name === SIDEBAR_NAME.info,
 );
 
+export const getIsShowDashboardSettingsSidebar = createSelector(
+  [getSidebar],
+  sidebar => sidebar.name === SIDEBAR_NAME.settings,
+);
+
 export const getDashboardId = (state: State) => state.dashboard.dashboardId;
 
 export const getDashboard = createSelector(
@@ -217,13 +221,10 @@ export const getDashcardHref = createSelector(
       return undefined;
     }
 
-    const card = {
-      ...dashcard.card,
-      visualization_settings: mergeSettings(
-        dashcard.card.visualization_settings,
-        dashcard.visualization_settings,
-      ),
-    };
+    const card = extendCardWithDashcardSettings(
+      dashcard.card,
+      dashcard.visualization_settings,
+    );
 
     return getNewCardUrl({
       metadata,
@@ -372,50 +373,18 @@ export const getParameterTarget = createSelector(
   },
 );
 
-export const getQuestions = (state: State) => {
-  const dashboard = getDashboard(state);
-
-  if (!dashboard) {
-    return [];
-  }
-
-  const dashcardIds = dashboard.dashcards;
-
-  const questionsById = dashcardIds.reduce<Record<CardId, Question>>(
-    (acc, dashcardId) => {
-      const dashcard = getDashCardById(state, dashcardId);
-
-      if (isQuestionDashCard(dashcard)) {
-        const cards = [dashcard.card, ...(dashcard.series ?? [])];
-
-        for (const card of cards) {
-          const question = getQuestionByCard(state, { card });
-          if (question) {
-            acc[card.id] = question;
-          }
-        }
-      }
-
-      return acc;
-    },
-    {},
-  );
-
-  return questionsById;
-};
-
-// TODO: remove it as we added cache to MLv2 and it should be fast now
-// getQuestions selector returns an array with stable references to the questions
-// but array itself is always new, so it may cause troubles in re-renderings
-const getQuestionsMemoized = createDeepEqualSelector(
-  [getQuestions],
-  questions => {
-    return questions;
+export const getQuestions = createSelector(
+  [getDashboardComplete, getMetadata],
+  (dashboard, metadata) => {
+    if (!dashboard) {
+      return {};
+    }
+    return getDashboardQuestions(dashboard.dashcards, metadata);
   },
 );
 
 export const getParameters = createSelector(
-  [getDashboardComplete, getMetadata, getQuestionsMemoized],
+  [getDashboardComplete, getMetadata, getQuestions],
   (dashboard, metadata, questions) => {
     if (!dashboard || !metadata) {
       return [];
@@ -551,7 +520,7 @@ export function getInitialSelectedTabId(
       const searchParams = new URLSearchParams(window.location.search);
       const tabParam = searchParams.get("tab");
       const tabId = tabParam ? parseInt(tabParam, 10) : null;
-      const hasTab = dashboard.tabs?.find?.(tab => tab.id === tabId);
+      const hasTab = dashboard.tabs?.some?.(tab => tab.id === tabId);
       if (hasTab) {
         return tabId;
       }

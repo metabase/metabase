@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
-import type Filter from "metabase-lib/v1/queries/structured/Filter";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 import {
   getInitialDayOfWeekFilter,
   getInitialHourOfDayFilter,
@@ -36,9 +36,9 @@ type Option = {
 type Group = {
   name: string;
   displayName: string;
-  init: (filter: Filter) => any[];
-  test: (filter: Filter) => boolean;
-  getOptions: () => Option[][];
+  init: (filter: FilterMBQL) => any[];
+  test: (filter: FilterMBQL) => boolean;
+  getOptionGroups: () => Option[][];
 };
 
 export const EXCLUDE_OPERATORS: Group[] = [
@@ -47,42 +47,42 @@ export const EXCLUDE_OPERATORS: Group[] = [
     displayName: t`Days of the week...`,
     test: filter => isDayOfWeekDateFilter(filter),
     init: filter => getInitialDayOfWeekFilter(filter),
-    getOptions: EXCLUDE_OPTIONS["day-of-week"],
+    getOptionGroups: EXCLUDE_OPTIONS["day-of-week"],
   },
   {
     name: "months",
     displayName: t`Months of the year...`,
     test: filter => isMonthOfYearDateFilter(filter),
     init: filter => getInitialMonthOfYearFilter(filter),
-    getOptions: EXCLUDE_OPTIONS["month-of-year"],
+    getOptionGroups: EXCLUDE_OPTIONS["month-of-year"],
   },
   {
     name: "quarters",
     displayName: t`Quarters of the year...`,
     test: filter => isQuarterofYearDateFilter(filter),
     init: filter => getInitialQuarterOfYearFilter(filter),
-    getOptions: EXCLUDE_OPTIONS["quarter-of-year"],
+    getOptionGroups: EXCLUDE_OPTIONS["quarter-of-year"],
   },
   {
     name: "hours",
     displayName: t`Hours of the day...`,
     test: filter => isHourOfDayDateFilter(filter),
     init: filter => getInitialHourOfDayFilter(filter),
-    getOptions: EXCLUDE_OPTIONS["hour-of-day"],
+    getOptionGroups: EXCLUDE_OPTIONS["hour-of-day"],
   },
 ];
 
-export function getHeaderText(filter: Filter) {
+export function getHeaderText(filter: FilterMBQL) {
   return getExcludeOperator(filter)?.displayName || t`Exclude...`;
 }
 
-export function getExcludeOperator(filter: Filter) {
+export function getExcludeOperator(filter: FilterMBQL) {
   return _.find(EXCLUDE_OPERATORS, ({ test }) => test(filter));
 }
 
 type Props = {
   primaryColor?: string;
-  filter: Filter;
+  filter: FilterMBQL;
   onFilterChange: (filter: any[]) => void;
   className?: string;
   onCommit: (filter: any[]) => void;
@@ -142,12 +142,13 @@ export default function ExcludeDatePicker({
     );
   }
 
-  const { getOptions } = temporalUnit;
-  const options = getOptions();
+  const { getOptionGroups } = temporalUnit;
+  const optionGroups = getOptionGroups();
+  const options = optionGroups.flat();
   const update = (values: string[]) =>
     onFilterChange([operator, field, ...values]);
-  const allSelected = values.length === 0;
-  const selectAllLabel = allSelected ? t`Select none...` : t`Select all...`;
+  const allSelected = values.length === options.length;
+  const selectAllLabel = allSelected ? t`Select none` : t`Select all`;
 
   return (
     <div className={className}>
@@ -156,12 +157,12 @@ export default function ExcludeDatePicker({
         checkedColor={primaryColor}
         checked={allSelected}
         onChange={() =>
-          update(allSelected ? options.flat().map(({ value }) => value) : [])
+          update(allSelected ? [] : options.map(({ value }) => value))
         }
       />
       <Separator />
       <ExcludeContainer>
-        {options.map((inner, index) => (
+        {optionGroups.map((inner, index) => (
           <ExcludeColumn key={index}>
             {inner.map(({ displayName, value, test }) => {
               const isValueExcluded = values.find(value => test(value)) != null;
@@ -169,7 +170,7 @@ export default function ExcludeDatePicker({
                 <ExcludeCheckBox
                   key={value}
                   label={<ExcludeLabel>{displayName}</ExcludeLabel>}
-                  checked={!isValueExcluded}
+                  checked={isValueExcluded}
                   checkedColor={primaryColor}
                   onChange={() => {
                     if (!isValueExcluded) {

@@ -11,6 +11,7 @@ import type {
   RegularClickAction,
 } from "metabase/visualizations/types";
 import { isPopoverClickAction } from "metabase/visualizations/types";
+import type Question from "metabase-lib/v1/Question";
 import type { Series } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
@@ -24,6 +25,7 @@ interface ChartClickActionsProps {
   dispatch: Dispatch;
   onChangeCardAndRun: OnChangeCardAndRun;
   onUpdateVisualizationSettings: () => void;
+  onUpdateQuestion?: (question: Question) => void;
   onClose?: () => void;
 }
 
@@ -49,13 +51,14 @@ export class ClickActionsPopover extends Component<
   };
 
   handleClickAction = (action: RegularClickAction) => {
-    const { dispatch, onChangeCardAndRun } = this.props;
+    const { dispatch, onChangeCardAndRun, onUpdateQuestion } = this.props;
     if (isPopoverClickAction(action)) {
       this.setState({ popoverAction: action });
     } else {
       const didPerform = performAction(action, {
         dispatch,
         onChangeCardAndRun,
+        onUpdateQuestion,
       });
       if (didPerform) {
         this.close();

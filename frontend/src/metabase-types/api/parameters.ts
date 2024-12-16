@@ -83,14 +83,23 @@ export type ParameterDimensionTarget =
   | NativeParameterDimensionTarget
   | StructuredParameterDimensionTarget;
 
-export type NativeParameterDimensionTarget = ["dimension", VariableTarget];
+export type DimensionTargetOptions = {
+  "stage-number"?: number;
+};
 
-export type StructuredParameterDimensionTarget = [
-  "dimension",
-  ConcreteFieldReference | ExpressionReference,
-];
+export type NativeParameterDimensionTarget =
+  | ["dimension", VariableTarget]
+  | ["dimension", VariableTarget, DimensionTargetOptions];
 
-export type ParameterValueOrArray = string | number | Array<any>;
+export type StructuredParameterDimensionTarget =
+  | ["dimension", ConcreteFieldReference | ExpressionReference]
+  | [
+      "dimension",
+      ConcreteFieldReference | ExpressionReference,
+      DimensionTargetOptions,
+    ];
+
+export type ParameterValueOrArray = string | number | boolean | Array<any>;
 
 export type HumanReadableParameterValue = string;
 export type NotRemappedParameterValue = [RowValue];

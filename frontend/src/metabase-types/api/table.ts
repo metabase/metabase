@@ -1,4 +1,4 @@
-import type { Card } from "./card";
+import type { Card, CardType } from "./card";
 import type { Database, DatabaseId, InitialSyncStatus } from "./database";
 import type { Field, FieldDimensionOption, FieldId } from "./field";
 import type { Segment } from "./segment";
@@ -22,7 +22,7 @@ export type TableFieldOrder = "database" | "alphabetical" | "custom" | "smart";
 
 export type Table = {
   id: TableId;
-
+  type?: CardType;
   name: string;
   display_name: string;
   description: string | null;

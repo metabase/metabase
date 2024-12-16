@@ -1,0 +1,16 @@
+import { useState } from "react";
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Box, Alert, Icon, Stack, Text, TextInput } from "metabase/ui";
+import * as AlertStories from "./Alert.stories";
+
+<Meta of={AlertStories} />
+
+# Alert
+
+Show helpful alerts when things go sideways (or maybe it's a happy alert. It happens)
+
+## Examples
+
+<Canvas>
+  <Story of={AlertStories.Default} />
+</Canvas>

@@ -3,7 +3,7 @@ import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { skipToken, useListStaleCollectionItemsQuery } from "metabase/api";
+import { skipToken } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import Search from "metabase/entities/search";
@@ -11,8 +11,11 @@ import { useListSelect } from "metabase/hooks/use-list-select";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Flex, Modal } from "metabase/ui";
-import type { StaleCollectionItem } from "metabase-types/api";
+import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+
+import { trackStaleItemsArchived } from "../analytics";
+import type { StaleCollectionItem } from "../types";
 
 import { CleanupCollectionBulkActions } from "./CleanupCollectionBulkActions";
 import CS from "./CleanupCollectionModal.module.css";
@@ -58,7 +61,7 @@ const _CleanupCollectionModal = ({
   };
 
   // filters
-  const [dateFilter, setDateFilter] = useState<DateFilter>("six-months");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("three-months");
   const handleChangeDateFilter = (nextDateFilter: DateFilter) => {
     setDateFilter(nextDateFilter);
     pagination.resetPage();
@@ -110,6 +113,22 @@ const _CleanupCollectionModal = ({
   useEffect(() => {
     setTotal(total);
   }, [setTotal, total]);
+
+  const handleOnArchive = ({
+    totalArchivedItems,
+  }: {
+    totalArchivedItems: number;
+  }) => {
+    // In theory if we should only get numbers or root bad for a collection id
+    // if we are dealing with Our Analytics / root, set collection_id to null
+    if (typeof collectionId === "number" || collectionId === "root") {
+      trackStaleItemsArchived({
+        collection_id: collectionId === "root" ? null : collectionId,
+        total_items_archived: totalArchivedItems,
+        cutoff_date: new Date(before_date).toISOString(),
+      });
+    }
+  };
 
   return (
     <Modal.Root
@@ -184,6 +203,7 @@ const _CleanupCollectionModal = ({
           selected={selection.selected}
           clearSelectedItem={selection.clear}
           resetPagination={pagination.resetPage}
+          onArchive={handleOnArchive}
         />
       </Modal.Content>
     </Modal.Root>

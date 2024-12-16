@@ -7,7 +7,7 @@
    [clojure.string :as str]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
-   [metabase.models :refer [Card Collection Dashboard DashboardCard]]
+   [metabase.models :refer [Card Collection Dashboard]]
    [metabase.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -58,66 +58,6 @@
         (into (map :id) roots)
         (into (mapcat collection/descendant-ids) roots))))
 
-(defn- extract-metabase
-  "Returns reducible stream of serializable entity maps, with `:serdes/meta` keys.
-   Takes an options map which is passed on to [[serdes/extract-all]] for each model."
-  [{:keys [user-id] :as opts}]
-  (log/tracef "Extracting Metabase with options: %s" (pr-str opts))
-  (let [extract-opts (assoc opts :collection-set (collection-set-for-user user-id))]
-    (eduction (map #(serdes/extract-all % extract-opts)) cat (model-set opts))))
-
-(defn- escape-analysis
-  "Given a target seq, explore the contents of any collections looking for \"leaks\". For example, a
-  Dashboard that contains Cards which are not (transitively) in the given set of collections, or a Card that depends on
-  a Card as a model, which is not in the given collections.
-
-  Returns a data structure detailing the gaps. Use [[escape-report]] to output this data in a human-friendly format.
-  Returns nil if there are no escaped values, which is useful for a test."
-  [targets]
-  (let [collection-ids (into #{} (map second) (targets-of-type targets "Collection"))
-        collection-set (into collection-ids (mapcat collection/descendant-ids) (t2/select Collection :id [:in collection-ids]))
-        dashboards     (t2/select Dashboard :collection_id [:in collection-set])
-        ;; All cards that are in this collection set.
-        cards          (reduce set/union #{} (for [coll-id collection-set]
-                                               (t2/select-pks-set Card :collection_id coll-id)))
-
-        ;; Map of {dashboard-id #{DashboardCard}} for dashcards whose cards OR parameter-bound cards are outside the
-        ;; transitive collection set.
-        escaped-dashcards  (into {}
-                                 (for [dash  dashboards
-                                       :let [dcs (t2/select DashboardCard :dashboard_id (:id dash))
-                                             escapees (->> dcs
-                                                           (keep :card_id) ; Text cards have a nil card_id
-                                                           set)
-                                             params   (->> dcs
-                                                           (mapcat :parameter_mappings)
-                                                           (keep :card_id)
-                                                           set)
-                                             combined (set/difference (set/union escapees params) cards)]
-                                       :when (seq combined)]
-                                   [(:id dash) combined]))
-        ;; {source-card-id target-card-id} the key is in the curated set, the value is not.
-        all-cards          (for [id cards]
-                             (t2/select-one [Card :id :collection_id :dataset_query] :id id))
-        bad-source         (for [card all-cards
-                                 :let [^String src (some-> card :dataset_query :query :source-table)]
-                                 :when (and (string? src) (.startsWith src "card__"))
-                                 :let [card-id (Integer/parseInt (.substring src 6))]
-                                 :when (not (cards card-id))]
-                             [(:id card) card-id])
-        bad-template-tags  (for [card all-cards
-                                 :let [card-ids (some->> card :dataset_query :native
-                                                         :template-tags vals (keep :card-id))]
-                                 card-id card-ids
-                                 :when   (not (cards card-id))]
-                             [(:id card) card-id])
-        escaped-questions  (into {} (concat bad-source bad-template-tags))
-        problem-cards      (reduce set/union (set (vals escaped-questions)) (vals escaped-dashcards))]
-    (cond-> nil
-      (seq escaped-dashcards) (assoc :escaped-dashcards escaped-dashcards)
-      (seq escaped-questions) (assoc :escaped-questions escaped-questions)
-      (seq problem-cards)     (assoc :problem-cards     problem-cards))))
-
 (defn- collection-label [coll-id]
   (if coll-id
     (let [collection (t2/hydrate (t2/select-one Collection :id coll-id) :ancestors)
@@ -131,19 +71,39 @@
   (let [card (t2/select-one [Card :collection_id :name] :id card-id)]
     (format "Card %d (%s from collection %s)" card-id (:name card) (collection-label (:collection_id card)))))
 
-(defn- escape-report
-  "Given the analysis map from [[escape-analysis]], report the results in a human-readable format with Card titles etc."
-  [{:keys [escaped-dashcards escaped-questions]}]
-  (when-not (empty? escaped-dashcards)
-    (doseq [[dash-id card-ids] escaped-dashcards
-            :let [dash-name (t2/select-one-fn :name Dashboard :id dash-id)]]
-      (log/warnf "Failed to export Dashboard %d (%s) containing Cards saved outside requested collections: %s"
-                 dash-id dash-name (str/join ", " (map card-label card-ids)))))
+(defn- parse-target [[model-name id :as target]]
+  (if (string? id)
+    [model-name (serdes/eid->id model-name id)]
+    target))
 
-  (when-not (empty? escaped-questions)
-    (log/warnf "Failed to export Cards based on questions outside requested collections: %s"
-               (str/join ", " (for [[curated-id alien-id] escaped-questions]
-                                (str (card-label curated-id) " -> " (card-label alien-id)))))))
+(defn- escape-analysis [{colls "Collection" cards "Card"} nodes]
+  (log/tracef "Running escape analysis for %d colls and %d cards" (count colls) (count cards))
+  (when-let [colls (-> colls set not-empty)]
+    (let [known-cards (t2/select-pks-set Card {:where [:or
+                                                       [:in :collection_id colls]
+                                                       (when (contains? colls nil)
+                                                         [:= :collection_id nil])]})
+          escaped     (->> (set/difference (set cards) known-cards)
+                           (mapv (fn [id]
+                                   (-> (get nodes ["Card" id])
+                                       (assoc :escapee id)))))]
+      escaped)))
+
+(defn- log-escape-report! [escaped]
+  (let [dashboards (group-by #(get % "Dashboard") escaped)]
+    (doseq [[dash-id escapes] (dissoc dashboards nil)]
+      (log/warnf "Failed to export Dashboard %d (%s) containing Card saved outside requested collections: %s"
+                 dash-id
+                 (t2/select-one-fn :name Dashboard :id dash-id)
+                 (str/join ", " (map #(card-label (:escapee %)) escapes))))
+    (when-let [other (not-empty (get dashboards nil))]
+      (log/warnf "Failed to export Cards based on questions outside requested collections: %s"
+                 (str/join ", " (for [item other]
+                                  (format "%s -> %s"
+                                          (if (get item "Card")
+                                            (card-label (get item "Card"))
+                                            (dissoc item :escapee))
+                                          (card-label (:escapee item)))))))))
 
 (defn- extract-subtrees
   "Extracts the targeted entities and all their descendants into a reducible stream of extracted maps.
@@ -152,43 +112,51 @@
 
   [[serdes/descendants]] is recursively called on these entities and all their descendants, until the
   complete transitive closure of all descendants is found. This produces a set of `[\"ModelName\" id]` pairs, which
-  entities are then extracted the same way as [[extract-metabase]].
-Eg. if Dashboard B includes a Card A that is derived from a
-  Card C that's in an alien collection, warnings will be emitted for C, A and B, and all three will be excluded from the
-  serialized output."
-  [{:keys [targets] :as opts}]
+  entities are then returned as a reducible stream of serializable entity maps, with `:serdes/meta` keys.
+
+  Eg. if Dashboard B includes a Card A that is derived from a Card C that's in an alien collection, warnings will be
+  emitted for C, A and B, and all three will be excluded from the serialized output.
+
+  `opts` are passed down to [[serdes/extract-all]] for each model."
+  [{:keys [targets user-id] :as opts}]
   (log/tracef "Extracting subtrees with options: %s" (pr-str opts))
-  (let [targets  (->> targets
-                      (mapv (fn [[model-name id :as target]]
-                              (if (number? id)
-                                target
-                                [model-name (serdes/eid->id model-name id)]))))
-        analysis (escape-analysis targets)]
-    (if analysis
-      ;; If that is non-nil, emit the report.
-      (escape-report analysis)
-      ;; If it's nil, there are no errors, and we can proceed to do the dump.
-      ;; TODO This is not handled at all, but we should be able to exclude illegal data - and it should be
-      ;; contagious. Eg. a Dashboard with an illegal Card gets excluded too.
-      (let [nodes       (set/union
-                         (u/traverse targets #(serdes/ascendants (first %) (second %)))
-                         (u/traverse targets #(serdes/descendants (first %) (second %))))
-            models      (model-set opts)
-            ;; filter the selected models based on user options
-            by-model    (-> (group-by first nodes)
-                            (select-keys models)
-                            (update-vals #(set (map second %))))
-            extract-ids (fn [[model ids]]
-                          (serdes/extract-all model (merge opts {:where [:in :id ids]})))]
+  (let [inner-targets (if (seq targets)
+                        (mapv parse-target targets)
+                        (mapv vector (repeat "Collection") (collection-set-for-user user-id)))
+        ;; nodes are a map of `{[model-name id] {dep-model dep-id ...}}`
+        nodes         (set/union
+                       (u/traverse inner-targets #(serdes/ascendants (first %) (second %)))
+                       (u/traverse inner-targets #(serdes/descendants (first %) (second %))))
+        ;; by model is a map of `{model-name [ids ...]}`
+        by-model      (u/group-by first second (keys nodes))
+        escaped       (escape-analysis by-model nodes)]
+    (if (seq escaped)
+      (log-escape-report! escaped)
+      (let [models         (model-set opts)
+            coll-set       (get by-model "Collection")
+            by-model       (select-keys by-model models)
+            extract-by-ids (fn [[model ids]]
+                             (serdes/extract-all model (merge opts {:collection-set coll-set
+                                                                    :where          [:in :id ids]})))
+            extract-all    (fn [model]
+                             (serdes/extract-all model (assoc opts :collection-set coll-set)))]
         (eduction cat
-                  [(eduction (map extract-ids) cat by-model)
+                  [(if (seq targets)
+                     (eduction (map extract-by-ids) cat by-model)
+                     (eduction (map extract-all) cat (set/intersection (set serdes.models/content) models)))
                    ;; extract all non-content entities like data model and settings if necessary
                    (eduction (map #(serdes/extract-all % opts)) cat (remove (set serdes.models/content) models))])))))
 
 (defn extract
   "Returns a reducible stream of entities to serialize"
-  [{:keys [targets] :as opts}]
+  [opts]
   (serdes.backfill/backfill-ids!)
-  (if (seq targets)
-    (extract-subtrees opts)
-    (extract-metabase opts)))
+  (extract-subtrees opts))
+
+(comment
+  (def nodes (let [colls (mapv vector (repeat "Collection") (collection-set-for-user nil))]
+               (merge
+                (u/traverse colls #(serdes/ascendants (first %) (second %)))
+                (u/traverse colls #(serdes/descendants (first %) (second %))))))
+  (def escaped (escape-analysis (u/group-by first second (keys nodes)) nodes))
+  (log-escape-report! escaped))

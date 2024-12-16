@@ -59,6 +59,7 @@
        false
        (config/config-bool :mb-colorize-logs))))
 
+#_{:clj-kondo/ignore [:def-fn]}
 (def ^{:arglists '(^String [color-symb x])} colorize
   "Colorize string `x` using `color`, a symbol or keyword, but only if `MB_COLORIZE_LOGS` is enabled (the default).
   `color` can be `green`, `red`, `yellow`, `blue`, `cyan`, `magenta`, etc. See the entire list of avaliable
@@ -82,3 +83,20 @@
 
   (^String [color format-str & args]
    (colorize color (apply #?(:clj format :cljs gstring/format) format-str args))))
+
+(defn format-plural
+  "Format a string with a pluralized suffix. If `n` is 1, the suffix will be singular, otherwise plural.
+  If `plural` is omitted, by default plural is singular + \"s\"
+
+    (format-plural 2 \"handler\")
+    ;; -> \"handlers\"
+    (format-plural 1 \"handler\" \"handlers\")
+    ;; -> \"handler\""
+  (^String [n singular]
+   (format-plural n singular nil))
+  (^String [n singular plural]
+   (if (= (abs n) 1)
+     singular
+     (if plural
+       plural
+       (str singular \s)))))

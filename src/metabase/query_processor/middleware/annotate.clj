@@ -9,12 +9,13 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.util :as lib.util]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.humanization :as humanization]
    [metabase.query-processor.debug :as qp.debug]
@@ -80,7 +81,7 @@
                          :type             qp.error-type/qp}))))))
 
 (defn- annotate-native-cols [cols]
-  (let [unique-name-fn (lib.util/unique-name-generator (qp.store/metadata-provider))]
+  (let [unique-name-fn (mbql.u/unique-name-generator)]
     (mapv (fn [{col-name :name, base-type :base_type, :as driver-col-metadata}]
             (let [col-name (name col-name)]
               (merge
@@ -163,6 +164,9 @@
     (number? expression)
     {:base_type :type/Number}
 
+    (boolean? expression)
+    {:base_type :type/Boolean}
+
     (mbql.u/is-clause? :field expression)
     (col-info-for-field-clause {} expression)
 
@@ -206,6 +210,9 @@
 
     (mbql.u/is-clause? mbql.s/numeric-functions expression)
     {:base_type :type/Float}
+
+    (mbql.u/is-clause? mbql.s/boolean-functions expression)
+    {:base_type :type/Boolean}
 
     :else
     {:base_type :type/*}))
@@ -276,9 +283,10 @@
                        qp.store/->legacy-metadata)))))
 
       (:binning opts)
-      (assoc :binning_info (-> (:binning opts)
-                               (set/rename-keys {:strategy :binning-strategy})
-                               u/snake-keys))
+      (-> (assoc :binning_info (-> (:binning opts)
+                                   (set/rename-keys {:strategy :binning-strategy})
+                                   u/snake-keys))
+          (assoc :was_binned true))
 
       (:temporal-unit opts)
       (assoc :unit (:temporal-unit opts))
@@ -584,8 +592,10 @@
   metadata returned by the driver's impl of `execute-reducible-query` and (b) column metadata inferred by logic in
   this namespace."
   [query {cols-returned-by-driver :cols, :as result} :- [:maybe :map]]
-  (deduplicate-cols-names
-   (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)))
+  (->> (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)
+       (deduplicate-cols-names)
+       (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)
+       (map lib.binning/ensure-binning-in-display-name)))
 
 (defn base-type-inferer
   "Native queries don't have the type information from the original `Field` objects used in the query.

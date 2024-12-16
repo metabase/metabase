@@ -1,4 +1,4 @@
-(ns metabase.query-processor.pivot-test
+(ns ^:mb/driver-tests metabase.query-processor.pivot-test
   "Tests for pivot table actions for the query processor"
   (:require
    [clj-time.core :as time]
@@ -82,8 +82,8 @@
              (#'qp.pivot/breakout-combinations 3 [] []))))))
 
 (deftest ^:parallel breakout-combinations-test-4
-  (testing "I guess in some cases the order of breakouts can change?"
-    (is (= [[0 1 2] [1 2] [2] [1 0] [1] []]
+  (testing "The breakouts are sorted ascending."
+    (is (= [[0 1 2] [1 2] [2] [0 1] [1] []]
            (#'qp.pivot/breakout-combinations 3 [1 0] [2])))))
 
 (deftest ^:parallel validate-pivot-rows-cols-test
@@ -103,20 +103,17 @@
 
 (defn- test-query []
   (mt/dataset test-data
-    (mt/$ids orders
-      {:database     (mt/id)
-       :type         :query
-       :query        {:source-table $$orders
-                      :aggregation  [[:count]]
-                      :breakout     [$product_id->products.category
-                                     $user_id->people.source
-                                     !year.created_at]
-                      :filter       [:and
-                                     [:= $user_id->people.source "Facebook" "Google"]
-                                     [:= $product_id->products.category "Doohickey" "Gizmo"]
-                                     [:time-interval $created_at (- 2019 (.getYear (time/now))) :year {}]]}
-       :pivot-rows [0 1 2]
-       :pivot-cols []})))
+    (merge (mt/mbql-query orders
+             {:aggregation  [[:count]]
+              :breakout     [$product_id->products.category
+                             $user_id->people.source
+                             !year.created_at]
+              :filter       [:and
+                             [:= $user_id->people.source "Facebook" "Google"]
+                             [:= $product_id->products.category "Doohickey" "Gizmo"]
+                             [:time-interval $created_at (- 2019 (.getYear (time/now))) :year {}]]})
+           {:pivot-rows [0 1 2]
+            :pivot-cols []})))
 
 (deftest ^:parallel allow-snake-case-test
   (testing "make sure the stuff works with either normal lisp-case keys or snake_case"
@@ -153,8 +150,8 @@
                           {:query {:breakout    [$orders.product_id->products.category
                                                  [:expression "pivot-grouping"]]
                                    :expressions {:pivot-grouping [:abs 3]}}}
-                          {:query {:breakout    [$orders.user_id->people.source
-                                                 $orders.user_id->people.state
+                          {:query {:breakout    [$orders.user_id->people.state
+                                                 $orders.user_id->people.source
                                                  [:expression "pivot-grouping"]]
                                    :expressions {:pivot-grouping [:abs 4]}}}
                           {:query {:breakout    [$orders.user_id->people.source
@@ -175,10 +172,9 @@
                          (lib/query metadata-provider query))
               expected (walk/postwalk
                         (fn [x]
-                          (if (and (map? x)
-                                   (:lib/uuid x))
-                            (assoc x :lib/uuid string?)
-                            x))
+                          (cond-> x
+                            (and (map? x) (:lib/uuid x)) (assoc :lib/uuid string?)
+                            (and (map? x) (:ident x))    (assoc :ident string?)))
                         expected)
               actual   (#'qp.pivot/generate-queries query {:pivot-rows [1 0] :pivot-cols [2]})]
           (is (= 6 (count actual)))
@@ -191,7 +187,7 @@
   (testing "`pivot-options` correctly generates pivot-rows and pivot-cols from a card's viz settings"
     (let [query         (api.pivots/pivot-query false)
           viz-settings  (:visualization_settings (api.pivots/pivot-card))
-          pivot-options {:pivot-rows [1 0], :pivot-cols [2]}]
+          pivot-options {:pivot-rows [1 0], :pivot-cols [2] :pivot-measures nil :column-sort-order {}}]
       (is (= pivot-options
              (#'qp.pivot/pivot-options query viz-settings)))
       (are [num-breakouts expected] (= expected
@@ -199,8 +195,8 @@
                                         num-breakouts
                                         (:pivot-rows pivot-options)
                                         (:pivot-cols pivot-options)))
-        3 [[0 1 2]   [1 2] [2] [1 0] [1] []]
-        4 [[0 1 2 3] [1 2] [2] [1 0] [1] []]))))
+        3 [[0 1 2]   [1 2] [2] [0 1] [1] []]
+        4 [[0 1 2 3] [1 2] [2] [0 1] [1] []]))))
 
 (deftest ^:parallel ignore-bad-pivot-options-test
   (mt/dataset test-data
@@ -210,14 +206,11 @@
                                           (mt/id :products :created_at)
                                           {:base-type :type/DateTime, :temporal-unit :month}]]
                            :aggregation [[:count]]})
-          viz-settings  (select-keys
-                         (mt/query products
-                           {:pivot_table.column_split
-                            {:rows    [$id]
-                             :columns [[:field "RATING" {:base-type :type/Integer}]]}})
-                         [:pivot_table.column_split])
+          viz-settings  {:pivot_table.column_split
+                         {:rows    ["ID"]
+                          :columns ["RATING"]}}
           pivot-options (#'qp.pivot/pivot-options query viz-settings)]
-      (is (= {:pivot-rows [], :pivot-cols []}
+      (is (= {:pivot-rows [], :pivot-cols [] :pivot-measures nil :column-sort-order {}}
              pivot-options))
       (is (= [[0 1] [1] [0] []]
              (#'qp.pivot/breakout-combinations 2 (:pivot-rows pivot-options) (:pivot-cols pivot-options)))))))
@@ -240,12 +233,11 @@
           (testing "Sanity check: query should work in non-pivot mode"
             (is (=? {:status :completed}
                     (qp/process-query query))))
-          (let [viz-settings  (mt/$ids products
-                                {:pivot_table.column_split
-                                 {:rows    [$category]
-                                  :columns [$created_at]}})
+          (let [viz-settings  {:pivot_table.column_split
+                               {:rows    ["CATEGORY"]
+                                :columns ["CREATED_AT"]}}
                 pivot-options (#'qp.pivot/pivot-options query viz-settings)]
-            (is (= {:pivot-rows [0], :pivot-cols [1]}
+            (is (= {:pivot-rows [0], :pivot-cols [1] :pivot-measures nil :column-sort-order {}}
                    pivot-options))
             (is (= [[0 1] [1] [0] []]
                    (#'qp.pivot/breakout-combinations 2 (:pivot-rows pivot-options) (:pivot-cols pivot-options))))
@@ -270,8 +262,8 @@
                                                                    [:field %people.id {:join-alias "People - User"}]]}
                                      :aggregation  [[:sum [:field "sum" {:base-type :type/Number}]]]
                                      :breakout     [[:field "ID" {:base-type :type/Number}]]})
-              viz-settings (mt/$ids orders {:pivot_table.column_split
-                                            {:columns     [[:field "ID" {:base-type :type/Number}]]}})]
+              viz-settings {:pivot_table.column_split
+                            {:columns ["ID"]}}]
           (testing "for a regular query"
             (is (=? {:status :completed}
                     (qp/process-query query))))
@@ -300,8 +292,8 @@
                                orders {:source-table (str "card__" (u/the-id card))
                                        :aggregation  [[:sum [:field "sum" {:base-type :type/Number}]]]
                                        :breakout     [[:field "ID" {:base-type :type/Number}]]})
-                viz-settings (mt/$ids orders {:pivot_table.column_split
-                                              {:columns     [[:field "ID" {:base-type :type/Number}]]}})]
+                viz-settings {:pivot_table.column_split
+                              {:columns ["ID"]}}]
             (testing "for a regular query"
               (is (=? {:status :completed}
                       (qp/process-query query))))
@@ -335,10 +327,8 @@
                                      :aggregation  [[:sum [:field "SUBTOTAL" {:base-type :type/Number}]]]
                                      :breakout     [[:field "Rating Bucket" {:base-type  :type/Number
                                                                              :join-alias "model A - Product"}]]})
-              viz-settings (mt/$ids orders {:pivot_table.column_split
-                                            {:columns     [[:field "Rating Bucket"
-                                                            {:base-type  :type/Number
-                                                             :join-alias "model A - Product"}]]}})]
+              viz-settings {:pivot_table.column_split
+                            {:columns ["Rating Bucket"]}}]
           (testing "for a regular query"
             (is (=? {:status :completed}
                     (qp/process-query query))))
@@ -355,7 +345,7 @@
           rows    (mt/rows results)]
       (is (= ["Product → Category"
               "User → Source"
-              "Created At"
+              "Created At: Year"
               "pivot-grouping"
               "Count"]
              (map :display_name (mt/cols results))))
@@ -381,10 +371,9 @@
   (->> (mt/rows
         (mt/dataset test-data
           (qp/process-query
-           {:database (mt/id)
-            :type     :query
-            :query    {:source-table (mt/id table)
-                       :breakout     [[:field (mt/id table col) nil]]}})))
+           (mt/mbql-query nil
+             {:source-table (mt/id table)
+              :breakout     [[:field (mt/id table col) nil]]}))))
        (map first)
        set))
 
@@ -611,7 +600,7 @@
                       :filter      [:between $created_at "2019-01-01" "2021-01-01"]})]
         (mt/with-native-query-testing-context query
           (let [results (qp.pivot/run-pivot-query query)]
-            (is (= ["Rating" "Created At" "pivot-grouping" "Count"]
+            (is (= ["Rating" "Created At: Year" "pivot-grouping" "Count"]
                    (map :display_name (mt/cols results))))
             (is (= order-by-aggregation-expected-results
                    (mt/rows results)))))))))
@@ -639,17 +628,15 @@
   (testing "field_refs in the result metadata should match the 'traditional' legacy shape the FE expects, or it will break"
     ;; `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` will break if the `field_ref`s don't come
     ;; back in this EXACT shape =(, see [[metabase.query-processor.middleware.annotate/fe-friendly-legacy-ref]]
-    (let [query (mt/$ids orders
-                  {:database   (mt/id)
-                   :type       :query
-                   :query      {:source-table $$orders
-                                :aggregation  [[:count]]
-                                :breakout     [!year.created_at
-                                               $product_id->products.category
-                                               $user_id->people.source]
-                                :limit        1}
-                   :pivot_rows [0 1 2]
-                   :pivot_cols []})]
+    (let [query (merge
+                 (mt/mbql-query orders
+                   {:aggregation  [[:count]]
+                    :breakout     [!year.created_at
+                                   $product_id->products.category
+                                   $user_id->people.source]
+                    :limit        1})
+                 {:pivot_rows [0 1 2]
+                  :pivot_cols []})]
       (is (= (mt/$ids orders
                [[:field %created_at {:temporal-unit :year}]
                 [:field %products.category {:source-field %product_id}]
@@ -662,24 +649,48 @@
   (testing "field_refs in the result metadata should preserve :base-type if it was specified for some reason, otherwise FE will break"
     ;; `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` will break if the `field_ref`s don't come
     ;; back in this EXACT shape =(, see [[metabase.query-processor.middleware.annotate/fe-friendly-legacy-ref]]
-    (let [query (mt/$ids orders
-                  {:database   (mt/id)
-                   :type       :query
-                   :query      {:source-table $$orders
-                                :aggregation  [[:count]]
-                                :breakout     [[:field
-                                                (mt/id :products :category)
-                                                {:source-field (mt/id :orders :product_id)
-                                                 :base-type    :type/Text}]
-                                               [:field
-                                                (mt/id :people :source)
-                                                {:source-field (data/id :orders :user_id)
-                                                 :base-type    :type/Text}]]}
-                   :pivot_rows [0 1]
-                   :pivot_cols []})]
+
+    (let [query (merge (mt/mbql-query orders
+                         {:aggregation  [[:count]]
+                          :breakout     [[:field
+                                          (mt/id :products :category)
+                                          {:source-field (mt/id :orders :product_id)
+                                           :base-type    :type/Text}]
+                                         [:field
+                                          (mt/id :people :source)
+                                          {:source-field (data/id :orders :user_id)
+                                           :base-type    :type/Text}]]})
+                       {:pivot_rows [0 1]
+                        :pivot_cols []})]
       (is (= (mt/$ids orders
                [[:field %products.category {:source-field %product_id, :base-type :type/Text}]
                 [:field %people.source {:source-field %user_id, :base-type :type/Text}]
                 [:expression "pivot-grouping"]
                 [:aggregation 0]])
              (mapv :field_ref (mt/cols (qp.pivot/run-pivot-query query))))))))
+
+(deftest ^:parallel splice-in-remap-test
+  (let [splice #'qp.pivot/splice-in-remap]
+    (is (= []
+           (splice [] {1 0, 4 3})))
+    (is (= [0 1]
+           (splice [0] {1 0, 4 3})))
+    (is (= [2]
+           (splice [1] {1 0, 4 3})))
+    (is (= [0 1 2]
+           (splice [0 1] {1 0, 4 3})))
+    (is (= [0 1 3 4]
+           (splice [0 2] {1 0, 4 3})))
+    (testing "chained remapping"
+      (is (= [1 2 3 5]
+             (splice [1 2] {1 2, 2 5})))
+      (is (= [1 2 3 4 5]
+             (splice [1 2 3] {1 2, 2 5})))
+      (is (= [1 2 3 5 6]
+             (splice [1 2 4] {1 2, 2 5})))
+      (is (= [1 2 3 5 7]
+             (splice [1 2 5] {1 2, 2 5})))
+      (is (= [1 2 3 5 8]
+             (splice [1 2 6] {1 2, 2 5})))
+      (is (= [1 2 3 5 8]
+             (splice [1 2 6] {1 2, 2 5, 3 2}))))))

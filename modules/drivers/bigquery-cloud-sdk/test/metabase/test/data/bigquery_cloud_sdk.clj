@@ -7,7 +7,6 @@
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
@@ -16,10 +15,26 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
-   (com.google.cloud.bigquery BigQuery BigQuery$DatasetDeleteOption BigQuery$DatasetListOption BigQuery$DatasetOption
-                              BigQuery$TableListOption BigQuery$TableOption Dataset DatasetId DatasetInfo Field Field$Mode
-                              InsertAllRequest InsertAllRequest$RowToInsert InsertAllResponse LegacySQLTypeName Schema
-                              StandardTableDefinition TableId TableInfo TableResult)))
+   (com.google.cloud.bigquery
+    BigQuery
+    BigQuery$DatasetDeleteOption
+    BigQuery$DatasetListOption
+    BigQuery$DatasetOption
+    BigQuery$TableListOption
+    BigQuery$TableOption
+    Dataset
+    DatasetId
+    DatasetInfo
+    Field
+    Field$Mode
+    InsertAllRequest
+    InsertAllRequest$RowToInsert
+    InsertAllResponse
+    LegacySQLTypeName
+    Schema
+    StandardTableDefinition
+    TableId
+    TableInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -70,6 +85,9 @@
   ^BigQuery []
   (#'bigquery/database-details->client (test-db-details)))
 
+(defn execute-respond [_ rows]
+  (into [] rows))
+
 (defn project-id
   "BigQuery project ID that we're using for tests, either from the env var `MB_BIGQUERY_TEST_PROJECT_ID`, or if that is
   not set, from the BigQuery client instance itself (which ultimately comes from the value embedded in the service
@@ -87,6 +105,21 @@
          :include-user-id-and-hash true))
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
+
+(mu/defmethod sql.tx/qualified-name-components :bigquery-cloud-sdk
+  ([_driver db-name]
+   [(test-dataset-id db-name)])
+
+  ([_driver
+    db-name    :- :string
+    table-name :- :string]
+   [(test-dataset-id db-name) table-name])
+
+  ([_driver
+    db-name    :- :string
+    table-name :- :string
+    field-name :- :string]
+   [(test-dataset-id db-name) table-name field-name]))
 
 (defmethod ddl.i/format-name :bigquery-cloud-sdk
   [_driver table-or-field-name]
@@ -106,12 +139,12 @@
 (defn execute!
   "Execute arbitrary (presumably DDL) SQL statements against the test project. Waits for statement to complete, throwing
   an Exception if it fails."
-  ^TableResult [format-string & args]
+  [format-string & args]
   (driver/with-driver :bigquery-cloud-sdk
     (let [sql (apply format format-string args)]
       (log/infof "[BigQuery] %s\n" sql)
       (flush)
-      (#'bigquery/execute-bigquery-on-db (data/db) sql nil nil))))
+      (#'bigquery/execute-bigquery execute-respond (test-db-details) sql [] nil))))
 
 (mu/defn- delete-table!
   [dataset-id :- ::lib.schema.common/non-blank-string
@@ -178,12 +211,8 @@
   (log/info (u/format-color 'blue "Created BigQuery table `%s.%s.%s`." (project-id) dataset-id table-id)))
 
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
-  (let [sql                           (format "SELECT count(*) FROM `%s.%s.%s`" (project-id) dataset-id table-id)
-        respond                       (fn [_ rows]
-                                        (ffirst (into [] rows)))
-        client                        (bigquery)
-        ^TableResult query-response   (#'bigquery/execute-bigquery client sql [] nil)]
-    (#'bigquery/post-process-native respond query-response #_cancel-chan nil)))
+  (let [sql (format "SELECT count(*) FROM `%s.%s.%s`" (project-id) dataset-id table-id)]
+    (ffirst (#'bigquery/execute-bigquery execute-respond (test-db-details) sql [] nil))))
 
 (defprotocol ^:private Insertable
   (^:private ->insertable [this]
@@ -364,3 +393,11 @@
       {:base_type :type/Float})
     (when (#{:count :cum-count} aggregation-type)
       {:base_type :type/Integer}))))
+
+(defmethod tx/create-view-of-table! :bigquery-cloud-sdk
+  [driver database view-name table-name options]
+  (apply execute! (sql.tx/create-view-of-table-sql driver database view-name table-name options)))
+
+(defmethod tx/drop-view! :bigquery-cloud-sdk
+  [driver database view-name options]
+  (apply execute! (sql.tx/drop-view-sql driver database view-name options)))

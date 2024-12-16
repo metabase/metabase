@@ -5,7 +5,7 @@ import type { ColorName } from "metabase/lib/colors/types";
 import { ModerationReviewApi } from "metabase/services";
 import type { IconName } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type { ModerationReview, User } from "metabase-types/api";
+import type { BaseUser, ModerationReview, User } from "metabase-types/api";
 
 import { MODERATION_STATUS_ICONS } from "./constants";
 
@@ -90,8 +90,8 @@ export const getStatusIconForQuestion = (question: Question) => {
 
 export const getTextForReviewBanner = (
   moderationReview: ModerationReview,
-  moderator: User | null,
-  currentUser: User | null,
+  moderator: BaseUser | null,
+  currentUser: BaseUser | null,
 ) => {
   const { status } = moderationReview;
 
@@ -105,15 +105,15 @@ export const getTextForReviewBanner = (
 };
 
 export const getModeratorDisplayName = (
-  moderator: User | null,
-  currentUser?: User | null,
+  moderator: BaseUser | null,
+  currentUser?: BaseUser | null,
 ) => {
   const { id: moderatorId, common_name } = moderator || {};
-  const { id: currentUserId } = currentUser || {};
+  const { id: currentUserId, is_superuser } = currentUser || {};
 
   if (currentUserId != null && moderatorId === currentUserId) {
     return t`You`;
-  } else if (moderatorId != null && common_name) {
+  } else if (moderatorId != null && is_superuser && common_name) {
     return common_name;
   } else {
     return t`A moderator`;
@@ -121,8 +121,8 @@ export const getModeratorDisplayName = (
 };
 
 export const getModeratorDisplayText = (
-  moderator: User | null,
-  currentUser: User | null,
+  moderator: BaseUser | null,
+  currentUser: BaseUser | null,
 ) => {
   const moderatorName = getModeratorDisplayName(moderator, currentUser);
   return c("{0} is the name of a user").t`${moderatorName} verified this`;
@@ -158,13 +158,10 @@ const getModerationReviewEventText = (
 
 export function getModerationTimelineEvents(
   reviews: ModerationReview[],
-  usersById: Record<number, User>,
   currentUser?: User,
 ) {
   return reviews.map(review => {
-    const moderator = review.moderator_id
-      ? usersById[review.moderator_id]
-      : null;
+    const moderator = review.user;
     const moderatorDisplayName = getModeratorDisplayName(
       moderator,
       currentUser,

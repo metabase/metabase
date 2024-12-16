@@ -1,4 +1,4 @@
-(ns metabase.driver.sql.parameters.substitute-test
+(ns ^:mb/driver-tests metabase.driver.sql.parameters.substitute-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -474,7 +474,7 @@
 ;;; ------------------------------------------- expansion tests: variables -------------------------------------------
 
 (defn- expand**
-  "Expand parameters inside a top-level native `query`. Not recursive. "
+  "Expand parameters inside a top-level native `query`. Not recursive."
   [{:keys [parameters], inner :native, :as query}]
   (driver/with-driver :h2
     (mt/with-metadata-provider meta/metadata-provider

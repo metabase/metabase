@@ -1,6 +1,10 @@
 import { action } from "@storybook/addon-actions";
-import type { ComponentStory } from "@storybook/react";
-import { type JSXElementConstructor, useState } from "react";
+import type { StoryFn } from "@storybook/react";
+import {
+  type ComponentProps,
+  type JSXElementConstructor,
+  useState,
+} from "react";
 
 import { EditableDashboard } from "embedding-sdk/components/public";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
@@ -13,23 +17,29 @@ import {
   useCreateDashboardApi,
 } from "./use-create-dashboard-api";
 
-// eslint-disable-next-line import/no-default-export
 export default {
   title: "EmbeddingSDK/CreateDashboardModal",
   component: CreateDashboardModal,
   decorators: [CommonSdkStoryWrapper],
 };
 
-const Template: ComponentStory<typeof CreateDashboardModal> = () => (
+const Template: StoryFn<ComponentProps<typeof CreateDashboardModal>> = args => (
   <CreateDashboardModal
     onClose={action("onClose")}
     onCreate={action("onCreate")}
+    {...args}
   />
 );
 
-export const Default = Template.bind({});
+export const Default = {
+  render: Template,
 
-const HookTemplate: ComponentStory<
+  args: {
+    isOpen: true,
+  },
+};
+
+const HookTemplate: StoryFn<
   JSXElementConstructor<Record<string, never>>
 > = () => {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
@@ -58,9 +68,11 @@ const HookTemplate: ComponentStory<
   );
 };
 
-export const useCreateDashboardApiHook = HookTemplate.bind({});
+export const UseCreateDashboardApiHook = {
+  render: HookTemplate,
+};
 
-const FullWorkflowExampleTemplate: ComponentStory<
+const FullWorkflowExampleTemplate: StoryFn<
   JSXElementConstructor<Record<string, never>>
 > = () => {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
@@ -74,4 +86,6 @@ const FullWorkflowExampleTemplate: ComponentStory<
   );
 };
 
-export const FullWorkflowExample = FullWorkflowExampleTemplate.bind({});
+export const FullWorkflowExample = {
+  render: FullWorkflowExampleTemplate,
+};

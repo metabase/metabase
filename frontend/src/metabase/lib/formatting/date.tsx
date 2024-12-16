@@ -1016,10 +1016,10 @@ function replaceDateFormatNames(format: string, options: OptionsType) {
     .replace(/\bdddd\b/g, getDayFormat(options));
 }
 
-function formatDateTimeWithFormats(
-  value: number | Moment,
+export function formatDateTimeWithFormats(
+  value: number | string | Date | Moment,
   dateFormat: string,
-  timeFormat: string,
+  timeFormat: string | null,
   options: OptionsType,
 ) {
   const m = moment.isMoment(value)
@@ -1048,7 +1048,7 @@ function formatDateTimeWithFormats(
 }
 
 export function formatDateTimeWithUnit(
-  value: number | string,
+  value: number | string | Date | Moment,
   unit: DatetimeUnit,
   options: OptionsType = {},
 ) {
@@ -1073,7 +1073,7 @@ export function formatDateTimeWithUnit(
       !options.noRange
     ) {
       // tooltip show range like "January 1 - 7, 2017"
-      return formatDateTimeRangeWithUnit([value], unit, options);
+      return formatDateTimeRangeWithUnit([String(value)], unit, options);
     }
   }
 

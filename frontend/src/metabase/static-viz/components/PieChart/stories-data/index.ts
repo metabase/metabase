@@ -1,3 +1,4 @@
+import allNegativeWithOther from "./all-negative-with-other.json";
 import allNegative from "./all-negative.json";
 import allSettings from "./all-settings.json";
 import allZeroMetric44847 from "./all-zero-metric-44847.json";
@@ -12,6 +13,8 @@ import defaultSettings from "./default-settings.json";
 import hideLegend from "./hide-legend.json";
 import hideTotal from "./hide-total.json";
 import invalidDimensionSetting44085 from "./invalid-dimension-setting-44085.json";
+import labelsOnChart from "./labels-on-chart.json";
+import labelsWithPercent from "./labels-with-percent.json";
 import largeMinimumSlicePercentage from "./large-min-slice-percentage.json";
 import longDimensionName from "./long-dimension-name.json";
 import missingColors44087 from "./missing-colors-44087.json";
@@ -35,8 +38,15 @@ import showPercentagesOnChartDense from "./show-percentages-on-chart-dense.json"
 import showPercentagesOnChart from "./show-percentages-on-chart.json";
 import singleDimension from "./single-dimension.json";
 import smallMinimumSlicePercentage from "./small-min-slice-percentage.json";
+import sunburstOtherLabel from "./sunburst-other-label.json";
+import threeRingsNoLabels from "./three-rings-no-labels.json";
+import threeRingsOtherSlices from "./three-rings-other-slices.json";
+import threeRingsPercentagesAndLabels from "./three-rings-percentages-and-labels.json";
+import threeRingsPercentagesOnChart from "./three-rings-percentages-on-chart.json";
+import threeRings from "./three-rings.json";
 import tinySlicesDisappear43766 from "./tiny-slices-disappear-43766.json";
 import truncatedTotal from "./truncated-total.json";
+import twoRings from "./two-rings.json";
 import unaggregatedDimension from "./unaggregated-dimension.json";
 import zeroMinimumSlicePercentage from "./zero-min-slice-percentage.json";
 
@@ -55,6 +65,7 @@ export const data = {
   showPercentagesOnChart,
   showPercentagesOnChartDense,
   allNegative,
+  allNegativeWithOther,
   mixedPostiiveNegative,
   columnFormatting,
   columnFormattingPercentagesOnChart,
@@ -82,4 +93,13 @@ export const data = {
   noSingleColumnLegend45149,
   numericSQLColumnCrashes28568,
   missingLabelLargeSlice38424,
+  twoRings,
+  threeRings,
+  threeRingsNoLabels,
+  threeRingsOtherSlices,
+  threeRingsPercentagesAndLabels,
+  threeRingsPercentagesOnChart,
+  labelsWithPercent,
+  labelsOnChart,
+  sunburstOtherLabel,
 };

@@ -1,51 +1,45 @@
 import type { ChangeEvent } from "react";
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
-import { useSetting } from "metabase/common/hooks";
 import EntityMenu from "metabase/components/EntityMenu";
 import { UploadInput } from "metabase/components/upload";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
+import { useDispatch } from "metabase/lib/redux";
 import {
-  PLUGIN_MODEL_PERSISTENCE,
   PLUGIN_MODERATION,
   PLUGIN_QUERY_BUILDER_HEADER,
 } from "metabase/plugins";
-import { softReloadCard } from "metabase/query_builder/actions";
+import {
+  onOpenQuestionSettings,
+  softReloadCard,
+} from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { Icon, Menu } from "metabase/ui";
+import { Box, Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import {
-  checkCanBeModel,
-  checkDatabaseCanPersistDatasets,
-} from "metabase-lib/v1/metadata/utils/models";
+import { checkCanBeModel } from "metabase-lib/v1/metadata/utils/models";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 import { UploadMode } from "metabase-types/store/upload";
 
-import { ViewHeaderIconButtonContainer } from "../../ViewTitleHeader.styled";
+import DatasetMetadataStrengthIndicator from "../../../sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator";
+import { shouldShowQuestionSettingsSidebar } from "../../../sidebars/QuestionSettingsSidebar";
+import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 
-import {
-  QuestionActionsDivider,
-  StrengthIndicator,
-} from "./QuestionActions.styled";
+import QuestionActionsS from "./QuestionActions.module.css";
 
 const HEADER_ICON_SIZE = 16;
 
 const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
 const MOVE_TESTID = "move-button";
 const TURN_INTO_DATASET_TESTID = "turn-into-dataset";
-const TOGGLE_MODEL_PERSISTENCE_TESTID = "toggle-persistence";
 const CLONE_TESTID = "clone-button";
 const ARCHIVE_TESTID = "archive-button";
 
@@ -76,40 +70,32 @@ export const QuestionActions = ({
   onSetQueryBuilderMode,
   onTurnModelIntoQuestion,
   onInfoClick,
-  onModelPersistenceChange,
 }: Props) => {
   const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.append);
-  const isMetabotEnabled = useSetting("is-metabot-enabled");
-
-  const isModerator = useSelector(getUserIsAdmin) && question.canWrite?.();
 
   const dispatch = useDispatch();
 
-  const dispatchSoftReloadCard = () => dispatch(softReloadCard());
+  const reload = () => dispatch(softReloadCard());
+  const onOpenSettingsSidebar = () => dispatch(onOpenQuestionSettings());
 
   const infoButtonColor = isShowingQuestionInfoSidebar
     ? color("brand")
     : undefined;
 
   const isQuestion = question.type() === "question";
+  const isDashboardQuestion = isQuestion && _.isNumber(question.dashboardId());
+  const isStandaloneQuestion =
+    isQuestion && !_.isNumber(question.dashboardId());
   const isModel = question.type() === "model";
   const isMetric = question.type() === "metric";
   const isModelOrMetric = isModel || isMetric;
   const hasCollectionPermissions = question.canWrite();
-  const isSaved = question.isSaved();
-  const database = question.database();
   const canAppend =
     hasCollectionPermissions && !!question._card.based_on_upload;
   const { isEditable: hasDataPermissions } = Lib.queryDisplayInfo(
     question.query(),
   );
-
-  const canPersistDataset =
-    PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
-    hasCollectionPermissions &&
-    isSaved &&
-    isModel &&
-    checkDatabaseCanPersistDatasets(question.database());
+  const enableSettingsSidebar = shouldShowQuestionSettingsSidebar(question);
 
   const handleEditQuery = useCallback(() => {
     onSetQueryBuilderMode("dataset", {
@@ -133,26 +119,20 @@ export const QuestionActions = ({
 
   const extraButtons = [];
 
-  if (
-    isMetabotEnabled &&
-    isModel &&
-    database &&
-    canUseMetabotOnDatabase(database)
-  ) {
+  if (isStandaloneQuestion || isMetric) {
     extraButtons.push({
-      title: t`Ask Metabot`,
-      icon: "insight",
-      link: Urls.modelMetabot(question.id()),
+      title: t`Add to dashboard`,
+      icon: "add_to_dash",
+      action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
+      testId: ADD_TO_DASH_TESTID,
     });
   }
 
-  extraButtons.push(
-    ...PLUGIN_MODERATION.getMenuItems(
-      question,
-      isModerator,
-      dispatchSoftReloadCard,
-    ),
+  const moderationItems = PLUGIN_MODERATION.useQuestionMenuItems(
+    question,
+    reload,
   );
+  extraButtons.push(...moderationItems);
 
   if (hasCollectionPermissions) {
     if (isModelOrMetric && hasDataPermissions) {
@@ -167,7 +147,11 @@ export const QuestionActions = ({
       extraButtons.push({
         title: (
           <div>
-            {t`Edit metadata`} <StrengthIndicator dataset={question} />
+            {t`Edit metadata`}{" "}
+            <DatasetMetadataStrengthIndicator
+              className={QuestionActionsS.StrengthIndicator}
+              dataset={question}
+            />
           </div>
         ),
         icon: "label",
@@ -176,45 +160,8 @@ export const QuestionActions = ({
     }
   }
 
-  if (canPersistDataset) {
-    extraButtons.push({
-      ...PLUGIN_MODEL_PERSISTENCE.getMenuItems(
-        question,
-        onModelPersistenceChange,
-      ),
-      testId: TOGGLE_MODEL_PERSISTENCE_TESTID,
-    });
-  }
-
-  if (isQuestion || isMetric) {
-    extraButtons.push({
-      title: t`Add to dashboard`,
-      icon: "add_to_dash",
-      action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
-      testId: ADD_TO_DASH_TESTID,
-    });
-  }
-
   if (hasCollectionPermissions) {
-    extraButtons.push({
-      title: t`Move`,
-      icon: "move",
-      action: () => onOpenModal(MODAL_TYPES.MOVE),
-      testId: MOVE_TESTID,
-    });
-  }
-
-  if (hasDataPermissions) {
-    extraButtons.push({
-      title: t`Duplicate`,
-      icon: "clone",
-      action: () => onOpenModal(MODAL_TYPES.CLONE),
-      testId: CLONE_TESTID,
-    });
-  }
-
-  if (hasCollectionPermissions) {
-    if (isQuestion) {
+    if (!isDashboardQuestion && !isModel) {
       extraButtons.push({
         title: t`Turn into a model`,
         icon: "model",
@@ -233,7 +180,43 @@ export const QuestionActions = ({
 
   extraButtons.push(...PLUGIN_QUERY_BUILDER_HEADER.extraButtons(question));
 
+  if (enableSettingsSidebar) {
+    extraButtons.push({
+      title: t`Edit settings`,
+      icon: "gear",
+      action: onOpenSettingsSidebar,
+      testId: "question-settings-button",
+    });
+  }
+
   if (hasCollectionPermissions) {
+    extraButtons.push({
+      separator: true,
+      key: "move-separator",
+    });
+    extraButtons.push({
+      title: t`Move`,
+      icon: "move",
+      action: () => onOpenModal(MODAL_TYPES.MOVE),
+      testId: MOVE_TESTID,
+    });
+  }
+
+  if (hasDataPermissions) {
+    extraButtons.push({
+      title: t`Duplicate`,
+      icon: "clone",
+      action: () => onOpenModal(MODAL_TYPES.CLONE),
+      testId: CLONE_TESTID,
+    });
+  }
+
+  if (hasCollectionPermissions) {
+    extraButtons.push({
+      separator: true,
+      key: "trash-separator",
+    });
+
     extraButtons.push({
       title: t`Move to trash`,
       icon: "trash",
@@ -274,19 +257,21 @@ export const QuestionActions = ({
 
   return (
     <>
-      <QuestionActionsDivider />
+      <Box className={QuestionActionsS.QuestionActionsDivider} />
       {!question.isArchived() && (
-        <ViewHeaderIconButtonContainer>
+        <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
           <BookmarkToggle
+            className={ViewTitleHeaderS.ViewHeaderIconButton}
             onCreateBookmark={onToggleBookmark}
             onDeleteBookmark={onToggleBookmark}
             isBookmarked={isBookmarked}
           />
-        </ViewHeaderIconButtonContainer>
+        </Box>
       )}
       <Tooltip tooltip={t`More info`}>
-        <ViewHeaderIconButtonContainer>
+        <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
           <Button
+            className={ViewTitleHeaderS.ViewHeaderIconButton}
             onlyIcon
             icon="info"
             iconSize={HEADER_ICON_SIZE}
@@ -294,7 +279,7 @@ export const QuestionActions = ({
             color={infoButtonColor}
             data-testid="qb-header-info-button"
           />
-        </ViewHeaderIconButtonContainer>
+        </Box>
       </Tooltip>
       {canAppend && (
         <>
@@ -304,10 +289,11 @@ export const QuestionActions = ({
             onChange={handleFileUpload}
           />
           <Tooltip tooltip={t`Upload data to this model`}>
-            <ViewHeaderIconButtonContainer>
+            <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
               <Menu position="bottom-end">
                 <Menu.Target>
                   <Button
+                    className={ViewTitleHeaderS.ViewHeaderIconButton}
                     onlyIcon
                     icon="upload"
                     iconSize={HEADER_ICON_SIZE}
@@ -331,16 +317,24 @@ export const QuestionActions = ({
                   </Menu.Item>
                 </Menu.Dropdown>
               </Menu>
-            </ViewHeaderIconButtonContainer>
+            </Box>
           </Tooltip>
         </>
       )}
       {extraButtons.length > 0 && !question.isArchived() && (
         <EntityMenu
-          triggerAriaLabel={t`Move, trash, and more...`}
+          triggerAriaLabel={
+            isDashboardQuestion
+              ? t`Move, duplicate, and more...`
+              : t`Move, trash, and more...`
+          }
           items={extraButtons}
           triggerIcon="ellipsis"
-          tooltip={t`Move, trash, and more...`}
+          tooltip={
+            isDashboardQuestion
+              ? t`Move, duplicate, and more...`
+              : t`Move, trash, and more...`
+          }
         />
       )}
     </>

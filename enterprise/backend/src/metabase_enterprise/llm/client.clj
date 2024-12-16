@@ -19,10 +19,9 @@
   [OpenAI Client](https://platform.openai.com/docs/libraries) with [Llama API](https://docs.llama-api.com/essentials/chat).
   "
   (:require
-   [cheshire.core :as json]
    [metabase-enterprise.llm.settings :as llm-settings]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.api.common :as api]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [wkok.openai-clojure.api :as openai.api]))
 
@@ -37,7 +36,10 @@
            usage-summary (-> (dissoc response :usage :choices)
                              (merge usage)
                              (select-keys [:id :object :created :model :prompt_tokens :completion_tokens :total_tokens :system_fingerprint]))]
-       (snowplow/track-event! ::snowplow/llm-usage api/*current-user-id* usage-summary)
+       (snowplow/track-event! ::snowplow/llm_usage
+                              (assoc
+                               usage-summary
+                               :event :llm-usage))
        ;; TODO -- Remove before final PR/merge
        ;(tap> usage-summary)
        response))
@@ -56,7 +58,7 @@
            ;; If we have ex-data, we'll assume were intercepting an openai.api/create-chat-completion response
           (if-some [status (:status (ex-data e))]
             (let [{:keys [body]} (ex-data e)
-                  {:keys [error]} (json/parse-string body keyword)
+                  {:keys [error]} (json/decode+kw body)
                   {error-type :type :keys [message code]} error]
               (case (int status)
                 400 (do
@@ -142,7 +144,7 @@
                   response (or
                             (second (re-matches md-regex response))
                             response)]
-              (postprocess-fn (json/parse-string response true)))
+              (postprocess-fn (json/decode+kw response)))
             (catch Exception e
               (throw
                (do

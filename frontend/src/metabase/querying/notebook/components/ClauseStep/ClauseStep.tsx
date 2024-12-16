@@ -7,7 +7,6 @@ import { useMergedRef } from "@mantine/hooks";
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
-import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
 import {
@@ -17,6 +16,7 @@ import {
 } from "../NotebookCell";
 
 import { ClausePopover } from "./ClausePopover";
+import S from "./ClauseStep.module.css";
 
 type RenderItemOpts<T> = {
   item: T;
@@ -36,6 +36,9 @@ export type ClauseStepProps<T> = {
   initialAddText?: string;
   readOnly?: boolean;
   isLastOpened?: boolean;
+  hasAddButton?: boolean;
+  isAddButtonDisabled?: boolean;
+  hasRemoveButton?: boolean;
   renderName: (item: T, index: number) => JSX.Element | string;
   renderPopover: (opts: RenderPopoverOpts<T>) => JSX.Element | null;
   onRemove: (item: T, index: number) => void;
@@ -49,6 +52,9 @@ export const ClauseStep = <T,>({
   initialAddText,
   readOnly = false,
   isLastOpened = false,
+  hasAddButton = !readOnly,
+  isAddButtonDisabled = false,
+  hasRemoveButton = !readOnly,
   renderName,
   renderPopover,
   onRemove,
@@ -59,9 +65,9 @@ export const ClauseStep = <T,>({
     <ClauseStepDndItem index={index} readOnly={readOnly}>
       <NotebookCellItem color={color} readOnly={readOnly} onClick={onOpen}>
         {renderName(item, index)}
-        {!readOnly && (
+        {hasRemoveButton && (
           <Icon
-            className={CS.ml1}
+            className={S.closeIcon}
             name="close"
             onClick={e => {
               e.stopPropagation();
@@ -77,6 +83,7 @@ export const ClauseStep = <T,>({
     <NotebookCellAdd
       initialAddText={items.length === 0 && initialAddText}
       color={color}
+      disabled={isAddButtonDisabled}
       onClick={onOpen}
     />
   );
@@ -92,7 +99,7 @@ export const ClauseStep = <T,>({
           />
         ))}
       </ClauseStepDndContext>
-      {!readOnly && (
+      {hasAddButton && (
         <ClausePopover
           isInitiallyOpen={isLastOpened}
           renderItem={onOpen => renderNewItem({ onOpen })}

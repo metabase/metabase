@@ -165,15 +165,15 @@ The administrator can [create a new group][groups] to capture precisely who's al
 
 [authenticating-with-saml]: ../people-and-groups/authenticating-with-saml.md
 [cant-see-tables]: cant-see-tables.md
-[column-permissions]: https://www.metabase.com/learn/permissions/data-sandboxing-column-permissions
+[column-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions
 [data-model]: ../data-modeling/metadata-editing.md
-[data-permissions]: https://www.metabase.com/learn/permissions/data-permissions
+[data-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-permissions
 [groups]: ../people-and-groups/managing.md#groups
 [jwt-auth]: ../people-and-groups/authenticating-with-jwt.md
 [locked-parameters]: https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards#hide-or-lock-parameters-to-restrict-what-data-is-shown
-[permissions]: https://www.metabase.com/learn/permissions/data-permissions
+[permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-permissions
 [public-sharing]: ../questions/sharing/public-links.md
-[row-permissions]: https://www.metabase.com/learn/permissions/data-sandboxing-row-permissions
+[row-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions
 [sandboxing-your-data]: ../permissions/data-sandboxes.md
 [static-embedding]: https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards#enable-embedding-in-other-applications
 [sandbox-limitations]: ../permissions/data-sandboxes.md#limitations

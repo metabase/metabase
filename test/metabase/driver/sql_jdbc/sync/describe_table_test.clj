@@ -1,10 +1,10 @@
-(ns metabase.driver.sql-jdbc.sync.describe-table-test
+(ns ^:mb/driver-tests metabase.driver.sql-jdbc.sync.describe-table-test
   (:require
-   [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
@@ -24,6 +24,8 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn- uses-default-describe-table? [driver]
@@ -43,12 +45,6 @@
       (or (uses-default-describe-table? driver)
           (uses-default-describe-fields? driver)))
     (descendants driver/hierarchy :sql-jdbc))))
-
-(deftest ^:parallel describe-fields-nested-field-columns-test
-  (testing (str "Drivers that support describe-fields should not support the nested field columns feature."
-                "It is possible to support both in the future but this has not been implemented yet.")
-    (is (empty? (filter #(driver.u/supports? % :describe-fields nil)
-                        (mt/normal-drivers-with-feature :nested-field-columns))))))
 
 (deftest ^:parallel describe-table-test
   (mt/test-driver :h2
@@ -143,11 +139,53 @@
   (let [driver (driver.u/database->driver db)]
     (sort-by :database-position
              (if (driver.u/supports? driver :describe-fields db)
-               (vec (driver/describe-fields driver
-                                            db
-                                            :schema-names [(:schema table)]
-                                            :table-names [(:name table)]))
+               (vec (m/mapply driver/describe-fields
+                              driver
+                              db
+                              (cond-> {:table-names [(:name table)]}
+                                (:schema table) (assoc :schema-names [(:schema table)]))))
                (:fields (driver/describe-table driver db table))))))
+
+(defmethod driver/database-supports? [::driver/driver ::describe-pks]
+  [driver _feature database]
+  ;; This is a decent proxy for drivers that set the `pk?` metadata field.
+  (driver/database-supports? driver :metadata/key-constraints database))
+
+;; These drivers set the `:pk?` field even though they do no support key-constriants
+(doseq [driver [:mongo :sqlite]]
+  (defmethod driver/database-supports? [driver ::describe-pks]
+    [_driver _feature _database]
+    true))
+
+(deftest describe-fields-shared-attributes-test
+  (testing "common metadata attributes"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (is (=?
+           [[0 false true (driver/database-supports? driver/*driver* ::describe-pks (mt/db))]
+            [1 false false false]
+            [2 false false false]
+            [3 false false false]
+            [4 false false false]
+            [5 false false false]]
+           (sort-by
+            :first
+            (map (juxt :database-position
+                       :database-required
+                       :database-is-auto-increment
+                       (comp boolean :pk?))
+                 (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))
+    (mt/test-drivers (mt/normal-drivers-without-feature :actions)
+      (is (=?
+           [[0 (driver/database-supports? driver/*driver* ::describe-pks (mt/db))]
+            [1 false]
+            [2 false]
+            [3 false]
+            [4 false]
+            [5 false]]
+           (sort-by
+            :first
+            (map (juxt :database-position (comp boolean :pk?))
+                 (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))))
 
 (deftest database-types-fallback-test
   (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
@@ -295,7 +333,7 @@
                     :visibility-type :normal,
                     :nfc-path [:json_bit "genres"]}
                    {:name "json_bit → 1234",
-                    :database-type "bigint",
+                    :database-type "decimal",
                     :base-type :type/Integer,
                     :database-position 0,
                     :json-unfolding false,
@@ -377,7 +415,7 @@
 (mt/defdataset big-json
   [["big_json_table"
     [{:field-name "big_json" :base-type :type/JSON}]
-    [[(json/generate-string (into {} (for [x (range 300)] [x :dobbs])))]]]])
+    [[(json/encode (into {} (for [x (range 300)] [x :dobbs])))]]]])
 
 (deftest ^:parallel describe-big-nested-field-columns-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
@@ -417,15 +455,15 @@
      ;; in the second row, both have a "b" key, except `long_json` has a longer value.
     [{:field-name "short_json", :base-type :type/JSON}
      {:field-name "long_json",  :base-type :type/JSON}]
-    [[(json/generate-string {:a "x"}) (json/generate-string {:a "x"})]
-     [(json/generate-string {:b "y"}) (json/generate-string {:b (apply str (repeat 10 "y"))})]]]])
+    [[(json/encode {:a "x"}) (json/encode {:a "x"})]
+     [(json/encode {:b "y"}) (json/encode {:b (apply str (repeat 10 "y"))})]]]])
 
 (deftest long-json-sample-json-query-test
   (testing "Long JSON values should be omitted from the sample for describe-table (#45163)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
       (when-not (mysql/mariadb? (mt/db))
         (mt/with-temporary-setting-values [sql-jdbc.describe-table/nested-field-columns-value-length-limit
-                                           (dec (count (json/generate-string {:b (apply str (repeat 10 "y"))})))]
+                                           (dec (count (json/encode {:b (apply str (repeat 10 "y"))})))]
           (mt/dataset long-json
             (sync/sync-database! (mt/db) {:scan :schema})
             (let [jdbc-spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -434,7 +472,7 @@
                   pks         ["id"]
                   sample      (fn []
                                 (let [rows (#'sql-jdbc.describe-table/sample-json-reducible-query driver/*driver* jdbc-spec table json-fields pks)]
-                                  (into #{} (map #(update-vals % json/parse-string)) rows)))]
+                                  (into #{} (map #(update-vals % json/decode)) rows)))]
               (is (= #{{:short_json {"a" "x"}, :long_json {"a" "x"}}
                        {:short_json {"b" "y"}, :long_json nil}}
                      (sample)))
@@ -489,7 +527,7 @@
                     :visibility-type   :normal
                     :nfc-path          [:jsoncol "mybool"]}
                    {:name              "jsoncol → myint"
-                    :database-type     "double precision"
+                    :database-type     "decimal"
                     :base-type         :type/Number
                     :database-position 0
                     :json-unfolding    false
@@ -554,7 +592,7 @@
                                (t2/select-one Table :db_id (mt/id) :name "json_with_pk")))))
               (testing "if table doesn't have pk, we fail to detect the change in type but it still syncable"
                 (is (= [{:name              "json_col → int_turn_string"
-                         :database-type     "bigint"
+                         :database-type     "decimal"
                          :base-type         :type/Integer
                          :database-position 0
                          :json-unfolding    false
@@ -565,61 +603,23 @@
                                  (mt/db)
                                  (t2/select-one Table :db_id (mt/id) :name "json_without_pk")))))))))))))
 
-(deftest describe-table-indexes-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info)
-                                     (mt/sql-jdbc-drivers))
-    (mt/dataset (mt/dataset-definition "indexes"
-                                       ["single_index"
-                                        [{:field-name "indexed" :indexed? true :base-type :type/Integer}
-                                         {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
-                                        [[1 2]]]
-                                       ["composite_index"
-                                        [{:field-name "first" :indexed? false :base-type :type/Integer}
-                                         {:field-name "second" :indexed? false :base-type :type/Integer}]
-                                        [[1 2]]])
-      (try
-        (let [describe-table-indexes (fn [table]
-                                       (->> (driver/describe-table-indexes
-                                             driver/*driver*
-                                             (mt/db)
-                                             table)
-                                            (map (fn [index]
-                                                   (update index :value #(if (string? %)
-                                                                           (u/lower-case-en %)
-                                                                           (map u/lower-case-en %)))))
-                                            set))]
-          (testing "single column indexes are synced correctly"
-            (is (= #{{:type :normal-column-index :value "id"}
-                     {:type :normal-column-index :value "indexed"}}
-                   (describe-table-indexes (t2/select-one :model/Table (mt/id :single_index))))))
-
-          (testing "for composite indexes, we only care about the 1st column"
-            (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                           (sql.tx/create-index-sql driver/*driver* "composite_index" ["first" "second"]))
-            (sync/sync-database! (mt/db))
-            (is (= #{{:type :normal-column-index :value "id"}
-                     {:type :normal-column-index :value "first"}}
-                   (describe-table-indexes (t2/select-one :model/Table (mt/id :composite_index)))))))
-        (finally
-        ;; clean the db so this test is repeatable
-          (t2/delete! :model/Database (mt/id)))))))
-
-(defn- describe-table-indexes [table]
-  (into #{}
-        (map (fn [index]
-               (update index :value #(if (string? %)
-                                       (u/lower-case-en %)
-                                       (map u/lower-case-en %)))))
-        (driver/describe-table-indexes driver/*driver* (mt/db) table)))
-
-(defmethod driver/database-supports? [::driver/driver ::unique-index]
-  [_driver _feature _database]
-  true)
-
-(doseq [driver [:h2 :sqlite :sqlserver]]
-  (defmethod driver/database-supports? [driver ::unique-index]
-    [_driver _feature _database]
-    false))
+(defn- describe-table-indexes
+  [table]
+  (let [database (mt/db)
+        driver driver/*driver*
+        lowercase-value (fn [index]
+                          (update index :value #(if (string? %)
+                                                  (u/lower-case-en %)
+                                                  (map u/lower-case-en %))))]
+    (if (driver/database-supports? driver :describe-indexes database)
+      (into #{}
+            (comp
+             (map (fn [{:keys [field-name]}] {:type :normal-column-index :value field-name}))
+             (map lowercase-value))
+            (driver/describe-indexes driver database {:table-names [(:name table)]}))
+      (into #{}
+            (map lowercase-value)
+            (driver/describe-table-indexes driver database table)))))
 
 (defn- do-with-temporary-dataset [dataset thunk]
   (mt/dataset dataset
@@ -630,6 +630,42 @@
         (t2/delete! :model/Database (mt/id))
         (u/ignore-exceptions
           (tx/destroy-db! driver/*driver* dataset))))))
+
+(deftest describe-table-indexes-test
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info)
+                                     (mt/sql-jdbc-drivers))
+    (do-with-temporary-dataset
+     (mt/dataset-definition "indexes"
+                            ["single_index"
+                             [{:field-name "indexed" :indexed? true :base-type :type/Integer}
+                              {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
+                             [[1 2]]]
+                            ["composite_index"
+                             [{:field-name "first" :indexed? false :base-type :type/Integer}
+                              {:field-name "second" :indexed? false :base-type :type/Integer}]
+                             [[1 2]]])
+     (fn []
+       (testing "single column indexes are synced correctly"
+         (is (= #{{:type :normal-column-index :value "id"}
+                  {:type :normal-column-index :value "indexed"}}
+                (describe-table-indexes (t2/select-one :model/Table (mt/id :single_index))))))
+
+       (testing "for composite indexes, we only care about the 1st column"
+         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                        (sql.tx/create-index-sql driver/*driver* "composite_index" ["first" "second"]))
+         (sync/sync-database! (mt/db))
+         (is (= #{{:type :normal-column-index :value "id"}
+                  {:type :normal-column-index :value "first"}}
+                (describe-table-indexes (t2/select-one :model/Table (mt/id :composite_index))))))))))
+
+(defmethod driver/database-supports? [::driver/driver ::unique-index]
+  [_driver _feature _database]
+  true)
+
+(doseq [driver [:h2 :sqlite :sqlserver]]
+  (defmethod driver/database-supports? [driver ::unique-index]
+    [_driver _feature _database]
+    false))
 
 (deftest describe-table-indexes-unique-index-test
   (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info ::unique-index)
@@ -717,3 +753,72 @@
                         (sql.tx/create-index-sql driver/*driver* "conditional_index" ["column"] {:condition "id > 2"}))
          (is (= #{{:type :normal-column-index :value "id"}}
                 (describe-table-indexes (t2/select-one :model/Table (mt/id :conditional_index))))))))))
+
+(defmethod driver/database-supports? [::driver/driver ::materialized-view-fields]
+  [_driver _feature _database]
+  true)
+
+(defmethod driver/database-supports? [::driver/driver ::describe-view-fields]
+  [_driver _feature _database]
+  true)
+
+(doseq [driver [:presto-jdbc
+                :h2 ;; TODO
+                :druid
+                :druid-jdbc]]
+  (defmethod driver/database-supports? [driver ::describe-view-fields]
+    [_driver _feature _database]
+    false))
+
+(doseq [driver [:oracle ;; TODO Insufficient privileges
+                :h2 ;; TODO
+                :snowflake ;; Requires enterprise account
+                :presto-jdbc
+                :druid
+                :druid-jdbc
+                :mysql
+                :sqlserver
+                :mongo
+                :sparksql
+                :sqlite
+                :athena]]
+  (defmethod driver/database-supports? [driver ::describe-materialized-view-fields]
+    [_driver _feature _database]
+    false))
+
+(deftest describe-view-fields
+  (mt/test-drivers (set/union (mt/normal-drivers-with-feature ::describe-materialized-view-fields)
+                              (mt/normal-drivers-with-feature ::describe-view-fields))
+    (doseq [materialized? (cond-> []
+                            (driver/database-supports? driver/*driver* ::describe-view-fields nil)
+                            (conj false)
+                            (driver/database-supports? driver/*driver* ::describe-materialized-view-fields nil)
+                            (conj true))
+            :let [view-name (if materialized? "orders_m" "orders_v")
+                  table-name "orders"]]
+      (try
+        (testing (if materialized? "Materialized View" "View")
+          (tx/drop-view! driver/*driver* (mt/db) view-name {:materialized? materialized?})
+          (tx/create-view-of-table! driver/*driver* (mt/db) view-name table-name {:materialized? materialized?})
+          (sync/sync-database! (mt/db) {:scan :schema})
+          (let [orders-id (:id (tx/metabase-instance (tx/map->TableDefinition {:table-name table-name}) (mt/db)))
+                orders-m-id (:id (tx/metabase-instance (tx/map->TableDefinition {:table-name view-name}) (mt/db)))
+                non-view-fields (t2/select-fn-vec
+                                 (juxt (comp u/lower-case-en :name) :base_type :database_position)
+                                 :model/Field
+                                 :table_id orders-id
+                                 {:order-by [:database_position]})
+                view-fields (t2/select-fn-vec
+                             (juxt (comp u/lower-case-en :name) :base_type :database_position)
+                             :model/Field
+                             :table_id orders-m-id
+                             {:order-by [:database_position]})]
+            (is (some? orders-m-id))
+            (is (some? orders-id))
+            (is (= 9 (count view-fields)))
+            (is (= non-view-fields view-fields))))
+        (catch Exception e
+          (is (nil? e) "This should not happen")
+          (log/error e "Exception occurred."))
+        (finally
+          (tx/drop-view! driver/*driver* (mt/db) view-name {:materialized? materialized?}))))))

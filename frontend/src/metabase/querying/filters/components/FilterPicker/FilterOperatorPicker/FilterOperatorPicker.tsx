@@ -1,8 +1,6 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 
-import { checkNotNull } from "metabase/lib/types";
-import { Select } from "metabase/ui";
+import { Button, Icon, Menu } from "metabase/ui";
 
 type Option<T> = {
   name: string;
@@ -20,26 +18,26 @@ export function FilterOperatorPicker<T extends string>({
   options,
   onChange,
 }: FilterOperatorPickerProps<T>) {
-  const data = useMemo(
-    () =>
-      options.map(option => ({ label: option.name, value: option.operator })),
-    [options],
-  );
-
-  const handleChange = (value: string | null) => {
-    const option = checkNotNull(
-      options.find(option => option.operator === value),
-    );
-    onChange(option.operator);
-  };
+  const selectedOption = options.find(option => option.operator === value);
 
   return (
-    <Select
-      data={data}
-      value={value}
-      miw="14rem"
-      aria-label={t`Filter operator`}
-      onChange={handleChange}
-    />
+    <Menu>
+      <Menu.Target>
+        <Button
+          fw="normal"
+          rightIcon={<Icon name="chevrondown" />}
+          aria-label={t`Filter operator`}
+        >
+          {selectedOption?.name ?? t`Select operator`}
+        </Button>
+      </Menu.Target>
+      <Menu.Dropdown>
+        {options.map((option, index) => (
+          <Menu.Item key={index} onClick={() => onChange(option.operator)}>
+            {option.name}
+          </Menu.Item>
+        ))}
+      </Menu.Dropdown>
+    </Menu>
   );
 }

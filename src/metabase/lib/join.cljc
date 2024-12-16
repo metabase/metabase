@@ -11,6 +11,7 @@
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.ident :as lib.ident]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -28,8 +29,8 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -571,6 +572,7 @@
   by default."
   ([joinable]
    (-> (join-clause-method joinable)
+       (u/assoc-default :ident (lib.ident/random-ident))
        (u/assoc-default :fields :all)))
 
   ([joinable conditions]

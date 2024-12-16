@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import type { CollectionId } from "metabase-types/api";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
@@ -28,6 +30,7 @@ export interface AppBarLargeProps {
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
+  isContainingDashboardPathVisible?: boolean;
   onToggleNavbar: () => void;
   onLogout: () => void;
 }
@@ -43,6 +46,7 @@ const AppBarLarge = ({
   isProfileLinkVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
+  isContainingDashboardPathVisible,
   onToggleNavbar,
   onLogout,
 }: AppBarLargeProps): JSX.Element => {
@@ -66,7 +70,9 @@ const AppBarLarge = ({
           {isQuestionLineageVisible ? (
             <QuestionLineage />
           ) : isCollectionPathVisible ? (
-            <CollectionBreadcrumbs />
+            <CollectionBreadcrumbs
+              showContainingDashboard={isContainingDashboardPathVisible}
+            />
           ) : null}
         </AppBarInfoContainer>
       </AppBarLeftContainer>
@@ -75,7 +81,7 @@ const AppBarLarge = ({
           {isSearchVisible && (isEmbedded ? <SearchBar /> : <SearchButton />)}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {isProfileLinkVisible && (
-            <AppBarProfileLinkContainer>
+            <AppBarProfileLinkContainer aria-label={t`Settings menu`}>
               <ProfileLink onLogout={onLogout} />
             </AppBarProfileLinkContainer>
           )}

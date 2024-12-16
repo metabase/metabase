@@ -1,6 +1,5 @@
 (ns ^:mb/once metabase-enterprise.serialization.v2.extract-test
   (:require
-   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -31,6 +30,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (comment
@@ -1198,7 +1198,7 @@
 
                        ;; Fourth dashboard where its parameter's source is another card
                        Collection   {coll4-id   :id
-                                     coll4-eid  :entity_id}    {:name     "Forth collection"}
+                                     _coll4-eid :entity_id}    {:name     "Forth collection"}
                        Card         {c4-id  :id
                                      c4-eid :entity_id}        {:name          "Question 4-1"
                                                                 :database_id   db-id
@@ -1238,7 +1238,7 @@
                                                                  :visualization_settings
                                                                  ;; Top-level click behavior for the card.
                                                                  (let [dimension  [:dimension [:field "something" {:base-type "type/Text"}]]
-                                                                       mapping-id (json/generate-string dimension)]
+                                                                       mapping-id (json/encode dimension)]
                                                                    {:click_behavior {:type     "link"
                                                                                      :linkType "question"
                                                                                      :targetId c3-2-id
@@ -1376,17 +1376,93 @@
                         (map serdes/path)
                         set))))
 
-          (testing "select a collection where a dashboard contains parameter's source is card from another collection"
-            (is (=? #{[{:model "Collection"    :id coll4-eid :label "forth_collection"}]
-                      [{:model "Dashboard"     :id dash4-eid :label "dashboard_4"}]
-                      [{:model "Card"          :id c4-eid  :label "question_4_1"}]
-                      ;; card that parameter on dashboard linked to
-                      [{:model "Card"          :id c1-1-eid  :label "question_1_1"}]
-                      ;; card that the card on dashboard linked to
-                      [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]}
-                    (->> (extract/extract {:targets [["Collection" coll4-id]] :no-settings true :no-data-model true})
-                         (map serdes/path)
-                         set)))))))))
+          (testing "depending on data from personal collections results in errors"
+            (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+              (extract/extract {:targets [["Collection" coll4-id]] :no-settings true :no-data-model true})
+              (let [msgs (into #{}
+                               (map :message)
+                               (messages))]
+                (is (some #(str/starts-with? % "Failed to export Dashboard") msgs))
+                (is (some #(str/starts-with? % "Failed to export Cards") msgs))))))))))
+
+(deftest click-behavior-references-to-deleted-cards
+  (mt/with-empty-h2-app-db
+    (ts/with-temp-dpc [:model/User       {mark-id :id}              {:first_name "Mark"
+                                                                     :last_name  "Knopfler"
+                                                                     :email      "mark@direstrai.ts"}
+                       :model/Collection {coll-id   :id
+                                          coll-eid  :entity_id}    {:name "Some Collection"}
+                       :model/Database   {db-id      :id}           {:name "My Database"}
+                       :model/Table      {no-schema-id :id}         {:name "Schemaless Table" :db_id db-id}
+                       :model/Field      _                          {:name "Some Field" :table_id no-schema-id}
+                       :model/Table      {schema-id    :id}         {:name        "Schema'd Table"
+                                                                     :db_id       db-id
+                                                                     :schema      "PUBLIC"}
+                       :model/Field      {field-id :id}             {:name "Other Field" :table_id schema-id}
+                       :model/Field      {field-id3 :id}            {:name "Field To Click 2" :table_id schema-id}
+
+                       :model/Card       {card-id  :id
+                                          card-eid :entity_id}      {:name          "A Normal Question"
+                                                                     :database_id   db-id
+                                                                     :table_id      no-schema-id
+                                                                     :collection_id coll-id
+                                                                     :creator_id    mark-id}
+
+                       :model/Card       {deleted-card-id :id}      {:collection_id coll-id}
+
+                       :model/Dashboard  {deleted-dash-id :id}      {:collection_id coll-id}
+
+                       :model/Dashboard     {clickdash-id  :id
+                                             clickdash-eid :entity_id} {:name          "Dashboard"
+                                                                        :collection_id coll-id
+                                                                        :creator_id    mark-id}
+                       :model/DashboardCard _                          {:card_id      card-id
+                                                                        :dashboard_id clickdash-id
+                                                                        :visualization_settings
+                                                                        ;; links to a (soon-to-be) deleted card
+                                                                        {:click_behavior {:type     "link"
+                                                                                          :linkType "question"
+                                                                                          :targetId deleted-card-id}}}
+                       ;;; stress-test that exporting various visualization_settings does not break
+                       :model/DashboardCard _                          {:card_id card-id
+                                                                        :dashboard_id clickdash-id
+                                                                        :visualization_settings
+                                                                        {:column_settings
+                                                                         {(str "[\"ref\",[\"field\"," field-id ",null]]")
+                                                                          {:click_behavior
+                                                                           {:type     "link"
+                                                                            :linkType "dashboard"
+                                                                            :targetId deleted-dash-id}}
+
+                                                                          (str "[\"ref\",[\"field\"," field-id3 ",null]]")
+                                                                          {:click_behavior
+                                                                           {:type "link"
+                                                                            :linkType "question"
+                                                                            :targetId deleted-card-id}}}}}]
+
+      (t2/delete! :model/Card deleted-card-id)
+      (t2/delete! :model/Dashboard deleted-dash-id)
+      (testing "the references to deleted cards and dashboards are ignored"
+        (is (= #{[{:model "Dashboard" :id clickdash-eid :label "dashboard"}]
+                 [{:model "Collection" :id coll-eid :label "some_collection"}]
+                 [{:model "Card" :id card-eid :label "a_normal_question"}]}
+               (->> {:targets [["Collection" coll-id]]
+                     :no-settings true :no-data-model true}
+                    extract/extract
+                    (map serdes/path)
+                    (into #{})))))
+      (testing "the click behavior looks sane"
+        (is (= #{{:column_settings nil}
+                 {:column_settings {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {}
+                                    "[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Field To Click 2\"],null]]" {}}}}
+               (->> {:targets [["Collection" coll-id]]
+                     :no-settings true :no-data-model true}
+                    extract/extract
+                    (filter #(= (:entity_id %) clickdash-eid))
+                    first
+                    :dashcards
+                    (map :visualization_settings)
+                    (into #{}))))))))
 
 (deftest field-references-test
   (mt/with-empty-h2-app-db
@@ -1410,19 +1486,38 @@
 
       (testing "Fields that reference parents are properly exported as Field references"
         (is (= ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]
-               (:parent_id (ts/extract-one "Field" nested-id))))))))
+               (:parent_id (ts/extract-one "Field" nested-id))))
+        (is (= [{:model "Database", :id "My Database"}
+                {:model "Schema", :id "PUBLIC"}
+                {:model "Table", :id "Schema'd Table"}
+                {:model "Field", :id "Other Field"}
+                {:model "Field", :id "Nested Field"}]
+               (:serdes/meta (ts/extract-one "Field" nested-id))))))))
 
 (deftest escape-report-test
   (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [Collection    {coll1-id :id} {:name "Some Collection"}
                        Collection    {coll2-id :id} {:name "Other Collection"}
+                       Collection    {coll3-id :id} {:name "Third Collection"}
                        Dashboard     {dash-id :id}  {:name "A Dashboard" :collection_id coll1-id}
                        Card          {card1-id :id} {:name "Some Card"}
                        DashboardCard _              {:card_id card1-id :dashboard_id dash-id}
                        Card          _              {:name          "Dependent Card"
                                                      :collection_id coll2-id
-                                                     :dataset_query {:query {:source-table (str "card__" card1-id)
-                                                                             :aggregation  [[:count]]}}}]
+                                                     :dataset_query {:query {:source-table (str "card__" card1-id)}}}
+                       User          user           {:email "dirk@kirk.ir"}
+                       Collection    pcoll          {:name              "Personal Collection"
+                                                     :personal_owner_id (:id user)}
+                       Card          pcard          {:name          "Personal Card"
+                                                     :collection_id (:id pcoll)}
+                       Card          _              {:name          "External Card"
+                                                     :dataset_query {:query {:source-table (str "card__" (:id pcard))}}}
+                       Card          _              {:name          "Card with parameters"
+                                                     :collection_id coll3-id
+                                                     :parameters    [{:id                   "abc"
+                                                                      :type                 "category"
+                                                                      :values_source_type   "card"
+                                                                      :values_source_config {:card_id card1-id}}]}]
       (testing "Complain about card not available for exporting"
         (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
           (extract/extract {:targets       [["Collection" coll1-id]]
@@ -1432,15 +1527,34 @@
                     (into #{}
                           (map :message)
                           (messages))))))
-      (testing "Complain about card depending on an outside card"
-        (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
-          (extract/extract {:targets       [["Collection" coll2-id]]
-                            :no-settings   true
-                            :no-data-model true})
-          (is (some #(str/starts-with? % "Failed to export Cards")
-                    (into #{}
-                          (map :message)
-                          (messages)))))))))
+      (testing "Complain about card depending on an outside card: "
+        (testing "when its :source-table"
+          (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+            (extract/extract {:targets       [["Collection" coll2-id]]
+                              :no-settings   true
+                              :no-data-model true})
+            (is (some #(str/starts-with? % "Failed to export Cards")
+                      (into #{}
+                            (map :message)
+                            (messages))))))
+        (testing "when it's :parameters"
+          (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+            (extract/extract {:targets       [["Collection" coll2-id]]
+                              :no-settings   true
+                              :no-data-model true})
+            (is (some #(str/starts-with? % "Failed to export Cards")
+                      (into #{}
+                            (map :message)
+                            (messages)))))))
+      (testing "When exporting all collections"
+        (testing "Complain about dependents in personal collections"
+          (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+            (extract/extract {:no-settings   true
+                              :no-data-model true})
+            (is (some #(str/starts-with? % "Failed to export Cards")
+                      (into #{}
+                            (map :message)
+                            (messages))))))))))
 
 (deftest recursive-colls-test
   (mt/with-empty-h2-app-db

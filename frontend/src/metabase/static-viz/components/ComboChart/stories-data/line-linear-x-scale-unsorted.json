@@ -152,8 +152,8 @@
         "graph.metrics": [
           "Y"
         ],
-        "metabase.shared.models.visualization-settings/column-settings": null,
-        "metabase.shared.models.visualization-settings/global-column-settings": {}
+        "metabase.models.visualization-settings/column-settings": null,
+        "metabase.models.visualization-settings/global-column-settings": {}
       },
       "results_timezone": "America/Montevideo",
       "results_metadata": {

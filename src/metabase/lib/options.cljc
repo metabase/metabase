@@ -2,8 +2,8 @@
   (:refer-clojure :exclude [uuid])
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 ;;; TODO -- not 100% sure we actually need all of this stuff anymore.
@@ -86,3 +86,8 @@
   "Get the `:lib/uuid` associated with something, e.g. an MBQL clause or join."
   [x]
   (:lib/uuid (options x)))
+
+(mu/defn ident :- [:maybe ::lib.schema.common/non-blank-string]
+  "Get the `:ident` associated with something, e.g. an MBQL clause or join."
+  [x]
+  (:ident (options x)))

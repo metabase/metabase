@@ -40,6 +40,11 @@ export function entityPickerModalLevel(level) {
   return cy.findByTestId(`item-picker-level-${level}`);
 }
 
+/**
+ *
+ * @param {number} level
+ * @param {string} name
+ */
 export function entityPickerModalItem(level, name) {
   return entityPickerModalLevel(level).findByText(name).parents("button");
 }
@@ -71,6 +76,10 @@ export function collectionOnTheGoModal() {
   return cy.findByTestId("create-collection-on-the-go");
 }
 
+export function dashboardOnTheGoModal() {
+  return cy.findByTestId("create-dashboard-on-the-go");
+}
+
 export function sidebar() {
   return cy.get("main aside");
 }
@@ -81,6 +90,10 @@ export function rightSidebar() {
 
 export function leftSidebar() {
   return cy.findByTestId("sidebar-left");
+}
+
+export function sidesheet() {
+  return cy.findByTestId("sidesheet");
 }
 
 export function navigationSidebar() {
@@ -169,8 +182,12 @@ export function toggleFilterWidgetValues(
   });
 }
 
-export const openQuestionActions = () => {
+export const openQuestionActions = action => {
   cy.findByTestId("qb-header-action-panel").icon("ellipsis").click();
+
+  if (action) {
+    popover().findByText(action).click();
+  }
 };
 
 export const collectionTable = () => {
@@ -191,6 +208,12 @@ export const closeQuestionActions = () => {
 
 export const questionInfoButton = () => {
   return cy.findByTestId("qb-header-info-button");
+};
+
+/** Opens the question info sidesheet */
+export const openQuestionInfoSidesheet = () => {
+  questionInfoButton().click();
+  return sidesheet();
 };
 
 export const undo = () => {
@@ -280,6 +303,28 @@ export function tableHeaderClick(headerString) {
   });
 }
 
+export function assertTableData({ columns, firstRows = [] }) {
+  tableInteractive()
+    .findAllByTestId("header-cell")
+    .should("have.length", columns.length);
+
+  columns.forEach((column, index) => {
+    tableInteractive()
+      .findAllByTestId("header-cell")
+      .eq(index)
+      .should("have.text", column);
+  });
+
+  firstRows.forEach((row, rowIndex) => {
+    row.forEach((cell, cellIndex) => {
+      tableInteractiveBody()
+        .findAllByTestId("cell-data")
+        .eq(columns.length * rowIndex + cellIndex)
+        .should("have.text", cell);
+    });
+  });
+}
+
 /**
  * selects the global new button
  * @param {*} menuItem optional, if provided, will click the New button and return the menu item with the text provided
@@ -313,4 +358,14 @@ export function removeMultiAutocompleteValue(index, filter) {
   return multiAutocompleteValue(index, filter)
     .findByRole("button", { hidden: true })
     .click();
+}
+
+export function repeatAssertion(assertFn, timeout = 4000, interval = 400) {
+  if (timeout <= 0) {
+    return;
+  }
+  assertFn();
+
+  cy.wait(interval);
+  repeatAssertion(assertFn, timeout - interval, interval);
 }

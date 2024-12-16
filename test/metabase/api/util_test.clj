@@ -84,7 +84,7 @@
 
 (deftest entity-id-translation-test
   (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {}]
-    (is (= {card-eid {:id card-id :type "card"  :status "success"}}
+    (is (= {card-eid {:id card-id :type "card" :status "ok"}}
            (-> (mt/user-http-request :crowberto :post 200
                                      "util/entity_id"
                                      {:entity_ids {"card" [card-eid]}})

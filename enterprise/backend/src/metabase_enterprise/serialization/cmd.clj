@@ -14,7 +14,7 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.db :as mdb]
    [metabase.models.card :refer [Card]]
-   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :as field :refer [Field]]
@@ -115,7 +115,8 @@
   [path :- :string
    opts :- [:map
             [:backfill? {:optional true} [:maybe :boolean]]
-            [:continue-on-error {:optional true} [:maybe :int]]]]
+            [:continue-on-error {:optional true} [:maybe :boolean]]
+            [:full-stacktrace {:optional true} [:maybe :boolean]]]]
   (let [timer    (u/start-timer)
         err      (atom nil)
         report   (try
@@ -125,8 +126,9 @@
                    (catch Exception e
                      (reset! err e)))
         imported (into (sorted-set) (map (comp :model last)) (:seen report))]
-    (snowplow/track-event! ::snowplow/serialization nil
-                           {:direction     "import"
+    (snowplow/track-event! ::snowplow/serialization
+                           {:event         :serialization
+                            :direction     "import"
                             :source        "cli"
                             :duration_ms   (int (u/since-ms timer))
                             :models        (str/join "," imported)
@@ -135,9 +137,12 @@
                                              (count (:seen report)))
                             :error_count   (count (:errors report))
                             :success       (nil? @err)
-                            :error_message (some-> @err str)})
+                            :error_message (when @err
+                                             (u/strip-error @err nil))})
     (when @err
-      (serdes/log-stripped-error "Error during deserialization" @err)
+      (if (:full-stacktrace opts)
+        (log/error @err "Error during deserialization")
+        (log/error (u/strip-error @err "Error during deserialization")))
       (throw (ex-info (ex-message @err) {:cmd/exit true})))
     imported))
 
@@ -254,8 +259,9 @@
                        (v2.storage/store! path)))
                  (catch Exception e
                    (reset! err e)))]
-    (snowplow/track-event! ::snowplow/serialization nil
-                           {:direction       "export"
+    (snowplow/track-event! ::snowplow/serialization
+                           {:event           :serialization
+                            :direction       "export"
                             :source          "cli"
                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
                             :count           (count (:seen report))
@@ -268,9 +274,12 @@
                             :field_values    (boolean (:include-field-values opts))
                             :secrets         (boolean (:include-database-secrets opts))
                             :success         (nil? @err)
-                            :error_message   (some-> @err str)})
+                            :error_message   (when @err
+                                               (u/strip-error @err nil))})
     (when @err
-      (serdes/log-stripped-error "Error during serialization" @err)
+      (if (:full-stacktrace opts)
+        (log/error @err "Error during serialization")
+        (log/error (u/strip-error @err "Error during deserialization")))
       (throw (ex-info (ex-message @err) {:cmd/exit true})))
     (log/info (format "Export to '%s' complete!" path) (u/emoji "🚛💨 📦"))
     report))

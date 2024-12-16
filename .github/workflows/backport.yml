@@ -6,25 +6,50 @@ on:
     types: [created]
 
 jobs:
+  check_pull_request_state:
+    name: Checks whether the PR has been merged
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '@metabase-bot backport')
+    runs-on: ubuntu-22.04
+    outputs:
+      canBackport: ${{ steps.check_pull_request_state.outputs.result }}
+    steps:
+      - uses: actions/github-script@v7
+        id: check_pull_request_state
+        with:
+          script: |
+            const { data: pullRequest } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.issue.number
+            });
+
+            const canBackport = pullRequest.state === "closed"
+            if (!canBackport) {
+              await github.rest.issues.createComment({
+                issue_number: context.payload.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: "The backport command can only be used after the pull request has been merged. Please wait until the PR is merged before attempting to backport."
+              });
+            }
+            return canBackport
+
   create_pull_request:
     name: Creates a pull request
-    if: contains(github.event.comment.body, '@metabase-bot backport')
+    needs: [check_pull_request_state]
+    if: needs.check_pull_request_state.outputs.canBackport == 'true'
     runs-on: ubuntu-22.04
     steps:
-      - uses: tibdex/github-app-token@v2.1.0
-        id: generate-token
-        with:
-          app_id: ${{ secrets.METABASE_BOT_APP_ID }}
-          private_key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
       - uses: actions/checkout@v4
         name: Cherry-pick commits and create PR
         with:
           fetch-depth: 0
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
       - name: Verify Membership
         id: verify-membership
         uses: ./.github/actions/verify-membership
         with:
-          github_token: ${{ steps.generate-token.outputs.token }}
+          github_token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           organization_name: metabase
           username: ${{ github.event.comment.user.login }}
       - run: |
@@ -110,23 +135,50 @@ jobs:
 
             if [ -n "${SQUASHED_COMMIT}" ]; then
               echo "found commit ${SQUASHED_COMMIT}"
-              git cherry-pick ${SQUASHED_COMMIT}
             else
               echo "probably a PR wasn't merged with Squash And Merge button, searching again"
               SQUASHED_COMMIT=$(env -i git log ${ORIGINAL_BASE_REF} --grep="#${ORIGINAL_PULL_REQUEST_NUMBER}" --format="%H")
 
               if [ -n "${SQUASHED_COMMIT}" ]; then
                 echo "found commit ${SQUASHED_COMMIT}"
-                git cherry-pick ${SQUASHED_COMMIT}
               else
                 echo "No squashed commit found for PR #${ORIGINAL_PULL_REQUEST_NUMBER}"
                 exit 1
               fi
             fi
-
           else
-            echo "PR has not been merged, copying all commits"
-            git cherry-pick ${ORIGINAL_BASE_SHA}..${ORIGINAL_HEAD_SHA}
+            echo "The PR has not been merged"
+            exit 1
+          fi
+
+          git cherry-pick ${SQUASHED_COMMIT} || true
+
+          CONFLICTS=$(git ls-files -u | wc -l)
+          if [ "$CONFLICTS" -gt 0 ]; then
+            git cherry-pick --abort
+
+            echo "Could not cherry pick because of a conflict"
+            echo "has-conflicts=true" >> $GITHUB_OUTPUT
+
+            # Add a shell script for resolving conflicts
+            echo "git reset HEAD~1" > ./backport.sh
+            echo "rm ./backport.sh" >> ./backport.sh
+            echo "git cherry-pick ${SQUASHED_COMMIT}" >> ./backport.sh
+            echo "echo 'Resolve conflicts and force push this branch'" >> ./backport.sh
+            chmod +x ./backport.sh
+            git add ./backport.sh
+            git commit -m "Add backport resolution script"
+
+            PR_BODY=$(cat <<-END
+            #${ORIGINAL_PULL_REQUEST_NUMBER}
+            > [!IMPORTANT]
+            > Manual conflict resolution is required.
+            Checkout the branch and run \`./backport.sh\` script. Force push your changes after cherry-picking.
+          END
+            )
+          else
+            echo "has-conflicts=false" >> $GITHUB_OUTPUT
+            PR_BODY="#${ORIGINAL_PULL_REQUEST_NUMBER}"
           fi
 
           git push origin "${BACKPORT_BRANCH}" --force-with-lease
@@ -134,12 +186,14 @@ jobs:
           if [[ $(gh pr list --base "${TARGET_BRANCH}" --head "${BACKPORT_BRANCH}" -s "open") ]]; then
               echo "PR already exists"
           else
-              BACKPORT_PR_URL=$(gh pr create --base "${TARGET_BRANCH}" --head "${BACKPORT_BRANCH}" --label "was-backported" --assignee "${GITHUB_ACTOR}" --title "🤖 backported \"${ORIGINAL_TITLE}\"" --body "#${ORIGINAL_PULL_REQUEST_NUMBER}")
+              BACKPORT_PR_URL=$(gh pr create --base "${TARGET_BRANCH}" --head "${BACKPORT_BRANCH}" --label "was-backported" --assignee "${GITHUB_ACTOR}" --title "🤖 backported \"${ORIGINAL_TITLE}\"" --body "${PR_BODY}")
               BACKPORT_PR_NUMBER=${BACKPORT_PR_URL##*/}
 
               echo "backport_pr_number=$BACKPORT_PR_NUMBER" >> $GITHUB_OUTPUT
               echo "New PR has been created"
           fi
+
+          git checkout master
         env:
           ORIGINAL_TITLE: ${{ fromJson(steps.branch_info.outputs.result).originalPullRequest.title }}
           ORIGINAL_BASE_REF: ${{ fromJson(steps.branch_info.outputs.result).originalPullRequest.base.ref }}
@@ -151,18 +205,25 @@ jobs:
           BACKPORT_BRANCH: ${{ fromJson(steps.branch_info.outputs.result).backportBranch }}
           START_SHA: ${{ fromJson(steps.branch_info.outputs.result).startSha }}
           END_SHA: ${{ fromJson(steps.branch_info.outputs.result).endSha }}
-          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+          GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
       - name: Auto approve backport PR
+        if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'false' }}
         uses: juliangruber/approve-pull-request-action@v1
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           number: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
       - name: Enable Pull Request Automerge
+        if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'false' }}
         uses: peter-evans/enable-pull-request-automerge@v2
         with:
-          token: ${{ steps.generate-token.outputs.token }}
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           pull-request-number: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
           merge-method: squash
+      - uses: ./.github/actions/notify-pull-request
+        if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'true' }}
+        with:
+          include-log: false
+          message: Manual conflict resolution is required
 
   notify_when_failed:
     runs-on: ubuntu-22.04

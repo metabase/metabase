@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.aggregation-test
+(ns ^:mb/driver-tests metabase.query-processor-test.aggregation-test
   "Tests for MBQL aggregations."
   (:require
    [clojure.test :refer :all]

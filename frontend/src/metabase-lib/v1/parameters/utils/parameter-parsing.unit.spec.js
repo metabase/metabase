@@ -16,10 +16,13 @@ describe("parameters/utils/parameter-values", () => {
   let parameter4;
   let parameters;
   let queryParams;
+
   beforeEach(() => {
     field1 = {
       id: 1,
       table_id: 1,
+      isString: () => false,
+      isStringLike: () => false,
       isNumeric: () => false,
       isDate: () => false,
       isBoolean: () => false,
@@ -27,6 +30,8 @@ describe("parameters/utils/parameter-values", () => {
     field2 = {
       id: 2,
       table_id: 1,
+      isString: () => false,
+      isStringLike: () => false,
       isNumeric: () => false,
       isDate: () => false,
       isBoolean: () => false,
@@ -34,6 +39,8 @@ describe("parameters/utils/parameter-values", () => {
     field3 = {
       id: 3,
       table_id: 1,
+      isString: () => false,
+      isStringLike: () => false,
       isNumeric: () => false,
       isDate: () => false,
       isBoolean: () => false,
@@ -41,6 +48,8 @@ describe("parameters/utils/parameter-values", () => {
     field4 = {
       id: 4,
       table_id: 1,
+      isString: () => false,
+      isStringLike: () => false,
       isNumeric: () => false,
       isDate: () => false,
       isBoolean: () => false,
@@ -182,6 +191,17 @@ describe("parameters/utils/parameter-values", () => {
       ).toEqual(["123.456"]);
     });
 
+    it("should convert boolean arguments to strings if all mapped fields are strings", () => {
+      field1.isString = () => true;
+      field4.isStringLike = () => true;
+
+      expect(
+        getParameterValueFromQueryParams(parameter1, {
+          [parameter1.slug]: true,
+        }),
+      ).toEqual(["true"]);
+    });
+
     it("should parse a value of 'true' or 'false' as a boolean if all associated fields are booleans", () => {
       field1.isBoolean = () => true;
       field4.isBoolean = () => true;
@@ -208,7 +228,7 @@ describe("parameters/utils/parameter-values", () => {
         getParameterValueFromQueryParams(parameter1, {
           [parameter1.slug]: "foo",
         }),
-      ).toEqual(["foo"]);
+      ).toEqual([]);
     });
 
     it("should not normalize date parameters", () => {
@@ -287,7 +307,7 @@ describe("parameters/utils/parameter-values", () => {
         getParameterValueFromQueryParams(parameter2, {
           [parameter2.slug]: "parameter2 default value",
         }),
-      ).toEqual([NaN]);
+      ).toEqual([]);
 
       expect(getParameterValueFromQueryParams(parameter2, {})).toBe(
         "parameter2 default value",

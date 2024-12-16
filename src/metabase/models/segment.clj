@@ -19,6 +19,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
+   [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -164,7 +165,7 @@
     (-> segment
         :table_id
         serdes/table->path
-        serdes/storage-table-path-prefix
+        serdes/storage-path-prefixes
         (concat ["segments" (serdes/storage-leaf-file-name id label)]))))
 
 (defmethod serdes/make-spec "Segment" [_model-name _opts]
@@ -185,3 +186,21 @@
      (select-keys metric [:name :description :revision_message])
      :table_id    table-id
      :database_id db-id)))
+
+;;;; ------------------------------------------------- Search ----------------------------------------------------------
+
+(search/define-spec "segment"
+  {:model        :model/Segment
+   :attrs        {:archived      true
+                  :collection-id false
+                  :creator-id    false
+                  :database-id   :table.db_id
+                  ;; Matching legacy behavior, where this cannot be filtered on.
+                  ;:created-at    true
+                  :updated-at    true}
+   :search-terms [:name :description]
+   :render-terms {:table-id          :table_id
+                  :table_description :table.description
+                  :table_name        :table.name
+                  :table_schema      :table.schema}
+   :joins        {:table [:model/Table [:= :table.id :this.table_id]]}})

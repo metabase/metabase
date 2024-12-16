@@ -19,13 +19,19 @@ const MARKDOWN = [
 const MARKDOWN_AS_TEXT = [HEADING_1_TEXT, HEADING_2_TEXT, PARAGRAPH_TEXT].join(
   " ",
 );
+const MARKDOWN_WITH_ITALICS = `markdown with *italics*`;
 
 interface SetupOpts {
   markdown?: string;
+  allowedElements?: string[];
 }
 
-const setup = ({ markdown = MARKDOWN }: SetupOpts = {}) => {
-  render(<MarkdownPreview>{markdown}</MarkdownPreview>);
+const setup = ({ markdown = MARKDOWN, allowedElements }: SetupOpts = {}) => {
+  render(
+    <MarkdownPreview allowedElements={allowedElements}>
+      {markdown}
+    </MarkdownPreview>,
+  );
 };
 
 describe("MarkdownPreview", () => {
@@ -79,5 +85,14 @@ describe("MarkdownPreview", () => {
       expect(image).toHaveAttribute("alt", "alt");
       expect(image).toHaveAttribute("src", "https://example.com/img.jpg");
     });
+  });
+
+  it("should allow enabling certain elements", () => {
+    setup({
+      markdown: MARKDOWN_WITH_ITALICS,
+      allowedElements: ["em"],
+    });
+
+    expect(screen.getByText("italics")).toBeInTheDocument();
   });
 });

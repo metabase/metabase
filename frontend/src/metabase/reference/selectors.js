@@ -59,8 +59,8 @@ export const getTable = createSelector(
     tableId
       ? tables[tableId] || { id: tableId }
       : segmentId
-      ? tableBySegment
-      : {},
+        ? tableBySegment
+        : {},
 );
 
 export const getFieldId = (state, props) =>

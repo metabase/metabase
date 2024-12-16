@@ -1,6 +1,5 @@
-import _ from "underscore";
-
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
@@ -22,7 +21,6 @@ import type {
   WaterFallChartDataDensity,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import {
   SERIES_COLORS_SETTING_KEY,
   SERIES_SETTING_KEY,
@@ -122,7 +120,6 @@ export const getCardsSeriesModels = (
   cardsColumns: CartesianChartColumns[],
   hiddenSeries: string[],
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
 ) => {
   const hasMultipleCards = rawSeries.length > 1;
   return rawSeries.flatMap((cardDataset, index) => {
@@ -135,7 +132,6 @@ export const getCardsSeriesModels = (
       hasMultipleCards,
       index === 0,
       settings,
-      renderingContext,
     );
   });
 };
@@ -148,7 +144,6 @@ export const getCardsSeriesModels = (
  * @param {string[]} hiddenSeries - The list of hidden series data keys.
  * @param {boolean} hasMultipleCards — Indicates whether the chart has multiple card combined.
  * @param {ComputedVisualizationSettings} settings — Computed visualization settings.
- * @param {RenderingContext} renderingContext - The rendering context.
  * @returns {SeriesModel[]} The generated series models for the card.
  */
 export const getCardSeriesModels = (
@@ -158,7 +153,6 @@ export const getCardSeriesModels = (
   hasMultipleCards: boolean,
   isFirstCard: boolean,
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
 ): SeriesModel[] => {
   const cardId = card.id ?? null;
   const hasBreakout = "breakout" in columns;
@@ -180,11 +174,11 @@ export const getCardSeriesModels = (
         createLegacySeriesObjectKey(vizSettingsKey);
 
       const customName = settings[SERIES_SETTING_KEY]?.[vizSettingsKey]?.title;
-      const tooltipName = customName ?? getFriendlyName(metric.column);
+      const tooltipName = customName ?? metric.column.display_name;
       const name =
         customName ??
         getDefaultSeriesName(
-          getFriendlyName(metric.column),
+          metric.column.display_name,
           hasMultipleCards,
           columns.metrics.length,
           false,
@@ -223,9 +217,11 @@ export const getCardSeriesModels = (
     // which can be different based on a user's locale.
     const formattedBreakoutValue =
       breakoutValue != null && breakoutValue !== ""
-        ? renderingContext.formatValue(breakoutValue, {
-            column: breakout.column,
-          })
+        ? String(
+            formatValue(breakoutValue, {
+              column: breakout.column,
+            }),
+          )
         : NULL_DISPLAY_VALUE;
 
     const vizSettingsKey = getSeriesVizSettingsKey(
@@ -240,7 +236,7 @@ export const getCardSeriesModels = (
       createLegacySeriesObjectKey(vizSettingsKey);
 
     const customName = settings[SERIES_SETTING_KEY]?.[vizSettingsKey]?.title;
-    const tooltipName = getFriendlyName(metric.column);
+    const tooltipName = metric.column.display_name;
     const name =
       customName ??
       getDefaultSeriesName(
@@ -284,11 +280,14 @@ export const getDimensionModel = (
   return {
     column: cardsColumns[0].dimension.column,
     columnIndex: cardsColumns[0].dimension.index,
-    columnByCardId: rawSeries.reduce((columnByCardId, series, index) => {
-      const cardColumns = cardsColumns[index];
-      columnByCardId[series.card.id] = cardColumns.dimension.column;
-      return columnByCardId;
-    }, {} as Record<CardId, DatasetColumn>),
+    columnByCardId: rawSeries.reduce(
+      (columnByCardId, series, index) => {
+        const cardColumns = cardsColumns[index];
+        columnByCardId[series.card.id] = cardColumns.dimension.column;
+        return columnByCardId;
+      },
+      {} as Record<CardId, DatasetColumn>,
+    ),
   };
 };
 
@@ -543,12 +542,15 @@ export function getDisplaySeriesSettingsByDataKey(
   stackModels: StackModel[] | null,
   settings: ComputedVisualizationSettings,
 ) {
-  const seriesSettingsByKey = seriesModels.reduce((acc, seriesModel) => {
-    acc[seriesModel.dataKey] = settings.series(
-      seriesModel.legacySeriesSettingsObjectKey,
-    );
-    return acc;
-  }, {} as Record<DataKey, SeriesSettings>);
+  const seriesSettingsByKey = seriesModels.reduce(
+    (acc, seriesModel) => {
+      acc[seriesModel.dataKey] = settings.series(
+        seriesModel.legacySeriesSettingsObjectKey,
+      );
+      return acc;
+    },
+    {} as Record<DataKey, SeriesSettings>,
+  );
 
   if (stackModels != null) {
     stackModels.forEach(({ display, seriesKeys }) => {
@@ -565,7 +567,6 @@ const getStackTotalsFormatters = (
   stackModels: StackModel[],
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
 ) => {
   const hasDataLabels =
     settings["graph.show_values"] &&
@@ -588,14 +589,12 @@ const getStackTotalsFormatters = (
       true,
       {},
       settings,
-      renderingContext,
     );
     const fullFormatter = createSeriesLabelsFormatter(
       seriesModel,
       false,
       {},
       settings,
-      renderingContext,
     );
 
     let isCompact: boolean;
@@ -634,7 +633,6 @@ const createSeriesLabelsFormatter = (
   isCompact: boolean,
   formattingOptions: OptionsType,
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
 ) =>
   cachedFormatter((value: RowValue) => {
     if (typeof value !== "number") {
@@ -649,14 +647,13 @@ const createSeriesLabelsFormatter = (
       compact: isCompact,
       ...formattingOptions,
     });
-    return renderingContext.formatValue(value, options);
+    return String(formatValue(value, options));
   });
 
 const getSeriesLabelsFormattingInfo = (
   seriesModels: SeriesModel[],
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
 ) => {
   return seriesModels.map(seriesModel => {
     const getValue = (datum: Datum) => datum[seriesModel.dataKey];
@@ -666,14 +663,12 @@ const getSeriesLabelsFormattingInfo = (
       true,
       {},
       settings,
-      renderingContext,
     );
     const fullFormatter = createSeriesLabelsFormatter(
       seriesModel,
       false,
       {},
       settings,
-      renderingContext,
     );
     let isCompact: boolean;
     if (settings["graph.label_value_formatting"] === "auto") {
@@ -702,7 +697,6 @@ const getSeriesLabelsFormatters = (
   stackModels: StackModel[],
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
 ) => {
   if (!settings["graph.show_values"]) {
     return [];
@@ -727,7 +721,6 @@ const getSeriesLabelsFormatters = (
     nonStackedSeries,
     dataset,
     settings,
-    renderingContext,
   );
 
   // Bar stack series formatters
@@ -750,7 +743,6 @@ const getSeriesLabelsFormatters = (
     barStackSeries,
     dataset,
     settings,
-    renderingContext,
   );
 
   return [...nonStackedSeriesFormattingInfo, ...barSeriesLabelsFormattingInfo];
@@ -761,7 +753,6 @@ export const getFormatters = (
   stackModels: StackModel[],
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
 ): {
   stackedLabelsFormatters: StackedSeriesFormatters;
   seriesLabelsFormatters: SeriesFormatters;
@@ -772,7 +763,6 @@ export const getFormatters = (
     stackModels,
     dataset,
     settings,
-    renderingContext,
   );
 
   const seriesLabelsFormattersInfo = getSeriesLabelsFormatters(
@@ -780,7 +770,6 @@ export const getFormatters = (
     stackModels,
     dataset,
     settings,
-    renderingContext,
   );
 
   const isCompactFormatting =
@@ -817,7 +806,6 @@ export const getWaterfallLabelFormatter = (
   seriesModel: SeriesModel,
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
 ): { formatter?: LabelFormatter; isCompact?: boolean } => {
   const hasDataLabels = settings["graph.show_values"];
 
@@ -834,14 +822,12 @@ export const getWaterfallLabelFormatter = (
     true,
     waterfallFormattingOptions,
     settings,
-    renderingContext,
   );
   const fullFormatter = createSeriesLabelsFormatter(
     seriesModel,
     false,
     waterfallFormattingOptions,
     settings,
-    renderingContext,
   );
   const isCompact = shouldRenderCompact(
     dataset,

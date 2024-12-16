@@ -2,8 +2,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { formatValue } from "metabase/lib/formatting";
-import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
-import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import {
   ChartSettingsError,
   MinRowsError,
@@ -16,13 +14,16 @@ import {
 } from "metabase/visualizations/lib/settings/utils";
 import {
   getDefaultPercentVisibility,
+  getDefaultPieColumns,
+  getDefaultShowLabels,
   getDefaultShowLegend,
+  getDefaultShowTotal,
   getDefaultSliceThreshold,
   getDefaultSortRows,
   getPieRows,
+  getPieSortRowsDimensionSetting,
 } from "metabase/visualizations/shared/settings/pie";
 import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
-import { getDefaultShowTotal } from "metabase/visualizations/shared/settings/waterfall";
 import {
   getDefaultSize,
   getMinSize,
@@ -32,9 +33,19 @@ import type {
   VisualizationDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import type { RawSeries } from "metabase-types/api";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import type { RawSeries, Series } from "metabase-types/api";
 
+import { DimensionsWidget } from "./DimensionsWidget";
 import { SliceNameWidget } from "./SliceNameWidget";
+
+const pieRowsReadDeps = [
+  "pie.dimension",
+  "pie.metric",
+  "pie.colors",
+  "pie.sort_rows",
+  "pie.slice_threshold",
+];
 
 export const PIE_CHART_DEFINITION: VisualizationDefinition = {
   uiName: t`Pie`,
@@ -42,7 +53,17 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
   iconName: "pie",
   minSize: getMinSize("pie"),
   defaultSize: getDefaultSize("pie"),
-  isSensible: ({ cols }) => cols.length === 2,
+  isSensible: ({ cols, rows }) => {
+    const numDimensions = cols.filter(isDimension).length;
+    const numMetrics = cols.filter(isMetric).length;
+
+    return (
+      rows.length >= 2 &&
+      cols.length >= 2 &&
+      numDimensions >= 1 &&
+      numMetrics >= 1
+    );
+  },
   checkRenderable: (
     [
       {
@@ -56,7 +77,11 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
     if (rows.length < 1) {
       throw new MinRowsError(1, 0);
     }
-    if (!settings["pie.dimension"] || !settings["pie.metric"]) {
+    const isDimensionMissing =
+      !settings["pie.dimension"] ||
+      (Array.isArray(settings["pie.dimension"]) &&
+        settings["pie.dimension"].every(col => col == null));
+    if (isDimensionMissing || !settings["pie.metric"]) {
       throw new ChartSettingsError(t`Which columns do you want to use?`, {
         section: `Data`,
       });
@@ -84,58 +109,48 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
     },
   ] as RawSeries,
   settings: {
+    ...metricSetting("pie.metric", {
+      section: t`Data`,
+      title: t`Measure`,
+      showColumnSetting: true,
+      getDefault: (rawSeries: Series) => getDefaultPieColumns(rawSeries).metric,
+    }),
     ...columnSettings({ hidden: true }),
     ...dimensionSetting("pie.dimension", {
-      section: t`Data`,
+      hidden: true,
       title: t`Dimension`,
       showColumnSetting: true,
+      getDefault: (rawSeries: Series) =>
+        getDefaultPieColumns(rawSeries).dimension,
     }),
     "pie.rows": {
-      section: t`Data`,
-      widget: ChartSettingOrderedSimple,
-      getHidden: (_rawSeries, settings) => settings["pie.dimension"] == null,
-      getValue: (rawSeries, settings) => {
-        return getPieRows(rawSeries, settings, (value, options) =>
-          String(formatValue(value, options)),
-        );
-      },
-      getProps: (
-        _rawSeries,
-        vizSettings: ComputedVisualizationSettings,
-        onChange,
-        _extra,
-        onChangeSettings,
-      ) => {
-        return {
-          onChangeSeriesColor: (sliceKey: string, color: string) => {
-            const pieRows = vizSettings["pie.rows"];
-            if (pieRows == null) {
-              throw Error("Missing `pie.rows` setting");
-            }
-
-            onChange(
-              pieRows.map(row => {
-                if (row.key !== sliceKey) {
-                  return row;
-                }
-                return { ...row, color, defaultColor: false };
-              }),
-            );
-          },
-          onSortEnd: (newPieRows: PieRow[]) =>
-            onChangeSettings({
-              "pie.sort_rows": false,
-              "pie.rows": newPieRows,
-            }),
-        };
-      },
-      readDependencies: [
-        "pie.dimension",
-        "pie.metric",
-        "pie.colors",
-        "pie.sort_rows",
-        "pie.slice_threshold",
-      ],
+      hidden: true,
+      getValue: _.memoize(
+        (series, settings) => {
+          return getPieRows(series, settings, (value, options) =>
+            String(formatValue(value, options)),
+          );
+        },
+        ([{ data }], settings) =>
+          JSON.stringify({
+            cols: data.cols,
+            rows: data.rows,
+            settings: _.pick(
+              settings,
+              ...pieRowsReadDeps,
+              "pie.rows",
+              "pie.sort_rows_dimension",
+            ),
+          }),
+      ),
+      readDependencies: pieRowsReadDeps,
+      writeDependencies: ["pie.sort_rows_dimension"],
+    },
+    "pie.sort_rows_dimension": {
+      getValue: (_series, settings) => getPieSortRowsDimensionSetting(settings),
+      // This read dependency is set so that "pie.sort_rows" is computed *before* this value, ensuring that
+      // that it uses the stored value if one exists. This is needed to check if the dimension has actually changed
+      readDependencies: ["pie.sort_rows", "pie.dimension"],
     },
     "pie.sort_rows": {
       hidden: true,
@@ -182,11 +197,23 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       },
       readDependencies: ["pie.rows"],
     } as any), // any type cast needed to avoid type error from confusion with destructured object params in `nestedSettings`
-    ...metricSetting("pie.metric", {
+
+    "pie._dimensions_widget": {
       section: t`Data`,
-      title: t`Measure`,
-      showColumnSetting: true,
-    }),
+      widget: DimensionsWidget,
+      getProps: (
+        rawSeries: RawSeries,
+        settings: ComputedVisualizationSettings,
+        _onChange: any,
+        _extra: any,
+        onChangeSettings: (newSettings: ComputedVisualizationSettings) => void,
+      ) => ({
+        rawSeries,
+        settings,
+        onChangeSettings,
+      }),
+      readDependencies: ["pie.dimension", "pie.rows"],
+    },
     "pie.show_legend": {
       section: t`Display`,
       title: t`Show legend`,
@@ -200,6 +227,14 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       title: t`Show total`,
       widget: "toggle",
       getDefault: getDefaultShowTotal,
+      inline: true,
+      marginBottom: "1rem",
+    },
+    "pie.show_labels": {
+      section: t`Display`,
+      title: t`Show labels`,
+      widget: "toggle",
+      getDefault: (_rawSeries, settings) => getDefaultShowLabels(settings),
       inline: true,
     },
     "pie.percent_visibility": {

@@ -258,10 +258,17 @@ export function updateQueryWithCompareOffsetAggregations(
   };
 }
 
+const DISABLED_TEMPORAL_COMPARISON_MESSAGE = true;
+
 export function canAddTemporalCompareAggregation(
   query: Lib.Query,
   stageIndex: number,
 ): boolean {
+  if (DISABLED_TEMPORAL_COMPARISON_MESSAGE) {
+    // TODO: reenable temporal comparisons once we fix offset issues
+    return false;
+  }
+
   const aggregations = Lib.aggregations(query, stageIndex);
   if (aggregations.length === 0) {
     // Hide the "Compare to the past" option if there are no aggregations

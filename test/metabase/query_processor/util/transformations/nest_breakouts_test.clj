@@ -147,11 +147,7 @@
                                              :source-field (symbol "nil #_\"key is not present.\"")}
                                      "test_data_products__v_f48e965c"]]
                          :aggregation [[:count {:name "count"}]
-                                       [:cum-count {:name "count_2"}]]
-                         :order-by [[:asc {} [:field {} "created_at"]]
-                                    [:asc {} [:field {:join-alias   (symbol "nil #_\"key is not present.\"")
-                                                      :source-field (symbol "nil #_\"key is not present.\"")}
-                                              "test_data_products__v_f48e965c"]]]}]
+                                       [:cum-count {:name "count_2"}]]}]
                ;; unrelated TODO, but I think `:alias/escaped->original` should be a string -> string map not keyword ->
                ;; string
                :info {:alias/escaped->original {:test-data-products--v-af2712b9 "test_data_products__via__product_id"}}}

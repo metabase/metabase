@@ -182,6 +182,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :as perf]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -277,25 +278,27 @@
 (defn set-has-full-permissions?
   "Does `permissions-set` grant *full* access to object with `path`?"
   ^Boolean [permissions-set path]
-  (boolean (some #(is-permissions-for-object? % path) permissions-set)))
+  (boolean (perf/some #(is-permissions-for-object? % path) permissions-set)))
 
 (defn set-has-partial-permissions?
   "Does `permissions-set` grant access full access to object with `path` *or* to a descendant of it?"
   ^Boolean [permissions-set path]
-  (boolean (some #(is-partial-permissions-for-object? % path) permissions-set)))
+  (boolean (perf/some #(is-partial-permissions-for-object? % path) permissions-set)))
 
 (mu/defn set-has-full-permissions-for-set? :- :boolean
   "Do the permissions paths in `permissions-set` grant *full* access to all the object paths in `paths-set`?"
   [permissions-set paths-set]
-  (every? (partial set-has-full-permissions? permissions-set)
-          paths-set))
+  (let [permissions (or (:as-vec (meta permissions-set))
+                        permissions-set)]
+    (every? (partial set-has-full-permissions? permissions) paths-set)))
 
 (mu/defn set-has-partial-permissions-for-set? :- :boolean
   "Do the permissions paths in `permissions-set` grant *partial* access to all the object paths in `paths-set`?
    (`permissions-set` must grant partial access to *every* object in `paths-set` set)."
   [permissions-set paths-set]
-  (every? (partial set-has-partial-permissions? permissions-set)
-          paths-set))
+  (let [permissions (or (:as-vec (meta permissions-set))
+                        permissions-set)]
+    (every? (partial set-has-partial-permissions? permissions) paths-set)))
 
 (mu/defn set-has-application-permission-of-type? :- :boolean
   "Does `permissions-set` grant *full* access to a application permission of type `perm-type`?"

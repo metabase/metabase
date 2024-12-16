@@ -701,6 +701,39 @@
                             :dashboard_tab_id new-tab-id-2}]
                           (:dashcards new-dashboard))))))))))))
 
+(deftest dashboard-questions-test
+  (testing "Dashboard Questions are serialized correctly"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          ;; preparation
+          (mt/with-temp
+            [:model/Collection {coll-id  :id
+                                coll-eid :entity_id}     {}
+             :model/Dashboard {dashboard-id  :id
+                               dashboard-eid :entity_id} {:name "Dashboard"
+                                                          :collection_id coll-id}
+             :model/Card      {card-eid :entity_id}    {:name         "Card on the Dashboard"
+                                                        :dashboard_id dashboard-id}]
+            (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+              (storage/store! (seq extraction) dump-dir))
+
+            (testing "ingest and load"
+              (ts/with-db dest-db
+                ;; ingest
+                (testing "doing ingestion"
+                  (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                      "successful"))
+
+                (testing "The loaded card is a dashboard question, same as before"
+                  (let [new-dash-id (t2/select-one-pk :model/Dashboard :entity_id dashboard-eid)
+                        new-coll-id (t2/select-one-pk :model/Collection :entity_id coll-eid)
+                        new-card-id (t2/select-one-pk :model/Card :entity_id card-eid)]
+                    (is (= new-dash-id (:dashboard_id
+                                        (t2/select-one :model/Card new-card-id))))
+                    (is (= new-coll-id (:collection_id
+                                        (t2/select-one :model/Card new-card-id))))))))))))))
+
 (deftest premium-features-test
   (testing "with :serialization enabled on the token"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -762,11 +795,9 @@
                                                                          :breakout     [[:field %orders.user_id nil]]}}
                                               :visualization_settings
                                               {:pivot_table.column_split
-                                               {:rows    [[:field %people.name {:base-type    :type/Text
-                                                                                :source-field %orders.user_id}]]
-                                                :columns [[:field %products.title {:base-type    :type/Text
-                                                                                   :source-field %orders.product_id}]]
-                                                :values  [[:aggregation 0]]}
+                                               {:rows    ["NAME"]
+                                                :columns ["TITLE"]
+                                                :values  ["sum"]}
                                                :column_settings
                                                {(format "[\"ref\",[\"field\",%s,null]]" %people.name)
                                                 {:pivot_table.column_sort_order "descending"}}}}]
@@ -796,12 +827,10 @@
                 (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))
 
                 (let [viz (t2/select-one-fn :visualization_settings Card :entity_id (:entity_id @card1s))]
-                  (testing "column ids inside pivot table transferred"
-                    (is (= [[:field %people.name {:base-type    :type/Text
-                                                  :source-field %orders.user_id}]]
+                  (testing "column names inside pivot table transferred"
+                    (is (= ["NAME"]
                            (get-in viz [:pivot_table.column_split :rows])))
-                    (is (= [[:field %products.title {:base-type    :type/Text
-                                                     :source-field %orders.product_id}]]
+                    (is (= ["TITLE"]
                            (get-in viz [:pivot_table.column_split :columns]))))
                   (testing "column sort order restored"
                     (is (= "descending"
@@ -853,3 +882,43 @@
                          :details {:url         "http://example.com"
                                    :auth-method "none"}}
                         (t2/select-one :model/Channel :name "My HTTP channel")))))))))))
+
+(deftest metric-based-question-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (t2.with-temp/with-temp
+          [Collection {coll-id :id}   {:name "Collection"}
+           Card       {metric-id :id} {:name "Metric Card"
+                                       :collection_id coll-id
+                                       :type :metric
+                                       :dataset_query (mt/mbql-query orders
+                                                        {:aggregation [[:count]]
+                                                         :breakout    [$product_id->products.category $created_at]})}
+           Card       _card           {:name "Metric Consuming Question Card"
+                                       :collection_id coll-id
+                                       :dataset_query (mt/mbql-query orders
+                                                        {:aggregation [[:metric metric-id]]
+                                                         :breakout    [[:field %orders.user_id nil]]})}]
+          (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+            (storage/store! (seq extraction) dump-dir))
+          (testing "ingest and load"
+            (ts/with-db dest-db
+              (testing "doing ingestion"
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                    "successful")
+                (let [new-coll-id (t2/select-one-pk Collection :name "Collection")
+                      new-metric (t2/select-one Card :name "Metric Card")]
+                  (is (int? new-coll-id))
+                  (is (=? {:name "Metric Card"
+                           :collection_id new-coll-id
+                           :dataset_query (mt/mbql-query orders
+                                            {:aggregation [[:count]]
+                                             :breakout    [$product_id->products.category $created_at]})}
+                          new-metric))
+                  (is (=? {:name "Metric Consuming Question Card"
+                           :collection_id new-coll-id
+                           :dataset_query (mt/mbql-query orders
+                                            {:aggregation [[:metric (:id new-metric)]]
+                                             :breakout    [[:field %orders.user_id nil]]})}
+                          (t2/select-one Card :name "Metric Consuming Question Card"))))))))))))

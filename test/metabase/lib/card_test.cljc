@@ -239,3 +239,25 @@
              (lib/display-info query card)))
       (is (= {:name "Card 1", :display-name "Card 1", :long-display-name "Card 1", :metric? true}
              (lib/display-info query (assoc card :type :metric)))))))
+
+(deftest ^:parallel ->card-metadata-column-test
+  (testing ":effective-type is set for columns coming from an aggregation in a card (#47184)"
+    (let [col {:lib/type :metadata/column
+               :base-type :type/Integer
+               :semantic-type :type/Quantity
+               :name "count"
+               :lib/source :source/aggregations}
+          card-id 176
+          card {:type :model}
+          field nil
+          expected-col {:lib/type :metadata/column
+                        :base-type :type/Integer
+                        :effective-type :type/Integer
+                        :semantic-type :type/Quantity
+                        :name "count"
+                        :lib/card-id 176
+                        :lib/source :source/card
+                        :lib/source-column-alias "count"
+                        :fk-target-field-id nil}]
+      (is (=? expected-col
+              (#'lib.card/->card-metadata-column col card-id card field))))))

@@ -39,7 +39,7 @@
    [metabase.lib.table :as lib.table]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.namespaces :as shared.ns]))
+   [metabase.util.namespaces :as shared.ns]))
 
 (comment lib.aggregation/keep-me
          lib.binning/keep-me
@@ -49,25 +49,30 @@
          lib.common/keep-me
          lib.convert/keep-me
          lib.database/keep-me
-         lib.drill-thru/keep-me
+         lib.drill-thru.column-extract/keep-me
          lib.drill-thru.pivot/keep-me
+         lib.drill-thru/keep-me
          lib.equality/keep-me
          lib.expression/keep-me
+         lib.extraction/keep-me
+         lib.fe-util/keep-me
          lib.field/keep-me
-         lib.filter/keep-me
          lib.filter.update/keep-me
+         lib.filter/keep-me
          lib.join/keep-me
-         lib.metric/keep-me
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
          lib.metadata.composed-provider/keep-me
+         lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
          lib.order-by/keep-me
          lib.query/keep-me
          lib.ref/keep-me
+         lib.remove-replace/keep-me
          lib.segment/keep-me
          lib.stage/keep-me
+         lib.swap/keep-me
          lib.table/keep-me
          lib.temporal-bucket/keep-me
          lib.util/keep-me)
@@ -186,6 +191,24 @@
   table-or-card-dependent-metadata
   expression-clause
   expression-parts
+  string-filter-clause
+  string-filter-parts
+  number-filter-clause
+  number-filter-parts
+  coordinate-filter-clause
+  coordinate-filter-parts
+  boolean-filter-clause
+  boolean-filter-parts
+  specific-date-filter-clause
+  specific-date-filter-parts
+  relative-date-filter-clause
+  relative-date-filter-parts
+  exclude-date-filter-clause
+  exclude-date-filter-parts
+  time-filter-clause
+  time-filter-parts
+  default-filter-clause
+  default-filter-parts
   filter-args-display-name]
  [lib.field
   add-field
@@ -210,6 +233,7 @@
   = !=
   < <=
   > >=
+  in not-in
   between
   inside
   is-null not-null
@@ -293,7 +317,9 @@
   stage-count
   uses-metric?
   uses-segment?
-  with-different-table]
+  with-different-table
+  with-wrapped-native-query
+  wrap-native-query-with-mbql]
  [lib.ref
   ref]
  [lib.remove-replace

@@ -53,8 +53,8 @@ export function formatTimeWithUnit(
   const timeEnabled = options.time_enabled
     ? options.time_enabled
     : hasHour(unit)
-    ? "minutes"
-    : null;
+      ? "minutes"
+      : null;
 
   const timeFormat = options.time_format
     ? options.time_format

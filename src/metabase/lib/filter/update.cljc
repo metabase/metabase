@@ -27,9 +27,9 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.time :as shared.ut]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.time :as u.time]))
 
 (defn- is-ref-for-column? [expr column]
   (and (lib.util/clause-of-type? expr :field)
@@ -91,7 +91,7 @@
    start :- ::lib.schema.literal/temporal
    end   :- ::lib.schema.literal/temporal]
   (loop [unit unit]
-    (let [num-points      (shared.ut/unit-diff unit start end)
+    (let [num-points      (u.time/unit-diff unit start end)
           too-few-points? (< num-points temporal-filter-min-num-points)]
       (if-let [next-largest-unit (when too-few-points?
                                    (unit->next-unit unit))]
@@ -163,7 +163,7 @@
                          :cljs (fn [t]
                                  (cond-> t
                                    (not (string? t))
-                                   (shared.ut/format-for-base-type ((some-fn :effective-type :base-type) temporal-column)))))
+                                   (u.time/format-for-base-type ((some-fn :effective-type :base-type) temporal-column)))))
          start        (maybe-string start)
          end          (maybe-string end)]
      (if-not unit
@@ -174,8 +174,8 @@
        (let [;; clamp range to unit to ensure we select exactly what's represented by the dots/bars. E.g. if I draw my
              ;; filter from `2024-01-02` to `2024-03-05` and the unit is `:month`, we should only show the months
              ;; between those two values, i.e. only `2024-02` and `2024-03`.
-             start         (shared.ut/truncate (shared.ut/add start unit 1) unit)
-             end           (shared.ut/truncate end unit)
+             start         (u.time/truncate (u.time/add start unit 1) unit)
+             end           (u.time/truncate end unit)
              ;; update the breakout unit if appropriate.
              breakout-unit (temporal-filter-find-best-breakout-unit unit start end)
              query         (if (= unit breakout-unit)

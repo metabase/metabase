@@ -281,14 +281,18 @@ function _PivotTable({
   };
 
   const leftHeaderWidth =
-    pivoted?.rowIndexes.length > 0
+    (pivoted?.rowIndexes?.length ?? 0) > 0
       ? LEFT_HEADER_LEFT_SPACING + (totalLeftHeaderWidths ?? 0)
       : 0;
 
   useEffect(() => {
     const availableBodyWidth = width - leftHeaderWidth;
     const fullBodyWidth = sumArray(
-      getCellWidthsForSection(valueHeaderWidths, pivoted?.valueIndexes, 0),
+      getCellWidthsForSection(
+        valueHeaderWidths,
+        pivoted?.valueIndexes ?? [],
+        0,
+      ),
     );
 
     const minUsableBodyWidth = Math.min(MIN_USABLE_BODY_WIDTH, fullBodyWidth);
@@ -346,7 +350,7 @@ function _PivotTable({
   return (
     <PivotTableRoot
       shouldOverflow={shouldOverflow}
-      isEditing={isEditing}
+      shouldHideScrollbars={isEditing && isDashboard}
       isDashboard={isDashboard}
       isNightMode={isNightMode}
       data-testid="pivot-table"

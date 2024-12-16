@@ -1,13 +1,11 @@
-(ns metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test
+(ns ^:mb/driver-tests metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase-enterprise.sandbox.models.group-table-access-policy
-    :refer [GroupTableAccessPolicy]]
-   [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
-    :as row-level-restrictions]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
    [metabase-enterprise.test :as met]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -23,14 +21,14 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache-test :as cache-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.middleware.process-userland-query-test
-    :as process-userland-query-test]
+   [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -185,8 +183,15 @@
         (is (=? (mt/query checkins
                   {:type  :query
                    :query {:source-query {:source-table                  $$checkins
-                                          :fields                        [$id !default.$date $user_id $venue_id]
+                                          :fields                        [$id $date $user_id $venue_id]
                                           :filter                        [:and
+                                                                          ;; This still gets :default bucketing!
+                                                                          ;; auto-bucket-datetimes puts :day bucketing
+                                                                          ;; on both parts of this filter, since it's
+                                                                          ;; matching a YYYY-mm-dd string. Then
+                                                                          ;; optimize-temporal-filters sees that the
+                                                                          ;; :type/Date column already has :day
+                                                                          ;; granularity, and switches both to :default
                                                                           [:> !default.date [:absolute-datetime
                                                                                              #t "2014-01-01"
                                                                                              :default]]
@@ -368,7 +373,7 @@
       (met/with-gtaps-for-user! :rasta {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                                         :attributes {"cat" 50}}
         (mt/with-test-user :rasta
-          (mw.session/as-admin
+          (request/as-admin
             (is (= [[100]]
                    (run-venues-count-query)))))))))
 
@@ -399,10 +404,9 @@
                   "card) to see if row level permissions apply. This was broken when it wasn't expecting a card and "
                   "only expecting resolved source-tables")
       (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues)}]
-        (let [query {:database (mt/id)
-                     :type     :query
-                     :query    {:source-table (format "card__%s" (u/the-id card))
-                                :aggregation  [["count"]]}}]
+        (let [query (mt/mbql-query nil
+                      {:source-table (format "card__%s" (u/the-id card))
+                       :aggregation  [["count"]]})]
           (mt/with-test-user :rasta
             (mt/with-native-query-testing-context query
               (is (= [[100]]
@@ -1080,7 +1084,7 @@
             (is (= {:cached? false, :num-rows 5}
                    (run-query)))))))))
 
-(deftest persistence-disabled-when-sandboxed
+(deftest persistence-disabled-when-sandboxed-test
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
     (mt/dataset test-data
       ;; with-gtaps! creates a new copy of the database. So make sure to do that before anything else. Gets really
@@ -1100,17 +1104,17 @@
             ;; persist model (as admin, so sandboxing is not applied to the persisted query)
             (mt/with-test-user :crowberto
               (persist-models!))
-            (let [persisted-info (t2/select-one 'PersistedInfo
+            (let [persisted-info (t2/select-one :model/PersistedInfo
                                                 :database_id (mt/id)
                                                 :card_id (:id model))]
               (is (= "persisted" (:state persisted-info))
                   "Model failed to persist")
               (is (string? (:table_name persisted-info)))
-              (let [query         {:type     :query
-                                   ;; just generate a select count(*) from card__<id>
-                                   :query    {:aggregation  [:count]
-                                              :source-table (str "card__" (:id model))}
-                                   :database (mt/id)}
+
+              (let [query         (mt/mbql-query nil
+                                    ;; just generate a select count(*) from card__<id>
+                                    {:aggregation  [:count]
+                                     :source-table (str "card__" (:id model))})
                     regular-result (mt/with-test-user :crowberto
                                      (qp/process-query query))
                     sandboxed-result (met/with-user-attributes! :rasta {"category" "Gizmo"}
@@ -1208,3 +1212,23 @@
                                      :people {:remappings {"user_id" [:dimension $people.zip]}}}})
       (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :unrestricted)
       (is (= 0 (count (mt/rows (qp/process-query (mt/mbql-query orders)))))))))
+
+(deftest native-sandbox-table-level-block-perms-test
+  (testing "A sandbox powered by a native query source card can be used even when other tables have block perms (#49969)"
+    (met/with-gtaps! {:gtaps      {:venues (venues-category-native-gtap-def)}
+                      :attributes {"cat" 50}}
+      (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :blocked)
+      (is (= 10 (count (mt/rows (qp/process-query (mt/mbql-query venues)))))))))
+
+(deftest native-sandbox-no-query-metadata-streaming-test
+  (testing "A sandbox powered by a native query source card can be used via the streaming API even if the card has no
+           stored results_metadata (#49985)"
+    (met/with-gtaps! {:gtaps      {:venues (venues-category-native-gtap-def)}
+                      :attributes {"cat" 50}}
+      (let [sandbox-card-id (t2/select-one-fn :card_id
+                                              :model/GroupTableAccessPolicy
+                                              :group_id (:id &group)
+                                              :table_id (mt/id :venues))]
+        (is (nil? (t2/select-one-fn :result_metadata :model/Card sandbox-card-id)))
+        (is (= 10 (count (mt/rows (streaming.test-util/process-query-basic-streaming :api (mt/mbql-query venues))))))
+        (is (not (nil? (t2/select-one-fn :result_metadata :model/Card sandbox-card-id))))))))

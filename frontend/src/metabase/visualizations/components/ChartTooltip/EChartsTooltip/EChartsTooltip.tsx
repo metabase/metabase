@@ -6,12 +6,18 @@ import { isNotNull } from "metabase/lib/types";
 
 import TooltipStyles from "./EChartsTooltip.module.css";
 
+const getPaddedValuesArray = (values: React.ReactNode[], maxValues: number) => {
+  return Object.assign(Array(maxValues).fill(null), values.slice(0, maxValues));
+};
+
 export interface EChartsTooltipRow {
   /* We pass CSS class with marker colors because setting styles in tooltip rendered by ECharts violates CSP */
   markerColorClass?: string;
   name: string;
   isFocused?: boolean;
+  isSecondary?: boolean;
   values: React.ReactNode[];
+  key?: string;
 }
 
 export interface EChartsTooltipFooter {
@@ -38,12 +44,9 @@ export const EChartsTooltip = ({
   }, 0);
 
   const paddedRows = rows.map(row => {
-    const paddedValues = [...row.values];
-    paddedValues.length = maxValuesColumns;
-
     return {
       ...row,
-      values: paddedValues,
+      values: getPaddedValuesArray(row.values, maxValuesColumns),
     };
   });
 
@@ -63,14 +66,20 @@ export const EChartsTooltip = ({
         })}
       >
         <tbody>
-          {paddedRows.map((row, index) => {
-            return <TooltipRow key={index} {...row} />;
+          {paddedRows.map((row, i) => {
+            const key = row.key ?? String(i);
+            return !row.isSecondary ? (
+              <TooltipRow {...row} key={key} />
+            ) : (
+              <SecondaryRow {...row} key={key} />
+            );
           })}
         </tbody>
         {footer != null && (
           <tfoot data-testid="echarts-tooltip-footer">
             <FooterRow
               {...footer}
+              values={getPaddedValuesArray(footer.values, maxValuesColumns)}
               markerContent={hasMarkers ? <span /> : null}
             />
           </tfoot>
@@ -89,7 +98,7 @@ const TooltipRow = ({
   isFocused,
 }: TooltipRowProps) => (
   <BaseRow
-    className={cx({ [TooltipStyles.RowFocused]: isFocused })}
+    className={cx(TooltipStyles.Row, { [TooltipStyles.RowFocused]: isFocused })}
     name={name}
     values={values}
     markerContent={
@@ -99,6 +108,17 @@ const TooltipRow = ({
     }
   />
 );
+
+const SecondaryRow = ({ name, values }: TooltipRowProps) => {
+  return (
+    <BaseRow
+      className={TooltipStyles.SecondaryRow}
+      name={name}
+      values={values}
+      markerContent={<span />}
+    />
+  );
+};
 
 const FooterRow = ({
   name,

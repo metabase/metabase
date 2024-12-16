@@ -154,7 +154,6 @@
           "name": "text-consecutivity",
           "weight": 3.333333333333333,
           "match": "Waterfall Ordinal Null Dimension",
-          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@6385cf53",
           "column": "name"
         },
         {
@@ -162,7 +161,6 @@
           "name": "text-total-occurrences",
           "weight": 3.333333333333333,
           "match": "Waterfall Ordinal Null Dimension",
-          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@8bbd715",
           "column": "name"
         },
         {
@@ -170,7 +168,6 @@
           "name": "text-fullness",
           "weight": 1.666666666666667,
           "match": "Waterfall Ordinal Null Dimension",
-          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@1592f629",
           "column": "name"
         },
         {
@@ -178,7 +175,6 @@
           "name": "text-prefix",
           "weight": 1.666666666666667,
           "match": "Waterfall Ordinal Null Dimension",
-          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@37134f79",
           "column": "name"
         }
       ],

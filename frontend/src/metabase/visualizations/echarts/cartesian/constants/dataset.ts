@@ -12,8 +12,13 @@ export const NEGATIVE_STACK_TOTAL_DATA_KEY =
 export const POSITIVE_BAR_DATA_LABEL_KEY_SUFFIX = `${NULL_CHAR}_positive_bar_data_label`;
 export const NEGATIVE_BAR_DATA_LABEL_KEY_SUFFIX = `${NULL_CHAR}_negative_bar_data_label`;
 
+export const IS_WATERFALL_TOTAL_DATA_KEY = `${NULL_CHAR}_is_total` as const;
+
 // Key of x-axis values
 export const X_AXIS_DATA_KEY = `${NULL_CHAR}_x` as const;
+
+// Key for the "other" series created by the `graph.max_categories` setting
+export const OTHER_DATA_KEY = `${NULL_CHAR}_other` as const;
 
 // In some cases a datum in `chartModel.transformedDataset` may include this
 // key, its value is equal to the index of that same datum in the original

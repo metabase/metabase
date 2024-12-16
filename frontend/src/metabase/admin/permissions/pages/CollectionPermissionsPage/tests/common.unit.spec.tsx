@@ -104,7 +104,6 @@ describe("Admin > CollectionPermissionsPage", () => {
             3: "read",
           },
         },
-        skip_graph: true,
       });
     });
 
@@ -161,7 +160,6 @@ describe("Admin > CollectionPermissionsPage", () => {
             3: "write",
           },
         },
-        skip_graph: true,
       });
     });
 

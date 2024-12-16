@@ -1,3 +1,6 @@
+import { pickEntity } from "./e2e-collection-helpers";
+import { focusNativeEditor } from "./e2e-native-editor-helpers";
+
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.
 export function typeAndBlurUsingLabel(label, value) {
@@ -40,17 +43,6 @@ export function openNativeEditor({
   cy.findAllByTestId("loading-indicator").should("not.exist");
 
   return focusNativeEditor().as(alias);
-}
-
-export function focusNativeEditor() {
-  cy.findByTestId("native-query-editor")
-    .should("be.visible")
-    .should("have.class", "ace_editor")
-    .click();
-
-  return cy
-    .findByTestId("native-query-editor")
-    .should("have.class", "ace_focus");
 }
 
 /**
@@ -307,30 +299,67 @@ export function interceptIfNotPreviouslyDefined({ method, url, alias } = {}) {
   }
 }
 
+/**
+ *
+ * @param {string=} name
+ * @param {Object=} options
+ * @param {boolean=} [options.addToDashboard]
+ * @param {boolean=} [options.wrapId]
+ * @param {string=} [options.idAlias]
+ */
 export function saveQuestion(
   name,
-  { wrapId = false, idAlias = "questionId" } = {},
+  { addToDashboard = false, wrapId = false, idAlias = "questionId" } = {},
+  pickEntityOptions,
 ) {
   cy.intercept("POST", "/api/card").as("saveQuestion");
   cy.findByTestId("qb-header").button("Save").click();
 
-  cy.findByTestId("save-question-modal").within(modal => {
+  cy.findByTestId("save-question-modal").within(() => {
     if (name) {
       cy.findByLabelText("Name").clear().type(name);
     }
-    cy.findByText("Save").click();
+
+    if (pickEntityOptions) {
+      cy.findByLabelText(/Where do you want to save this/).click();
+    }
   });
+
+  if (pickEntityOptions) {
+    pickEntity({ ...pickEntityOptions, select: true });
+  }
+
+  cy.findByTestId("save-question-modal").button("Save").click();
 
   cy.wait("@saveQuestion").then(({ response: { body } }) => {
     if (wrapId) {
       cy.wrap(body.id).as(idAlias);
     }
-  });
 
-  cy.get("#QuestionSavedModal").within(() => {
-    cy.findByText(/add this to a dashboard/i);
-    cy.findByText("Not now").click();
+    // if this question is saved to a dashboard
+    // we don't need to worry about the add to dash modal
+    const wasSavedToCollection = !body.dashboard_id;
+
+    if (wasSavedToCollection) {
+      cy.get("#QuestionSavedModal").within(() => {
+        cy.findByText(/add this to a dashboard/i).should("be.visible");
+
+        if (addToDashboard) {
+          cy.button("Yes please!").click();
+        } else {
+          cy.button("Not now").click();
+        }
+      });
+    }
   });
+}
+
+export function saveQuestionToCollection(
+  name,
+  pickEntityOptions = { tab: "Browse", path: ["Our analytics"] },
+  reqInfo,
+) {
+  saveQuestion(name, reqInfo, pickEntityOptions);
 }
 
 export function saveSavedQuestion() {
@@ -343,22 +372,47 @@ export function saveSavedQuestion() {
   cy.wait("@updateQuestion");
 }
 
-export function visitPublicQuestion(id) {
+/**
+ *
+ * @param {number} id
+ * @param {object} options
+ * @param {Record<string, string>} options.params
+ * @param {Record<string, string>} options.hash
+ */
+export function visitPublicQuestion(id, { params = {}, hash = {} } = {}) {
+  const searchParams = new URLSearchParams(params).toString();
+  const searchSection = searchParams ? `?${searchParams}` : "";
+  const hashParams = new URLSearchParams(hash).toString();
+  const hashSection = hashParams ? `#${hashParams}` : "";
+
   cy.request("POST", `/api/card/${id}/public_link`).then(
     ({ body: { uuid } }) => {
       cy.signOut();
-      cy.visit(`/public/question/${uuid}`);
+      cy.visit({
+        url: `/public/question/${uuid}` + searchSection + hashSection,
+      });
     },
   );
 }
 
-export function visitPublicDashboard(id, { params = {} } = {}) {
+/**
+ *
+ * @param {number} id
+ * @param {object} options
+ * @param {Record<string, string>} options.params
+ * @param {Record<string, string>} options.hash
+ */
+export function visitPublicDashboard(id, { params = {}, hash = {} } = {}) {
+  const searchParams = new URLSearchParams(params).toString();
+  const searchSection = searchParams ? `?${searchParams}` : "";
+  const hashParams = new URLSearchParams(hash).toString();
+  const hashSection = hashParams ? `#${hashParams}` : "";
+
   cy.request("POST", `/api/dashboard/${id}/public_link`).then(
     ({ body: { uuid } }) => {
       cy.signOut();
       cy.visit({
-        url: `/public/dashboard/${uuid}`,
-        qs: params,
+        url: `/public/dashboard/${uuid}` + searchSection + hashSection,
       });
     },
   );

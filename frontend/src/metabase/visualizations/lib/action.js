@@ -4,7 +4,10 @@ import _ from "underscore";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions";
 import { open } from "metabase/lib/dom";
 
-export function performAction(action, { dispatch, onChangeCardAndRun }) {
+export function performAction(
+  action,
+  { dispatch, onChangeCardAndRun, onUpdateQuestion },
+) {
   let didPerform = false;
   if (action.action) {
     const reduxAction = action.action();
@@ -28,14 +31,22 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
     }
   }
   if (action.question) {
+    const { questionChangeBehavior = "changeCardAndRun" } = action;
+
     const question = action.question();
     const extra = action?.extra?.() ?? {};
+
     if (question) {
-      onChangeCardAndRun({
-        nextCard: question.card(),
-        ...extra,
-        objectId: extra.objectId,
-      });
+      if (questionChangeBehavior === "changeCardAndRun") {
+        onChangeCardAndRun({
+          nextCard: question.card(),
+          ...extra,
+          objectId: extra.objectId,
+        });
+      } else if (questionChangeBehavior === "updateQuestion") {
+        onUpdateQuestion(question);
+      }
+
       didPerform = true;
     }
   }

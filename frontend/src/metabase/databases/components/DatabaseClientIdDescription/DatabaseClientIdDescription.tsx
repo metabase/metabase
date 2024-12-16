@@ -25,7 +25,7 @@ const DatabaseClientIdDescription = (): JSX.Element | null => {
   return (
     <span>
       {jt`${(
-        <ExternalLink className={CS.link} href={projectUrl.href}>
+        <ExternalLink key="link" className={CS.link} href={projectUrl.href}>
           {t`Click here`}
         </ExternalLink>
       )} to generate a Client ID and Client Secret for your project.`}{" "}

@@ -190,8 +190,8 @@
         "graph.show_trendline": true,
         "graph.dimensions": ["CREATED_AT"],
         "graph.metrics": ["sum", "sum_2"],
-        "metabase.shared.models.visualization-settings/column-settings": {},
-        "metabase.shared.models.visualization-settings/global-column-settings": {}
+        "metabase.models.visualization-settings/column-settings": {},
+        "metabase.models.visualization-settings/global-column-settings": {}
       },
       "results_timezone": "America/Los_Angeles",
       "results_metadata": {

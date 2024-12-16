@@ -60,6 +60,10 @@ export function chartPathWithFillColor(color) {
   return echartsContainer().find(`path[fill="${color}"]`);
 }
 
+export function sankeyEdge(color) {
+  return echartsContainer().find(`path[fill="${color}"][fill-opacity="0.2"]`);
+}
+
 export function chartPathsWithFillColors(colors) {
   return colors.map(color => chartPathWithFillColor(color));
 }
@@ -79,6 +83,10 @@ export function cartesianChartCircleWithColor(color) {
 
 export function cartesianChartCircleWithColors(colors) {
   return colors.map(color => cartesianChartCircleWithColor(color));
+}
+
+export function otherSeriesChartPaths() {
+  return chartPathWithFillColor("#949AAB");
 }
 
 export function scatterBubbleWithColor(color) {
@@ -181,6 +189,7 @@ function assertTooltipFooter({ name, value, secondaryValue }) {
 }
 
 export function assertEChartsTooltip({ header, rows, footer, blurAfter }) {
+  echartsTooltip().should("be.visible");
   echartsTooltip().within(() => {
     if (header != null) {
       tooltipHeader().should("have.text", header);
@@ -201,4 +210,12 @@ export function assertEChartsTooltip({ header, rows, footer, blurAfter }) {
   if (blurAfter) {
     echartsTriggerBlur();
   }
+}
+
+export function assertEChartsTooltipNotContain(rows) {
+  echartsTooltip().within(() => {
+    rows.forEach(row => {
+      cy.findByText(row).should("not.exist");
+    });
+  });
 }

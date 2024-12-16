@@ -105,6 +105,7 @@ const getCheckboxes = () => {
     "checkbox",
   ) as HTMLInputElement[];
 };
+
 describe("TypeFilterContent", () => {
   it("should display `Type` and all type labels in order", async () => {
     await setup();

@@ -11,7 +11,7 @@ API endpoints for Search.
 ## `GET /api/search/`
 
 Search for items in Metabase.
-  For the list of supported models, check [[metabase.search/all-models]].
+  For the list of supported models, check [[metabase.search.config/all-models]].
 
   Filters:
   - `archived`: set to true to search archived items only, default is false
@@ -34,7 +34,7 @@ Search for items in Metabase.
 
 ### PARAMS:
 
--  **`filter_items_in_personal_collection`** nullable enum of only, exclude.
+-  **`filter_items_in_personal_collection`** nullable enum of all, only, only-mine, exclude, exclude-others.
 
 -  **`table_db_id`** nullable value must be an integer greater than zero.
 
@@ -54,37 +54,37 @@ Search for items in Metabase.
 
 -  **`models`** nullable vector of enum of dashboard, table, dataset, segment, collection, database, action, indexed-entity, metric, card.
 
+-  **`search_engine`** nullable string.
+
 -  **`last_edited_by`** nullable vector of value must be an integer greater than zero.
 
 -  **`last_edited_at`** nullable value must be a non-blank string.
 
+-  **`calculate_available_models`** nullable true.
+
+-  **`context`** nullable keyword.
+
 -  **`model_ancestors`** nullable boolean.
 
-## `GET /api/search/models`
+## `GET /api/search/weights`
 
-Get the set of models that a search query will return.
+Return the current weights being used to rank the search results.
 
 ### PARAMS:
 
--  **`filter_items_in_personal_collection`** 
+-  **`overrides`**
 
--  **`created_by`** nullable vector of value must be an integer greater than zero.
+## `POST /api/search/force-reindex`
 
--  **`verified`** nullable true.
+This will trigger an immediate reindexing, if we are using search index.
 
--  **`created_at`** nullable value must be a non-blank string.
+You must be a superuser to do this.
 
--  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
+## `POST /api/search/re-init`
 
--  **`q`** 
+This will blow away any search indexes, re-create, and re-populate them.
 
--  **`search_native_query`** nullable true.
-
--  **`last_edited_by`** nullable vector of value must be an integer greater than zero.
-
--  **`last_edited_at`** nullable value must be an integer greater than zero.
-
--  **`table-db-id`** nullable value must be an integer greater than zero.
+You must be a superuser to do this.
 
 ---
 

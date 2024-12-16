@@ -1,24 +1,25 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { color } from "metabase/lib/colors";
 import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
 } from "metabase/visualizations";
+import { ChartSettingMaxCategories } from "metabase/visualizations/components/settings/ChartSettingMaxCategories";
 import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import {
-  keyForSingleSeries,
-  seriesSetting,
-} from "metabase/visualizations/lib/settings/series";
+import { seriesSetting } from "metabase/visualizations/lib/settings/series";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import { MAX_SERIES, columnsAreValid } from "metabase/visualizations/lib/utils";
 import {
   STACKABLE_SERIES_DISPLAY_TYPES,
   getAreDimensionsAndMetricsValid,
+  getAvailableAdditionalColumns,
   getAvailableXAxisScales,
+  getComputedAdditionalColumnsValue,
   getDefaultColumns,
   getDefaultDataLabelsFormatting,
   getDefaultDataLabelsFrequency,
@@ -37,6 +38,7 @@ import {
   getDefaultYAxisTitle,
   getIsXAxisLabelEnabledDefault,
   getIsYAxisLabelEnabledDefault,
+  getSeriesModelsForSettings,
   getSeriesOrderDimensionSetting,
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
@@ -46,6 +48,7 @@ import {
   isXAxisScaleValid,
   isYAxisUnpinFromZeroValid,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 export const getSeriesDisplays = (transformedSeries, settings) => {
@@ -81,8 +84,15 @@ export const GRAPH_DATA_SETTINGS = {
       series.length <= MAX_SERIES
         ? "0.5rem"
         : "1rem",
-    isValid: (series, vizSettings) =>
-      getAreDimensionsAndMetricsValid(series, vizSettings),
+    isValid: (series, vizSettings) => {
+      const dimensions = vizSettings["graph.dimensions"] ?? [];
+      if (dimensions.length === 0) {
+        const defaultDimensions = getDefaultDimensions(series, vizSettings);
+        return defaultDimensions.length === 0;
+      } else {
+        return getAreDimensionsAndMetricsValid(series, vizSettings);
+      }
+    },
     getDefault: (series, vizSettings) =>
       getDefaultDimensions(series, vizSettings),
     persistDefault: true,
@@ -104,9 +114,7 @@ export const GRAPH_DATA_SETTINGS = {
             ? t`Add series breakout`
             : null,
         columns: data.cols,
-        // When this prop is passed it will only show the
-        // column settings for any index that is included in the array
-        showColumnSettingForIndicies: [0],
+        fieldSettingWidgets: [],
       };
     },
     writeDependencies: ["graph.metrics"],
@@ -124,26 +132,60 @@ export const GRAPH_DATA_SETTINGS = {
     section: t`Data`,
     widget: ChartSettingSeriesOrder,
     marginBottom: "1rem",
-
-    getValue: (series, settings) => {
-      const seriesKeys = series.map(s => keyForSingleSeries(s));
+    useRawSeries: true,
+    getValue: (rawSeries, settings) => {
+      const seriesModels = getSeriesModelsForSettings(rawSeries, settings);
+      const seriesKeys = seriesModels.map(s => s.vizSettingsKey);
       return getSeriesOrderVisibilitySettings(settings, seriesKeys);
     },
-    getHidden: (series, settings) => {
+    getProps: (rawSeries, settings, _onChange, _extra, onChangeSettings) => {
+      const groupedAfterIndex =
+        settings["graph.max_categories_enabled"] &&
+        settings["graph.max_categories"] !== 0
+          ? settings["graph.max_categories"]
+          : Infinity;
+      const onOtherColorChange = color =>
+        onChangeSettings({ "graph.other_category_color": color });
+      return {
+        rawSeries,
+        settings,
+        groupedAfterIndex,
+        otherColor: settings["graph.other_category_color"],
+        otherSettingWidgetId: "graph.max_categories",
+        onOtherColorChange,
+        truncateAfter: 10,
+      };
+    },
+    getHidden: (_series, settings, extra) => {
+      const seriesCount = extra.transformedSeries?.length ?? 0;
       return (
-        settings["graph.dimensions"]?.length < 2 || series.length > MAX_SERIES
+        settings["graph.dimensions"]?.length < 2 || seriesCount > MAX_SERIES
       );
     },
     dashboard: false,
-    readDependencies: ["series_settings.colors", "series_settings"],
+    readDependencies: [
+      "series_settings.colors",
+      "series_settings",
+      "graph.metrics",
+      "graph.dimensions",
+      "graph.max_categories",
+      "graph.other_category_color",
+    ],
     writeDependencies: ["graph.series_order_dimension"],
   },
   "graph.metrics": {
     section: t`Data`,
     title: t`Y-axis`,
     widget: "fields",
-    isValid: (series, vizSettings) =>
-      getAreDimensionsAndMetricsValid(series, vizSettings),
+    isValid: (series, vizSettings) => {
+      const metrics = vizSettings["graph.metrics"] ?? [];
+      if (metrics.length === 0) {
+        const defaultMetrics = getDefaultMetrics(series, vizSettings);
+        return defaultMetrics.length === 0;
+      } else {
+        return getAreDimensionsAndMetricsValid(series, vizSettings);
+      }
+    },
     getDefault: (series, vizSettings) => getDefaultMetrics(series, vizSettings),
     persistDefault: true,
     getProps: ([{ card, data }], vizSettings, _onChange, extra) => {
@@ -263,12 +305,44 @@ export const LEGEND_SETTINGS = {
 export const TOOLTIP_SETTINGS = {
   "graph.tooltip_type": {
     getDefault: ([{ card }]) => {
-      const shouldShowComparisonTooltip = !["waterfall", "scatter"].includes(
+      const shouldShowComparisonTooltip = !["scatter", "waterfall"].includes(
         card.display,
       );
       return shouldShowComparisonTooltip ? "series_comparison" : "default";
     },
     hidden: true,
+  },
+  "graph.tooltip_columns": {
+    section: t`Display`,
+
+    title: t`Additional tooltip metrics`,
+    placeholder: t`Enter metric names`,
+    widget: "multiselect",
+    useRawSeries: true,
+    getValue: getComputedAdditionalColumnsValue,
+    getHidden: (rawSeries, vizSettings) => {
+      const isAggregatedChart = rawSeries[0].card.display !== "scatter";
+      return (
+        getAvailableAdditionalColumns(rawSeries, vizSettings, isAggregatedChart)
+          .length === 0
+      );
+    },
+    getProps: (rawSeries, vizSettings) => {
+      const isAggregatedChart = rawSeries[0].card.display !== "scatter";
+      const options = getAvailableAdditionalColumns(
+        rawSeries,
+        vizSettings,
+        isAggregatedChart,
+      ).map(col => ({
+        label: col.display_name,
+        value: getColumnKey(col),
+      }));
+
+      return {
+        options,
+      };
+    },
+    readDependencies: ["graph.metrics", "graph.dimensions"],
   },
 };
 
@@ -377,6 +451,43 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
       ],
     },
     default: getDefaultDataLabelsFormatting(),
+  },
+  "graph.max_categories_enabled": {
+    hidden: true,
+    // temporarily hiding the setting (metabase#50510)
+    default: false,
+    isValid: () => false,
+    readDependencies: ["series_settings"],
+  },
+  "graph.max_categories": {
+    widget: ChartSettingMaxCategories,
+    hidden: true,
+    // temporarily hiding the setting (metabase#50510)
+    default: Number.MAX_SAFE_INTEGER,
+    isValid: () => false,
+    getProps: ([{ card }], settings) => {
+      return {
+        isEnabled: settings["graph.max_categories_enabled"],
+        aggregationFunction: settings["graph.other_category_aggregation_fn"],
+      };
+    },
+    readDependencies: [
+      "graph.max_categories_enabled",
+      "graph.other_category_aggregation_fn",
+      "series_settings",
+    ],
+  },
+  "graph.other_category_color": {
+    default: color("text-light"),
+  },
+  "graph.other_category_aggregation_fn": {
+    hidden: true,
+    getDefault: ([{ data }], settings) => {
+      const [metricName] = settings["graph.metrics"];
+      const metric = data.cols.find(col => col.name === metricName);
+      return metric?.aggregation_type ?? "sum";
+    },
+    readDependencies: ["graph.metrics"],
   },
 };
 

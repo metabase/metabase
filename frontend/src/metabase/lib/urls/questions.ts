@@ -15,7 +15,7 @@ type Card = Partial<SavedCard> & {
 };
 
 export type QuestionUrlBuilderParams = {
-  mode?: "view" | "notebook";
+  mode?: "view" | "notebook" | "query";
   hash?: Card | string;
   query?: Record<string, unknown> | string;
   objectId?: number | string;
@@ -23,7 +23,16 @@ export type QuestionUrlBuilderParams = {
 
 export function question(
   card: Partial<
-    Pick<Card, "id" | "name" | "type" | "card_id" | "model">
+    Pick<
+      Card,
+      | "id"
+      | "name"
+      | "type"
+      | "card_id"
+      | "model"
+      | "collection_id"
+      | "dashboard_id"
+    >
   > | null,
   {
     mode = "view",
@@ -78,6 +87,12 @@ export function question(
 
   if (mode === "notebook") {
     path = `${path}/notebook`;
+  } else if (mode === "query") {
+    if (card.type === "model" || card.type === "metric") {
+      path = `${path}/query`;
+    } else {
+      path = `${path}/notebook`;
+    }
   } else if (objectId) {
     path = `${path}/${objectId}`;
   }
@@ -100,7 +115,7 @@ export function newQuestion({
   creationType,
   objectId,
   ...options
-}: NewQuestionUrlBuilderParams = {}) {
+}: NewQuestionUrlBuilderParams) {
   const question = Question.create(options);
   const url = ML_Urls.getUrl(question, {
     creationType,

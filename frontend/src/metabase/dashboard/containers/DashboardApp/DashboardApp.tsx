@@ -9,17 +9,17 @@ import { useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import CS from "metabase/css/core/index.css";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
+import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
 import {
   useDashboardUrlParams,
   useDashboardUrlQuery,
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
-import favicon from "metabase/hoc/Favicon";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
+import { useFavicon } from "metabase/hooks/use-favicon";
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
@@ -109,6 +109,8 @@ type ReduxProps = ConnectedProps<typeof connector>;
 type DashboardAppProps = OwnProps & ReduxProps & WithRouterProps;
 
 const DashboardApp = (props: DashboardAppProps) => {
+  useFavicon({ favicon: props.pageFavicon });
+
   const {
     dashboard,
     isRunning,
@@ -121,7 +123,6 @@ const DashboardApp = (props: DashboardAppProps) => {
 
   const {
     documentTitle: _documentTitle,
-    pageFavicon: _pageFavicon,
     isRunning: _isRunning,
     isLoadingComplete: _isLoadingComplete,
     children,
@@ -215,7 +216,11 @@ const DashboardApp = (props: DashboardAppProps) => {
 
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
-      <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
+      <DashboardLeaveConfirmationModal
+        route={route}
+        isDirty={isDirty}
+        isEditing={isEditing}
+      />
       <Dashboard
         dashboardId={dashboardId}
         editingOnLoad={editingOnLoad}
@@ -247,7 +252,6 @@ function getDashboardId({ dashboardId, params }: DashboardAppProps) {
 
 export const DashboardAppConnected = _.compose(
   connector,
-  favicon(({ pageFavicon }: Pick<ReduxProps, "pageFavicon">) => pageFavicon),
   title(
     ({
       dashboard,

@@ -1,14 +1,14 @@
 import * as Lib from "metabase-lib";
 
 import {
-  type DatePickerExtractionUnit,
   type DatePickerOperator,
+  type DatePickerUnit,
   type DatePickerValue,
   type ExcludeDatePickerValue,
   type RelativeDatePickerValue,
   type SpecificDatePickerValue,
-  isDatePickerExtractionUnit,
   isDatePickerOperator,
+  isDatePickerUnit,
 } from "../../components/DatePicker";
 
 export function getPickerValue(
@@ -61,9 +61,9 @@ function getRelativeDateValue(
 
   return {
     type: "relative",
-    unit: filterParts.bucket,
+    unit: filterParts.unit,
     value: filterParts.value,
-    offsetUnit: filterParts.offsetBucket ?? undefined,
+    offsetUnit: filterParts.offsetUnit ?? undefined,
     offsetValue: filterParts.offsetValue ?? undefined,
     options: filterParts.options,
   };
@@ -86,7 +86,7 @@ function getExcludeDateValue(
   return {
     type: "exclude",
     operator: filterParts.operator,
-    unit: filterParts.bucket ?? undefined,
+    unit: filterParts.unit ?? undefined,
     values: filterParts.values,
   };
 }
@@ -127,9 +127,9 @@ function getRelativeFilterClause(
 ): Lib.ExpressionClause {
   return Lib.relativeDateFilterClause({
     column,
-    bucket: value.unit,
+    unit: value.unit,
     value: value.value,
-    offsetBucket: value.offsetUnit ?? null,
+    offsetUnit: value.offsetUnit ?? null,
     offsetValue: value.offsetValue ?? null,
     options: value.options ?? {},
   });
@@ -141,9 +141,9 @@ function getExcludeFilterClause(
   column: Lib.ColumnMetadata,
   value: ExcludeDatePickerValue,
 ): Lib.ExpressionClause {
-  return Lib.excludeDateFilterClause(query, stageIndex, {
+  return Lib.excludeDateFilterClause({
     operator: value.operator,
-    bucket: value.unit ?? null,
+    unit: value.unit ?? null,
     column,
     values: value.values,
   });
@@ -163,8 +163,8 @@ export function getPickerUnits(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
-): DatePickerExtractionUnit[] {
+): DatePickerUnit[] {
   return Lib.availableTemporalBuckets(query, stageIndex, column)
     .map(operator => Lib.displayInfo(query, stageIndex, operator).shortName)
-    .filter(isDatePickerExtractionUnit);
+    .filter(isDatePickerUnit);
 }

@@ -11,6 +11,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
    [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.search.core :as search]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -81,7 +82,7 @@
           (data-perms/set-new-table-permissions! non-admin-groups table :perms/create-queries :no))
         (do
           ;; Normal tables start out with unrestricted data access in all groups, but query access only in All Users
-          (data-perms/set-new-table-permissions! (conj non-magic-groups all-users-group) table :perms/view-data :unrestricted)
+          (data-perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
           (data-perms/set-new-table-permissions! [all-users-group] table :perms/create-queries :query-builder)
           (data-perms/set-new-table-permissions! non-magic-groups table :perms/create-queries :no)))
       ;; Download permissions
@@ -288,7 +289,7 @@
                :db_id      (serdes/fk :model/Database :name)}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
-  (concat (serdes/storage-table-path-prefix (serdes/path table))
+  (concat (serdes/storage-path-prefixes (serdes/path table))
           [(:name table)]))
 
 ;;; -------------------------------------------------- Audit Log Table -------------------------------------------------
@@ -296,3 +297,29 @@
 (defmethod audit-log/model-details Table
   [table _event-type]
   (select-keys table [:id :name :db_id]))
+
+;;;; ------------------------------------------------- Search ----------------------------------------------------------
+
+(search/define-spec "table"
+  {:model        :model/Table
+   :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
+                  ;; so we moved that to the where clause
+                  :archived      false
+                  :collection-id false
+                  :creator-id    false
+                  :database-id   :db_id
+                  :view-count    true
+                  :created-at    true
+                  :updated-at    true}
+   :search-terms [:name :display_name :description]
+   :render-terms {:initial-sync-status true
+                  :table-id            :id
+                  :table-description   :description
+                  :table-name          :name
+                  :table-schema        :schema
+                  :database-name       :db.name}
+   :where        [:and
+                  :active
+                  [:= :visibility_type nil]
+                  [:not= :db_id [:inline audit/audit-db-id]]]
+   :joins        {:db [:model/Database [:= :db.id :this.db_id]]}})

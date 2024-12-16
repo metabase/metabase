@@ -26,7 +26,11 @@ import {
 } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Icon, type IconName } from "metabase/ui";
-import { type RecentItem, isRecentTableItem } from "metabase-types/api";
+import {
+  type RecentItem,
+  isRecentCollectionItem,
+  isRecentTableItem,
+} from "metabase-types/api";
 
 import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
@@ -68,6 +72,7 @@ export const useCommandPalette = ({
     {
       q: debouncedSearchText,
       context: "command-palette",
+      include_dashboard_questions: true,
       limit: 20,
     },
     {
@@ -100,9 +105,6 @@ export const useCommandPalette = ({
         section: "docs",
         keywords: debouncedSearchText, // Always match the debouncedSearchText string
         icon: "document",
-        perform: () => {
-          window.open(link);
-        },
         extra: {
           href: link,
         },
@@ -129,14 +131,11 @@ export const useCommandPalette = ({
     if (!isSearchTypeaheadEnabled) {
       return [
         {
-          id: `search-disabled`,
+          id: `search-without-typeahead`,
           name: t`View search results for "${debouncedSearchText}"`,
           section: "search",
           keywords: debouncedSearchText,
           icon: "link" as const,
-          perform: () => {
-            dispatch(push(searchLocation));
-          },
           priority: Priority.HIGH,
           extra: {
             href: searchLocation,
@@ -173,7 +172,6 @@ export const useCommandPalette = ({
             icon: "link" as IconName,
             perform: () => {
               trackSearchClick("view_more", 0, "command-palette");
-              dispatch(push(searchLocation));
             },
             priority: Priority.HIGH,
             extra: {
@@ -191,12 +189,12 @@ export const useCommandPalette = ({
               icon: icon.name,
               section: "search",
               keywords: debouncedSearchText,
-              priority: Priority.NORMAL,
+              priority: Priority.NORMAL - index,
               perform: () => {
                 trackSearchClick("item", index, "command-palette");
               },
               extra: {
-                isVerified: result.moderated_status === "verified",
+                moderatedStatus: result.moderated_status,
                 href: wrappedResult.getUrl(),
                 iconColor: icon.color,
                 subtext: getSearchResultSubtext(wrappedResult),
@@ -241,8 +239,9 @@ export const useCommandPalette = ({
           section: "recent",
           perform: () => {},
           extra: {
-            isVerified:
-              item.model !== "table" && item.moderated_status === "verified",
+            moderatedStatus: isRecentCollectionItem(item)
+              ? item.moderated_status
+              : null,
             href: Urls.modelToUrl(item),
             iconColor: icon.color,
             subtext: getRecentItemSubtext(item),
@@ -301,6 +300,7 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
   if (wrappedSearchResult.model === "indexed-entity") {
     return jt`a record in ${(
       <Icon
+        key="icon"
         name="model"
         style={{
           verticalAlign: "bottom",
@@ -308,14 +308,28 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
         }}
       />
     )} ${wrappedSearchResult.model_name}`;
+  } else if (wrappedSearchResult.model === "table") {
+    return wrappedSearchResult.table_schema
+      ? `${wrappedSearchResult.database_name} (${wrappedSearchResult.table_schema})`
+      : wrappedSearchResult.database_name;
+  } else if (
+    wrappedSearchResult.model === "card" &&
+    wrappedSearchResult.dashboard
+  ) {
+    return (
+      <>
+        <Icon
+          name="dashboard"
+          style={{
+            verticalAlign: "bottom",
+            marginInline: "0.25rem",
+          }}
+        />
+        {wrappedSearchResult.dashboard.name}
+      </>
+    );
   } else {
-    if (wrappedSearchResult.model === "table") {
-      return wrappedSearchResult.table_schema
-        ? `${wrappedSearchResult.database_name} (${wrappedSearchResult.table_schema})`
-        : wrappedSearchResult.database_name;
-    } else {
-      return wrappedSearchResult.getCollection().name;
-    }
+    return wrappedSearchResult.getCollection().name;
   }
 };
 
@@ -324,9 +338,26 @@ export const getRecentItemSubtext = (item: RecentItem) => {
     return item.table_schema
       ? `${item.database.name} (${item.table_schema})`
       : item.database.name;
+  } else if (item.dashboard) {
+    return (
+      <>
+        <Icon name="dashboard" size={12} style={{ marginInline: "0.25rem" }} />
+        {item.dashboard.name}
+      </>
+    );
   } else if (item.parent_collection.id === null) {
-    return ROOT_COLLECTION.name;
+    return (
+      <>
+        <Icon name="collection" size={12} style={{ marginInline: "0.25rem" }} />
+        {ROOT_COLLECTION.name}
+      </>
+    );
   } else {
-    return item.parent_collection.name;
+    return (
+      <>
+        <Icon name="collection" size={12} style={{ marginInline: "0.25rem" }} />
+        {item.parent_collection.name}
+      </>
+    );
   }
 };

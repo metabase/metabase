@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.order-by-test
+(ns ^:mb/driver-tests metabase.query-processor-test.order-by-test
   "Tests for the `:order-by` clause."
   (:require
    [clojure.test :refer :all]

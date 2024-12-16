@@ -198,6 +198,7 @@ function Dashboard(props: DashboardProps) {
     toggleSidebar,
     parameterQueryParams,
     downloadsEnabled = true,
+    noLoaderWrapper = false,
   } = props;
 
   const dispatch = useDispatch();
@@ -268,15 +269,20 @@ function Dashboard(props: DashboardProps) {
 
       try {
         const dashboard = result.payload.dashboard;
+
         if (editingOnLoad) {
           onRefreshPeriodChange(null);
           setEditingDashboard(dashboard);
         }
         if (addCardOnLoad != null) {
+          const searchParams = new URLSearchParams(window.location.search);
+          const tabParam = searchParams.get("tab");
+          const tabId = tabParam ? parseInt(tabParam, 10) : null;
+
           addCardToDashboard({
             dashId: dashboardId,
             cardId: addCardOnLoad,
-            tabId: dashboard.tabs?.[0]?.id ?? null,
+            tabId,
           });
         }
       } catch (error) {
@@ -396,6 +402,7 @@ function Dashboard(props: DashboardProps) {
       isNightMode={shouldRenderAsNightMode}
       loading={!dashboard}
       error={error}
+      noWrapper={noLoaderWrapper}
     >
       {() => {
         if (!dashboard) {
@@ -408,7 +415,7 @@ function Dashboard(props: DashboardProps) {
               <ArchivedEntityBanner
                 name={dashboard.name}
                 entityType="dashboard"
-                canWrite={canWrite}
+                canMove={canWrite}
                 canRestore={canRestore}
                 canDelete={canDelete}
                 onUnarchive={async () => {

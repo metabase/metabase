@@ -9,10 +9,7 @@ import type {
   WaterfallXAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { ShowWarning } from "metabase/visualizations/echarts/types";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { RawSeries, RowValue } from "metabase-types/api";
 
 import { getXAxisModel } from "../../model/axis";
@@ -33,7 +30,6 @@ export const getWaterfallXAxisModel = (
   rawSeries: RawSeries,
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): WaterfallXAxisModel => {
   const xAxisModel = getXAxisModel(
@@ -41,7 +37,6 @@ export const getWaterfallXAxisModel = (
     rawSeries,
     dataset,
     settings,
-    renderingContext,
     showWarning,
   );
 

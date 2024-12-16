@@ -23,10 +23,14 @@ const MoveTimelineModal = ({
   onClose,
 }: MoveTimelineModalProps): JSX.Element => {
   const handleSubmit = useCallback(
-    async ({ id: collectionId }: CollectionPickerValueItem) => {
-      await onSubmit(timeline, collectionId);
-      onSubmitSuccess?.();
-      onClose?.();
+    async (item: CollectionPickerValueItem) => {
+      if (item.model === "collection") {
+        await onSubmit(timeline, item.id);
+        onSubmitSuccess?.();
+        onClose?.();
+      } else {
+        throw new Error("Timelines can only be moved to a collection");
+      }
     },
     [timeline, onSubmit, onSubmitSuccess, onClose],
   );

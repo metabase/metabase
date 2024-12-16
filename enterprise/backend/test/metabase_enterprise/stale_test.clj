@@ -22,7 +22,7 @@
                                              :collection_id nil})]
     (is (= [{:id id :model :model/Dashboard}]
            (:rows
-            (stale/find-stale-candidates*
+            (stale/find-candidates
              {:collection-ids #{nil}
               :cutoff-date    (date-months-ago 6)
               :limit          10
@@ -35,7 +35,7 @@
                                            :collection_id nil}]
     (is (= [{:id id :model :model/Card}]
            (:rows
-            (stale/find-stale-candidates*
+            (stale/find-candidates
              {:collection-ids #{nil}
               :cutoff-date    (date-months-ago 6)
               :limit          10
@@ -56,7 +56,7 @@
                 {:id id2 :model :model/Dashboard}
                 {:id id1 :model :model/Dashboard}]
                (:rows
-                (stale/find-stale-candidates*
+                (stale/find-candidates
                  {:collection-ids #{nil}
                   :cutoff-date    (date-months-ago 6)
                   :limit          10
@@ -68,7 +68,7 @@
                 {:id id2 :model :model/Dashboard}
                 {:id id3 :model :model/Dashboard}]
                (:rows
-                (stale/find-stale-candidates*
+                (stale/find-candidates
                  {:collection-ids #{nil}
                   :cutoff-date    (date-months-ago 6)
                   :limit          10
@@ -81,7 +81,7 @@
                 {:id id2 :model :model/Dashboard}
                 {:id id1 :model :model/Dashboard}]
                (:rows
-                (stale/find-stale-candidates*
+                (stale/find-candidates
                  {:collection-ids #{nil}
                   :cutoff-date    (date-months-ago 6)
                   :limit          10
@@ -93,7 +93,7 @@
                 {:id id2 :model :model/Dashboard}
                 {:id id3 :model :model/Dashboard}]
                (:rows
-                (stale/find-stale-candidates*
+                (stale/find-candidates
                  {:collection-ids #{nil}
                   :cutoff-date    (date-months-ago 6)
                   :limit          10
@@ -107,7 +107,7 @@
     (testing "limits"
       (is (= [{:id id1 :model :model/Dashboard}]
              (:rows
-              (stale/find-stale-candidates*
+              (stale/find-candidates
                {:collection-ids #{nil}
                 :cutoff-date    (date-months-ago 6)
                 :limit          1
@@ -117,7 +117,7 @@
     (testing "offsets"
       (is (= [{:id id2 :model :model/Dashboard}]
              (:rows
-              (stale/find-stale-candidates*
+              (stale/find-candidates
                {:collection-ids #{nil}
                 :cutoff-date    (date-months-ago 6)
                 :limit          1
@@ -126,7 +126,7 @@
                 :sort-direction :asc})))))
     (testing "total"
       (is (= 2 (:total
-                (stale/find-stale-candidates*
+                (stale/find-candidates
                  {:collection-ids #{nil}
                   :cutoff-date    (date-months-ago 6)
                   :limit          1
@@ -143,7 +143,7 @@
                                                                :name "B"})]
     (is (= []
            (:rows
-            (stale/find-stale-candidates*
+            (stale/find-candidates
              {:collection-ids #{nil}
               :cutoff-date    (date-months-ago 6)
               :limit          10
@@ -153,7 +153,7 @@
         "should not include dashboards from the collection")
     (is (= {:rows [{:model :model/Dashboard :id id-1}]
             :total 1}
-           (stale/find-stale-candidates*
+           (stale/find-candidates
             {:collection-ids #{col-id-1}
              :cutoff-date    (date-months-ago 6)
              :limit          10
@@ -162,7 +162,7 @@
              :sort-direction :asc})))
     (is (= {:rows [{:model :model/Dashboard :id id-2}]
             :total 1}
-           (stale/find-stale-candidates*
+           (stale/find-candidates
             {:collection-ids #{col-id-2}
              :cutoff-date    (date-months-ago 6)
              :limit          10
@@ -172,7 +172,7 @@
     (is (= {:rows [{:model :model/Dashboard :id id-1}
                    {:model :model/Dashboard :id id-2}]
             :total 2}
-           (stale/find-stale-candidates*
+           (stale/find-candidates
             {:collection-ids #{col-id-1 col-id-2}
              :cutoff-date    (date-months-ago 6)
              :limit          10
@@ -196,7 +196,7 @@
       (are [expected cutoff-date]
            (= expected
               (:total
-               (stale/find-stale-candidates*
+               (stale/find-candidates
                 {:collection-ids #{col-id}
                  :cutoff-date    (LocalDate/parse cutoff-date)
                  :limit          10
@@ -235,7 +235,7 @@
                                        :status              "verified"})
     (is (= {:rows  [{:id id1 :model :model/Card}]
             :total 1}
-           (stale/find-stale-candidates*
+           (stale/find-candidates
             {:collection-ids #{col-id}
              :cutoff-date    (date-months-ago 6)
              :limit          10
@@ -243,6 +243,21 @@
              :sort-column    :name
              :sort-direction :asc}))
         "should not include verified dashboards or cards")))
+
+(deftest cards-in-non-standard-collection-types-are-excluded
+  (mt/with-temp [:model/Collection {col-id :id} {:type "instance-analytics"}
+                 :model/Card _ (stale-card {:name "A" :collection_id col-id})
+                 :model/Dashboard _ (stale-dashboard {:name "Dash" :collection_id col-id})]
+    (is (= {:rows  []
+            :total 0}
+           (stale/find-candidates
+            {:collection-ids #{col-id}
+             :cutoff-date    (date-months-ago 6)
+             :limit          10
+             :offset         0
+             :sort-column    :name
+             :sort-direction :asc}))
+        "should not include cards or dashboard in non-standard collections")))
 
 (deftest public-and-embedded-content-is-excluded
   (mt/with-temp [:model/Collection {col-id :id} {}
@@ -278,7 +293,7 @@
                         {:id card-id3 :model :model/Card}
                         {:id dash-id3 :model :model/Dashboard}]
                 :total 6}
-               (stale/find-stale-candidates*
+               (stale/find-candidates
                 {:collection-ids #{col-id}
                  :cutoff-date    (date-months-ago 6)
                  :limit          10
@@ -291,7 +306,7 @@
         (is (= {:rows [{:id card-id3 :model :model/Card}
                        {:id dash-id3 :model :model/Dashboard}]
                 :total 2}
-               (stale/find-stale-candidates*
+               (stale/find-candidates
                 {:collection-ids #{col-id}
                  :cutoff-date    (date-months-ago 6)
                  :limit          10
@@ -314,7 +329,7 @@
                                      :position 0}]
     (is (= {:rows  [{:model :model/Card :id card-2-id}]
             :total 1}
-           (stale/find-stale-candidates*
+           (stale/find-candidates
             {:collection-ids #{col-id}
              :cutoff-date    (date-months-ago 6)
              :limit          10
@@ -334,7 +349,7 @@
                                  :dashboard_id dash-id}]
     (is (= {:rows []
             :total 0}
-           (stale/find-stale-candidates*
+           (stale/find-candidates
             {:collection-ids #{col-id}
              :cutoff-date    (date-months-ago 6)
              :limit          10
@@ -351,7 +366,7 @@
       (t2/update! :model/Card :id gtap-card-id {:last_used_at (datetime-months-ago 7)})
       (is (= {:rows []
               :total 0}
-             (stale/find-stale-candidates*
+             (stale/find-candidates
               {:collection-ids #{nil}
                :cutoff-date    (date-months-ago 6)
                :limit          10
@@ -361,7 +376,7 @@
       (t2/delete! :model/GroupTableAccessPolicy :card_id gtap-card-id)
       (is (= {:rows [{:model :model/Card :id gtap-card-id}]
               :total 1}
-             (stale/find-stale-candidates*
+             (stale/find-candidates
               {:collection-ids #{nil}
                :cutoff-date    (date-months-ago 6)
                :limit          10
@@ -379,7 +394,7 @@
                                             :archived       true})]
     (is (= {:rows []
             :total 0}
-           (stale/find-stale-candidates*
+           (stale/find-candidates
             {:collection-ids #{col-id}
              :cutoff-date    (date-months-ago 6)
              :limit          10

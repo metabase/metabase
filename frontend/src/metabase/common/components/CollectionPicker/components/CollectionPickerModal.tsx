@@ -1,16 +1,18 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
-import type { RecentItem, SearchModel, SearchResult } from "metabase-types/api";
+import type { RecentItem, SearchResult } from "metabase-types/api";
 
-import type { EntityTab } from "../../EntityPicker";
+import type { EntityPickerTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type {
   CollectionPickerItem,
+  CollectionPickerModel,
   CollectionPickerOptions,
+  CollectionPickerStatePath,
   CollectionPickerValueItem,
 } from "../types";
 
@@ -22,16 +24,21 @@ export interface CollectionPickerModalProps {
   onChange: (item: CollectionPickerValueItem) => void;
   onClose: () => void;
   options?: CollectionPickerOptions;
-  value: Pick<CollectionPickerValueItem, "id" | "model">;
+  value: Pick<CollectionPickerValueItem, "id" | "model" | "collection_id">;
   shouldDisableItem?: (item: CollectionPickerItem) => boolean;
   searchResultFilter?: (searchResults: SearchResult[]) => SearchResult[];
   recentFilter?: (recentItems: RecentItem[]) => RecentItem[];
+  models?: CollectionPickerModel[];
 }
 
 const canSelectItem = (
   item: Pick<CollectionPickerItem, "can_write" | "model"> | null,
 ): item is CollectionPickerValueItem => {
-  return !!item && item.can_write !== false && item.model === "collection";
+  return (
+    !!item &&
+    item.can_write !== false &&
+    (item.model === "collection" || item.model === "dashboard")
+  );
 };
 
 const searchFilter = (searchResults: SearchResult[]): SearchResult[] => {
@@ -49,6 +56,7 @@ export const CollectionPickerModal = ({
   shouldDisableItem,
   searchResultFilter,
   recentFilter,
+  models = ["collection"],
 }: CollectionPickerModalProps) => {
   options = { ...defaultOptions, ...options };
   const [selectedItem, setSelectedItem] = useState<CollectionPickerItem | null>(
@@ -73,6 +81,10 @@ export const CollectionPickerModal = ({
   const pickerRef = useRef<{
     onNewCollection: (item: CollectionPickerItem) => void;
   }>();
+
+  const handleInit = useCallback((item: CollectionPickerItem) => {
+    setSelectedItem(current => current ?? item);
+  }, []);
 
   const handleItemSelect = useCallback(
     async (item: CollectionPickerItem) => {
@@ -105,18 +117,33 @@ export const CollectionPickerModal = ({
       ]
     : [];
 
-  const tabs: [EntityTab<SearchModel>] = [
+  const [collectionsPath, setCollectionsPath] =
+    useState<CollectionPickerStatePath>();
+
+  const tabs: EntityPickerTab<
+    CollectionPickerItem["id"],
+    CollectionPickerItem["model"],
+    CollectionPickerItem
+  >[] = [
     {
-      displayName: t`Collections`,
-      model: "collection",
+      id: "collections-tab",
+      displayName: models.some(model => model !== "collection")
+        ? t`Browse`
+        : t`Collections`,
+      models,
+      folderModels: ["collection" as const],
       icon: "folder",
-      element: (
+      render: ({ onItemSelect }) => (
         <CollectionPicker
-          onItemSelect={handleItemSelect}
-          shouldDisableItem={shouldDisableItem}
           initialValue={value}
           options={options}
+          path={collectionsPath}
           ref={pickerRef}
+          shouldDisableItem={shouldDisableItem}
+          onInit={handleInit}
+          onItemSelect={onItemSelect}
+          onPathChange={setCollectionsPath}
+          models={models}
         />
       ),
     },
@@ -135,6 +162,18 @@ export const CollectionPickerModal = ({
     },
     [searchResultFilter],
   );
+
+  const parentCollectionId = useMemo(() => {
+    if (canSelectItem(selectedItem)) {
+      return selectedItem.model === "dashboard"
+        ? selectedItem.collection_id
+        : selectedItem.id;
+    } else if (canSelectItem(value)) {
+      return value.model === "dashboard" ? value.collection_id : value.id;
+    } else {
+      return "root";
+    }
+  }, [selectedItem, value]);
 
   return (
     <>
@@ -155,13 +194,7 @@ export const CollectionPickerModal = ({
       <NewCollectionDialog
         isOpen={isCreateDialogOpen}
         onClose={closeCreateDialog}
-        parentCollectionId={
-          canSelectItem(selectedItem)
-            ? selectedItem.id
-            : canSelectItem(value)
-            ? value.id
-            : "root"
-        }
+        parentCollectionId={parentCollectionId}
         onNewCollection={handleNewCollectionCreate}
         namespace={options.namespace}
       />

@@ -376,13 +376,13 @@
         "graph.series_order_dimension": null,
         "graph.series_order": null,
         "graph.metrics": ["y"],
-        "metabase.shared.models.visualization-settings/column-settings": {
-          "{:metabase.shared.models.visualization-settings/field-id 1410}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1412}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1411}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1409}": {}
+        "metabase.models.visualization-settings/column-settings": {
+          "{:metabase.models.visualization-settings/field-id 1410}": {},
+          "{:metabase.models.visualization-settings/field-id 1412}": {},
+          "{:metabase.models.visualization-settings/field-id 1411}": {},
+          "{:metabase.models.visualization-settings/field-id 1409}": {}
         },
-        "metabase.shared.models.visualization-settings/global-column-settings": {}
+        "metabase.models.visualization-settings/global-column-settings": {}
       },
       "native_form": {
         "query": "SELECT \"source\".\"id\" AS \"id\", \"source\".\"x\" AS \"x\", \"source\".\"y\" AS \"y\", \"source\".\"size\" AS \"size\" FROM (SELECT \"csv_upload_data\".\"csv_upload_scatter_example_20231130125650\".\"id\" AS \"id\", \"csv_upload_data\".\"csv_upload_scatter_example_20231130125650\".\"x\" AS \"x\", \"csv_upload_data\".\"csv_upload_scatter_example_20231130125650\".\"y\" AS \"y\", \"csv_upload_data\".\"csv_upload_scatter_example_20231130125650\".\"size\" AS \"size\" FROM \"csv_upload_data\".\"csv_upload_scatter_example_20231130125650\") AS \"source\" LIMIT 2000",

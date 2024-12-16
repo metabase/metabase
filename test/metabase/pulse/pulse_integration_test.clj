@@ -11,10 +11,15 @@
    [hickory.select :as hik.s]
    [metabase.email :as email]
    [metabase.models :refer [Card Collection Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient]]
-   [metabase.pulse]
+   [metabase.notification.test-util :as notification.tu]
+   [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]))
+
+(use-fixtures :each (fn [thunk]
+                      (notification.tu/with-send-notification-sync
+                        (thunk))))
 
 (defmacro with-metadata-data-cards
   "Provide a fixture that includes:
@@ -30,6 +35,7 @@
                                                                          :expressions  {"Tax Rate" [:/
                                                                                                     [:field (mt/id :orders :tax) {:base-type :type/Float}]
                                                                                                     [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                                                                         :expression-idents {"Tax Rate" "BDpp6yH1r645cmTpDov7e"}
                                                                          :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
                                                                                         [:field (mt/id :orders :total) {:base-type :type/Float}]
                                                                                         [:expression "Tax Rate"]]
@@ -63,7 +69,7 @@
   (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
                            (with-redefs [email/bcc-enabled? (constantly false)]
                              (mt/with-test-user nil
-                               (metabase.pulse/send-pulse! pulse))))
+                               (pulse.send/send-pulse! pulse))))
         html-body  (-> channel-messages :channel/email first :message first :content)
         doc        (-> html-body hik/parse hik/as-hickory)
         data-tables (hik.s/select
@@ -188,7 +194,7 @@
   (with-redefs [email/bcc-enabled? (constantly false)]
     (->> (mt/with-test-user nil
            (pulse.test-util/with-captured-channel-send-messages!
-             (metabase.pulse/send-pulse! pulse)))
+             (pulse.send/send-pulse! pulse)))
          :channel/email
          first
          :message
@@ -433,7 +439,7 @@
                     "Example Month"                    "12"
                     "Example Day"                      "11"
                     "Example Week Number"              "50"
-                    "Example Week"                     "December 10, 2023 - December 16, 2023"
+                    "Example Week: Week"               "December 10, 2023 - December 16, 2023"
                     "Example Hour"                     "15"
                     "Example Minute"                   "30"
                     "Example Second"                   "45"}
@@ -455,22 +461,15 @@
                    (metamodel-results "Example Time"))))
           (testing "Week Units Are Displayed as a Date Range"
             (is (= "December 10, 2023 - December 16, 2023"
-                   (metamodel-results "Example Week")))))))))
+                   (metamodel-results "Example Week: Week")))))))))
 
 (deftest renamed-column-names-are-applied-test
   (testing "CSV attachments should have the same columns as displayed in Metabase (#18572)"
     (mt/with-temporary-setting-values [custom-formatting nil]
-      (let [query        {:source-table (mt/id :orders)
-                          :fields       [[:field (mt/id :orders :id) {:base-type :type/BigInteger}]
-                                         [:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                         [:field (mt/id :orders :total) {:base-type :type/Float}]
-                                         [:field (mt/id :orders :discount) {:base-type :type/Float}]
-                                         [:field (mt/id :orders :quantity) {:base-type :type/Integer}]
-                                         [:expression "Tax Rate"]],
-                          :expressions  {"Tax Rate" [:/
-                                                     [:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                     [:field (mt/id :orders :total) {:base-type :type/Float}]]},
-                          :limit        10}
+      (let [query        (mt/mbql-query orders
+                           {:fields       [$id $tax $total $discount $quantity [:expression "Tax Rate"]]
+                            :expressions  {"Tax Rate" [:/ $tax $total]},
+                            :limit        10})
             viz-settings {:table.cell_column "TAX",
                           :column_settings   {(format "[\"ref\",[\"field\",%s,null]]" (mt/id :orders :id))
                                               {:column_title "THE_ID"}
@@ -490,9 +489,7 @@
                                               {:column_title "Effective Tax Rate"}}}]
         (mt/with-temp [Card {base-card-name :name
                              base-card-id   :id} {:name                   "RENAMED"
-                                                  :dataset_query          {:database (mt/id)
-                                                                           :type     :query
-                                                                           :query    query}
+                                                  :dataset_query          query
                                                   :visualization_settings viz-settings}
                        Card {model-card-name :name
                              model-card-id   :id
@@ -571,7 +568,7 @@
           (let [attachment-name->cols (mt/with-fake-inbox
                                         (with-redefs [email/bcc-enabled? (constantly false)]
                                           (mt/with-test-user nil
-                                            (metabase.pulse/send-pulse! pulse)))
+                                            (pulse.send/send-pulse! pulse)))
                                         (->>
                                          (get-in @mt/inbox ["rasta@metabase.com" 0 :body])
                                          (keep
@@ -601,7 +598,7 @@
   (mt/with-fake-inbox
     (with-redefs [email/bcc-enabled? (constantly false)]
       (mt/with-test-user nil
-        (metabase.pulse/send-pulse! pulse)))
+        (pulse.send/send-pulse! pulse)))
     (let [html-body   (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])
           doc         (-> html-body hik/parse hik/as-hickory)
           data-tables (hik.s/select
@@ -663,7 +660,7 @@
   (mt/with-fake-inbox
     (with-redefs [email/bcc-enabled? (constantly false)]
       (mt/with-test-user nil
-        (metabase.pulse/send-pulse! pulse)))
+        (pulse.send/send-pulse! pulse)))
     (when-some [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
       (let [doc         (-> html-body hik/parse hik/as-hickory)
             data-tables (hik.s/select
@@ -814,7 +811,7 @@
             (mt/with-fake-inbox
               (with-redefs [email/bcc-enabled? (constantly false)]
                 (mt/with-test-user nil
-                  (metabase.pulse/send-pulse! pulse)))
+                  (pulse.send/send-pulse! pulse)))
               (let [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
                 (let [data-tables (hik.s/select
                                    (hik.s/class "pulse-body")
@@ -846,7 +843,7 @@
             (mt/with-fake-inbox
               (with-redefs [email/bcc-enabled? (constantly false)]
                 (mt/with-test-user nil
-                  (metabase.pulse/send-pulse! pulse)))
+                  (pulse.send/send-pulse! pulse)))
               (let [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
                 (is (false? (str/includes? html-body "An error occurred while displaying this card.")))))))))))
 
@@ -911,17 +908,18 @@
 
 (deftest empty-dashboard-test
   (testing "A completely empty dashboard should still send an email"
-    (mt/dataset test-data
-      (mt/with-temp [Dashboard {dash-id :id} {:name "Completely empty dashboard"}
-                     Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
-                                                     :dashboard_id dash-id}
-                     PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                          :pulse_id     pulse-id
-                                                          :enabled      true}
-                     PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                              :user_id          (mt/user->id :rasta)}]
-        (mt/with-fake-inbox
-          (with-redefs [email/bcc-enabled? (constantly false)]
-            (mt/with-test-user nil
-              (metabase.pulse/send-pulse! pulse)))
-          (is (string? (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content]))))))))
+    (notification.tu/with-notification-testing-setup
+      (mt/dataset test-data
+        (mt/with-temp [Dashboard {dash-id :id} {:name "Completely empty dashboard"}
+                       Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
+                                                       :dashboard_id dash-id}
+                       PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                            :pulse_id     pulse-id
+                                                            :enabled      true}
+                       PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                :user_id          (mt/user->id :rasta)}]
+          (mt/with-fake-inbox
+            (with-redefs [email/bcc-enabled? (constantly false)]
+              (mt/with-test-user nil
+                (pulse.send/send-pulse! pulse)))
+            (is (string? (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])))))))))

@@ -13,6 +13,9 @@ export type CliState = Partial<{
   token: string;
   databaseId: number;
 
+  /** User does not have a database, so the sample database is used instead. */
+  useSampleDatabase: boolean;
+
   /** Metabase instance settings */
   settings: Settings;
 
@@ -31,6 +34,9 @@ export type CliState = Partial<{
   /** Sampled values of the tenancy columns from the selected tables (e.g. tenancy_id -> [1, 2, 3]) */
   tenantIdsMap: Record<string, (string | number)[]>;
 
+  /** ID of the "Our models" collection */
+  modelCollectionId: number;
+
   /** Directory where the Express.js mock server is saved to */
   mockServerDir: string;
 
@@ -45,7 +51,7 @@ export type CliError = {
 
 export type CliSuccess = {
   type: "success";
-  nextStep?: typeof CLI_STEPS[number]["id"];
+  nextStep?: (typeof CLI_STEPS)[number]["id"];
 };
 
 export type CliDone = {

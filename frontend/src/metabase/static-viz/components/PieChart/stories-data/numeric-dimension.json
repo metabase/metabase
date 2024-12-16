@@ -144,7 +144,6 @@
           "name": "text-exact-match",
           "weight": 4,
           "match": "Pie - Linear/Numeric Dimension - Poke count by Gen",
-          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__133630__133636$fn__133637$iter__133632__133638$fn__133639$fn__133640$fn__133643@77a87a5f",
           "column": "name"
         },
         {
@@ -152,7 +151,6 @@
           "name": "text-consecutivity",
           "weight": 2,
           "match": "Pie - Linear/Numeric Dimension - Poke count by Gen",
-          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__133630__133636$fn__133637$iter__133632__133638$fn__133639$fn__133640$fn__133643@5b61d4b4",
           "column": "name"
         },
         {
@@ -160,7 +158,6 @@
           "name": "text-total-occurrences",
           "weight": 2,
           "match": "Pie - Linear/Numeric Dimension - Poke count by Gen",
-          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__133630__133636$fn__133637$iter__133632__133638$fn__133639$fn__133640$fn__133643@681de957",
           "column": "name"
         },
         {
@@ -168,7 +165,6 @@
           "name": "text-fullness",
           "weight": 1,
           "match": "Pie - Linear/Numeric Dimension - Poke count by Gen",
-          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__133630__133636$fn__133637$iter__133632__133638$fn__133639$fn__133640$fn__133643@7118b132",
           "column": "name"
         },
         {
@@ -176,7 +172,6 @@
           "name": "text-prefix",
           "weight": 1,
           "match": "Pie - Linear/Numeric Dimension - Poke count by Gen",
-          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__133630__133636$fn__133637$iter__133632__133638$fn__133639$fn__133640$fn__133643@455657cc",
           "column": "name"
         }
       ],

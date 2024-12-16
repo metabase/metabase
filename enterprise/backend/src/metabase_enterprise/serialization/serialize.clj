@@ -11,7 +11,7 @@
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-   [metabase.models.database :as database :refer [Database]]
+   [metabase.models.database :refer [Database]]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.interface :as mi]
@@ -22,7 +22,7 @@
    [metabase.models.segment :refer [Segment]]
    [metabase.models.table :refer [Table]]
    [metabase.models.user :refer [User]]
-   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 

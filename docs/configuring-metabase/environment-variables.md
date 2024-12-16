@@ -9,7 +9,7 @@ redirect_from:
 _This documentation was generated from source by running:_
 
 ```
-clojure -M:ee:run environment-variables-documentation
+clojure -M:ee:doc environment-variables-documentation
 ```
 
 Many settings in Metabase can be viewed and modified in the Admin Panel, or set via environment variables. The environment variables always take precedence. Note that, unlike settings configured in the Admin settings of your Metabase, the environment variables won't get written into the application database.
@@ -28,7 +28,7 @@ $env:MB_SITE_NAME="Awesome Company"
 # Windows batch/cmd
 set MB_SITE_NAME="Awesome Company"
 
-java -jar metabase.jar
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 Or set it as Java property, which works the same across all systems:
@@ -42,6 +42,10 @@ Docker:
 ```
 docker run -d -p 3000:3000 -e MB_SITE_NAME="Awesome Company" --name metabase metabase/metabase
 ```
+
+## Environment variables on Metabase Cloud
+
+If you're running Metabase Cloud, you can [contact support](https://www.metabase.com/help/premium) to adjust environment variables for your Metabase.
 
 ---
 
@@ -68,6 +72,36 @@ Maximum number of rows to return for aggregated queries via the API.
 Must be less than 1048575. This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.
   This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.
   See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
+
+### `MB_ALLOWED_IFRAME_HOSTS`
+
+- Type: string
+- Default: `youtube.com,
+youtu.be,
+loom.com,
+vimeo.com,
+docs.google.com,
+calendar.google.com,
+airtable.com,
+typeform.com,
+canva.com,
+codepen.io,
+figma.com,
+grafana.com,
+miro.com,
+excalidraw.com,
+notion.com,
+atlassian.com,
+trello.com,
+asana.com,
+gist.github.com,
+linkedin.com,
+twitter.com,
+x.com`
+- [Exported as](../installation-and-operation/serialization.md): `allowed-iframe-hosts`.
+- [Configuration file name](./config-file.md): `allowed-iframe-hosts`
+
+Allowed iframe hosts.
 
 ### `MB_ANON_TRACKING_ENABLED`
 
@@ -248,7 +282,7 @@ Identify when new versions of Metabase are available.
 - Type: boolean
 - Default: `true`
 
-Whether to sync newly created Databases during config-from-file initialization. By default, true, but you can disable
+Whether to (asynchronously) sync newly created Databases during config-from-file initialization. By default, true, but you can disable
   this behavior if you want to sync it manually or use SerDes to populate its data model.
 
 ### `MB_CUSTOM_FORMATTING`
@@ -300,7 +334,7 @@ Timeout in milliseconds for connecting to databases, both Metabase application d
 ### `MB_DB_QUERY_TIMEOUT_MINUTES`
 
 - Type: integer
-- Default: `3`
+- Default: `20`
 
 By default, this is 20 minutes.
 
@@ -363,6 +397,16 @@ The email address you want to use for the sender of emails.
 
 The name you want to use for the sender of emails.
 
+### `MB_EMAIL_MAX_RECIPIENTS_PER_SECOND`
+
+- Type: integer
+- Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `email-max-recipients-per-second`.
+- [Configuration file name](./config-file.md): `email-max-recipients-per-second`
+
+The maximum number of recipients, summed across emails, that can be sent per second.
+                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients.
+
 ### `MB_EMAIL_REPLY_TO`
 
 - Type: json
@@ -411,15 +455,25 @@ SMTP secure connection protocol. (tls, ssl, starttls, or none).
 
 SMTP username.
 
-### `MB_EMBEDDING_APP_ORIGIN`
+### `MB_EMBEDDING_APP_ORIGINS_INTERACTIVE`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `embedding-app-origin`
+- [Configuration file name](./config-file.md): `embedding-app-origins-interactive`
 
-Allow this origin to embed the full Metabase application.
+Allow these space delimited origins to embed Metabase interactive.
+
+### `MB_EMBEDDING_APP_ORIGINS_SDK`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `localhost:*`
+- [Configuration file name](./config-file.md): `embedding-app-origins-sdk`
+
+Allow Metabase SDK access to these space delimited origins.
 
 ### `MB_EMBEDDING_HOMEPAGE`
 
@@ -438,14 +492,29 @@ Embedding homepage status, indicating if its visible, hidden or has been dismiss
 
 Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.
 
-### `MB_ENABLE_EMBEDDING`
+### `MB_ENABLE_EMBEDDING_INTERACTIVE`
 
 - Type: boolean
 - Default: `false`
-- [Exported as](../installation-and-operation/serialization.md): `enable-embedding`.
-- [Configuration file name](./config-file.md): `enable-embedding`
+- [Configuration file name](./config-file.md): `enable-embedding-interactive`
 
-Allow admins to securely embed questions and dashboards within other applications?
+Allow admins to embed Metabase via interactive embedding?
+
+### `MB_ENABLE_EMBEDDING_SDK`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `enable-embedding-sdk`
+
+Allow admins to embed Metabase via the SDK?
+
+### `MB_ENABLE_EMBEDDING_STATIC`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `enable-embedding-static`
+
+Allow admins to embed Metabase via static embedding?
 
 ### `MB_ENABLE_PASSWORD_LOGIN`
 
@@ -456,6 +525,15 @@ Allow admins to securely embed questions and dashboards within other application
 - [Configuration file name](./config-file.md): `enable-password-login`
 
 Allow logging in by email and password.
+
+### `MB_ENABLE_PIVOTED_EXPORTS`
+
+- Type: boolean
+- Default: `true`
+- [Exported as](../installation-and-operation/serialization.md): `enable-pivoted-exports`.
+- [Configuration file name](./config-file.md): `enable-pivoted-exports`
+
+Enable pivoted exports and pivoted subscriptions.
 
 ### `MB_ENABLE_PUBLIC_SHARING`
 
@@ -868,7 +946,7 @@ don't have one.
 - [Exported as](../installation-and-operation/serialization.md): `loading-message`.
 - [Configuration file name](./config-file.md): `loading-message`
 
-Choose the message to show while a query is running.
+Choose the message to show while a query is running. Possible values are "doing-science", "running-query", or "loading-results".
 
 ### `MB_LOGIN_PAGE_ILLUSTRATION`
 
@@ -1002,6 +1080,13 @@ By default "Site Url" is used in notification links, but can be overridden.
 
 The base URL where dashboard notitification links will point to instead of the Metabase base URL.
         Only applicable for users who utilize interactive embedding and subscriptions.
+
+### `MB_NOTIFICATION_THREAD_POOL_SIZE`
+
+- Type: integer
+- Default: `10`
+
+The size of the thread pool used to send notifications.
 
 ### `MB_NUM_METABOT_CHOICES`
 
@@ -1319,6 +1404,13 @@ don't have one.
 
 Is SCIM currently enabled?
 
+### `MB_SEARCH_ENGINE`
+
+- Type: keyword
+- Default: `:in-place`
+
+Which engine to use when performing search. Supported values are :in-place and :appdb.
+
 ### `MB_SEARCH_TYPEAHEAD_ENABLED`
 
 - Type: boolean
@@ -1330,7 +1422,7 @@ Enable typeahead search in the Metabase navbar?
 
 ### `MB_SEND_NEW_SSO_USER_ADMIN_EMAIL`
 
-- Type: string
+- Type: boolean
 - Default: `null`
 - [Configuration file name](./config-file.md): `send-new-sso-user-admin-email`
 
@@ -1345,7 +1437,7 @@ Should new email notifications be sent to admins, for all new SSO users?
 Value for the session cookies `SameSite` directive.
 
 See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
-        Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [interactive Embedding](../embedding/interactive-embedding.md).
+        Read more about [interactive Embedding](../embedding/interactive-embedding.md).
         Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
 
 ### `MB_SESSION_COOKIES`
@@ -1482,6 +1574,14 @@ This URL is critical for things like SSO authentication, email links, embedding 
 
 Bot user OAuth token for connecting the Metabase Slack app. This should be used for all new Slack integrations starting in Metabase v0.42.0.
 
+### `MB_SLACK_BUG_REPORT_CHANNEL`
+
+- Type: string
+- Default: `metabase-bugs`
+- [Configuration file name](./config-file.md): `slack-bug-report-channel`
+
+The name of the channel where bug reports should be posted.
+
 ### `MB_SLACK_FILES_CHANNEL`
 
 - Type: string
@@ -1570,6 +1670,15 @@ Maximum number of rows to return specifically on :rows type queries via the API.
 Must be less than 1048575, and less than the number configured in MB_AGGREGATED_QUERY_ROW_LIMIT.
         This environment variable also affects how many rows Metabase returns in dashboard subscription attachments.
         See also MB_AGGREGATED_QUERY_ROW_LIMIT.
+
+### `MB_UPDATE_CHANNEL`
+
+- Type: string
+- Default: `latest`
+- [Exported as](../installation-and-operation/serialization.md): `update-channel`.
+- [Configuration file name](./config-file.md): `update-channel`
+
+Well notify you here when theres a new version of this type of release.
 
 ### `MB_UPLOADS_SETTINGS`
 
@@ -1812,6 +1921,18 @@ This variable affects connections that are severed and undetected by Metabase (t
 
 Unless set otherwise, the default production value for `metabase.query-processor.query-timeout-ms` is used which is 1,200,000 ms (i.e. 1,200 seconds or 20 minutes).
 
+### `MB_JDBC_DATA_WAREHOUSE_DEBUG_UNRETURNED_CONNECTION_STACK_TRACES`
+
+Type: boolean<br>
+Default: `false`<br>
+Since: v51.3
+
+If `true`, log a stack trace for any connections killed due to exceeding the timeout specified in [MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS](#mb_jdbc_data_warehouse_unreturned_connection_timeout_seconds).
+
+In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom log4j configuration. For configuring log levels, see [Metabase log configuration](./log-configuration.md).
+
+To set a timeout for how long Metabase should wait before it kills unreturned connections, see [MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS](#mb_jdbc_data_warehouse_unreturned_connection_timeout_seconds).
+
 ### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 
 Type: integer<br>
@@ -1949,6 +2070,13 @@ Default: True
 
 If you want to exclude the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection, you can set `MB_LOAD_ANALYTICS_CONTENT=false`. Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.
 
+### `MB_LOAD_SAMPLE_CONTENT`
+
+Type: Boolean<br>
+Default: True
+
+Whether to include the Sample Database in your Metabase. To exclude the Sample Database, set `MB_LOAD_SAMPLE_CONTENT=false`.
+
 ### `MB_NO_SURVEYS`
 
 Type: boolean<br>
@@ -2039,29 +2167,6 @@ Type: boolean<br>
 Default: `true`
 
 Send email notifications to users in Admin group, when a new SSO users is created on Metabase.
-
-### `MB_SESSION_COOKIE_SAMESITE`
-
-Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
-Type: string (`"none"`, `"lax"`, `"strict"`)<br>
-Default: `"lax"`
-
-See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
-
-Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [interactive Embedding](../embedding/interactive-embedding.md).
-
-Learn more about SameSite cookies: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite
-
-### `MB_SESSION_COOKIES`
-
-Type: boolean<br>
-Default: `null`
-
-When set to `true`, the user login session will expire when the browser is closed. The user login session will always expire after the amount of time defined in [MAX_SESSION_AGE](#max_session_age) (by default 2 weeks).
-
-This overrides the "Remember me" checkbox when logging in.
-
-Also see the [Changing session expiration](../people-and-groups/changing-session-expiration.md) documentation page.
 
 ### `MB_SETUP_TOKEN`
 

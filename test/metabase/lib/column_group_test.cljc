@@ -81,8 +81,9 @@
                                              {:display-name "Sum of ID", :lib/source :source/previous-stage}]}]
             groups))
     (testing `lib/display-info
-      (is (=? [{:display-name ""
-                :is-from-join false
+      (is (=? [{:display-name           "Summaries"
+                :is-main-group          true
+                :is-from-join           false
                 :is-implicitly-joinable false}]
               (for [group groups]
                 (lib/display-info query group)))))
@@ -250,7 +251,8 @@
                                              {:display-name "sum of User ID", :lib/source :source/previous-stage}]}]
             groups))
     (testing `lib/display-info
-      (is (=? [{:display-name           ""
+      (is (=? [{:display-name           "Summaries"
+                :is-main-group          true
                 :is-from-join           false
                 :is-implicitly-joinable false}]
               (for [group groups]

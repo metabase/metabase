@@ -41,8 +41,8 @@ export function formatNativeQuery(query?: string | JSONQuery, engine?: string) {
     return formatSQL(query);
   }
 
-  if (typeof query === "object" && engineType === "json") {
-    return formatJsonQuery(query);
+  if (engineType === "json") {
+    return typeof query === "object" ? formatJsonQuery(query) : query;
   }
 
   return undefined;

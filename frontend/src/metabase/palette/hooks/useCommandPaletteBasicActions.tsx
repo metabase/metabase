@@ -11,6 +11,7 @@ import {
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { openDiagnostics } from "metabase/redux/app";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import {
   getHasDataAccess,
@@ -131,6 +132,28 @@ export const useCommandPaletteBasicActions = ({
       });
     }
 
+    if (hasDataAccess) {
+      actions.push({
+        id: "new_metric",
+        name: t`New metric`,
+        section: "basic",
+        icon: "metric",
+        perform: () => {
+          dispatch(closeModal());
+          dispatch(push("metric/query"));
+          dispatch(
+            push(
+              Urls.newQuestion({
+                mode: "query",
+                cardType: "metric",
+                collectionId,
+              }),
+            ),
+          );
+        },
+      });
+    }
+
     if (hasDatabaseWithActionsEnabled && hasNativeWrite && hasModels) {
       actions.push({
         id: "new_action",
@@ -164,7 +187,19 @@ export const useCommandPaletteBasicActions = ({
       },
     ];
 
-    return [...actions, ...browseActions];
+    const diagnosticAction = {
+      id: "report-issue",
+      name: t`Report an issue`,
+      section: "basic",
+      icon: "bug",
+      keywords: "bug, issue, problem, error, diagnostic",
+      shortcut: ["$mod+f1"],
+      perform: () => {
+        dispatch(openDiagnostics());
+      },
+    };
+
+    return [...actions, ...browseActions, diagnosticAction];
   }, [
     dispatch,
     hasDataAccess,

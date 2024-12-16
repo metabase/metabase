@@ -11,10 +11,10 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.shared.util.time :as shared.ut]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.time :as u.time])
   (:import
    (java.time.temporal Temporal)))
 
@@ -215,10 +215,12 @@
 
     :filter (fn [{:keys [unit int-value relative-suffix unit-1 int-value-1]} field-clause]
               (if unit-1
-                [:between
-                 [:+ field-clause [:interval int-value-1 (keyword unit-1)]]
-                 [:relative-datetime (- int-value) (keyword unit)]
-                 [:relative-datetime 0 (keyword unit)]]
+                [:relative-time-interval
+                 field-clause
+                 (- int-value)
+                 (keyword unit)
+                 (- int-value-1)
+                 (keyword unit-1)]
                 [:time-interval field-clause (- int-value) (keyword unit) {:include-current (include-current? relative-suffix)}]))}
 
    {:parser (regex->parser (re-pattern (str #"next([0-9]+)" temporal-units-regex #"s" relative-suffix-regex))
@@ -231,10 +233,12 @@
                             (t/plus dt-resolution (to-period int-value)))))
     :filter (fn [{:keys [unit int-value relative-suffix unit-1 int-value-1]} field-clause]
               (if unit-1
-                [:between
-                 [:+ field-clause [:interval (- int-value-1) (keyword unit-1)]]
-                 [:relative-datetime 0 (keyword unit)]
-                 [:relative-datetime int-value (keyword unit)]]
+                [:relative-time-interval
+                 field-clause
+                 int-value
+                 (keyword unit)
+                 int-value-1
+                 (keyword unit-1)]
                 [:time-interval field-clause int-value (keyword unit) {:include-current (include-current? relative-suffix)}]))}
 
    {:parser (regex->parser (re-pattern (str #"last" temporal-units-regex))
@@ -473,7 +477,7 @@
   "Generate offset datetime from `date-str` with respect to qp's `results-timezone`."
   [date-str]
   (when date-str
-    (let [[y M d h m s] (shared.ut/yyyyMMddhhmmss->parts date-str)]
+    (let [[y M d h m s] (u.time/yyyyMMddhhmmss->parts date-str)]
       (try (.toOffsetDateTime (t/zoned-date-time y M d h m s 0 (t/zone-id (qp.timezone/results-timezone-id))))
            (catch Throwable _
              (t/offset-date-time y M d h m s 0 (t/zone-offset (qp.timezone/results-timezone-id))))))))
@@ -482,7 +486,7 @@
   "Return appropriate function for interval end adjustments in [[exclusive-datetime-range-end]]."
   [date-str]
   (when date-str
-    (if (re-matches shared.ut/local-date-regex date-str)
+    (if (re-matches u.time/local-date-regex date-str)
       t/days
       t/minutes)))
 

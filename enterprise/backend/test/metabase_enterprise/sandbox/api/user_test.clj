@@ -45,8 +45,7 @@
 (deftest get-user-attributes-test
   (mt/with-premium-features #{}
     (testing "requires sandbox enabled"
-      (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-             (mt/user-http-request :crowberto :get 402 "mt/user/attributes")))))
+      (mt/assert-has-premium-feature-error "Sandboxes" (mt/user-http-request :crowberto :get 402 "mt/user/attributes"))))
 
   (mt/with-premium-features #{:sandboxes}
     (testing "requires admin"
@@ -64,8 +63,7 @@
 (deftest update-user-attributes-test
   (mt/with-premium-features #{}
     (testing "requires sandbox enabled"
-      (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-             (mt/user-http-request :crowberto :put 402 (format "mt/user/%d/attributes" (mt/user->id :crowberto)) {})))))
+      (mt/assert-has-premium-feature-error "Sandboxes" (mt/user-http-request :crowberto :put 402 (format "mt/user/%d/attributes" (mt/user->id :crowberto)) {}))))
 
   (mt/with-premium-features #{:sandboxes}
     (testing "requires admin"

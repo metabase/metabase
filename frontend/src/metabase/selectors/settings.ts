@@ -27,31 +27,82 @@ export const getSetting = <S extends State, T extends GetSettingKey<S>>(
   return setting;
 };
 
+export const isSsoEnabled = (state: State) =>
+  getSetting(state, "ldap-enabled") ||
+  getSetting(state, "google-auth-enabled") ||
+  getSetting(state, "saml-enabled") ||
+  getSetting(state, "other-sso-enabled?");
+
 export const getStoreUrl = (path = "") => {
   return `https://store.metabase.com/${path}`;
 };
+
+export const migrateToCloudGuideUrl = () =>
+  "https://www.metabase.com/cloud/docs/migrate/guide";
 
 export const getLearnUrl = (path = "") => {
   // eslint-disable-next-line no-unconditional-metabase-links-render -- This is the implementation of getLearnUrl()
   return `https://www.metabase.com/learn/${path}`;
 };
 
+export type UtmProps = {
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+};
+
+type UrlWithUtmProps = { url: string } & UtmProps;
+
+export const getUrlWithUtm = createSelector(
+  (state: State, props: UrlWithUtmProps) => props,
+  (state: State) => getPlan(getSetting(state, "token-features")),
+  (props: UrlWithUtmProps, plan: string) => {
+    const {
+      utm_source = "product",
+      utm_medium,
+      utm_campaign,
+      utm_content,
+    } = props;
+
+    const url = new URL(props.url);
+    url.searchParams.set("utm_source", utm_source);
+    if (utm_medium) {
+      url.searchParams.set("utm_medium", utm_medium);
+    }
+    if (utm_campaign) {
+      url.searchParams.set("utm_campaign", utm_campaign);
+    }
+    if (utm_content) {
+      url.searchParams.set("utm_content", utm_content);
+    }
+    url.searchParams.set("source_plan", plan);
+
+    return url.toString();
+  },
+);
+
 interface DocsUrlProps {
   page?: string;
   anchor?: string;
+  utm?: UtmProps;
 }
 
-export const getDocsUrl = createSelector(
-  (state: State) => getSetting(state, "version"),
-  (state: State, props: DocsUrlProps) => props.page,
-  (state: State, props: DocsUrlProps) => props.anchor,
-  (version, page, anchor) => getDocsUrlForVersion(version, page, anchor),
-);
+export const getDocsUrl = (state: State, props: DocsUrlProps) => {
+  const version = getSetting(state, "version");
+  const url = getDocsUrlForVersion(version, props.page, props.anchor);
+
+  if (!props.utm) {
+    return url;
+  }
+
+  return getUrlWithUtm(state, { url, ...props.utm });
+};
 
 export const getDocsSearchUrl = (query: Record<string, string>) =>
   `https://www.metabase.com/search?${new URLSearchParams(query)}`;
 
-const getDocsUrlForVersion = (
+export const getDocsUrlForVersion = (
   version: Version | undefined,
   page = "",
   anchor = "",

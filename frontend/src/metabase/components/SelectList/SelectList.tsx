@@ -1,14 +1,23 @@
-import type * as React from "react";
-import { forwardRef } from "react";
+import { type HTMLProps, forwardRef } from "react";
+
+import { Box, type BoxProps } from "metabase/ui";
 
 import { BaseSelectListItem } from "./BaseSelectListItem";
 import { SelectListItem } from "./SelectListItem";
 
-type SelectListProps = Omit<React.HTMLProps<HTMLUListElement>, "role">;
+type SelectListProps = Omit<HTMLProps<HTMLUListElement>, "role"> & BoxProps;
 
 const SelectList = forwardRef<HTMLUListElement, SelectListProps>(
   function SelectList(props: SelectListProps, ref) {
-    return <ul {...props} ref={ref} role="menu" data-testid="select-list" />;
+    return (
+      <Box
+        {...props}
+        ref={ref}
+        role="menu"
+        data-testid="select-list"
+        component="ul"
+      />
+    );
   },
 );
 

@@ -5,8 +5,8 @@
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 (mu/defn operator-def :- ::lib.schema.filter/operator

@@ -54,6 +54,7 @@ describe("ListPicker", () => {
   afterEach(() => {
     jest.useRealTimers();
   });
+
   it("onSearchChange fires only once per input char", async () => {
     const { onSearchChange } = setup("", VALUES.slice());
 

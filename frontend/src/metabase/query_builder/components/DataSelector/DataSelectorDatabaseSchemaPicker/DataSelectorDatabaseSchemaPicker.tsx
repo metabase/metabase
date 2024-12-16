@@ -10,8 +10,8 @@ import { Icon } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 
-import { RawDataBackButton } from "../DataSelector.styled";
 import DataSelectorLoading from "../DataSelectorLoading";
+import { RawDataBackButton } from "../RawDataBackButton";
 
 type DataSelectorDatabaseSchemaPicker = {
   databases: Database[];
@@ -113,8 +113,8 @@ const DataSelectorDatabaseSchemaPicker = ({
   let openSection = selectedSchema
     ? databases.findIndex(db => db.id === selectedSchema.database?.id)
     : selectedDatabase
-    ? databases.findIndex(db => db.id === selectedDatabase.id)
-    : -1;
+      ? databases.findIndex(db => db.id === selectedDatabase.id)
+      : -1;
 
   if (openSection >= 0 && databases[openSection]?.getSchemas().length === 1) {
     openSection = -1;

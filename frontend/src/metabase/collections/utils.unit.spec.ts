@@ -31,10 +31,12 @@ describe("Collections > utils", () => {
       expect(canonicalCollectionId(1337)).toBe(1337);
       expect(canonicalCollectionId(1)).toBe(1);
     });
+
     it("handles string id inputs", () => {
       expect(canonicalCollectionId("1337")).toBe(1337);
       expect(canonicalCollectionId("1")).toBe(1);
     });
+
     it('returns null if the collection id is "root"', () => {
       expect(canonicalCollectionId("root")).toBe(null);
     });

@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.results-metadata-test
+(ns ^:mb/driver-tests metabase.query-processor.middleware.results-metadata-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -197,18 +197,16 @@
     (t2.with-temp/with-temp [Card card]
       (qp/process-query
        (qp/userland-query
-        {:database (mt/id)
-         :type     :query
-         :query    {:source-table (mt/id :checkins)
-                    :aggregation  [[:count]]
-                    :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :year}]]}
-         :info     {:card-id    (u/the-id card)
-                    :query-hash (qp.util/query-hash {})}}))
+        (merge (mt/mbql-query checkins
+                 {:aggregation  [[:count]]
+                  :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :year}]]})
+               {:info {:card-id    (u/the-id card)
+                       :query-hash (qp.util/query-hash {})}})))
       (is (=? [{:base_type    :type/Date
                 :effective_type    :type/Date
                 :visibility_type :normal
                 :coercion_strategy nil
-                :display_name "Date"
+                :display_name "Date: Year"
                 :name         "DATE"
                 :unit         :year
                 :settings     nil

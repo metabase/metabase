@@ -2,6 +2,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import DashboardS from "metabase/css/dashboard.module.css";
+import { isEmbeddingSdk } from "metabase/env";
 import type { MantineTheme } from "metabase/ui";
 import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
 
@@ -41,11 +42,21 @@ export const DashboardCardContainer = styled.div<DashboardCardProps>`
   }
 
   .${SAVING_DOM_IMAGE_CLASS} & .${DashboardS.Card} {
-    // the renderer we use for saving to image/pdf doesn't support box-shadow
-    // so we replace it with a border
+    /* the renderer we use for saving to image/pdf doesn't support box-shadow
+       so we replace it with a border */
     box-shadow: none;
     border: 1px solid var(--mb-color-border);
   }
+
+  /* the renderer for saving to image/pdf does not support text overflow
+     with line height in custom themes in the embedding sdk.
+     this is a workaround to make sure the text is not clipped vertically */
+  ${isEmbeddingSdk &&
+  css`
+    .${SAVING_DOM_IMAGE_CLASS} & .${DashboardS.Card} * {
+      overflow: visible !important;
+    }
+  `};
 
   ${props =>
     props.isAnimationDisabled

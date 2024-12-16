@@ -50,10 +50,26 @@ If you re-enable this setting, Metabase will run a [scan](../databases/sync-scan
 
 To manually label field or table names in Metabase, check out the [Table Metadata](../data-modeling/metadata-editing.md) section in your admin settings. Metadata in the Table Metadata can be further curated in [models](../data-modeling/models.md).
 
-## Enable nested queries
-
-By default, Metabase allows your users to use a previously saved question as a source for queries. If you have a lot of slow running queries, you may want to switch this option off, as performance problem can occur.
-
 ## Enable X-rays
 
 [X-rays](../exploration-and-organization/x-rays.md) are a great way for people to get quick summary stats on your data. If these X-ray queries get too slow or expensive, you can turn them off here.
+
+## Allowed domains for iframes in dashboards
+
+Make sure you trust the sources that you allow people to embed in dashboards.
+
+You can include multiple domains separated by a comma. Including a subdomain is more restrictive than including the domain.
+
+- For **Domains**, (e.g., `example.com`), Metabase will allow any iframe from the domain (`example.com`) _and_ its subdomains (e.g., `data.example.com`, `docs.example.com`, etc.).
+- For **Subdomains** (e.g., `data.example.com`) Metabase will restrict iframes to those subdomains. In this case, iframes _must_ be from `data.example.com` (or any of the other allowed domains). Metabase will block iframes from all other subdomains, including `example.com`.
+
+So if you included the following:
+
+```
+data.example.com,
+docs.example.com
+```
+
+Metabase would only allow iframes from `data.example.com` and `docs.example.com`. Metabase would block iframes from all other domains, including iframes from `example.com` and its other subdomains.
+
+See [iframes in dashboards](../dashboards/introduction.md#iframe-cards).

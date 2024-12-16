@@ -6,7 +6,7 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { isValidTimeInterval } from "metabase/lib/time";
 import { Popover } from "metabase/ui";
-import type Filter from "metabase-lib/v1/queries/structured/Filter";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 import {
   formatStartingFrom,
   getRelativeDatetimeInterval,
@@ -29,7 +29,7 @@ import {
 
 type RelativeDatePickerProps = {
   className?: string;
-  filter: Filter;
+  filter: FilterMBQL;
   onFilterChange: (filter: any[]) => void;
   formatter?: (value: number) => number;
   offsetFormatter?: (value: number) => number;
@@ -87,10 +87,10 @@ const getStartingFromUnits = (
   return largerUnits;
 };
 
-const getCurrentString = (filter: Filter) =>
+const getCurrentString = (filter: FilterMBQL) =>
   t`Include ${getCurrentIntervalName(filter)}`;
 
-function getCurrentIntervalName(filter: Filter) {
+function getCurrentIntervalName(filter: FilterMBQL) {
   if (filter[0] === "time-interval") {
     return CURRENT_INTERVAL_NAME[
       filter[3] as keyof typeof CURRENT_INTERVAL_NAME

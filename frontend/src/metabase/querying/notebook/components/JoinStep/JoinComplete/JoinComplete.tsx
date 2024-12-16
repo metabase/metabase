@@ -69,6 +69,7 @@ export function JoinComplete({
     } else {
       onDraftRhsTableChange(newTable);
     }
+    setIsAddingNewCondition(false);
   };
 
   const handleAddCondition = (newCondition: Lib.JoinCondition) => {

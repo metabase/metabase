@@ -7,7 +7,7 @@ title: "Metabase API documentation"
 _These reference files were generated from source comments by running:_
 
 ```
-clojure -M:ee:run api-documentation
+clojure -M:ee:doc api-documentation
 ```
 
 ## About the Metabase API
@@ -22,6 +22,10 @@ Check out an introduction to the [Metabase API](https://www.metabase.com/learn/a
 ## API keys
 
 Create keys to authenticate programmatic requests to your Metabase. See [API keys](./people-and-groups/api-keys.md).
+
+## API changelog
+
+For breaking changes, see the API [changelog](./developers-guide/api-changelog.md).
 
 ## API endpoints
 

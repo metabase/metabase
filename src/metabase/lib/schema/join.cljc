@@ -3,7 +3,7 @@
   (:require
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
-   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]))
 
 ;;; The Fields to include in the results *if* a top-level `:fields` clause *is not* specified. This can be either
@@ -63,6 +63,7 @@
    [:stages      [:ref :metabase.lib.schema/stages]]
    [:conditions  ::conditions]
    [:alias       ::alias]
+   [:ident    {:optional true} ::common/non-blank-string]
    [:fields   {:optional true} ::fields]
    [:strategy {:optional true} ::strategy]])
 

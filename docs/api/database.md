@@ -249,7 +249,7 @@ You must be a superuser to do this.
 
 -  **`engine`** value must be a valid database engine.
 
--  **`schedules`** nullable :metabase.sync.schedules/ExpandedSchedulesMap.
+-  **`schedules`** nullable value must be a valid map of schedule maps for a DB.
 
 -  **`connection_source`** nullable enum of :admin, :setup.
 
@@ -340,7 +340,7 @@ Update a `Database`.
 
 -  **`engine`** nullable value must be a valid database engine.
 
--  **`schedules`** nullable :metabase.sync.schedules/ExpandedSchedulesMap.
+-  **`schedules`** nullable value must be a valid map of schedule maps for a DB.
 
 -  **`refingerprint`** nullable boolean.
 

@@ -14,13 +14,13 @@ First, you'll want to make sure your browser is on friendly terms with Metabase:
 1. Create a new dashboard for each group of cards that are related to the same time period or segment.
    - For example, create new dashboards for weekly vs. monthly metrics, or new vs. returning customers.
 2. Move your cards to the new dashboard(s) until each dashboard has 10 or fewer cards.
-3. Use [custom destinations](https://www.metabase.com/learn/dashboards/custom-destinations) to link related cards on different dashboards.
+3. Use [custom destinations](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/custom-destinations) to link related cards on different dashboards.
 
 **Explanation**
 
 A dashboard with 50 cards is almost always going to be slower than 5 dashboards with 10 cards. Metabase displays a dashboard by refreshing all of the questions on it (that is, re-executing all of the queries against your database). Your data warehouse may try to run these queries at the same time to return the results faster, however, these queries can actually compete with each other and slow things down (like having too many programs open on your computer at once).
 
-Aside from running faster, a small and focused dashboard is also easier for people to understand without getting overwhelmed. For more tips, check out our article on [BI dashboard best practices](https://www.metabase.com/learn/dashboards/bi-dashboard-best-practices).
+Aside from running faster, a small and focused dashboard is also easier for people to understand without getting overwhelmed. For more tips, check out our article on [BI dashboard best practices](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/bi-dashboard-best-practices).
 
 ## Dashboard used by many people at the same time
 

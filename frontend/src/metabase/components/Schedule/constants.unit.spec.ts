@@ -12,9 +12,11 @@ describe("getHours", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
+
   const setup = ({ isClock24Hour }: { isClock24Hour: boolean }) => {
     (has24HourModeSetting as jest.Mock).mockReturnValue(isClock24Hour);
   };
+
   it("should return hours for a 24-hour clock when has24HourModeSetting returns true", () => {
     setup({ isClock24Hour: true });
     const result = getHours();

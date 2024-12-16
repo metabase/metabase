@@ -31,8 +31,8 @@ There are two ways to run these `export` and `import` commands:
 
 Check out our guides for:
 
-- [Running multiple environments](https://www.metabase.com/learn/administration/multi-env)
-- [Setting up git-based workflow](https://www.metabase.com/learn/administration/git-based-workflow)
+- [Running multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//multi-env)
+- [Setting up git-based workflow](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//git-based-workflow)
 
 > Serialization isn't intended for use cases like duplicating assets or swapping data sources _within_ the same Metabase instance. If you're using serialization for duplicating assets within the same instance, check out [How export works](#how-export-works), [How import works](#how-import-works), and the directions for your use case in [Other uses of serialization](#other-uses-of-serialization)
 
@@ -46,21 +46,23 @@ Check out our guides for:
 
 ### What gets exported
 
-Metabase will only include some artifacts in its exports:
+Metabase will only export the following entities:
 
 - Collections (but personal collections don't get exported unless explicitly specified them through [export options](#customize-what-gets-exported))
 - Dashboards
 - Saved questions
 - Actions
 - Models
+- Metrics
 - SQL Snippets
 - Data model and table metadata
-- Segments and Metrics defined in the Table Metadata
+- Segments
 - Public sharing settings for questions and dashboards
 - [General Metabase settings](#general-metabase-settings-that-are-exported)
 - Events and timelines
-- Database connection strings (only if specified through [export options](#customize-what-gets-exported))
-  (#customize-what-gets-exported).
+- Database connection strings (only if specified through [export options](#customize-what-gets-exported)).
+
+All other entities—including users, groups, permissions, alerts, subscriptions—won't get exported.
 
 Metabase will export its artifacts to a directory of YAML files. The export includes:
 
@@ -142,7 +144,9 @@ See [export parameters in CLI commands](#export-options) or [export parameters i
 
 ### Example of a serialized question
 
-Questions can be found in the `cards` directory of a collection directory. Here's an example card YAML file for a question written with SQL that uses a field filter and has an area chart visualization:
+Questions can be found in the `cards` directory of a collection directory. Here's an example card YAML file for a question written with SQL that uses a field filter and has an area chart visualization.
+
+> To preserve a native query's multi-line format, remove trailing whitespace from native queries. If your native query has trailing whitespace, YAML will convert your query to a single string literal (which only affects presentation, not functionality).
 
 ```yml
 name: Products by week
@@ -377,7 +381,7 @@ See [How export works](#how-export-works), [How import works](#how-import-works)
 To export the contents of a Metabase instance, change into the directory where you're running the Metabase JAR and run:
 
 ```
-java -jar metabase.jar export dir_name
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar export dir_name
 ```
 
 Where `dir_name` can be whatever you want to call the directory.
@@ -387,7 +391,7 @@ Where `dir_name` can be whatever you want to call the directory.
 To view a list of `export` options, use the `help` command:
 
 ```
-java -jar metabase.jar help export
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar help export
 ```
 
 Which will run and then print something like:
@@ -413,7 +417,7 @@ The `--collection` flag (alias `-c`) lets you specify by ID one or more collecti
 If you want to specify multiple collections, separate the IDs with commas. E.g.,
 
 ```
-java -jar metabase.jar export export_name --collection 1,2,3
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar export export_name --collection 1,2,3
 ```
 
 #### `--no-collections`
@@ -441,7 +445,7 @@ The `--include-database-secrets` flag (alias `-s`) tells Metabase to include con
 To import exported artifacts into a Metabase instance, go to the directory where you're running your target Metabase (the Metabase you want to import into) and use the following command, where `path_to_export` is the path to the export that you want to import:
 
 ```
-java -jar metabase.jar import path_to_export
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar import path_to_export
 ```
 
 Currently, you can only import exported artifacts into a Metabase instance that was created from the same version of Metabase.
@@ -451,7 +455,7 @@ Currently, you can only import exported artifacts into a Metabase instance that 
 Most options are defined when exporting data from a Metabase. To view a list of import flags, run:
 
 ```
-java -jar metabase.jar help import
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar help import
 ```
 
 Which prints out:
@@ -752,7 +756,7 @@ If you've written scripts to automate serialization, you'll need to:
 
 ## Further reading
 
-- [Serialization tutorial](https://www.metabase.com/learn/administration/serialization).
-- [Multiple environments](https://www.metabase.com/learn/administration/multi-env)
-- [Setting up a git-based workflow](https://www.metabase.com/learn/administration/git-based-workflow).
+- [Serialization tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//serialization).
+- [Multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//multi-env)
+- [Setting up a git-based workflow](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//git-based-workflow).
 - Need help? Contact [support@metabase.com](mailto:support@metabase.com).

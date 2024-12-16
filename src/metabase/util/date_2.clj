@@ -220,12 +220,12 @@
 (defn- start-of-week []
   (keyword ((requiring-resolve 'metabase.public-settings/start-of-week))))
 
-(def ^:private ^{:arglists '(^java.time.DayOfWeek [k])} day-of-week*
-  (let [m (u.date.common/static-instances DayOfWeek)]
-    (fn [k]
-      (or (get m k)
-          (throw (ex-info (tru "Invalid day of week: {0}" (pr-str k))
-                          {:k k, :allowed (keys m)}))))))
+(let [m (u.date.common/static-instances DayOfWeek)]
+  (defn- day-of-week*
+    ^java.time.DayOfWeek [k]
+    (or (get m k)
+        (throw (ex-info (tru "Invalid day of week: {0}" (pr-str k))
+                        {:k k, :allowed (keys m)})))))
 
 (defn- week-fields
   "Create a new instance of a `WeekFields`, which is used for localized day-of-week, week-of-month, and week-of-year.
@@ -252,12 +252,13 @@
    (extract (t/zoned-date-time) unit))
 
   ([t    :- TemporalInstance
-    unit :- (into [:enum] extract-units)]
+    unit :- (into [:enum] (conj extract-units :day-of-week-iso))]
    (t/as t (case unit
              :second-of-minute :second-of-minute
              :minute-of-hour   :minute-of-hour
              :hour-of-day      :hour-of-day
              :day-of-week      (.dayOfWeek (week-fields (start-of-week)))
+             :day-of-week-iso  (.dayOfWeek (week-fields :monday))
              :day-of-month     :day-of-month
              :day-of-year      :day-of-year
              :week-of-year     (.weekOfYear (week-fields (start-of-week)))
@@ -514,6 +515,8 @@
     converts it to the corresponding offset/zoned type; for offset/zoned types, this applies an appropriate timezone
     shift."))
 
+(def ^:private local-time-0 (t/local-time 0))
+
 (extend-protocol WithTimeZoneSameInstant
   ;; convert to a OffsetTime with no offset (UTC); the OffsetTime method impl will apply the zone shift.
   LocalTime
@@ -526,15 +529,11 @@
 
   LocalDate
   (with-time-zone-same-instant [t zone-id]
-    (t/offset-date-time t (t/local-time 0) zone-id))
-
-  LocalDate
-  (with-time-zone-same-instant [t zone-id]
-    (t/offset-date-time t (t/local-time 0) zone-id))
+    (with-time-zone-same-instant (LocalDateTime/of t local-time-0) zone-id))
 
   LocalDateTime
-  (with-time-zone-same-instant [t zone-id]
-    (t/offset-date-time t zone-id))
+  (with-time-zone-same-instant [t ^java.time.ZoneId zone-id]
+    (OffsetDateTime/of t (.getOffset (.getRules zone-id) t)))
 
   ;; instants are always normalized to UTC, so don't make any changes here. If you want to format in a different zone,
   ;; convert to an OffsetDateTime or ZonedDateTime first.

@@ -1,13 +1,12 @@
 (ns metabase.search.config
   (:require
-   [cheshire.core :as json]
-   [clojure.string :as str]
-   [flatland.ordered.map :as ordered-map]
    [metabase.api.common :as api]
    [metabase.models.setting :refer [defsetting]]
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings :as public-settings]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
@@ -35,16 +34,22 @@
 (def ^:const stale-time-in-days
   "Results older than this number of days are all considered to be equally old. In other words, there is a ranking
   bonus for results newer than this (scaled to just how recent they are). c.f. `search.scoring/recency-score`"
-  180)
+  30)
 
 (def ^:const dashboard-count-ceiling
   "Results in more dashboards than this are all considered to be equally popular."
-  50)
+  10)
+
+(def ^:const view-count-scaling-percentile
+  "The percentile of the given search model's view counts, to be multiplied by [[view-count-scaling]].
+  The larger this value, the longer it will take for the score to approach 1.0. It will never quite reach it."
+  0.99)
 
 (def ^:const surrounding-match-context
   "Show this many words of context before/after matches in long search results"
   2)
 
+;; We won't need this once fully migrated to specs, but kept for now in case legacy cod falls out of sync
 (def excluded-models
   "Set of models that should not be included in search results."
   #{"dashboard-card"
@@ -58,6 +63,9 @@
     "timeline"
     "user"})
 
+;; TODO we could almost replace this using the spec, but there are two blockers
+;; - We do not cover index-entity yet
+;; - We also need to provide an alias (and this must match the API one for legacy)
 (def model-to-db-model
   "Mapping from string model to the Toucan model backing it."
   (apply dissoc api/model->db-model excluded-models))
@@ -73,13 +81,126 @@
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
-(defn search-model->revision-model
-  "Return the apporpriate revision model given a search model."
-  [model]
-  (case model
-    "dataset" (recur "card")
-    "metric" (recur "card")
-    (str/capitalize model)))
+(def static-weights
+  "Strength of the various scorers."
+  {:default
+   {:pinned              0
+    :bookmarked          1
+    :recency             1
+    :user-recency        5
+    :dashboard           0
+    :model               2
+    :official-collection 1
+    :verified            1
+    :view-count          2
+    :text                5
+    :mine                1
+    :exact               5
+    :prefix              0}
+   :command-palette
+   {:prefix               5
+    :model/collection     1
+    :model/dashboard      1
+    :model/metric         1
+    :model/dataset        0.8
+    :model/table          0.8
+    :model/indexed-entity 0.5
+    :model/database       0.5
+    :model/question       0}
+   :entity-picker
+   {:model/table    1
+    :model/dataset  1
+    :model/metric   1
+    :model/question 0}})
+
+(def ^:private FilterDef
+  "A relaxed definition, capturing how we can write the filter - with some fields omitted."
+  [:map {:closed true}
+   [:key                               :keyword]
+   [:type                              :keyword]
+   [:field            {:optional true} :string]
+   [:context-key      {:optional true} :keyword]
+   [:supported-value? {:optional true} ifn?]
+   [:required-feature {:optional true} :keyword]])
+
+(def ^:private Filter
+  "A normalized representation, for the application to leverage."
+  [:map {:closed true}
+   [:key              :keyword]
+   [:type             :keyword]
+   [:field            :string]
+   [:context-key      :keyword]
+   [:supported-value? ifn?]
+   [:required-feature [:maybe :keyword]]])
+
+(mu/defn- build-filter :- Filter
+  [{k :key t :type :keys [context-key field supported-value? required-feature]} :- FilterDef]
+  {:key              k
+   :type             (keyword "metabase.search.filter" (name t))
+   :field            (or field (u/->snake_case_en (name k)))
+   :context-key      (or context-key k)
+   :supported-value? (or supported-value? (constantly true))
+   :required-feature required-feature})
+
+(mu/defn- build-filters :- [:map-of :keyword Filter]
+  [m]
+  (-> (reduce #(assoc-in %1 [%2 :key] %2) m (keys m))
+      (update-vals build-filter)))
+
+(def filters
+  "Specifications for the optional search filters."
+  (build-filters
+   {:archived       {:type :single-value, :context-key :archived?}
+    ;; TODO dry this alias up with the index hydration code
+    :created-at     {:type :date-range, :field "model_created_at"}
+    :creator-id     {:type :list, :context-key :created-by}
+    ;; This actually has nothing to do with tables, as we also filter cards, it would be good to rename the context key.
+    :database-id    {:type :single-value, :context-key :table-db-id}
+    :id             {:type :list, :context-key :ids, :field "model_id"}
+    :last-edited-at {:type :date-range}
+    :last-editor-id {:type :list, :context-key :last-edited-by}
+    :native-query   {:type :native-query, :context-key :search-native-query}
+    :verified       {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}}))
+
+(def ^:private filter-defaults-by-context
+  {:default         {:archived               false
+                     ;; keys will typically those in [[filters]], but this is an atypical filter.
+                     ;; we plan to generify it, by precalculating it on the index.
+                     :personal-collection-id "all"}
+   :command-palette {:personal-collection-id "exclude-others"}})
+
+(defn filter-default
+  "Get the default value for the given filter in the given context. Is non-contextual for legacy search."
+  [engine context filter-key]
+  (let [fetch (fn [ctx] (when ctx (-> filter-defaults-by-context (get ctx) (get filter-key))))]
+    (if (= engine :search.engine/in-place)
+      (fetch :default)
+      (or (fetch context) (fetch :default)))))
+
+;; This gets called *a lot* during a search request, so we'll almost certainly need to optimize it. Maybe just TTL.
+(defn weights
+  "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
+  [context]
+  (let [context   (or context :default)
+        overrides (public-settings/experimental-search-weight-overrides)]
+    (if (= :all context)
+      (merge-with merge static-weights overrides)
+      (merge (get static-weights :default)
+             ;; Not sure which of the next two should have precedence, arguments for both "¯\_(ツ)_/¯"
+             (get overrides :default)
+             (get static-weights context)
+             (get overrides context)))))
+
+(defn weight
+  "The relative strength the corresponding score has in influencing the total score."
+  [context scorer-key]
+  (get (weights context) scorer-key (when-not (namespace scorer-key) 0)))
+
+(defn scorer-param
+  "Get a nested parameter scoped to the given scorer"
+  [context scorer-key param-key]
+  (let [flat-key (keyword (name scorer-key) (name param-key))]
+    (weight context flat-key)))
 
 (defn model->alias
   "Given a model string returns the model alias"
@@ -101,21 +222,31 @@
 (def SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query."
   [:map {:closed true}
+   ;; display related
+   [:calculate-available-models? {:optional true} :boolean]
    ;;
    ;; required
    ;;
    [:archived?          [:maybe :boolean]]
    [:current-user-id    pos-int?]
+   [:is-superuser?      :boolean]
+   ;; TODO only optional and maybe for tests, clean that up!
+   [:context               {:optional true} [:maybe :keyword]]
+   [:is-impersonated-user? {:optional true} [:maybe :boolean]]
+   [:is-sandboxed-user?    {:optional true} [:maybe :boolean]]
    [:current-user-perms [:set perms.u/PathSchema]]
+
    [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]
-   [:search-string      [:maybe ms/NonBlankString]]
+   ;; TODO this is optional only for tests, clean those up!
+   [:search-engine      {:optional true} keyword?]
+   [:search-string      {:optional true} [:maybe ms/NonBlankString]]
    ;;
    ;; optional
    ;;
    [:created-at                          {:optional true} ms/NonBlankString]
    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
-   [:filter-items-in-personal-collection {:optional true} [:enum "only" "exclude"]]
+   [:filter-items-in-personal-collection {:optional true} [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]
    [:last-edited-at                      {:optional true} ms/NonBlankString]
    [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:limit-int                           {:optional true} ms/Int]
@@ -124,235 +255,8 @@
    [:table-db-id                         {:optional true} ms/PositiveInt]
    ;; true to search for verified items only, nil will return all items
    [:verified                            {:optional true} true?]
-   [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]])
-
-(def all-search-columns
-  "All columns that will appear in the search results, and the types of those columns. The generated search query is a
-  `UNION ALL` of the queries for each different entity; it looks something like:
-
-    SELECT 'card' AS model, id, cast(NULL AS integer) AS table_id, ...
-    FROM report_card
-    UNION ALL
-    SELECT 'metric' as model, id, table_id, ...
-    FROM metric
-
-  Columns that aren't used in any individual query are replaced with `SELECT cast(NULL AS <type>)` statements. (These
-  are cast to the appropriate type because Postgres will assume `SELECT NULL` is `TEXT` by default and will refuse to
-  `UNION` two columns of two different types.)"
-  (ordered-map/ordered-map
-   ;; returned for all models. Important to be first for changing model for dataset
-   :model               :text
-   :id                  :integer
-   :name                :text
-   :display_name        :text
-   :description         :text
-   :archived            :boolean
-   ;; returned for Card, Dashboard, and Collection
-   :collection_id       :integer
-   :collection_name     :text
-   :collection_type     :text
-   :collection_location :text
-   :collection_authority_level :text
-   :archived_directly   :boolean
-   ;; returned for Card and Dashboard
-   :collection_position :integer
-   :creator_id          :integer
-   :created_at          :timestamp
-   :bookmark            :boolean
-   ;; returned for everything except Collection
-   :updated_at          :timestamp
-   ;; returned only for Collection
-   :location            :text
-   ;; returned for Card only, used for scoring and displays
-   :dashboardcard_count :integer
-   :last_edited_at      :timestamp
-   :last_editor_id      :integer
-   :moderated_status    :text
-   :display             :text
-   ;; returned for Metric and Segment
-   :table_id            :integer
-   :table_schema        :text
-   :table_name          :text
-   :table_description   :text
-   ;; returned for Metric, Segment, and Action
-   :database_id         :integer
-   ;; returned for Database and Table
-   :initial_sync_status :text
-   :database_name       :text
-   ;; returned for Action
-   :model_id            :integer
-   :model_name          :text
-   ;; returned for indexed-entity
-   :pk_ref              :text
-   :model_index_id      :integer
-   ;; returned for Card and Action
-   :dataset_query       :text))
-
-(def ^:const displayed-columns
-  "All of the result components that by default are displayed by the frontend."
-  #{:name :display_name :collection_name :description})
-
-(defmulti searchable-columns
-  "The columns that can be searched for each model."
-  {:arglists '([model search-native-query])}
-  (fn [model _] model))
-
-(defmethod searchable-columns :default
-  [_ _]
-  [:name])
-
-(defmethod searchable-columns "action"
-  [_ search-native-query]
-  (cond-> [:name
-           :description]
-    search-native-query
-    (conj :dataset_query)))
-
-(defmethod searchable-columns "card"
-  [_ search-native-query]
-  (cond-> [:name
-           :description]
-    search-native-query
-    (conj :dataset_query)))
-
-(defmethod searchable-columns "dataset"
-  [_ search-native-query]
-  (searchable-columns "card" search-native-query))
-
-(defmethod searchable-columns "metric"
-  [_ search-native-query]
-  (searchable-columns "card" search-native-query))
-
-(defmethod searchable-columns "dashboard"
-  [_ _]
-  [:name
-   :description])
-
-(defmethod searchable-columns "page"
-  [_ search-native-query]
-  (searchable-columns "dashboard" search-native-query))
-
-(defmethod searchable-columns "database"
-  [_ _]
-  [:name
-   :description])
-
-(defmethod searchable-columns "table"
-  [_ _]
-  [:name
-   :display_name
-   :description])
-
-(defmethod searchable-columns "indexed-entity"
-  [_ _]
-  [:name])
-
-(def ^:private default-columns
-  "Columns returned for all models."
-  [:id :name :description :archived :created_at :updated_at])
-
-(def ^:private bookmark-col
-  "Case statement to return boolean values of `:bookmark` for Card, Collection and Dashboard."
-  [[:case [:not= :bookmark.id nil] true :else false] :bookmark])
-
-(def ^:private dashboardcard-count-col
-  "Subselect to get the count of associated DashboardCards"
-  [{:select [:%count.*]
-    :from   [:report_dashboardcard]
-    :where  [:= :report_dashboardcard.card_id :card.id]}
-   :dashboardcard_count])
-
-(def ^:private table-columns
-  "Columns containing information about the Table this model references. Returned for Metrics and Segments."
-  [:table_id
-   :created_at
-   [:table.db_id       :database_id]
-   [:table.schema      :table_schema]
-   [:table.name        :table_name]
-   [:table.description :table_description]])
-
-(defmulti columns-for-model
-  "The columns that will be returned by the query for `model`, excluding `:model`, which is added automatically.
-  This is not guaranteed to be the final list of columns, new columns can be added by calling [[api.search/replace-select]]"
-  {:arglists '([model])}
-  (fn [model] model))
-
-(defmethod columns-for-model "action"
-  [_]
-  (conj default-columns :model_id
-        :creator_id
-        [:model.collection_id        :collection_id]
-        [:model.id                   :model_id]
-        [:model.name                 :model_name]
-        [:query_action.database_id   :database_id]
-        [:query_action.dataset_query :dataset_query]))
-
-(defmethod columns-for-model "card"
-  [_]
-  (conj default-columns :collection_id :archived_directly :collection_position :dataset_query :display :creator_id
-        [:collection.name :collection_name]
-        [:collection.type :collection_type]
-        [:collection.location :collection_location]
-        [:collection.authority_level :collection_authority_level]
-        bookmark-col dashboardcard-count-col))
-
-(defmethod columns-for-model "indexed-entity" [_]
-  [[:model-index-value.name     :name]
-   [:model-index-value.model_pk :id]
-   [:model-index.pk_ref         :pk_ref]
-   [:model-index.id             :model_index_id]
-   [:collection.name            :collection_name]
-   [:collection.type            :collection_type]
-   [:model.collection_id        :collection_id]
-   [:model.id                   :model_id]
-   [:model.name                 :model_name]
-   [:model.database_id          :database_id]])
-
-(defmethod columns-for-model "dashboard"
-  [_]
-  (conj default-columns :archived_directly :collection_id :collection_position :creator_id bookmark-col
-        [:collection.name :collection_name]
-        [:collection.type :collection_type]
-        [:collection.authority_level :collection_authority_level]))
-
-(defmethod columns-for-model "database"
-  [_]
-  [:id :name :description :created_at :updated_at :initial_sync_status])
-
-(defmethod columns-for-model "collection"
-  [_]
-  (conj (remove #{:updated_at} default-columns)
-        [:collection.id :collection_id]
-        [:name :collection_name]
-        [:type :collection_type]
-        [:authority_level :collection_authority_level]
-        :archived_directly
-        :location
-        bookmark-col))
-
-(defmethod columns-for-model "segment"
-  [_]
-  (concat default-columns table-columns [:creator_id]))
-
-(defmethod columns-for-model "metric"
-  [_]
-  (concat default-columns table-columns [:creator_id]))
-
-(defmethod columns-for-model "table"
-  [_]
-  [[:table.id :id]
-   [:table.name :name]
-   [:table.created_at :created_at]
-   [:table.display_name :display_name]
-   [:table.description :description]
-   [:table.updated_at :updated_at]
-   [:table.initial_sync_status :initial_sync_status]
-   [:table.id :table_id]
-   [:table.db_id :database_id]
-   [:table.schema :table_schema]
-   [:table.name :table_name]
-   [:table.description :table_description]
-   [:metabase_database.name :database_name]])
+   [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:include-dashboard-questions?        {:optional true} :boolean]])
 
 (defmulti column->string
   "Turn a complex column into a string"
@@ -365,7 +269,7 @@
 
 (defmethod column->string [:card :dataset_query]
   [value _ _]
-  (let [query (json/parse-string value true)]
+  (let [query (json/decode+kw value)]
     (if (= "native" (:type query))
       (-> query :native :query)
       "")))

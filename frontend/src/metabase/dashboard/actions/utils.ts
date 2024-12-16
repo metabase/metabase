@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getIframeDomainName } from "metabase/visualizations/visualizations/IFrameViz/utils";
 import type {
   DashCardId,
   Dashboard,
@@ -10,7 +11,8 @@ import type {
 } from "metabase-types/api";
 import type { StoreDashboard, StoreDashcard } from "metabase-types/store";
 
-import { isActionDashCard } from "../utils";
+import { trackIFrameDashcardsSaved } from "../analytics";
+import { isActionDashCard, isIFrameDashCard } from "../utils";
 
 export function getExistingDashCards(
   dashboards: Record<DashboardId, StoreDashboard>,
@@ -81,5 +83,23 @@ export const getDashCardMoveToTabUndoMessage = (dashCard: StoreDashcard) => {
       return t`Link card moved`;
     default:
       return t`Card moved`;
+  }
+};
+
+export const trackAddedIFrameDashcards = (dashboard: Dashboard) => {
+  try {
+    const newIFrameDashcards = dashboard.dashcards.filter(
+      dashcard =>
+        "isAdded" in dashcard && dashcard.isAdded && isIFrameDashCard(dashcard),
+    );
+
+    newIFrameDashcards.forEach(dashcard => {
+      const domainName = getIframeDomainName(
+        dashcard.visualization_settings?.iframe,
+      );
+      trackIFrameDashcardsSaved(dashboard.id, domainName);
+    });
+  } catch {
+    console.error("Could not track added iframe dashcards", dashboard);
   }
 };

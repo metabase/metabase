@@ -82,5 +82,7 @@
                                          (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                                          persisted-info)))
               :database        database-id
-              :source-metadata (seq (map mbql.normalize/normalize-source-metadata result-metadata))}
+              :source-metadata (sequence (comp (map mbql.normalize/normalize-source-metadata)
+                                               (remove :remapped_from))
+                                         result-metadata)}
        (= card-type :model) (assoc :source-query/model? true)))))

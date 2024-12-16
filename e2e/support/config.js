@@ -7,7 +7,9 @@ import {
   removeDirectory,
   verifyDownloadTasks,
 } from "./commands/downloads/downloadUtils";
+import webpackConfig from "./component-webpack.config";
 import * as dbTasks from "./db_tasks";
+import { signJwt } from "./helpers/e2e-jwt-tasks";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
 const {
@@ -26,6 +28,8 @@ const sourceVersion = process.env["CROSS_VERSION_SOURCE"];
 const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
 const feHealthcheckEnabled = process.env["CYPRESS_FE_HEALTHCHECK"] === "true";
+
+const isEmbeddingSdk = process.env.CYPRESS_IS_EMBEDDING_SDK === "true";
 
 // docs say that tsconfig paths should handle aliases, but they don't
 const assetsResolverPlugin = {
@@ -104,6 +108,7 @@ const defaultConfig = {
       ...dbTasks,
       ...verifyDownloadTasks,
       removeDirectory,
+      signJwt,
     });
 
     // this is an official workaround to keep recordings of the failed specs only
@@ -169,6 +174,14 @@ const defaultConfig = {
 
 const mainConfig = {
   ...defaultConfig,
+  ...(isEmbeddingSdk
+    ? {
+        chromeWebSecurity: true,
+        hosts: {
+          "my-site.local": "127.0.0.1",
+        },
+      }
+    : {}),
   projectId: "ywjy9z",
   numTestsKeptInMemory: process.env["CI"] ? 1 : 50,
   reporter: "cypress-multi-reporters",
@@ -223,10 +236,29 @@ const stressTestConfig = {
   retries: 0,
 };
 
+const embeddingSdkComponentTestConfig = {
+  ...defaultConfig,
+  video: false,
+  specPattern: "e2e/test-component/scenarios/embedding-sdk/**/*.cy.spec.tsx",
+  indexHtmlFile: "e2e/support/component-index.html",
+  supportFile: "e2e/support/cypress.js",
+
+  reporter: mainConfig.reporter,
+  reporterOptions: mainConfig.reporterOptions,
+  retries: mainConfig.retries,
+
+  devServer: {
+    framework: "react",
+    bundler: "webpack",
+    webpackConfig: webpackConfig,
+  },
+};
+
 module.exports = {
   mainConfig,
   snapshotsConfig,
   stressTestConfig,
   crossVersionSourceConfig,
   crossVersionTargetConfig,
+  embeddingSdkComponentTestConfig,
 };

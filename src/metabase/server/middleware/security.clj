@@ -8,8 +8,9 @@
    [metabase.config :as config]
    [metabase.embed.settings :as embed.settings]
    [metabase.public-settings :as public-settings]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [ring.util.codec :refer [base64-encode]])
   (:import
    (java.security MessageDigest SecureRandom)))
@@ -45,15 +46,69 @@
    "Expires"        "Tue, 03 Jul 2001 06:00:00 GMT"
    "Last-Modified"  (t/format :rfc-1123-date-time (t/zoned-date-time))})
 
-(defn- cache-far-future-headers
+(def cache-far-future-headers
   "Headers that tell browsers to cache a static resource for a long time."
-  []
   {"Cache-Control" "public, max-age=31536000"})
 
 (def ^:private ^:const strict-transport-security-header
   "Tell browsers to only access this resource over HTTPS for the next year (prevent MTM attacks). (This only applies if
   the original request was HTTPS; if sent in response to an HTTP request, this is simply ignored)"
   {"Strict-Transport-Security" "max-age=31536000"})
+
+(defn parse-url
+  "Returns an object with protocol, domain and port for the given url"
+  [url]
+  (if (= url "*")
+    {:protocol nil :domain "*" :port "*"}
+    (let [pattern #"^(?:(https?)://)?([^:/]+)(?::(\d+|\*))?$"
+          matches (re-matches pattern url)]
+      (if-not matches
+        (do (log/errorf "Invalid URL: %s" url) nil)
+        (let [[_ protocol domain port] matches]
+          {:protocol protocol
+           :domain domain
+           :port port})))))
+
+(defn- add-wildcard-entries
+  "Adds a wildcard prefix `.*` to the domain part of the given `domain-or-url` string.
+
+  Only adds the wildcard entry when the given domain does not have a subdomain already,
+  with the exception of single name domains like 'localhost' which should not have the wildcard prefix.
+
+  This is done because we won't know if the typical iframe src URL will include a www or not.
+
+  For example,
+  youtube.com typically won't work because the iframe src is https://www.youtube.com/whatever. So we add *.youtube.com to cover this case.
+  But, *.twitter.com won't work for the inverse reason; the iframe src is https://twitter.com/whatever and adding the wildcard fails to match.
+
+  So, we'll double things up and include both the wildcard and non-wildcard entry. We still keep the logic of not adding a wildcard when a
+  subdomain is already specified because we want to treat this case as the user being more specific and thus intentionally less permissive."
+  [domain-or-url]
+  (let [cleaned-domain (-> domain-or-url
+                           (str/replace #"/$" "")
+                           (str/replace #"www." ""))
+        {:keys [protocol domain port]} (parse-url cleaned-domain)]
+    (when domain
+      (let [split-domain (str/split domain #"\.")
+            new-domains  (cond-> (if (= (count split-domain) 2)
+                                   [domain (format "*.%s" domain)]
+                                   [domain])
+                           (str/includes? domain-or-url "www.") (conj (format "www.%s" domain)))]
+        (for [new-domain new-domains]
+          (str (when protocol (format "%s://" protocol))
+               new-domain
+               (when (and port (not= domain "*")) (format ":%s" port))))))))
+
+(defn- parse-allowed-iframe-hosts*
+  [hosts-string]
+  (->> (str/split hosts-string #"[ ,\s\r\n]+")
+       (remove str/blank?)
+       (mapcat add-wildcard-entries)
+       (into ["'self'"])))
+
+(def ^{:doc "Parse the string of allowed iframe hosts, adding wildcard prefixes as needed."}
+  parse-allowed-iframe-hosts
+  (memoize parse-allowed-iframe-hosts*))
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
@@ -67,14 +122,14 @@
                                   "https://accounts.google.com"
                                   (when (public-settings/anon-tracking-enabled)
                                     "https://www.google-analytics.com")
-                                   ;; for webpack hot reloading
+                                  ;; for webpack hot reloading
                                   (when config/is-dev?
                                     "http://localhost:8080")
-                                   ;; for react dev tools to work in Firefox until resolution of
-                                   ;; https://github.com/facebook/react/issues/17997
+                                  ;; for react dev tools to work in Firefox until resolution of
+                                  ;; https://github.com/facebook/react/issues/17997
                                   (when config/is-dev?
                                     "'unsafe-inline'")]
-                                  ;; CLJS REPL
+                                 ;; CLJS REPL
                                  (when config/is-dev?
                                    ["'unsafe-eval'"
                                     "http://localhost:9630"])
@@ -93,6 +148,7 @@
                                  (when config/is-dev?
                                    "http://localhost:9630")
                                  "https://accounts.google.com"]
+                  :frame-src    (parse-allowed-iframe-hosts (public-settings/allowed-iframe-hosts))
                   :font-src     ["*"]
                   :img-src      ["*"
                                  "'self' data:"]
@@ -113,30 +169,15 @@
                   :manifest-src ["'self'"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
-(defn- embedding-app-origin
-  []
-  (when (and (embed.settings/enable-embedding) (embed.settings/embedding-app-origin))
-    (embed.settings/embedding-app-origin)))
-
 (defn- content-security-policy-header-with-frame-ancestors
   [allow-iframes? nonce]
   (update (content-security-policy-header nonce)
           "Content-Security-Policy"
-          #(format "%s frame-ancestors %s;" % (if allow-iframes? "*" (or (embedding-app-origin) "'none'")))))
-
-(defn parse-url
-  "Returns an object with protocol, domain and port for the given url"
-  [url]
-  (if (= url "*")
-    {:protocol nil :domain "*" :port "*"}
-    (let [pattern #"^(?:(https?)://)?([^:/]+)(?::(\d+|\*))?$"
-          matches (re-matches pattern url)]
-      (if-not matches
-        (do (log/errorf "Invalid URL: %s" url) nil)
-        (let [[_ protocol domain port] matches]
-          {:protocol protocol
-           :domain domain
-           :port port})))))
+          #(format "%s frame-ancestors %s;" % (if allow-iframes? "*"
+                                                  (if-let [eao (and (embed.settings/enable-embedding-interactive)
+                                                                    (embed.settings/embedding-app-origins-interactive))]
+                                                    eao
+                                                    "'none'")))))
 
 (defn approved-domain?
   "Checks if the domain is compatible with the reference one"
@@ -165,9 +206,10 @@
   (let [urls (str/split approved-origins-raw #" +")]
     (keep parse-url urls)))
 
-(defn approved-origin?
+(mu/defn approved-origin?
   "Returns true if `origin` should be allowed for CORS based on the `approved-origins`"
-  [raw-origin approved-origins-raw]
+  [raw-origin :- [:maybe :string]
+   approved-origins-raw :- [:maybe :string]]
   (boolean
    (when (and (seq raw-origin) (seq approved-origins-raw))
      (let [approved-list (parse-approved-origins approved-origins-raw)
@@ -179,40 +221,34 @@
                 (approved-port? (:port origin) (:port approved-origin))))
              approved-list)))))
 
-(defn- access-control-headers
-  [origin]
-  (merge
-   (when
-    (approved-origin? origin (embedding-app-origin))
-     {"Access-Control-Allow-Origin" origin
-      "Vary"                        "Origin"})
-
-   {"Access-Control-Allow-Headers"   "*"
-    "Access-Control-Allow-Methods"   "*"
-    "Access-Control-Expose-Headers"  "X-Metabase-Anti-CSRF-Token"}))
-
-(defn- first-embedding-app-origin
-  "Return only the first embedding app origin."
-  []
-  (some-> (embedding-app-origin)
-          (str/split #" ")
-          first))
+(defn access-control-headers
+  "Returns headers for CORS requests"
+  [origin enabled? approved-origins]
+  (when enabled?
+    (merge
+     (when (approved-origin? origin (if enabled? approved-origins "localhost:*"))
+       {"Access-Control-Allow-Origin" origin
+        "Vary"                        "Origin"})
+     {"Access-Control-Allow-Headers"  "*"
+      "Access-Control-Allow-Methods"  "*"
+      "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token"})))
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options."
   [& {:keys [origin nonce allow-iframes? allow-cache?]
       :or   {allow-iframes? false, allow-cache? false}}]
   (merge
-   (if allow-cache?
-     (cache-far-future-headers)
-     (cache-prevention-headers))
+   (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
    (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
-   (when (embedding-app-origin) (access-control-headers origin))
+   (access-control-headers origin
+                           (embed.settings/enable-embedding-sdk)
+                           (embed.settings/embedding-app-origins-sdk))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
-     {"X-Frame-Options"                 (if (embedding-app-origin)
-                                          (format "ALLOW-FROM %s" (first-embedding-app-origin))
+     {"X-Frame-Options"                 (if-let [eao (and (embed.settings/enable-embedding-interactive)
+                                                          (embed.settings/embedding-app-origins-interactive))]
+                                          (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
                                           "DENY")})
    {;; Tell browser to block suspected XSS attacks
     "X-XSS-Protection"                  "1; mode=block"
@@ -226,8 +262,8 @@
   (update response :headers #(merge %2 %1) (security-headers
                                             :origin         ((:headers request) "origin")
                                             :nonce          (:nonce request)
-                                            :allow-iframes? ((some-fn req.util/public? req.util/embed?) request)
-                                            :allow-cache?   (req.util/cacheable? request))))
+                                            :allow-iframes? ((some-fn request/public? request/embed?) request)
+                                            :allow-cache?   (request/cacheable? request))))
 
 (defn add-security-headers
   "Middleware that adds HTTP security and cache-busting headers."

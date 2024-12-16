@@ -179,6 +179,19 @@
     :blocked
     :unrestricted))
 
+(defenterprise new-table-view-data-permission-level
+  "Returns the view-data permission level to set for a new table in a given group and database. This is `blocked`
+  if the group has `blocked` for the DB or any table in the DB; otherwise it is `unrestricted`."
+  :feature :advanced-permissions
+  [db-id group-id]
+  (if (t2/exists? :model/DataPermissions
+                  :db_id db-id
+                  :perm_type :perms/view-data
+                  :perm_value :blocked
+                  :group_id group-id)
+    :blocked
+    :unrestricted))
+
 (defenterprise new-group-view-data-permission-level
   "Returns the default view-data permission level for a new group for a given database. This is `blocked` if All Users
   has block permissions for the database, or if any connection impersonation policies or sandboxes exist. Otherwise, it

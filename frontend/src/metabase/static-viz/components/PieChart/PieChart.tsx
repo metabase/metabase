@@ -10,39 +10,31 @@ import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
 import type { StaticChartProps } from "../StaticVisualization";
 
 import { getPieChartLegend } from "./legend";
-import { computeStaticPieChartSettings } from "./settings";
 
 export function PieChart({
   rawSeries,
-  dashcardSettings,
   renderingContext,
+  settings,
   isStorybook,
 }: StaticChartProps) {
-  const computedVizSettings = computeStaticPieChartSettings(
-    rawSeries,
-    dashcardSettings,
-  );
   const chartModel = getPieChartModel(
     rawSeries,
-    computedVizSettings,
+    settings,
+    [],
     renderingContext,
   );
-  const formatters = getPieChartFormatters(
-    chartModel,
-    computedVizSettings,
-    renderingContext,
-  );
+  const formatters = getPieChartFormatters(chartModel, settings);
   const option = getPieChartOption(
     chartModel,
     formatters,
-    computedVizSettings,
+    settings,
     renderingContext,
     DIMENSIONS.maxSideLength,
   );
   const { legendHeight, Legend } = getPieChartLegend(
     chartModel,
     formatters,
-    computedVizSettings,
+    settings,
   );
 
   const chart = init(null, null, {

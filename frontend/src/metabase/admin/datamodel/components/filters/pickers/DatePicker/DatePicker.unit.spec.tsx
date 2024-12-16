@@ -2,27 +2,14 @@ import { render, screen } from "@testing-library/react";
 import _userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/lib/types";
-import Filter from "metabase-lib/v1/queries/structured/Filter";
-import {
-  ORDERS,
-  ORDERS_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
+import { ORDERS } from "metabase-types/api/mocks/presets";
 
 import DatePicker from "./DatePicker";
 
 const userEvent = _userEvent.setup({
   advanceTimers: jest.advanceTimersByTime,
 });
-
-const metadata = createMockMetadata({
-  databases: [createSampleDatabase()],
-});
-
-const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
-const ordersQuery = ordersTable.legacyQuery({ useStructuredQuery: true });
 
 // this component does not manage its own filter state, so we need a wrapper to test
 // any state updates because the component's behavior is based on the filter state
@@ -31,7 +18,7 @@ const DatePickerStateWrapper = ({
   onCommit = jest.fn(),
   onChange = jest.fn(),
 }: {
-  filter: Filter;
+  filter: FilterMBQL;
   onCommit?: (arg: any) => void;
   onChange?: (arg: any) => void;
 }) => {
@@ -50,8 +37,11 @@ const DatePickerStateWrapper = ({
 
 const CREATED_AT_FIELD = ["field", ORDERS.CREATED_AT, null];
 
-const createDateFilter = (operator: null | string = null, ...args: any[]) =>
-  new Filter([operator, CREATED_AT_FIELD, ...(args ?? [])], null, ordersQuery);
+const createDateFilter = (operator: null | string = null, ...args: any[]) => [
+  operator,
+  CREATED_AT_FIELD,
+  ...(args ?? []),
+];
 
 describe("DatePicker", () => {
   beforeAll(() => {
@@ -240,9 +230,9 @@ describe("DatePicker", () => {
 
     describe("Specific Dates", () => {
       const singleDateOperators = [
-        ["=", "on"],
-        ["<", "before"],
-        [">", "after"],
+        ["=", "On"],
+        ["<", "Before"],
+        [">", "After"],
       ];
 
       singleDateOperators.forEach(([operator, description]) => {
@@ -263,6 +253,21 @@ describe("DatePicker", () => {
             operator,
             CREATED_AT_FIELD,
             "2020-05-21",
+          ]);
+        });
+
+        it(`can add time to a specific ${description} date filter`, async () => {
+          const filter = createDateFilter(operator, "2020-05-01");
+          const onChange = jest.fn();
+          render(
+            <DatePickerStateWrapper filter={filter} onChange={onChange} />,
+          );
+
+          await userEvent.click(screen.getByText("Add a time"));
+          expect(onChange.mock.lastCall[0]).toStrictEqual([
+            operator,
+            CREATED_AT_FIELD,
+            "2020-05-01T12:30:00",
           ]);
         });
       });
@@ -286,6 +291,21 @@ describe("DatePicker", () => {
           CREATED_AT_FIELD,
           "2020-05-17",
           "2020-05-19",
+        ]);
+      });
+
+      it("can add time to a between date filter", async () => {
+        const filter = createDateFilter("between", "2020-04-01", "2020-05-01");
+        const onChange = jest.fn();
+        render(<DatePickerStateWrapper filter={filter} onChange={onChange} />);
+
+        await userEvent.click(screen.getByText("Add a time"));
+
+        expect(onChange.mock.lastCall[0]).toStrictEqual([
+          "between",
+          CREATED_AT_FIELD,
+          "2020-04-01T12:30:00",
+          "2020-05-01T12:30:00",
         ]);
       });
 
@@ -389,7 +409,7 @@ describe("DatePicker", () => {
           name: /12 AM/i,
         });
 
-        expect(midnightCheckbox).toBeChecked();
+        expect(midnightCheckbox).not.toBeChecked();
 
         await userEvent.click(midnightCheckbox);
 
@@ -399,7 +419,7 @@ describe("DatePicker", () => {
           0,
         ]);
 
-        expect(midnightCheckbox).not.toBeChecked();
+        expect(midnightCheckbox).toBeChecked();
       });
     });
   });

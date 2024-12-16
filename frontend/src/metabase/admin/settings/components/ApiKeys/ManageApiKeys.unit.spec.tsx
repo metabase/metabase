@@ -72,11 +72,13 @@ async function setup(
     ).toHaveLength(1);
   });
 }
+
 describe("ManageApiKeys", () => {
   it("should render the component", async () => {
     await setup();
     expect(screen.getByText("Manage API Keys")).toBeInTheDocument();
   });
+
   it("should render component empty state", async () => {
     await setup({ apiKeys: [] });
     expect(screen.getByText("Manage API Keys")).toBeInTheDocument();
@@ -88,10 +90,12 @@ describe("ManageApiKeys", () => {
     ).toBeInTheDocument();
     expect(screen.getAllByText("Create API Key")).toHaveLength(2);
   });
+
   it("should load API keys from api", async () => {
     await setup();
     expect(await screen.findByText("Development API Key")).toBeInTheDocument();
   });
+
   it("should create a new API key", async () => {
     await setup();
     await userEvent.click(screen.getByText("Create API Key"));
@@ -121,6 +125,7 @@ describe("ManageApiKeys", () => {
       ).toHaveLength(2),
     );
   });
+
   it("should regenerate an API key", async () => {
     await setup();
     const REGEN_URL = "path:/api/api-key/1/regenerate";
@@ -151,6 +156,7 @@ describe("ManageApiKeys", () => {
       ).toHaveLength(2);
     });
   });
+
   it("should edit API key", async () => {
     await setup();
     const EDIT_URL = "path:/api/api-key/1";
@@ -185,6 +191,7 @@ describe("ManageApiKeys", () => {
       ).toHaveLength(2);
     });
   });
+
   it("should delete API key", async () => {
     await setup();
     const DELETE_URL = "path:/api/api-key/1";

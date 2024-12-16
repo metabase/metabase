@@ -45,3 +45,8 @@ export const DATE_PICKER_EXTRACTION_UNITS = [
   "month-of-year",
   "quarter-of-year",
 ] as const;
+
+export const DATE_PICKER_UNITS = [
+  ...DATE_PICKER_TRUNCATION_UNITS,
+  ...DATE_PICKER_EXTRACTION_UNITS,
+] as const;

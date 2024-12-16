@@ -4,6 +4,14 @@ export function getFullName(user: NamedUser): string | null {
   return [firstName, lastName].join(" ").trim() || null;
 }
 
+export const getUserName = (userInfo?: NamedUser) => {
+  if (!userInfo) {
+    return "";
+  }
+  const name = getFullName(userInfo);
+  return name || userInfo.email;
+};
+
 export interface NamedUser {
   first_name?: string | null;
   last_name?: string | null;

@@ -4,7 +4,7 @@ title: Tables
 
 # Tables
 
-The **Table** option is good for looking at tabular data (duh), or for lists of things like users or orders. The visualization options for tables allow you to add, hide, or rearrange fields in the table you're looking at, as well as modify their formatting. Check out [Everything you can do with the table visualization](https://www.metabase.com/learn/basics/visualizing-data/table.html).
+The **Table** option is good for looking at tabular data (duh), or for lists of things like users or orders. The visualization options for tables allow you to add, hide, or rearrange fields in the table you're looking at, as well as modify their formatting. Check out [Everything you can do with the table visualization](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/table).
 
 ## Rearranging, adding, and removing columns
 
@@ -171,7 +171,7 @@ Gives you various options for how commas and periods are used to separate the nu
 - 100000.00
 - 100'000.00
 
-### Minimum number of decimal places
+### Number of decimal places
 
 Forces the number to be displayed with exactly this many decimal places.
 

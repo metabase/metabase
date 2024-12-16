@@ -7,6 +7,7 @@
    [honey.sql.helpers :as sql.helpers]
    [honey.sql.protocols]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
@@ -322,6 +323,12 @@
 (defmethod date [:sql :week-of-year-instance]
   [driver _ honeysql-expr]
   (week-of-year driver honeysql-expr :instance))
+
+(defmethod date
+  [:sql :day-of-week-iso]
+  [driver _ honeysql-expr]
+  (binding [driver.common/*start-of-week* :monday]
+    (date driver :day-of-week honeysql-expr)))
 
 (defmulti add-interval-honeysql-form
   "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
@@ -787,21 +794,51 @@
    (->honeysql driver mbql-expr)
    (->honeysql driver power)])
 
+(defn- aggregation?
+  [expr]
+  (and (vector? expr)
+       (> (count expr) 1)
+       (= (first expr) :aggregation)
+       (int? (second expr))))
+
+(defn- unwrap-aggregation-option
+  [agg]
+  (cond-> agg
+    (and (vector? agg) (= (first agg) :aggregation-options)) second))
+
+(defn- over-order-bys
+  "Returns a vector containing the `aggregations` specified by `order-bys` compiled to
+  honeysql expressions for `driver` suitable for ordering in the over clause of a window function."
+  [driver aggregations order-bys]
+  (let [aggregations (vec aggregations)]
+    (into []
+          (keep (fn [[direction expr]]
+                  (if (aggregation? expr)
+                    (let [[_aggregation index] expr
+                          agg (unwrap-aggregation-option (aggregations index))]
+                      (when-not (#{:cum-count :cum-sum :offset} (first agg))
+                        [(->honeysql driver agg) direction]))
+                    [(->honeysql driver expr) direction])))
+          order-bys)))
+
 (defn- window-aggregation-over-expr-for-query-with-breakouts
   "Order by the first breakout, then partition by all the other ones. See #42003 and
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
   [driver inner-query]
-  (let [num-breakouts   (count (:breakout inner-query))
-        group-bys       (:group-by (apply-top-level-clause driver :breakout {} inner-query))
-        partition-exprs (when (> num-breakouts 1)
-                          (rest group-bys))
-        order-expr      (first group-bys)]
+  (let [breakouts (:breakout inner-query)
+        group-bys (:group-by (apply-top-level-clause driver :breakout {} inner-query))
+        finest-temp-breakout (qp.util.transformations.nest-breakouts/finest-temporal-breakout-index breakouts 2)
+        partition-exprs (when (> (count breakouts) 1)
+                          (if finest-temp-breakout
+                            (m/remove-nth finest-temp-breakout group-bys)
+                            (butlast group-bys)))
+        order-bys (over-order-bys driver (:aggregation inner-query) (:order-by inner-query))]
     (merge
      (when (seq partition-exprs)
        {:partition-by (mapv (fn [expr]
                               [expr])
                             partition-exprs)})
-     {:order-by [[order-expr :asc]]})))
+     {:order-by order-bys})))
 
 (defn- window-aggregation-over-expr-for-query-without-breakouts [driver inner-query]
   (when-let [order-bys (not-empty (:order-by (apply-top-level-clause driver :order-by {} inner-query)))]
@@ -839,7 +876,7 @@
 (defn- cumulative-aggregation-over-rows
   "Generate an OVER (...) expression for stuff like cumulative sum or cumulative count.
 
-  For a single breakout the generate SQL will look something like:
+  For a single breakout the generated SQL will look something like:
 
     OVER (
       ORDER BY created_at
@@ -1332,7 +1369,7 @@
            (not (uuid? (->honeysql driver arg)))
              ;; Check for inlined values
            (not (= (:database-type (h2x/type-info (->honeysql driver arg))) "uuid")))
-    [::cast field "varchar"]
+    [::cast-to-text field]
     field))
 
 (mu/defn- maybe-cast-uuid-for-text-compare
@@ -1340,12 +1377,19 @@
    Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
   [field]
   (if (uuid-field? field)
-    [::cast field "varchar"]
+    [::cast-to-text field]
     field))
 
 (defmethod ->honeysql [:sql ::cast]
   [driver [_ expr database-type]]
   (h2x/maybe-cast database-type (->honeysql driver expr)))
+
+(defmethod ->honeysql [:sql ::cast-to-text]
+  [driver [_ expr]]
+  ;; Oracle does not support text type,
+  ;; sqlserver limits varchar to 30 in casts,
+  ;; athena cannot cast uuid to bounded varchars
+  (->honeysql driver [::cast expr "text"]))
 
 (defmethod ->honeysql [:sql :starts-with]
   [driver [_ field arg options]]
@@ -1768,9 +1812,11 @@
       (when-let [source-query (:source-query inner-query)]
         (has-window-function-aggregations? source-query))))
 
-(defn- maybe-nest-breakouts-in-queries-with-window-fn-aggregations [inner-query]
+(defn- maybe-nest-breakouts-in-queries-with-window-fn-aggregations
+  [inner-query]
   (cond-> inner-query
-    (has-window-function-aggregations? inner-query) nest-breakouts-in-queries-with-window-fn-aggregations))
+    (has-window-function-aggregations? inner-query)
+    nest-breakouts-in-queries-with-window-fn-aggregations))
 
 (defmethod preprocess :sql
   [_driver inner-query]

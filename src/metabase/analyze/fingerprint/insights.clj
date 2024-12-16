@@ -19,17 +19,19 @@
 (set! *warn-on-reflection* true)
 
 (defn- last-2 []
-  (fn
-    ([] [])
-    ([acc]
-     (let [cnt (count acc)]
-       (cond (= cnt 0) [nil nil]
-             (= cnt 1) [nil (nth acc 0)]
-             :else acc)))
-    ([acc x]
-     (if (< (count acc) 2)
-       (conj acc x)
-       [(nth acc 1) x]))))
+  (let [none (Object.)]
+    (fn
+      ([] (object-array [none none]))
+      ([^objects acc]
+       (let [a (aget acc 0)
+             b (aget acc 1)]
+         (cond (identical? b none) [nil nil]
+               (identical? a none) [nil b]
+               :else [a b])))
+      ([^objects acc, x]
+       (aset acc 0 (aget acc 1))
+       (aset acc 1 x)
+       acc))))
 
 (defn change
   "Relative difference between `x1` an `x2`."
@@ -47,8 +49,8 @@
   "Transducer that samples a fixed number `n` of samples consistently.
    https://en.wikipedia.org/wiki/Reservoir_sampling. Uses java.util.Random
   with a seed of `n` to ensure a consistent sample if a dataset has not changed.
-  The returned instance is mutable, so don't reuse it."
-  [n]
+  The returned instance is mutable, so don't reuse it. `f` is invoked on the element before adding it to the sample."
+  [n f]
   (let [n (int n)
         rng (Random. n)
         counter (int-array 1) ;; A box for a mutable primitive int.
@@ -66,13 +68,14 @@
              idx (.nextInt rng c+1)]
          (aset counter 0 c+1)
          (cond
-           (< c n)   (aset reservoir c x)
-           (< idx n) (aset reservoir idx x)))))))
+           (< c n)   (aset reservoir c (f x))
+           (< idx n) (aset reservoir idx (f x))))))))
 
 (defn- simple-linear-regression
   "Faster and more efficient implementation of `kixi.stats.estimate/simple-linear-regression`. Computes some of squares
-  on each step, and on the completing step returns `[offset slope]`."
-  [fx fy]
+  on each step, and on the completing step returns `[offset slope]`. Additionally accepts `x-scale` and `y-scale`
+  which should either be `:linear` or `:log`."
+  [fx fy x-scale y-scale]
   (fn
     ([] (double-array 6))
     ([^doubles arr e]
@@ -80,8 +83,10 @@
            y (fy e)]
        (if (or (nil? x) (nil? y))
          arr
-         (let [x    (double x)
-               y    (double y)
+         (let [x    (cond-> (double x)
+                      (identical? x-scale :log) Math/log)
+               y    (cond-> (double y)
+                      (identical? y-scale :log) Math/log)
                c    (aget arr 0)
                mx   (aget arr 1)
                my   (aget arr 2)
@@ -120,32 +125,32 @@
 
 (def ^:private trendline-function-families
   ;; http://mathworld.wolfram.com/LeastSquaresFitting.html
-  [{:x-link-fn identity
-    :y-link-fn identity
+  [{:x-scale   :linear
+    :y-scale   :linear
     :model     (fn [offset slope]
                  (fn [x]
                    (+ offset (* slope x))))
     :formula   (fn [offset slope]
                  [:+ offset [:* slope :x]])}
    ;; http://mathworld.wolfram.com/LeastSquaresFittingExponential.html
-   {:x-link-fn identity
-    :y-link-fn math/log
+   {:x-scale   :linear
+    :y-scale   :log
     :model     (fn [offset slope]
                  (fn [x]
                    (* (math/exp offset) (math/exp (* slope x)))))
     :formula   (fn [offset slope]
                  [:* (math/exp offset) [:exp [:* slope :x]]])}
    ;; http://mathworld.wolfram.com/LeastSquaresFittingLogarithmic.html
-   {:x-link-fn math/log
-    :y-link-fn identity
+   {:x-scale   :log
+    :y-scale   :identity
     :model     (fn [offset slope]
                  (fn [x]
-                   (+ offset (* slope (math/log x)))))
+                   (+ offset (* slope (Math/log x)))))
     :formula   (fn [offset slope]
                  [:+ offset [:* slope [:log :x]]])}
    ;; http://mathworld.wolfram.com/LeastSquaresFittingPowerLaw.html
-   {:x-link-fn math/log
-    :y-link-fn math/log
+   {:x-scale   :log
+    :y-scale   :log
     :model     (fn [offset slope]
                  (fn [x]
                    (* (math/exp offset) (math/pow x slope))))
@@ -161,21 +166,17 @@
   [fx fy]
   (redux/post-complete
    (fingerprinters/robust-fuse
-    {:fits           (->> (for [{:keys [x-link-fn y-link-fn formula model]} trendline-function-families]
+    {:fits           (->> (for [{:keys [x-scale y-scale formula model]} trendline-function-families]
                             (redux/post-complete
-                             (simple-linear-regression #(some-> (fx %) x-link-fn)
-                                                       #(some-> (fy %) y-link-fn))
+                             (simple-linear-regression fx fy x-scale y-scale)
                              (fn [[offset slope]]
                                (when (every? u/real-number? [offset slope])
                                  {:model   (model offset slope)
                                   :formula (formula offset slope)}))))
                           redux/juxt*)
-     :validation-set ((keep (fn [row]
-                              (let [x (fx row)
-                                    y (fy row)]
-                                (when (and x y)
-                                  [x y]))))
-                      (reservoir-sample validation-set-size))})
+     :validation-set ((filter (fn [row] (and (fx row) (fy row))))
+                      (reservoir-sample validation-set-size
+                                        (fn [row] [(fx row) (fy row)])))})
    (fn [{:keys [validation-set fits]}]
      (some->> fits
               (remove nil?)
@@ -193,7 +194,7 @@
        (= (count datetimes) 1)))
 
 ;; We downsize UNIX timestamps to lessen the chance of overflows and numerical instabilities.
-(def ^Long ^:const ^:private ms-in-a-day (* 1000 60 60 24))
+(def ^Double ^:const ^:private ms-in-a-day (* 1000.0 60 60 24))
 
 (defn- ms->day
   [dt]
@@ -224,15 +225,14 @@
   (m/find-first (partial valid-period? from to) (keys unit->duration)))
 
 (defn- ->millis-from-epoch [t]
-  (when t
-    (condp instance? t
-      Instant        (.toEpochMilli ^Instant t)
-      OffsetDateTime (.toEpochMilli (.toInstant ^OffsetDateTime t))
-      ZonedDateTime  (.toEpochMilli (.toInstant ^ZonedDateTime t))
-      LocalDate      (->millis-from-epoch (t/offset-date-time t (t/local-time 0) (t/zone-offset 0)))
-      LocalDateTime  (->millis-from-epoch (t/offset-date-time t (t/zone-offset 0)))
-      LocalTime      (->millis-from-epoch (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset 0)))
-      OffsetTime     (->millis-from-epoch (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset t))))))
+  (cond (instance? Instant t)        (.toEpochMilli ^Instant t)
+        (instance? OffsetDateTime t) (.toEpochMilli (.toInstant ^OffsetDateTime t))
+        (instance? ZonedDateTime t)  (.toEpochMilli (.toInstant ^ZonedDateTime t))
+        (instance? LocalDate t)      (recur (t/offset-date-time t (t/local-time 0) (t/zone-offset 0)))
+        (instance? LocalDateTime t)  (recur (t/offset-date-time t (t/zone-offset 0)))
+        (instance? LocalTime t)      (recur (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset 0)))
+        (instance? OffsetTime t)     (recur (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset t)))
+        :else                        (throw (ex-info (str "->millis-from-epoch: unsupported type " (class t)) {}))))
 
 (defn- timeseries-insight
   [{:keys [numbers datetimes]}]
@@ -241,7 +241,7 @@
         xfn        #(nth % x-position)]
     (fingerprinters/with-error-handling
       ((map (fn [row]
-              ;; Convert string datetime into days-from-epoch early.
+              ;; Convert string datetimes or Instants into into days-from-epoch early.
               (update (vec row) x-position #(some-> %
                                                     fingerprinters/->temporal
                                                     ->millis-from-epoch
@@ -254,7 +254,7 @@
              ((filter (comp u/real-number? yfn))
               (redux/juxt ((map yfn) (last-2))
                           ((map xfn) (last-2))
-                          (simple-linear-regression xfn yfn)
+                          (simple-linear-regression xfn yfn :linear :linear)
                           (best-fit xfn yfn))))
            (fn [[[y-previous y-current] [x-previous x-current] [offset slope] best-fit-equation]]
              (let [unit         (let [unit (some-> datetime :unit mbql.u/normalize-token)]

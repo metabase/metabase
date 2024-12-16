@@ -1,0 +1,36 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Icon } from "metabase/ui";
+import { Group, Tabs } from "metabase/ui";
+import * as TabsStories from "./Tabs.stories";
+
+<Meta of={TabsStories} />
+
+# Tabs
+
+Our themed wrapper around [Mantine Tabs](https://v6.mantine.dev/core/tabs/).
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/uPYsD4ncNpQPFzxsLnTnGd/Navigation-%2F-Tabs?type=design&node-id=1-96&mode=design&t=dtMJ59HbOKZ8TOgJ-0)
+- [Mantine Tabs Docs](https://v6.mantine.dev/core/tabs/)
+
+## Examples
+
+<Canvas>
+  <Story of={TabsStories.Default} />
+</Canvas>
+
+<Canvas>
+  <Story of={TabsStories.Icons} />
+</Canvas>
+
+### Vertical orientation
+
+<Canvas>
+  <Story of={TabsStories.VerticalOrientation} />
+</Canvas>
+
+<Canvas>
+  <Story of={TabsStories.VerticalOrientationIcons} />
+</Canvas>

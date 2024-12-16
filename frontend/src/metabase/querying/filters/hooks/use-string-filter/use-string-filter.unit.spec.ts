@@ -8,6 +8,8 @@ import {
   createOrdersIdField,
   createOrdersProductIdField,
   createOrdersTable,
+  createOrdersUserIdField,
+  createPeopleTable,
   createProductsCategoryField,
   createProductsEanField,
   createProductsIdField,
@@ -18,27 +20,27 @@ import {
 import { useStringFilter } from "./use-string-filter";
 
 interface CreateFilterCase {
-  operator: Lib.StringFilterOperatorName;
+  operator: Lib.StringFilterOperator;
   values: string[];
   expectedDisplayName: string;
 }
 
 interface UpdateFilterCase {
-  operator: Lib.StringFilterOperatorName;
+  operator: Lib.StringFilterOperator;
   expression: Lib.ExpressionClause;
   values: string[];
   expectedDisplayName: string;
 }
 
 interface ValidateFilterCase {
-  operator: Lib.StringFilterOperatorName;
+  operator: Lib.StringFilterOperator;
   values: string[];
 }
 
 interface DefaultOperatorCase {
   title: string;
   column: Lib.ColumnMetadata;
-  expectedOperator: Lib.StringFilterOperatorName;
+  expectedOperator: Lib.StringFilterOperator;
 }
 
 const METADATA = createMockMetadata({
@@ -55,6 +57,7 @@ const METADATA = createMockMetadata({
               base_type: "type/Text",
               effective_type: "type/Text",
             }),
+            createOrdersUserIdField(),
           ],
         }),
         createProductsTable({
@@ -63,10 +66,13 @@ const METADATA = createMockMetadata({
               base_type: "type/Text",
               effective_type: "type/Text",
             }),
-            createProductsCategoryField(),
+            createProductsCategoryField({
+              semantic_type: null,
+            }),
             createProductsEanField(),
           ],
         }),
+        createPeopleTable(),
       ],
     }),
   ],
@@ -269,13 +275,18 @@ describe("useStringFilter", () => {
       expectedOperator: "=",
     },
     {
-      title: "category column",
+      title: "category column with field values",
       column: findColumn("PRODUCTS", "CATEGORY"),
       expectedOperator: "=",
     },
     {
-      title: "regular column",
+      title: "non-category column with field values",
       column: findColumn("PRODUCTS", "EAN"),
+      expectedOperator: "=",
+    },
+    {
+      title: "regular column without field values",
+      column: findColumn("PEOPLE", "PASSWORD"),
       expectedOperator: "contains",
     },
   ])(

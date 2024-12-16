@@ -25,6 +25,7 @@ The databases listed below have official drivers maintained by the Metabase team
 
 - [Amazon Athena](./connections/athena.md)
 - [BigQuery](./connections/bigquery.md) (Google Cloud Platform)
+- [Databricks](./connections/databricks.md)
 - [Druid](./connections/druid.md)
 - [MongoDB (recommend version 4.2 or higher)](./connections/mongodb.md)
 - [MariaDB](./connections/mariadb.md)
@@ -78,4 +79,4 @@ If you've deleted the Metabase [Sample Database](https://www.metabase.com/glossa
 
 - [Metadata editing](../data-modeling/metadata-editing.md).
 - [Setting data access permissions](../permissions/data.md).
-- [Metabase at scale](https://www.metabase.com/learn/administration/metabase-at-scale).
+- [Metabase at scale](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-at-scale).

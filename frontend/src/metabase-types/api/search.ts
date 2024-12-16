@@ -1,12 +1,14 @@
 import type { UserId } from "metabase-types/api/user";
 
-import type { CardDisplayType, CardId } from "./card";
+import type { CardId } from "./card";
 import type { Collection, CollectionId } from "./collection";
-import type { DashboardId } from "./dashboard";
+import type { Dashboard, DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
+import type { ModerationReviewStatus } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { FieldReference } from "./query";
 import type { TableId } from "./table";
+import type { CardDisplayType } from "./visualization";
 
 const ENABLED_SEARCH_MODELS = [
   "collection",
@@ -22,28 +24,9 @@ const ENABLED_SEARCH_MODELS = [
 
 export const SEARCH_MODELS = [...ENABLED_SEARCH_MODELS, "segment"] as const;
 
-export type EnabledSearchModel = typeof ENABLED_SEARCH_MODELS[number];
+export type EnabledSearchModel = (typeof ENABLED_SEARCH_MODELS)[number];
 
-export type SearchModel = typeof SEARCH_MODELS[number];
-
-export interface SearchScore {
-  weight: number;
-  score: number;
-  name:
-    | "pinned"
-    | "bookmarked"
-    | "recency"
-    | "dashboard"
-    | "model"
-    | "official collection score"
-    | "verified"
-    | "text-consecutivity"
-    | "text-total-occurrences"
-    | "text-fullness";
-  match?: string;
-  "match-context-thunk"?: string;
-  column?: string;
-}
+export type SearchModel = (typeof SEARCH_MODELS)[number];
 
 interface BaseSearchResult<
   Id extends SearchResultId,
@@ -91,6 +74,11 @@ export interface SearchResult<
   collection: CollectionEssentials;
   table_id: TableId;
   bookmark: boolean | null;
+  dashboard:
+    | (Pick<Dashboard, "id" | "name"> & {
+        moderation_status: ModerationReviewStatus;
+      })
+    | null;
   database_id: DatabaseId;
   database_name: string | null;
   display: CardDisplayType | null;
@@ -107,7 +95,6 @@ export interface SearchResult<
   initial_sync_status: InitialSyncStatus | null;
   dashboard_count: number | null;
   context: any; // this might be a dead property
-  scores: SearchScore[];
   last_edited_at: string | null;
   last_editor_id: UserId | null;
   last_editor_common_name: string | null;
@@ -138,8 +125,10 @@ export type SearchRequest = {
   search_native_query?: boolean | null;
   verified?: boolean | null;
   model_ancestors?: boolean | null;
+  include_dashboard_questions?: boolean | null;
 
   // this should be in ListCollectionItemsRequest but legacy code expects them here
   collection?: CollectionId;
   namespace?: "snippets";
+  calculate_available_models?: true;
 } & PaginationRequest;

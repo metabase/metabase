@@ -83,5 +83,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: loki-report
+          include-hidden-files: true
           path: .loki/
           if-no-files-found: ignore

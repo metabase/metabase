@@ -38,9 +38,10 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (java.io File)
+   (java.io File InputStreamReader Reader)
    (java.nio.charset StandardCharsets)
-   (org.apache.tika Tika)))
+   (org.apache.tika Tika)
+   (org.mozilla.universalchardet UniversalDetector)))
 
 (set! *warn-on-reflection* true)
 
@@ -97,9 +98,10 @@
   [driver raw-name]
   (if (str/blank? raw-name)
     "unnamed_column"
-    (u/slugify (str/trim raw-name)
-               ;; since slugified names contain only ASCII characters, we can conflate bytes and length here.
-               {:max-length (max-column-bytes driver)})))
+    (u/lower-case-en
+     (u/slugify (str/trim raw-name)
+                ;; since slugified names contain only ASCII characters, we can conflate bytes and length here.
+                {:max-length (max-column-bytes driver)}))))
 
 (def auto-pk-column-name
   "The lower-case name of the auto-incrementing PK column. The actual name in the database could be in upper-case."
@@ -279,6 +281,26 @@
 (defn- file-mime-type [^File file]
   (.detect tika file))
 
+(def ^:private supported-charsets
+  #{"UTF-8"
+    "UTF-16" "UTF-16BE" "UTF-16LE"
+    "UTF-32" "UTF-32BE" "UTF-32LE"
+    "WINDOWS-1252"})
+
+(defn- detect-charset ^String [^File file]
+  (or
+   (try
+     ;; If its not a first-class supported encoding, just treat it as the default encoding.
+     (supported-charsets (UniversalDetector/detectCharset file))
+     ;; If we can't detect the encoding, use the default, and live with unrecognized characters.
+     (catch Exception _))
+   "UTF-8"))
+
+(defn- ->reader ^Reader [^File file]
+  (let [charset (detect-charset file)]
+    (-> (bom/bom-input-stream file)
+        (InputStreamReader. charset))))
+
 (defn- assert-separator-chosen [s]
   (or s (throw (IllegalArgumentException. "Unable to determine separator"))))
 
@@ -289,7 +311,7 @@
   [readable]
   (let [count-columns (fn [s]
                         ;; Create a separate reader per separator, as the line-breaking behavior depends on the parser.
-                        (with-open [reader (bom/bom-reader readable)]
+                        (with-open [reader (->reader readable)]
                           (try (into []
                                      (comp (take max-inferred-lines)
                                            (map count))
@@ -343,7 +365,7 @@
    Returns the file size, number of rows, and number of columns."
   [driver db table-name filename ^File csv-file]
   (let [parse (infer-parser filename csv-file)]
-    (with-open [reader (bom/bom-reader csv-file)]
+    (with-open [reader (->reader csv-file)]
       (let [auto-pk?          (auto-pk-column? driver db)
             [header & rows]   (cond-> (parse reader)
                                 auto-pk?
@@ -398,18 +420,21 @@
         case-statement      (into [:case]
                                   (mapcat identity)
                                   (for [[n display-name] field->display-name]
-                                    [[:= [:lower :name] n] display-name]))]
+                                    [[:= [:lower :name] n]
+                                     [:case
+                                      ;; Only update the display name if it still matches the automatic humanization.
+                                      [:= :display_name (humanization/name->human-readable-name n)] display-name
+                                      ;; Otherwise, it could have been set manually, so leave it as is.
+                                      true                                                          :display_name]]))]
     ;; Using t2/update! results in an invalid query for certain versions of PostgreSQL
     ;; SELECT * FROM \"metabase_field\" WHERE \"id\" AND (\"table_id\" = ?) AND ...
     ;;                                        ^^^^^
     ;; ERROR: argument of AND must be type boolean, not type integer
     (t2/query {:update (t2/table-name :model/Field)
-               :set {:display_name case-statement}
-               :where [:and
-                       [:= :table_id table-id]
-                       [:in [:lower :name] (keys field->display-name)]
-                       ;; Only replace display names that have not been overridden already.
-                       [:= [:lower :name] [:lower :display_name]]]})))
+               :set    {:display_name case-statement}
+               :where  [:and
+                        [:= :table_id table-id]
+                        [:in [:lower :name] (keys field->display-name)]]})))
 
 (defn- uploads-enabled? []
   (some? (:db_id (public-settings/uploads-settings))))
@@ -483,7 +508,7 @@
   It may involve redundantly reading the file, or even failing again if the file is unreadable."
   [filename ^File file]
   (let [parse (infer-parser filename file)]
-    (with-open [reader (bom/bom-reader file)]
+    (with-open [reader (->reader file)]
       (let [rows (parse reader)]
         {:size-mb           (file-size-mb file)
          :num-columns       (count (first rows))
@@ -605,11 +630,15 @@
                                            :model-id    (:id card)
                                            :stats       stats}})
 
-        (snowplow/track-event! ::snowplow/csv-upload-successful api/*current-user-id*
-                               (assoc stats :model-id (:id card)))
-        card)
+        (snowplow/track-event! ::snowplow/csvupload
+                               (assoc stats
+                                      :event    :csv-upload-successful
+                                      :model-id (:id card)))
+        (assoc card :table-id (:id table)))
       (catch Throwable e
-        (snowplow/track-event! ::snowplow/csv-upload-failed api/*current-user-id* (fail-stats filename file))
+        (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
+                                                           :event :csv-upload-failed))
+
         (throw e)))))
 
 ;;; +-----------------------------
@@ -718,25 +747,24 @@
 (defn- update-with-csv! [database table filename file & {:keys [replace-rows?]}]
   (try
     (let [parse (infer-parser filename file)]
-      (with-open [reader (bom/bom-reader file)]
+      (with-open [reader (->reader file)]
         (let [timer              (u/start-timer)
               driver             (driver.u/database->driver database)
               auto-pk?           (auto-pk-column? driver database)
               [header & rows]    (cond-> (parse reader)
                                    auto-pk?
                                    without-auto-pk-columns)
-              normed-name->field (m/index-by #(normalize-column-name driver (:name %))
-                                             (t2/select :model/Field :table_id (:id table) :active true))
+              name->field        (m/index-by :name (t2/select :model/Field :table_id (:id table) :active true))
               column-names       (for [h header] (normalize-column-name driver h))
               display-names      (for [h header] (normalize-display-name h))
               create-auto-pk?    (and
                                   auto-pk?
                                   (driver/create-auto-pk-with-append-csv? driver)
-                                  (not (contains? normed-name->field auto-pk-column-name)))
-              normed-name->field (cond-> normed-name->field auto-pk? (dissoc auto-pk-column-name))
-              _                  (check-schema normed-name->field column-names)
+                                  (not (contains? name->field auto-pk-column-name)))
+              name->field        (cond-> name->field auto-pk? (dissoc auto-pk-column-name))
+              _                  (check-schema name->field column-names)
               settings           (upload-parsing/get-settings)
-              old-types          (map (comp upload-types/base-type->upload-type :base_type normed-name->field) column-names)
+              old-types          (map (comp upload-types/base-type->upload-type :base_type name->field) column-names)
               ;; in the happy, and most common, case all the values will match the existing types
               ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
               ;; we can come back and optimize this to an optimistic-with-fallback approach later.
@@ -779,7 +807,9 @@
 
           (invalidate-cached-models! table)
 
-          (events/publish-event! :event/upload-append
+          (events/publish-event! (if replace-rows?
+                                   :event/upload-replace
+                                   :event/upload-append)
                                  {:user-id  (:id @api/*current-user*)
                                   :model-id (:id table)
                                   :model    :model/Table
@@ -788,11 +818,12 @@
                                              :table-name  (:name table)
                                              :stats       stats}})
 
-          (snowplow/track-event! ::snowplow/csv-append-successful api/*current-user-id* stats)
+          (snowplow/track-event! ::snowplow/csvupload (assoc stats :event :csv-append-successful))
 
           {:row-count row-count})))
     (catch Throwable e
-      (snowplow/track-event! ::snowplow/csv-append-failed api/*current-user-id* (fail-stats filename file))
+      (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
+                                                         :event :csv-append-failed))
       (throw e))))
 
 (defn- can-update-error

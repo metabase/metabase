@@ -41,3 +41,15 @@ describe("suggestedName", () => {
     expect(Lib.suggestedName(query)).toBe("Orders");
   });
 });
+
+describe("stageIndexes", () => {
+  it("should return stage indexes for a single-stage query", () => {
+    const query = createQuery();
+    expect(Lib.stageIndexes(query)).toEqual([0]);
+  });
+
+  it("should return stage indexes for a multi-stage query", () => {
+    const query = Lib.appendStage(Lib.appendStage(createQuery()));
+    expect(Lib.stageIndexes(query)).toEqual([0, 1, 2]);
+  });
+});

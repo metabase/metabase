@@ -306,7 +306,7 @@
   (let [cards (map (partial t2/select-one :model/Card :id) (t2/select-fn-set :card_id :model/DashboardCard
                                                                              :dashboard_id (:id dashboard)))]
     {:cards (->> cards
-                 (mapcat (comp similar-questions))
+                 (mapcat similar-questions)
                  (remove (set cards))
                  distinct
                  filter-visible

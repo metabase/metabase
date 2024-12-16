@@ -1,6 +1,5 @@
 (ns metabase.api.embed.common
   (:require
-   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.core :as mc]
@@ -12,16 +11,18 @@
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.eid-translation :as eid-translation]
    [metabase.models.card :as card]
    [metabase.models.params :as params]
-   [metabase.pulse.parameters :as pulse-params]
+   [metabase.models.setting :refer [defsetting]]
+   [metabase.notification.payload.core :as notification.payload]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
    [metabase.util.i18n
-    :as i18n
-    :refer [tru]]
+    :refer [deferred-tru tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -132,7 +133,7 @@
   [query-params]
   (or (try
         (when-let [parameters (:parameters query-params)]
-          (json/parse-string parameters keyword))
+          (json/decode+kw parameters))
         (catch Throwable _
           nil))
       query-params))
@@ -234,7 +235,7 @@
   make these parameters visible at all to the frontend."
   [dashboard token-params]
   (let [params             (:parameters dashboard)
-        dashcards      (:dashcards dashboard)
+        dashcards          (:dashcards dashboard)
         params-with-values (reduce
                             (fn [acc param]
                               (if-let [value (get token-params (keyword (:slug param)))]
@@ -247,7 +248,7 @@
            (map
             (fn [card]
               (if (-> card :visualization_settings :virtual_card)
-                (pulse-params/process-virtual-dashcard card params-with-values)
+                (notification.payload/process-virtual-dashcard card params-with-values)
                 card))
             dashcards))))
 
@@ -302,14 +303,18 @@
     model-or-api-name
     (api-name->model model-or-api-name)))
 
-(def ^:private eid-api-models
+(def ^:private eid-api-names
   "Sorted vec of api models that have an entity_id column"
   (vec (sort (keys api-name->model))))
 
+(def ^:private eid-api-models
+  (vec (sort (vals api-name->model))))
+
+(def ^:private ApiName (into [:enum] eid-api-names))
 (def ^:private ApiModel (into [:enum] eid-api-models))
 
 (def ^:private EntityId
-  "A Malli schema for an entity id, this is a little looser because it needs to be fast."
+  "A Malli schema for an entity id, this is a little more loose because it needs to be fast."
   [:and {:description "entity_id"}
    :string
    [:fn {:error/fn (fn [{:keys [value]} _]
@@ -318,23 +323,45 @@
 
 (def ^:private ModelToEntityIds
   "A Malli schema for a map of model names to a sequence of entity ids."
-  (mc/schema [:map-of ApiModel [:sequential :string]]))
+  (mc/schema [:map-of ApiName [:sequential :string]]))
 
-(mu/defn- entity-ids->id-for-model
+;; -------------------- Entity Id Translation Analytics --------------------
+
+(defsetting entity-id-translation-counter
+  (deferred-tru "A counter for tracking the number of entity_id -> id translations. Whenever we call [[model->entity-ids->ids]], we increment this counter by the number of translations.")
+  :encryption :no
+  :visibility :internal
+  :export?    false
+  :audit      :never
+  :type       :json
+  :default    eid-translation/default-counter
+  :doc false)
+
+(mu/defn update-translation-count!
+  "Update the entity-id translation counter with the results of a batch of entity-id translations."
+  [results :- [:sequential eid-translation/Status]]
+  (let [processed-result (frequencies results)]
+    (entity-id-translation-counter!
+     (merge-with + processed-result (entity-id-translation-counter)))))
+
+(mu/defn- entity-ids->id-for-model :- [:sequential [:tuple
+                                                    ;; We want to pass incorrectly formatted entity-ids through here,
+                                                    ;; but this is assumed to be an entity-id:
+                                                    :string
+                                                    [:map [:status eid-translation/Status]]]]
   "Given a model and a sequence of entity ids on that model, return a pairs of entity-id, id."
   [api-name eids]
   (let [model (->model api-name) ;; This lookup is safe because we've already validated the api-names
         eid->id (into {} (t2/select-fn->fn :entity_id :id [model :id :entity_id] :entity_id [:in eids]))]
     (mapv (fn entity-id-info [entity-id]
             [entity-id (if-let [id (get eid->id entity-id)]
-                         {:id id :type api-name :status "success"}
+                         {:id id :type api-name :status :ok}
                          ;; handle errors
                          (if (mc/validate EntityId entity-id)
                            {:type api-name
-                            :id nil
-                            :status "not-found"}
+                            :status :not-found}
                            {:type api-name
-                            :status "invalid-format"
+                            :status :invalid-format
                             :reason (me/humanize (mc/explain EntityId entity-id))}))])
           eids)))
 
@@ -347,21 +374,23 @@
                                                        (mc/explain ModelToEntityIds model-key->entity-ids)))
                                        :allowed-models (sort (keys api-name->model))
                                        :status-code 400})))
-  (into {}
-        (mapcat
-         (fn [[model eids]] (entity-ids->id-for-model model eids))
-         model-key->entity-ids)))
+  (u/prog1 (into {}
+                 (mapcat
+                  (fn [[model eids]] (entity-ids->id-for-model model eids))
+                  model-key->entity-ids))
+    (update-translation-count! (map :status (vals <>)))))
 
 (mu/defn ->id :- :int
   "Translates a single entity_id -> id. This reuses the batched version: [[model->entity-ids->ids]].
    Please use that if you have to do man lookups at once."
-  [pre-model id :- [:or :int :string]]
+  [api-name-or-model :- [:or ApiName ApiModel] id :- [:or #_id :int #_entity-id :string]]
   (if (string? id)
-    (let [model (->model pre-model)
-          [[_ {:keys [status] :as info}]] (entity-ids->id-for-model model [id])]
-      (if-not (= "success" status)
+    (let [model (->model api-name-or-model)
+          [[_ {:keys [status] :as info}]] (entity-ids->id-for-model api-name-or-model [id])]
+      (update-translation-count! [status])
+      (if-not (= :ok status)
         (throw (ex-info "problem looking up id from entity_id"
-                        {:pre-model pre-model
+                        {:api-name-or-model api-name-or-model
                          :model model
                          :id id
                          :status status}))

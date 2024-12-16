@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { useGetCollectionQuery } from "metabase/api";
@@ -14,6 +14,7 @@ import {
 } from "metabase/common/components/CollectionPicker";
 import { EllipsifiedPath } from "metabase/common/components/EllipsifiedPath";
 import { Table } from "metabase/common/components/Table";
+import { useSetting } from "metabase/common/hooks";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { usePagination } from "metabase/hooks/use-pagination";
@@ -62,6 +63,7 @@ type TableRow = {
 };
 
 export const QueryValidator = () => {
+  const queryAnalysisEnabled = useSetting("query-analysis-enabled");
   const [sortColumn, setSortColumn] = useState<string>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>(
     SortDirection.Asc,
@@ -78,7 +80,7 @@ export const QueryValidator = () => {
         id: collectionId,
       },
       {
-        skip: isRootCollection,
+        skip: isRootCollection || !queryAnalysisEnabled,
       },
     );
 
@@ -92,11 +94,15 @@ export const QueryValidator = () => {
     },
     {
       refetchOnMountOrArgChange: true,
+      skip: !queryAnalysisEnabled,
     },
   );
 
-  const handleCollectionChange = (collection: CollectionPickerValueItem) => {
-    setCollectionId(collection.id);
+  const handleCollectionChange = (item: CollectionPickerValueItem) => {
+    if (item.model !== "collection") {
+      throw new Error("QueryValidator requires a collection as a filter");
+    }
+    setCollectionId(item.id);
     setCollectionPickerOpen(false);
   };
 
@@ -120,7 +126,7 @@ export const QueryValidator = () => {
     [invalidCards],
   );
 
-  return (
+  return queryAnalysisEnabled ? (
     <>
       <Box>
         <Flex mb="2rem" justify="space-between" align="center">
@@ -180,6 +186,22 @@ export const QueryValidator = () => {
         />
       )}
     </>
+  ) : (
+    <Flex justify="center" p="1rem">
+      <Text fz="1rem" color="var(--mb-color-text-light)">
+        {jt`Query Validation is currently disabled. ${(
+          <Text
+            key="text"
+            fz="inherit"
+            color="var(--mb-color-brand)"
+            component={Link}
+            to="/admin/settings/general#query-analysis-enabled"
+          >
+            {t`Please enable query analysis here.`}
+          </Text>
+        )}`}
+      </Text>
+    </Flex>
   );
 };
 

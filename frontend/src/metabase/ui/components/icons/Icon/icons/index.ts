@@ -61,6 +61,8 @@ import breakout_component from "./breakout.svg?component";
 import breakout_source from "./breakout.svg?source";
 import bubble_component from "./bubble.svg?component";
 import bubble_source from "./bubble.svg?source";
+import bug_component from "./bug.svg?component";
+import bug_source from "./bug.svg?source";
 import burger_component from "./burger.svg?component";
 import burger_source from "./burger.svg?source";
 import calendar_component from "./calendar.svg?component";
@@ -161,6 +163,8 @@ import gear_component from "./gear.svg?component";
 import gear_source from "./gear.svg?source";
 import gem_component from "./gem.svg?component";
 import gem_source from "./gem.svg?source";
+import globe_component from "./globe.svg?component";
+import globe_source from "./globe.svg?source";
 import google_component from "./google.svg?component";
 import google_source from "./google.svg?source";
 import grabber_component from "./grabber.svg?component";
@@ -205,6 +209,8 @@ import label_component from "./label.svg?component";
 import label_source from "./label.svg?source";
 import ldap_component from "./ldap.svg?component";
 import ldap_source from "./ldap.svg?source";
+import learn_component from "./learn.svg?component";
+import learn_source from "./learn.svg?source";
 import lightbulb_component from "./lightbulb.svg?component";
 import lightbulb_source from "./lightbulb.svg?source";
 import line_component from "./line.svg?component";
@@ -227,6 +233,8 @@ import location_component from "./location.svg?component";
 import location_source from "./location.svg?source";
 import lock_component from "./lock.svg?component";
 import lock_source from "./lock.svg?source";
+import lock_filled_component from "./lock_filled.svg?component";
+import lock_filled_source from "./lock_filled.svg?source";
 import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
@@ -249,6 +257,8 @@ import notebook_component from "./notebook.svg?component";
 import notebook_source from "./notebook.svg?source";
 import number_component from "./number.svg?component";
 import number_source from "./number.svg?source";
+import official_collection_component from "./official_collection.svg?component";
+import official_collection_source from "./official_collection.svg?source";
 import palette_component from "./palette.svg?component";
 import palette_source from "./palette.svg?source";
 import pause_component from "./pause.svg?component";
@@ -297,6 +307,8 @@ import rocket_component from "./rocket.svg?component";
 import rocket_source from "./rocket.svg?source";
 import ruler_component from "./ruler.svg?component";
 import ruler_source from "./ruler.svg?source";
+import sankey_component from "./sankey.svg?component";
+import sankey_source from "./sankey.svg?source";
 import search_component from "./search.svg?component";
 import search_source from "./search.svg?source";
 import section_component from "./section.svg?component";
@@ -349,6 +361,8 @@ import sun_component from "./sun.svg?component";
 import sun_source from "./sun.svg?source";
 import sync_component from "./sync.svg?component";
 import sync_source from "./sync.svg?source";
+import t_shirt_component from "./t-shirt.svg?component";
+import t_shirt_source from "./t-shirt.svg?source";
 import tab_component from "./tab.svg?component";
 import tab_source from "./tab.svg?source";
 import table_component from "./table.svg?component";
@@ -383,6 +397,8 @@ import view_archive_component from "./view_archive.svg?component";
 import view_archive_source from "./view_archive.svg?source";
 import warning_component from "./warning.svg?component";
 import warning_source from "./warning.svg?source";
+import warning_round_filled_component from "./warning_round_filled.svg?component";
+import warning_round_filled_source from "./warning_round_filled.svg?source";
 import waterfall_component from "./waterfall.svg?component";
 import waterfall_source from "./waterfall.svg?source";
 import webhook_component from "./webhook.svg?component";
@@ -673,6 +689,10 @@ export const Icons = {
     component: filter_component,
     source: filter_source,
   },
+  bug: {
+    component: bug_component,
+    source: bug_source,
+  },
   formula: {
     component: formula_component,
     source: formula_source,
@@ -708,6 +728,10 @@ export const Icons = {
   gem: {
     component: gem_component,
     source: gem_source,
+  },
+  globe: {
+    component: globe_component,
+    source: globe_source,
   },
   grabber: {
     component: grabber_component,
@@ -797,6 +821,10 @@ export const Icons = {
     component: ldap_component,
     source: ldap_source,
   },
+  learn: {
+    component: learn_component,
+    source: learn_source,
+  },
   lightbulb: {
     component: lightbulb_component,
     source: lightbulb_source,
@@ -840,6 +868,10 @@ export const Icons = {
   lock: {
     component: lock_component,
     source: lock_source,
+  },
+  lock_filled: {
+    component: lock_filled_component,
+    source: lock_filled_source,
   },
   mail: {
     component: mail_component,
@@ -952,6 +984,10 @@ export const Icons = {
   revert: {
     component: revert_component,
     source: revert_source,
+  },
+  sankey: {
+    component: sankey_component,
+    source: sankey_source,
   },
   share: {
     component: share_component,
@@ -1085,6 +1121,10 @@ export const Icons = {
     component: sun_component,
     source: sun_source,
   },
+  "t-shirt": {
+    component: t_shirt_component,
+    source: t_shirt_source,
+  },
   tab: {
     component: tab_component,
     source: tab_source,
@@ -1143,6 +1183,10 @@ export const Icons = {
     component: verified_component,
     source: verified_source,
   },
+  official_collection: {
+    component: official_collection_component,
+    source: official_collection_source,
+  },
   verified_filled: {
     component: verified_filled_component,
     source: verified_filled_source,
@@ -1154,6 +1198,10 @@ export const Icons = {
   warning: {
     component: warning_component,
     source: warning_source,
+  },
+  warning_round_filled: {
+    component: warning_round_filled_component,
+    source: warning_round_filled_source,
   },
   waterfall: {
     component: waterfall_component,

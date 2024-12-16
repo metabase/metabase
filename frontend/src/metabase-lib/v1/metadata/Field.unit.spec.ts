@@ -559,4 +559,35 @@ describe("Field", () => {
       });
     });
   });
+
+  describe("isComparableWith", () => {
+    const field = setup({
+      fields: [
+        createMockField({
+          id: FIELD_ID,
+          effective_type: "type/MongoBSONID",
+        }),
+        createMockField({
+          id: 2,
+          effective_type: "type/Integer",
+        }),
+      ],
+    });
+    const metadata = field.metadata;
+    const mongoField = metadata?.field(FIELD_ID);
+    const integerField = metadata?.field(2);
+
+    it("should return true for 2 MongoBSONID fields", () => {
+      expect(mongoField?.isComparableWith(mongoField)).toBe(true);
+    });
+
+    it("should return true for 2 non-MongoBSONID fields", () => {
+      expect(integerField?.isComparableWith(integerField)).toBe(true);
+    });
+
+    it("should return false for MongoBSONID field and other field", () => {
+      expect(mongoField?.isComparableWith(integerField)).toBe(false);
+      expect(integerField?.isComparableWith(mongoField)).toBe(false);
+    });
+  });
 });

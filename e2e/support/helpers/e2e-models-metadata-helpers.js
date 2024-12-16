@@ -34,9 +34,11 @@ export function setColumnType(oldType, newType) {
     .contains(oldType)
     .click();
 
-  cy.get(".ReactVirtualized__Grid.MB-Select").realMouseWheel({ deltaY: -200 });
-  cy.findByPlaceholderText("Search for a special type").realType(newType);
-  popover().findByLabelText(newType).click();
+  popover().within(() => {
+    cy.findByText(oldType).closest(".ReactVirtualized__Grid").scrollTo(0, 0); // HACK: scroll to the top of the list. Ideally we should probably disable AccordionList virtualization
+    cy.findByPlaceholderText("Search for a special type").realType(newType);
+    cy.findByLabelText(newType).click();
+  });
 }
 
 export function mapColumnTo({ table, column } = {}) {

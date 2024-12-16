@@ -18,11 +18,19 @@ import type {
   TimelineEvent,
   TimelineEventId,
   TransformedSeries,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { HoveredObject } from "./hover";
+
+export interface Padding {
+  top: number;
+  left: number;
+  bottom: number;
+  right: number;
+}
 
 export type Formatter = (value: unknown, options?: OptionsType) => string;
 
@@ -30,8 +38,6 @@ export type ColorGetter = (colorName: string) => string;
 
 export interface RenderingContext {
   getColor: ColorGetter;
-  formatValue: Formatter;
-
   measureText: TextWidthMeasurer;
   measureTextHeight: TextHeightMeasurer;
   fontFamily: string;
@@ -78,8 +84,8 @@ export type ComputedVisualizationSettings = VisualizationSettings & {
 
 export interface StaticVisualizationProps {
   rawSeries: RawSeries;
-  dashcardSettings: VisualizationSettings;
   renderingContext: RenderingContext;
+  isStorybook?: boolean;
 }
 
 export interface VisualizationProps {
@@ -133,9 +139,6 @@ export interface VisualizationProps {
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: () => void;
-
-  "graph.dimensions"?: string[];
-  "graph.metrics"?: string[];
 
   canRemoveSeries?: (seriesIndex: number) => boolean;
   canToggleSeriesVisibility?: boolean;
@@ -212,7 +215,7 @@ export type VisualizationDefinition = {
   name?: string;
   noun?: string;
   uiName: string;
-  identifier: string;
+  identifier: VisualizationDisplay;
   aliases?: string[];
   iconName: IconName;
 
@@ -235,8 +238,7 @@ export type VisualizationDefinition = {
   placeHolderSeries?: Series;
 
   transformSeries?: (series: Series) => TransformedSeries;
-  // TODO: remove dependency on metabase-lib
-  isSensible: (data: DatasetData, query?: Query) => boolean;
+  isSensible: (data: DatasetData) => boolean;
   // checkRenderable throws an error if a visualization is not renderable
   checkRenderable: (
     series: Series,

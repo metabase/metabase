@@ -12,7 +12,7 @@ We recommend creating a `metabase` database user with the following database rol
 
 Bundling your privileges into roles based on use cases makes it easier to manage privileges in the future (especially in [multi-tenant situations](#multi-tenant-permissions)). For example, you could:
 
-- Use the same `analytics` role for other BI tools in your [data stack](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-landscape#data-analysis-layer) that need read-only access to the analytics tables in your database.
+- Use the same `analytics` role for other BI tools in your [data stack](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-landscape) that need read-only access to the analytics tables in your database.
 - Revoke the write access for `metabase_model_persistence` without affecting the write access for `metabase_actions`.
 
 ## Minimum database privileges
@@ -207,6 +207,6 @@ We recommend bundling privileges into roles based on use cases per customer. Tha
 
 ## Further reading
 
-- [Permissions strategies](https://www.metabase.com/learn/permissions/strategy)
+- [Permissions strategies](https://www.metabase.com/learn/metabase-basics/administration/permissions/strategy)
 - [Permissions introduction](../permissions/introduction.md)
 - [People overview](../people-and-groups/start.md)

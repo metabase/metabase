@@ -5,13 +5,12 @@ import type { ActionMenuProps } from "metabase/collections/components/ActionMenu
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import DateTime from "metabase/components/DateTime";
 import EntityItem from "metabase/components/EntityItem";
-import type { Edit } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
 import CheckBox from "metabase/core/components/CheckBox";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
 import { useSelector } from "metabase/lib/redux";
-import { getFullName } from "metabase/lib/user";
+import { getUserName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type { IconProps } from "metabase/ui";
@@ -219,7 +218,7 @@ export const Columns = {
       item: CollectionItem;
     }) => {
       const lastEditInfo = item["last-edit-info"];
-      const lastEditedBy = getLastEditedBy(lastEditInfo) ?? "";
+      const lastEditedBy = getUserName(lastEditInfo) ?? "";
 
       return (
         <ItemCell
@@ -325,12 +324,4 @@ export const Columns = {
     Col: () => <col style={{ width: "1rem" }} />,
     Cell: () => <ItemCell />,
   },
-};
-
-const getLastEditedBy = (lastEditInfo?: Edit) => {
-  if (!lastEditInfo) {
-    return "";
-  }
-  const name = getFullName(lastEditInfo);
-  return name || lastEditInfo.email;
 };

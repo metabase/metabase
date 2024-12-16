@@ -119,7 +119,7 @@
    (pprint-native-query-with-best-strategy (or driver/*driver* :h2) query))
 
   ([driver query]
-   (u/ignore-exceptions
+   (try
      (let [{native :query, :as query} (query->raw-native-query query)]
        (str "\nNative Query =\n"
             (cond
@@ -135,7 +135,9 @@
             \newline
             \newline
             (u/pprint-to-str (dissoc query :query))
-            \newline)))))
+            \newline))
+     (catch Exception e
+       (str "Unable to pprint native query:\n" query "\n" e)))))
 
 (defn do-with-native-query-testing-context
   [query thunk]

@@ -24,25 +24,28 @@ export function getAvailableOptions(
   );
 }
 
-export function getOptionByOperator(operator: Lib.NumberFilterOperatorName) {
+export function getOptionByOperator(operator: Lib.NumberFilterOperator) {
   return OPERATOR_OPTIONS[operator];
 }
 
 export function getDefaultOperator(
+  query: Lib.Query,
   column: Lib.ColumnMetadata,
   availableOptions: OperatorOption[],
-): Lib.NumberFilterOperatorName {
+): Lib.NumberFilterOperator {
+  const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
+
   const desiredOperator =
     Lib.isPrimaryKey(column) ||
     Lib.isForeignKey(column) ||
-    Lib.isCategory(column)
+    fieldValuesInfo.hasFieldValues !== "none"
       ? "="
       : "between";
   return getDefaultAvailableOperator(availableOptions, desiredOperator);
 }
 
 export function getDefaultValues(
-  operator: Lib.NumberFilterOperatorName,
+  operator: Lib.NumberFilterOperator,
   values: NumberValue[],
 ): NumberValue[] {
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
@@ -56,7 +59,7 @@ export function getDefaultValues(
 }
 
 export function isValidFilter(
-  operator: Lib.NumberFilterOperatorName,
+  operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberValue[],
 ) {
@@ -64,7 +67,7 @@ export function isValidFilter(
 }
 
 export function getFilterClause(
-  operator: Lib.NumberFilterOperatorName,
+  operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberValue[],
 ) {
@@ -73,7 +76,7 @@ export function getFilterClause(
 }
 
 function getFilterParts(
-  operator: Lib.NumberFilterOperatorName,
+  operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberValue[],
 ): Lib.NumberFilterParts | undefined {
@@ -86,7 +89,7 @@ function getFilterParts(
 }
 
 function getSimpleFilterParts(
-  operator: Lib.NumberFilterOperatorName,
+  operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberValue[],
 ): Lib.NumberFilterParts | undefined {
@@ -106,7 +109,7 @@ function getSimpleFilterParts(
 }
 
 function getBetweenFilterParts(
-  operator: Lib.NumberFilterOperatorName,
+  operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberValue[],
 ): Lib.NumberFilterParts | undefined {

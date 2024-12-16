@@ -10,6 +10,7 @@ JAVA_OPTS="${JAVA_OPTS} -Dfile.encoding=UTF-8"
 JAVA_OPTS="${JAVA_OPTS} -Dlogfile.path=target/log"
 JAVA_OPTS="${JAVA_OPTS} -XX:+CrashOnOutOfMemoryError"
 JAVA_OPTS="${JAVA_OPTS} -server"
+JAVA_OPTS="${JAVA_OPTS} --add-opens java.base/java.nio=ALL-UNNAMED"
 
 if [ ! -z "$JAVA_TIMEZONE" ]; then
     JAVA_OPTS="${JAVA_OPTS} -Duser.timezone=${JAVA_TIMEZONE}"

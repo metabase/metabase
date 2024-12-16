@@ -40,13 +40,15 @@ import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
 } from "metabase/visualizations/shared/utils/sizes";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
-import type {
-  BaseDashboardCard,
-  Card,
-  DashCardId,
-  Dashboard,
-  DashboardCard,
-  DashboardTabId,
+import {
+  type BaseDashboardCard,
+  type Card,
+  type DashCardId,
+  type Dashboard,
+  type DashboardCard,
+  type DashboardTabId,
+  type RecentItem,
+  isRecentCollectionItem,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -61,6 +63,7 @@ import {
   setDashCardAttributes,
   setMultipleDashCardAttributes,
   showClickBehaviorSidebar,
+  trashDashboardQuestion,
   undoRemoveCardFromDashboard,
 } from "../actions";
 import { getDashcardDataMap } from "../selectors";
@@ -108,6 +111,7 @@ const mapStateToProps = (state: State) => ({
 const mapDispatchToProps = {
   addUndo,
   removeCardFromDashboard,
+  trashDashboardQuestion,
   showClickBehaviorSidebar,
   markNewCardSeen,
   setMultipleDashCardAttributes,
@@ -139,7 +143,7 @@ type OwnProps = {
   mode?: QueryClickActionsMode | Mode;
   // public dashboard passes it explicitly
   width?: number;
-  // public dashboard passes it as noop
+  // public or embedded dashboard passes it as noop
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
@@ -403,7 +407,8 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   }
 
   renderReplaceCardModal() {
-    const { addUndo, replaceCard, setDashCardAttributes } = this.props;
+    const { addUndo, replaceCard, setDashCardAttributes, dashboard } =
+      this.props;
     const { replaceCardModalDashCard } = this.state;
 
     const hasValidDashCard =
@@ -432,6 +437,17 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       handleClose();
     };
 
+    const replaceCardModalRecentFilter = (items: RecentItem[]) => {
+      return items.filter(item => {
+        if (isRecentCollectionItem(item) && item.dashboard) {
+          if (item.dashboard.id !== dashboard.id) {
+            return false;
+          }
+        }
+        return true;
+      });
+    };
+
     const handleClose = () => {
       this.setState({ replaceCardModalDashCard: null });
     };
@@ -451,6 +467,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         models={["card", "dataset", "metric"]}
         onChange={handleSelect}
         onClose={handleClose}
+        recentFilter={replaceCardModalRecentFilter}
       />
     );
   }
@@ -489,7 +506,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   };
 
   renderDashCard(
-    dc: DashboardCard,
+    dashcard: DashboardCard,
     {
       isMobile,
       gridItemWidth,
@@ -504,7 +521,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   ) {
     return (
       <DashCard
-        dashcard={dc}
+        dashcard={dashcard}
         slowCards={this.props.slowCards}
         gridItemWidth={gridItemWidth}
         totalNumGridCols={totalNumGridCols}
@@ -523,7 +540,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         onUpdateVisualizationSettings={
           this.props.onUpdateDashCardVisualizationSettings
         }
-        onReplaceAllVisualizationSettings={
+        onReplaceAllDashCardVisualizationSettings={
           this.props.onReplaceAllDashCardVisualizationSettings
         }
         mode={this.props.mode}

@@ -10,6 +10,8 @@ Also known as: parameters for signed embeds, or standalone embeds.
 
 Parameters are pieces of information that are passed between Metabase and your website via the [embedding URL](./static-embedding.md#adding-the-embedding-url-to-your-website). You can use parameters to specify how Metabase items should look and behave inside the iframe on your website.
 
+{% include shared/in-page-promo.html %}
+
 ## Types of parameters
 
 Parameters can be signed or unsigned.
@@ -44,7 +46,7 @@ Editable parameters are responsible for passing filter values from the embedded 
 
 ### You can't disable parameters when the original question or dashboard requires a value
 
-If the filter on a dashboard or question is set to [Always require a value](../dashboards/filters.md#requiring-a-filter), you won't be able to disable the parameter when embedding.
+If the filter on a dashboard or question is set to [Always require a value](../dashboards/filters.md), you won't be able to disable the parameter when embedding.
 
 ## Populating an embedded filter widget with a default value
 
@@ -122,7 +124,7 @@ You can use locked parameters to display filtered data based on attributes captu
 
 Locked parameters will apply the selected filter values to your original dashboard or SQL question, but they won't be displayed as filter widgets on your embed. Locked parameters may also limit the values that are shown in your [editable filter widgets](#adding-a-filter-widget-to-a-static-embed).
 
-If you just want to require a value for the parameter, you could set the filter as editable and configure the underlying question or dashboard to [always require a value](../dashboards/filters.md#requiring-a-filter).
+If you just want to require a value for the parameter, you could set the filter as editable and configure the underlying question or dashboard to [always require a value](../dashboards/filters.md).
 
 ## Updating a locked parameter
 
@@ -168,7 +170,9 @@ Because Metabase doesn't display locked parameters as filter widgets, you can us
 
 ## Customizing the appearance of a static embed
 
-You can change the appearance of an embedded item by adding hash parameters to the end of the URL in your iframe's `src` attribute.
+![Look and feel: appearance settings on static embed](./images/04-preview.png)
+
+You can change the appearance of an embedded item by adding hash parameters (e.g., `#theme=night`) to the end of the URL in your iframe's `src` attribute.
 
 For example, the following embedding URL will display an embedded item in dark mode, without a border, and with its original title:
 
@@ -176,41 +180,57 @@ For example, the following embedding URL will display an embedded item in dark m
 your_embedding_url#theme=night&bordered=false&titled=true
 ```
 
-You can preview appearance settings from your question or dashboard's [embedded appearance settings](./static-embedding.md#customizing-the-appearance-of-static-embeds).
+You can preview appearance settings from your question or dashboard's embedded appearance settings.
 
-| Parameter name                            | Possible values                               |
-| ----------------------------------------- | --------------------------------------------- |
-| `bordered`                                | true, false                                   |
-| `titled`                                  | true, false                                   |
-| `theme`                                   | null, transparent, night                      |
-| `refresh` (dashboard only)                | integer (seconds, e.g., `refresh=60`)         |
-| `font`\*                                  | [font name](../configuring-metabase/fonts.md) |
-| `hide_download_button`\* (questions only) | true, false                                   |
+| Parameter name             | Possible values                                                                                                                                |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `background`               | true (default), false. Dashboards only.                                                                                                        |
+| `bordered`                 | true (default), false.                                                                                                                         |
+| `locale\*`                 | E.g., `locale=ko`. See [list of locales](../configuring-metabase/localization.md#supported-languages)                                          |
+| `titled`                   | true (default), false.                                                                                                                         |
+| `theme`                    | null (default), night. `theme=transparent` should work, but is deprecated (see [Transparent backgrounds](#transparent-backgrounds-for-embeds)) |
+| `refresh` (dashboard only) | integer (seconds, e.g., `refresh=60`).                                                                                                         |
+| `font`\*                   | [font name](../configuring-metabase/fonts.md)                                                                                                  |
+| `downloads`\*\*            | true (default), false.                                                                                                                         |
 
-\* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+\* Avalable on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans
 
-## Allow people to download the results of an embedded question
+\*\* Disabling downloads is available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
-{% include plans-blockquote.html feature="Downloading results" %}
+For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
 
-By default, Metabase will include a **Download** button on embedded questions. You can remove the download button by setting `hide_download_button=true` in the embedding URL in the iframe's `src` attribute, see [customizing the appearance of static embeds](./static-embedding.md#customizing-the-appearance-of-static-embeds).
+## Setting the language for a static embed
 
-If the download button is missing when you expected it to be available, check that the URL in the `src` attribute for your iframe has the parameter `hide_download_button=false`.
+{% include plans-blockquote.html feature="Locales for static embeds" %}
 
-> Downloading results is available only for questions, not dashboards.
+To change the UI language for a static embed, you can set its [locale](../configuring-metabase/localization.md#supported-languages). For example, to set a public link's language to Korean, you could append `#locale=ko`.
 
-## Setting locale on a static embed
-
-To display a static embed in a different language, you can set a locale for the embed. See a list of [supported locales](https://github.com/metabase/metabase/tree/master/locales).
-
-To set a locale, add `locale=[LOCALE]` to your iframe URL, e.g., `locale=de-DE`.
-Locale must come after the `?` in the URL and before the `#` (if you're including appearance settings). Like so:
-
-```javascript
-iframeUrl = urljoin(METABASE_SITE_URL, "/embed/dashboard/" + token + "?locale=de-DE#theme=night&background=false&bordered=true&titled=true&downloads=true")
+```
+https://metabase.example.com/public/dashboard/7b6e347b-6928-4aff-a56f-6cfa5b718c6b?category=&city=&state=#locale=ko
 ```
 
-Locale only affects UI elements; Metabase won't translate the text of your items (e.g., it won't translate the title of a question).
+If you have multiple params, separated them with an ampersand `&`:
+
+```
+category=Gadget&state=Vermont#theme=night&locale=ko
+```
+
+The `locale` param only changes the language for Metabase UI elements. The _content_'s language is defined by whomever created the item. So for example Metabase wouldn't translate the name of a question, but Metabase _would_ translate the UI text "Export to PDF".
+
+## Transparent backgrounds for embeds
+
+Making an embed transparent depends on the type of embed:
+
+- Dashboards: set `background=false`. The `background` parameter can be combined with the `theme` parameter (e.g., `background=false&theme=night`).
+- Questions: set `theme=transparent` (deprecated, but still supported).
+
+## Disable downloads for an embedded question or dashboard
+
+{% include plans-blockquote.html feature="Disabling downloads" %}
+
+By default, Metabase will include a **Download** button on embedded questions, and an **Export to PDF** option on embedded dashboards. You can remove the option to download results by setting `downloads=false` in the embedding URL in the iframe's `src` attribute, see [customizing the appearance of static embeds](./static-embedding.md#customizing-the-appearance-of-static-embeds).
+
+If the download option is missing when you expected it to be available, check that the URL in the `src` attribute for your iframe has the parameter `downloads=true`.
 
 ## Maximum request size
 
@@ -221,5 +241,5 @@ If your static embedding URL exceeds the maximum header size, you'll see a log m
 ## Further reading
 
 - [Static embedding documentation](./static-embedding.md).
-- [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/embedding/embedding-overview).
-- [Publishing data visualizations to the web](https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards).
+- [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/metabase-basics/embedding/overview).
+- [Publishing data visualizations to the web](https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards).

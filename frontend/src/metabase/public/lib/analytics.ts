@@ -124,7 +124,7 @@ export const trackPublicLinkCopied = ({
   format = null,
 }: {
   artifact: EmbedResourceType;
-  format?: ExportFormatType | null;
+  format?: ExportFormatType | "html";
 }): void => {
   trackSchemaEvent(SCHEMA_NAME, {
     event: "public_link_copied",

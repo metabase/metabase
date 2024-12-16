@@ -10,6 +10,7 @@ import type {
 import type {
   EntityPickerModalOptions,
   ListProps,
+  PickerState,
   TypeWithModel,
 } from "../EntityPicker";
 
@@ -25,7 +26,7 @@ export type CollectionPickerModel = Extract<
 // we can enforce type safety at the boundary of a collection-only picker with this type
 export type CollectionPickerValueModel = Extract<
   CollectionPickerModel,
-  "collection"
+  "collection" | "dashboard"
 >;
 
 export type CollectionPickerItem = TypeWithModel<
@@ -36,15 +37,21 @@ export type CollectionPickerItem = TypeWithModel<
     location?: string | null;
     effective_location?: string | null;
     is_personal?: boolean;
-    collection_id?: CollectionId;
+    collection_id?: CollectionId | null;
     here?: CollectionItemModel[];
     below?: CollectionItemModel[];
   };
 
-export type CollectionPickerValueItem = Omit<CollectionPickerItem, "model"> & {
-  id: CollectionId;
-  model: CollectionPickerValueModel;
-};
+export type CollectionPickerValueItem =
+  | (Omit<CollectionPickerItem, "model" | "id"> & {
+      id: CollectionId;
+      model: "collection";
+    })
+  | (Omit<CollectionPickerItem, "model" | "id"> & {
+      id: DashboardId;
+      model: "dashboard";
+      collection_id: CollectionId | null;
+    });
 
 export type CollectionPickerOptions = EntityPickerModalOptions & {
   allowCreateNew?: boolean;
@@ -59,4 +66,9 @@ export type CollectionItemListProps = ListProps<
   CollectionPickerItem,
   ListCollectionItemsRequest,
   CollectionPickerOptions
+>;
+
+export type CollectionPickerStatePath = PickerState<
+  CollectionPickerItem,
+  ListCollectionItemsRequest
 >;

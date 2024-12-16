@@ -71,26 +71,6 @@ Fetch a specific Collection's items with the following options:
 
 -  **`official_collections_first`** nullable value must be a valid boolean string ('true' or 'false').
 
-## `GET /api/collection/:id/stale`
-
-A flexible endpoint that returns stale entities, in the same shape as collections/items, with the following options:
-  - `before_date` - only return entities that were last edited before this date (default: 6 months ago)
-  - `is_recursive` - if true, return entities from all children of the collection, not just the direct children (default: false)
-  - `sort_column` - the column to sort by (default: name)
-  - `sort_direction` - the direction to sort by (default: asc).
-
-### PARAMS:
-
--  **`id`** value must be an integer greater than zero., or must equal :root.
-
--  **`before_date`** nullable string.
-
--  **`is_recursive`** boolean.
-
--  **`sort_column`** nullable enum of :name, :last_used_at.
-
--  **`sort_direction`** nullable enum of :desc, :asc.
-
 ## `GET /api/collection/:id/timelines`
 
 Fetch a specific Collection's timelines.
@@ -243,10 +223,14 @@ Modify an existing Collection, including archiving or unarchiving it, or moving 
 
 ## `PUT /api/collection/graph`
 
-Do a batch update of Collections Permissions by passing in a modified graph.
-  Will overwrite parts of the graph that are present in the request, and leave the rest unchanged.
+Do a batch update of Collections Permissions by passing in a modified graph. Will overwrite parts of the graph that
+  are present in the request, and leave the rest unchanged.
 
-  If the `skip_graph` query parameter is true, it will only return the current revision.
+  If the `force` query parameter is `true`, a `revision` number is not required. The provided graph will be persisted
+  as-is, and has the potential to clobber other writes that happened since the last read.
+
+  If the `skip_graph` query parameter is `true`, it will only return the current revision, not the entire permissions
+  graph.
 
 You must be a superuser to do this.
 
@@ -254,11 +238,13 @@ You must be a superuser to do this.
 
 -  **`namespace`** nullable value must be a non-blank string.
 
--  **`revision`** value must be an integer.
+-  **`revision`** nullable value must be an integer.
 
 -  **`groups`** map.
 
--  **`skip_graph`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`skip-graph`** nullable value must be a valid boolean string ('true' or 'false').
+
+-  **`force`** nullable value must be a valid boolean string ('true' or 'false').
 
 ---
 

@@ -1,6 +1,5 @@
 (ns metabase.driver.druid-jdbc
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -17,6 +16,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
    (java.sql ResultSet Types)
@@ -174,7 +174,7 @@
   (let [{:keys [host port]} (:details database)]
     (try (let [version (-> (http/get (format "%s:%s/status" host port))
                            :body
-                           json/parse-string
+                           json/decode
                            (get "version"))
                [maj-min maj min] (re-find #"^(\d+)\.(\d+)" version)
                semantic (mapv #(Integer/parseInt %) [maj min])]

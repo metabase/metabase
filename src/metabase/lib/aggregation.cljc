@@ -17,8 +17,8 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 (mu/defn column-metadata->aggregation-ref :- :mbql.clause/aggregation
@@ -115,6 +115,14 @@
 (defmethod lib.metadata.calculation/column-name-method :case
   [_query _stage-number _case]
   "case")
+
+(defmethod lib.metadata.calculation/display-name-method :if
+  [_query _stage-number _case _style]
+  (i18n/tru "If"))
+
+(defmethod lib.metadata.calculation/column-name-method :if
+  [_query _stage-number _case]
+  "if")
 
 ;;; TODO - Should `:case` derive from `::aggregation` as well???
 

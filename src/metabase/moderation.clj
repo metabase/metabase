@@ -7,12 +7,14 @@
 
 (def moderated-item-types
   "Schema enum of the acceptable values for the `moderated_item_type` column"
-  [:enum "card" :card])
+  [:enum "card" :card "dashboard" :dashboard])
 
 (def moderated-item-type->model
   "Maps DB name of the moderated item type to the model symbol (used for t2/select and such)"
   {"card" :model/Card
-   :card  :model/Card})
+   :card  :model/Card
+   "dashboard" :model/Dashboard
+   :dashboard :model/Dashboard})
 
 (defn- object->type
   "Convert a moderated item instance to the keyword stored in the database"
@@ -21,8 +23,7 @@
 
 (mi/define-batched-hydration-method moderation-reviews-for-items
   :moderation_reviews
-  "Hydrate moderation reviews onto a seq of items. All are cards or the nils that end up here on text dashboard
-  cards. In the future could have dashboards here as well."
+  "Hydrate moderation reviews onto a seq of items."
   [items]
   ;; no need to do work on empty items. Also, can have nil here due to text cards. I think this is a bug in toucan. To
   ;; get here we are `(t2/hydrate dashboard [:dashcards [:card :moderation_reviews] :series] ...)` But dashcards
@@ -33,8 +34,7 @@
     (let [item-ids    (not-empty (keep :id items))
           all-reviews (when item-ids
                         (group-by (juxt :moderated_item_type :moderated_item_id)
-                                  (t2/select 'ModerationReview
-                                             :moderated_item_type "card"
+                                  (t2/select :model/ModerationReview
                                              :moderated_item_id [:in item-ids]
                                              {:order-by [[:id :desc]]})))]
       (for [item items]
@@ -52,3 +52,21 @@
                                (t2/select 'User :id [:in (map :moderator_id moderation-reviews)]))]
       (for [mr moderation-reviews]
         (assoc mr :user (get id->user (:moderator_id mr)))))))
+
+(mi/define-batched-hydration-method moderation-status
+  :moderation_status
+  "Hydrate moderation status onto a seq of items"
+  [items]
+  (when (seq items)
+    (let [item-ids (seq (keep :id items))
+          type+id->status (when item-ids
+                            (->> (t2/select [:model/ModerationReview :moderated_item_id :moderated_item_type :status]
+                                            :moderated_item_id [:in item-ids]
+                                            :most_recent true
+                                            {:order-by [[:id :desc]]})
+                                 (group-by (juxt :moderated_item_type :moderated_item_id))
+                                 (m/map-vals #(:status (first %)))))]
+      (for [item items]
+        (some-> item
+                (assoc :moderation_status (get type+id->status [(keyword (object->type item))
+                                                                (u/the-id item)])))))))

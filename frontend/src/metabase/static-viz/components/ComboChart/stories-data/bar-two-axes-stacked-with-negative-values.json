@@ -363,7 +363,7 @@
       "viz-settings": {
         "graph.show_goal": false,
         "graph.show_values": true,
-        "metabase.shared.models.visualization-settings/column-settings": {},
+        "metabase.models.visualization-settings/column-settings": {},
         "graph.series_order_dimension": "CATEGORY",
         "graph.y_axis.scale": "linear",
         "graph.label_value_frequency": "fit",
@@ -397,7 +397,7 @@
             "name": "Widget"
           }
         ],
-        "metabase.shared.models.visualization-settings/global-column-settings": {},
+        "metabase.models.visualization-settings/global-column-settings": {},
         "series_settings": {
           "Gizmo": {
             "display": "bar",

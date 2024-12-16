@@ -1,6 +1,10 @@
 import { blue, green, yellow } from "chalk";
 
-import { CONTAINER_NAME, SDK_NPM_LINK } from "./config";
+import {
+  CONTAINER_NAME,
+  SAMPLE_CREDENTIALS_FILE_NAME,
+  SDK_NPM_LINK,
+} from "./config";
 
 export const PACKAGE_JSON_NOT_FOUND_MESSAGE = `
   Could not find a package.json file in the current directory.
@@ -20,12 +24,12 @@ export const UNSUPPORTED_REACT_VERSION = `
 export const DELETE_CONTAINER_MESSAGE = `Please delete the container with "docker rm -f ${CONTAINER_NAME}" and try again.`;
 
 export const INSTANCE_CONFIGURED_MESSAGE = `
-  The instance has already been configured.
+  The Metabase instance has already been configured.
   ${DELETE_CONTAINER_MESSAGE}
 `;
 
 export const getGeneratedComponentFilesMessage = (path: string) => `
-  Generated example React components files in "${path}".
+  Generated files with example React components in "${path}".
 `;
 
 export const getEmbeddingFailedMessage = (reason: string) => `
@@ -35,13 +39,23 @@ export const getEmbeddingFailedMessage = (reason: string) => `
   Reason: ${reason}
 `;
 
-export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
+export const getMetabaseInstanceSetupCompleteMessage = (
+  instanceUrl: string,
+  email: string,
+  password: string,
+) =>
   // eslint-disable-next-line no-unconditional-metabase-links-render -- link for the CLI message
   `
   Metabase is running at ${blue(instanceUrl)}
-  You can find your login credentials at METABASE_LOGIN.json
 
-  Metabase will phone home some data collected via Snowplow.
+  Log in with
+
+  Email: "${blue(email)}"
+  Password: "${blue(password)}"
+
+  You can also find your login credentials at "${blue(SAMPLE_CREDENTIALS_FILE_NAME)}".
+
+  Metabase will phone home some anonymous data collected via Snowplow.
   We don’t collect any usernames, emails, server IPs, database details of any kind, or
   any personally identifiable information (PII).
 
@@ -58,19 +72,23 @@ export const getNoTenantMessage = (unsampledTableNames: string[]) => {
   return `
   ${yellow(warningTitle)}
 
-  At least one tenant is needed to demonstrate sandboxing.
-  You can assign your tenant's id to your user attribute, e.g. "customer_id: 5".
+  To demo data sandboxing, you'll need at least one tenant.
+  You can assign your tenant's ID to your user attribute, e.g., "customer_id: 5".
 `;
 };
 
 export const SETUP_PRO_LICENSE_MESSAGE = `
-  This tool can set up permissions for multi-tenancy and a mock back-end server that
-  signs users into Metabase to emulate the experience from different tenants.
+  This tool can optionally set up permissions for multi-tenancy in your Metabase.
+  It'll create a mock back-end server that signs people into Metabase
+  so you can see how different tenants experience the dashboard embedded in your app.
 
-  To proceed, you will need a Pro license.
-  If you skip, we will proceed without multi-tenancy or SSO.
+  To set up multi-tenancy and SSO with JWT, you'll need a Pro license.
+
+  If you skip this step, the setup will continue without multi-tenancy or SSO.
 `;
 
 export const SDK_LEARN_MORE_MESSAGE = `All done! 🚀 Learn more about the SDK here: ${green(
   SDK_NPM_LINK,
 )}`;
+
+export const CONTINUE_SETUP_ON_WARNING_MESSAGE = `Do you want to continue setup?`;

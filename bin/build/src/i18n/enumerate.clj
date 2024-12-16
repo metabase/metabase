@@ -56,9 +56,7 @@
     'metabase.util.i18n/trsn
     'metabase.util.i18n/trun
     'metabase.util.i18n/deferred-trsn
-    'metabase.util.i18n/deferred-trun
-    'metabase.shared.util.i18n/tru
-    'metabase.shared.util.i18n/trs})
+    'metabase.util.i18n/deferred-trun})
 
 (def ^:private plural-translation-macro-names
   #{"trsn" "trun" "deferred-trsn" "deferred-trun"})

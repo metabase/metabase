@@ -1,4 +1,4 @@
-(ns metabase.api.embed-test
+(ns ^:mb/driver-tests metabase.api.embed-test
   "Tests for /api/embed endpoints."
   (:require
    [buddy.sign.jwt :as jwt]
@@ -6,6 +6,7 @@
    [clj-time.core :as time]
    [clojure.data.csv :as csv]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
@@ -105,7 +106,8 @@
       ~@body)))
 
 (defmacro with-embedding-enabled-and-new-secret-key! {:style/indent 0} [& body]
-  `(mt/with-temporary-setting-values [~'enable-embedding true]
+  `(mt/with-temporary-setting-values [~'enable-embedding-static true
+                                      ~'enable-embedding-interactive true]
      (with-new-secret-key!
        ~@body)))
 
@@ -288,7 +290,9 @@
   (str "embed/card/"
        (card-token card-or-id additional-token-keys)
        "/query"
-       response-format-route-suffix))
+       response-format-route-suffix
+       (when-not (str/blank? response-format-route-suffix)
+         "?format_rows=true")))
 
 (def ^:private response-format->request-options
   {""      nil
@@ -425,7 +429,10 @@
 
           (testing "If `:locked` parameter is present in URL params, request should fail"
             (is (= "You can only specify a value for :venue_id in the JWT."
-                   (client/client :get 400 (str (card-query-url card response-format {:params {:venue_id 100}}) "?venue_id=100"))))))))))
+                   (let [url (card-query-url card response-format {:params {:venue_id 100}})]
+                     (client/client :get 400 (str url (if (str/includes? url "format_rows")
+                                                        "&venue_id=100"
+                                                        "?venue_id=100"))))))))))))
 
 (deftest card-disabled-params-test
   (with-embedding-enabled-and-new-secret-key!
@@ -438,7 +445,10 @@
 
         (testing "If a `:disabled` param is passed in the URL the request should fail"
           (is (= "You're not allowed to specify a value for :venue_id."
-                 (client/client :get 400 (str (card-query-url card response-format) "?venue_id=200")))))))))
+                 (let [url (card-query-url card response-format)]
+                   (client/client :get 400 (str url (if (str/includes? url "format_rows")
+                                                      "&venue_id=200"
+                                                      "?venue_id=200")))))))))))
 
 (deftest card-enabled-params-test
   (mt/test-helpers-set-global-values!
@@ -447,7 +457,10 @@
         (do-response-formats [response-format request-options]
           (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
             (is (= "You can't specify a value for :venue_id if it's already set in the JWT."
-                   (client/real-client :get 400 (str (card-query-url card response-format {:params {:venue_id 100}}) "?venue_id=200")))))
+                   (let [url (card-query-url card response-format {:params {:venue_id 100}})]
+                     (client/client :get 400 (str url (if (str/includes? url "format_rows")
+                                                        "&venue_id=100"
+                                                        "?venue_id=100")))))))
 
           (testing "If an `:enabled` param is present in the JWT, that's ok"
             #_{:clj-kondo/ignore [:deprecated-var]}
@@ -461,9 +474,12 @@
             #_{:clj-kondo/ignore [:deprecated-var]}
             (test-query-results
              response-format
-             (client/real-client :get (response-format->status-code response-format)
-                                 (str (card-query-url card response-format) "?venue_id=200")
-                                 {:request-options request-options}))))))))
+             (let [url (card-query-url card response-format)]
+               (client/real-client :get (response-format->status-code response-format)
+                                   (str url (if (str/includes? url "format_rows")
+                                              "&venue_id=200"
+                                              "?venue_id=200"))
+                                   {:request-options request-options})))))))))
 
 (defn card-with-date-field-filter-default
   []
@@ -536,7 +552,7 @@
     (with-embedding-enabled-and-new-secret-key!
       (t2.with-temp/with-temp [Card card (card-with-date-field-filter)]
         (is (= "count\n107\n"
-               (client/client :get 200 (str (card-query-url card "/csv") "?date=Q1-2014"))))))))
+               (client/client :get 200 (str (card-query-url card "/csv") "&date=Q1-2014"))))))))
 
 (deftest csv-forward-url-test
   (mt/test-helpers-set-global-values!
@@ -565,11 +581,9 @@
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key!
-    (let [dashboard-url (str "embed/dashboard/" (sign {:resource {:dashboard "8"}
-                                                       :params   {}}))]
-      (is (contains?
-           #{"Dashboard id should be a positive integer."
-             "Invalid input: {:resource {:dashboard [\"value must be an integer greater than zero., got: \\\"8\\\"\" \"String must be a valid 21-character NanoID string., got: \\\"8\\\"\"]}}"}
+    (let [dashboard-url (str "embed/dashboard/" (sign {:resource {:dashboard "8"} :params   {}}))]
+      (is (re-matches
+           #"Invalid input: .+got.+8.+"
            (client/client :get 400 dashboard-url))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token-2
@@ -1092,7 +1106,7 @@
 (deftest endpoint-should-fail-if-embedding-is-disabled
   (is (= "Embedding is not enabled."
          (with-embedding-enabled-and-temp-card-referencing! :venues :name [card]
-           (mt/with-temporary-setting-values [enable-embedding false]
+           (mt/with-temporary-setting-values [enable-embedding-static false]
              (client/client :get 400 (field-values-url card (mt/id :venues :name))))))))
 
 (deftest embedding-not-enabled-message
@@ -1108,7 +1122,7 @@
           (dropdown [card param-key  & [entity-id]]
             (client/client :get 200 (format "embed/card/%s/params/%s/values"
                                             (card-token card nil entity-id) param-key)))]
-    (mt/with-temporary-setting-values [enable-embedding true]
+    (mt/with-temporary-setting-values [enable-embedding-static true]
       (with-new-secret-key!
         (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
           (t2/update! :model/Card (:id field-filter-card)
@@ -1225,7 +1239,7 @@
 (deftest field-values-endpoint-should-fail-if-embedding-is-disabled
   (is (= "Embedding is not enabled."
          (with-embedding-enabled-and-temp-dashcard-referencing! :venues :name [dashboard]
-           (mt/with-temporary-setting-values [enable-embedding false]
+           (mt/with-temporary-setting-values [enable-embedding-static false]
              (client/client :get 400 (field-values-url dashboard (mt/id :venues :name))))))))
 
 ;; Endpoint should fail if embedding is disabled for the Dashboard
@@ -1261,7 +1275,7 @@
                                      :value "33 T"))))
 
              (testing "Endpoint should fail if embedding is disabled"
-               (mt/with-temporary-setting-values [enable-embedding false]
+               (mt/with-temporary-setting-values [enable-embedding-static false]
                  (is (= "Embedding is not enabled."
                         (client/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
                                        :value "33 T")))))
@@ -1306,7 +1320,7 @@
                                     :value "10"))))
 
             (testing " ...or if embedding is disabled"
-              (mt/with-temporary-setting-values [enable-embedding false]
+              (mt/with-temporary-setting-values [enable-embedding-static false]
                 (is (= "Embedding is not enabled."
                        (client/client :get 400 (field-remapping-url
                                                 object (mt/id :venues :id) (mt/id :venues :name) entity-id)
@@ -1566,7 +1580,7 @@
     (mt/dataset test-data
       (testing "GET /api/embed/pivot/card/:token/query"
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-          (mt/with-temporary-setting-values [enable-embedding false]
+          (mt/with-temporary-setting-values [enable-embedding-static false]
             (with-new-secret-key!
               (with-temp-card [card (api.pivots/pivot-card)]
                 (is (= "Embedding is not enabled."
@@ -1631,7 +1645,7 @@
 
 (deftest pivot-dashcard-embedding-disabled-test
   (mt/dataset test-data
-    (mt/with-temporary-setting-values [enable-embedding false]
+    (mt/with-temporary-setting-values [enable-embedding-static false]
       (with-new-secret-key!
         (with-temp-dashcard [dashcard {:dash     {:parameters []}
                                        :card     (api.pivots/pivot-card)
@@ -1937,7 +1951,7 @@
 (deftest entity-id-single-card-translations-test
   (mt/with-temp
     [:model/Card {id :id eid :entity_id} {}]
-    (is (= {eid   {:id id :type :card :status "success"}}
+    (is (= {eid {:id id :type :card :status :ok}}
            (api.embed.common/model->entity-ids->ids {:card [eid]})))))
 
 (deftest entity-id-card-translations-test
@@ -1949,13 +1963,13 @@
      :model/Card {id-3 :id eid-3 :entity_id} {}
      :model/Card {id-4 :id eid-4 :entity_id} {}
      :model/Card {id-5 :id eid-5 :entity_id} {}]
-    (is (= {eid   {:id id   :type :card :status "success"}
-            eid-0 {:id id-0 :type :card :status "success"}
-            eid-1 {:id id-1 :type :card :status "success"}
-            eid-2 {:id id-2 :type :card :status "success"}
-            eid-3 {:id id-3 :type :card :status "success"}
-            eid-4 {:id id-4 :type :card :status "success"}
-            eid-5 {:id id-5 :type :card :status "success"}}
+    (is (= {eid   {:id id   :type :card :status :ok}
+            eid-0 {:id id-0 :type :card :status :ok}
+            eid-1 {:id id-1 :type :card :status :ok}
+            eid-2 {:id id-2 :type :card :status :ok}
+            eid-3 {:id id-3 :type :card :status :ok}
+            eid-4 {:id id-4 :type :card :status :ok}
+            eid-5 {:id id-5 :type :card :status :ok}}
            (api.embed.common/model->entity-ids->ids {:card [eid eid-0 eid-1 eid-2 eid-3 eid-4 eid-5]})))))
 
 (deftest entity-id-mixed-translations-test
@@ -1984,21 +1998,21 @@
      :model/Timeline           {timeline_id             :id timeline_eid             :entity_id} {}]
     (let [core_user_eid (u/generate-nano-id)]
       (t2/update! :model/User core_user_id {:entity_id core_user_eid})
-      (is (= {action_eid               {:id action_id               :type :action            :status "success"}
-              collection_eid           {:id collection_id           :type :collection        :status "success"}
-              core_user_eid            {:id core_user_id            :type :user              :status "success"}
-              dashboard_tab_eid        {:id dashboard_tab_id        :type :dashboard-tab     :status "success"}
-              dimension_eid            {:id dimension_id            :type :dimension         :status "success"}
-              native_query_snippet_eid {:id native_query_snippet_id :type :snippet           :status "success"}
-              permissions_group_eid    {:id permissions_group_id    :type :permissions-group :status "success"}
-              pulse_eid                {:id pulse_id                :type :pulse             :status "success"}
-              pulse_card_eid           {:id pulse_card_id           :type :pulse-card        :status "success"}
-              pulse_channel_eid        {:id pulse_channel_id        :type :pulse-channel     :status "success"}
-              card_eid                 {:id card_id                 :type :card              :status "success"}
-              dashboard_eid            {:id dashboard_id            :type :dashboard         :status "success"}
-              dashboardcard_eid        {:id dashboardcard_id        :type :dashboard-card    :status "success"}
-              segment_eid              {:id segment_id              :type :segment           :status "success"}
-              timeline_eid             {:id timeline_id             :type :timeline          :status "success"}}
+      (is (= {action_eid               {:id action_id               :type :action            :status :ok}
+              collection_eid           {:id collection_id           :type :collection        :status :ok}
+              core_user_eid            {:id core_user_id            :type :user              :status :ok}
+              dashboard_tab_eid        {:id dashboard_tab_id        :type :dashboard-tab     :status :ok}
+              dimension_eid            {:id dimension_id            :type :dimension         :status :ok}
+              native_query_snippet_eid {:id native_query_snippet_id :type :snippet           :status :ok}
+              permissions_group_eid    {:id permissions_group_id    :type :permissions-group :status :ok}
+              pulse_eid                {:id pulse_id                :type :pulse             :status :ok}
+              pulse_card_eid           {:id pulse_card_id           :type :pulse-card        :status :ok}
+              pulse_channel_eid        {:id pulse_channel_id        :type :pulse-channel     :status :ok}
+              card_eid                 {:id card_id                 :type :card              :status :ok}
+              dashboard_eid            {:id dashboard_id            :type :dashboard         :status :ok}
+              dashboardcard_eid        {:id dashboardcard_id        :type :dashboard-card    :status :ok}
+              segment_eid              {:id segment_id              :type :segment           :status :ok}
+              timeline_eid             {:id timeline_id             :type :timeline          :status :ok}}
              (api.embed.common/model->entity-ids->ids
               {:action            [action_eid]
                :card              [card_eid]
@@ -2017,12 +2031,12 @@
                :user              [core_user_eid]}))))))
 
 (deftest missing-entity-translations-test
-  (is (= {"abcdefghijklmnopqrstu" {:type :card, :id nil, :status "not-found"}}
+  (is (= {"abcdefghijklmnopqrstu" {:type :card, :status :not-found}}
          (api.embed.common/model->entity-ids->ids {:card ["abcdefghijklmnopqrstu"]}))))
 
 (deftest wrong-format-entity-translations-test
   (is (= {"abcdefghijklmnopqrst"
           {:type :card,
-           :status "invalid-format",
+           :status :invalid-format,
            :reason ["\"abcdefghijklmnopqrst\" should be 21 characters long, but it is 20"]}}
          (api.embed.common/model->entity-ids->ids {:card ["abcdefghijklmnopqrst"]}))))

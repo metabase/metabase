@@ -1,13 +1,13 @@
 import type {
-  SDKConfigWithApiKey,
-  SDKConfigWithJWT,
+  MetabaseAuthConfigWithApiKey,
+  MetabaseAuthConfigWithProvider,
 } from "embedding-sdk/types";
 
-export const createMockJwtConfig = ({
-  jwtProviderUri = "http://TEST_URI/sso/metabase",
+export const createMockAuthProviderUriConfig = ({
+  authProviderUri = "http://TEST_URI/sso/metabase",
   ...opts
-}: Partial<SDKConfigWithJWT> = {}): SDKConfigWithJWT => ({
-  jwtProviderUri,
+}: Partial<MetabaseAuthConfigWithProvider> = {}): MetabaseAuthConfigWithProvider => ({
+  authProviderUri,
   metabaseInstanceUrl: "http://localhost",
   ...opts,
 });
@@ -15,7 +15,7 @@ export const createMockJwtConfig = ({
 export const createMockApiKeyConfig = ({
   apiKey = "TEST_API_KEY",
   ...opts
-}: Partial<SDKConfigWithApiKey> = {}): SDKConfigWithApiKey => ({
+}: Partial<MetabaseAuthConfigWithApiKey> = {}): MetabaseAuthConfigWithApiKey => ({
   apiKey,
   metabaseInstanceUrl: "http://localhost",
   ...opts,

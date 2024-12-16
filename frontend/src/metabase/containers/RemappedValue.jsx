@@ -3,9 +3,7 @@ import CS from "metabase/css/core/index.css";
 import AutoLoadRemapped from "metabase/hoc/Remapped";
 import { formatValue } from "metabase/lib/formatting";
 
-const defaultRenderNormal = ({ value }) => (
-  <span className={CS.textBold}>{value}</span>
-);
+const defaultRenderNormal = ({ value }) => <span>{value}</span>;
 
 const defaultRenderRemapped = ({ value, displayValue, column }) => (
   <span>

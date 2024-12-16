@@ -31,12 +31,12 @@
   []
   (merge
    {:databases  (->> (t2/select :model/Database) (map :engine) distinct)
-    :run-mode   (config/config-kw :mb-run-mode)
-    :plan-alias (or (some-> (premium-features/premium-embedding-token) premium-features/fetch-token-status :plan-alias) "")
-    :version    config/mb-version-info
-    :settings   {:report-timezone (driver/report-timezone)}
-    :hosting-env                  (stats/environment-type)
-    :application-database         (mdb/db-type)}
+    :run-mode             (config/config-kw :mb-run-mode)
+    :plan-alias           (or (premium-features/plan-alias) "")
+    :version              config/mb-version-info
+    :settings             {:report-timezone (driver/report-timezone)}
+    :hosting-env          (stats/environment-type)
+    :application-database (mdb/db-type)}
    (when-not (premium-features/is-hosted?)
      {:application-database-details (t2/with-connection [^java.sql.Connection conn]
                                       (let [metadata (.getMetaData conn)]
@@ -44,8 +44,8 @@
                                                        :version (.getDatabaseProductVersion metadata)}
                                          :jdbc-driver {:name    (.getDriverName metadata)
                                                        :version (.getDriverVersion metadata)}}))})
-   (when (premium-features/is-airgapped?)
+   (when (premium-features/airgap-enabled)
      {:airgap-token       :enabled
       :max-users          (premium-features/max-users-allowed)
-      :current-user-count (premium-features/cached-active-users-count)
+      :current-user-count (premium-features/active-users-count)
       :valid-thru         (some-> (premium-features/premium-embedding-token) premium-features/fetch-token-status :valid-thru)})))

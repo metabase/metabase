@@ -5,6 +5,7 @@ import { computeTimeseriesDataInverval } from "metabase/visualizations/echarts/c
 
 testAcrossTimezones(reportTz => {
   computeTimeseriesDataInverval;
+
   describe("computeTimeseriesDataInvervalIndex", () => {
     [
       ["hour", 6, ["2015-01-01T00:00:00", "2016-05-04T06:00:00"]],

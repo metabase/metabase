@@ -4,6 +4,7 @@ export * from "./admin";
 export * from "./alert";
 export * from "./automagic-dashboards";
 export * from "./bookmark";
+export * from "./bug-report";
 export * from "./card";
 export * from "./click-behavior";
 export * from "./collection";
@@ -16,6 +17,7 @@ export * from "./group";
 export * from "./metabot";
 export * from "./models";
 export * from "./modelIndexes";
+export * from "./moderation";
 export * from "./notifications";
 export * from "./pagination";
 export * from "./parameters";
@@ -39,6 +41,7 @@ export * from "./task";
 export * from "./timeline";
 export * from "./user";
 export * from "./util";
+export * from "./visualization";
 export * from "./visualization-settings";
 
 // ISO8601 timestamp

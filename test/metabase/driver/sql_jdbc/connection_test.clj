@@ -1,9 +1,8 @@
-(ns metabase.driver.sql-jdbc.connection-test
+(ns ^:mb/driver-tests metabase.driver.sql-jdbc.connection-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.auth-provider :as auth-provider]
    [metabase.config :as config]
    [metabase.core :as mbc]
    [metabase.db :as mdb]
@@ -23,6 +22,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.ssh :as ssh]
    [metabase.util.ssh-test :as ssh-test]
    [next.jdbc :as next.jdbc]
@@ -117,6 +117,9 @@
             (case driver/*driver*
               :redshift
               (assoc details :additional-options "defaultRowFetchSize=1000")
+
+              :databricks
+              (assoc details :log-level 0)
 
               (cond-> details
                 ;; swap localhost and 127.0.0.1
@@ -237,6 +240,42 @@
       (is (= 20
              (sql-jdbc.conn/jdbc-data-warehouse-unreturned-connection-timeout-seconds))))))
 
+(deftest ^:parallel include-debug-unreturned-connection-stack-traces-test
+  (testing "We should be setting debugUnreturnedConnectionStackTraces (#47981)"
+    (is (=? {"debugUnreturnedConnectionStackTraces" boolean?}
+            (sql-jdbc.conn/data-warehouse-connection-pool-properties :h2 (mt/db))))))
+
+(deftest debug-unreturned-connection-stack-traces-test
+  (testing "We should be able to set jdbc-data-warehouse-debug-unreturned-connection-stack-traces via env var (#47981)"
+    (doseq [setting [true false]]
+      (mt/with-temp-env-var-value! [mb-jdbc-data-warehouse-debug-unreturned-connection-stack-traces (str setting)]
+        (is (= setting
+               (sql-jdbc.conn/jdbc-data-warehouse-debug-unreturned-connection-stack-traces))
+            (str "setting=" setting))))))
+
+(deftest debug-unreturned-connection-stack-traces-misconfigured-c3p0-log-warning-test
+  (testing "We should log a warning if debug stack traces are enabled but c3p0 INFO logs are not (#47981)\n"
+    ;; kondo thinks the c3p0-log-level binding is unused
+    #_{:clj-kondo/ignore [:unused-binding]}
+    (letfn [(warning-found? [warnings]
+              (boolean (some #(str/includes?
+                               (:message %)
+                               "You must raise the log level for com.mchange to INFO")
+                             warnings)))
+            (warnings-logged? [c3p0-log-level setting warning-expected?]
+              (mt/with-temp-env-var-value! [mb-jdbc-data-warehouse-debug-unreturned-connection-stack-traces setting]
+                (mt/with-log-level [com.mchange c3p0-log-level]
+                  (mt/with-log-messages-for-level [warnings :warn]
+                    (and (= setting
+                            (get (sql-jdbc.conn/data-warehouse-connection-pool-properties :h2 (mt/db))
+                                 "debugUnreturnedConnectionStackTraces"))
+                         (= warning-expected? (warning-found? (warnings))))))))]
+      (are [c3p0-log-level setting warning-expected?] (warnings-logged? c3p0-log-level setting warning-expected?)
+        :error true  true
+        :error false false
+        :info  true  false
+        :info  false false))))
+
 (defn- init-h2-tcp-server [port]
   (let [args   ["-tcp" "-tcpPort", (str port), "-tcpAllowOthers" "-tcpDaemon"]
         server (Server/createTcpServer (into-array args))]
@@ -246,37 +285,38 @@
 ;;; Needs a comment please.
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest test-auth-provider-connection
-  (mt/test-driver :postgres
-    (testing "Azure Managed Identity connections can be created and expired passwords get renewed"
-      (let [db-details (:details (mt/db))
-            oauth-db-details (-> db-details
-                                 (dissoc :password)
-                                 (assoc :use-auth-provider true
-                                        :auth-provider :azure-managed-identity
-                                        :azure-managed-identity-client-id "client ID"))
-            ;; we return an expired token which forces a renewal when a second connection is requested
-            ;; (the first time it is used without checking for expiry)
-            expires-in (atom "0")
-            connection-creations (atom 0)]
-        (binding [auth-provider/*fetch-as-json* (fn [url _headers]
-                                                  (is (str/includes? url "client ID"))
-                                                  (swap! connection-creations inc)
-                                                  {:access_token (:password db-details)
-                                                   :expires_in @expires-in})]
-          (t2.with-temp/with-temp [Database oauth-db {:engine (tx/driver), :details oauth-db-details}]
-            (mt/with-db oauth-db
-              (try
-                ;; since Metabase is running and using the pool of this DB, the sync might fail
-                ;; if the connection pool is shut down during the sync
+  (mt/with-premium-features #{:database-auth-providers}
+    (mt/test-driver :postgres
+      (testing "Azure Managed Identity connections can be created and expired passwords get renewed"
+        (let [db-details (:details (mt/db))
+              oauth-db-details (-> db-details
+                                   (dissoc :password)
+                                   (assoc :use-auth-provider true
+                                          :auth-provider :azure-managed-identity
+                                          :azure-managed-identity-client-id "client ID"))
+                            ;; we return an expired token which forces a renewal when a second connection is requested
+                            ;; (the first time it is used without checking for expiry)
+              expires-in (atom "0")
+              connection-creations (atom 0)]
+          (binding [u.http/*fetch-as-json* (fn [url _headers]
+                                             (is (str/includes? url "client ID"))
+                                             (swap! connection-creations inc)
+                                             {:access_token (:password db-details)
+                                              :expires_in @expires-in})]
+            (t2.with-temp/with-temp [Database oauth-db {:engine (tx/driver), :details oauth-db-details}]
+              (mt/with-db oauth-db
+                (try
+                                ;; since Metabase is running and using the pool of this DB, the sync might fail
+                                ;; if the connection pool is shut down during the sync
+                  (sync/sync-database! (mt/db))
+                  (catch Exception _))
+                              ;; after "fixing" the expiry, we should get a connection from a pool that doesn't get shut down
+                (reset! expires-in "10000")
                 (sync/sync-database! (mt/db))
-                (catch Exception _))
-              ;; after "fixing" the expiry, we should get a connection from a pool that doesn't get shut down
-              (reset! expires-in "10000")
-              (sync/sync-database! (mt/db))
-              (is (= [["Polo Lounge"]]
-                     (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]}))))
-              ;; we must have created more than one connection
-              (is (> @connection-creations 1)))))))))
+                (is (= [["Polo Lounge"]]
+                       (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]}))))
+                              ;; we must have created more than one connection
+                (is (> @connection-creations 1))))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::test-ssh-tunnel-connection]
   [_driver _feature _database]

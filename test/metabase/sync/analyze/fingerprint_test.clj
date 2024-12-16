@@ -1,10 +1,10 @@
-(ns metabase.sync.analyze.fingerprint-test
+(ns ^:mb/driver-tests metabase.sync.analyze.fingerprint-test
   "Basic tests to make sure the fingerprint generatation code is doing something that makes sense."
   (:require
    [clojure.test :refer :all]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.db.query :as mdb.query]
-   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]

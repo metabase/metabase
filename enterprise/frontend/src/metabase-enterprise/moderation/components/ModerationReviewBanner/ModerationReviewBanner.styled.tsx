@@ -1,9 +1,7 @@
 import styled from "@emotion/styled";
 
-import Button from "metabase/core/components/Button";
-
 export const Container = styled.div`
-  padding: 1rem 0;
+  padding: 1rem;
   display: flex;
   justify-content: space-between;
   align-items: start;
@@ -28,15 +26,4 @@ export const Time = styled.time`
   color: var(--mb-color-text-medium);
   font-size: 0.766rem;
   line-height: 1.25rem;
-`;
-
-export const IconButton = styled(Button)`
-  padding: 0 !important;
-  border: none;
-  background-color: transparent;
-
-  &:hover {
-    background-color: transparent;
-    color: var(--mb-color-danger);
-  }
 `;

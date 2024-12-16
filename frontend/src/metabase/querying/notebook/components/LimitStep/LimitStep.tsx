@@ -9,6 +9,8 @@ import * as Lib from "metabase-lib";
 import type { NotebookStepProps } from "../../types";
 import { NotebookCell } from "../NotebookCell";
 
+import { isLimitValid, parseLimit } from "./util";
+
 export function LimitStep({
   query,
   step,
@@ -20,15 +22,23 @@ export function LimitStep({
   const limit = Lib.currentLimit(query, stageIndex);
   const [value, setValue] = useState(typeof limit === "number" ? limit : "");
 
-  const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
-    const nextLimit = parseInt(event.target.value, 0);
-    if (nextLimit >= 1) {
+  const updateLimit = (nextLimit: number) => {
+    if (isLimitValid(nextLimit)) {
       updateQuery(Lib.limit(query, stageIndex, nextLimit));
     }
   };
 
+  const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
+    updateLimit(parseLimit(event.target.value));
+  };
+
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     setValue(event.target.value);
+
+    const isFocused = event.target === document.activeElement;
+    if (!isFocused) {
+      updateLimit(parseLimit(event.target.value));
+    }
   };
 
   return (
@@ -36,6 +46,7 @@ export function LimitStep({
       <LimitInput
         className={CS.mb1}
         type="number"
+        min={1}
         value={value}
         placeholder={t`Enter a limit`}
         small

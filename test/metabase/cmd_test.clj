@@ -1,6 +1,6 @@
 (ns metabase.cmd-test
   (:require
-   [clojure.test :as t :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [metabase.cmd :as cmd]))
 
 (defn- do-with-captured-call-enterprise-calls! [thunk]
@@ -9,7 +9,7 @@
 
 (deftest ^:parallel error-message-test
   (is (= ["Unrecognized command: 'a-command-that-does-not-exist'"
-          "Valid commands: version, help, drop-entity-ids, import, dump, profile, api-documentation, load, seed-entity-ids, dump-to-h2, environment-variables-documentation, migrate, driver-methods, load-from-h2, export, rotate-encryption-key, reset-password"]
+          "Valid commands: version, help, drop-entity-ids, import, dump, profile, api-documentation, load, seed-entity-ids, dump-to-h2, environment-variables-documentation, migrate, config-template, driver-methods, load-from-h2, export, rotate-encryption-key, reset-password"]
          (#'cmd/validate "a-command-that-does-not-exist" [])))
   (is (= ["The 'rotate-encryption-key' command requires the following arguments: [new-key], but received: []."]
          (#'cmd/validate "rotate-encryption-key" [])))
@@ -33,7 +33,10 @@
               (cmd/import "/path/"))))
      (testing "with options"
        (is (= '(metabase-enterprise.serialization.cmd/v2-load! "/path/" {:continue-on-error true})
-              (cmd/import "/path/" "--continue-on-error")))))))
+              (cmd/import "/path/" "--continue-on-error"))))
+     (testing "with options"
+       (is (= '(metabase-enterprise.serialization.cmd/v2-load! "/path/" {:full-stacktrace true})
+              (cmd/import "/path/" "--full-stacktrace")))))))
 
 (deftest dump-command-test
   (do-with-captured-call-enterprise-calls!
@@ -78,4 +81,7 @@
        {:continue-on-error true}
 
        ["-e"]
-       {:continue-on-error true}))))
+       {:continue-on-error true}
+
+       ["--full-stacktrace"]
+       {:full-stacktrace true}))))

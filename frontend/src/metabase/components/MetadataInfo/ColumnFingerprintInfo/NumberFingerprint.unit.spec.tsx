@@ -38,6 +38,7 @@ describe("NumberFingerprint", () => {
     expect(screen.getByText("456.79")).toBeInTheDocument();
     expect(screen.getByText("20000")).toBeInTheDocument();
   });
+
   it("should ignore invalid number values in the info", () => {
     setup({
       fingerprintTypeInfo: {
@@ -50,6 +51,7 @@ describe("NumberFingerprint", () => {
     expect(screen.queryByText("Min")).not.toBeInTheDocument();
     expect(screen.queryByText("Max")).not.toBeInTheDocument();
   });
+
   it("should ignore invalid non-number values in the info", () => {
     setup({
       fingerprintTypeInfo: {

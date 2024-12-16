@@ -228,6 +228,7 @@ describe("DashCardCardParameterMapper", () => {
       expect(screen.queryByText("Auto-connected")).not.toBeInTheDocument();
       expect(getIcon("sparkles")).toBeInTheDocument();
     });
+
     it("should not render an icon when a dashcard is narrow", () => {
       const card = createMockCard();
       const dashcard = createMockDashboardCard({ card, size_y: 3, size_x: 3 });

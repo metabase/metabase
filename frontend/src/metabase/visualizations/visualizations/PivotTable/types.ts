@@ -1,14 +1,4 @@
-import type {
-  AggregateFieldReference,
-  DatasetColumn,
-  FieldReference,
-} from "metabase-types/api";
-
-export type PivotSetting = {
-  columns: FieldReference[];
-  rows: FieldReference[];
-  values: AggregateFieldReference[];
-};
+import type { DatasetColumn } from "metabase-types/api";
 
 export type PivotTableClicked = { value: string; column: DatasetColumn };
 export interface HeaderItem {

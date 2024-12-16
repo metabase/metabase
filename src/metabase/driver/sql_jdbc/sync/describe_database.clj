@@ -190,7 +190,9 @@
       (map #(dissoc % :type)))
      (db-tables driver (.getMetaData conn) nil db-name-or-nil))))
 
-(defn- db-or-id-or-spec->database [db-or-id-or-spec]
+(defn db-or-id-or-spec->database
+  "Get database instance from `db-or-id-or-spec`."
+  [db-or-id-or-spec]
   (cond (mi/instance-of? :model/Database db-or-id-or-spec)
         db-or-id-or-spec
 

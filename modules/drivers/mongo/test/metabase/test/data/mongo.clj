@@ -1,7 +1,5 @@
 (ns metabase.test.data.mongo
   (:require
-   [cheshire.core :as json]
-   [cheshire.generate :as json.generate]
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
@@ -11,9 +9,9 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.util :as mongo.util]
-   [metabase.test.data.interface :as tx])
+   [metabase.test.data.interface :as tx]
+   [metabase.util.json :as json])
   (:import
-   (com.fasterxml.jackson.core JsonGenerator)
    (com.mongodb.client MongoDatabase)))
 
 (set! *warn-on-reflection* true)
@@ -76,17 +74,20 @@
         (when indexed?
           (mongo.util/create-index (mongo.util/collection db table-name) {field-name 1})))
       (let [field-names (for [field-definition field-definitions]
-                          (keyword (:field-name field-definition)))]
-        ;; Use map-indexed so we can get an ID for each row (index + 1)
-        (doseq [[i row] (map-indexed vector rows)]
-          (try
-            ;; Insert each row
-            (mongo.util/insert-one (mongo.util/collection db (name table-name))
-                                   (into (ordered-map/ordered-map :_id (inc i))
-                                         (cond->> (zipmap field-names row)
-                                           *remove-nil?* (m/remove-vals nil?))))
-            ;; If row already exists then nothing to do
-            (catch com.mongodb.MongoException _)))))))
+                          (keyword (:field-name field-definition)))
+            rows (map (fn [[i row]]
+                        (into (ordered-map/ordered-map :_id (inc i))
+                              (cond->> (zipmap field-names row)
+                                *remove-nil?* (m/remove-vals nil?))))
+                      ;; Use map-indexed so we can get an ID for each row (index + 1)
+                      (map-indexed vector rows))]
+        (try
+          ;; Insert each row
+          (mongo.util/insert-many
+           (mongo.util/collection db (name table-name))
+           rows)
+          ;; If row already exists then nothing to do
+          (catch com.mongodb.MongoException _))))))
 
 (defmethod tx/destroy-db! :mongo
   [driver dbdef]
@@ -98,23 +99,16 @@
     (str "_" table-or-field-name)
     table-or-field-name))
 
-(defn- json-raw
-  "Wrap a string so it will be spliced directly into resulting JSON as-is. Analogous to HoneySQL `raw`."
-  [^String s]
-  (reify json.generate/JSONable
-    (to-json [_ generator]
-      (.writeRawValue ^JsonGenerator generator s))))
-
 (deftest json-raw-test
-  (testing "Make sure the `json-raw` util fn actually works the way we expect it to"
+  (testing "Make sure the `raw-json-generator` util fn actually works the way we expect it to"
     (is (= "{\"x\":{{param}}}"
-           (json/generate-string {:x (json-raw "{{param}}")})))))
+           (json/encode {:x (json/raw-json-generator "{{param}}")})))))
 
 (defmethod tx/count-with-template-tag-query :mongo
   [_driver table-name field-name _param-type]
   {:projections [:count]
-   :query       (json/generate-string
-                 [{:$match {(name field-name) (json-raw (format "{{%s}}" (name field-name)))}}
+   :query       (json/encode
+                 [{:$match {(name field-name) (json/raw-json-generator (format "{{%s}}" (name field-name)))}}
                   {:$group {"_id" nil, "count" {:$sum 1}}}
                   {:$sort {"_id" 1}}
                   {:$project {"_id" false, "count" true}}])
@@ -123,8 +117,8 @@
 (defmethod tx/count-with-field-filter-query :mongo
   [_driver table-name field-name]
   {:projections [:count]
-   :query       (json/generate-string
-                 [{:$match (json-raw (format "{{%s}}" (name field-name)))}
+   :query       (json/encode
+                 [{:$match (json/raw-json-generator (format "{{%s}}" (name field-name)))}
                   {:$group {"_id" nil, "count" {:$sum 1}}}
                   {:$sort {"_id" 1}}
                   {:$project {"_id" false, "count" true}}])
@@ -140,3 +134,17 @@
    (merge ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type column-metadata)
           (when (= ag-type :cum-count)
             {:base_type :type/Integer}))))
+
+(defmethod tx/create-view-of-table! :mongo
+  [_driver database view-name table-name {:keys [materialized?]}]
+  (when materialized?
+    (throw (Exception. "Material Views not supported.")))
+  (mongo.connection/with-mongo-database [^MongoDatabase db database]
+    (.createView db view-name table-name [])))
+
+(defmethod tx/drop-view! :mongo
+  [_driver database view-name {:keys [materialized?]}]
+  (when materialized?
+    (throw (Exception. "Material Views not supported.")))
+  (mongo.connection/with-mongo-database [^MongoDatabase db database]
+    (some-> db (mongo.util/collection view-name) .drop)))

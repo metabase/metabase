@@ -159,8 +159,8 @@
         "graph.dimensions": ["CREATED_AT"],
         "graph.show_trendline": true,
         "graph.metrics": ["sum"],
-        "metabase.shared.models.visualization-settings/column-settings": {},
-        "metabase.shared.models.visualization-settings/global-column-settings": {}
+        "metabase.models.visualization-settings/column-settings": {},
+        "metabase.models.visualization-settings/global-column-settings": {}
       },
       "results_timezone": "America/Los_Angeles",
       "results_metadata": {

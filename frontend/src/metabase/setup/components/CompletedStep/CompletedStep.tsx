@@ -1,8 +1,9 @@
 import cx from "classnames";
-import { useState } from "react";
+import { type ChangeEvent, useState } from "react";
 import { t } from "ttag";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
 import { subscribeToNewsletter } from "metabase/setup/utils";
 import { Switch } from "metabase/ui";
@@ -29,7 +30,16 @@ export const CompletedStep = (): JSX.Element | null => {
 
   const baseUrl = window.MetabaseRoot ?? "/";
 
-  const handleClick = () => {
+  const handleSwitchToggle = (e: ChangeEvent<HTMLInputElement>) => {
+    setCheckboxValue(e.target.checked);
+    trackSimpleEvent({
+      event: "newsletter-toggle-clicked",
+      triggered_from: "setup",
+      event_detail: e.target.checked ? "opted-in" : "opted-out",
+    });
+  };
+
+  const handleGoToMetabase = () => {
     if (checkboxValue && email) {
       subscribeToNewsletter(email);
     }
@@ -41,13 +51,13 @@ export const CompletedStep = (): JSX.Element | null => {
       <StepBody>
         <Switch
           checked={checkboxValue}
-          onChange={e => setCheckboxValue(e.target.checked)}
+          onChange={handleSwitchToggle}
           label={t`Get infrequent emails about new releases and feature updates.`}
         />
       </StepBody>
       <StepFooter>
         <a
-          onClick={handleClick}
+          onClick={handleGoToMetabase}
           className={cx(
             ButtonsS.Button,
             ButtonsS.ButtonPrimary,

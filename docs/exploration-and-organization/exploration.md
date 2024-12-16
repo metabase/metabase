@@ -41,25 +41,23 @@ You can search by:
 - **Last editor**: who made the last saved change on the thing.
 - **Creation date**: when the thing entered our universe.
 - **Last edit date**: when someone last cared enough to update the thing.
-- **Verified items only**. Only show items that [have been verified](#verified-items).
+- **Verified items only**. Only show items that [have been verified](./content-verification.md).
 - **Search the contents of native queries**: search through the SQL/native code in questions.
 - **Search items in trash**: include the depths of oblivion in your search.
 
-## Browse your data
+## Browse your databases
+
+> Whether a group has access to the database browser depends on the group's [Create queries permission](../permissions/data.md#create-queries-permissions).
 
 ![Browse databases](./images/browse-data.png)
 
-To explore databases and models, click on either the **Models** or **Databases** browsers in the left sidebar.
+The left sidebar lists your databases, [models](../data-modeling/models.md), and [metrics](../data-modeling/metrics.md).
 
-### Browse models
+[Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans include the ability to filter for [verified models and metrics](./content-verification.md).
 
-The models browser list all the models in your Metabase. [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans include the ability to filter for [Verified models](#verified-items).
+The database browser will list all the databases connected to your Metabase. Hover over a table and click on the **bolt** icon to [X-ray](x-rays.md) the table, or click on the **book** icon to view more info about the table: its fields and their descriptions (if any), what questions are based on that table, and more.
 
-### Browse databases
-
-The data browser will list all the databases connected to your Metabase. Hover over a table and click on the **bolt** icon to [X-ray](x-rays.md) the table, or click on the **book** icon to view more info about the table: its fields and their descriptions (if any), what questions are based on that table, and more.
-
-To learn more, see [Exploring data with Metabase's data browser](https://www.metabase.com/learn/basics/questions/data-browser.html).
+To learn more, see [Exploring data with Metabase's data browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser).
 
 ## Exploring collections
 
@@ -67,13 +65,14 @@ To learn more, see [Exploring data with Metabase's data browser](https://www.met
 
 ![A collection](./images/collection-detail.png)
 
-Your teammates might have pinned some important dashboards or questions within your collections; if so, those pinned items will show up as cards at the top of the collection.
+Your teammates might have pinned some items to the top of your collection.
+
+- [dashboards](../dashboards/introduction.md)
+- [models](../data-modeling/models.md)
+- [metrics](../data-modeling/metrics.md)
+- [questions](../questions/start.md)
 
 Collections have a list of any other items that are saved within them, and you can see what other collections are saved inside of the current one by checking out the navigation sidebar.
-
-## Models
-
-You can use Models to create derived tables on the fly. See [Models][models].
 
 ## Exploring dashboards
 
@@ -91,7 +90,7 @@ In this example of orders by product category per month, clicking on a data poin
 - **Automatic insights**: See orders for a particular category over a shorter time range.
 - **Filter by this value**: update the chart based on the value you clicked: equal to, less than, greater than, or not equal to.
 
-> Note that while charts created with SQL don't currently have the drill-through menu, you can add SQL questions to a dashboard and customize their click behavior. You can send people to a [custom destination](https://www.metabase.com/learn/building-analytics/dashboards/custom-destinations.html) (like another dashboard or an external URL), or have the clicked value [update a dashboard filter](https://www.metabase.com/learn/building-analytics/dashboards/cross-filtering.html).
+> Note that while charts created with SQL currently only have [limited drill-through menu](../questions/native-editor/writing-sql.md#drill-though-in-sql-questions), you can add SQL questions to a dashboard and customize their click behavior. You can send people to a [custom destination](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/custom-destinations) (like another dashboard or an external URL), or have the clicked value [update a dashboard filter](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/cross-filtering).
 
 Clicking on a table cell will often allow you to filter the results using a comparison operator, like =, >, or <. For example, you can click on a table cell, and select the less than operator `<` to filter for values that are less than the selected value.
 
@@ -101,17 +100,7 @@ Lastly, clicking on the ID of an item in a table gives you the option to go to a
 
 ![Detail view](images/detail-view.png)
 
-When you add questions to a dashboard, you can have even more control over what happens when people click on your chart. In addition to the default drill-through menu, you can add a [custom destination](https://www.metabase.com/learn/building-analytics/dashboards/custom-destinations.html) or [update a filter](https://www.metabase.com/learn/building-analytics/dashboards/cross-filtering). Check out [interactive dashboards](../dashboards/interactive.md). to learn more.
-
-## Exploring saved questions
-
-In Metabase parlance, every chart on a dashboard is called a "question." Clicking on the title of a question on a dashboard will take you to a detail view of that question. You'll also end up at this detail view if you use one of the actions mentioned above.
-
-When you're looking at the detail view of a question, you can use all the same actions mentioned above. You can also click on the headings of tables to see more options, like summing the values of a column, or filtering based on that column.
-
-![Heading actions](images/heading-actions.png)
-
-One of our personal favorite ways to explore is with the **Distribution** option. This will show you how many rows there are in a given table, grouped by the column you clicked on. So if you have a Users table, if you click on an Age column and select Distribution, you'll see a bar chart with the count of users you have in each age bracket.
+When you add questions to a dashboard, you can have even more control over what happens when people click on your chart. In addition to the default drill-through menu, you can add a [custom destination](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/custom-destinations) or [update a filter](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/cross-filtering). Check out [interactive dashboards](../dashboards/interactive.md).
 
 ## Bookmarks
 
@@ -132,18 +121,6 @@ Some things to remember with bookmarks:
 - If you end up bookmarking a lot of items, you can collapse the bookmarks section in the sidebar (or remove the bookmarks that are just getting in your way).
 - Items that you bookmark will get a boost in your search results (but not the search results of other people).
 - To reorder bookmarks, simply drag and drop them in the sidebar.
-
-## Verified items
-
-{% include plans-blockquote.html feature="Verification" %}
-
-Verified questions and models are marked with a blue checkmark icon:
-
-![Verified icon](./images/verified-icon.png)
-
-Administrators can **Verify** a question or model from the three dot menu (`...`) to signal that they've reviewed the item and deemed it to be trustworthy. That is: the question or model is filtering the right columns, summarizing the right metrics, and querying records from the right tables. Verified items are more likely to show up higher in search suggestions and search results.
-
-If someone modifies a verified question, the question will lose its verified status, and an administrator will need to review and verify the question again to restore its verified status.
 
 [collections]: ./collections.md
 [dashboards]: ../dashboards/start.md

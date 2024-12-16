@@ -1,3 +1,5 @@
+import type { LocationDescriptor } from "history";
+import type { MouseEvent } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -79,11 +81,13 @@ export const getCommandPaletteIcon = (
 ): { name: IconName; color: string } => {
   const icon = {
     name: item.icon as IconName,
-    color: item.extra?.iconColor ? color(item.extra.iconColor) : color("brand"),
+    color: item.extra?.iconColor
+      ? color(item.extra.iconColor)
+      : "var(--mb-color-brand)",
   };
 
   if (isActive) {
-    icon.color = color("white");
+    icon.color = "var(--mb-color-text-white)";
   }
 
   if (isActive && (item.icon === "folder" || item.icon === "collection")) {
@@ -92,3 +96,25 @@ export const getCommandPaletteIcon = (
 
   return icon;
 };
+
+export const isAbsoluteURL = (url: string) =>
+  url.startsWith("http://") || url.startsWith("https://");
+
+export const locationDescriptorToURL = (
+  locationDescriptor: LocationDescriptor,
+) => {
+  if (typeof locationDescriptor === "string") {
+    return locationDescriptor;
+  } else {
+    const { pathname = "", query = null, hash = null } = locationDescriptor;
+    const queryString = query
+      ? "?" + new URLSearchParams(query).toString()
+      : "";
+    const hashString = hash ? "#" + hash : "";
+
+    return `${pathname}${queryString}${hashString}`;
+  }
+};
+
+export const isNormalClick = (e: MouseEvent): boolean =>
+  !e.ctrlKey && !e.shiftKey && !e.metaKey && !e.altKey && e.button === 0;

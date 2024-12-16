@@ -1,5 +1,6 @@
-import { measureTextWidth, truncateText } from "metabase/static-viz/lib/text";
+import { measureTextWidth } from "metabase/static-viz/lib/text";
 import type { LegendItem } from "metabase/visualizations/echarts/cartesian/model/types";
+import { truncateText } from "metabase/visualizations/lib/text";
 
 import {
   DEFAULT_LEGEND_FONT_SIZE,
@@ -105,8 +106,13 @@ export const calculateLegendRows = ({
         name: truncateText(
           item.name,
           availableTotalWidth,
-          fontSize,
-          fontWeight,
+          (text, style) =>
+            measureTextWidth(text, Number(style.size), Number(style.weight)),
+          {
+            size: fontSize,
+            weight: fontWeight,
+            family: "Lato",
+          },
         ),
         left: horizontalPadding,
         top: currentRowIndex * lineHeight + verticalPadding,

@@ -239,7 +239,7 @@ export const StaticEmbedSetupPane = ({
   };
 
   const [activeTab, setActiveTab] = useState<
-    typeof EMBED_MODAL_TABS[keyof typeof EMBED_MODAL_TABS]
+    (typeof EMBED_MODAL_TABS)[keyof typeof EMBED_MODAL_TABS]
   >(EMBED_MODAL_TABS.Overview);
   return (
     <Stack spacing={0}>
@@ -408,14 +408,16 @@ function getPreviewParamsBySlug({
   );
 
   return Object.fromEntries(
-    lockedParameters.map(parameter => [
-      parameter.slug,
-      getParameterValue({
+    lockedParameters.map(parameter => {
+      const value = getParameterValue({
         parameter,
         values: parameterValues,
         defaultRequired: true,
-      }),
-    ]),
+      });
+      // metabase#47570
+      const valueWithDefaultLockedParameterValue = value === null ? [] : value;
+      return [parameter.slug, valueWithDefaultLockedParameterValue];
+    }),
   );
 }
 

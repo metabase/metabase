@@ -360,4 +360,5 @@
    [:column-ref [:maybe [:ref ::lib.schema.ref/ref]]]
    [:value      [:maybe :any]]
    [:row        {:optional true} [:ref ::context.row]]
-   [:dimensions {:optional true} [:maybe [:ref ::context.row]]]])
+   [:dimensions {:optional true} [:maybe [:ref ::context.row]]]
+   [:card-id    {:optional true} [:maybe ::lib.schema.id/card]]])

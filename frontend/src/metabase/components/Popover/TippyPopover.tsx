@@ -4,7 +4,7 @@ import { merge } from "icepick";
 import { useCallback, useMemo, useState } from "react";
 import type * as tippy from "tippy.js";
 
-import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
+import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import EventSandbox from "metabase/components/EventSandbox";
 import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
 import { isCypressActive } from "metabase/env";
@@ -31,7 +31,8 @@ const OFFSET: [number, number] = [0, 5];
 
 function appendTo() {
   return (
-    document.getElementById(EMBEDDING_SDK_ROOT_ELEMENT_ID) || document.body
+    document.getElementById(EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID) ||
+    document.body
   );
 }
 

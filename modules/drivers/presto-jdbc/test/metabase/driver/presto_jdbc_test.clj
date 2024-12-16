@@ -1,4 +1,4 @@
-(ns metabase.driver.presto-jdbc-test
+(ns ^:mb/driver-tests metabase.driver.presto-jdbc-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -13,7 +13,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
-   [metabase.models.table :as table :refer [Table]]
+   [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync :as sync]

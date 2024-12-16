@@ -51,15 +51,33 @@ function CheckboxListPicker({
 }: ListValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const [elevatedValues] = useState(selectedValues);
-  const options = getEffectiveOptions(
+  const availableOptions = getEffectiveOptions(
     fieldValues,
     selectedValues,
     elevatedValues,
   );
-  const visibleOptions = searchOptions(options, searchValue);
+  const filteredOptions = searchOptions(availableOptions, searchValue);
+  const selectedValuesSet = new Set(selectedValues);
+  const selectedFilteredOptions = filteredOptions.filter(option =>
+    selectedValuesSet.has(option.value),
+  );
+  const isAll = selectedFilteredOptions.length === filteredOptions.length;
+  const isNone = selectedFilteredOptions.length === 0;
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     setSearchValue(event.currentTarget.value);
+  };
+
+  const handleToggleAll = () => {
+    const newSelectedValuesSet = new Set(selectedValues);
+    filteredOptions.forEach(option => {
+      if (isAll) {
+        newSelectedValuesSet.delete(option.value);
+      } else {
+        newSelectedValuesSet.add(option.value);
+      }
+    });
+    onChange(Array.from(newSelectedValuesSet));
   };
 
   return (
@@ -68,28 +86,46 @@ function CheckboxListPicker({
         value={searchValue}
         placeholder={placeholder}
         autoFocus={autoFocus}
+        icon={<Icon name="search" c="text-light" />}
         onChange={handleInputChange}
       />
-      <Checkbox.Group value={selectedValues} onChange={onChange}>
-        {visibleOptions.length > 0 ? (
-          <Stack>
-            {visibleOptions.map(option => (
-              <Checkbox
-                key={option.value}
-                value={option.value}
-                label={option.label}
-              />
-            ))}
-          </Stack>
-        ) : (
-          <Stack c="text-light" justify="center" align="center">
-            <Icon name="search" size={40} />
-            <Text c="text-medium" fw="bold">{t`Didn't find anything`}</Text>
-          </Stack>
-        )}
-      </Checkbox.Group>
+      {filteredOptions.length > 0 ? (
+        <Stack>
+          <Checkbox
+            variant="stacked"
+            label={getToggleAllLabel(searchValue, isAll)}
+            checked={isAll}
+            indeterminate={!isAll && !isNone}
+            onChange={handleToggleAll}
+          />
+          <Checkbox.Group value={selectedValues} onChange={onChange}>
+            <Stack>
+              {filteredOptions.map(option => (
+                <Checkbox
+                  key={option.value}
+                  value={option.value}
+                  label={option.label}
+                />
+              ))}
+            </Stack>
+          </Checkbox.Group>
+        </Stack>
+      ) : (
+        <Stack c="text-light" justify="center" align="center">
+          <Icon name="search" size={40} />
+          <Text c="text-medium" fw="bold">{t`Didn't find anything`}</Text>
+        </Stack>
+      )}
     </Stack>
   );
+}
+
+function getToggleAllLabel(searchValue: string, isAll: boolean) {
+  if (isAll) {
+    return t`Select none`;
+  } else {
+    return searchValue ? t`Select these` : t`Select all`;
+  }
 }
 
 function CheckboxGridPicker({

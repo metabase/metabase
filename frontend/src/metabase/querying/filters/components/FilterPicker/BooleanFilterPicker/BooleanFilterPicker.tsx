@@ -58,10 +58,12 @@ export function BooleanFilterPicker({
       data-testid="boolean-filter-picker"
       onSubmit={handleSubmit}
     >
-      <FilterPickerHeader
-        columnName={columnInfo.longDisplayName}
-        onBack={onBack}
-      />
+      {onBack && (
+        <FilterPickerHeader
+          columnName={columnInfo.longDisplayName}
+          onBack={onBack}
+        />
+      )}
       <div>
         <Radio.Group value={optionType} onChange={handleOptionChange}>
           <Stack p="md" pb={isExpanded ? "md" : 0} spacing="sm">

@@ -5,7 +5,7 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.models.collection :as collection]
-   [metabase.models.timeline :as timeline :refer [Timeline]]
+   [metabase.models.timeline :refer [Timeline]]
    [metabase.models.timeline-event
     :as timeline-event
     :refer [TimelineEvent]]
@@ -43,9 +43,9 @@
                            :timestamp  parsed}
                           (when-not icon
                             {:icon (t2/select-one-fn :icon Timeline :id timeline_id)}))]
-      (snowplow/track-event! ::snowplow/new-event-created
-                             api/*current-user-id*
-                             (cond-> {:time_matters time_matters
+      (snowplow/track-event! ::snowplow/timeline
+                             (cond-> {:event         :new-event-created
+                                      :time_matters  time_matters
                                       :collection_id (:collection_id timeline)}
                                (boolean source)      (assoc :source source)
                                (boolean question_id) (assoc :question_id question_id)))

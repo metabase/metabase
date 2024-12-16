@@ -24,7 +24,6 @@ export const NotebookCellItemContainer = styled.div<{
   disabled?: boolean;
 }>`
   display: flex;
-  align-items: center;
   font-weight: bold;
   color: ${props => (props.inactive ? props.color : color("text-white"))};
   border-radius: 6px;
@@ -35,6 +34,8 @@ export const NotebookCellItemContainer = styled.div<{
     (!props.inactive || props.onClick) && !props.readOnly && !props.disabled
       ? "pointer"
       : "default"};
+  pointer-events: ${props => (props.disabled ? "none" : "auto")};
+  align-items: stretch;
 
   &:hover {
     border-color: ${props => props.inactive && alpha(props.color, 0.8)};
@@ -59,7 +60,6 @@ export const NotebookCellItemContentContainer = styled.div<{
   align-items: center;
   padding: ${CONTAINER_PADDING};
   background-color: ${props => (props.inactive ? "transparent" : props.color)};
-  pointer-events: ${props => (props.disabled ? "none" : "auto")};
 
   &:hover {
     background-color: ${props =>

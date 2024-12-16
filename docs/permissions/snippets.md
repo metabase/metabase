@@ -88,4 +88,4 @@ Because of how snippet folder permissions work, we recommend that you consider s
 
 ## Further reading
 
-- [SQL snippets](https://www.metabase.com/learn/sql-questions/sql-snippets).
+- [SQL snippets](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-snippets).

@@ -14,7 +14,7 @@ import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { MAX_WIDTH, MIN_WIDTH } from "../constants";
+import { WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function NumberFilterPicker({
@@ -49,7 +49,7 @@ export function NumberFilterPicker({
     filter,
   });
 
-  const handleOperatorChange = (newOperator: Lib.NumberFilterOperatorName) => {
+  const handleOperatorChange = (newOperator: Lib.NumberFilterOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
   };
@@ -66,8 +66,7 @@ export function NumberFilterPicker({
   return (
     <Box
       component="form"
-      miw={MIN_WIDTH}
-      maw={MAX_WIDTH}
+      w={WIDTH}
       data-testid="number-filter-picker"
       onSubmit={handleSubmit}
     >

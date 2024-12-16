@@ -132,11 +132,24 @@ describe("FieldValuesWidget", () => {
     describe("has_field_values = search", () => {
       const field = metadata.field(PEOPLE.EMAIL);
 
-      it("should not call fetchFieldValues", async () => {
-        const { fetchFieldValues } = await setup({
-          fields: [field],
+      describe("multi = true", () => {
+        it("should not call fetchFieldValues", async () => {
+          const { fetchFieldValues } = await setup({
+            fields: [field],
+            multi: true,
+          });
+          expect(fetchFieldValues).not.toHaveBeenCalled();
         });
-        expect(fetchFieldValues).not.toHaveBeenCalled();
+      });
+
+      describe("multi = false", () => {
+        it("should call fetchFieldValues", async () => {
+          const { fetchFieldValues } = await setup({
+            fields: [field],
+            multi: false,
+          });
+          expect(fetchFieldValues).toHaveBeenCalledWith(field);
+        });
       });
 
       it("should have 'Search by Vendor' as the placeholder text", async () => {
@@ -211,8 +224,8 @@ describe("FieldValuesWidget", () => {
       expect(
         screen.getByPlaceholderText("Search the list"),
       ).toBeInTheDocument();
-      expect(screen.getByText("Doohickey")).toBeInTheDocument();
-      expect(screen.getByText("Affiliate")).toBeInTheDocument();
+      expect(await screen.findByText("Doohickey")).toBeInTheDocument();
+      expect(await screen.findByText("Affiliate")).toBeInTheDocument();
     });
 
     it("search if any field is a search", async () => {
@@ -267,7 +280,9 @@ describe("FieldValuesWidget", () => {
         fields: [valuesField, expressionField],
       });
 
-      expect(screen.getByText(LISTABLE_PK_FIELD_VALUE)).toBeInTheDocument();
+      expect(
+        await screen.findByText(LISTABLE_PK_FIELD_VALUE),
+      ).toBeInTheDocument();
       expect(fetchFieldValues).toHaveBeenCalledWith(
         expect.objectContaining({
           id: LISTABLE_PK_FIELD_ID,

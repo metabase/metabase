@@ -21,6 +21,7 @@ describe("getTimePassedSince", () => {
   ];
   tests.forEach(test => {
     const { interval, unit, expected } = test;
+
     it(`${interval} ${unit}s ago -> ${expected}`, () => {
       expect(
         getTimePassedSince({

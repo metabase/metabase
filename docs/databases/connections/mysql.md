@@ -56,7 +56,7 @@ You can append options to the connection string that Metabase uses to connect to
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/introduction.md#grouping-your-metrics) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when Metabase syncs and scans
 
@@ -171,6 +171,12 @@ mysql:
     - $PWD/mysql:/var/lib/mysql
   command: ["--default-authentication-plugin=mysql_native_password"]
 ```
+
+## Limitations with Vitess-based databases
+
+When querying Vitess databases, you should add a `LIMIT` clause inside each subquery.
+
+The reason: typically, Metabase applies limits (e.g., 2000 or 10000 rows) to the final query results. But due to a known bug in Vitess, Vitess might apply these limits to subqueries, which can lead to unexpected results. The workaround is to add limits to each of your subqueries.
 
 ## Further reading
 

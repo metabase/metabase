@@ -262,7 +262,7 @@
                                         ["varargs"
                                          #js [(name tag) (clj->js opts) js-field "hotel" "motel"]
                                          [tag opts field "hotel" "motel"]]]]
-    (testing (str (str tag) " in " label " form with" (when (empty? opts) "out") " options")
+    (testing (str tag " in " label " form with" (when (empty? opts) "out") " options")
       (let [legacy-query      #js {:type  "query"
                                    :query #js {:source_table (meta/id :venues)
                                                :filter       legacy-expr}}
@@ -420,11 +420,20 @@
     [:get-week {} [:field {} int?]]
     (lib.js/expression-clause "get-week" [(meta/field-metadata :products :created-at)] nil)
 
+    [:get-day-of-week {} [:field {} int?] :iso]
+    (lib.js/expression-clause "get-day-of-week" [(meta/field-metadata :products :created-at) "iso"] nil)
+
+    [:get-day-of-week {} [:field {} int?]]
+    (lib.js/expression-clause "get-day-of-week" [(meta/field-metadata :products :created-at)] nil)
+
     [:temporal-extract {} [:field {} int?] :day-of-week]
     (lib.js/expression-clause "temporal-extract" [(meta/field-metadata :products :created-at) "day-of-week"] nil)
 
     [:temporal-extract {} [:field {} int?] :day-of-week :iso]
     (lib.js/expression-clause "temporal-extract" [(meta/field-metadata :products :created-at) "day-of-week" "iso"] nil)
+
+    [:during {} [:field {} int?] "2024-12-05T22:13:54" :minute]
+    (lib.js/expression-clause "during" [(meta/field-metadata :products :created-at) "2024-12-05T22:13:54" "minute"] nil)
 
     [:datetime-diff {} [:field {} int?] [:field {} int?] :day]
     (lib.js/expression-clause "datetime-diff" [(meta/field-metadata :products :created-at) (meta/field-metadata :products :created-at) "day"] nil))
@@ -616,26 +625,26 @@
           two-stage-agg (lib/aggregate two-stage (lib/count))]
       (testing "does not change a query with no aggregations or breakouts"
         (doseq [stage [0 -1]]
-          (let [obj (lib.js/as-returned simple-query stage)]
+          (let [obj (lib.js/as-returned simple-query stage nil)]
             (is (=? simple-query (.-query obj)))
             (is (=? stage        (.-stageIndex obj)))))
 
         (testing "in the target stage"
           (doseq [stage [1 -1]]
-            (let [obj (lib.js/as-returned two-stage stage)]
+            (let [obj (lib.js/as-returned two-stage stage nil)]
               (is (=? two-stage (.-query obj)))
               (is (=? stage     (.-stageIndex obj)))))))
 
       (testing "uses an existing later stage if it exists"
-        (let [obj (lib.js/as-returned two-stage 0)]
+        (let [obj (lib.js/as-returned two-stage 0 nil)]
           (is (=? two-stage (.-query obj)))
           (is (=? 1         (.-stageIndex obj))))
-        (let [obj   (lib.js/as-returned two-stage-agg 0)]
+        (let [obj   (lib.js/as-returned two-stage-agg 0 nil)]
           (is (=? two-stage-agg (.-query obj)))
           (is (=? 1             (.-stageIndex obj)))))
 
       (testing "appends a new stage if necessary"
-        (let [obj (lib.js/as-returned two-stage-agg 1)]
+        (let [obj (lib.js/as-returned two-stage-agg 1 nil)]
           (is (=? (lib/append-stage two-stage-agg)
                   (.-query obj)))
           (is (=? -1 (.-stageIndex obj)))))
@@ -647,11 +656,11 @@
                             lib/append-stage
                             (lib/filter (lib/> (first (lib/returned-columns brk-only)) 100)))]
           (testing "uses an existing later stage if it exists"
-            (let [obj (lib.js/as-returned two-stage 0)]
+            (let [obj (lib.js/as-returned two-stage 0 nil)]
               (is (=? two-stage (.-query obj)))
               (is (=? 1         (.-stageIndex obj)))))
           (testing "appends a new stage if necessary"
-            (let [obj (lib.js/as-returned brk-only 0)]
+            (let [obj (lib.js/as-returned brk-only 0 nil)]
               (is (=? (lib/append-stage brk-only)
                       (.-query obj)))
               (is (=? -1 (.-stageIndex obj)))))))
@@ -663,11 +672,11 @@
                             lib/append-stage
                             (lib/filter (lib/> (first (lib/returned-columns agg-only)) 100)))]
           (testing "uses an existing later stage if it exists"
-            (let [obj (lib.js/as-returned two-stage 0)]
+            (let [obj (lib.js/as-returned two-stage 0 nil)]
               (is (=? two-stage (.-query obj)))
               (is (=? 1         (.-stageIndex obj)))))
           (testing "appends a new stage if necessary"
-            (let [obj (lib.js/as-returned agg-only 0)]
+            (let [obj (lib.js/as-returned agg-only 0 nil)]
               (is (=? (lib/append-stage agg-only)
                       (.-query obj)))
               (is (=? -1 (.-stageIndex obj))))))))))

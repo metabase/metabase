@@ -10,6 +10,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.ident :as lib.ident]
+   [metabase.lib.join.util :as lib.join.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -34,7 +36,7 @@
            &match))))
 
 (defn- join-alias [dest-table-name source-fk-field-name]
-  (str dest-table-name "__via__" source-fk-field-name))
+  (lib.join.u/format-implicit-join-name dest-table-name source-fk-field-name))
 
 (def ^:private JoinInfo
   [:map
@@ -53,7 +55,7 @@
     (let [fk-fields        (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column fk-field-ids)
           target-field-ids (into #{} (keep :fk-target-field-id) fk-fields)
           target-fields    (when (seq target-field-ids)
-                             (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column fk-field-ids))
+                             (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column target-field-ids))
           target-table-ids (into #{} (keep :table-id) target-fields)]
       ;; this is for cache-warming purposes.
       (when (seq target-table-ids)
@@ -65,6 +67,7 @@
               alias-for-join           (join-alias table-name fk-name)]
           (-> {:source-table source-table
                :alias        alias-for-join
+               :ident        (lib.ident/random-ident)
                :fields       :none
                :strategy     :left-join
                :condition    [:= [:field fk-field-id nil] [:field pk-id {:join-alias alias-for-join}]]

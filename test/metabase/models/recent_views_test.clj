@@ -38,6 +38,7 @@
      :model/Card       {card-id :id} {:type "question" :name "name" :display "display" :collection_id coll-id :database_id db-id}]
     (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
     (is (= [{:description nil,
+             :dashboard nil
              :can_write true,
              :name "name",
              :parent_collection {:id coll-id, :name "my coll", :authority_level nil}
@@ -99,6 +100,7 @@
              :name "name",
              :parent_collection {:id coll-id, :name "my coll", :authority_level nil}
              :id dash-id,
+             :moderated_status nil
              :timestamp String
              :model :dashboard}]
            (mt/with-test-user :rasta
@@ -180,7 +182,16 @@
         (is (= expected
                (mapv fixup
                      (mt/with-test-user :rasta
-                       (recent-views (mt/user->id :rasta))))))))))
+                       (recent-views (mt/user->id :rasta)))))))))
+  (testing "non admins can see tables in recents (#47420)"
+    (mt/dataset test-data
+      (let [products-id (mt/id :products)]
+        (assert (-> (mt/fetch-user :rasta) :is_superuser not) "User is a super user")
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table products-id :view)
+        (let [views (mt/with-test-user :rasta
+                      (recent-views (mt/user->id :rasta)))]
+          (is (contains? (into #{} (map (juxt :id :display_name :model)) views)
+                         [products-id "Products" :table])))))))
 
 (deftest update-users-recent-views!-duplicates-test
   (testing "`update-users-recent-views!` prunes duplicates of a certain model.`"
@@ -233,6 +244,7 @@
                    :name "my dash",
                    :description "this is my dash",
                    :model :dashboard,
+                   :moderated_status nil
                    :can_write true,
                    :parent_collection {:id "ID", :name "parent", :authority_level nil}}
                   {:description nil,
@@ -252,6 +264,7 @@
                    :parent_collection {:id "ID", :name "parent", :authority_level nil}
                    :database_id db-id}
                   {:description "this is my card",
+                   :dashboard nil
                    :can_write true,
                    :name "my card",
                    :parent_collection {:id "ID", :name "parent", :authority_level nil},

@@ -6,25 +6,23 @@ import type {
 import type { JSX, ReactNode } from "react";
 
 import type {
-  EmbeddingSessionToken,
-  FetchRequestTokenFn,
-  SDKConfig,
+  MetabaseAuthConfig,
+  MetabaseEmbeddingSessionToken,
+  MetabaseFetchRequestTokenFn,
 } from "embedding-sdk";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
-import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
+import type { MetabasePluginsConfig } from "embedding-sdk/lib/plugins";
+import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import type { State } from "metabase-types/store";
 
 export type EmbeddingSessionTokenState = {
-  token: EmbeddingSessionToken | null;
+  token: MetabaseEmbeddingSessionToken | null;
   loading: boolean;
   error: SerializedError | null;
 };
 
 type LoginStatusUninitialized = {
   status: "uninitialized";
-};
-type LoginStatusValidated = {
-  status: "validated";
 };
 type LoginStatusSuccess = {
   status: "success";
@@ -39,7 +37,6 @@ export type LoginStatusError = {
 
 export type LoginStatus =
   | LoginStatusUninitialized
-  | LoginStatusValidated
   | LoginStatusSuccess
   | LoginStatusLoading
   | LoginStatusError;
@@ -52,14 +49,15 @@ export type SdkErrorComponent = ({
 }: SdkErrorComponentProps) => JSX.Element;
 
 export type SdkState = {
-  metabaseInstanceUrl: SDKConfig["metabaseInstanceUrl"];
+  metabaseInstanceUrl: MetabaseAuthConfig["metabaseInstanceUrl"];
   token: EmbeddingSessionTokenState;
   loginStatus: LoginStatus;
-  plugins: null | SdkPluginsConfig;
+  plugins: null | MetabasePluginsConfig;
   eventHandlers: null | SdkEventHandlersConfig;
+  usageProblem: null | SdkUsageProblem;
   loaderComponent: null | (() => JSX.Element);
   errorComponent: null | SdkErrorComponent;
-  fetchRefreshTokenFn: null | FetchRequestTokenFn;
+  fetchRefreshTokenFn: null | MetabaseFetchRequestTokenFn;
 };
 
 export interface SdkStoreState extends State {

@@ -9,7 +9,7 @@ import SettingHeader from "metabase/admin/settings/components/SettingHeader";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { updateSamlSettings } from "metabase/admin/settings/settings";
 import { settingToFormField } from "metabase/admin/settings/utils";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
@@ -23,7 +23,6 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import MetabaseSettings from "metabase/lib/settings";
 import { Stack } from "metabase/ui";
 
 import {
@@ -72,11 +71,13 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
     "people-and-groups/authenticating-with-saml",
   );
 
+  const siteUrl = useSetting("site-url");
+
   return (
     <FormProvider
       initialValues={{
         ...attributeValues,
-        [FAKE_ACS_URL_KEY]: getAcsCustomerUrl(),
+        [FAKE_ACS_URL_KEY]: `${siteUrl}/auth/sso`,
       }}
       onSubmit={handleSubmit}
       enableReinitialize
@@ -93,7 +94,10 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           <h2 className={CS.mb2}>{t`Set up SAML-based SSO`}</h2>
           <SAMLFormCaption>
             {jt`Use the settings below to configure your SSO via SAML. If you have any questions, check out our ${(
-              <ExternalLink href={docsUrl}>{t`documentation`}</ExternalLink>
+              <ExternalLink
+                key="link"
+                href={docsUrl}
+              >{t`documentation`}</ExternalLink>
             )}.`}
           </SAMLFormCaption>
           <Stack spacing="0.75rem" m="2.5rem 0">
@@ -266,13 +270,9 @@ const getAttributeValues = (values, defaults) => {
   return Object.fromEntries(
     Object.entries(IS_SAML_ATTR_DEFAULTABLE).map(([key, isDefaultable]) => [
       key,
-      isDefaultable ? values[key] ?? defaults[key] : values[key],
+      isDefaultable ? (values[key] ?? defaults[key]) : values[key],
     ]),
   );
-};
-
-const getAcsCustomerUrl = () => {
-  return `${MetabaseSettings.get("site-url")}/auth/sso`;
 };
 
 SettingsSAMLForm.propTypes = propTypes;

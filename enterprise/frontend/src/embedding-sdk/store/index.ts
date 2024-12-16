@@ -7,25 +7,27 @@ import type {
 import { useContext } from "react";
 import { ReactReduxContext, useDispatch, useStore } from "react-redux";
 
-import type { SdkStoreState } from "embedding-sdk/store/types";
 import { mainReducers } from "metabase/reducers-main";
 import { getStore } from "metabase/store";
 
 import { sdk } from "./reducer";
+import type { SdkStoreState } from "./types";
 
 export const sdkReducers = {
   ...mainReducers,
   sdk,
 } as unknown as Record<string, Reducer>;
 
-export const store = getStore(sdkReducers, null, {
-  embed: {
-    isEmbeddingSdk: true,
-  },
-  app: {
-    isDndAvailable: false,
-  },
-}) as unknown as Store<SdkStoreState, AnyAction>;
+export const getSdkStore = () =>
+  getStore(sdkReducers, null, {
+    embed: {
+      options: {},
+      isEmbeddingSdk: true,
+    },
+    app: {
+      isDndAvailable: false,
+    },
+  }) as unknown as Store<SdkStoreState, AnyAction>;
 
 export const useSdkDispatch: () => ThunkDispatch<
   SdkStoreState,

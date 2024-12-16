@@ -1172,17 +1172,17 @@
         "graph.show_trendline": true,
         "graph.dimensions": ["date"],
         "graph.metrics": ["avg", "stddev", "avg_2"],
-        "metabase.shared.models.visualization-settings/column-settings": {
-          "{:metabase.shared.models.visualization-settings/field-id 1322}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1323}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1329}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1324}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1326}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1328}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1327}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1325}": {}
+        "metabase.models.visualization-settings/column-settings": {
+          "{:metabase.models.visualization-settings/field-id 1322}": {},
+          "{:metabase.models.visualization-settings/field-id 1323}": {},
+          "{:metabase.models.visualization-settings/field-id 1329}": {},
+          "{:metabase.models.visualization-settings/field-id 1324}": {},
+          "{:metabase.models.visualization-settings/field-id 1326}": {},
+          "{:metabase.models.visualization-settings/field-id 1328}": {},
+          "{:metabase.models.visualization-settings/field-id 1327}": {},
+          "{:metabase.models.visualization-settings/field-id 1325}": {}
         },
-        "metabase.shared.models.visualization-settings/global-column-settings": {}
+        "metabase.models.visualization-settings/global-column-settings": {}
       },
       "native_form": {
         "query": "SELECT (DATE_TRUNC('week', (\"source\".\"date\" + INTERVAL '1 day')) + INTERVAL '-1 day') AS \"date\", AVG(\"source\".\"close\") AS \"avg\", STDDEV_POP(\"source\".\"close\") AS \"stddev\", AVG(\"source\".\"volume\") AS \"avg_2\" FROM (SELECT \"csv_upload_data\".\"csv_upload_aapl_data_20231121134145\".\"id\" AS \"id\", \"csv_upload_data\".\"csv_upload_aapl_data_20231121134145\".\"date\" AS \"date\", \"csv_upload_data\".\"csv_upload_aapl_data_20231121134145\".\"open\" AS \"open\", \"csv_upload_data\".\"csv_upload_aapl_data_20231121134145\".\"high\" AS \"high\", \"csv_upload_data\".\"csv_upload_aapl_data_20231121134145\".\"low\" AS \"low\", \"csv_upload_data\".\"csv_upload_aapl_data_20231121134145\".\"close\" AS \"close\", \"csv_upload_data\".\"csv_upload_aapl_data_20231121134145\".\"volume\" AS \"volume\", \"csv_upload_data\".\"csv_upload_aapl_data_20231121134145\".\"name\" AS \"name\" FROM \"csv_upload_data\".\"csv_upload_aapl_data_20231121134145\") AS \"source\" GROUP BY (DATE_TRUNC('week', (\"source\".\"date\" + INTERVAL '1 day')) + INTERVAL '-1 day') ORDER BY (DATE_TRUNC('week', (\"source\".\"date\" + INTERVAL '1 day')) + INTERVAL '-1 day') ASC",

@@ -640,6 +640,9 @@
                                                                         :most_recent         true}]
         (is (= (mt/obj->json->obj
                 [{:collection_id       (:id collection)
+                  :dashboard_count     0
+                  :dashboard           nil
+                  :dashboard_id        nil
                   :can_write           true
                   :can_delete          false
                   :can_restore         false
@@ -1102,6 +1105,21 @@
           (t2.with-temp/with-temp [:model/Dashboard _ {:collection_id id2}]
             (testing "when the item has a dashboard, that's reflected in `here` too"
               (is (= #{"collection" "dashboard"} (set (:here (item))))))))))))
+
+(deftest dashboards-include-here
+  (testing "GET /api/collection/:id/items"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Collection with items"}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+      (testing "sanity check, only the dashboard is there"
+        (is (= 1 (:total (mt/user-http-request :rasta :get 200 (format "collection/%d/items" coll-id))))))
+      (testing "the dashboard has 'here'"
+        (is (= [{:here ["card"]
+                 :id dash-id}]
+               (->> (mt/user-http-request :rasta :get 200 (format "collection/%d/items" coll-id))
+                    :data
+                    (map #(select-keys % [:here :id])))))))))
 
 (deftest children-sort-clause-test
   ;; we always place "special" collection types (i.e. "Metabase Analytics") last
@@ -2074,6 +2092,32 @@
         (is (= '()
                (->> (timelines-request coll-c true) first :events)))))))
 
+(deftest timelines-permissions-test
+  (testing "GET /api/collection/id/timelines"
+    (t2.with-temp/with-temp [Collection coll-a {:name "Collection A"}
+                             Timeline tl-a      {:name          "Timeline A"
+                                                 :collection_id (u/the-id coll-a)}
+                             TimelineEvent _event-aa {:name        "event-aa"
+                                                      :timeline_id (u/the-id tl-a)}]
+      (testing "You can't query a collection's timelines if you don't have perms on it."
+        (perms/revoke-collection-permissions! (perms-group/all-users) coll-a)
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 (str "collection/" (u/the-id coll-a) "/timelines") :include "events"))))
+      (testing "If we grant perms, then we can read the timelines"
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll-a)
+        (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id coll-a) "/timelines") :include "events"))))
+  (testing "GET /api/collection/root/timelines"
+    (t2.with-temp/with-temp [Timeline tl-a      {:name          "Timeline A"
+                                                 :collection_id nil}
+                             TimelineEvent _event-aa {:name        "event-aa"
+                                                      :timeline_id (u/the-id tl-a)}]
+      (testing "You can't query a collection's timelines if you don't have perms on it."
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 "collection/root/timelines" :include "events")))))
+      (testing "If we grant perms, then we can read the timelines"
+        (mt/user-http-request :rasta :get 200 "collection/root/timelines" :include "events")))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            GET /api/collection/graph and PUT /api/collection/graph                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -2131,6 +2175,21 @@
               (is (= {"Currency A" "write", "Currency A -> B" "read"}
                      (nice-graph response))))))
 
+        (testing "Should require a `revision` parameter equal to the current graph's revision"
+          (is (= (str "Looks like someone else edited the permissions and your data is out of date. "
+                      "Please fetch new data and try again.")
+                 (mt/user-http-request :crowberto :put 409 "collection/graph"
+                                       (-> (graph/graph)
+                                           (update :revision dec))))))
+
+        (testing "Should be able to override the need for a `revision` parameter by passing `force=true`"
+          (let [response (mt/user-http-request :crowberto :put 200 "collection/graph?force=true"
+                                               (-> (graph/graph)
+                                                   (assoc :groups {group-id {default-ab :read}})
+                                                   (dissoc :revision)))]
+            (is (= {"Default A" "read", "Default A -> B" "read"}
+                   (nice-graph response)))))
+
         (testing "have to be a superuser"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 "collection/graph"
@@ -2181,7 +2240,7 @@
        first))
 
 (defn- get-item-with-id-in-root [id]
-  (->> (mt/user-http-request :crowberto :get 200 (str "collection/root/items"))
+  (->> (mt/user-http-request :crowberto :get 200 "collection/root/items")
        :data
        (filter #(= (:id %) id))
        first))
@@ -2273,8 +2332,63 @@
   (is (malli= [:map {:closed true} [:revision :int]]
               (mt/user-http-request :crowberto
                                     :put 200
-                                    "collection/graph"
+                                    "collection/graph?skip-graph=true"
                                     {:revision (c-perm-revision/latest-id)
-                                     :groups {}
-                                     :skip_graph true}))
+                                     :groups {}}))
       "PUTs with skip_graph should not return the coll permission graph."))
+
+(deftest dashboard-internal-cards-do-not-appear-in-collection-items
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                 :model/Card {normal-card-id :id} {:collection_id coll-id}
+                 :model/Card {dashboard-question-card-id :id} {:dashboard_id dash-id}]
+    (testing "The dashboard appears and the normal card appears, but the dashboard-internal card does not"
+      (is (= #{[normal-card-id "card"]
+               [dash-id "dashboard"]}
+             (set (map (juxt :id :model) (:data (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items"))))))))
+    (testing "If I specifically ask to see dashboard questions, they appear"
+      (is (= #{[normal-card-id "card"]
+               [dashboard-question-card-id "card"]
+               [dash-id "dashboard"]}
+             (set (map (juxt :id :model)
+                       (:data
+                        (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show_dashboard_questions=true")))))))))
+  (mt/with-temp [:model/Collection {parent-id :id :as parent} {}
+                 :model/Collection {coll-id :id} {:location (collection/children-location parent)}
+                 :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                 :model/Card _ {:dashboard_id dash-id}]
+    (testing "Here and below are correct (they don't say a collection has a card if it's internal)"
+      (is (= ["dashboard"]
+             (:here (first (:data (mt/user-http-request :rasta :get 200 (str "collection/" parent-id "/items")))))))
+      (testing "unless I ask to show dashboard questions!"
+        (is (= ["dashboard" "card"]
+               (:here
+                (first
+                 (:data (mt/user-http-request :rasta :get 200 (str "collection/" parent-id "/items?show_dashboard_questions=true")))))))))))
+
+(deftest dashboard-questions-have-dashboard-hydrated
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Dashboard {dash-id :id
+                                   dash-name :name} {:collection_id coll-id}
+                 :model/Card _ {:dashboard_id dash-id}]
+    (testing "The card's dashboard details are hydrated"
+      (is (= {:name dash-name
+              :id dash-id
+              :moderation_status nil}
+             (->> (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show_dashboard_questions=true"))
+                  :data
+                  (filter #(= (:model %) "card"))
+                  first
+                  :dashboard))))
+    (testing "If there are moderation reviews they're included too"
+      (mt/with-temp [:model/ModerationReview _ {:moderated_item_type "dashboard"
+                                                :moderated_item_id   dash-id
+                                                :status              "verified"
+                                                :moderator_id        (mt/user->id :rasta)
+                                                :most_recent         true}]
+        (is (= {:name dash-name :id dash-id :moderation_status "verified"}
+               (->> (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show_dashboard_questions=true"))
+                    :data
+                    (filter #(= (:model %) "card"))
+                    first
+                    :dashboard)))))))

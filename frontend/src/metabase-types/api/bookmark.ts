@@ -9,7 +9,7 @@ export const BOOKMARK_TYPES = [
   "snippet",
   "indexed-entity",
 ] as const;
-export type BookmarkType = typeof BOOKMARK_TYPES[number];
+export type BookmarkType = (typeof BOOKMARK_TYPES)[number];
 export type BookmarkId = string;
 
 export interface Bookmark {

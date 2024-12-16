@@ -4,11 +4,9 @@
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.integrations.common :as integrations.common]
    [metabase.integrations.ldap.default-implementation :as default-impl]
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :as user :refer [User]]
-   [metabase.public-settings.premium-features
-    :as premium-features
-    :refer [defenterprise-schema]]
+   [metabase.public-settings.premium-features :refer [defenterprise-schema]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]
@@ -29,14 +27,16 @@
 ;; TODO - maybe we want to add a csv setting type?
 (defsetting ldap-sync-user-attributes-blacklist
   (deferred-tru "Comma-separated list of user attributes to skip syncing for LDAP users.")
-  :default "userPassword,dn,distinguishedName"
-  :type    :csv
-  :audit   :getter)
+  :encryption :no
+  :default    "userPassword,dn,distinguishedName"
+  :type       :csv
+  :audit      :getter)
 
 (defsetting ldap-group-membership-filter
   (deferred-tru "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will be replaced by the user''s Distinguished Name and UID, respectively.")
-  :default "(member={dn})"
-  :audit   :getter)
+  :encryption :no
+  :default    "(member={dn})"
+  :audit      :getter)
 
 (defn- syncable-user-attributes [m]
   (when (ldap-sync-user-attributes)

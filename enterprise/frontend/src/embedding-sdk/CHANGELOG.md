@@ -1,3 +1,168 @@
+## [0.52.3-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.2-nightly...embedding-sdk-0.52.3-nightly) (2024-11-29)
+
+
+### Bug Fixes
+
+* **sdk:** entity picker theming fixes ([#50449](https://github.com/metabase/metabase/issues/50449)) ([90979e9](https://github.com/metabase/metabase/commit/90979e9abd35cc2310d289ff81438e94392b2169))
+* **sdk:** entity picker's hover and accent colors are not mappable via sdk theming ([#50299](https://github.com/metabase/metabase/issues/50299)) ([5f6b9ec](https://github.com/metabase/metabase/commit/5f6b9ecb17a504db891f1a3a868b98a763696307))
+* **sdk:** make modals use the correct portal ([#50565](https://github.com/metabase/metabase/issues/50565)) ([fb0cf74](https://github.com/metabase/metabase/commit/fb0cf744e771a233412e418d0c7e2790c01e642c))
+* **sdk:** show loader right after visualizing in notebook editor for the first time ([#50411](https://github.com/metabase/metabase/issues/50411)) ([7828b5e](https://github.com/metabase/metabase/commit/7828b5e2911b1779aa76e461cc05d36d107fc6c8))
+* **sdk:** summarize sdk component crashes with stage index errors ([#50400](https://github.com/metabase/metabase/issues/50400)) ([5317db6](https://github.com/metabase/metabase/commit/5317db6d60000ea3911537d56831f04ebb18507a))
+
+
+### Features
+
+* **sdk:** Add cross-version e2e tests using a published SDK package ([#50423](https://github.com/metabase/metabase/issues/50423)) ([1686e8a](https://github.com/metabase/metabase/commit/1686e8a6921cfe5280c56e48f4b42987a2c236ac))
+* **sdk:** make tooltips themeable ([#50457](https://github.com/metabase/metabase/issues/50457)) ([8c2b6e8](https://github.com/metabase/metabase/commit/8c2b6e8945a8a52f1212b5c4ee75d9ee1cddb3d9))
+* **sdk:** migrate existing sdk tests to cypress component testing ([0751632](https://github.com/metabase/metabase/commit/075163202f2bea781ae675bb1140ad12e462466e))
+
+
+
+## [0.52.2-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.1-nightly...embedding-sdk-0.52.2-nightly) (2024-11-21)
+
+
+### Bug Fixes
+
+* **sdk:** cli suggests a relative import path with reminder message ([#50276](https://github.com/metabase/metabase/issues/50276)) ([43ffbf0](https://github.com/metabase/metabase/commit/43ffbf0b24a631ee3e13416b572b97314c70412f))
+* **sdk:** Convert jwtProviderUri to authProviderUri ([#49843](https://github.com/metabase/metabase/issues/49843)) ([d2d95df](https://github.com/metabase/metabase/commit/d2d95df948fe03befb825180f8bf1d22c233cf35))
+* **sdk:** emit typescript files in the embedding cli when in a typescript project ([#50278](https://github.com/metabase/metabase/issues/50278)) ([3f2f855](https://github.com/metabase/metabase/commit/3f2f855cd0810c6b27351d916df924ce4ac3f81a))
+* **sdk:** Fix visualization default size ([#49672](https://github.com/metabase/metabase/issues/49672)) ([652fafe](https://github.com/metabase/metabase/commit/652fafea3c093f189936cddecbbad103d322bdcc))
+* **sdk:** fix wrong e2e import path causing ci failure ([#50297](https://github.com/metabase/metabase/issues/50297)) ([64219be](https://github.com/metabase/metabase/commit/64219be8130318fca821e243de2d9503a92938ff))
+* **sdk:** generated cli components has inconsistent styles after the style leak fix ([#49723](https://github.com/metabase/metabase/issues/49723)) ([df32101](https://github.com/metabase/metabase/commit/df321012c381a10d1d133eac0ef08d7d564aac5b))
+* **sdk:** handle relative urls for metabaseInstance in loading maps ([#50135](https://github.com/metabase/metabase/issues/50135)) ([3f77c0c](https://github.com/metabase/metabase/commit/3f77c0c4801673b81f889533d32f2ef4e6491dc9))
+* **sdk:** put a bandage on the flashing error on static question in strict mode ([#49659](https://github.com/metabase/metabase/issues/49659)) ([c57b3a3](https://github.com/metabase/metabase/commit/c57b3a38e0ec25f13127652b74751837d908f664))
+* **sdk:** remove `Cannot update a component XX while rendering a ([#50078](https://github.com/metabase/metabase/issues/50078)) ([6c0d44d](https://github.com/metabase/metabase/commit/6c0d44d1ca138cf4de772188ec085124c51b0dd3))
+* **sdk:** sdk version wrapped in quotes ([#50014](https://github.com/metabase/metabase/issues/50014)) ([f707115](https://github.com/metabase/metabase/commit/f707115294f124cbe397a6331143813d96aaf29e))
+* **sdk:** Split `useSummarizeQuery` into specialized hooks ([#49841](https://github.com/metabase/metabase/issues/49841)) ([4761766](https://github.com/metabase/metabase/commit/47617667380eccdd16d207391b62edda3142df54))
+* **sdk:** trigger save handler on question create when using SaveQuestionForm ([#50137](https://github.com/metabase/metabase/issues/50137)) ([964d31e](https://github.com/metabase/metabase/commit/964d31ec8d7e03ee80fc860bee57cc8da31a2a2c))
+
+
+### Features
+
+* **sdk:** ability to render question layout when drilling down in interactive dashboard ([#50017](https://github.com/metabase/metabase/issues/50017)) ([5bbb9f8](https://github.com/metabase/metabase/commit/5bbb9f847a66694042c3b0de26df6d356d9a388a))
+* **sdk:** add background-disabled color ([#49900](https://github.com/metabase/metabase/issues/49900)) ([aaedddf](https://github.com/metabase/metabase/commit/aaedddf82868f3da852b57073e06a23e81c6bc82))
+* **sdk:** Add chart settings to `InteractiveQuestion` ([#49167](https://github.com/metabase/metabase/issues/49167)) ([a4828dc](https://github.com/metabase/metabase/commit/a4828dc9e293312deb903a9c22f4b701770d5837))
+* **sdk:** deprecate the ModifyQuestion component ([#49747](https://github.com/metabase/metabase/issues/49747)) ([6c8edfa](https://github.com/metabase/metabase/commit/6c8edfa7d3687a8ca338175a1616e9ac5cfae031))
+* **sdk:** detect mismatch between sdk version and mb version ([#50032](https://github.com/metabase/metabase/issues/50032)) ([ceba6e4](https://github.com/metabase/metabase/commit/ceba6e407caba565e893cbc605be37bfa8ae3d04))
+* **sdk:** expose FilterPicker querying component ([#49768](https://github.com/metabase/metabase/issues/49768)) ([69f6527](https://github.com/metabase/metabase/commit/69f6527edd9815b8a384ae5819ca3427d05c2ac2))
+* **sdk:** revamp CreateQuestion and create question behaviour ([#50088](https://github.com/metabase/metabase/issues/50088)) ([5fb9576](https://github.com/metabase/metabase/commit/5fb95767da63c36a1b9d2f47afd8eb4937f2c952))
+* **sdk:** use Alert component for SDKError ([#49895](https://github.com/metabase/metabase/issues/49895)) ([8516149](https://github.com/metabase/metabase/commit/85161494a9c89316f081e73d07dcf3aa86212817))
+
+
+
+## [0.52.1](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.38...embedding-sdk-0.52.1-nightly) (2024-11-07)
+
+
+### Bug Fixes
+
+* **sdk:** ability to save questions in interactive question ([#48866](https://github.com/metabase/metabase/issues/48866)) ([e99c67a](https://github.com/metabase/metabase/commit/e99c67a1532b34f0396c5e9f4a7cc30c1c731858))
+* **sdk:** Change QuestionEditor tab name to 'Editor' ([#48821](https://github.com/metabase/metabase/issues/48821)) ([405ed53](https://github.com/metabase/metabase/commit/405ed53baa5a3346e7ac253fc8cd8e7bf9a72dff))
+* **sdk:** Editable dashboard should not overlap content below it ([#49293](https://github.com/metabase/metabase/issues/49293)) ([548a9a7](https://github.com/metabase/metabase/commit/548a9a7433f7ed47049faaf1e3773f93d3b6e356))
+* **sdk:** fix defaultProps react error ([#48764](https://github.com/metabase/metabase/issues/48764)) ([9ffc185](https://github.com/metabase/metabase/commit/9ffc1851eaf333904089d06ef0fe68f1d987c72b))
+* **sdk:** Fix interactive dashboard scroll in fullscreen mode ([#49366](https://github.com/metabase/metabase/issues/49366)) ([5879f90](https://github.com/metabase/metabase/commit/5879f90bfa601fe3a35db153d86cac4d0c1dcc58))
+* **sdk:** hide downloads by default ([#48755](https://github.com/metabase/metabase/issues/48755)) ([f481cad](https://github.com/metabase/metabase/commit/f481cad33787298bfbddd1d665dde9740f0eb64d))
+* **sdk:** Improve InteractiveQuestion chart selector ([#48837](https://github.com/metabase/metabase/issues/48837)) ([70904e8](https://github.com/metabase/metabase/commit/70904e8cd938eea01eb3692c409a0ef26aecfbf6))
+* **sdk:** pin iframe-resizer version to avoid excess logs for sdk cli ([#49312](https://github.com/metabase/metabase/issues/49312)) ([cf934f9](https://github.com/metabase/metabase/commit/cf934f928dcf0990805ca9db5edafa57d14b73d8))
+* **sdk:** reduce visual artifacts on PDF/PNG exports on custom sdk themes ([#48645](https://github.com/metabase/metabase/issues/48645)) ([d91bbcd](https://github.com/metabase/metabase/commit/d91bbcd4891050908c8b6a9dd901bfb04b7f9fa8))
+* **sdk:** remove runtime error on aggregated question drill ([#49064](https://github.com/metabase/metabase/issues/49064)) ([df158d8](https://github.com/metabase/metabase/commit/df158d8896d46b817d23884297146a875d45f97d))
+* **sdk:** static question should cancel requests on component unmount ([#48808](https://github.com/metabase/metabase/issues/48808)) ([2fd311c](https://github.com/metabase/metabase/commit/2fd311c521bfa1491da6ef196d9aed0d741d1d5c))
+* **sdk:** support hiding columns in InteractiveQuestion ([#49013](https://github.com/metabase/metabase/issues/49013)) ([6a927de](https://github.com/metabase/metabase/commit/6a927deefb44f4ef390600d1dbcda1de72b4d2d7))
+
+
+### Features
+
+* **sdk:** `defineEmbeddingSdkConfig` to make typing easier ([#48879](https://github.com/metabase/metabase/issues/48879)) ([aa72eb8](https://github.com/metabase/metabase/commit/aa72eb83aebd2adc3dbd700d28f1b7d18b2e0987))
+* **sdk:** ability to enforce the destination collection to save to and hide the collection picker ([#49251](https://github.com/metabase/metabase/issues/49251)) ([de559f4](https://github.com/metabase/metabase/commit/de559f49d6dc245bc35d73d373a3cbba3c8062e4))
+* **sdk:** Add `isOpen` prop to control CreateDashboardModal visibility ([#49452](https://github.com/metabase/metabase/issues/49452)) ([9f49d1a](https://github.com/metabase/metabase/commit/9f49d1aa141f5bb291eb10a0b0549f30e8daa081))
+* **sdk:** Add chart viz selection for `InteractiveQuestion` ([#47744](https://github.com/metabase/metabase/issues/47744)) ([a288c15](https://github.com/metabase/metabase/commit/a288c15e579975cd3ed783cd6c18f39a84445c41))
+* **sdk:** Allow to hide columns in CollectionBrowser ([#49449](https://github.com/metabase/metabase/issues/49449)) ([839b713](https://github.com/metabase/metabase/commit/839b713f50e2c1696923dc3e1cf0b5091537272f))
+* **sdk:** refactor the auth code to provide better error messages ([#49214](https://github.com/metabase/metabase/issues/49214)) ([6452cd3](https://github.com/metabase/metabase/commit/6452cd3c17089ad8675b25bdf76ec4284ce3c32e)), closes [#49492](https://github.com/metabase/metabase/issues/49492)
+* **sdk:** small usability improvements for embedding cli ([#49591](https://github.com/metabase/metabase/issues/49591)) ([dba17e6](https://github.com/metabase/metabase/commit/dba17e6c3699b37da8bcb747688a9f5f24f74ff7))
+
+
+
+## [0.1.38](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.37...embedding-sdk-0.1.38) (2024-10-09)
+
+
+### Bug Fixes
+
+* **sdk:** allow CLI to check React version without installing and allow continuing setup if React is missing ([#48491](https://github.com/metabase/metabase/issues/48491)) ([000dfe1](https://github.com/metabase/metabase/commit/000dfe1bf44f0a0b2280633e02b242554d2b75ef))
+* **sdk:** Attempt to fix resize observer issues ([#48227](https://github.com/metabase/metabase/issues/48227)) ([77cb69f](https://github.com/metabase/metabase/commit/77cb69f88e23c2cad1ff3c906b50ffaab9ff3770))
+* **sdk:** update utm tags in embedding sdk cli ([#48419](https://github.com/metabase/metabase/issues/48419)) ([74be2dc](https://github.com/metabase/metabase/commit/74be2dcce507b8f1f032eb065bca93a985301138))
+
+
+### Features
+
+* **sdk:** support `locale` prop on `MetabaseProvider` ([#47569](https://github.com/metabase/metabase/issues/47569)) ([70a8ab7](https://github.com/metabase/metabase/commit/70a8ab70a8b58ac52dc89108c24f4d098a00810f))
+
+
+
+# [0.51.0](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.37...embedding-sdk-0.51.0) (2024-10-08)
+
+
+### Bug Fixes
+
+* **sdk:** update utm tags in embedding sdk cli ([#48419](https://github.com/metabase/metabase/issues/48419)) ([74be2dc](https://github.com/metabase/metabase/commit/74be2dcce507b8f1f032eb065bca93a985301138))
+
+
+### Features
+
+* **sdk:** support `locale` prop on `MetabaseProvider` ([#47569](https://github.com/metabase/metabase/issues/47569)) ([70a8ab7](https://github.com/metabase/metabase/commit/70a8ab70a8b58ac52dc89108c24f4d098a00810f))
+
+
+
+## [0.1.37](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.36...embedding-sdk-0.1.37) (2024-10-02)
+
+
+### Bug Fixes
+
+* **sdk:** decrease specificity of css reset in embedding sdk ([#48193](https://github.com/metabase/metabase/issues/48193)) ([688b9ad](https://github.com/metabase/metabase/commit/688b9ad95da7ae9fc87d39b816d71477edc57231))
+* **sdk:** fix zindex issues after switch to portals ([#48256](https://github.com/metabase/metabase/issues/48256)) ([67fc1c9](https://github.com/metabase/metabase/commit/67fc1c91b510a142f5662db9e86083f0a88ce574))
+* **sdk:** modal pushing content below when opened ([#48216](https://github.com/metabase/metabase/issues/48216)) ([abe04bc](https://github.com/metabase/metabase/commit/abe04bc24ef99977014ab02ba8215a51a2b68eae))
+* **sdk:** remove the unknown premium feature console warnings ([#47885](https://github.com/metabase/metabase/issues/47885)) ([381c321](https://github.com/metabase/metabase/commit/381c321ace280a9310f952eaa1f53b6992c8d638))
+* **sdk:** remove ts limitation on custom fonts + some minimal e2e tests for the fonts ([#48071](https://github.com/metabase/metabase/issues/48071)) ([ed24366](https://github.com/metabase/metabase/commit/ed24366ea9855cb4e5f41eb76eef06d80e4ba21f))
+
+
+### Features
+
+* **sdk:** add visual cues in sdk around evaluation usage and feature flags ([#47821](https://github.com/metabase/metabase/issues/47821)) ([c7bd308](https://github.com/metabase/metabase/commit/c7bd308b559852552033463f12102dd32bffe2f4))
+* **sdk:** Filter DataPicker models for `CreateQuestion` ([#47542](https://github.com/metabase/metabase/issues/47542)) ([d5ff47e](https://github.com/metabase/metabase/commit/d5ff47ef606fddeecc2815d40d7a45df1f771efb))
+
+
+
+## [0.1.36](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.35...embedding-sdk-0.1.36) (2024-09-09)
+
+
+### Bug Fixes
+
+* **sdk:** Fix entity ID logic to use the correct status ([#47748](https://github.com/metabase/metabase/issues/47748)) ([fc73743](https://github.com/metabase/metabase/commit/fc7374363127669cb1b1517bc4d3a82f343fb612))
+* **sdk:** remove usage of legacy query in static question ([#47727](https://github.com/metabase/metabase/issues/47727)) ([4d9b144](https://github.com/metabase/metabase/commit/4d9b144b6dd63cb82d00d17b73d480b302382cb9))
+
+
+### Features
+
+* **sdk:** add the create question component demo to the cli ([#47348](https://github.com/metabase/metabase/issues/47348)) ([4333267](https://github.com/metabase/metabase/commit/43332678243e75fce5339b607568000e29a3d115))
+
+
+
+## [0.1.35](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.34...embedding-sdk-0.1.35) (2024-09-06)
+
+
+### Bug Fixes
+
+* **sdk:** Add `onSave` behavior to `QuestionEditor` ([#47538](https://github.com/metabase/metabase/issues/47538)) ([e998150](https://github.com/metabase/metabase/commit/e99815024bc9033ddf6170762dd390911650cc3c))
+* **sdk:** Add toggle for saving questions ([#47442](https://github.com/metabase/metabase/issues/47442)) ([0711fba](https://github.com/metabase/metabase/commit/0711fba1b0d8b16b482fc1dca79b5fbfdb3aaf03))
+* **sdk:** default font not working ([#47712](https://github.com/metabase/metabase/issues/47712)) ([2835164](https://github.com/metabase/metabase/commit/28351649395d8072cefbe1cc83993e7804a19183))
+* **sdk:** fix typescript type references to embedding-sdk not resolving ([#47659](https://github.com/metabase/metabase/issues/47659)) ([d74fbe9](https://github.com/metabase/metabase/commit/d74fbe95ed692f36af9a59086cfae4ecb7f7fa99))
+* **sdk:** Use modal instead of hacky form for saving questions ([#47448](https://github.com/metabase/metabase/issues/47448)) ([387db2a](https://github.com/metabase/metabase/commit/387db2abcd7c53dad9baf94d194f305a1e9d8640))
+
+
+### Features
+
+* **sdk:** Use stable IDs in SDK components ([#47210](https://github.com/metabase/metabase/issues/47210)) ([c2b7cc9](https://github.com/metabase/metabase/commit/c2b7cc9e807ee75d2bc94f0b5a814e01d29fd077))
+
+
+
 ## [0.1.34](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.33...embedding-sdk-0.1.34) (2024-09-02)
 
 

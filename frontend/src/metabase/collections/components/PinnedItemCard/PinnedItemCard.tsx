@@ -12,7 +12,8 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls";
 import ModelDetailLink from "metabase/models/components/ModelDetailLink";
-import { type IconName, Skeleton } from "metabase/ui";
+import { PLUGIN_MODERATION } from "metabase/plugins";
+import { Flex, type IconName, Skeleton } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
@@ -45,7 +46,7 @@ type ItemOrSkeleton =
       iconForSkeleton: IconName;
     };
 
-type Props = {
+export type PinnedItemCardProps = {
   databases?: Database[];
   bookmarks?: Bookmark[];
   createBookmark?: CreateBookmark;
@@ -84,7 +85,7 @@ function PinnedItemCard({
   onMove,
   onClick,
   iconForSkeleton,
-}: Props) {
+}: PinnedItemCardProps) {
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
   const icon =
     iconForSkeleton ??
@@ -112,7 +113,7 @@ function PinnedItemCard({
   return (
     <ItemLink
       className={className}
-      to={item ? modelToUrl(item) ?? "/" : undefined}
+      to={item ? (modelToUrl(item) ?? "/") : undefined}
       onClick={onClick}
     >
       <ItemCard flat>
@@ -150,7 +151,14 @@ function PinnedItemCard({
                 <Title
                   onMouseEnter={e => maybeEnableTooltip(e, setShowTitleTooltip)}
                 >
-                  {item.name}
+                  <Flex align="center" gap="0.5rem">
+                    {item.name}
+                    <PLUGIN_MODERATION.ModerationStatusIcon
+                      status={item.moderated_status}
+                      filled
+                      size={14}
+                    />
+                  </Flex>
                 </Title>
               </Tooltip>
               <Description tooltipMaxWidth={TOOLTIP_MAX_WIDTH}>

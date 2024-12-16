@@ -284,15 +284,15 @@
         "waterfall.increase_color": "#8A5EB0",
         "waterfall.total_color": "#69C8C8",
         "waterfall.decrease_color": "#F7C41F",
-        "metabase.shared.models.visualization-settings/column-settings": {
-          "{:metabase.shared.models.visualization-settings/field-id 1546}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1547}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1548}": {}
+        "metabase.models.visualization-settings/column-settings": {
+          "{:metabase.models.visualization-settings/field-id 1546}": {},
+          "{:metabase.models.visualization-settings/field-id 1547}": {},
+          "{:metabase.models.visualization-settings/field-id 1548}": {}
         },
         "graph.series_order_dimension": null,
         "graph.metrics": ["change"],
         "graph.series_order": null,
-        "metabase.shared.models.visualization-settings/global-column-settings": {},
+        "metabase.models.visualization-settings/global-column-settings": {},
         "graph.dimensions": ["category"]
       },
       "native_form": {

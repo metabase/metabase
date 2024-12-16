@@ -65,7 +65,7 @@ describe("QueryColumnPicker", () => {
     setup();
 
     // Tables
-    expect(screen.getByText("Order")).toBeInTheDocument();
+    expect(screen.getByText("Orders")).toBeInTheDocument();
     expect(screen.getByText("Product")).toBeInTheDocument();
     expect(screen.getByText("User")).toBeInTheDocument();
 

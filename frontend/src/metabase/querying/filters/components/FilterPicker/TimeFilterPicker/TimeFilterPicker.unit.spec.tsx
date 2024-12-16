@@ -81,7 +81,9 @@ function setup({
 
 async function setOperator(operator: string) {
   await userEvent.click(screen.getByLabelText("Filter operator"));
-  await userEvent.click(await screen.findByText(operator));
+  await userEvent.click(
+    await screen.findByRole("menuitem", { name: operator }),
+  );
 }
 
 describe("TimeFilterPicker", () => {
@@ -95,7 +97,7 @@ describe("TimeFilterPicker", () => {
       setup();
 
       expect(screen.getByText("Time")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("Before")).toBeInTheDocument();
+      expect(screen.getByText("Before")).toBeInTheDocument();
       expect(screen.getByDisplayValue("00:00")).toBeInTheDocument();
       expect(screen.getByText("Add filter")).toBeEnabled();
     });
@@ -103,13 +105,13 @@ describe("TimeFilterPicker", () => {
     it("should list operators", async () => {
       setup();
 
-      await userEvent.click(screen.getByDisplayValue("Before"));
-      const listbox = await screen.findByRole("listbox");
-      const options = within(listbox).getAllByRole("option");
+      await userEvent.click(screen.getByText("Before"));
+      const menu = await screen.findByRole("menu");
+      const menuItems = within(menu).getAllByRole("menuitem");
 
-      expect(options).toHaveLength(EXPECTED_OPERATORS.length);
+      expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
       EXPECTED_OPERATORS.forEach(operatorName =>
-        expect(within(listbox).getByText(operatorName)).toBeInTheDocument(),
+        expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
       );
     });
 
@@ -280,7 +282,7 @@ describe("TimeFilterPicker", () => {
         );
 
         expect(screen.getByText("Time")).toBeInTheDocument();
-        expect(screen.getByDisplayValue("After")).toBeInTheDocument();
+        expect(screen.getByText("After")).toBeInTheDocument();
         expect(screen.getByDisplayValue("11:15")).toBeInTheDocument();
         expect(screen.getByText("Update filter")).toBeEnabled();
       });
@@ -319,7 +321,7 @@ describe("TimeFilterPicker", () => {
         );
 
         expect(screen.getByText("Time")).toBeInTheDocument();
-        expect(screen.getByDisplayValue("Between")).toBeInTheDocument();
+        expect(screen.getByText("Between")).toBeInTheDocument();
         expect(screen.getByDisplayValue("11:15")).toBeInTheDocument();
         expect(screen.getByDisplayValue("13:00")).toBeInTheDocument();
         expect(screen.getByText("Update filter")).toBeEnabled();
@@ -381,7 +383,7 @@ describe("TimeFilterPicker", () => {
         );
 
         expect(screen.getByText("Time")).toBeInTheDocument();
-        expect(screen.getByDisplayValue("Not empty")).toBeInTheDocument();
+        expect(screen.getByText("Not empty")).toBeInTheDocument();
         expect(screen.getByText("Update filter")).toBeEnabled();
       });
 
@@ -406,13 +408,13 @@ describe("TimeFilterPicker", () => {
     it("should list operators", async () => {
       setup(createQueryWithTimeFilter({ operator: "<" }));
 
-      await userEvent.click(screen.getByDisplayValue("Before"));
-      const listbox = await screen.findByRole("listbox");
-      const options = within(listbox).getAllByRole("option");
+      await userEvent.click(screen.getByText("Before"));
+      const menu = await screen.findByRole("menu");
+      const menuItems = within(menu).getAllByRole("menuitem");
 
-      expect(options).toHaveLength(EXPECTED_OPERATORS.length);
+      expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
       EXPECTED_OPERATORS.forEach(operatorName =>
-        expect(within(listbox).getByText(operatorName)).toBeInTheDocument(),
+        expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
       );
     });
 

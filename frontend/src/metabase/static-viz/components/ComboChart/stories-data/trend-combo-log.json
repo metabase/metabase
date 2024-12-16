@@ -404,18 +404,18 @@
         "graph.show_trendline": true,
         "graph.dimensions": ["observationdate"],
         "graph.metrics": ["sum", "sum_2", "sum_3"],
-        "metabase.shared.models.visualization-settings/column-settings": {
-          "{:metabase.shared.models.visualization-settings/field-id 1357}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1364}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1360}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1359}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1361}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1363}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1356}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1362}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1358}": {}
+        "metabase.models.visualization-settings/column-settings": {
+          "{:metabase.models.visualization-settings/field-id 1357}": {},
+          "{:metabase.models.visualization-settings/field-id 1364}": {},
+          "{:metabase.models.visualization-settings/field-id 1360}": {},
+          "{:metabase.models.visualization-settings/field-id 1359}": {},
+          "{:metabase.models.visualization-settings/field-id 1361}": {},
+          "{:metabase.models.visualization-settings/field-id 1363}": {},
+          "{:metabase.models.visualization-settings/field-id 1356}": {},
+          "{:metabase.models.visualization-settings/field-id 1362}": {},
+          "{:metabase.models.visualization-settings/field-id 1358}": {}
         },
-        "metabase.shared.models.visualization-settings/global-column-settings": {}
+        "metabase.models.visualization-settings/global-column-settings": {}
       },
       "native_form": {
         "query": "SELECT (DATE_TRUNC('week', (\"source\".\"observationdate\" + INTERVAL '1 day')) + INTERVAL '-1 day') AS \"observationdate\", SUM(\"source\".\"confirmed\") AS \"sum\", SUM(\"source\".\"recovered\") AS \"sum_2\", SUM(\"source\".\"deaths\") AS \"sum_3\" FROM (SELECT \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\".\"id\" AS \"id\", \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\".\"sno\" AS \"sno\", \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\".\"observationdate\" AS \"observationdate\", \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\".\"province_state\" AS \"province_state\", \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\".\"country_region\" AS \"country_region\", \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\".\"last_update\" AS \"last_update\", \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\".\"confirmed\" AS \"confirmed\", \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\".\"deaths\" AS \"deaths\", \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\".\"recovered\" AS \"recovered\" FROM \"csv_upload_data\".\"csv_upload_covid_19_data_20231121142530\") AS \"source\" WHERE (\"source\".\"observationdate\" >= timestamp with time zone '2020-08-30 00:00:00.000-07:00') AND (\"source\".\"observationdate\" < timestamp with time zone '2021-05-30 00:00:00.000-07:00') GROUP BY (DATE_TRUNC('week', (\"source\".\"observationdate\" + INTERVAL '1 day')) + INTERVAL '-1 day') ORDER BY (DATE_TRUNC('week', (\"source\".\"observationdate\" + INTERVAL '1 day')) + INTERVAL '-1 day') ASC",

@@ -36,7 +36,7 @@
         revision         (api/check-404 (t2/select-one Revision :model (name model), :model_id id, :id revision_id))]
     ;; if reverting a Card, make sure we have *data* permissions to run the query we're reverting to
     (when (= model :model/Card)
-      (api.card/check-data-permissions-for-query (get-in revision [:object :dataset_query])))
+      (api.card/check-permissions-for-query (get-in revision [:object :dataset_query])))
     ;; ok, we're g2g
     (revision/revert!
      {:entity      model
