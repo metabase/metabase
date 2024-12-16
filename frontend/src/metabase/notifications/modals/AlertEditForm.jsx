@@ -22,18 +22,23 @@ class AlertEditFormInner extends Component {
   };
 
   render() {
-    const { alertType, alert, isAdmin, onAlertChange } = this.props;
+    const { type, alertType, alert, isAdmin, onAlertChange } = this.props;
+
+    const isAlert = type === "alert";
 
     // the schedule should be same for all channels so we can use the first one
     const schedule = getScheduleFromChannel(alert.channels[0]);
 
     return (
       <Flex gap={40} direction="column">
-        <AlertGoalToggles
-          alertType={alertType}
-          alert={alert}
-          onAlertChange={onAlertChange}
-        />
+        {isAlert && (
+          <AlertGoalToggles
+            alertType={alertType}
+            alert={alert}
+            onAlertChange={onAlertChange}
+          />
+        )}
+
         <AlertEditSchedule
           alert={alert}
           alertType={alertType}

@@ -1,6 +1,6 @@
 import { type Ref, forwardRef } from "react";
 
-import { AlertPopover } from "metabase/notifications/AlertListPopoverContent/AlertPopover";
+import { AlertListModal } from "metabase/notifications/modals/AlertListModal/AlertListModal";
 import type {
   DashboardNotificationsModalType,
   QuestionNotificationsModalType,
@@ -47,7 +47,7 @@ export const SharingModals = ({
 }: SharingModalProps) => {
   if (modalType === "question-alert") {
     return (
-      <AlertPopover
+      <AlertListModal
         question={question}
         target={<MenuTarget />}
         onClose={onClose}
@@ -57,7 +57,7 @@ export const SharingModals = ({
 
   if (modalType === "question-subscription") {
     return (
-      <AlertPopover
+      <AlertListModal
         question={question}
         target={<MenuTarget />}
         onClose={onClose}

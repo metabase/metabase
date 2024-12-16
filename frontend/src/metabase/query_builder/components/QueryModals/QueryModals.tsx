@@ -10,7 +10,6 @@ import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { CreateAlertModalContent } from "metabase/notifications/AlertModals";
 import type { UpdateQuestionOpts } from "metabase/query_builder/actions/core/updateQuestion";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
@@ -31,6 +30,7 @@ import type Question from "metabase-lib/v1/Question";
 import type { Alert, Card, User } from "metabase-types/api";
 import type { QueryBuilderMode } from "metabase-types/store";
 
+import { CreateAlertModalContent } from "../../../notifications/modals";
 import { MoveQuestionModal } from "../MoveQuestionModal";
 
 const MenuTarget = forwardRef(function _MenuTarget(
@@ -233,6 +233,7 @@ export function QueryModals({
       return (
         <Modal onClose={onCloseModal}>
           <CreateAlertModalContent
+            type="alert"
             onCancel={onCloseModal}
             onAlertCreated={onCloseModal}
           />
