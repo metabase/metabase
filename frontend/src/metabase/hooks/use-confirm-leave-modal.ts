@@ -17,7 +17,6 @@ interface UseConfirmLeaveModalResult {
   opened: boolean;
   close: () => void;
   confirm: () => void;
-  // TODO: remove, only used by custom children option used for the dashboard edit view
   nextLocation: Location | undefined;
 }
 

@@ -55,14 +55,9 @@ export const DashboardLeaveConfirmationModal = withRouter(
         };
 
     return (
-      <Modal.Root
-        opened={opened}
-        onClose={close}
-        size={"28.5rem"}
-        data-testid="leave-confirmation"
-      >
+      <Modal.Root opened={opened} onClose={close} size="28.5rem">
         <Modal.Overlay />
-        <Modal.Content>
+        <Modal.Content data-testid="leave-confirmation">
           <Modal.Header p="2.5rem 3rem" mb="sm">
             <Modal.Title fz="1rem" color="text-primary">
               {content.title}
