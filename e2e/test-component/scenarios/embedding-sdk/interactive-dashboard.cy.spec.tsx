@@ -81,7 +81,7 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
     });
   });
 
-  it.only("should not trigger url click behaviors when clicking on cards (metabase#51099)", () => {
+  it("should not trigger url click behaviors when clicking on cards (metabase#51099)", () => {
     cy.get<string>("@dashboardId").then(dashboardId => {
       mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
     });
