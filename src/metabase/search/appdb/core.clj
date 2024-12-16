@@ -84,7 +84,7 @@
         (log/warnf "Triggering a late initialization of the %s search index." search-engine)
         (try
           (future
-           (search.engine/init! search-engine {:force-reset? false}))
+            (search.engine/init! search-engine {:force-reset? false}))
           (catch Exception e
             (log/error e)))))
     ;; Even if the index exists now, return an error so that we don't obscure that there was an issue.
