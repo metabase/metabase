@@ -32,17 +32,17 @@
                 </td>
               </tr>
             </table>
-            {{{computed.alert_content}}}
+            {{{computed.content}}}
             {{#if computed.goal_value}}
               <p style="color: {{payload.style.color_text_medium}}; font-size: 12px; font-weight: 400">
-                {{#if payload.alert.alert_above_goal}}
+                {{#if (equals payload.notification_card.send_condition "goal_above")}}
                   This question has reached its goal of {{computed.goal_value}}.
                 {{else}}
                   This question has gone below its goal of {{computed.goal_value}}.
                 {{/if}}
               </p>
             {{/if}}
-            {{#if payload.alert.alert_first_only}}
+            {{#if payload.notification_card.send_once}}
               <p style="color: {{payload.style.color_text_medium}}; font-size: 12px; font-weight: 400">
               We’ll stop sending you alerts about this question now.
               </p>

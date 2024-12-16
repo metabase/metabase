@@ -21,6 +21,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
+   [metabase.util.cron :as u.cron]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :as i18n :refer [trs tru]]
@@ -327,24 +328,26 @@
   []
   (or (driver/report-timezone) "UTC"))
 
-(defn alert-schedule-text
-  "Returns a string that describes the run schedule of an alert (i.e. how often results are checked),
-  for inclusion in the email template. Not translated, since emails in general are not currently translated."
-  [channel]
-  (case (keyword (:schedule_type channel))
-    :hourly
-    "Run hourly"
+(defn notification-card-schedule-text
+  "Given cron notification subscription return a human-readable description of the schedule."
+  [{:keys [cron_schedule type] :as _subscription}]
+  (when (= :notification-subscription/cron type)
+    ;; TODO consider using https://github.com/grahamar/cron-parser
+    (let [schedule (u.cron/cron-string->schedule-map cron_schedule)]
+      (case (keyword (:schedule_type schedule))
+        :hourly
+        "Run hourly"
 
-    :daily
-    (format "Run daily at %s %s"
-            (schedule-hour-text channel)
-            (schedule-timezone))
+        :daily
+        (format "Run daily at %s %s"
+                (schedule-hour-text schedule)
+                (schedule-timezone))
 
-    :weekly
-    (format "Run weekly on %s at %s %s"
-            (schedule-day-text channel)
-            (schedule-hour-text channel)
-            (schedule-timezone))))
+        :weekly
+        (format "Run weekly on %s at %s %s"
+                (schedule-day-text schedule)
+                (schedule-hour-text schedule)
+                (schedule-timezone))))))
 
 (def alert-condition-text
   "A map of alert conditions to their corresponding text."
