@@ -104,7 +104,7 @@ See [Caching question policies](../../configuring-metabase/caching.md#question-c
 - [Best practices for writing SQL queries](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-best-practices)
 - [SQL troubleshooting guide][troubleshooting-sql].
 
-[asking-questions]: ../query-builder/introduction.md#creating-a-new-question-with-the-query-builder
+[asking-questions]: ../query-builder/editor.md)
 [learn-sql]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql
 [ref-models]: ./referencing-saved-questions-in-queries.md
 [sample-database-gloss]: https://www.metabase.com/glossary/sample_database

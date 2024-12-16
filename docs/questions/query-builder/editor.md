@@ -44,7 +44,7 @@ This is the query builder's editor. It has three default steps.
 - [Filtering](./filters.md)
 - [Summarizing and grouping by](./summarizing-and-grouping.md)
 
-You can also add steps for [joining data](./join.md), [custom columns](#creating-custom-columns), and [sorting results](#sorting-results), and [limiting results](#setting-a-row-limit).
+You can also add steps for [joining data](./join.md), [custom columns](#custom-columns), and [sorting results](#sorting-results), and [limiting results](#setting-a-row-limit).
 
 To the right of each completed step is a **Preview** button (looks like a Play button - a triangle pointing to the right) that shows you the first 10 rows of the results of your question up to that step.
 
