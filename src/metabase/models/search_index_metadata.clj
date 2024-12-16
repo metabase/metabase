@@ -33,7 +33,6 @@
        (t2/insert! :model/SearchIndexMetadata {:engine     engine
                                                :version    version
                                                :status     "pending"
-                                               ;; TODO rename this to name?
                                                :index_name (name index-name)})
        true
        (catch Exception _

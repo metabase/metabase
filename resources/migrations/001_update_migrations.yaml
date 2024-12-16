@@ -10223,7 +10223,7 @@ databaseChangeLog:
               - column:
                   name: engine
                   type: varchar(254)
-                  remarks: 'ID of the User who has set the parameter value'
+                  remarks: 'The kind of search engine which this index belongs to.'
                   constraints:
                     nullable: false
               - column:
@@ -10263,7 +10263,7 @@ databaseChangeLog:
   - changeSet:
       id: v52.2024-12-16T09:20:00
       author: crisptrutski
-      comment: ''
+      comment: 'Protection against concurrent creation or promotion of indexes.'
       rollback: # will be removed with the table
       changes:
         - addUniqueConstraint:
