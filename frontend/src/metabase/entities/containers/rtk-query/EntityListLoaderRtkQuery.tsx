@@ -29,6 +29,7 @@ interface ChildrenProps<Entity, EntityWrapper> {
   dispatchApiErrorEvent: boolean;
   error: unknown;
   fetched: boolean;
+  loaded: boolean;
   loading: boolean;
   /**
    * object is EntityWrapper when Props["wrapped"] is true
@@ -209,6 +210,11 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
     return Boolean(value);
   });
 
+  const loaded = useSelector(state => {
+    const value = entityDefinition.selectors.getLoaded(state, entityOptions);
+    return Boolean(value);
+  });
+
   const loading = useSelector(state => {
     const value = entityDefinition.selectors.getLoading(state, entityOptions);
     return Boolean(value);
@@ -241,6 +247,7 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
       dispatchApiErrorEvent={dispatchApiErrorEvent}
       error={error}
       fetched={fetched}
+      loaded={loaded}
       loading={loading || isFetching}
       object={wrappedObject}
       reload={refetch}
