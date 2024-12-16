@@ -200,8 +200,8 @@
       (update :display_data json/encode)
       (update :legacy_input json/encode)
       (assoc
-       :updated_at :%now
-       :model_id (:id entity)
+       :updated_at       :%now
+       :model_id         (:id entity)
        :model_created_at (:created_at entity)
        :model_updated_at (:updated_at entity))
       (merge (specialization/extra-entry-fields entity))))
