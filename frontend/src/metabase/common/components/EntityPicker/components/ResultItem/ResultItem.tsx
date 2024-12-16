@@ -105,6 +105,13 @@ function getParentInfo(item: SearchItem) {
     return null;
   }
 
+  if (item.dashboard) {
+    return {
+      icon: getIcon({ model: "dashboard", ...item.dashboard }).name,
+      name: getName(item.dashboard),
+    };
+  }
+
   if (!item.collection) {
     return null;
   }
