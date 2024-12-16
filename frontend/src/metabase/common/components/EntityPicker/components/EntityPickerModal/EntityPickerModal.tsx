@@ -104,6 +104,7 @@ export interface EntityPickerModalProps<
   onItemSelect: (item: Item) => void;
   isLoadingTabs?: boolean;
   searchExtraButtons?: ReactNode[];
+  children?: React.ReactNode;
 }
 
 export function EntityPickerModal<
@@ -128,6 +129,7 @@ export function EntityPickerModal<
   onConfirm,
   onItemSelect,
   isLoadingTabs = false,
+  children,
 }: EntityPickerModalProps<Id, Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchScope, setSearchScope] =
@@ -422,6 +424,7 @@ export function EntityPickerModal<
           ) : (
             <EntityPickerLoadingSkeleton />
           )}
+          {children}
         </ModalBody>
       </ModalContent>
     </Modal.Root>
