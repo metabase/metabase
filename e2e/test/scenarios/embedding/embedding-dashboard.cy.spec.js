@@ -1002,10 +1002,15 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
       },
       {
         additionalHashOptions: {
-          locale: "de",
+          locale: "de-CH",
         },
       },
     );
+
+    // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
+    cy.request("/app/locales/de.json").then(response => {
+      expect(response.status).to.eq(200);
+    });
 
     H.main().findByText("Februar 11, 2025, 9:40 PM");
     // eslint-disable-next-line no-unscoped-text-selectors -- we don't care where the text is
