@@ -58,7 +58,7 @@ jobs:
             // FIXME: revert this once the CI issue is fixed
             // const version = getVersionFromReleaseBranch(targetBranchName);
             // const requirements = getBuildRequirements(version);
-            const requirements = getBuildRequirements("v0.52.1");
+            const requirements = getBuildRequirements("v0.52.3");
 
             return {
               java_version: requirements.java,
@@ -119,7 +119,7 @@ jobs:
             const branchName = '${{ github.base_ref || github.ref }}';
 
             // FIXME: This is for debugging purposes only. TO DELETE.
-            const sdk_version = '0.51.11'
+            const sdk_version = '0.52.3-nightly'
             console.log("SDK version is", sdk_version);
 
             // const sdk_version = await getSdkVersionFromReleaseBranchName({
