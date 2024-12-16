@@ -600,22 +600,22 @@
   (u/prog1 eid-translation/default-counter
     (setting/set-value-of-type! :json :entity-id-translation-counter <>)))
 
-(defn- categorize-query-execution [{client :embedding_client executor :executor_id}]
+(defn- categorize-query-execution [{:keys [context embedding_client executor_id]}]
   (cond
-    (= "embedding-sdk-react" client)                     "sdk_embed"
-    (and (= "embedding-iframe" client) (some? executor)) "interactive_embed"
-    (and (= "embedding-iframe" client) (nil? executor))  "static_embed"
-    (and (#{"" nil} client) (nil? executor))             "public_link"
-    :else                                                "internal"))
+    (= "embedding-sdk-react" embedding_client)                        "sdk_embed"
+    (and (= "embedding-iframe" embedding_client) (some? executor_id)) "interactive_embed"
+    (and (= "embedding-iframe" embedding_client) (nil? executor_id))  "static_embed"
+    (some-> context name (str/starts-with? "public-"))                "public_link"
+    :else                                                             "internal"))
 
 (defn- ->one-day-ago []
   (t/minus (t/offset-date-time) (t/days 1)))
 
 (defn- ->snowplow-grouped-metric-info []
-  (let [qe (t2/select [:model/QueryExecution :embedding_client :executor_id :started_at])
+  (let [qe (t2/select [:model/QueryExecution :embedding_client :context :executor_id :started_at])
         one-day-ago (->one-day-ago)
         ;; reuse the query data:
-        qe-24h (filter (fn [{started-at :started_at}] (t/after? one-day-ago started-at)) qe)]
+        qe-24h (filter (fn [{started-at :started_at}] (t/after? started-at one-day-ago)) qe)]
     {:query-executions (merge
                         {"sdk_embed" 0 "interactive_embed" 0 "static_embed" 0 "public_link" 0 "internal" 0}
                         (-> (group-by categorize-query-execution qe)
