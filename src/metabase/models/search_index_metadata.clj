@@ -74,7 +74,7 @@
                                  ;; Drop those older than 1 day, unless we are using them, or they are the most recent.
                                  [:and
                                   [:not-in :version (filter some? [our-version (first most-recent)])]
-                                  [:<= :updated_at
+                                  [:< :updated_at
                                    (case (mdb/db-type)
                                      :h2       [:raw "DATEADD(DAY, -1, CURRENT_TIMESTAMP)"]
                                      :postgres [:raw "CURRENT_TIMESTAMP - INTERVAL '1 day'"]
