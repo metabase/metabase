@@ -55,6 +55,7 @@ interface Props<Entity, EntityWrapper> {
   entityQuery?: EntityQuery | EntityQuerySelector;
   entityType: EntityType | EntityTypeSelector;
   fetchType?: FetchType;
+  listName?: string;
   loadingAndErrorWrapper?: boolean;
   LoadingAndErrorWrapper?: ComponentType<LoadingAndErrorWrapperProps>;
   reload?: boolean;
@@ -80,6 +81,7 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   entityQuery: entityQueryProp,
   entityType: entityTypeProp,
   fetchType = "fetch",
+  listName,
   loadingAndErrorWrapper = true,
   LoadingAndErrorWrapper = DefaultLoadingAndErrorWrapper,
   reload = false,
@@ -249,7 +251,7 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
       {...actionCreators}
       {...props}
       {...{
-        [entityDefinition.nameMany]: wrappedList,
+        [listName || entityDefinition.nameMany]: wrappedList,
       }}
       allError={allError}
       allFetched={allFetched}
