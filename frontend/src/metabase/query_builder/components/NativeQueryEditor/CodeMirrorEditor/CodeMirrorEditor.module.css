@@ -94,7 +94,7 @@
           grid-template-columns: 1fr;
 
           &:has(.cm-completionDetail) {
-            grid-template-columns: 1fr max-content;
+            grid-template-columns: max-content 1fr;
           }
 
           li {
@@ -133,8 +133,9 @@
 
       .cm-completionDetail {
         color: var(--mb-color-text-light);
-        display: flex;
-        justify-content: flex-end;
+        text-align: end;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
     }
 
