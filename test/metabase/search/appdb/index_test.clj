@@ -540,17 +540,20 @@
         (reset! @#'search.index/next-sync-at nil)
         (search.index/reset-index!)
         (let [active-before (search.index/active-table)
-              active-after  (str (random-uuid))
-              pending-after (str (random-uuid))
+              active-after  (search.index/gen-table-name)
+              pending-after (search.index/gen-table-name)
               period        @#'search.index/sync-tracking-period
               version       @#'search.index/*index-version-id*]
           (search-index-metadata/create-pending! :appdb version active-after)
+          (search.index/create-table! active-after)
           (search-index-metadata/active-pending! :appdb version)
           (search-index-metadata/create-pending! :appdb version pending-after)
+          (search.index/create-table! pending-after)
           (testing "We continue using our cached references for some time"
             (is (= active-before (active-table-after 100)))
             (is (= active-before (active-table-after (/ period 2)))))
           (testing "But eventually we refresh")
           (is (= active-after (active-table-after period))))
         (finally
-          (t2/delete! :model/SearchIndexMetadata :version "auto-refresh-test"))))))
+          (t2/delete! :model/SearchIndexMetadata :version "auto-refresh-test")
+          (#'search.index/delete-obsolete-tables!))))))
