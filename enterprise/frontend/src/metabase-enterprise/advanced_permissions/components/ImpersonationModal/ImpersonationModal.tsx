@@ -12,15 +12,15 @@ import {
 import { useDatabaseQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { getParentPath } from "metabase/hoc/ModalRoute";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
 import { getImpersonation } from "metabase-enterprise/advanced_permissions/selectors";
 import type {
-  AdvancedPermissionsStoreState,
   ImpersonationModalParams,
   ImpersonationParams,
 } from "metabase-enterprise/advanced_permissions/types";
 import { getImpersonatedDatabaseId } from "metabase-enterprise/advanced_permissions/utils";
+import { useEnterpriseSelector } from "metabase-enterprise/redux";
 import { ImpersonationApi } from "metabase-enterprise/services";
 import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
 import { getUserAttributes } from "metabase-enterprise/shared/selectors";
@@ -75,11 +75,10 @@ const _ImpersonationModal = ({ route, params }: ImpersonationModalProps) => {
     id: databaseId,
   });
 
-  const attributes = useSelector(getUserAttributes);
-  const draftImpersonation = useSelector<
-    AdvancedPermissionsStoreState,
-    Impersonation | undefined
-  >(getImpersonation(databaseId, groupId));
+  const attributes = useEnterpriseSelector(getUserAttributes);
+  const draftImpersonation = useEnterpriseSelector(
+    getImpersonation(databaseId, groupId),
+  );
 
   const selectedAttribute =
     draftImpersonation?.attribute ?? impersonation?.attribute;
