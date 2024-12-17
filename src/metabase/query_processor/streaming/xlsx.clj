@@ -459,7 +459,6 @@
          val-it (.iterator ^Iterable values)
          col-it (.iterator ^Iterable cols)
          sty-it (.iterator ^Iterable cell-styles)]
-     (def col-settings col-settings)
      (loop [index 0]
        (when (.hasNext val-it)
          (let [value (.next val-it)
