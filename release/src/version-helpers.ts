@@ -351,6 +351,7 @@ export function getLastReleaseFromTags({
 }) {
   return tags
     .map(tag => tag.ref.replace("refs/tags/", ""))
+    .filter(tag => !tag.includes(".x"))
     .filter(ignorePreReleases ? tag => !isPreReleaseVersion(tag) : () => true)
     .filter(ignorePatches ? v => !isPatchVersion(v) : () => true)
     .sort(versionSort)
