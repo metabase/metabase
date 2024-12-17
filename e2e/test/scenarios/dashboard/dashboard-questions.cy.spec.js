@@ -18,6 +18,7 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.visit(`/dashboard/${S.ORDERS_DASHBOARD_ID}`);
 
       H.newButton("Question").click();
+      H.entityPickerModalTab("Collections").click();
       H.entityPickerModal().findByText("Orders Model").click();
       H.getNotebookStep("filter")
         .findByText("Add filters to narrow your answer")
@@ -397,7 +398,7 @@ describe("Dashboard > Dashboard Questions", () => {
       });
 
       H.startNewQuestion();
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       H.entityPickerModal().findByText("Orders in a dashboard").click();
       H.entityPickerModal()
         .findByText("Total Orders Dashboard Question")

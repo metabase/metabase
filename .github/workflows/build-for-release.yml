@@ -100,21 +100,14 @@ jobs:
             oss: getCanonicalVersion(version, 'oss'),
           };
 
-          const ossReleased = await hasBeenReleased({
+          const released = await hasBeenReleased({
             github,
             owner: context.repo.owner,
             repo: context.repo.repo,
             version: versions.oss,
           });
 
-          const eeReleased = await hasBeenReleased({
-            github,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            version: versions.ee,
-          });
-
-          if (ossReleased || eeReleased) {
+          if (released) {
             throw new Error("This version has already been released!", version);
           }
 

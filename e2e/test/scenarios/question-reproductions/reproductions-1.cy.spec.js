@@ -130,7 +130,7 @@ describe("issue 9027", () => {
 
     H.startNewQuestion();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("Orders").should("exist");
       cy.button("Close").click();
     });
@@ -160,7 +160,7 @@ describe("issue 9027", () => {
 function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
   H.startNewQuestion();
   H.entityPickerModal().within(() => {
-    H.entityPickerModalTab("Saved questions").click();
+    H.entityPickerModalTab("Collections").click();
     cy.findByText(questionName).should(exists ? "exist" : "not.exist");
     cy.button("Close").click();
   });
