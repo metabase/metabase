@@ -1,5 +1,9 @@
 .ViewButton {
-  background-color: var(--view-button-background-color);
+  background-color: color-mix(
+    in srgb,
+    var(--view-button-color) 20%,
+    transparent
+  );
   color: var(--view-button-color);
   border: none;
   transition:
@@ -7,7 +11,11 @@
     border 300ms linear;
 
   &:hover {
-    background-color: var(--view-button-background-color-hover);
+    background-color: color-mix(
+      in srgb,
+      var(--view-button-color) 35%,
+      transparent
+    );
   }
 
   &.active {
@@ -15,7 +23,11 @@
     color: var(--mb-color-text-white);
 
     &:hover {
-      background-color: var(--view-button-background-color-active);
+      background-color: color-mix(
+        in srgb,
+        var(--view-button-color) 80%,
+        transparent
+      );
     }
   }
 
