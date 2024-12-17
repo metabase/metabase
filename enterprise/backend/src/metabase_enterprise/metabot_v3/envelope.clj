@@ -19,7 +19,15 @@
    :history history
    :context context
    :max-round-trips max-round-trips
-   :round-trips-remaining max-round-trips})
+   :round-trips-remaining max-round-trips
+   :dummy-history []
+   :query-id->query {}})
+
+(defn full-history
+  "History including the dummy tool invocations"
+  [e]
+  (into (:dummy-history e)
+        (:history e)))
 
 (defn session-id
   "Get the session ID from the envelope"
@@ -77,6 +85,11 @@
   "Given a raw message, add it to the envelope."
   [e msg]
   (update e :history conj msg))
+
+(defn add-dummy-message
+  "Adds a message to the dummy history. This is sent to the LLM, but not part of the history we send to the frontend."
+  [e msg]
+  (update e :dummy-history conj msg))
 
 (defn update-context
   "Given a new context, set it in the envelope."
