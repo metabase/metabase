@@ -7,6 +7,8 @@ export function addEntityContainers(entity) {
   const ObjectName = entity.nameOne;
 
   /**
+   * TODO: remove this in https://github.com/metabase/metabase/issues/50324
+   *
    * @deprecated HOCs are deprecated
    */
   entity.load = ({ id, query, ...props } = {}) =>
@@ -38,6 +40,7 @@ export function addEntityContainers(entity) {
 
   /**
    * TODO: remove this is in https://github.com/metabase/metabase/issues/50325
+   *
    * @deprecated HOCs are deprecated
    */
   entity.loadListLegacy = ({ query, ...props } = {}) => {
