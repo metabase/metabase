@@ -101,7 +101,7 @@ describe("version-helpers", () => {
   });
 
   describe("getEnterpriseVersion", () => {
-    it("should transform a valid version string to an OSS version string", () => {
+    it("should transform a valid version string to an enterprise version string", () => {
       expect(getEnterpriseVersion("v0.75.2.3")).toEqual("v1.75.2.3");
       expect(getEnterpriseVersion("v1.75.2.3")).toEqual("v1.75.2.3");
     });
@@ -119,6 +119,7 @@ describe("version-helpers", () => {
         ["v1.1.2.0", true],
         ["v1.50", true],
         ["v1.0.0-RC1", true],
+        ["v1.0.0-beta", true],
       ];
 
       cases.forEach(([input, expected]) => {
@@ -127,7 +128,7 @@ describe("version-helpers", () => {
     });
 
     it("should correctly identify non-enterprise version numbers", () => {
-      const cases = ["v0.12", "v0.1.0", "v0.1.2.0", "v0.50"];
+      const cases = ["v0.12", "v0.1.0", "v0.1.2.0", "v0.50", "v0.54.2-beta"];
 
       cases.forEach(input => {
         expect(isEnterpriseVersion(input)).toEqual(false);
@@ -432,6 +433,16 @@ describe("version-helpers", () => {
           { ref: "refs/tags/v0.12.2.0" },
           { ref: "refs/tags/v0.12.2.3" },
           { ref: "refs/tags/v0.12.2.2" },
+        ] as Tag[],
+      });
+      expect(latest).toBe("v0.12.2.3");
+    });
+
+    it("should ignore ee vs oss prefixes", () => {
+      const latest = getLastReleaseFromTags({
+        tags: [
+          { ref: "refs/tags/v0.12.2.3" },
+          { ref: "refs/tags/v1.12.2.2" },
         ] as Tag[],
       });
       expect(latest).toBe("v0.12.2.3");

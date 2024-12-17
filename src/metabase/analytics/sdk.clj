@@ -41,7 +41,8 @@
     [embedding-sdk-client :ok]       (prometheus/inc! :metabase-sdk/response-ok)
     [embedding-sdk-client :error]    (prometheus/inc! :metabase-sdk/response-error)
     [embedding-iframe-client :ok]    (prometheus/inc! :metabase-embedding-iframe/response-ok)
-    [embedding-iframe-client :error] (prometheus/inc! :metabase-embedding-iframe/response-error)))
+    [embedding-iframe-client :error] (prometheus/inc! :metabase-embedding-iframe/response-error)
+    nil))
 
 (defn- embedding-context?
   "Should we track this request as being made by an embedding client?"

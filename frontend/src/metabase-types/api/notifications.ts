@@ -2,6 +2,7 @@ import type {
   ScheduleSettings,
   ScheduleType,
 } from "metabase-types/api/settings";
+import { isObject } from "metabase-types/guards";
 
 import type { Card } from "./card";
 import type { User } from "./user";
@@ -83,6 +84,26 @@ export type NotificationChannel<Details = ChannelDetails> = {
   id: number;
   name: string;
   description: string;
+};
+
+type NotificationChannelTestErrorResponse = {
+  data: {
+    "request-body": string;
+    "request-status": number;
+  };
+  message: string;
+};
+
+export const isNotificationChannelTestErrorResponse = (
+  response: unknown,
+): response is { data: NotificationChannelTestErrorResponse } => {
+  return (
+    isObject(response) &&
+    isObject(response.data) &&
+    isObject(response.data.data) &&
+    "request-body" in response.data.data &&
+    "request-status" in response.data.data
+  );
 };
 
 export type SlackChannelSpec = ChannelSpec & {

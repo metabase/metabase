@@ -1,1 +1,1 @@
-export { Overlay } from "@mantine/core";
+export { Overlay, type OverlayProps } from "@mantine/core";
