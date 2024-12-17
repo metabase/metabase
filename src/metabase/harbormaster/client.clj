@@ -36,15 +36,26 @@
    method :- [:enum :get :head :post :put :delete :options :copy :move :patch]
    url :- :string
    & [body]]
-  (let [{:keys [store-api-url api-key]} config
-        request   (cond-> {:headers {"Authorization" (str "Bearer " api-key)}}
-                    body (assoc :body body))
-        response  (try
-                    (-> (str store-api-url (+slash-prefix url))
-                        ((->requestor method) request)
-                        (m/update-existing :body json/decode+kw))
-                    (catch Exception e
-                      (log/errorf e "Error making request to %s" url)
-                      (ex-data e)))]
-    [(if (http/success? response) :ok :error)
+  (let [{:keys [store-api-url
+                api-key]} config
+        request           (cond-> {:headers {"Authorization" (str "Bearer " api-key)
+                                             "Content-Type" "application/json"}}
+                            body (assoc :body (json/encode body)))
+        unparsed-response (try
+                            (-> (str store-api-url (+slash-prefix #p url))
+                                ((->requestor method) request))
+                            (catch Exception e
+                              (log/errorf e "Error making request to %s" url)
+                              {:ex-data (ex-data e)
+                               :request request
+                               :url url}))
+        response          (try
+                            (m/update-existing unparsed-response :body json/decode+kw)
+                            (catch Exception e
+                              (log/errorf e "Error decoding response from %s, is it json?" url)
+                              {:ex-data (ex-data e)
+                               :unparsed-response unparsed-response
+                               :request request
+                               :url url}))]
+    [(if (and response (http/success? response)) :ok :error)
      response]))

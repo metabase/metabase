@@ -3,8 +3,7 @@
   is not used as part of the normal `app`; it is instead added selectively to appropriate routes."
   (:require
    [clojure.string :as str]
-   [metabase.models.setting :refer [defsetting]]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [deferred-trs]]))
 
@@ -92,7 +91,9 @@
   :setter :none
   :getter (fn []
             (and
-             (premium-features/is-hosted?)
-             (premium-features/has-feature? :attached-dwh)
-             (premium-features/has-feature? :etl-connections)
-             (some? (static-api-key)))))
+             ;; TEMP: check these setting when we are ready
+             ;; (premium-features/is-hosted?)
+             ;; (premium-features/has-feature? :attached-dwh)
+             ;; (premium-features/has-feature? :etl-connections)
+             (some? (static-api-key))
+             (some? (setting/get-value-of-type :string :store-api-url)))))
