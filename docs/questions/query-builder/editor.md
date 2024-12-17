@@ -4,9 +4,16 @@ title: The query builder
 
 # The query builder
 
-This page covers how to ask a question using Metabase's graphical query builder.
+Metabase includes a graphical query builder that lets you build interactive charts.
 
-TODO: why the query builder:
+With the query builder you can:
+
+- Pick data
+- Join tables
+- Create custom columns
+- Filter data
+- Summarize and group data
+- Limit results
 
 When viewing a chart, you can also click through questions to explore the data in greater detail.
 
@@ -32,7 +39,7 @@ Note that there are some kinds of saved questions that can't be used as source d
 - Questions that use `Cumulative Sum` or `Cumulative Count` aggregations
 - Questions that have columns that are named the same or similar thing, like `Count` and `Count 2`
 
-## The query builder
+## The editor
 
 Once you select your data, Metabase will take you to the query builder's editor. Say you selected **Tables** > **Sample database** > **Orders**, then you'll see something like this:
 
