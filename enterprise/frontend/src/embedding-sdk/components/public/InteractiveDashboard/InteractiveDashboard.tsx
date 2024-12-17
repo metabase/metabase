@@ -7,6 +7,7 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { renderOnlyInSdkProvider } from "embedding-sdk/components/private/SdkContext";
 import { StyledPublicComponentWrapper } from "embedding-sdk/components/public/InteractiveDashboard/InteractiveDashboard.styled";
 import { useCommonDashboardParams } from "embedding-sdk/components/public/InteractiveDashboard/use-common-dashboard-params";
 import {
@@ -129,22 +130,21 @@ const InteractiveDashboardInner = ({
   );
 };
 
-export const InteractiveDashboard = ({
-  dashboardId,
-  ...rest
-}: InteractiveDashboardProps) => {
-  const { id, isLoading } = useValidatedEntityId({
-    type: "dashboard",
-    id: dashboardId,
-  });
+export const InteractiveDashboard = renderOnlyInSdkProvider(
+  ({ dashboardId, ...rest }: InteractiveDashboardProps) => {
+    const { id, isLoading } = useValidatedEntityId({
+      type: "dashboard",
+      id: dashboardId,
+    });
 
-  if (isLoading) {
-    return <SdkLoader />;
-  }
+    if (isLoading) {
+      return <SdkLoader />;
+    }
 
-  if (!id) {
-    return <SdkError message="ID not found" />;
-  }
+    if (!id) {
+      return <SdkError message="ID not found" />;
+    }
 
-  return <InteractiveDashboardInner dashboardId={id} {...rest} />;
-};
+    return <InteractiveDashboardInner dashboardId={id} {...rest} />;
+  },
+);

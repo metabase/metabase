@@ -4,6 +4,7 @@ import type { Route } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { skipToken, useGetActionQuery } from "metabase/api";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import type {
@@ -47,10 +48,6 @@ interface OwnProps {
   onClose?: () => void;
 }
 
-interface ActionLoaderProps {
-  initialAction?: WritebackAction;
-}
-
 interface ModelLoaderProps {
   model?: Question;
 }
@@ -66,11 +63,7 @@ interface DispatchProps {
 
 export type ActionCreatorProps = OwnProps;
 
-type Props = OwnProps &
-  ActionLoaderProps &
-  ModelLoaderProps &
-  StateProps &
-  DispatchProps;
+type Props = OwnProps & ModelLoaderProps & StateProps & DispatchProps;
 
 const mapStateToProps = (state: State) => ({
   metadata: getMetadata(state),
@@ -217,12 +210,14 @@ function ensureAceEditorClosed() {
 }
 
 function ActionCreatorWithContext({
-  initialAction,
   metadata,
   databaseId,
   action,
   ...props
 }: Props) {
+  const { data: initialAction } = useGetActionQuery(
+    props.actionId != null ? { id: props.actionId } : skipToken,
+  );
   // This is needed in case we already have an action and pass it from the outside
   const contextAction = action || initialAction;
 
@@ -232,23 +227,13 @@ function ActionCreatorWithContext({
       databaseId={databaseId}
       metadata={metadata}
     >
-      <ActionCreator
-        {...props}
-        initialAction={initialAction}
-        databaseId={databaseId}
-        metadata={metadata}
-      />
+      <ActionCreator {...props} databaseId={databaseId} metadata={metadata} />
     </ActionContext>
   );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
-  Actions.load({
-    id: (state: State, props: OwnProps) => props.actionId,
-    loadingAndErrorWrapper: false,
-    entityAlias: "initialAction",
-  }),
   Questions.load({
     id: (state: State, props: OwnProps) => props?.modelId,
     entityAlias: "model",

@@ -180,6 +180,16 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       .and("contain", "February 14, 2026, 10:12 AM");
   });
 
+  it("calculates a row after both vertical and horizontal scrolling correctly (metabase#51301)", () => {
+    H.openPeopleTable();
+    cy.get(".ReactVirtualized__Grid").eq(1).scrollTo(2000, 15000);
+    cy.icon("expand").first().realHover().click();
+    cy.findByRole("dialog")
+      .should("contain", "418")
+      .and("contain", "31942-31950 Oak Ridge Parkway")
+      .and("contain", "koss-ella@hotmail.com");
+  });
+
   it("handles browsing records by FKs (metabase#21756)", () => {
     H.openOrdersTable();
 

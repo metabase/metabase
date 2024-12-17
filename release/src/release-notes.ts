@@ -18,7 +18,7 @@ const releaseTemplate = `## Upgrading
 
 Check out our [upgrading instructions](https://metabase.com/docs/latest/operations-guide/upgrading-metabase).
 
-[Get the most out of Metabase](https://www.metabase.com/pricing?utm_source=github-release-notes). Learn more about advanced features, managed cloud, and first-class support.
+[Get the most out of Metabase](https://www.metabase.com/pricing?utm_source=github&utm_medium=release-notes&utm_campaign=plan-comparison). Learn more about advanced features, managed cloud, and first-class support.
 
 ## Metabase Open Source
 

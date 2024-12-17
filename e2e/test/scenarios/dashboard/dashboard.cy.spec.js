@@ -83,6 +83,7 @@ describe("scenarios > dashboard", () => {
         .click();
 
       H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Collections").click();
         cy.findByPlaceholderText("Search this collection or everywhere…").type(
           "Pro",
         );
