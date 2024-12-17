@@ -102,6 +102,12 @@ const Databases = createEntity({
       ),
     delete: ({ id }, dispatch) =>
       entityCompatibleQuery(id, dispatch, databaseApi.endpoints.deleteDatabase),
+    addSampleDatabase: dispatch =>
+      entityCompatibleQuery(
+        undefined,
+        dispatch,
+        databaseApi.endpoints.addSampleDatabase,
+      ),
   },
 
   // ACTION CREATORS
