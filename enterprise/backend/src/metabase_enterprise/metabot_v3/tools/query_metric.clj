@@ -90,9 +90,9 @@
                   (reduce add-filter $q (map #(resolve-column % field-id-prefix filterable-cols) filters))
                   (reduce add-breakout $q (map #(resolve-column % field-id-prefix breakoutable-cols) group-by)))]
       {:type :query
-       :query_id (u/generate-nano-id)
+       :query-id (u/generate-nano-id)
        :query (lib.convert/->legacy-MBQL query)
-       :result_columns (mapv #(metabot-v3.tools.u/->result-column % field-id-prefix) (lib/returned-columns query))})
+       :result-columns (mapv #(metabot-v3.tools.u/->result-column % field-id-prefix) (lib/returned-columns query))})
     "metric not found"))
 
 (comment

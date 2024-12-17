@@ -43,15 +43,15 @@
 
 (mu/defn create-context
   "Create a tool context."
-  [context]
+  [_context]
   (merge {}
-         (metabot-v3.tools.query/create-context context)))
+         #_(metabot-v3.tools.query/create-context context)))
 
 (mu/defn describe-context
   "Transforms the tool context into LLM context."
-  [context]
+  [_context]
   (merge {}
-         (metabot-v3.tools.query/describe-context context)))
+         #_(metabot-v3.tools.query/describe-context context)))
 
 (mu/defn create-reactions
   "Extracts reactions based on the current context."
