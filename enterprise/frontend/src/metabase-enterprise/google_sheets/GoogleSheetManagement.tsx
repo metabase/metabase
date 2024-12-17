@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { c, t } from "ttag";
 
-import { skipToken, useGetSettingQuery } from "metabase/api";
+import { skipToken } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import {
   Box,
@@ -9,13 +9,13 @@ import {
   Center,
   Divider,
   Flex,
-  Loader,
   Modal,
   Text,
   TextInput,
 } from "metabase/ui";
 import {
-  useGetGsheetsOauthLinkQuery,
+  useGetGsheetsOauthStatusQuery,
+  useInitiateOauthMutation,
   useSaveGsheetsFolderLinkMutation,
 } from "metabase-enterprise/api";
 
@@ -23,8 +23,7 @@ const AUTH_COMPLETE_POLL_INTERVAL = 2000;
 
 type Step =
   | "no-auth"
-  | "get-setup-link" // loading
-  | "auth-clicked" // loading
+  | "auth-started" // loading
   | "auth-complete"
   | "setting-folder"
   | "folder-saved";
@@ -32,6 +31,7 @@ type Step =
 export function GSheetManagement() {
   const [step, setStep] = useState<Step>("no-auth");
   const gSheetsSetting = useSetting("gsheets");
+  const gSheetsEnabled = useSetting("show-google-sheets-integration");
 
   useEffect(() => {
     setStep(gSheetsSetting?.status ?? "no-auth");
@@ -41,6 +41,10 @@ export function GSheetManagement() {
   const showButton = step !== "folder-saved";
   const showStatus = step === "folder-saved";
 
+  if (!gSheetsEnabled) {
+    return null;
+  }
+
   return (
     <>
       <Box py="lg" mx="md">
@@ -48,9 +52,14 @@ export function GSheetManagement() {
         <Box py="lg">
           <Box>
             {showStatus && (
-              <Text mb="md" color="text-medium">
+              <Text
+                mb="md"
+                color="text-medium"
+                component="a"
+                href={gSheetsSetting?.folder_url ?? ""}
+              >
                 {c("{0} is the name of a google drive folder")
-                  .t`${gSheetsSetting.folder_name} is connected`}
+                  .t`Folder is connected`}
               </Text>
             )}
             {showButton && (
@@ -60,7 +69,7 @@ export function GSheetManagement() {
                   setStep(
                     step === "auth-complete"
                       ? "setting-folder"
-                      : "get-setup-link",
+                      : "auth-started",
                   )
                 }
               >
@@ -110,38 +119,44 @@ function GoogleSheetsConnectModal({
   setStep: (newStep: Step) => void;
   onClose: () => void;
 }) {
-  const { data: oauthLink, isLoading: isLoadingOauthLink } =
-    useGetGsheetsOauthLinkQuery(
-      step === "get-setup-link" ? undefined : skipToken,
-    );
+  const [folderLink, setFolderLink] = useState("");
 
-  const { data: gSheetsSetting } = useGetSettingQuery(
-    step === "auth-clicked" ? "gsheets" : skipToken,
+  const { data: oauthStatus } = useGetGsheetsOauthStatusQuery(
+    step === "auth-started" ? undefined : skipToken,
     {
       pollingInterval: AUTH_COMPLETE_POLL_INTERVAL,
       skipPollingIfUnfocused: true,
     },
   );
 
+  const [initiateOauth, { isLoading: isLoadingOauthLink, data: oauthLink }] =
+    useInitiateOauthMutation();
+
   const [saveFolderLink, { isLoading: isSavingFolderLink }] =
     useSaveGsheetsFolderLinkMutation();
 
   useEffect(() => {
-    if (step === "auth-clicked" && gSheetsSetting?.status === "auth-complete") {
+    if (step === "auth-started" && oauthStatus?.oauth_setup) {
       setStep("auth-complete");
     }
-  }, [step, setStep, gSheetsSetting]);
+  }, [step, setStep, oauthStatus]);
 
-  if (step === "get-setup-link") {
+  useEffect(() => {
+    if (step === "auth-started") {
+      initiateOauth({ redirect_url: window.location.href });
+    }
+  }, [initiateOauth, step, setStep, oauthStatus]);
+
+  if (step === "auth-started") {
     return (
       <ModalWrapper onClose={onClose}>
         <Center>
           <Button
-            loading={isLoadingOauthLink}
+            loading={isLoadingOauthLink || !oauthLink}
             variant="filled"
             component="a"
-            href={oauthLink?.oauth_url}
-            onClick={() => setStep("auth-clicked")}
+            href={oauthLink?.oauth_url ?? undefined}
+            target="_blank"
           >
             {isLoadingOauthLink
               ? t`Getting authorization link`
@@ -152,32 +167,28 @@ function GoogleSheetsConnectModal({
     );
   }
 
-  if (step === "auth-clicked") {
-    return (
-      <ModalWrapper onClose={onClose}>
-        <Center>
-          <Text>{t`Loading...`}</Text>
-          <Loader />
-        </Center>
-      </ModalWrapper>
-    );
-  }
-
   if (step === "auth-complete") {
     return (
       <ModalWrapper onClose={onClose}>
         <TextInput
+          disabled={isSavingFolderLink}
           label={t`Google Drive folder url`}
+          value={folderLink}
+          onChange={e => setFolderLink(e.target.value)}
           placeholder="https://drive.google.com/drive/folders/abc123-xyz456"
         />
         <Button
           variant="filled"
           loading={isSavingFolderLink}
+          disabled={folderLink.length < 3}
           onClick={async () => {
-            await saveFolderLink({
-              url: "https://drive.google.com/drive/folders/abc123-xyz456",
-            });
-            // TODO handle error
+            const response = await saveFolderLink({
+              url: folderLink.trim(),
+            }).unwrap();
+
+            if (response.success) {
+              setStep("folder-saved");
+            }
           }}
         >
           {t`Sync folder`}
