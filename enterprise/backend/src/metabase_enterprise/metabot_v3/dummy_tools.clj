@@ -98,7 +98,8 @@
       (get-table-details :get-table-details {:table_id id} {})))
   -)
 
-(defn- metric-details
+(defn metric-details
+  "Get metric details as returned by tools."
   [id]
   (when-let [card (api.card/get-card id)]
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
@@ -134,6 +135,20 @@
                  "metric not found")
      :context context}))
 
+(defn- get-report-details
+  [_ {:keys [report_id]} context]
+  (let [details (card-details report_id)
+        details' (some-> details
+                         (assoc :result_columns (:fields details))
+                         (select-keys [:id :description :name :result_columns]))]
+    {:output (or details' "report not found")
+     :context context}))
+
+(comment
+  (binding [api/*current-user-permissions-set* (delay #{"/"})]
+    (let [id "card__90" #_"card__136" #_"27"]
+      (get-table-details :get-table-details {:table_id id} {}))))
+
 (defn- dummy-tool-messages
   [tool-id arguments content]
   (let [call-id (str "call_" (u/generate-nano-id))]
@@ -167,7 +182,10 @@
    :metric {:id :get-metric-details
             :fn (fn [tool-id args context]
                   (get-metric-details tool-id (update args :metric-id #(str "card__" %)) context))
-            :id-name :metric-id}})
+            :id-name :metric-id}
+   :report {:id :get-report-details
+            :fn get-report-details
+            :id-name :report_id}})
 
 (defn- dummy-get-item-details
   [context]
@@ -200,7 +218,9 @@
                                        {:type :model
                                         :ref 137}
                                        {:type :metric
-                                        :ref 135}]})]
+                                        :ref 135}
+                                       {:type :report
+                                        :ref 89}]})]
     (reduce (fn [messages tool]
               (into messages (tool context)))
             []
