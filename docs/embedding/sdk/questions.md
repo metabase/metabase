@@ -24,25 +24,17 @@ The component has a default height, which can be customized by using the `height
 import React from "react";
 import {MetabaseProvider, StaticQuestion} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const authConfig = {...}
 
 export default function App() {
     const questionId = 1; // This is the question ID you want to embed
 
     return (
-        <MetabaseProvider config={config}>
-            <StaticQuestion questionId={questionId} showVisualizationSelector={false}/>
+        <MetabaseProvider authConfig={authConfig}>
+            <StaticQuestion questionId={questionId} withChartTypeSelector={false}/>
         </MetabaseProvider>
     );
 }
-```
-
-You can pass parameter values to questions defined with SQL via `parameterValues` prop, in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../../questions/native-editor/sql-parameters.md).
-
-```jsx
-{% raw %}
-<StaticQuestion questionId={questionId} parameterValues={{ product_id: 50 }} />
-{% endraw %}
 ```
 
 ## Embedding an interactive question
@@ -53,13 +45,13 @@ You can embed an interactive question using the `InteractiveQuestion` component.
 import React from "react";
 import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const authConfig = {...}
 
 export default function App() {
     const questionId = 1; // This is the question ID you want to embed
 
     return (
-        <MetabaseProvider config={config}>
+        <MetabaseProvider authConfig={authConfig}>
             <InteractiveQuestion questionId={questionId}/>
         </MetabaseProvider>
     );
@@ -81,6 +73,17 @@ export default function App() {
 | onBeforeSave          | `() => void`                                                         | (optional) A callback function that triggers before saving. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                                             |
 | onSave                | `() => void`                                                         | (optional) A callback function that triggers when a user saves the question. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                            |
 | saveToCollectionId    | number                                                               | (optional) The target collection to save the question to. This will hide the collection picker from the save modal. Only applicable to static questions.                                                                                                                                                           |
+| initialSqlParameters  | `Record<string, string \| string[]>`                                 | (optional) A mapping of [SQL parameters names](../../questions/native-editor/sql-parameters.md) to parameter values, such as `{ product_id: "42" }`.                                                                                                                                                               |
+
+## Passing SQL parameters to questions
+
+You can pass parameter values to questions defined with SQL via the `initialSqlParameters` prop, in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../../questions/native-editor/sql-parameters.md).
+
+```typescript
+{% raw %}
+<StaticQuestion questionId={questionId} initialSqlParameters={{ product_id: 50 }} />
+{% endraw %}
+```
 
 ## Customizing interactive questions
 
@@ -212,7 +215,7 @@ const plugins = {
 const questionId = 1; // This is the question ID you want to embed
 
 return (
-  <MetabaseProvider config={config} pluginsConfig={plugins}>
+  <MetabaseProvider authConfig={authConfig} pluginsConfig={plugins}>
     <InteractiveQuestion questionId={questionId} />
   </MetabaseProvider>
 );
@@ -226,11 +229,11 @@ You can edit an existing question using the query builder by passing the `isSave
 import React from "react";
 import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const authConfig = {...}
 
 export default function App() {
     return (
-        <MetabaseProvider config={config}>
+        <MetabaseProvider authConfig={authConfig}>
             <InteractiveQuestion questionId={1} isSaveEnabled />
         </MetabaseProvider>
     );
@@ -249,11 +252,11 @@ To customize the question editor's layout, use the `InteractiveQuestion` compone
 import React from "react";
 import {MetabaseProvider, CreateQuestion} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const authConfig = {...}
 
 export default function App() {
     return (
-        <MetabaseProvider config={config}>
+        <MetabaseProvider authConfig={authConfig}>
             <CreateQuestion />
         </MetabaseProvider>
     );
