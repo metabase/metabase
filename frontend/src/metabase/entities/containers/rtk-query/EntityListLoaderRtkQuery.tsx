@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useMemo } from "react";
+import { useLatest } from "react-use";
 import { match } from "ts-pattern";
 
 import DefaultLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -60,6 +61,7 @@ interface Props<Entity, EntityWrapper> {
   reload?: boolean;
   selectorName?: "getList" | "getListUnfiltered";
   wrapped?: boolean;
+  onLoaded?: (list: Entity[]) => void;
 }
 
 const transformResponse = (fetched: unknown) => {
@@ -98,6 +100,7 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   reload = false,
   selectorName = "getList",
   wrapped = false,
+  onLoaded,
   ...props
 }: Props<Entity, EntityWrapper>) {
   const dispatch = useDispatch();
@@ -197,6 +200,14 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
     requestStatePath,
     queryKey,
   ]);
+
+  const onLoadedRef = useLatest(onLoaded);
+
+  useEffect(() => {
+    if (data) {
+      onLoadedRef.current?.(data);
+    }
+  }, [data, onLoadedRef]);
 
   const list = useSelector(state => {
     return match(selectorName)
