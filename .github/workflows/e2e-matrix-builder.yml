@@ -1,0 +1,70 @@
+name: E2E Matrix Builder
+
+on:
+  workflow_call:
+
+jobs:
+  e2e-matrix-builder:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.matrix.outputs.result }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: e2e
+      - name: get test file names
+        id: test-files
+        shell: bash
+        run: |
+          echo "::set-output name=filenames::$(find e2e/test/scenarios -name '*.cy.spec.*' | tr '\n' ',')"
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+      - run: npm install underscore
+        shell: bash
+      - uses: actions/github-script@v7
+        id: matrix
+        with:
+          script: | # js
+            const _ = require('underscore');
+
+            const java = 21;
+            const defaultRunner = "ubuntu-22.04";
+            const chunks = 30; // number of total test groups
+
+            const defaultOptions = {
+              "java-version": java,
+              runner: defaultRunner,
+              specs: "./e2e/test/scenarios/**/*.cy.spec.*",
+              edition: "ee",
+            };
+
+            const fileNames = "${{ steps.test-files.outputs.filenames }}".split(",").filter(Boolean);
+            const chunkedFiles = _.chunk(fileNames, chunks);
+
+            const regularTests = chunkedFiles.map((files, index) => ({
+              name: `e2e-group-${index}`,
+              specs: files.join(","),
+              context: "files",
+              tags: '',
+            }));
+
+            const specialTests = [
+              { name: "embedding-sdk", specs: "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*" },
+              { name: "oss-subset", edition: 'oss', tags: "@OSS" },
+              { name: "slow" tags: "@slow" },
+              { name: "flaky", tags: "@flaky" },
+              { name: "mongo", tags: "@mongo" },
+            ];
+
+            const testSets = [...regularTests, ...specialTests];
+
+            const config = testSets.map((options) => ({
+              ...defaultOptions,
+              ...options,
+            }));
+
+            console.log("matrix config", config);
+
+            return config;
