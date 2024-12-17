@@ -863,7 +863,7 @@ H.describeEE(
 
 // ENFORMCENT RELATED TESTS
 
-H.describeEE.only(
+H.describeEE(
   "scenarios > admin > permissions > view data > blocked (enforcement)",
   () => {
     beforeEach(() => {
