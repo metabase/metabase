@@ -2,7 +2,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component, createRef } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -16,6 +15,7 @@ import Questions from "metabase/entities/questions";
 import Schemas from "metabase/entities/schemas";
 import Search from "metabase/entities/search";
 import Tables from "metabase/entities/tables";
+import { connect } from "metabase/lib/redux";
 import { getHasDataAccess } from "metabase/selectors/data";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";

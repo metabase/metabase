@@ -1,7 +1,6 @@
-import { connect } from "react-redux";
-
 import type { SchedulePickerProps } from "metabase/components/SchedulePicker";
 import SchedulePicker from "metabase/components/SchedulePicker";
+import { connect } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 
