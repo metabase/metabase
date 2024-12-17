@@ -78,7 +78,7 @@ describe("scenarios > collections > trash", () => {
 
     H.popover().findByText("Question").click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Models").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("Our analytics").should("exist");
       cy.findByText("Trash").should("not.exist");
       cy.button("Close").click();

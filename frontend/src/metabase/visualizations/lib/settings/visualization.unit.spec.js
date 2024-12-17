@@ -211,6 +211,53 @@ describe("visualization_settings", () => {
       expect(settings["table.cell_column"]).toBe("col1");
     });
   });
+
+  describe("pie.rows memoization (metabase#50090) (metabase#50381)", () => {
+    it("should memoize results when data hasn't changed", () => {
+      const series = cardWithTimeseriesBreakout({
+        unit: "month",
+        display: "pie",
+        visualization_settings: {
+          "pie.dimension": ["col1"],
+          "pie.metric": "col2",
+        },
+      });
+
+      const originalSettings = getComputedSettingsForSeries(series);
+      const unchangedSettings = getComputedSettingsForSeries(series);
+
+      expect(originalSettings["pie.rows"]).toBe(unchangedSettings["pie.rows"]);
+
+      // Series with different data
+      const modifiedSeries = [
+        {
+          ...series[0],
+          data: {
+            ...series[0].data,
+            rows: [[1, 1]],
+          },
+        },
+      ];
+
+      const modifiedSettings = getComputedSettingsForSeries(modifiedSeries);
+
+      expect(originalSettings["pie.rows"]).not.toBe(
+        modifiedSettings["pie.rows"],
+      );
+      expect(modifiedSettings["pie.rows"]).toEqual([
+        {
+          color: "#88BF4D",
+          defaultColor: true,
+          enabled: true,
+          hidden: false,
+          isOther: false,
+          key: "1",
+          name: "1",
+          originalName: "1",
+        },
+      ]);
+    });
+  });
 });
 
 const cardWithTimeseriesBreakout = ({

@@ -9,7 +9,7 @@ export interface RadioGroupProps {
   vertical: boolean;
 }
 
-export const RadioGroup = styled.div<RadioGroupProps>`
+const RadioGroup = styled.div<RadioGroupProps>`
   display: flex;
   flex-direction: ${props => (props.vertical ? "column" : "row")};
 `;
@@ -27,7 +27,7 @@ export interface RadioLabelProps {
   vertical: boolean;
 }
 
-export const RadioLabel = styled.label<RadioLabelProps>`
+const RadioLabel = styled.label<RadioLabelProps>`
   display: block;
 `;
 
@@ -60,7 +60,7 @@ export interface RadioContainerProps {
   showButtons: boolean;
 }
 
-export const RadioContainer = styled.div<RadioContainerProps>`
+const RadioContainer = styled.div<RadioContainerProps>`
   display: flex;
   align-items: center;
   cursor: ${props => (props.disabled ? "" : "pointer")};
