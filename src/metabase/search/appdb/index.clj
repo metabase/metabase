@@ -45,7 +45,7 @@
   (reset! *indexes* nil))
 
 (defn- sync-tracking-atoms! []
-  (reset! *indexes* (search-index-metadata/indexes :appdb *index-version-id*)))
+  (reset! *indexes* (update-vals (search-index-metadata/indexes :appdb *index-version-id*) keyword)))
 
 ;; This exists only to be mocked.
 (defn- now [] (System/nanoTime))

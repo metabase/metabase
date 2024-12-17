@@ -13,7 +13,7 @@
 
 (t2/deftransforms :model/SearchIndexMetadata
   {:engine mi/transform-keyword
-   :status (mi/transform-validator mi/transform-keyword (partial mi/assert-enum ["pending" "active" "retired"]))})
+   :status (mi/transform-validator mi/transform-keyword (partial mi/assert-enum #{:pending :active :retired}))})
 
 (defn indexes
   "The current 'pending' and 'active' indexes for the given co-ordinates, where they exist."
@@ -21,7 +21,7 @@
   (t2/select-fn->fn :status :index_name :model/SearchIndexMetadata
                     :engine engine
                     :version version
-                    :status [:in ["active" "pending"]]))
+                    :status [:in [:active :pending]]))
 
 (defn create-pending!
   "Create a 'pending' entry, unless one already exists. Return whether it was created."
