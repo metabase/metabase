@@ -50,9 +50,9 @@
   (reset! *indexes* (into {}
                           (for [[status table-name] (search-index-metadata/indexes :appdb *index-version-id*)]
                             (if (exists? table-name)
-                                [status (keyword table-name)]
+                              [status (keyword table-name)]
                                 ;; For debugging, make it clear why we are not tracking the given metadata.
-                                [(keyword (name status) "not-found") (keyword table-name)])))))
+                              [(keyword (name status) "not-found") (keyword table-name)])))))
 
 ;; This exists only to be mocked.
 (defn- now [] (System/nanoTime))
