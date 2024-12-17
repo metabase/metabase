@@ -4,7 +4,6 @@ import { jt, t } from "ttag";
 
 import { skipToken, useGetFieldQuery, useGetTableQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { checkNotNull } from "metabase/lib/types";
 import { Box, Switch } from "metabase/ui";
 import type { FieldId, Parameter, ParameterId } from "metabase-types/api";
 
@@ -280,6 +279,7 @@ const LinkedField = ({ fieldId }: LinkedFieldProps) => {
     error: tableError,
     isLoading: tableIsLoading,
   } = useGetTableQuery(field ? { id: field.table_id } : skipToken);
+  const isTableLoaded = !tableError && !tableIsLoading;
 
   if (fieldError || fieldIsLoading) {
     return (
@@ -290,16 +290,14 @@ const LinkedField = ({ fieldId }: LinkedFieldProps) => {
   return (
     <FieldRoot>
       <FieldLabel>
-        {(tableError || tableIsLoading) && (
+        {!isTableLoaded && (
           <LoadingAndErrorWrapper error={tableError} loading={tableIsLoading} />
         )}
 
-        {!tableError && !tableIsLoading && (
-          <span>{checkNotNull(table).display_name}</span>
-        )}
+        {isTableLoaded && table && <span>{table.display_name}</span>}
       </FieldLabel>
 
-      <div>{checkNotNull(field).display_name}</div>
+      {field && <div>{field.display_name}</div>}
     </FieldRoot>
   );
 };

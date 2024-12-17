@@ -3,6 +3,7 @@ import { connect } from "react-redux";
 import type * as tippy from "tippy.js";
 
 import { getEventTarget } from "metabase/lib/dom";
+import { PopoverWithRef } from "metabase/ui/components/overlays/Popover/PopoverWithRef";
 import { performAction } from "metabase/visualizations/lib/action";
 import type {
   ClickObject,
@@ -15,7 +16,6 @@ import type Question from "metabase-lib/v1/Question";
 import type { Series } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
-import { FlexTippyPopover } from "./ClickActionsPopover.styled";
 import { ClickActionsView } from "./ClickActionsView";
 
 interface ChartClickActionsProps {
@@ -42,6 +42,16 @@ export class ClickActionsPopover extends Component<
   };
 
   instance: tippy.Instance | null = null;
+
+  componentDidUpdate(prevProps: Readonly<ChartClickActionsProps>): void {
+    const { clicked } = this.props;
+    const { popoverAction } = this.state;
+    // Terrible way of doing this, but if when we update, we used to have a clicked object, and now we don't,
+    // and we still have a popoverAction in state, then clear it
+    if (prevProps.clicked && popoverAction && clicked === null) {
+      this.close();
+    }
+  }
 
   close = () => {
     this.setState({ popoverAction: null });
@@ -108,9 +118,7 @@ export class ClickActionsPopover extends Component<
           onChangeCardAndRun={({ nextCard }) => {
             onChangeCardAndRun({ nextCard });
           }}
-          onClose={() => {
-            this.close();
-          }}
+          onClose={this.close}
           series={series}
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}
         />
@@ -120,43 +128,27 @@ export class ClickActionsPopover extends Component<
     const popoverAnchor = this.getPopoverReference(clicked);
 
     return (
-      <FlexTippyPopover
-        reference={popoverAnchor}
-        visible={!!popoverAnchor}
-        onShow={instance => {
-          this.instance = instance;
-        }}
-        onClose={() => {
-          this.close();
-        }}
-        placement="bottom-start"
-        maxWidth={700}
-        offset={[0, 8]}
-        popperOptions={{
-          modifiers: [
-            {
-              name: "preventOverflow",
-              options: {
-                padding: 16,
-                altAxis: true,
-                tether: false,
-              },
-            },
-          ],
-        }}
-        content={
-          popover ? (
-            popover
-          ) : (
-            <ClickActionsView
-              clickActions={clickActions}
-              close={this.close}
-              onClick={this.handleClickAction}
-            />
-          )
-        }
+      <PopoverWithRef
+        anchorEl={popoverAnchor}
+        opened={!!popoverAnchor}
+        onClose={this.close}
+        position="bottom-start"
+        width={700}
+        offset={8}
         {...popoverAction?.popoverProps}
-      />
+      >
+        {popover ? (
+          popover
+        ) : (
+          <ClickActionsView
+            clickActions={clickActions}
+            close={() => {
+              this.close();
+            }}
+            onClick={this.handleClickAction}
+          />
+        )}
+      </PopoverWithRef>
     );
   }
 }

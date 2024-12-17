@@ -101,21 +101,14 @@ jobs:
             oss: getCanonicalVersion(version, 'oss'),
           };
 
-          const ossReleased = await hasBeenReleased({
+          const released = await hasBeenReleased({
             github,
             owner: context.repo.owner,
             repo: context.repo.repo,
             version: versions.oss,
           });
 
-          const eeReleased = await hasBeenReleased({
-            github,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            version: versions.ee,
-          });
-
-          if (!ossReleased || !eeReleased) {
+          if (!released) {
             throw new Error("This version has not been released yet!", version);
           }
 
@@ -285,19 +278,12 @@ jobs:
       run: | # sh
 
         if [[ "${{ matrix.edition }}" == "ee" ]]; then
-          git tag -f ${{ inputs.tag_name }}-ee ${{ needs.check-version.outputs.ee }}
+          git tag -f ${{ inputs.tag_name }}-ee ${{ needs.check-version.outputs.oss }}
           git push origin -f ${{ inputs.tag_name }}-ee
         elif [[ "${{ matrix.edition }}" == "oss" ]]; then
           git tag -f ${{ inputs.tag_name }}-oss ${{ needs.check-version.outputs.oss }}
           git push origin -f ${{ inputs.tag_name }}-oss
         fi
-
-  update-release-log:
-    needs: check-version
-    uses: ./.github/workflows/release-log.yml
-    with:
-      version: ${{ fromJSON(vars.CURRENT_VERSION) }} # cast string to number
-    secrets: inherit
 
   update-version-info:
     runs-on: ubuntu-22.04

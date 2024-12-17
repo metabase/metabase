@@ -61,11 +61,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
           "font-family",
           defaultBrowserFontFamily,
         );
-        cy.findByText("Product ID").should(
-          "have.css",
-          "font-family",
-          "Lato, sans-serif",
-        );
+        cy.findByText("Product ID").should("have.css", "font-family", "Lato");
       });
     });
 
@@ -112,7 +108,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
         cy.findByText(/Failed to fetch the user/).should(
           "have.css",
           "font-family",
-          "Lato, sans-serif",
+          "Lato",
         );
       });
     });
@@ -135,7 +131,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
 
       getSdkRoot()
         .findByText("Product ID")
-        .should("have.css", "font-family", "Impact, sans-serif");
+        .should("have.css", "font-family", "Impact");
     });
 
     it("should fallback to the font from the instance if no fontFamily is set on the theme", () => {
@@ -168,7 +164,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
 
       getSdkRoot()
         .findByText("Product ID")
-        .should("have.css", "font-family", '"Roboto Mono", sans-serif');
+        .should("have.css", "font-family", '"Roboto Mono"');
     });
 
     it("should work with 'Custom' fontFamily, using the font files linked in the instance", () => {
@@ -219,7 +215,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
 
       getSdkRoot()
         .findByText("Product ID")
-        .should("have.css", "font-family", "Custom, sans-serif");
+        .should("have.css", "font-family", "Custom");
     });
   });
 
@@ -235,7 +231,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
       modal()
         .findByText("New dashboard")
         .should("exist")
-        .and("have.css", "font-family", "Lato, sans-serif");
+        .and("have.css", "font-family", "Lato");
 
       // TODO: good place for a visual regression test
     });
@@ -264,7 +260,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
       getSdkRoot()
         .findByText("Select a collection or dashboard")
         .should("exist")
-        .and("have.css", "font-family", "Lato, sans-serif");
+        .and("have.css", "font-family", "Lato");
 
       // TODO: good place for a visual regression test
     });
