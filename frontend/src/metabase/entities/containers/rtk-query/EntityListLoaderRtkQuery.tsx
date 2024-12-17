@@ -1,4 +1,3 @@
-import { bindActionCreators } from "@reduxjs/toolkit";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 import { match } from "ts-pattern";
@@ -236,10 +235,6 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
     });
   });
 
-  const actionCreators = useMemo(() => {
-    return bindActionCreators(entityDefinition.actions, dispatch);
-  }, [entityDefinition.actions, dispatch]);
-
   const wrappedList = useMemo(() => {
     if (!wrapped || !list) {
       return list;
@@ -258,7 +253,6 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
 
   const children = (
     <ComposedComponent
-      {...actionCreators}
       {...props}
       {...{
         [listName || entityDefinition.nameMany]: wrappedList,
