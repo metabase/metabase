@@ -22,7 +22,7 @@ export function addEntityContainers(entity) {
    */
   entity.loadList = ({ query, ...props } = {}) => {
     // TODO: remove this in https://github.com/metabase/metabase/issues/50324
-    if (!entity.rtk) {
+    if (!entity.rtk?.useListQuery) {
       return entity.loadListLegacy({ query, ...props });
     }
 
