@@ -89,8 +89,8 @@
      (cron/schedule
       (cron/cron-schedule (u.cron/schedule-map->cron-string schedule-map))
       (cron/in-time-zone (TimeZone/getTimeZone ^String timezone))
-      ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
-      ;; Just wait until the next sync cycle.
+      ;; If the trigger is misfired, fire it immediately and proceed with the next scheduled time.
+      ;; TODO: upon testing, look like re-firing on startup is not working as expected
       ;;
       ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
       (cron/with-misfire-handling-instruction-fire-and-proceed)))
