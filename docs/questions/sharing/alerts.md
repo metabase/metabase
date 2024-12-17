@@ -22,7 +22,7 @@ To start using alerts, an administrator will need to have set up at least one of
 
 ## Creating an alert
 
-Save your question, click on the sharing icon in the top-right of the screen, and select **Create alert**.
+Save your question, click on the sharing icon in the top-right of the screen, and select **Create alerts**.
 
 ![Get alerts](../images/get-alerts-about-this.png)
 
