@@ -130,6 +130,3 @@
         (is (= {:embedding_client "client-C"
                 :embedding_version "1.33.7"}
                (sdk/include-analytics @m)))))))
-
-(defn ignorable-status []
-  (rand-nth (concat (range 100 199) (range 300 399))))
