@@ -5,9 +5,9 @@
         "type": "object",
         "properties": {
             "for": {
-                "type": "object",
                 "anyOf": [
                     {
+                        "type": "object",
                         "description": "Surface interesting patterns and insights for a pre-defined metric.",
                         "properties": {
                             "metric_id": {
@@ -21,6 +21,7 @@
                         "additionalProperties": false
                     },
                     {
+                        "type": "object",
                         "description": "Generate insights for a table.",
                         "properties": {
                             "table_id": {
@@ -34,6 +35,7 @@
                         "additionalProperties": false
                     },
                     {
+                        "type": "object",
                         "description": "Generate insights for the results of a saved report.",
                         "properties": {
                             "report_id": {
@@ -47,6 +49,7 @@
                         "additionalProperties": false
                     },
                     {
+                        "type": "object",
                         "description": "Generate insights for the results of a query that recently has been run.",
                         "properties": {
                             "query_id": {

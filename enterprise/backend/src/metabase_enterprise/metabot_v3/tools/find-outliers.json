@@ -5,9 +5,9 @@
         "type": "object",
         "properties": {
             "data_source": {
-                "type": "object",
                 "anyOf": [
                     {
+                        "type": "object",
                         "description": "Get outliers for a query result column.",
                         "properties": {
                             "query_id": {
@@ -26,6 +26,7 @@
                         "additionalProperties": false
                     },
                     {
+                        "type": "object",
                         "description": "Get outliers for a report result column.",
                         "properties": {
                             "report_id": {
@@ -44,6 +45,7 @@
                         "additionalProperties": false
                     },
                     {
+                        "type": "object",
                         "description": "Get outliers for a metric",
                         "properties": {
                             "metric_id": {
