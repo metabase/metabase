@@ -67,7 +67,7 @@ export const SankeyChart = ({
 
   useCloseTooltipOnScroll(chartRef);
 
-  const sankeyColorsCss = useSankeyChartColorsClasses(chartModel, settings);
+  const sankeyColorsCss = useSankeyChartColorsClasses(chartModel);
 
   return (
     <>

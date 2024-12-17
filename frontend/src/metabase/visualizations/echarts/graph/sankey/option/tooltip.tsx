@@ -1,21 +1,21 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
 import { renderToString } from "react-dom/server";
+import { t } from "ttag";
 
 import { formatPercent } from "metabase/static-viz/lib/numbers";
 import {
   EChartsTooltip,
   type EChartsTooltipRow,
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
+import { getPercent } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
 import {
   getMarkerColorClass,
   getTooltipBaseOption,
 } from "metabase/visualizations/echarts/tooltip";
+import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
 import type { SankeyChartModel } from "../model/types";
-import { getPercent } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
-import { t } from "ttag";
-import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 
 interface ChartItemTooltipProps {
   chartModel: SankeyChartModel;
