@@ -189,7 +189,7 @@ function language({ engine, completers = [] }: LanguageOptions) {
     autocompletion({
       closeOnBlur: false,
       activateOnTyping: true,
-      activateOnTypingDelay: 250,
+      activateOnTypingDelay: 200,
       override: [completeFromLanguage, ...completers],
     }),
   ];
