@@ -129,6 +129,7 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
     data,
     error: rtkError,
     isFetching,
+    isLoading,
     refetch,
   } = entityDefinition.rtk.useListQuery(entityQuery, {
     refetchOnMountOrArgChange: reload,
@@ -289,7 +290,7 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   if (loadingAndErrorWrapper) {
     return (
       <LoadingAndErrorWrapper
-        loading={!allFetched || isFetching}
+        loading={!allFetched || isLoading}
         error={allError}
         noWrapper
       >
