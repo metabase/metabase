@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useListDatabasesQuery } from "metabase/api";
 import { isPublicCollection } from "metabase/collections/utils";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import SelectList from "metabase/components/SelectList";
@@ -16,6 +17,7 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { connect, useSelector, useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { Button, Flex, Icon, type IconProps } from "metabase/ui";
 import type { Collection, CollectionId } from "metabase-types/api";
 
@@ -27,8 +29,6 @@ interface QuestionPickerInnerProps {
   collectionsById: Record<CollectionId, Collection>;
   getCollectionIcon: (collection: Collection) => IconProps;
 }
-
-// TODO: make sure that user has native query permissions before showing the native query permissions button
 
 function QuestionPickerInner({
   onSelect,
@@ -59,6 +59,14 @@ function QuestionPickerInner({
   const collections = showOnlyPublicCollections
     ? allCollections.filter(isPublicCollection)
     : allCollections;
+
+  const { data } = useListDatabasesQuery();
+  const databases = useMemo(() => data?.data ?? [], [data]);
+  const hasDataAccess = useMemo(() => getHasDataAccess(databases), [databases]);
+  const hasNativeWrite = useMemo(
+    () => getHasNativeWrite(databases),
+    [databases],
+  );
 
   const onNewQuestion = (type: "native" | "notebook") => {
     const newQuestionParams =
@@ -100,24 +108,30 @@ function QuestionPickerInner({
         onChange={handleSearchTextChange}
       />
 
-      <Flex gap="sm" mb="md">
-        <Button
-          variant="outline"
-          className={S.newButton}
-          leftIcon={<Icon name="insight" />}
-          onClick={() => onNewQuestion("notebook")}
-        >
-          {t`New Question`}
-        </Button>
-        <Button
-          variant="outline"
-          className={S.newButton}
-          leftIcon={<Icon name="sql" />}
-          onClick={() => onNewQuestion("native")}
-        >
-          {t`New SQL query`}
-        </Button>
-      </Flex>
+      {(hasDataAccess || hasNativeWrite) && (
+        <Flex gap="sm" mb="md" data-testid="new-button-bar">
+          {hasDataAccess && (
+            <Button
+              variant="outline"
+              className={S.newButton}
+              leftIcon={<Icon name="insight" />}
+              onClick={() => onNewQuestion("notebook")}
+            >
+              {t`New Question`}
+            </Button>
+          )}
+          {hasNativeWrite && (
+            <Button
+              variant="outline"
+              className={S.newButton}
+              leftIcon={<Icon name="sql" />}
+              onClick={() => onNewQuestion("native")}
+            >
+              {t`New SQL query`}
+            </Button>
+          )}
+        </Flex>
+      )}
 
       {!debouncedSearchText && (
         <>
@@ -166,7 +180,6 @@ function QuestionPickerInner({
   );
 }
 
-// TODO: remove entity usage
 export const QuestionPicker = _.compose(
   Collections.load({
     id: () => "root",
@@ -177,11 +190,10 @@ export const QuestionPicker = _.compose(
     entityType: "collections",
     loadingAndErrorWrapper: false,
   }),
-  connect((state, props) => ({
+  connect((state, props: { entity: any /* collection entity instance */ }) => ({
     collectionsById: (
-      (props as any).entity || Collections
+      props.entity || Collections
     ).selectors.getExpandedCollectionsById(state),
-    getCollectionIcon: ((props as any).entity || Collections).objectSelectors
-      .getIcon,
+    getCollectionIcon: (props.entity || Collections).objectSelectors.getIcon,
   })),
 )(QuestionPickerInner);
