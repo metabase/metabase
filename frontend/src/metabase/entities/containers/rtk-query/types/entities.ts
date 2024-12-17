@@ -119,5 +119,5 @@ export interface EntityDefinition<Entity, EntityWrapper> {
 }
 
 export interface ListMetadata {
-  // TODO
+  total?: number;
 }
