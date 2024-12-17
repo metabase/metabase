@@ -7,12 +7,6 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-import {
-  WEBHOOK_TEST_DASHBOARD,
-  WEBHOOK_TEST_HOST,
-  WEBHOOK_TEST_SESSION_ID,
-} from "../../../support/helpers/e2e-notification-helpers";
-
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 const { SMTP_PORT, WEB_PORT } = WEBMAIL_CONFIG;
 
@@ -1122,19 +1116,16 @@ describe("notifications", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    cy.request({
+      failOnStatusCode: false,
+      url: `${H.WEBHOOK_TEST_HOST}/api/session/${H.WEBHOOK_TEST_SESSION_ID}/requests`,
+      method: "DELETE",
+    }).then(response => {
+      cy.log("Deleted requests.");
+    });
   });
 
   describe("Auth", () => {
-    afterEach(() => {
-      cy.request(
-        "DELETE",
-        `${WEBHOOK_TEST_HOST}/api/session/${WEBHOOK_TEST_SESSION_ID}/requests`,
-        { failOnStatusCode: false },
-      ).then(response => {
-        cy.log("Deleted requests.");
-      });
-    });
-
     const COMMON_FIELDS = [
       {
         label: "Webhook URL",
@@ -1214,7 +1205,7 @@ describe("notifications", { tags: "@external" }, () => {
 
         cy.findByRole("heading", { name: "Awesome Hook" }).should("exist");
 
-        cy.visit(WEBHOOK_TEST_DASHBOARD);
+        cy.visit(H.WEBHOOK_TEST_DASHBOARD);
         cy.findByRole("heading", { name: /Requests 1/ }).should("exist");
 
         auth.validate();
@@ -1234,7 +1225,25 @@ describe("notifications", { tags: "@external" }, () => {
 
       cy.findByLabelText("Give it a name").type("Awesome Hook");
       cy.findByLabelText("Description").type("The best hook ever");
+
+      cy.log("should show error responses when testing");
+
+      cy.findByLabelText("Webhook URL").clear().type(H.WEBHOOK_TEST_HOST);
+      cy.button("Send a test").click();
+      cy.findByText("Test response").should("exist");
+      cy.findByTestId("notification-test-response").should(
+        "contain.text",
+        "request-status",
+      );
+      cy.findByTestId("notification-test-response").should(
+        "contain.text",
+        "request-body",
+      );
+
       cy.findByLabelText("Webhook URL").clear().type(H.WEBHOOK_TEST_URL);
+      cy.button("Send a test").click();
+      cy.findByText("Test response").should("not.exist");
+
       cy.button("Create destination").click();
     });
 
