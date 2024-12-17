@@ -2,12 +2,15 @@ name: E2E Cross-version Component Tests for Embedding SDK
 
 on:
   push:
-    branches:
-      - "ci-sdk-re-enable-cross-version-52"
-#  pull_request:
-#    types: [opened, synchronize, reopened, ready_for_review]
-#    branches:
-#      - "release-**"
+    # branches:
+    #   - "release-**"
+    branches-ignore: ['**']  # FIXME: ignores all branches until the workflow is fixed
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    # branches:
+    #   - "release-**"
+    branches-ignore: ['**']  # FIXME: ignores all branches until the workflow is fixed
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -53,9 +56,7 @@ jobs:
               getBuildRequirements,
               getVersionFromReleaseBranch,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
-            // FIXME: revert this once the CI issue is fixed!
-            // const targetBranchName = '${{ github.base_ref || github.ref }}';
-            const targetBranchName = "release-x.52.x"
+            const targetBranchName = '${{ github.base_ref || github.ref }}';
 
             const version = getVersionFromReleaseBranch(targetBranchName);
             const requirements = getBuildRequirements(version);
@@ -116,10 +117,7 @@ jobs:
         with:
           script: | # js
             const { getSdkVersionFromReleaseBranchName } = require('${{ github.workspace }}/release/dist/index.cjs');
-
-            // FIXME: This is for debugging purposes only. TO REVERT.
-            // const branchName = '${{ github.base_ref || github.ref }}';
-            const branchName = "release-x.52.x"
+            const branchName = '${{ github.base_ref || github.ref }}';
 
             const sdk_version = await getSdkVersionFromReleaseBranchName({
               github,
