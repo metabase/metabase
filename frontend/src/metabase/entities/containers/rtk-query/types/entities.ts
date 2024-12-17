@@ -98,6 +98,7 @@ export interface EntityDefinition<Entity, EntityWrapper> {
     getList: Selector<Entity[] | undefined>;
     getListMetadata: Selector<ListMetadata | undefined>;
     getListUnfiltered: Selector<Entity[] | undefined>;
+    getLoaded: Selector<boolean | undefined>;
     getLoading: Selector<boolean | undefined>;
     getObject: Selector<Entity | undefined>;
     getObjectUnfiltered: Selector<Entity | undefined>;
