@@ -356,7 +356,7 @@ interface PublicSettings {
   "google-auth-enabled": boolean;
   gsheets: {
     status: "no-auth" | "auth-complete" | "folder-saved";
-    folder_name: string | null;
+    folder_url: string | null;
   };
   "has-user-setup": boolean;
   "help-link": HelpLinkSetting;
@@ -380,6 +380,7 @@ interface PublicSettings {
   "setup-token": string | null;
   "show-metabase-links": boolean;
   "show-metabot": boolean;
+  "show-google-sheets-integration": boolean;
   "site-locale": string;
   "site-url": string;
   "snowplow-enabled": boolean;
