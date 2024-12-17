@@ -23,7 +23,7 @@ export type StaticDashboardProps = SdkDashboardDisplayProps &
 
 export const StaticDashboardInner = ({
   dashboardId,
-  initialParameterValues = {},
+  initialParameters = {},
   withTitle = true,
   withCardTitle = true,
   withDownloads = false,
@@ -41,7 +41,7 @@ export const StaticDashboardInner = ({
     setRefreshElapsedHook,
   } = useSdkDashboardParams({
     dashboardId,
-    initialParameterValues,
+    initialParameters,
     withTitle,
     withDownloads,
     hiddenParameters,
@@ -55,7 +55,7 @@ export const StaticDashboardInner = ({
     <Box w="100%" ref={ref} className={CS.overflowAuto}>
       <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
-        parameterQueryParams={initialParameterValues}
+        parameterQueryParams={initialParameters}
         hideParameters={displayOptions.hideParameters}
         background={displayOptions.background}
         titled={displayOptions.titled}
