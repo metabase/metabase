@@ -1,6 +1,7 @@
 import { bindActionCreators } from "@reduxjs/toolkit";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useMemo } from "react";
+import { match } from "ts-pattern";
 
 import { skipToken } from "metabase/api";
 import DefaultLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -56,7 +57,7 @@ interface Props<Entity, EntityWrapper> {
   LoadingAndErrorWrapper?: ComponentType<LoadingAndErrorWrapperProps>;
   reload?: boolean;
   requestType?: RequestType;
-  selectorName?: string;
+  selectorName?: "getObject" | "getObjectUnfiltered";
   wrapped?: boolean;
 }
 
@@ -201,7 +202,17 @@ export function EntityObjectLoader<Entity, EntityWrapper>({
   );
 
   const object = useSelector(state => {
-    return entityDefinition.selectors[selectorName](state, entityOptions);
+    return match(selectorName)
+      .with("getObject", () => {
+        return entityDefinition.selectors.getObject(state, entityOptions);
+      })
+      .with("getObjectUnfiltered", () => {
+        return entityDefinition.selectors.getObjectUnfiltered(
+          state,
+          entityOptions,
+        );
+      })
+      .exhaustive();
   });
 
   const fetched = useSelector(state => {

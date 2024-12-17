@@ -20,7 +20,7 @@ export type EntityIdSelector = (
   props: unknown,
 ) => EntityId | undefined;
 
-export type EntityQuery = any;
+export type EntityQuery = unknown;
 
 export type EntityQuerySelector = (state: State, props: unknown) => EntityQuery;
 
@@ -54,10 +54,16 @@ export type EntityType =
 
 export type EntityTypeSelector = (state: State, props: unknown) => EntityType;
 
-export interface EntityOptions {
+export type EntityObjectOptions = {
   entityId: EntityId | undefined;
   requestType: RequestType;
-}
+};
+
+export type EntityListOptions = {
+  entityQuery: EntityQuery;
+};
+
+export type EntityOptions = EntityObjectOptions | EntityListOptions;
 
 export interface EntityDefinition<Entity, EntityWrapper> {
   actions: {
@@ -87,12 +93,14 @@ export interface EntityDefinition<Entity, EntityWrapper> {
     };
   };
   selectors: {
-    getFetched: Selector<boolean | undefined>;
-    getLoading: Selector<boolean | undefined>;
     getError: Selector<unknown | null | undefined>;
+    getFetched: Selector<boolean | undefined>;
+    getList: Selector<Entity[] | undefined>;
     getListMetadata: Selector<ListMetadata | undefined>;
-  } & {
-    [selectorName: string]: Selector<Entity | undefined>;
+    getListUnfiltered: Selector<Entity[] | undefined>;
+    getLoading: Selector<boolean | undefined>;
+    getObject: Selector<Entity | undefined>;
+    getObjectUnfiltered: Selector<Entity | undefined>;
   };
   wrapEntity: (object: Entity, dispatch: Dispatch) => EntityWrapper;
 }
