@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
+import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import FormFooter from "metabase/core/components/FormFooter";
 import {
   Form,
@@ -13,14 +13,15 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { Button, DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
+import { Button } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
+
+import { QUESTION_TITLE_MAX_LENGTH } from "../constants";
 
 const QUESTION_SCHEMA = Yup.object({
   name: Yup.string()
     .required(Errors.required)
-    .max(100, Errors.maxLength)
+    .max(QUESTION_TITLE_MAX_LENGTH, Errors.maxLength)
     .default(""),
   description: Yup.string().nullable().default(null),
   collection_id: Yup.number().nullable().default(null),
@@ -35,8 +36,8 @@ type CopyQuestionProperties = {
 interface CopyQuestionFormProps {
   initialValues: Partial<CopyQuestionProperties>;
   onCancel: () => void;
-  onSubmit: (vals: CopyQuestionProperties) => Promise<Question>;
-  onSaved: (newQuestion: Question) => void;
+  onSubmit: (vals: CopyQuestionProperties) => void;
+  onSaved: () => void;
 }
 
 export const CopyQuestionForm = ({
@@ -54,8 +55,8 @@ export const CopyQuestionForm = ({
   );
 
   const handleDuplicate = async (vals: CopyQuestionProperties) => {
-    const newQuestion = await onSubmit(vals);
-    onSaved?.(newQuestion);
+    await onSubmit(vals);
+    onSaved?.();
   };
 
   return (
@@ -81,11 +82,9 @@ export const CopyQuestionForm = ({
           mb="1.5rem"
           minRows={4}
         />
-        <FormCollectionAndDashboardPicker
-          collectionIdFieldName="collection_id"
-          dashboardIdFieldName="dashboard_id"
-          title={t`Where do you want to save this?`}
-          zIndex={DEFAULT_MODAL_Z_INDEX + 1}
+        <FormCollectionPicker
+          name="collection_id"
+          title={t`Which collection should this go in?`}
         />
         <FormFooter>
           <FormErrorMessage inline />
