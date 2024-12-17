@@ -1,11 +1,11 @@
 import PropTypes from "prop-types";
-import { connect } from "react-redux";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
+import { connect } from "metabase/lib/redux";
 import { turnQuestionIntoModel } from "metabase/query_builder/actions";
 
 import {
