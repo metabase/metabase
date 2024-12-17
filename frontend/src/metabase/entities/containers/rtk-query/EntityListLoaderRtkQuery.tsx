@@ -21,6 +21,7 @@ import type {
   EntityType,
   EntityTypeSelector,
   FetchType,
+  ListMetadata,
   RequestType,
 } from "./types";
 
@@ -31,6 +32,7 @@ interface ChildrenProps<Entity, EntityWrapper> {
   fetched: boolean;
   loaded: boolean;
   loading: boolean;
+  metadata: ListMetadata | undefined;
   /**
    * object is EntityWrapper when Props["wrapped"] is true
    */
@@ -224,6 +226,12 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
     return entityDefinition.selectors.getError(state, entityOptions);
   });
 
+  const metadata = useSelector(state => {
+    return entityDefinition.selectors.getListMetadata(state, {
+      entityQuery,
+    });
+  });
+
   const actionCreators = useMemo(() => {
     return bindActionCreators(entityDefinition.actions, dispatch);
   }, [entityDefinition.actions, dispatch]);
@@ -249,6 +257,7 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
       fetched={fetched}
       loaded={loaded}
       loading={loading || isFetching}
+      metadata={metadata}
       object={wrappedObject}
       reload={refetch}
     />

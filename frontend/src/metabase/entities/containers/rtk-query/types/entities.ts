@@ -90,8 +90,13 @@ export interface EntityDefinition<Entity, EntityWrapper> {
     getFetched: Selector<boolean | undefined>;
     getLoading: Selector<boolean | undefined>;
     getError: Selector<unknown | null | undefined>;
+    getListMetadata: Selector<ListMetadata | undefined>;
   } & {
     [selectorName: string]: Selector<Entity | undefined>;
   };
   wrapEntity: (object: Entity, dispatch: Dispatch) => EntityWrapper;
+}
+
+export interface ListMetadata {
+  // TODO
 }
