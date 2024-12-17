@@ -1756,13 +1756,13 @@
           (is (= 0 (count (filter #{:metabase-search/response-error} @calls)))))
 
         (testing "Bad request (400)"
-          (search-request :crowberto :q " ")
+          (mt/user-http-request :crowberto :get 400 "/search" :q " ")
           (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
           ;; We do not treat client side errors as errors for our alerts.
           (is (= 0 (count (filter #{:metabase-search/response-error} @calls)))))
 
         (testing "Unexpected server error (500)"
           (mt/with-dynamic-redefs [search/search (fn [& _] (throw (Exception.)))]
-            (search-request :crowberto :q "test")
+            (mt/user-http-request :crowberto :get 500 "/search" :q "test")
             (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
             (is (= 1 (count (filter #{:metabase-search/response-error} @calls))))))))))
