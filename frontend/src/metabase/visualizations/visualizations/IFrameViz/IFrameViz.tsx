@@ -6,9 +6,11 @@ import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
+import { getParameterValues } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,
   VirtualDashboardCard,
@@ -43,6 +45,7 @@ export interface IFrameVizProps {
 
 export function IFrameViz({
   dashcard,
+  dashboard,
   isEditing,
   onUpdateVisualizationSettings,
   settings,
@@ -52,6 +55,7 @@ export function IFrameViz({
   isPreviewing,
   onTogglePreviewing,
 }: IFrameVizProps) {
+  const parameterValues = useSelector(getParameterValues);
   const { iframe: iframeOrUrl } = settings;
   const isNew = !!dashcard?.justAdded;
 
@@ -66,6 +70,17 @@ export function IFrameViz({
       onUpdateVisualizationSettings({ iframe: newIFrame });
     },
     [onUpdateVisualizationSettings],
+  );
+
+  const interpolatedSrc = useMemo(
+    () =>
+      fillParametersInText({
+        dashcard,
+        dashboard,
+        parameterValues,
+        text: allowedIframeAttributes?.src,
+      }),
+    [dashcard, dashboard, parameterValues, allowedIframeAttributes?.src],
   );
 
   if (isEditing && !isEditingParameter && !isPreviewing) {
@@ -108,14 +123,15 @@ export function IFrameViz({
       </IFrameEditWrapper>
     );
   }
-  const src = allowedIframeAttributes?.src;
 
-  const hasAllowedIFrameUrl = src && isAllowedIframeUrl(src, allowedHosts);
-  const hasForbiddenIFrameUrl = src && !isAllowedIframeUrl(src, allowedHosts);
+  const hasAllowedIFrameUrl =
+    interpolatedSrc && isAllowedIframeUrl(interpolatedSrc, allowedHosts);
+  const hasForbiddenIFrameUrl =
+    interpolatedSrc && !isAllowedIframeUrl(interpolatedSrc, allowedHosts);
 
   const renderError = () => {
     if (hasForbiddenIFrameUrl && isEditing) {
-      return <ForbiddenDomainError url={src} />;
+      return <ForbiddenDomainError url={interpolatedSrc} />;
     }
     return <GenericError />;
   };
@@ -131,6 +147,7 @@ export function IFrameViz({
           sandbox="allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts"
           referrerPolicy="strict-origin-when-cross-origin"
           {...allowedIframeAttributes}
+          src={interpolatedSrc}
         />
       ) : (
         renderError()
