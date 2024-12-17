@@ -132,7 +132,7 @@
           (let [doc     (render.tu/render-card-as-hickory! card-id)
                 row-els (hik.s/select (hik.s/tag :tr) doc)]
             (is (= [["Eh" "Bee" "Sea" "D" "E"]
-                    ["10%" "9.00E3" "12/10/2022" "---0.12___" "0.667"]]
+                    ["10%" "9E3" "12/10/2022" "---0.12___" "0.667"]]
                    (mapv (fn [row-el] (mapcat :content (:content row-el))) row-els)))))
         (testing "Site Localization Settings are respected in columns."
           (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style      "D/M/YYYY"
@@ -142,7 +142,7 @@
             (let [doc     (render.tu/render-card-as-hickory! card-id)
                   row-els (hik.s/select (hik.s/tag :tr) doc)]
               (is (= [["Eh" "Bee" "Sea" "D" "E"]
-                      ["10%" "9,00E3" "12-10-2022" "---0,12___" "0,667"]]
+                      ["10%" "9E3" "12-10-2022" "---0,12___" "0,667"]]
                      (mapv (fn [row-el] (mapcat :content (:content row-el))) row-els))))))
         (testing "Visibility type on Fields is respected."
           (let [data-map      {:data {:cols [{:name            "A"
