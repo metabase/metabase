@@ -25,20 +25,25 @@
       (GzipCompressorInputStream.)
       (TarArchiveInputStream.)))
 
+(def FILE-TYPES
+  [#"([^/]+)?/$"                               :dir
+   #"/settings.yaml$"                          :settings
+   #"/export.log$"                             :log
+   #"/collections/.*/cards/(.*)\.yaml$"        :card
+   #"/collections/.*/dashboards/(.*)\.yaml$"   :dashboard
+   #"/collections/.*collection/([^/]*)\.yaml$" :collection
+   #"/collections/([^/]*)\.yaml$"              :collection
+   #"/snippets/(.*)\.yaml"                     :snippet
+   #"/databases/.*/schemas/(.*)"               :schema
+   #"/databases/(.*)\.yaml"                    :database])
+
 (defn- file-type
   "Find out entity type by file path"
   [fname]
-  (condp re-find fname
-    #"/$"                                   :dir
-    #"/settings.yaml$"                      :settings
-    #"/export.log$"                         :log
-    #"/collections/.*/cards/.*\.yaml$"      :card
-    #"/collections/.*/dashboards/.*\.yaml$" :dashboard
-    #"/collections/.*\.yaml$"               :collection
-    #"/snippets/.*\.yaml"                   :snippet
-    #"/databases/.*/schemas/"               :schema
-    #"/databases/.*\.yaml"                  :database
-    fname))
+  (some (fn [[re ftype]]
+          (when-let [m (re-find re fname)]
+            [ftype (when (vector? m) (second m))]))
+        (partition 2 FILE-TYPES)))
 
 (defn- log-types
   "Find out entity type by log message"
@@ -47,11 +52,12 @@
        (keep #(second (re-find #"(?:Extracting|Loading|Storing) (\w+)" %)))
        set))
 
-(defn- tar-file-types [f]
+(defn- tar-file-types [f & [raw?]]
   (with-open [tar (open-tar f)]
-    (->> (u.compress/entries tar)
-         (map (fn [^TarArchiveEntry e] (file-type (.getName e))))
-         set)))
+    (cond->> (u.compress/entries tar)
+      true       (mapv (fn [^TarArchiveEntry e] (file-type (.getName e))))
+      (not raw?) (map first)
+      (not raw?) set)))
 
 (defn- extract-one-error [entity-id orig]
   (fn [model-name opts instance]
@@ -83,7 +89,9 @@
           (mt/with-empty-h2-app-db
             (mt/with-temp [Collection    coll  {:name "API Collection"}
                            Dashboard     _     {:collection_id (:id coll)}
-                           Card          card  {:collection_id (:id coll)}]
+                           Card          card  {:collection_id (:id coll)}
+                           Collection    coll2 {:name "Other Collection"}
+                           Card          _     {:collection_id (:id coll2)}]
               (testing "API respects parameters"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :all_collections false :data_model false :settings true)]
@@ -95,6 +103,15 @@
                                               :collection (:id coll) :data_model false :settings false)]
                   (is (= #{:log :dir :dashboard :card :collection}
                          (tar-file-types f)))))
+
+              (testing "We can export two collections"
+                (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
+                                              :collection (:id coll) :collection (:id coll2)
+                                              :data_model false :settings false)]
+                  (is (= 2
+                         (->> (tar-file-types f true)
+                              (filter #(= :collection (first %)))
+                              count)))))
 
               (testing "We can export that collection using entity id"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}

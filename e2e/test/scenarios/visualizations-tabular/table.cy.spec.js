@@ -417,7 +417,7 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
       cy.findByTestId("conditional-formatting-color-selector").click();
 
       H.popover()
-        .findByRole("generic", { name: /#F2A86F/i })
+        .findByRole("button", { name: /#F2A86F/i })
         .click();
 
       cy.button("Add rule").click();

@@ -22,6 +22,7 @@ export type WindowModalProps = BaseModalProps & {
   formModal?: boolean;
   style?: CSSProperties;
   "data-testid"?: string;
+  "aria-labelledby"?: string;
   zIndex?: number;
   trapFocus?: boolean;
 } & {
@@ -99,6 +100,7 @@ export class WindowModal extends Component<WindowModalProps> {
             )}
             role="dialog"
             data-testid="modal"
+            aria-labelledby={this.props["aria-labelledby"]}
           >
             {getModalContent({
               ...this.props,

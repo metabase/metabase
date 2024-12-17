@@ -1,6 +1,10 @@
 import { t } from "ttag";
 
-import { automagicDashboardsApi, dashboardApi } from "metabase/api";
+import {
+  automagicDashboardsApi,
+  dashboardApi,
+  useGetDashboardQuery,
+} from "metabase/api";
 import {
   canonicalCollectionId,
   isRootTrashCollection,
@@ -44,6 +48,12 @@ const Dashboards = createEntity({
 
   displayNameOne: t`dashboard`,
   displayNameMany: t`dashboards`,
+
+  rtk: {
+    getUseGetQuery: () => ({
+      useGetQuery: useGetDashboardQuery,
+    }),
+  },
 
   api: {
     list: (entityQuery, dispatch) =>

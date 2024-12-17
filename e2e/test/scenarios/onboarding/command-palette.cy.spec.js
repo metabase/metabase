@@ -235,4 +235,14 @@ describe("command palette", () => {
       cy.location("pathname").should("eq", "/metric/query");
     });
   });
+
+  it("should show the 'Report an issue' command palette item", () => {
+    cy.visit("/");
+    cy.findByRole("button", { name: /Search/ }).click();
+
+    H.commandPalette().within(() => {
+      H.commandPaletteInput().should("exist").type("Issue");
+      cy.findByText("Report an issue").should("be.visible");
+    });
+  });
 });

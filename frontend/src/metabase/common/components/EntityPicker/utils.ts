@@ -74,7 +74,7 @@ export const computeInitialTabId = <
 
   const initialValueTab =
     initialValue?.model &&
-    tabs.find(tab => tab.models?.includes(initialValue.model as Model));
+    tabs.find(tab => tab.models.includes(initialValue.model as Model));
 
   if (initialValueTab) {
     return initialValueTab.id;

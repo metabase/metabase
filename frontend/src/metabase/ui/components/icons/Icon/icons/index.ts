@@ -61,6 +61,8 @@ import breakout_component from "./breakout.svg?component";
 import breakout_source from "./breakout.svg?source";
 import bubble_component from "./bubble.svg?component";
 import bubble_source from "./bubble.svg?source";
+import bug_component from "./bug.svg?component";
+import bug_source from "./bug.svg?source";
 import burger_component from "./burger.svg?component";
 import burger_source from "./burger.svg?source";
 import calendar_component from "./calendar.svg?component";
@@ -686,6 +688,10 @@ export const Icons = {
   filter: {
     component: filter_component,
     source: filter_source,
+  },
+  bug: {
+    component: bug_component,
+    source: bug_source,
   },
   formula: {
     component: formula_component,
