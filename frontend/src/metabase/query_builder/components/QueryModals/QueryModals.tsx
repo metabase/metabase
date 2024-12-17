@@ -27,7 +27,7 @@ import NewEventModal from "metabase/timelines/questions/containers/NewEventModal
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Alert, Card, User } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 import type { QueryBuilderMode } from "metabase-types/store";
 
 import { CreateAlertModalContent } from "../../../notifications/modals";
@@ -41,8 +41,6 @@ const MenuTarget = forwardRef(function _MenuTarget(
 });
 
 interface QueryModalsProps {
-  questionAlerts: Alert[];
-  user: User;
   modal: QueryModalType;
   modalContext: number;
   question: Question;
@@ -61,8 +59,6 @@ interface QueryModalsProps {
 }
 
 export function QueryModals({
-  questionAlerts,
-  user,
   onSave,
   onCreate,
   updateQuestion,
@@ -80,22 +76,6 @@ export function QueryModals({
 
   const initialCollectionId = useGetDefaultCollectionId();
   const questionWithParameters = useSelector(getQuestionWithParameters);
-
-  const showAlertsAfterQuestionSaved = useCallback(() => {
-    const hasAlertsCreatedByCurrentUser = _.any(
-      questionAlerts,
-      alert => alert.creator.id === user.id,
-    );
-
-    if (hasAlertsCreatedByCurrentUser) {
-      // TODO Atte Keinänen 11/10/17: The question was replaced and there is already an alert created by current user.
-      // Should we show pop up the alerts list in this case or do nothing (as we do currently)?
-      onCloseModal();
-    } else {
-      // HACK: in a timeout because save modal closes itself
-      setTimeout(() => onOpenModal(MODAL_TYPES.CREATE_ALERT));
-    }
-  }, [onCloseModal, onOpenModal, questionAlerts, user.id]);
 
   const onQueryChange = useCallback(
     (query: Lib.Query) => {
@@ -238,26 +218,6 @@ export function QueryModals({
             onAlertCreated={onCloseModal}
           />
         </Modal>
-      );
-    case MODAL_TYPES.SAVE_QUESTION_BEFORE_ALERT:
-      return (
-        <SaveQuestionModal
-          question={question}
-          originalQuestion={originalQuestion}
-          onSave={async question => {
-            await onSave(question);
-            showAlertsAfterQuestionSaved();
-          }}
-          onCreate={async question => {
-            const newQuestion = await onCreate(question);
-            showAlertsAfterQuestionSaved();
-            return newQuestion;
-          }}
-          onClose={onCloseModal}
-          opened={true}
-          multiStep
-          initialCollectionId={initialCollectionId}
-        />
       );
     case MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED:
       return (
