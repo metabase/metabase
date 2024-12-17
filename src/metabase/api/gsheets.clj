@@ -36,12 +36,13 @@
   :visibility :internal
   :type :json
   :getter (fn []
-            (when
-             true
-             ;; TEMP: check the setting when we are ready
-             ;; (setting/get-value-of-type :boolean :show-google-sheets-integration)
-             (or (setting/get-value-of-type :json :gsheets)
-                 {:status :no-auth}))))
+            ;; TEMP: check the setting when we are ready
+            ;; (when
+            ;;   (setting/get-value-of-type :boolean :show-google-sheets-integration)
+            ;;
+            ;; )
+            (or (setting/get-value-of-type :json :gsheets)
+                {:status :no-auth})))
 
 (defn- check-validate-drive-link-format
   "Checks if the given link is a valid Google Drive link. If not, throws an exception."
