@@ -52,8 +52,8 @@ const COMPONENTS_TO_EXPORT: ComponentDefinition[] = [
 
 const MetabaseProviderCode = `
 const MetabaseProvider = ({
-  authConfig,
   children,
+  ...providerProps,
 }) => {
   const Provider = dynamic(
     () =>
@@ -68,7 +68,7 @@ const MetabaseProvider = ({
     }
   );
 
-  return React.createElement(Provider, { authConfig }, children);
+  return React.createElement(Provider, providerProps, children);
 };
 `;
 
