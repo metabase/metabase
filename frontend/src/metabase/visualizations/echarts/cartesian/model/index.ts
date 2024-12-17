@@ -86,6 +86,18 @@ export const getCartesianChartModel = (
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): CartesianChartModel => {
+  //console.log("TSP rows: ", JSON.stringify(rawSeries[0]["data"]["rows"], null, 2));
+
+  rawSeries[0]["data"]["rows"] = [
+    [4, 2013.7750137534229],
+    [5, 1416.1541809989296],
+    [6, 1664.7953491417525],
+    [7, 1164.1494344658406],
+    [1, 1324.9715373165475],
+    [2, 1858.5604813379912],
+    [3, 1706.873936569665],
+  ];
+
   // rawSeries has more than one element when two or more cards are combined on a dashboard
   const hasMultipleCards = rawSeries.length > 1;
   const cardsColumns = getCardsColumns(rawSeries, settings);
@@ -98,16 +110,24 @@ export const getCartesianChartModel = (
     settings,
   );
 
+  //console.log("TSP rawSeries: ", JSON.stringify(rawSeries, null, 2));
+  //console.log("TSP cardsColumns: ", JSON.stringify(cardsColumns, null, 2));
+
   const unsortedDataset = getJoinedCardsDataset(
     rawSeries,
     cardsColumns,
     showWarning,
   );
+
+  //console.log("TSP unsortedDataset: ", JSON.stringify(unsortedDataset, null, 2));
+
   const dataset = sortDataset(
     unsortedDataset,
     settings["graph.x_axis.scale"],
     showWarning,
   );
+
+  //console.log("TSP dataset: ", JSON.stringify(dataset, null, 2));
 
   const sortedSeriesModels = hasMultipleCards
     ? unsortedSeriesModels
@@ -154,6 +174,8 @@ export const getCartesianChartModel = (
     showWarning,
   );
 
+  //console.log("TSP transformedDataSet: ", JSON.stringify(transformedDataset, null, 2));
+
   const {
     seriesLabelsFormatters,
     stackedLabelsFormatters,
@@ -192,7 +214,7 @@ export const getCartesianChartModel = (
     renderingContext,
   );
 
-  return {
+  const result = {
     stackModels,
     dataset: scaledDataset,
     transformedDataset,
@@ -209,4 +231,6 @@ export const getCartesianChartModel = (
     dataDensity,
     groupedSeriesModels,
   };
+  //console.log("TSP cartesian model result: ", JSON.stringify(result, null, 2));
+  return result;
 };

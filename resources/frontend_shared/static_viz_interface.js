@@ -64,11 +64,12 @@ function progress(data, settings, instanceColors) {
   });
 }
 
-function javascript_visualization(rawSeries, dashcardSettings, colors) {
+function javascript_visualization(rawSeries, dashcardSettings, options) {
+  console.log("TSP I AM INSIDE JS VISUALIZATION: ", options)
   const content = StaticViz.RenderChart(
     JSON.parse(rawSeries),
     JSON.parse(dashcardSettings),
-    JSON.parse(colors),
+    JSON.parse(options),
   );
   const type = content.startsWith("<svg") ? "svg" : "html";
 

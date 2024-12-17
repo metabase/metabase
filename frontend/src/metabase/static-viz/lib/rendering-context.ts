@@ -6,13 +6,20 @@ import { createColorGetter } from "../lib/colors";
 
 import { measureTextHeight, measureTextWidth } from "./text";
 
+interface RenderingOptions {
+  applicationColors?: ColorPalette;
+  startOfWeek: string;
+}
+
 export const createStaticRenderingContext = (
-  colors?: ColorPalette,
+  options: RenderingOptions,
 ): RenderingContext => {
-  const getColor = createColorGetter(colors);
+  const { applicationColors, startOfWeek } = options;
+  const getColor = createColorGetter(applicationColors);
 
   return {
     getColor,
+    startOfWeek: startOfWeek,
     measureText: (text, style) => {
       const size =
         typeof style.size === "number" ? style.size : parseInt(style.size);
