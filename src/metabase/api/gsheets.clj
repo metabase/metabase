@@ -60,12 +60,12 @@
 
 (defn- get-temp-url
   "Makes the request to get a temp OAuth url from harbormaster."
-  [metabase-fe-url]
+  [site-url]
   (let [[status response] (hm.client/make-request
                            (->config)
                            :post
                            "/api/v2/mb/connections/temp-url"
-                           {:body {:metabase_url metabase-fe-url}})]
+                           {:body {:metabase_url site-url}})]
     (if (= status :ok)
       (let [temp-url (get-in response [:body :url])]
         (log/infof "Temp Oauth url recieved: %s" temp-url)
