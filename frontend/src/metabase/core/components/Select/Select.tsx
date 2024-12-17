@@ -274,7 +274,7 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
               hasValue={selectedNames.length > 0}
               disabled={disabled}
               {...buttonProps}
-              className={cx(CS.flexFull, buttonProps?.className)}
+              className={CS.flexFull}
             >
               {this.props.buttonText
                 ? this.props.buttonText
