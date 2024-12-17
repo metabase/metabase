@@ -77,22 +77,27 @@
   [{:keys [search-engine search-string] :as search-ctx}]
   ;; Check whether there is a query-able index.
   (when-not (search.index/active-table)
-    ;; Sync, in case we're just out of sync with the database.
-    (when-not (:active (#'search.index/sync-tracking-atoms!))
-      ;; If there's really no index, and we're running in prod - gulp, try to initialize now.
-      (when config/is-prod?
+    (let [index-state  @@#'search.index/*indexes*
+          ;; Sync, in case we're just out of sync with the database.
+          found-active (:active (#'search.index/sync-tracking-atoms!))
+          ;; If there's really no index, and we're running in prod - gulp, try to initialize now.
+          init-now? (and (not found-active) config/is-prod?)]
+      (when init-now?
         (log/warnf "Triggering a late initialization of the %s search index." search-engine)
         (try
           (future
-            (search.engine/init! search-engine {:force-reset? false}))
+           (search.engine/init! search-engine {:force-reset? false}))
           (catch Exception e
-            (log/error e)))))
-    ;; Even if the index exists now, return an error so that we don't obscure that there was an issue.
-    (throw (ex-info "Search Index not found."
-                    {:search-engine search-engine
-                     :db-type       (mdb/db-type)
-                     :version       @#'search.index/*index-version-id*
-                     :index-state   (t2/select :model/SearchIndexMetadata :engine :appdb)})))
+            (log/error e))))
+      ;; Even if the index exists now, return an error so that we don't obscure that there was an issue.
+      (throw (ex-info "Search Index not found."
+                      {:search-engine      search-engine
+                       :db-type            (mdb/db-type)
+                       :version            @#'search.index/*index-version-id*
+                       :forced-init?       init-now?
+                       :index-state-before index-state
+                       :index-state-after  @@#'search.index/*indexes*
+                       :index-metadata     (t2/select :model/SearchIndexMetadata :engine :appdb)}))))
 
   (let [weights (search.config/weights search-ctx)
         scorers (search.scoring/scorers search-ctx)]
