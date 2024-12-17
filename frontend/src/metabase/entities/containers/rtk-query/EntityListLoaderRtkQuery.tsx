@@ -1,8 +1,8 @@
 import { bindActionCreators } from "@reduxjs/toolkit";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useMemo } from "react";
+import { match } from "ts-pattern";
 
-import { skipToken } from "metabase/api";
 import DefaultLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -10,33 +10,34 @@ import {
   setRequestLoaded,
   setRequestLoading,
 } from "metabase/redux/requests";
-import type { Dispatch } from "metabase-types/store";
 
 import type {
   EntityDefinition,
-  EntityId,
-  EntityIdSelector,
   EntityQuery,
   EntityQuerySelector,
   EntityType,
   EntityTypeSelector,
   FetchType,
   ListMetadata,
-  RequestType,
 } from "./types";
 
 interface ChildrenProps<Entity, EntityWrapper> {
-  dispatch: Dispatch;
-  dispatchApiErrorEvent: boolean;
+  allError?: unknown;
+  allFetched?: boolean;
+  allLoaded?: boolean;
+  allLoading?: boolean;
+  // dispatch: Dispatch;
+  // dispatchApiErrorEvent: boolean;
+  entityQuery: EntityQuery;
   error: unknown;
   fetched: boolean;
   loaded: boolean;
   loading: boolean;
-  metadata: ListMetadata | undefined;
   /**
-   * object is EntityWrapper when Props["wrapped"] is true
+   * list item is EntityWrapper when Props["wrapped"] is true
    */
-  object: EntityWrapper | Entity | undefined;
+  list: EntityWrapper[] | Entity[] | undefined;
+  metadata: ListMetadata | undefined;
   reload: () => void;
 }
 
@@ -48,18 +49,20 @@ interface LoadingAndErrorWrapperProps {
 }
 
 interface Props<Entity, EntityWrapper> {
+  allError?: unknown;
+  allFetched?: boolean;
+  allLoaded?: boolean;
+  allLoading?: boolean;
   ComposedComponent: (props: ChildrenProps<Entity, EntityWrapper>) => ReactNode;
   dispatchApiErrorEvent?: boolean;
   entityAlias?: string;
-  entityId: EntityId | EntityIdSelector | undefined;
   entityQuery?: EntityQuery | EntityQuerySelector;
   entityType: EntityType | EntityTypeSelector;
   fetchType?: FetchType;
   loadingAndErrorWrapper?: boolean;
   LoadingAndErrorWrapper?: ComponentType<LoadingAndErrorWrapperProps>;
   reload?: boolean;
-  requestType?: RequestType;
-  selectorName?: string;
+  selectorName?: "getList" | "getListUnfiltered";
   wrapped?: boolean;
 }
 
@@ -73,18 +76,20 @@ const defaultTransformResponse = (data: unknown, _query: EntityQuery) => data;
  * @deprecated use "metabase/api" instead
  */
 export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
+  allError: allErrorProp,
+  allFetched: allFetchedProp,
+  allLoaded: allLoadedProp,
+  allLoading: allLoadingProp,
   ComposedComponent,
   dispatchApiErrorEvent = true,
   entityAlias,
-  entityId: entityIdProp,
   entityQuery: entityQueryProp,
   entityType: entityTypeProp,
   fetchType = "fetch",
   loadingAndErrorWrapper = true,
   LoadingAndErrorWrapper = DefaultLoadingAndErrorWrapper,
   reload = false,
-  requestType = "fetch",
-  selectorName = "getObject",
+  selectorName = "getList",
   wrapped = false,
   ...props
 }: Props<Entity, EntityWrapper>) {
@@ -104,21 +109,10 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
       return entitiesDefinitions[entityType];
     }, [entityType]);
 
-  const entityId = useSelector(state =>
-    typeof entityIdProp === "function"
-      ? entityIdProp(state, props)
-      : entityIdProp,
-  );
-
   const entityQuery = useSelector(state =>
     typeof entityQueryProp === "function"
       ? entityQueryProp(state, props)
       : entityQueryProp,
-  );
-
-  const finalQuery = useMemo(
-    () => ({ id: entityId, ...entityQuery }),
-    [entityId, entityQuery],
   );
 
   const {
@@ -139,26 +133,26 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
     error: rtkError,
     isFetching,
     refetch,
-  } = useGetQuery(entityId != null ? finalQuery : skipToken, {
+  } = useGetQuery(entityQuery, {
     refetchOnMountOrArgChange: reload,
   });
 
   const queryKey = useMemo(
-    () => entityDefinition.getQueryKey(finalQuery),
-    [entityDefinition, finalQuery],
+    () => entityDefinition.getQueryKey(entityQuery),
+    [entityDefinition, entityQuery],
   );
 
-  const objectStatePath = useMemo(() => {
-    if (!entityId) {
-      return [];
-    }
+  // const objectStatePath = useMemo(() => {
+  //   if (!entityId) {
+  //     return [];
+  //   }
 
-    return entityDefinition.getObjectStatePath(entityId);
-  }, [entityDefinition, entityId]);
+  //   return entityDefinition.getObjectStatePath(entityId);
+  // }, [entityDefinition, entityId]);
 
-  const requestStatePath = useMemo(() => {
-    return [...objectStatePath, requestType];
-  }, [objectStatePath, requestType]);
+  // const requestStatePath = useMemo(() => {
+  //   return [...objectStatePath, requestType];
+  // }, [objectStatePath, requestType]);
 
   useEffect(() => {
     if (isFetching) {
@@ -176,7 +170,7 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
 
   useEffect(() => {
     if (data) {
-      const transformed = transformResponse(data, finalQuery);
+      const transformed = transformResponse(data, entityQuery);
       const normalized = entityDefinition.normalize(transformed);
 
       dispatch({ type: action, payload: normalized });
@@ -192,38 +186,42 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
     dispatch,
     data,
     entityDefinition,
-    finalQuery,
+    entityQuery,
     transformResponse,
     requestStatePath,
     queryKey,
   ]);
 
-  const entityOptions = useMemo(
-    () => ({ entityId, requestType }),
-    [entityId, requestType],
-  );
-
-  const object = useSelector(state => {
-    return entityDefinition.selectors[selectorName](state, entityOptions);
+  const list = useSelector(state => {
+    return match(selectorName)
+      .with("getList", () => {
+        return entityDefinition.selectors.getList(state, { entityQuery });
+      })
+      .with("getListUnfiltered", () => {
+        return entityDefinition.selectors.getListUnfiltered(state, {
+          entityQuery,
+        });
+      })
+      .exhaustive();
   });
 
   const fetched = useSelector(state => {
-    const value = entityDefinition.selectors.getFetched(state, entityOptions);
+    const value = entityDefinition.selectors.getFetched(state, { entityQuery });
     return Boolean(value);
   });
 
   const loaded = useSelector(state => {
-    const value = entityDefinition.selectors.getLoaded(state, entityOptions);
+    const value = entityDefinition.selectors.getLoaded(state, { entityQuery });
     return Boolean(value);
   });
 
   const loading = useSelector(state => {
-    const value = entityDefinition.selectors.getLoading(state, entityOptions);
+    const value = entityDefinition.selectors.getLoading(state, { entityQuery });
     return Boolean(value);
   });
 
   const error = useSelector(state => {
-    return entityDefinition.selectors.getError(state, entityOptions);
+    return entityDefinition.selectors.getError(state, { entityQuery });
   });
 
   const metadata = useSelector(state => {
@@ -236,29 +234,40 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
     return bindActionCreators(entityDefinition.actions, dispatch);
   }, [entityDefinition.actions, dispatch]);
 
-  const wrappedObject = useMemo(() => {
-    if (!wrapped || !object) {
-      return object;
+  const wrappedList = useMemo(() => {
+    if (!wrapped || !list) {
+      return list;
     }
 
-    return entityDefinition.wrapEntity(object, dispatch);
-  }, [dispatch, object, entityDefinition, wrapped]);
+    return list.map(object => entityDefinition.wrapEntity(object, dispatch));
+  }, [dispatch, list, entityDefinition, wrapped]);
+
+  // merge props passed in from stacked Entity*Loaders:
+  const allError = error || (allErrorProp == null ? null : allErrorProp);
+  const allFetched =
+    fetched && (allFetchedProp == null ? true : allFetchedProp);
+  const allLoaded = loaded && (allLoadedProp == null ? true : allLoadedProp);
+  const allLoading =
+    loading || (allLoadingProp == null ? false : allLoadingProp);
 
   const children = (
     <ComposedComponent
       {...actionCreators}
       {...props}
       {...{
-        [entityAlias || entityDefinition.nameOne]: wrappedObject,
+        [entityAlias || entityDefinition.nameOne]: wrappedList,
       }}
-      dispatch={dispatch}
-      dispatchApiErrorEvent={dispatchApiErrorEvent}
+      allError={allError}
+      allFetched={allFetched}
+      allLoaded={allLoaded}
+      allLoading={allLoading}
+      entityQuery={entityQuery}
       error={error}
       fetched={fetched}
+      list={wrappedList}
       loaded={loaded}
       loading={loading || isFetching}
       metadata={metadata}
-      object={wrappedObject}
       reload={refetch}
     />
   );
@@ -266,8 +275,8 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   if (loadingAndErrorWrapper) {
     return (
       <LoadingAndErrorWrapper
-        loading={!fetched && entityId != null}
-        error={error}
+        loading={!allFetched || isFetching}
+        error={allError}
         noWrapper
       >
         {children}
