@@ -123,16 +123,15 @@
        (do (log/error "Error getting temp url")
            (throw (ex-info "Error getting temp url." {:response (pr-str response)})))))))
 
-(mu/defn- setup-drive-folder-sync :- [:enum :ok :error]
+(mu/defn- setup-drive-folder-sync :- [:tuple [:enum :ok :error] :map]
   "Start the sync w/ drive folder"
   [drive-folder-url]
   (check-validate-drive-link-format drive-folder-url)
-  (let [[status _response] (hm.client/make-request
-                            (->config)
-                            :post
-                            "/api/v2/mb/connections"
-                            {:type "gdrive" :secret {:resources [drive-folder-url]}})]
-    status))
+  (hm.client/make-request
+   (->config)
+   :post
+   "/api/v2/mb/connections"
+   {:type "gdrive" :secret {:resources [drive-folder-url]}}))
 
 (mu/defn- get-gdrive-connections* :- [:maybe [:set :map]]
   "In practice there can be multiple connections here."
@@ -187,7 +186,7 @@
   "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase."
   [:as {url :body}]
   {url :string}
-  (let [status (setup-drive-folder-sync url)]
+  (let [[status _resp] (setup-drive-folder-sync url)]
     (if (= status :ok)
       (u/prog1 {:status :folder-saved :folder_url url}
         (gsheets! <>))
