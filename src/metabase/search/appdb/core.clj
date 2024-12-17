@@ -99,14 +99,19 @@
                        :index-state-after  @@#'search.index/*indexes*
                        :index-metadata     (t2/select :model/SearchIndexMetadata :engine :appdb)}))))
 
-  (let [weights (search.config/weights search-ctx)
-        scorers (search.scoring/scorers search-ctx)]
-    (->> (search.index/search-query search-string search-ctx [:legacy_input])
-         (add-collection-join-and-where-clauses search-ctx)
-         (search.scoring/with-scores search-ctx scorers)
-         (search.filter/with-filters search-ctx)
-         t2/query
-         (map (partial rehydrate weights (keys scorers))))))
+  (try
+    (let [weights (search.config/weights search-ctx)
+          scorers (search.scoring/scorers search-ctx)]
+      (->> (search.index/search-query search-string search-ctx [:legacy_input])
+           (add-collection-join-and-where-clauses search-ctx)
+           (search.scoring/with-scores search-ctx scorers)
+           (search.filter/with-filters search-ctx)
+           t2/query
+           (map (partial rehydrate weights (keys scorers)))))
+    (catch Exception e
+      ;; Rule out the error coming from stale index metadata.
+      (#'search.index/sync-tracking-atoms!)
+      (throw e))))
 
 (defmethod search.engine/model-set :search.engine/appdb
   [search-ctx]

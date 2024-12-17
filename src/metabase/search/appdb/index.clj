@@ -44,8 +44,13 @@
 (defmethod search.engine/reset-tracking! :search.engine/appdb [_]
   (reset! *indexes* nil))
 
+(declare exists?)
+
 (defn- sync-tracking-atoms! []
-  (reset! *indexes* (update-vals (search-index-metadata/indexes :appdb *index-version-id*) keyword)))
+  (reset! *indexes* (into {}
+                          (for [[status table-name] (search-index-metadata/indexes :appdb *index-version-id*)
+                                :when (exists? table-name)]
+                            [status (keyword table-name)]))))
 
 ;; This exists only to be mocked.
 (defn- now [] (System/nanoTime))
