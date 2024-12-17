@@ -19,7 +19,7 @@ import {
 
 import { OverlaysDemo, type OverlaysDemoProps } from "./OverlaysDemo";
 import { hidden } from "./constants";
-import { findListboxWithOption } from "./utils";
+import { findListboxWithOption } from "./find-utils";
 
 const mockCard = createMockCard();
 const storeInitialState = createMockState({

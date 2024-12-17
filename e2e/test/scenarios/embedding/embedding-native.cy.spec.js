@@ -90,7 +90,7 @@ describe("scenarios > embedding > native questions", () => {
       // Created At: Q2 2023
       H.filterWidget().contains("Created At").click();
       cy.findByTestId("select-year-picker").click();
-      H.popover().last().contains("2023").click();
+      H.selectDropdown().contains("2023").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q2").click();
 

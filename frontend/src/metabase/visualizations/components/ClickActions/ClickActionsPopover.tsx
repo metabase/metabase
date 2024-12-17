@@ -126,6 +126,7 @@ export class ClickActionsPopover extends Component<
     }
 
     const popoverAnchor = this.getPopoverReference(clicked);
+    const columnName = clicked?.column?.display_name;
 
     return (
       <PopoverWithRef
@@ -140,13 +141,15 @@ export class ClickActionsPopover extends Component<
         {popover ? (
           popover
         ) : (
-          <ClickActionsView
-            clickActions={clickActions}
-            close={() => {
-              this.close();
-            }}
-            onClick={this.handleClickAction}
-          />
+          <div data-testid={`click-actions-popover-content-for-${columnName}`}>
+            <ClickActionsView
+              clickActions={clickActions}
+              close={() => {
+                this.close();
+              }}
+              onClick={this.handleClickAction}
+            />
+          </div>
         )}
       </PopoverWithRef>
     );

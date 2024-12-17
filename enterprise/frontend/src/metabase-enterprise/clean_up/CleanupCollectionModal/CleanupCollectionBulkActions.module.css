@@ -1,10 +1,3 @@
 .actionBarContainer {
   margin-left: 0 !important;
 }
-
-.undoContainer {
-  position: absolute;
-  left: 1rem;
-  bottom: 1rem;
-  z-index: 999;
-}
