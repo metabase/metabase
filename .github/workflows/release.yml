@@ -487,9 +487,8 @@ jobs:
       version: ${{ inputs.version }}
       tag_name: ${{ matrix.tag }}
       tag_ee: ${{ contains(matrix.tag, 'v1') }}
-      tag_oss: ${{ contains(matrix.tag, 'v0' ) }}
+      tag_oss: ${{ contains(matrix.tag, 'v0') }}
       dot-x-tag: true
-
 
   trigger-docs-update:
     needs:
