@@ -30,11 +30,11 @@
    (when-not (t2/exists? :model/SearchIndexMetadata
                          :engine engine
                          :version version
-                         :status "pending")
+                         :status :pending)
      (try
        (t2/insert! :model/SearchIndexMetadata {:engine     engine
                                                :version    version
-                                               :status     "pending"
+                                               :status     :pending
                                                :index_name (name index-name)})
        true
        (catch Exception _
@@ -50,11 +50,11 @@
   "If there is 'pending' index, make it 'active'. Return the name of the active index, regardless."
   [engine version]
   (t2/with-transaction [_conn]
-    (when (t2/exists? :model/SearchIndexMetadata :engine engine :version version :status "pending")
-      (t2/delete! :model/SearchIndexMetadata :engine engine :version version :status "retired")
-      (t2/update! :model/SearchIndexMetadata {:engine engine :version version :status "active"} {:status "retired"})
-      (t2/update! :model/SearchIndexMetadata {:engine engine :version version :status "pending"} {:status "active"}))
-    (t2/select-one-fn :index_name :model/SearchIndexMetadata :engine engine :version version :status "active")))
+    (when (t2/exists? :model/SearchIndexMetadata :engine engine :version version :status :pending)
+      (t2/delete! :model/SearchIndexMetadata :engine engine :version version :status :retired)
+      (t2/update! :model/SearchIndexMetadata {:engine engine :version version :status :active} {:status :retired})
+      (t2/update! :model/SearchIndexMetadata {:engine engine :version version :status :pending} {:status :active}))
+    (t2/select-one-fn :index_name :model/SearchIndexMetadata :engine engine :version version :status :active)))
 
 (defn delete-obsolete!
   "Remove metadata corresponding to obsolete Metabase versions.

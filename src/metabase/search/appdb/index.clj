@@ -196,7 +196,7 @@
     (let [{:keys [pending]} (sync-tracking-atoms!)]
       (when pending
         (reset! *indexes* {:pending nil
-                           :active (search-index-metadata/active-pending! :appdb *index-version-id*)}))
+                           :active  (keyword (search-index-metadata/active-pending! :appdb *index-version-id*))}))
       ;; Clean up while we're here
       (delete-obsolete-tables!)
       ;; Did *we* do a rotation?
