@@ -42,7 +42,7 @@
                                              "Content-Type" "application/json"}}
                             body (assoc :body (json/encode body)))
         unparsed-response (try
-                            (-> (str store-api-url (+slash-prefix #p url))
+                            (-> (str store-api-url (+slash-prefix url))
                                 ((->requestor method) request))
                             (catch Exception e
                               (log/errorf e "Error making request to %s" url)
