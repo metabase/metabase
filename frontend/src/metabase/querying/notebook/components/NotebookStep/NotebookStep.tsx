@@ -6,6 +6,7 @@ import ExpandingContent from "metabase/components/ExpandingContent";
 import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { color as c } from "metabase/lib/colors";
+import { Box, Flex } from "metabase/ui";
 import type { Query } from "metabase-lib";
 
 import type {
@@ -16,8 +17,6 @@ import type {
 import { NotebookActionButton } from "./NotebookActionButton";
 import {
   PreviewButton,
-  StepActionsContainer,
-  StepBody,
   StepButtonContainer,
   StepContent,
   StepRoot,
@@ -118,7 +117,7 @@ export function NotebookStep({
           />
         </StepContent>
 
-        <StepBody>
+        <Flex align="center">
           <StepContent>
             <Step
               step={step}
@@ -145,16 +144,16 @@ export function NotebookStep({
               />
             </StepButtonContainer>
           )}
-        </StepBody>
+        </Flex>
 
         {canPreview && isPreviewOpen && (
           <NotebookStepPreview step={step} onClose={closePreview} />
         )}
 
         {actionButtons.length > 0 && !readOnly && (
-          <StepActionsContainer data-testid="action-buttons">
+          <Box mt="sm" data-testid="action-buttons">
             {actionButtons}
-          </StepActionsContainer>
+          </Box>
         )}
       </StepRoot>
     </ExpandingContent>

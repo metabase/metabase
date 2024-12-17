@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
 import { alpha, color, darken, lighten } from "metabase/lib/colors";
-import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 const getPercentage = (number: number): string => {
   return `${number * 100}%`;
@@ -12,7 +11,7 @@ export const StepRoot = styled.div`
   margin-bottom: 0.5rem;
   padding-bottom: 0.5rem;
 
-  ${breakpointMinSmall} {
+  @media screen and (min-width: 40em) {
     margin-bottom: 1rem;
     padding-bottom: 1rem;
   }
@@ -21,11 +20,6 @@ export const StepRoot = styled.div`
 export const StepContent = styled.div`
   width: ${getPercentage(11 / 12)};
   max-width: 75rem;
-`;
-
-export const StepBody = styled.div`
-  display: flex;
-  align-items: center;
 `;
 
 export const StepButtonContainer = styled.div`
