@@ -10138,6 +10138,85 @@ databaseChangeLog:
                   name: dashboard_id
 
   - changeSet:
+      id: v52.2024-12-16T09:19:00
+      author: crisptrutski
+      comment: Metadata about search indexes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: search_index_metadata
+      changes:
+        - createTable:
+            tableName: search_index_metadata
+            remarks: Each entry corresponds to some queryable index, and contains metadata about it.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: engine
+                  type: varchar(64)
+                  remarks: 'The kind of search engine which this index belongs to.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: version
+                  type: varchar(254)
+                  remarks: 'Used to determine metabase compatibility. Format may depend on engine in future.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: index_name
+                  type: varchar(254)
+                  remarks: "The name by which the given engine refers to this particular index, e.g. table name."
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: status
+                  type: varchar(32)
+                  remarks: One of 'pending', 'active', or 'retired'
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: The timestamp of when the index was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the index status was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v52.2024-12-16T09:20:00
+      author: crisptrutski
+      comment: 'Protection against concurrent creation or promotion of indexes.'
+      rollback: # will be removed with the table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: search_index_metadata
+                indexName: idx_search_index_metadata_unique_status
+      changes:
+        - addUniqueConstraint:
+            remarks: Unique entry for each status, from any given metabase instance's perspective.
+            tableName: search_index_metadata
+            constraintName: idx_search_index_metadata_unique_status
+            columnNames: engine, version, status
+
+  - changeSet:
       id: v53.2024-12-10T10:00:00
       author: qnkhuat
       comment: add notification.internal_id
@@ -10204,7 +10283,6 @@ databaseChangeLog:
               ALTER TABLE notification_subscription ALTER COLUMN id RESTART WITH 1;
               ALTER TABLE notification_recipient ALTER COLUMN id RESTART WITH 1;
               ALTER TABLE channel_template ALTER COLUMN id RESTART WITH 1;
-
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
