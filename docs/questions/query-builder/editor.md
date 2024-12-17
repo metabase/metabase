@@ -8,12 +8,12 @@ Metabase includes a graphical query builder that lets you build interactive char
 
 With the query builder you can:
 
-- Pick data
-- Join tables
-- Create custom columns
-- Filter data
-- Summarize and group data
-- Limit results
+- [Pick data](#picking-data)
+- [Join tables](#joining-data)
+- [Create custom columns](#custom-columns)
+- [Filter data](./filters.md)
+- [Summarize and group data](./summarizing-and-grouping.md)
+- [Limit results](#setting-a-row-limit)
 
 When viewing a chart, you can also click through questions to explore the data in greater detail.
 
