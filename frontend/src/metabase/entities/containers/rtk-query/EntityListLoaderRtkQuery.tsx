@@ -3,6 +3,7 @@ import { useEffect, useMemo } from "react";
 import { match } from "ts-pattern";
 
 import DefaultLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { capitalize } from "metabase/lib/formatting";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   setRequestError,
@@ -250,12 +251,14 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   const allLoaded = loaded && (allLoadedProp == null ? true : allLoadedProp);
   const allLoading =
     loading || (allLoadingProp == null ? false : allLoadingProp);
+  const finalListName = listName || entityDefinition.nameMany;
 
   const children = (
     <ComposedComponent
       {...props}
       {...{
-        [listName || entityDefinition.nameMany]: wrappedList,
+        [finalListName]: wrappedList,
+        [`reload${capitalize(finalListName)}`]: refetch,
       }}
       allError={allError}
       allFetched={allFetched}
