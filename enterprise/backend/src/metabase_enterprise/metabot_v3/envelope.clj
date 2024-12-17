@@ -4,6 +4,7 @@
   The 'envelope' holds the context for our conversation with the LLM. Specifically, it bundles up the history, and the
   context into one convenient location, with a simple API for querying and modifying."
   (:require
+   [cheshire.core :as json]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase.util :as u]))
 
@@ -115,6 +116,19 @@
   [{:keys [role tool-call-id]}]
   (and (= role :tool)
        tool-call-id))
+
+(defn find-query
+  "Given an envelope and a query-id, find the query in the history."
+  [e query-id]
+  (->> e
+       full-history
+       (filter is-tool-call-response?)
+       (keep :content)
+       (map #(json/parse-string % keyword))
+       (filter #(= (:type %) "query"))
+       (filter #(= (:query_id %) query-id))
+       first
+       :query))
 
 (defn requires-tool-invocation?
   "Does this envelope require tool call invocation?"
