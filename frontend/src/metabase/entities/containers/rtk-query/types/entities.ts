@@ -73,10 +73,9 @@ export interface EntityDefinition<Entity, EntityWrapper> {
   getQueryKey: (entityQuery: EntityQuery) => string;
   getObjectStatePath: (entityId: EntityId) => string;
   name: string;
+  nameMany: string;
   nameOne: string;
-  normalize: (object: unknown) => {
-    object: unknown;
-  };
+  normalize: (object: unknown) => { object: unknown };
   objectSelectors: {
     getName: (entity: Entity | EntityWrapper) => string;
     getIcon: (entity: Entity | EntityWrapper) => { name: IconName };

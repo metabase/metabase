@@ -26,8 +26,6 @@ interface ChildrenProps<Entity, EntityWrapper> {
   allFetched?: boolean;
   allLoaded?: boolean;
   allLoading?: boolean;
-  // dispatch: Dispatch;
-  // dispatchApiErrorEvent: boolean;
   entityQuery: EntityQuery;
   error: unknown;
   fetched: boolean;
@@ -54,8 +52,6 @@ interface Props<Entity, EntityWrapper> {
   allLoaded?: boolean;
   allLoading?: boolean;
   ComposedComponent: (props: ChildrenProps<Entity, EntityWrapper>) => ReactNode;
-  dispatchApiErrorEvent?: boolean;
-  entityAlias?: string;
   entityQuery?: EntityQuery | EntityQuerySelector;
   entityType: EntityType | EntityTypeSelector;
   fetchType?: FetchType;
@@ -81,8 +77,6 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   allLoaded: allLoadedProp,
   allLoading: allLoadingProp,
   ComposedComponent,
-  dispatchApiErrorEvent = true,
-  entityAlias,
   entityQuery: entityQueryProp,
   entityType: entityTypeProp,
   fetchType = "fetch",
@@ -255,7 +249,7 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
       {...actionCreators}
       {...props}
       {...{
-        [entityAlias || entityDefinition.nameOne]: wrappedList,
+        [entityDefinition.nameMany]: wrappedList,
       }}
       allError={allError}
       allFetched={allFetched}

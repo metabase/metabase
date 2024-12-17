@@ -27,7 +27,6 @@ import type {
 
 interface ChildrenProps<Entity, EntityWrapper> {
   dispatch: Dispatch;
-  dispatchApiErrorEvent: boolean;
   error: unknown;
   fetched: boolean;
   loading: boolean;
@@ -47,7 +46,6 @@ interface LoadingAndErrorWrapperProps {
 
 interface Props<Entity, EntityWrapper> {
   ComposedComponent: (props: ChildrenProps<Entity, EntityWrapper>) => ReactNode;
-  dispatchApiErrorEvent?: boolean;
   entityAlias?: string;
   entityId: EntityId | EntityIdSelector | undefined;
   entityQuery?: EntityQuery | EntityQuerySelector;
@@ -72,7 +70,6 @@ const defaultTransformResponse = (data: unknown, _query: EntityQuery) => data;
  */
 export function EntityObjectLoader<Entity, EntityWrapper>({
   ComposedComponent,
-  dispatchApiErrorEvent = true,
   entityAlias,
   entityId: entityIdProp,
   entityQuery: entityQueryProp,
@@ -249,7 +246,6 @@ export function EntityObjectLoader<Entity, EntityWrapper>({
         [entityAlias || entityDefinition.nameOne]: wrappedObject,
       }}
       dispatch={dispatch}
-      dispatchApiErrorEvent={dispatchApiErrorEvent}
       error={error}
       fetched={fetched}
       loading={loading || isFetching}
