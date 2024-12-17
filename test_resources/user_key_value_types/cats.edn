@@ -1,0 +1,3 @@
+;; this is solely used in tests
+[:multi {:dispatch :key}
+ ["meow" [:map [:value [:maybe :string]]]]]
