@@ -7,6 +7,7 @@ import {
   useGetDatabaseMetadataQuery,
   useGetDatabaseQuery,
   useListDatabaseIdFieldsQuery,
+  useListDatabasesQuery,
 } from "metabase/api";
 import { color } from "metabase/lib/colors";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
@@ -71,6 +72,7 @@ const Databases = createEntity({
         useGetQuery: useGetDatabaseQuery,
       };
     },
+    useListQuery: useListDatabasesQuery,
   },
 
   api: {
