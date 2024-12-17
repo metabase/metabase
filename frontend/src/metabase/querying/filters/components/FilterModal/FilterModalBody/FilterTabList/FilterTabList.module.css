@@ -1,0 +1,4 @@
+.TabsListSidebar {
+  overflow-y: auto;
+  flex-wrap: nowrap;
+}
