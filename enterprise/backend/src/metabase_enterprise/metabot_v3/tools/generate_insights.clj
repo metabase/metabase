@@ -8,9 +8,8 @@
   [_tool-name {what-for :for :as _arguments} context]
   (let [[k id] (some #(find what-for %) [:metric_id :table_id :report_id :query_id])
         entity-type (case k
-                      :metric_id "metric"
+                      (:metric_id :report_id) "question"
                       :table_id "table"
-                      :report_id "card"
                       :query_id (throw (ex-info "Unhandled" {})))]
     {:output (str (public-settings/site-url) "/auto/dashboard/" entity-type "/" id)
      :context context}))
