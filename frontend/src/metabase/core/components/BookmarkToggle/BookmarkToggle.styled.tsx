@@ -1,6 +1,7 @@
 import { keyframes } from "@emotion/react";
 import styled from "@emotion/styled";
 
+import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
@@ -23,7 +24,10 @@ export interface BookmarkIconProps {
   onAnimationEnd: () => void;
 }
 
-export const BookmarkIcon = styled(Icon)<BookmarkIconProps>`
+export const BookmarkIcon = styled(
+  Icon,
+  doNotForwardProps("isBookmarked", "isAnimating"),
+)<BookmarkIconProps>`
   color: ${props => (props.isBookmarked ? color("brand") : "")};
   animation-name: ${props =>
     props.isBookmarked ? expandKeyframes : shrinkKeyframes};
@@ -32,11 +36,7 @@ export const BookmarkIcon = styled(Icon)<BookmarkIconProps>`
   animation-timing-function: linear;
 `;
 
-interface BookmarkButtonProps {
-  isBookmarked: boolean;
-}
-
-export const BookmarkButton = styled(Button)<BookmarkButtonProps>`
+export const BookmarkButton = styled(Button)`
   padding: 0.25rem 0.5rem;
   height: 2rem;
   width: 2rem;

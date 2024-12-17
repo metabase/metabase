@@ -1,5 +1,4 @@
 import dayjs from "dayjs";
-import { connect } from "react-redux";
 import { jt, t } from "ttag";
 
 import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
@@ -13,6 +12,7 @@ import {
 import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { connect } from "metabase/lib/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { useGetBillingInfoQuery } from "metabase-enterprise/api";
 import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";

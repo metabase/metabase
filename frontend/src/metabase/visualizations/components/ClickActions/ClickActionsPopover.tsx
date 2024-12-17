@@ -1,8 +1,8 @@
 import { Component } from "react";
-import { connect } from "react-redux";
 import type * as tippy from "tippy.js";
 
 import { getEventTarget } from "metabase/lib/dom";
+import { connect } from "metabase/lib/redux";
 import { PopoverWithRef } from "metabase/ui/components/overlays/Popover/PopoverWithRef";
 import { performAction } from "metabase/visualizations/lib/action";
 import type {
@@ -126,6 +126,7 @@ export class ClickActionsPopover extends Component<
     }
 
     const popoverAnchor = this.getPopoverReference(clicked);
+    const columnName = clicked?.column?.display_name;
 
     return (
       <PopoverWithRef
@@ -140,13 +141,15 @@ export class ClickActionsPopover extends Component<
         {popover ? (
           popover
         ) : (
-          <ClickActionsView
-            clickActions={clickActions}
-            close={() => {
-              this.close();
-            }}
-            onClick={this.handleClickAction}
-          />
+          <div data-testid={`click-actions-popover-content-for-${columnName}`}>
+            <ClickActionsView
+              clickActions={clickActions}
+              close={() => {
+                this.close();
+              }}
+              onClick={this.handleClickAction}
+            />
+          </div>
         )}
       </PopoverWithRef>
     );

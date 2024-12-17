@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import type { TestConfig } from "yup";
@@ -20,6 +19,7 @@ import {
   FormSwitch,
   FormTextInput,
 } from "metabase/forms";
+import { connect } from "metabase/lib/redux";
 import { PLUGIN_LDAP_FORM_FIELDS } from "metabase/plugins";
 import { Group, Radio, Stack } from "metabase/ui";
 import type { SettingKey, Settings } from "metabase-types/api";

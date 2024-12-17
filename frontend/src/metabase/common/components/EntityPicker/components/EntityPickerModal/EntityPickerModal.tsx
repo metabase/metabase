@@ -11,8 +11,8 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
-import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { Box, Flex, Icon, Modal, Skeleton, TextInput } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import type {
@@ -66,9 +66,6 @@ export const defaultOptions: EntityPickerModalOptions = {
   hasRecents: true,
 };
 
-// needs to be above popovers and bulk actions
-export const ENTITY_PICKER_Z_INDEX = BULK_ACTIONS_Z_INDEX;
-
 export const DEFAULT_RECENTS_CONTEXT: RecentContexts[] = [
   "selections",
   "views",
@@ -104,6 +101,7 @@ export interface EntityPickerModalProps<
   onItemSelect: (item: Item) => void;
   isLoadingTabs?: boolean;
   searchExtraButtons?: ReactNode[];
+  children?: ReactNode;
 }
 
 export function EntityPickerModal<
@@ -128,6 +126,7 @@ export function EntityPickerModal<
   onConfirm,
   onItemSelect,
   isLoadingTabs = false,
+  children,
 }: EntityPickerModalProps<Id, Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchScope, setSearchScope] =
@@ -346,6 +345,8 @@ export function EntityPickerModal<
     { capture: true, once: true },
   );
 
+  const titleId = useUniqueId("entity-picker-modal-title-");
+
   return (
     <Modal.Root
       opened={open}
@@ -361,17 +362,23 @@ export function EntityPickerModal<
       trapFocus={trapFocus}
       closeOnEscape={false} // we're doing this manually in useWindowEvent
       yOffset="10dvh"
-      zIndex={ENTITY_PICKER_Z_INDEX} // needs to be above popovers and bulk actions
     >
       <Modal.Overlay />
-      <ModalContent h="100%" maw="57.5rem" mah="40rem">
+      <ModalContent
+        h="100%"
+        maw="57.5rem"
+        mah="40rem"
+        aria-labelledby={titleId}
+      >
         <Modal.Header
           px="2.5rem"
           pt="1rem"
           pb={hasTabs ? "1rem" : "1.5rem"}
           bg="var(--mb-color-background)"
         >
-          <Modal.Title lh="2.5rem">{title}</Modal.Title>
+          <Modal.Title id={titleId} lh="2.5rem">
+            {title}
+          </Modal.Title>
           <Modal.CloseButton size={21} pos="relative" top="1px" />
         </Modal.Header>
         <ModalBody p="0">
@@ -422,6 +429,7 @@ export function EntityPickerModal<
           ) : (
             <EntityPickerLoadingSkeleton />
           )}
+          {children}
         </ModalBody>
       </ModalContent>
     </Modal.Root>

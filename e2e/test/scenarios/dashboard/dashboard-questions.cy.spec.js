@@ -99,7 +99,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.openQuestionActions();
       H.popover().findByText("Turn into a model").should("not.exist");
       H.popover().findByText("Add to dashboard").should("not.exist");
-      cy.findByRole("banner", { name: "Navigation bar" }).should(
+      cy.findByLabelText("Navigation bar").should(
         "contain.text",
         "Orders in a dashboard",
       );
