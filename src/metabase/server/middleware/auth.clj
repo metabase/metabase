@@ -3,7 +3,7 @@
   is not used as part of the normal `app`; it is instead added selectively to appropriate routes."
   (:require
    [clojure.string :as str]
-   [metabase.models.setting :refer [defsetting]]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [deferred-trs]]))
 
@@ -81,3 +81,19 @@
            :else
            (respond request/response-forbidden)))
    (meta handler)))
+
+(defsetting show-google-sheets-integration
+  "Whether or not to show the user a button that sets up Google Sheets integration."
+  :visibility :public
+  :type :boolean
+  :export? false
+  :doc "When enabled, we show users a button to authenticate with Google to import data from Google Sheets."
+  :setter :none
+  :getter (fn []
+            (and
+             ;; TEMP: check these setting when we are ready
+             ;; (premium-features/is-hosted?)
+             ;; (premium-features/has-feature? :attached-dwh)
+             ;; (premium-features/has-feature? :etl-connections)
+             (some? (static-api-key))
+             (some? (setting/get-value-of-type :string :store-api-url)))))
