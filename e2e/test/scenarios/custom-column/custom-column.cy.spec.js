@@ -773,7 +773,7 @@ describe("scenarios > question > custom column", () => {
     cy.log("custom columns - in");
     H.getNotebookStep("data").button("Custom column").click();
     H.popover()
-      .first()
+      .findByTestId("expression-editor")
       .within(() => {
         H.enterCustomColumnDetails({
           formula: 'in("Gadget", [Vendor], [Category])',
