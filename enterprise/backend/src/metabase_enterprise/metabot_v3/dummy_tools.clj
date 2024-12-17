@@ -228,7 +228,7 @@
   [context]
   (reduce (fn [messages viewed]
             (if-let [{getter-id :id, getter-fn :fn, :keys [id-name]} (-> viewed :type detail-getters)]
-              (let [item-id (:ref viewed)
+              (let [item-id (or (:ref viewed) (u/generate-nano-id))
                     arguments {id-name item-id}
                     content (-> (getter-fn getter-id arguments context)
                                 :output)]
@@ -237,14 +237,56 @@
           []
           (:user-is-viewing context)))
 
+(defn- execute-query
+  [query-id legacy-query]
+  (let [field-id-prefix (str "field_[" query-id "]_")
+        mp (lib.metadata.jvm/application-database-metadata-provider (:database legacy-query))
+        query (lib/query mp legacy-query)]
+    {:type :query
+     :query-id query-id
+     :query legacy-query
+     :result-columns (mapv #(metabot-v3.tools.u/->result-column % field-id-prefix) (lib/returned-columns query))}))
+
+(defn- dummy-run-query
+  [context]
+  (transduce (filter (comp #{:adhoc} :type))
+             (completing (fn [messages {:keys [query]}]
+                           (let [query-id (u/generate-nano-id)
+                                 arguments {:query-id query-id}
+                                 content (execute-query query-id query)]
+                             (into messages (dummy-tool-messages :run-query arguments content)))))
+             []
+             (:user-is-viewing context)))
+
 (def ^:private dummy-tool-registry
   [dummy-get-current-user
-   dummy-get-item-details])
+   dummy-get-item-details
+   dummy-run-query])
 
 (defn invoke-dummy-tools
   "Invoke `tool` with `context` if applicable and return the resulting context."
   [context]
-  (let [context (or (not-empty context)
+  (let [test-query {:database 5
+                    :type :query
+                    :query
+                    {:joins
+                     [{:strategy :left-join
+                       :alias "Products"
+                       :condition
+                       [:=
+                        [:field "PRODUCT_ID" {:base-type :type/Integer}]
+                        [:field 285 {:base-type :type/BigInteger, :join-alias "Products"}]]
+                       :source-table 30}]
+                     :breakout
+                     [[:field 279 {:base-type :type/Float, :join-alias "Products", :binning {:strategy :default}}]
+                      [:field "CREATED_AT" {:base-type :type/DateTime, :temporal-unit :month}]]
+                     :aggregation
+                     [[:min [:field "SUBTOTAL" {:base-type :type/Float}]]
+                      [:avg [:field "SUBTOTAL" {:base-type :type/Float}]]
+                      [:max [:field "SUBTOTAL" {:base-type :type/Float}]]]
+                     :source-table "card__136"
+                     :filter [:> [:field "SUBTOTAL" {:base-type :type/Float}] 50]}}
+        context (or (not-empty context)
                     ;; for testing purposes, pretend the user is viewing a bunch of things at once
                     {:user-is-viewing [{:type :dashboard
                                         :ref 14
@@ -257,8 +299,17 @@
                                        {:type :metric
                                         :ref 135}
                                        {:type :report
-                                        :ref 89}]})]
+                                        :ref 89}
+                                       {:type :adhoc
+                                        :query test-query}]})]
     (reduce (fn [messages tool]
               (into messages (tool context)))
             []
             dummy-tool-registry)))
+
+(comment
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
+            api/*current-user-id* 2
+            api/*is-superuser?* true]
+    (invoke-dummy-tools {}))
+  -)
