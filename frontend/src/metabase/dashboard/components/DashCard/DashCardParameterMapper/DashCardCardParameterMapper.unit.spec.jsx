@@ -120,7 +120,7 @@ describe("DashCardCardParameterMapper", () => {
       expect(getIcon("info")).toBeInTheDocument();
       expect(
         screen.getByText(
-          "You can connect widgets to {{variables}} iframe cards.",
+          "You can connect widgets to {{variables}} in iframe cards.",
         ),
       ).toBeInTheDocument();
     });
