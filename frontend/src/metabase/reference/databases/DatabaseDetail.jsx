@@ -2,13 +2,13 @@
 import cx from "classnames";
 import { useFormik } from "formik";
 import PropTypes from "prop-types";
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import Detail from "metabase/reference/components/Detail";
 import EditHeader from "metabase/reference/components/EditHeader";

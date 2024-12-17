@@ -1,7 +1,6 @@
 import type { Ace } from "ace-builds";
 import * as ace from "ace-builds/src-noconflict/ace";
 import { Component, createRef, forwardRef } from "react";
-import { connect } from "react-redux";
 import slugg from "slugg";
 import { t } from "ttag";
 import _ from "underscore";
@@ -21,6 +20,7 @@ import Questions from "metabase/entities/questions";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import { isEventOverElement } from "metabase/lib/dom";
 import { getEngineNativeAceMode } from "metabase/lib/engine";
+import { connect } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { CARD_TAG_REGEX } from "metabase-lib/v1/queries/NativeQuery";
 import type { Card, CardId, NativeQuerySnippet } from "metabase-types/api";

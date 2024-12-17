@@ -1,7 +1,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { useCallback, useMemo } from "react";
-import { connect } from "react-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
@@ -23,6 +22,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
+import { connect } from "metabase/lib/redux";
 import { Stack } from "metabase/ui";
 
 import {
