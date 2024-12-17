@@ -1,34 +1,35 @@
 (ns metabase.core
   (:require
-    [clojure.string :as str]
-    [clojure.tools.trace :as trace]
-    [environ.core :as env]
-    [java-time.api :as t]
-    [metabase.analytics.prometheus :as prometheus]
-    [metabase.config :as config]
-    [metabase.core.config-from-file :as config-from-file]
-    [metabase.core.initialization-status :as init-status]
-    [metabase.db :as mdb]
-    [metabase.driver.h2]
-    [metabase.driver.mysql]
-    [metabase.driver.postgres]
-    [metabase.embed.settings :as embed.settings]
-    [metabase.events :as events]
-    [metabase.logger :as logger]
-    [metabase.models.cloud-migration :as cloud-migration]
-    [metabase.models.database :as database]
-    [metabase.models.setting :as settings]
-    [metabase.notification.core :as notification]
-    [metabase.plugins :as plugins]
-    [metabase.plugins.classloader :as classloader]
-    [metabase.public-settings :as public-settings]
-    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
-    [metabase.sample-data :as sample-data]
-    [metabase.server.core :as server]
-    [metabase.setup :as setup]
-    [metabase.task :as task]
-    [metabase.troubleshooting :as troubleshooting]
-    [metabase.util :as u]
+   [clojure.string :as str]
+   [clojure.tools.trace :as trace]
+   [environ.core :as env]
+   [java-time.api :as t]
+   [metabase.analytics.prometheus :as prometheus]
+   [metabase.config :as config]
+   [metabase.core.config-from-file :as config-from-file]
+   [metabase.core.initialization-status :as init-status]
+   [metabase.db :as mdb]
+   [metabase.driver.h2]
+   [metabase.driver.mysql]
+   [metabase.driver.postgres]
+   [metabase.embed.settings :as embed.settings]
+   [metabase.encryption :as encryption]
+   [metabase.events :as events]
+   [metabase.logger :as logger]
+   [metabase.models.cloud-migration :as cloud-migration]
+   [metabase.models.database :as database]
+   [metabase.models.setting :as settings]
+   [metabase.notification.core :as notification]
+   [metabase.plugins :as plugins]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.sample-data :as sample-data]
+   [metabase.server.core :as server]
+   [metabase.setup :as setup]
+   [metabase.task :as task]
+   [metabase.troubleshooting :as troubleshooting]
+   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
    (java.lang.management ManagementFactory)))
@@ -121,6 +122,8 @@
   ;; This can happen if a cloud migration process dies during h2 dump.
   (when (cloud-migration/read-only-mode)
     (cloud-migration/read-only-mode! false))
+
+  (encryption/setup-encryption)
 
   (init-status/set-progress! 0.4)
   ;; Set up Prometheus
