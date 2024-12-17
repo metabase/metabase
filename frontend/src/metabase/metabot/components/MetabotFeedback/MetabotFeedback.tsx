@@ -1,7 +1,7 @@
-import { connect } from "react-redux";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
+import { connect } from "metabase/lib/redux";
 import type { MetabotFeedbackType } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

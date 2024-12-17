@@ -1,8 +1,8 @@
 import * as React from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 
 import { useEditItemVerificationMutation } from "metabase/api";
+import { connect } from "metabase/lib/redux";
 import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 import {
   MODERATION_STATUS,

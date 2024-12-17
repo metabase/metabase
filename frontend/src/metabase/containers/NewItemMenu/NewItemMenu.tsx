@@ -1,10 +1,10 @@
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
 import NewItemMenu from "metabase/components/NewItemMenu";
 import Databases from "metabase/entities/databases";
 import Search from "metabase/entities/search";
+import { connect } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import {
   getHasDataAccess,

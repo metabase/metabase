@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { connect } from "react-redux";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
+import { connect } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import type Question from "metabase-lib/v1/Question";

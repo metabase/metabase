@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUser } from "metabase/selectors/user";
 import type Question from "metabase-lib/v1/Question";

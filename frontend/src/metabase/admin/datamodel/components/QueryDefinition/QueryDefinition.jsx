@@ -1,5 +1,4 @@
-import { connect } from "react-redux";
-
+import { connect } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 

@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import { connect } from "react-redux";
 import { msgid, ngettext, t } from "ttag";
 
 import { ArchiveModal } from "metabase/components/ArchiveModal";
+import { connect } from "metabase/lib/redux";
 import { setArchivedQuestion } from "metabase/query_builder/actions";
 
 const mapDispatchToProps = dispatch => ({

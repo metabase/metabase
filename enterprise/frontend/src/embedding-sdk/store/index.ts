@@ -5,9 +5,9 @@ import type {
   ThunkDispatch,
 } from "@reduxjs/toolkit";
 import { useContext } from "react";
-import { useDispatch, useStore } from "react-redux";
+import { useStore } from "react-redux";
 
-import { MetabaseReduxContext } from "metabase/lib/redux";
+import { MetabaseReduxContext, useDispatch } from "metabase/lib/redux";
 import { mainReducers } from "metabase/reducers-main";
 import { getStore } from "metabase/store";
 
