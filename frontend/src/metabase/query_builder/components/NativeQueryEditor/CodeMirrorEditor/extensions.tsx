@@ -11,7 +11,11 @@ import {
   StandardSQL,
   sql,
 } from "@codemirror/lang-sql";
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import {
+  HighlightStyle,
+  foldService,
+  syntaxHighlighting,
+} from "@codemirror/language";
 import {
   Decoration,
   EditorView,
@@ -20,7 +24,7 @@ import {
   drawSelection,
 } from "@codemirror/view";
 import { type Tag, tags } from "@lezer/highlight";
-import type { Extension } from "@uiw/react-codemirror";
+import type { EditorState, Extension } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { getNonce } from "get-nonce";
 import { useMemo } from "react";
@@ -74,6 +78,7 @@ export function useExtensions({
       }),
       highlighting(),
       tagDecorator(),
+      folds(),
     ]
       .flat()
       .filter(isNotNull);
@@ -94,6 +99,70 @@ function nonce() {
     return null;
   }
   return EditorView.cspNonce.of(nonce);
+}
+
+/**
+ * A CodeMirror service that folds code based on opening and closing pairs of parentheses, brackets, and braces.
+ */
+function folds() {
+  const pairs = {
+    "(": ")",
+    "{": "}",
+    "[": "]",
+  };
+
+  return foldService.of(function (
+    state: EditorState,
+    from: number,
+    to: number,
+  ) {
+    const line = state.doc.sliceString(from, to);
+    const openIndex = line.search(/[({\[]/);
+    if (openIndex === -1) {
+      return null;
+    }
+
+    const left = line.at(openIndex);
+    if (!left || !(left in pairs)) {
+      return null;
+    }
+
+    const right = pairs[left as keyof typeof pairs];
+
+    const start = from + openIndex;
+    const doc = state.doc.sliceString(start);
+
+    let end = null;
+    let open = 0;
+    for (let idx = 1; idx < doc.length; idx++) {
+      const char = doc.charAt(idx);
+      if (char === left) {
+        open++;
+        continue;
+      }
+      if (char === right && open > 0) {
+        open--;
+        continue;
+      }
+      if (char === right && open === 0) {
+        end = start + idx;
+        break;
+      }
+    }
+
+    if (end === null) {
+      return null;
+    }
+
+    if (state.doc.lineAt(start + 1).number === state.doc.lineAt(end).number) {
+      return null;
+    }
+
+    return {
+      from: start + 1,
+      to: end,
+    };
+  });
 }
 
 function fonts() {
