@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
-import { connect } from "react-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import Users from "metabase/entities/users";
+import { connect } from "metabase/lib/redux";
 import { fetchPulseFormInput } from "metabase/notifications/pulse/actions";
 import { PulseEditChannels } from "metabase/notifications/pulse/components/PulseEditChannels";
 import { getPulseFormInput } from "metabase/notifications/pulse/selectors";
