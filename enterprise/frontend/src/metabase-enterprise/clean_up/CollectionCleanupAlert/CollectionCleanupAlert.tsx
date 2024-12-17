@@ -1,6 +1,7 @@
 import { c } from "ttag";
 
 import { skipToken } from "metabase/api";
+import { useUserSetting } from "metabase/common/hooks";
 import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
@@ -27,9 +28,12 @@ export const CollectionCleanupAlert = ({
 }: {
   collection: Collection;
 }) => {
+  const [dismissed, setDismissed] = useUserSetting(
+    "dismissed-collection-cleanup-banner",
+  );
   const isAdmin = useSelector(getUserIsAdmin);
   const shouldFetchStaleItems =
-    isAdmin && PLUGIN_COLLECTIONS.canCleanUp(collection);
+    isAdmin && !dismissed && PLUGIN_COLLECTIONS.canCleanUp(collection);
 
   const {
     data: staleItems,
@@ -47,7 +51,7 @@ export const CollectionCleanupAlert = ({
 
   const hasSomethingToCleanUp = !!staleItems?.total;
 
-  if (isLoading || error || !hasSomethingToCleanUp) {
+  if (isLoading || error || dismissed || !hasSomethingToCleanUp) {
     return null;
   }
 
@@ -55,12 +59,17 @@ export const CollectionCleanupAlert = ({
     <Alert
       data-testid="cleanup-alert"
       icon={<Icon name="ai" size={16} />}
+      withCloseButton
+      onClose={() => setDismissed(true)}
       styles={{
         root: { padding: 0, marginTop: "-.5rem", marginBottom: "2rem" },
         icon: { marginRight: ".5rem" },
         wrapper: {
           backgroundColor: color("brand-lighter"),
           padding: "1rem 1.5rem",
+        },
+        closeButton: {
+          color: "var(--mb-color-text-dark)",
         },
       }}
     >
