@@ -20,6 +20,8 @@ import type {
   EntityType,
   EntityTypeSelector,
   ListMetadata,
+  ReloadInterval,
+  ReloadIntervalSelector,
 } from "./types";
 
 interface ChildrenProps<Entity, EntityWrapper> {
@@ -59,6 +61,7 @@ interface Props<Entity, EntityWrapper> {
   loadingAndErrorWrapper?: boolean;
   LoadingAndErrorWrapper?: ComponentType<LoadingAndErrorWrapperProps>;
   reload?: boolean;
+  reloadInterval?: ReloadInterval | ReloadIntervalSelector<Entity>;
   selectorName?: "getList" | "getListUnfiltered";
   wrapped?: boolean;
   onLoaded?: (list: Entity[]) => void;
@@ -98,6 +101,7 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   loadingAndErrorWrapper = true,
   LoadingAndErrorWrapper = DefaultLoadingAndErrorWrapper,
   reload = false,
+  reloadInterval: reloadIntervalProp,
   selectorName = "getList",
   wrapped = false,
   onLoaded,
@@ -125,6 +129,65 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
       : entityQueryProp,
   );
 
+  const list = useSelector(state => {
+    return match(selectorName)
+      .with("getList", () => {
+        return entityDefinition.selectors.getList(state, { entityQuery });
+      })
+      .with("getListUnfiltered", () => {
+        return entityDefinition.selectors.getListUnfiltered(state, {
+          entityQuery,
+        });
+      })
+      .exhaustive();
+  });
+
+  const fetched = useSelector(state => {
+    const value = entityDefinition.selectors.getFetched(state, {
+      entityQuery,
+    });
+    return Boolean(value);
+  });
+
+  const loaded = useSelector(state => {
+    const value = entityDefinition.selectors.getLoaded(state, {
+      entityQuery,
+    });
+    return Boolean(value);
+  });
+
+  const loading = useSelector(state => {
+    const value = entityDefinition.selectors.getLoading(state, {
+      entityQuery,
+    });
+    return Boolean(value);
+  });
+
+  const error = useSelector(state => {
+    return entityDefinition.selectors.getError(state, { entityQuery });
+  });
+
+  const metadata = useSelector(state => {
+    return entityDefinition.selectors.getListMetadata(state, {
+      entityQuery,
+    });
+  });
+
+  const wrappedList = useMemo(() => {
+    if (!wrapped || !list) {
+      return list;
+    }
+
+    return list.map(object => entityDefinition.wrapEntity(object, dispatch));
+  }, [dispatch, list, entityDefinition, wrapped]);
+
+  const reloadInterval = useSelector(state => {
+    if (typeof reloadIntervalProp === "function") {
+      return reloadIntervalProp(state, props, list);
+    }
+    return reloadIntervalProp;
+  });
+
   const {
     data,
     error: rtkError,
@@ -132,6 +195,7 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
     isLoading,
     refetch,
   } = entityDefinition.rtk.useListQuery(entityQuery, {
+    pollingInterval: reloadInterval,
     refetchOnMountOrArgChange: reload,
   });
 
@@ -209,52 +273,6 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
       onLoadedRef.current?.(data);
     }
   }, [data, onLoadedRef]);
-
-  const list = useSelector(state => {
-    return match(selectorName)
-      .with("getList", () => {
-        return entityDefinition.selectors.getList(state, { entityQuery });
-      })
-      .with("getListUnfiltered", () => {
-        return entityDefinition.selectors.getListUnfiltered(state, {
-          entityQuery,
-        });
-      })
-      .exhaustive();
-  });
-
-  const fetched = useSelector(state => {
-    const value = entityDefinition.selectors.getFetched(state, { entityQuery });
-    return Boolean(value);
-  });
-
-  const loaded = useSelector(state => {
-    const value = entityDefinition.selectors.getLoaded(state, { entityQuery });
-    return Boolean(value);
-  });
-
-  const loading = useSelector(state => {
-    const value = entityDefinition.selectors.getLoading(state, { entityQuery });
-    return Boolean(value);
-  });
-
-  const error = useSelector(state => {
-    return entityDefinition.selectors.getError(state, { entityQuery });
-  });
-
-  const metadata = useSelector(state => {
-    return entityDefinition.selectors.getListMetadata(state, {
-      entityQuery,
-    });
-  });
-
-  const wrappedList = useMemo(() => {
-    if (!wrapped || !list) {
-      return list;
-    }
-
-    return list.map(object => entityDefinition.wrapEntity(object, dispatch));
-  }, [dispatch, list, entityDefinition, wrapped]);
 
   // merge props passed in from stacked Entity*Loaders:
   const allError = error || (allErrorProp == null ? null : allErrorProp);

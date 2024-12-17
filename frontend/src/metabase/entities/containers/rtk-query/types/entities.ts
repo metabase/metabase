@@ -24,6 +24,14 @@ export type EntityQuery = unknown;
 
 export type EntityQuerySelector = (state: State, props: unknown) => EntityQuery;
 
+export type ReloadInterval = number;
+
+export type ReloadIntervalSelector<Entity> = (
+  state: State,
+  props: unknown,
+  list: Entity[] | undefined,
+) => ReloadInterval | undefined;
+
 /**
  * Corresponds to the "name" parameter passed to "createEntity" function.
  * There should be an entry here for every "createEntity" function call.
