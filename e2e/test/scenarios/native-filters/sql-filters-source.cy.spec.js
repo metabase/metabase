@@ -517,9 +517,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       H.popover().last().findByText("Custom Label").click();
       H.fieldValuesValue(0)
         .should("be.visible")
-        // TODO: this should be Custom Label
-        // .should("contain", "Custom Label");
-        .should("contain", "1018947080336");
+        .should("contain", "Custom Label");
       H.popover().button("Add filter").click();
 
       cy.findByLabelText("Tag").should("contain.text", "Custom Label");
@@ -542,9 +540,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       H.popover().last().findByText("Custom Label").click();
       H.fieldValuesValue(0)
         .should("be.visible")
-        // TODO: this should be Custom Label
-        // .should("contain", "Custom Label");
-        .should("contain", "1018947080336");
+        .should("contain", "Custom Label");
       H.popover().button("Add filter").click();
 
       cy.findByLabelText("Tag").should("contain.text", "Custom Label");
@@ -567,9 +563,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       H.popover().last().findByText("Custom Label").click();
       H.fieldValuesValue(0)
         .should("be.visible")
-        // TODO: this should be Custom Label
-        // .should("contain", "Custom Label");
-        .should("contain", "1018947080336");
+        .should("contain", "Custom Label");
       H.popover().button("Add filter").click();
 
       cy.findByLabelText("Tag").should("contain.text", "Custom Label");

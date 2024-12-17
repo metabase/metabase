@@ -46,6 +46,7 @@ import {
   dedupeValues,
   getNonVirtualFields,
   getTokenFieldPlaceholder,
+  getValue,
   getValuesMode,
   hasList,
   isExtensionOfPreviousSearch,
@@ -360,14 +361,17 @@ export function FieldValuesWidgetInner({
   };
 
   if (!valueRenderer) {
-    valueRenderer = (value: string | number) =>
-      renderValue({
+    valueRenderer = (value: string | number) => {
+      const option = options.find(option => getValue(option) === value);
+      return renderValue({
         fields,
         formatOptions,
         value,
         autoLoad: true,
         compact: false,
+        displayValue: option?.[1],
       });
+    };
   }
 
   if (!optionRenderer) {
