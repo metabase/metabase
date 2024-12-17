@@ -71,38 +71,10 @@
   (t/minus (t/offset-date-time)
            (t/duration duration (keyword unit))))
 
-(defn- duration-base-queries-to-rerun-honeysql
-  "HoneySQL query for finding the the base query definitions we should run for a set of cards (i.e. the unparameterized
-  queries)."
-  [configs->card-ids]
-  {:select-distinct [:q.query [:qe.card_id :card-id]]
-   :from            [[(t2/table-name :model/Query) :q]]
-   :join            [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]
-                     [(t2/table-name :model/QueryCache) :qc] [:= :qc.query_hash :qe.cache_hash]]
-   :where           (let [clauses
-                          (map
-                           (fn [[{:keys [config]} card-ids]]
-                             (let [rerun-cutoff (duration-ago config)]
-                               [:and
-                                ;; Is the query_execution row associated with a cached card or dashboard?
-                                [:in :qe.card_id (set card-ids)]
-                                ;; Is the existing cache entry for the query expired?
-                                [:<= :qc.updated_at rerun-cutoff]
-                                ;; This is a safety check so that we don't scan all of query_execution -- if a query
-                                ;; has not been excuted at all in the last month (including cache hits) we won't bother
-                                ;; refreshing it again.
-                                [:>= :qe.started_at (duration-ago {:duration 30 :unit "days"})]
-                                [:= :qe.parameterized false]
-                                [:= :qe.error nil]
-                                [:= :qe.is_sandboxed false]]))
-                           configs->card-ids)]
-                      (if (> 1 (count clauses))
-                        (into [:or] clauses)
-                        (first clauses)))})
-
-(defn- duration-parameterized-queries-to-rerun-honeysql
-  "HoneySQL query for selecting parameterized query definitions that should be rerun, given a list of :duration cache configs."
-  [configs->card-ids]
+(defn- duration-queries-to-rerun-honeysql
+  "HoneySQL query for selecting query definitions that should be rerun, given a list of :duration cache configs.
+  Executed twice, once to find parameterized queries and once to find non-parameterized queries."
+  [configs->card-ids parameterized?]
   (let [queries
         (for [[{:keys [config]} card-ids] configs->card-ids]
           (let [rerun-cutoff (duration-ago config)]
@@ -120,13 +92,16 @@
                          ;; has not been excuted at all in the last month (including cache hits) we won't bother
                          ;; refreshing it again.
                          [:>= :qe.started_at (duration-ago {:duration 30 :unit "days"})]
-                         [:= :qe.parameterized true]
-                         ;; Only rerun a parameterized query if it's had a cache hit within the last caching window
-                         [:= :qe.cache_hit true]
-                         ;; Don't factor the last cache refresh into whether we should rerun a parameterized query
-                         [:not= :qe.context (name :cache-refresh)]
                          [:= :qe.error nil]
-                         [:= :qe.is_sandboxed false]]
+                         [:= :qe.is_sandboxed false]
+                         (if parameterized?
+                           [:and
+                             [:= :qe.parameterized true]
+                             ;; Only rerun a parameterized query if it's had a cache hit within the last caching window
+                             [:= :qe.cache_hit true]
+                             ;; Don't factor the last cache refresh into whether we should rerun a parameterized query
+                             [:not= :qe.context (name :cache-refresh)]]
+                           [:= :qe.parameterized false])]
               :group-by [:q.query_hash :q.query :qe.card_id]}}))]
     {:select [:u.query :u.card-id :u.count]
      :from   [[{:union queries} :u]]}))
@@ -170,8 +145,8 @@
   (let [cache-configs     (t2/select :model/CacheConfig :strategy :duration :refresh_automatically true)
         configs->card-ids (cache-configs->card-ids cache-configs)]
     (when (seq cache-configs)
-      (let [base-queries          (t2/select :model/Query (duration-base-queries-to-rerun-honeysql configs->card-ids))
-            parameterized-queries (t2/select :model/Query (duration-parameterized-queries-to-rerun-honeysql configs->card-ids))]
+      (let [base-queries          (t2/select :model/Query (duration-queries-to-rerun-honeysql configs->card-ids false))
+            parameterized-queries (t2/select :model/Query (duration-queries-to-rerun-honeysql configs->card-ids true))]
         (concat base-queries (select-parameterized-queries parameterized-queries))))))
 
 (defn- maybe-refresh-duration-caches!
