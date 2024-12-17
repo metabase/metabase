@@ -10160,7 +10160,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: engine
-                  type: varchar(254)
+                  type: varchar(64)
                   remarks: 'The kind of search engine which this index belongs to.'
                   constraints:
                     nullable: false
