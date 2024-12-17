@@ -1,1 +1,1 @@
-export const monospaceFontFamily = `"Monaco", "Menlo", "Ubuntu Mono", monospace`;
+export const monospaceFontFamily = `"Monaco", "Menlo", "Ubuntu Mono", "Consolas", "Source Code Pro", "source-code-pro", monospace`;
