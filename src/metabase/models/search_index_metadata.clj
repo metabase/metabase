@@ -13,7 +13,7 @@
 
 (t2/deftransforms :model/SearchIndexMetadata
   {:engine mi/transform-keyword
-   :status mi/transform-keyword})
+   :status (mi/transform-validator mi/transform-keyword (partial mi/assert-enum ["pending" "active" "retired"]))})
 
 (defn indexes
   "The current 'pending' and 'active' indexes for the given co-ordinates, where they exist."
