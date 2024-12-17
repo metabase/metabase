@@ -22,7 +22,7 @@
                     {:order-by [[:started_at :desc]]}))
 
 (deftest e2e-test
-  (notification.tu/with-notification-testing-setup
+  (notification.tu/with-notification-testing-setup!
     (mt/with-temp-scheduler!
       (task/init! ::task.notification/SendNotifications)
       (mt/test-helpers-set-global-values!
