@@ -226,8 +226,14 @@ export const getTabularPreviewSeries = createSelector(
   },
 );
 
+export const getCurrentVisualizerState = getCurrentHistoryItem;
+
+export const getIsDirty = createSelector([getCurrentVisualizerState], state =>
+  checkDirty(state),
+);
+
 export const getVisualizerUrlHash = createSelector(
-  [getCurrentHistoryItem],
+  [getCurrentVisualizerState],
   state => getStateHash(state),
 );
 
@@ -241,11 +247,15 @@ export const getFutureVisualizerUrlHashes = createSelector(
   items => items.map(getStateHash),
 );
 
-function getStateHash(state: VisualizerHistoryItem) {
-  const isDirty =
+function checkDirty(state: VisualizerHistoryItem) {
+  return (
     !!state.display ||
     state.columns.length > 0 ||
     Object.keys(state.settings).length > 0 ||
-    Object.keys(state.columnValuesMapping).length > 0;
-  return isDirty ? utf8_to_b64(JSON.stringify(state)) : "";
+    Object.keys(state.columnValuesMapping).length > 0
+  );
+}
+
+function getStateHash(state: VisualizerHistoryItem) {
+  return checkDirty(state) ? utf8_to_b64(JSON.stringify(state)) : "";
 }

@@ -26,6 +26,7 @@ import {
   setDraggedItem,
 } from "metabase/visualizer/visualizer.slice";
 import type { VisualizationDisplay } from "metabase-types/api";
+import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import { DataImporter } from "../DataImporter";
 import { DataManager } from "../DataManager";
@@ -35,7 +36,11 @@ import { VisualizationCanvas } from "../VisualizationCanvas";
 import { VisualizationPicker } from "../VisualizationPicker";
 import { VizSettingsSidebar } from "../VizSettingsSidebar/VizSettingsSidebar";
 
-export const Visualizer = () => {
+interface VisualizerProps {
+  onSave?: (visualization: VisualizerHistoryItem) => void;
+}
+
+export const Visualizer = ({ onSave }: VisualizerProps) => {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
   const display = useSelector(getVisualizationType);
@@ -105,7 +110,7 @@ export const Visualizer = () => {
       onDragEnd={handleDragEnd}
     >
       <Flex direction="column" w="100%" h="100%">
-        <Header />
+        <Header onSave={onSave} />
         <Flex style={{ overflow: "hidden", flexGrow: 1 }}>
           <Flex direction="column" miw={320}>
             <Box h="50%" p={10} pr={0} style={{ overflowY: "hidden" }}>
@@ -116,7 +121,6 @@ export const Visualizer = () => {
             </Box>
           </Flex>
           <Box
-            component="main"
             w="100%"
             m={10}
             px="xl"
