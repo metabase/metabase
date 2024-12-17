@@ -48,3 +48,8 @@
         "..."
         (when (< (+ end-limit start-limit) cnt)
           (subs s (- cnt end-limit) cnt)))))))
+
+(defn valid-uuid?
+  "True if the given string is formatted like a UUID"
+  [s] (try (java.util.UUID/fromString s) true
+           (catch Exception _e false)))
