@@ -1,6 +1,6 @@
 (ns metabase.models.search-index-metadata
   (:require
-   [metabase.db :as mdb]
+   [java-time.api :as t]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -74,8 +74,4 @@
                                  ;; Drop those older than 1 day, unless we are using them, or they are the most recent.
                                  [:and
                                   [:not-in :version (filter some? [our-version (first most-recent)])]
-                                  [:< :updated_at
-                                   (case (mdb/db-type)
-                                     :h2       [:raw "DATEADD(DAY, -1, CURRENT_TIMESTAMP)"]
-                                     :postgres [:raw "CURRENT_TIMESTAMP - INTERVAL '1 day'"]
-                                     :mysql    [:raw "CURRENT_TIMESTAMP - INTERVAL 1 day"])]]]})))
+                                  [:< :updated_at (t/minus (t/zoned-date-time) (t/days 1))]]]})))
