@@ -86,18 +86,6 @@ export const getCartesianChartModel = (
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): CartesianChartModel => {
-  /*
-  rawSeries[0]["data"]["rows"] = [
-    [4, 2013.7750137534229],
-    [5, 1416.1541809989296],
-    [6, 1664.7953491417525],
-    [7, 1164.1494344658406],
-    [1, 1324.9715373165475],
-    [2, 1858.5604813379912],
-    [3, 1706.873936569665],
-  ];
-  */
-
   // rawSeries has more than one element when two or more cards are combined on a dashboard
   const hasMultipleCards = rawSeries.length > 1;
   const cardsColumns = getCardsColumns(rawSeries, settings);
@@ -115,7 +103,6 @@ export const getCartesianChartModel = (
     cardsColumns,
     showWarning,
   );
-
   const dataset = sortDataset(
     unsortedDataset,
     settings["graph.x_axis.scale"],
