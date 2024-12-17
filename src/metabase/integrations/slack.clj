@@ -9,7 +9,7 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -118,8 +118,8 @@
 (defn- handle-error [body]
   (let [invalid-token? (slack-token-error-codes (:error body))
         message        (if invalid-token?
-                         (trs "Invalid token")
-                         (trs "Slack API error: {0}" (:error body)))
+                         "Invalid token"
+                         (format "Slack API error: %s" (:error body)))
         error          (if invalid-token?
                          {:error-code (:error body)
                           :errors     {:slack-token message}}

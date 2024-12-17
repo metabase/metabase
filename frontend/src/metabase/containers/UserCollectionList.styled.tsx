@@ -2,10 +2,6 @@ import styled from "@emotion/styled";
 
 import { GridItem } from "metabase/components/Grid";
 
-export const ListRoot = styled.div`
-  padding: 0 4rem;
-`;
-
 export const ListHeader = styled.div`
   padding: 1rem 0;
 `;

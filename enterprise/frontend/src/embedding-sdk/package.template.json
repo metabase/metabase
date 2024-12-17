@@ -1,6 +1,6 @@
 {
   "name": "@metabase/embedding-sdk-react",
-  "version": "0.52.3-nightly",
+  "version": "0.52.4-nightly",
   "description": "Metabase Embedding SDK for React",
   "bin": "./dist/cli.js",
   "repository": {
@@ -17,7 +17,8 @@
       "types": "./dist/nextjs.d.ts",
       "require": "./dist/nextjs.cjs",
       "import": "./dist/nextjs.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "typesVersions": {
     "*": {
