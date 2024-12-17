@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { useGetChannelInfoQuery } from "metabase/api";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
-import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
@@ -25,17 +24,21 @@ import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getDefaultAlert } from "metabase-lib/v1/Alert";
 import type { Alert } from "metabase-types/api";
 
-import { AlertEditForm } from "./AlertEditForm";
+import { AlertEditForm } from "../AlertEditForm";
+import { AlertModalTitle } from "../AlertModalTitle";
+import { AlertModalFooter } from "../AlertModals.styled";
+
 import { AlertEducationalScreen } from "./AlertEducationalScreen";
-import { AlertModalTitle } from "./AlertModalTitle";
-import { AlertModalFooter } from "./AlertModals.styled";
+import ChannelSetupModal from "./ChannelSetupModal";
 
 interface CreateAlertModalContentProps {
+  type: "alert" | "subscription";
   onAlertCreated: () => void;
   onCancel: () => void;
 }
 
 export const CreateAlertModalContent = ({
+  type,
   onAlertCreated,
   onCancel,
 }: CreateAlertModalContentProps) => {
@@ -108,7 +111,6 @@ export const CreateAlertModalContent = ({
     );
   }
 
-  // TODO: Remove PulseEdit css hack
   return (
     <ModalContent data-testid="alert-create" onClose={onCancel}>
       <div
@@ -117,6 +119,7 @@ export const CreateAlertModalContent = ({
       >
         <AlertModalTitle text={t`Let's set up your alert`} />
         <AlertEditForm
+          type={type}
           alertType={question?.alertType(visualizationSettings)}
           alert={alert}
           onAlertChange={onAlertChange}

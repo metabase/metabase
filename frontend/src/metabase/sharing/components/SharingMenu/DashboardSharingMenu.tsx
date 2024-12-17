@@ -4,10 +4,10 @@ import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
 import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { DashboardSubscriptionMenuItem } from "metabase/notifications/DashboardSubscriptionMenuItem";
 import { Flex, Menu } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
-import { DashboardSubscriptionMenuItem } from "./MenuItems/DashboardSubscriptionMenuItem";
 import { EmbedMenuItem } from "./MenuItems/EmbedMenuItem";
 import { ExportPdfMenuItem } from "./MenuItems/ExportPdfMenuItem";
 import { PublicLinkMenuItem } from "./MenuItems/PublicLinkMenuItem";

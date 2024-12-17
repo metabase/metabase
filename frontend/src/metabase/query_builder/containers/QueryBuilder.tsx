@@ -24,7 +24,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
   canManageSubscriptions,
-  getUser,
   getUserIsAdmin,
 } from "metabase/selectors/user";
 import type {
@@ -74,7 +73,6 @@ import {
   getQueryResults,
   getQueryStartTime,
   getQuestion,
-  getQuestionAlerts,
   getRawSeries,
   getSampleDatabaseId,
   getSelectedTimelineEventIds,
@@ -121,7 +119,6 @@ type EntityListLoaderMergedProps = {
 
 const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
   return {
-    user: getUser(state),
     canManageSubscriptions: canManageSubscriptions(state),
     isAdmin: getUserIsAdmin(state),
 
@@ -178,7 +175,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     isResultDirty: getIsResultDirty(state),
     isMetadataDirty: isResultsMetadataDirty(state),
 
-    questionAlerts: getQuestionAlerts(state),
     visualizationSettings: getVisualizationSettings(state),
 
     queryStartTime: getQueryStartTime(state),

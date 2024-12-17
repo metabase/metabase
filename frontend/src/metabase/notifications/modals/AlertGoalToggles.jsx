@@ -1,22 +1,14 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 
-import {
-  ALERT_TYPE_PROGRESS_BAR_GOAL,
-  ALERT_TYPE_TIMESERIES_GOAL,
-} from "metabase-lib/v1/Alert";
+import { ALERT_TYPE_TIMESERIES_GOAL } from "metabase-lib/v1/Alert";
 
 import { AlertAboveGoalToggle } from "./AlertAboveGoalToggle";
 import { AlertFirstOnlyToggle } from "./AlertFirstOnlyToggle";
 
 export const AlertGoalToggles = ({ alertType, alert, onAlertChange }) => {
+  // alertType can be only ALERT_TYPE_TIMESERIES_GOAL or ALERT_TYPE_PROGRESS_BAR_GOAL
   const isTimeseries = alertType === ALERT_TYPE_TIMESERIES_GOAL;
-  const isProgress = alertType === ALERT_TYPE_PROGRESS_BAR_GOAL;
-
-  if (!isTimeseries && !isProgress) {
-    // not a goal alert
-    return null;
-  }
 
   return (
     <div>

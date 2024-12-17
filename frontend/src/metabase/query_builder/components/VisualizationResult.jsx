@@ -8,7 +8,7 @@ import { ErrorMessage } from "metabase/components/ErrorMessage";
 import Modal from "metabase/components/Modal";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { CreateAlertModalContent } from "metabase/notifications/AlertModals";
+import { CreateAlertModalContent } from "metabase/notifications/modals/CreateAlertModal/CreateAlertModalContent";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { ALERT_TYPE_ROWS } from "metabase-lib/v1/Alert";
@@ -103,8 +103,9 @@ export default class VisualizationResult extends Component {
             }
           />
           {showCreateAlertModal && (
-            <Modal medium onClose={this.onCloseCreateAlertModal}>
+            <Modal onClose={this.onCloseCreateAlertModal}>
               <CreateAlertModalContent
+                type="alert"
                 onCancel={this.onCloseCreateAlertModal}
                 onAlertCreated={this.onCloseCreateAlertModal}
               />
