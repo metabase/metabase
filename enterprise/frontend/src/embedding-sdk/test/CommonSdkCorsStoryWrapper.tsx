@@ -1,17 +1,17 @@
 import type { Story } from "@storybook/react";
 
-import { MetabaseProvider, type SDKConfig } from "embedding-sdk";
+import { type MetabaseAuthConfig, MetabaseProvider } from "embedding-sdk";
 
 const METABASE_INSTANCE_URL =
   (window as any).METABASE_INSTANCE_URL || "http://localhost:3000";
 
-const DEFAULT_CONFIG: SDKConfig = {
+const DEFAULT_AUTH_CONFIG: MetabaseAuthConfig = {
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
   authProviderUri: `${METABASE_INSTANCE_URL}/sso/metabase`,
 };
 
 export const CommonSdkStoryCorsWrapper = (Story: Story) => (
-  <MetabaseProvider config={DEFAULT_CONFIG}>
+  <MetabaseProvider authConfig={DEFAULT_AUTH_CONFIG}>
     <Story />
   </MetabaseProvider>
 );

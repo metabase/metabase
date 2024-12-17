@@ -1,9 +1,9 @@
 import * as Yup from "yup";
 
 import type {
+  MetabaseAuthConfig,
   MetabaseEmbeddingSessionToken,
   MetabaseFetchRequestTokenFn,
-  SDKConfig,
 } from "embedding-sdk";
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
@@ -20,27 +20,27 @@ import { getFetchRefreshTokenFn } from "./selectors";
 
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
-  async (sdkConfig: SDKConfig, { dispatch }) => {
+  async (authConfig: MetabaseAuthConfig, { dispatch }) => {
     // Setup JWT or API key
     const isValidAuthProviderUri =
-      sdkConfig.authProviderUri && sdkConfig.authProviderUri?.length > 0;
-    const isValidApiKeyConfig = sdkConfig.apiKey && getIsLocalhost();
+      authConfig.authProviderUri && authConfig.authProviderUri?.length > 0;
+    const isValidApiKeyConfig = authConfig.apiKey && getIsLocalhost();
 
     if (isValidAuthProviderUri) {
       // JWT setup
       api.onBeforeRequest = async () => {
         const session = await dispatch(
-          getOrRefreshSession(sdkConfig.authProviderUri!),
+          getOrRefreshSession(authConfig.authProviderUri!),
         ).unwrap();
         if (session?.id) {
           api.sessionToken = session.id;
         }
       };
       // verify that the session is actually valid before proceeding
-      await dispatch(getOrRefreshSession(sdkConfig.authProviderUri!)).unwrap();
+      await dispatch(getOrRefreshSession(authConfig.authProviderUri!)).unwrap();
     } else if (isValidApiKeyConfig) {
       // API key setup
-      api.apiKey = sdkConfig.apiKey;
+      api.apiKey = authConfig.apiKey;
     }
     // Fetch user and site settings
     const [user, siteSettings] = await Promise.all([
