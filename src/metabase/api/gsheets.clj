@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.harbormaster.client :as hm.client]
    [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
@@ -100,11 +101,10 @@
 
 (api/defendpoint GET "/oauth"
   "Checks with HM to see what the temporary, ephemeral oauth-signin url is, and returns it in the response."
-  [:as {metabase-location :body}]
-  {metabase-location :string}
+  []
   {}
   ;; TODO: call HM with:
-  (when false (get-temp-url metabase-location))
+  (when false (get-temp-url (public-settings/site-url)))
   ;; When google drive oauth exists, set the gsheets setting to be auth-complete.
   (gsheets! {:status :auth-complete})
   {:oauth_url "http://store.metabase.com/oauth/abc123"})
