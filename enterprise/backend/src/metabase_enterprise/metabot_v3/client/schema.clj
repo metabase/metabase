@@ -49,6 +49,19 @@
    [:context       {:default {}} :map]
    [:user-id       integer?]])
 
+(mr/def ::metric
+  "A metric as sent to the AI Service"
+  [:map
+   [:id integer?]
+   [:name :string]
+   [:description [:maybe :string]]])
+
+(mr/def ::select-metric-request
+  "Shape of the request body we send to AI Service for Select Metric requests"
+  [:map
+   [:query :string]
+   [:metrics [:sequential ::metric]]])
+
 (mr/def ::ai-proxy.response
   "Shape of the response we get back from the AI Proxy."
   [:map

@@ -7,7 +7,6 @@
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
-   [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.tools :as metabot-v3.tools]
    [metabase.api.common :as api]
    [metabase.models.setting :refer [defsetting]]
@@ -47,7 +46,7 @@
    messages :- [:maybe ::metabot-v3.client.schema/messages]
    session-id :- :string]
   (encode-request-body
-   {:messages      (into (metabot-v3.dummy-tools/invoke-dummy-tools context) messages)
+   {:messages      messages
     :context       context
     :tools         (metabot-v3.tools/applicable-tools (metabot-v3.tools/*tools-metadata*) context)
     :session-id    session-id
@@ -94,6 +93,9 @@
 (defn- agent-endpoint-url []
   (str (ai-proxy-base-url) "/v1/agent/"))
 
+(defn- metric-selection-endpoint-url []
+  (str (ai-proxy-base-url) "/v1/select-metric"))
+
 (defn- decode-response-body [response-body]
   (mc/decode ::metabot-v3.client.schema/ai-proxy.response
              response-body
@@ -128,6 +130,26 @@
                          :response response}))))
     (catch Throwable e
       (throw (ex-info (format "Error in request to AI Proxy: %s" (ex-message e))
+                      {}
+                      e)))))
+
+(mu/defn select-metric-request
+  "Make a request to AI Service to select a metric."
+  [metrics query]
+  (try
+    (let [url (metric-selection-endpoint-url)
+          body {:metrics metrics
+                :query query}
+          options (build-request-options body)
+          response (post! url options)]
+      (if (= (:status response) 200)
+        (u/prog1 (decode-response-body (:body response))
+          (log/debugf "Response (decoded):\n%s" (u/pprint-to-str <>)))
+        (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
+                        {:request (assoc options :body body)
+                         :response response}))))
+    (catch Throwable e
+      (throw (ex-info (format "Error in request to AI Service: %s" (ex-message e))
                       {}
                       e)))))
 

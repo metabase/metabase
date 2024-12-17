@@ -165,6 +165,7 @@
   get-year
   get-month
   get-day
+  get-day-of-week
   get-hour
   get-minute
   get-second

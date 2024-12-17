@@ -1,11 +1,17 @@
 (ns metabase-enterprise.metabot-v3.dummy-tools
   (:require
    [cheshire.core :as json]
+   [medley.core :as m]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.query]
+   [metabase-enterprise.metabot-v3.tools.query-metric]
+   [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.metabot-v3.tools.who-is-your-favorite]
+   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
-   [metabase.api.table :as api.table]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -18,31 +24,15 @@
                         (t2/select-one [:model/User :id :email :first_name :last_name] api/*current-user-id*))]
              {:id id
               :name (str first_name " " last_name)
-              :email_address email}
+              :email-address email}
              {:error "current user not found"})
    :context context})
 
 (defn- get-dashboard-details
-  [_ {:keys [dashboard_id]} context]
-  {:output (or (t2/select-one [:model/Dashboard :id :description :name] dashboard_id)
+  [_ {:keys [dashboard-id]} context]
+  {:output (or (t2/select-one [:model/Dashboard :id :description :name] dashboard-id)
                {:error "dashboard not found"})
    :context context})
-
-(defn- convert-field-type
-  [db-field]
-  (let [db-field (u/normalize-map db-field)]
-    (cond
-      (lib.types.isa/boolean? db-field)               "boolean"
-      (lib.types.isa/string-or-string-like? db-field) "string"
-      (lib.types.isa/numeric? db-field)               "number"
-      (lib.types.isa/temporal? db-field)              "date")))
-
-(defn- convert-field
-  [db-field]
-  (-> db-field
-      (select-keys [:id :name :description])
-      (update :id #(str "field_" %))
-      (assoc :type (convert-field-type db-field))))
 
 (defn- convert-metric
   [db-metric]
@@ -51,67 +41,163 @@
 (declare ^:private table-details)
 
 (defn- foreign-key-tables
-  [fields]
+  [metadata-provider fields]
   (when-let [target-field-ids (->> fields
-                                   (into #{} (keep :fk_target_field_id))
+                                   (into #{} (keep :fk-target-field-id))
                                    not-empty)]
-    (->> (t2/select-fn-set :table_id :model/Field :id [:in target-field-ids])
-         (into [] (keep #(table-details % {:include-foreign-key-tables? false})))
-         not-empty)))
+    (let [table-ids (t2/select-fn-set :table_id :model/Field :id [:in target-field-ids])]
+      (lib.metadata/bulk-metadata metadata-provider :metadata/table table-ids)
+      (->> table-ids
+           (into [] (keep #(table-details % {:include-foreign-key-tables? false
+                                             :metadata-provider metadata-provider})))
+           not-empty))))
+
+(defn- get-table
+  [id]
+  (when-let [table (t2/select-one [:model/Table :id :name :description :db_id] id)]
+    (when (mi/can-read? table)
+      (-> table
+          (t2/hydrate :metrics)
+          (assoc :id id)))))
+
+(comment
+  (mi/can-read? (t2/select-one :model/Table 27))
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
+            api/*current-user-id* 2
+            api/*is-superuser?* true]
+    (mi/can-read? (t2/select-one :model/Table 27))
+    #_(get-table 27))
+
+  (t2/select :model/User)
+
+  (let [id 27
+        mp (lib.metadata.jvm/application-database-metadata-provider 5)
+        base (lib.metadata/table mp id)
+        table-query (lib/query mp (lib.metadata/table mp id))
+        cols (lib/returned-columns table-query)
+        field-id-prefix (str "field_[" id "]_")]
+    (some-> base
+            (dissoc :db_id)
+            (assoc :fields (mapv #(metabot-v3.tools.u/->result-column % field-id-prefix) cols)
+                   :name (lib/display-name table-query))
+            (assoc :metrics (mapv convert-metric (lib/available-metrics table-query)))
+            (assoc :queryable-foreign-key-tables (foreign-key-tables mp cols))))
+  -)
 
 (defn- table-details
-  "Loads the details of a table with ID `id`. If the option `include-foreign-key-tables?` is truthy,
-  the details of tables referred to by foreign keys are also loaded. Does N+1 DB queries."
-  [id {:keys [include-foreign-key-tables?]}]
-  (let [table (t2/select-one [:model/Table :id :name :description] id)
-        base (when (mi/can-read? table)
-               (-> table
-                   (t2/hydrate :fields :metrics)
-                   (assoc :id id)))
-        fields (remove (comp #{:hidden :sensitive} :visibility_type) (:fields base))]
-    (some-> base
-            (assoc :fields (mapv convert-field fields))
-            (update :metrics #(mapv convert-metric %))
-            (cond-> include-foreign-key-tables? (assoc :queryable_foreign_key_tables (foreign-key-tables fields))))))
+  [id {:keys [include-foreign-key-tables? metadata-provider]}]
+  (when-let [base (if metadata-provider
+                    (lib.metadata/table metadata-provider id)
+                    (get-table id))]
+    (let [mp (or metadata-provider
+                 (lib.metadata.jvm/application-database-metadata-provider (:db_id base)))
+          table-query (lib/query mp (lib.metadata/table mp id))
+          cols (lib/returned-columns table-query)
+          field-id-prefix (str "field_[" id "]_")]
+      (-> {:id id
+           :fields (mapv #(metabot-v3.tools.u/->result-column % field-id-prefix) cols)
+           :name (lib/display-name table-query)}
+          (m/assoc-some :description (:description base)
+                        :metrics (not-empty (mapv convert-metric (lib/available-metrics table-query)))
+                        :queryable-foreign-key-tables (when include-foreign-key-tables?
+                                                        (not-empty (foreign-key-tables mp cols))))))))
 
 (defn- card-details
   [id]
-  (let [base (first (api.table/batch-fetch-card-query-metadatas [id]))
-        fields (remove (comp #{:hidden :sensitive} :visibility_type) (:fields base))]
-    (some-> base
-            (select-keys [:id :description])
-            (assoc :fields (mapv convert-field fields)
-                   :name (:display_name base))
-            (update :metrics #(mapv convert-metric %))
-            (assoc :queryable_foreign_key_tables (foreign-key-tables fields)))))
+  (when-let [base (api.card/get-card id)]
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id base))
+          card-query (lib/query mp (lib.metadata/card mp id))
+          cols (lib/returned-columns card-query)
+          external-id (str "card__" id)
+          field-id-prefix (str "field_[" external-id "]_")]
+      (-> {:id external-id
+           :fields (mapv #(metabot-v3.tools.u/->result-column % field-id-prefix) cols)
+           :name (lib/display-name card-query)}
+          (m/assoc-some :description (:description base)
+                        :metrics (not-empty (mapv convert-metric (lib/available-metrics card-query)))
+                        :queryable-foreign-key-tables (not-empty (foreign-key-tables mp cols)))))))
 
 (defn- get-table-details
-  [_ {:keys [table_id]} context]
-  (let [details (if-let [[_ card-id] (re-matches #"card__(\d+)" table_id)]
+  [_ {:keys [table-id]} context]
+  (let [details (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
                   (card-details (parse-long card-id))
-                  (table-details (parse-long table_id) {:include-foreign-key-tables? true}))]
-    {:output (or details
-                 "table not found")
+                  (table-details (parse-long table-id) {:include-foreign-key-tables? true}))]
+    {:output (or details "table not found")
+     :context context}))
+
+(comment
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
+            api/*current-user-id* 2
+            api/*is-superuser?* true]
+    (let [id #_"card__137" #_"card__136" "27"]
+      (get-table-details :get-table-details {:table-id id} {})))
+  -)
+
+(defn metric-details
+  "Get metric details as returned by tools."
+  [id]
+  (when-let [card (api.card/get-card id)]
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
+          metric-query (lib/query mp (lib.metadata/card mp id))
+          breakouts (lib/breakouts metric-query)
+          base-query (lib/remove-all-breakouts metric-query)
+          filterable-cols (lib/filterable-columns base-query)
+          breakoutable-cols (lib/breakoutable-columns base-query)
+          default-temporal-breakout (->> breakouts
+                                         (map #(lib/find-matching-column % breakoutable-cols))
+                                         (m/find-first lib.types.isa/temporal?))
+          external-id (str "card__" id)
+          field-id-prefix (str "field_[" external-id "]_")]
+      {:id external-id
+       :name (:name card)
+       :description (:description card)
+       :default-time-dimension-field-id (some-> default-temporal-breakout
+                                                (metabot-v3.tools.u/->result-column field-id-prefix)
+                                                :id)
+       :queryable-dimensions (mapv #(metabot-v3.tools.u/->result-column % field-id-prefix) filterable-cols)})))
+
+(comment
+  (binding [api/*current-user-permissions-set* (delay #{"/"})]
+    (metric-details 135))
+  -)
+
+(defn- get-metric-details
+  [_ {:keys [metric-id]} context]
+  (let [details (if-let [[_ card-id] (re-matches #"card__(\d+)" metric-id)]
+                  (metric-details (parse-long card-id))
+                  "invalid metric_id")]
+    {:output (or details "metric not found")
+     :context context}))
+
+(defn- get-report-details
+  [_ {:keys [report-id]} context]
+  (let [details (card-details report-id)
+        details' (some-> details
+                         (select-keys [:id :description :name])
+                         (assoc :result-columns (:fields details)))]
+    {:output (or details' "report not found")
      :context context}))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]
-    (let [id "card__137" #_"card__136" #_"27"]
-      (get-table-details :get-table-details {:table_id id} {})))
-  -)
+    (let [id "card__90" #_"card__136" #_"27"]
+      (get-table-details :get-table-details {:table_id id} {}))))
 
 (defn- dummy-tool-messages
   [tool-id arguments content]
-  (let [call-id (random-uuid)]
+  (let [call-id (str "call_" (u/generate-nano-id))]
     [{:content    nil
-      :role       :assistant,
-      :tool_calls [{:id        call-id
+      :role       :assistant
+      :tool-calls [{:id        call-id
                     :name      tool-id
-                    :arguments (json/generate-string arguments)}]}
+                    :arguments arguments}]}
 
-     {:content      (json/generate-string content)
-      :role         :tool,
-      :tool_call_id call-id}]))
+     {:content      (cond-> content
+                      (map? content)
+                      (-> (update-keys u/->snake_case_en)
+                          json/generate-string))
+      :role         :tool
+      :tool-call-id call-id}]))
 
 (defn- dummy-get-current-user
   [context]
@@ -121,15 +207,22 @@
 (def ^:private detail-getters
   {:dashboard {:id :get-dashboard-details
                :fn get-dashboard-details
-               :id-name :dashboard_id}
+               :id-name :dashboard-id}
    :table {:id :get-table-details
            :fn (fn [tool-id args context]
-                 (get-table-details tool-id (update args :table_id str) context))
-           :id-name :table_id}
+                 (get-table-details tool-id (update args :table-id str) context))
+           :id-name :table-id}
    :model {:id :get-table-details
            :fn (fn [tool-id args context]
-                 (get-table-details tool-id (update args :table_id #(str "card__" %)) context))
-           :id-name :table_id}})
+                 (get-table-details tool-id (update args :table-id #(str "card__" %)) context))
+           :id-name :table-id}
+   :metric {:id :get-metric-details
+            :fn (fn [tool-id args context]
+                  (get-metric-details tool-id (update args :metric-id #(str "card__" %)) context))
+            :id-name :metric-id}
+   :report {:id :get-report-details
+            :fn get-report-details
+            :id-name :report-id}})
 
 (defn- dummy-get-item-details
   [context]
@@ -160,7 +253,11 @@
                                        {:type :table
                                         :ref 27}
                                        {:type :model
-                                        :ref 137}]})]
+                                        :ref 137}
+                                       {:type :metric
+                                        :ref 135}
+                                       {:type :report
+                                        :ref 89}]})]
     (reduce (fn [messages tool]
               (into messages (tool context)))
             []

@@ -4,6 +4,6 @@
    [metabase.util.malli :as mu]))
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/who-is-your-favorite
-  [_tool-name _arg-map context]
+  [_tool-name _arg-map context _full-history]
   {:output  "You are... but don't tell anyone!"
    :context context})

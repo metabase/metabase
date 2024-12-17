@@ -1,0 +1,228 @@
+{
+    "name": "query-metric",
+    "description": "Execute a query that returns the value of a pre-defined metric (with a stored formula). You can filter the data before calculating the metric or break down the metric by one or more dimensions. Only use filters and groupings if the user explicitly requests them - otherwise, set them to null. You can calculate the metric over time (e.g. 'monthly <metric>') by specifying a time dimension and granularity in the group_by. Other dimension breakouts are supported as well for categorical fields. Filters can be applied without grouping and vice versa. If users ask for unspecific insights or interesting things, use the 'generate-insights' tool instead.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "metric_id": {
+                "type": "integer",
+                "description": "The ID of the metric to calculate. Needs to exactly match the `metric_id` in the database and cannot be made up."
+            },
+            "filters": {
+                "type": [
+                    "array",
+                    "null"
+                ],
+                "description": "An array of filter objects. Each filter specifies a field, an operation, and a value (if required). For single filters, pass one object. If you want to filter on multiple columns, pass multiple objects. If the user doesn't specify any filters, set this parameter to null.",
+                "items": {
+                    "anyOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "operation": {
+                                    "type": "string",
+                                    "enum": [
+                                        "is-null",
+                                        "is-not-null",
+                                        "string-is-empty",
+                                        "string-is-not-empty",
+                                        "is-true",
+                                        "is-false"
+                                    ],
+                                    "description": "Operation to apply. `string-is-empty` and `string-is-not-empty` refer to both empty strings and NULL values."
+                                },
+                                "field_id": {
+                                    "type": "string",
+                                    "description": "ID of the field to filter. Needs to exactly match the `field_id` in the database. Provide numeric IDs as strings but never make up IDs."
+                                }
+                            },
+                            "required": [
+                                "field_id",
+                                "operation"
+                            ],
+                            "additionalProperties": false
+                        },
+                        {
+                            "type": "object",
+                            "description": "Filter records on parts of a date or datetime field. Use this to include / exclude records based on the year, quarter, month, day-of-week, hour, minute, or second of a date or datetime field.",
+                            "properties": {
+                                "operation": {
+                                    "type": "string",
+                                    "enum": [
+                                        "year-equals",
+                                        "year-not-equals",
+                                        "quarter-equals",
+                                        "quarter-not-equals",
+                                        "month-equals",
+                                        "month-not-equals",
+                                        "day-of-week-equals",
+                                        "day-of-week-not-equals",
+                                        "hour-equals",
+                                        "hour-not-equals",
+                                        "minute-equals",
+                                        "minute-not-equals",
+                                        "second-equals",
+                                        "second-not-equals"
+                                    ],
+                                    "description": "Operation to apply"
+                                },
+                                "field_id": {
+                                    "type": "string",
+                                    "description": "ID of the date / datetime field to filter. Needs to exactly match the `field_id` in the database. Provide numeric IDs as strings but never make up IDs."
+                                },
+                                "value": {
+                                    "type": "integer",
+                                    "description": "Value to compare against. Needs to be integer: month (1-12), day-of-week (1-7 starting on Monday), hour (0-23), minute (0-59), second (0-59), quarter (1-4)."
+                                }
+                            },
+                            "required": [
+                                "operation",
+                                "field_id",
+                                "value"
+                            ],
+                            "additionalProperties": false
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "operation": {
+                                    "type": "string",
+                                    "enum": [
+                                        "date-equals",
+                                        "date-not-equals",
+                                        "date-before",
+                                        "date-on-or-before",
+                                        "date-after",
+                                        "date-on-or-after"
+                                    ],
+                                    "description": "Operation to apply"
+                                },
+                                "field_id": {
+                                    "type": "string",
+                                    "description": "ID of the date / datetime field to filter. Needs to exactly match the `field_id` in the database. Provide numeric IDs as strings but never make up IDs."
+                                },
+                                "value": {
+                                    "type": "string",
+                                    "description": "Value to compare against. Date needs to be in the format 'YYYY-MM-DD' and date-time in the format 'YYYY-MM-DDTHH:MM:SS' (without timezone). Datetime fields can also be compared against date values (this will return all records where the datetime field is on the same day as the date value)."
+                                }
+                            },
+                            "required": [
+                                "operation",
+                                "field_id",
+                                "value"
+                            ],
+                            "additionalProperties": false
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "operation": {
+                                    "type": "string",
+                                    "enum": [
+                                        "string-equals",
+                                        "string-not-equals",
+                                        "string-contains",
+                                        "string-not-contains",
+                                        "string-starts-with",
+                                        "string-ends-with"
+                                    ],
+                                    "description": "Operation to apply"
+                                },
+                                "field_id": {
+                                    "type": "string",
+                                    "description": "ID of the field to filter. Needs to exactly match the `field_id` in the database. Provide numeric IDs as strings but never make up IDs."
+                                },
+                                "value": {
+                                    "type": "string",
+                                    "description": "Value to compare against."
+                                }
+                            },
+                            "required": [
+                                "operation",
+                                "field_id",
+                                "value"
+                            ],
+                            "additionalProperties": false
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "operation": {
+                                    "type": "string",
+                                    "enum": [
+                                        "number-equals",
+                                        "number-not-equals",
+                                        "number-greater-than",
+                                        "number-greater-than-or-equal",
+                                        "number-less-than",
+                                        "number-less-than-or-equal"
+                                    ],
+                                    "description": "Operation to apply"
+                                },
+                                "field_id": {
+                                    "type": "string",
+                                    "description": "ID of the field to filter. Needs to exactly match the `field_id` in the database. Provide numeric IDs as strings but never make up IDs."
+                                },
+                                "value": {
+                                    "type": [
+                                        "number",
+                                        "integer"
+                                    ],
+                                    "description": "Value to compare against."
+                                }
+                            },
+                            "required": [
+                                "operation",
+                                "field_id",
+                                "value"
+                            ],
+                            "additionalProperties": false
+                        }
+                    ]
+                }
+            },
+            "group_by": {
+                "type": [
+                    "array",
+                    "null"
+                ],
+                "description": "The dimensions to group by when calculating the metric. For a single dimension breakout, pass one object. If you want to group by multiple columns (e.g. one time dimension and one categorical), pass multiple objects. If the user doesn't specify a breakout explicitly, set this parameter to null to get the overall value. Do not add any groupings if the user only wants to filter the data or see the overall value.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "field_id": {
+                            "type": "string",
+                            "description": "ID of the field to group by. Needs to exactly match the `field_id` in the database. Provide numeric IDs as strings but never make up IDs."
+                        },
+                        "field_granularity": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "day",
+                                "week",
+                                "month",
+                                "quarter",
+                                "year",
+                                null
+                            ],
+                            "description": "Set the granularity of the field related to the field_id. If the field is not a date type or no granularity is needed, set this parameter to null."
+                        }
+                    },
+                    "required": [
+                        "field_id",
+                        "field_granularity"
+                    ],
+                    "additionalProperties": false
+                }
+            }
+        },
+        "required": [
+            "metric_id",
+            "filters",
+            "group_by"
+        ],
+        "additionalProperties": false
+    }
+}
