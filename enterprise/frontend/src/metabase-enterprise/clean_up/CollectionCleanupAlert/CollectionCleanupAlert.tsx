@@ -48,10 +48,9 @@ export const CollectionCleanupAlert = ({
         }
       : skipToken,
   );
+  const totalStaleItems = shouldFetchStaleItems ? (staleItems?.total ?? 0) : 0;
 
-  const hasSomethingToCleanUp = !!staleItems?.total;
-
-  if (isLoading || error || dismissed || !hasSomethingToCleanUp) {
+  if (isLoading || error || totalStaleItems <= 0) {
     return null;
   }
 
