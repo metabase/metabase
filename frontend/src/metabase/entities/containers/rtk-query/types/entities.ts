@@ -77,7 +77,7 @@ export interface EntityDefinition<Entity, EntityWrapper> {
   nameMany: string;
   nameOne: string;
   normalize: (object: unknown) => { object: unknown };
-  normalizeList: (object: unknown) => { object: unknown };
+  normalizeList: (list: unknown) => { list: unknown };
   objectSelectors: {
     getName: (entity: Entity | EntityWrapper) => string;
     getIcon: (entity: Entity | EntityWrapper) => { name: IconName };
