@@ -108,7 +108,8 @@
    [:render-terms [:map-of NonAttrKey AttrValue]]
    [:where {:optional true} vector?]
    [:bookmark {:optional true} vector?]
-   [:joins {:optional true} JoinMap]])
+   [:joins {:optional true} JoinMap]
+   [:update-cond {:optional true} vector?]])
 
 (defn- qualify-column* [table column]
   (if (str/includes? (name column) ".")
@@ -226,7 +227,7 @@
           (cons
            [(:model spec) #{{:search-model s
                              :fields       (:this (find-fields spec))
-                             :where        [:= :updated.id :this.id]}}]
+                             :where        (:update-cond spec [:= :updated.id :this.id])}}]
            (for [[table-alias [model join-condition]] (:joins spec)]
              (let [table-fields (fields table-alias)]
                [model #{{:search-model s
@@ -288,7 +289,10 @@
 (defn- instance->db-values
   "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
   [instance]
-  (let [xforms (#'t2.transformed/in-transforms (t2/model instance))]
+  (let [xforms (try
+                 (#'t2.transformed/in-transforms (t2/model instance))
+                 (catch Exception _     ; this happens for :model/ModelIndexValue, which has no transforms
+                   nil))]
     (reduce-kv
      (fn [m k v]
        (assoc m k (if-let [f (get xforms k)] (f v) v)))

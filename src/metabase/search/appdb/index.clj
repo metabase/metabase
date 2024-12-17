@@ -268,6 +268,13 @@
              (partial merge-with +)
              document-reducible))
 
+(defmethod search.engine/delete! :search.engine/appdb [_engine model ids]
+  (when-let [index-table (active-table)]
+    (t2/query {:delete-from index-table
+               :where       [:and
+                             [:= :model model]
+                             [:in :model_id ids]]})))
+
 (defn search-query
   "Query fragment for all models corresponding to a query parameter `:search-term`."
   ([search-term search-ctx]

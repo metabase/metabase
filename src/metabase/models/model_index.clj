@@ -143,7 +143,8 @@
               (doseq [deletions-part (partition-all 10000 deletions)]
                 (t2/delete! ModelIndexValue
                             :model_index_id (:id model-index)
-                            :model_pk [:in (->> deletions-part (map first))])))
+                            :model_pk [:in (->> deletions-part (map first))])
+                (search/delete! #_ModelIndexValue "indexed-entity" (->> deletions-part (map first)))))
             (when (seq additions)
               (doseq [additions-part (partition-all 10000 additions)]
                 (t2/insert! ModelIndexValue
@@ -158,6 +159,7 @@
                        :state      (if (> (count values-to-index) max-indexed-values)
                                      "overflow"
                                      "indexed")}))
+        (run! search/update! (t2/select ModelIndexValue :model_index_id (:id model-index)))
         (catch Exception e
           (log/errorf e "Error saving model-index values for model-index: %d, model: %d"
                       (:id model-index) (:model_id model-index))
@@ -207,7 +209,10 @@
                   :model-index-id  :model_index.id}
    :joins        {:model_index [:model/ModelIndex [:= :model_index.id :this.model_index_id]]
                   :model       [:model/Card [:= :model.id :model_index.model_id]]
-                  :collection  [:model/Collection [:= :collection.id :model.collection_id]]}})
+                  :collection  [:model/Collection [:= :collection.id :model.collection_id]]}
+   :update-cond  [:and
+                  [:= :updated.model_index_id :this.model_index_id]
+                  [:= :updated.model_pk :this.model_pk]]})
 
 ;; TODO resolve the toucan2 issue preventing us from using this hook
 (underive :model/ModelIndexValue :hook/search-index)

@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [metabase.db :as mdb]
+   [metabase.models.model-index :as model-index]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -156,14 +157,17 @@
    (#'search.ingestion/query->documents
     (#'search.ingestion/spec-index-reducible model where-clause))))
 
+(defn fetch [model entity-name]
+  (t2/query-one {:select   [:*]
+                 :from     [(search.index/active-table)]
+                 :where    [:and
+                            [:= :name entity-name]
+                            [:= :model model]]}))
+
 (defn ingest-then-fetch!
   [model entity-name]
   (ingest! model [:= :this.name entity-name])
-  (t2/query-one {:select [:*]
-                 :from   [(search.index/active-table)]
-                 :where  [:and
-                          [:= :name entity-name]
-                          [:= :model model]]}))
+  (fetch model entity-name))
 
 (def default-index-entity
   {:model               nil
@@ -432,31 +436,45 @@
 
 (deftest indexed-entity-ingestion-test
   (search.tu/with-temp-index-table
-    (let [entity-name (mt/random-name)]
-      (mt/with-temp [:model/Collection      {coll-id :id}        {}
-                     :model/Card            {model-id :id}       {:type        "model"
-                                                                  ;; :database_id = (mt/id)
-                                                                  :database_id (mt/id)
-                                                                  ;; :collection_id = coll-id
-                                                                  :collection_id coll-id}
-                     :model/ModelIndex      {model-index-id :id} {:model_id   model-id
-                                                                  :pk_ref     (mt/$ids :products $id)
-                                                                  :value_ref  (mt/$ids :products $title)
-                                                                  :schedule   "0 0 0 * * *"
-                                                                  :state      "initial"
-                                                                  :creator_id (mt/user->id :rasta)}]
-        ;; :model/ModelIndexValue does not have id column so does not work nicely with with-temp
-        (t2/insert! :model/ModelIndexValue {:name       entity-name
-                                            :model_index_id model-index-id
-                                            ;; :model_id = model-id
-                                            :model_pk   42})
-        (is (=? (index-entity
-                 {:model            "indexed-entity"
-                  :model_id         42
-                  :name             entity-name
-                  :database_id      (mt/id)
-                  :collection_id    coll-id})
-                (ingest-then-fetch! "indexed-entity" entity-name)))))))
+    (mt/with-temp [:model/Collection      {coll-id :id} {}
+                   :model/Card            model         (assoc (mt/card-with-source-metadata-for-query
+                                                                (mt/mbql-query products {:fields [$id $title]
+                                                                                         :limit  1}))
+                                                               :type          "model"
+                                                               :database_id   (mt/id)
+                                                               :collection_id coll-id)
+                   :model/ModelIndex      model-index   {:model_id   (:id model)
+                                                         :pk_ref     (mt/$ids :products $id)
+                                                         :value_ref  (mt/$ids :products $title)
+                                                         :schedule   "0 0 0 * * *"
+                                                         :state      "initial"
+                                                         :creator_id (mt/user->id :rasta)}]
+      (model-index/add-values! model-index)
+      (let [miv (t2/select-one :model/ModelIndexValue :model_index_id (:id model-index))]
+        (testing "Adding values indexes them"
+          (is (=? (index-entity
+                   {:model         "indexed-entity"
+                    :model_id      (:model_pk miv)
+                    :name          (:name miv)
+                    :database_id   (mt/id)
+                    :collection_id coll-id})
+                  (fetch "indexed-entity" (:name miv)))))
+        (testing "Changing values syncs the index"
+          (t2/update! :model/Card (:id model) (assoc-in model
+                                                        [:dataset_query :query :filter]
+                                                        [:!= (mt/$ids :products $id) (:model_pk miv)]))
+          (model-index/add-values! model-index)
+          (let [miv2 (t2/select-one :model/ModelIndexValue :model_index_id (:id model-index))]
+            (is (=? [(index-entity
+                      {:model         "indexed-entity"
+                       :model_id      (:model_pk miv2)
+                       :name          (:name miv2)
+                       :database_id   (mt/id)
+                       :collection_id coll-id})]
+                    (t2/query {:select   [:*]
+                               :from     [(search.index/active-table)]
+                               :where    [:and [:= :model "indexed-entity"]
+                                          [:in :model_id [(:model_pk miv) (:model_pk miv2)]]]})))))))))
 
 (deftest ^:synchronized update-metadata!-test
   (mt/with-temporary-setting-values [search-engine-appdb-index-state nil]
