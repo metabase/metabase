@@ -254,7 +254,18 @@
               :request-status 400}
              (exception-data (can-connect? {:url         (str url (:path get-400))
                                             :method      "get"
-                                            :auth-method "none"})))))))
+                                            :auth-method "none"})))))
+
+    (with-server [url [(make-route :get "/test_http_channel_400"
+                                   (fn [_]
+                                     {:status 400
+                                      :body   {:message "too bad"}}))]]
+      (testing "attempt to json parse the response body if it's a string"
+        (is (= {:request-body   {"message" "too bad"}
+                :request-status 400}
+               (exception-data (can-connect? {:url         (str url (:path get-400))
+                                              :method      "get"
+                                              :auth-method "none"}))))))))
 
 (deftest ^:parallel send!-test
   (testing "basic send"
