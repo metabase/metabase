@@ -1,5 +1,7 @@
-import type { SDKConfig } from "@metabase/embedding-sdk-react";
-import { MetabaseProvider } from "@metabase/embedding-sdk-react";
+import {
+  MetabaseProvider,
+  type MetabaseProviderProps,
+} from "@metabase/embedding-sdk-react";
 import * as jose from "jose";
 import type { JSX } from "react";
 
@@ -8,18 +10,18 @@ import { signInAsAdminAndEnableEmbeddingSdkForE2e } from "e2e/support/helpers/e2
 
 export const METABASE_INSTANCE_URL = "http://localhost:4000";
 
-export const JWT_PROVIDER_URL = "http://jtw-provider/sso";
+export const AUTH_PROVIDER_URL = "http://jtw-provider/sso";
 
 export const JWT_SHARED_SECRET =
   "0000000000000000000000000000000000000000000000000000000000000000";
 
-export const DEFAULT_SDK_PROVIDER_CONFIG = {
-  authProviderUri: JWT_PROVIDER_URL,
+export const DEFAULT_SDK_AUTH_PROVIDER_CONFIG = {
+  authProviderUri: AUTH_PROVIDER_URL,
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
 };
 
 export const sdkJwtSignIn = (user = USERS.admin) => {
-  cy.intercept("GET", JWT_PROVIDER_URL, async req => {
+  cy.intercept("GET", AUTH_PROVIDER_URL, async req => {
     try {
       const secret = new TextEncoder().encode(JWT_SHARED_SECRET);
       const token = await new jose.SignJWT({
@@ -53,13 +55,17 @@ export const sdkJwtSignIn = (user = USERS.admin) => {
 
 export function mountSdkContent(
   children: JSX.Element,
-  extraConfig: Partial<SDKConfig> = {},
+  sdkProviderProps: Partial<MetabaseProviderProps> = {},
 ) {
   cy.intercept("GET", "/api/user/current").as("getUser");
 
   cy.mount(
     <MetabaseProvider
-      config={{ ...DEFAULT_SDK_PROVIDER_CONFIG, ...extraConfig }}
+      {...sdkProviderProps}
+      authConfig={{
+        ...DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
+        ...sdkProviderProps?.authConfig,
+      }}
     >
       {children}
     </MetabaseProvider>,
