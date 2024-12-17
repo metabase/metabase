@@ -205,10 +205,6 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   );
 
   const listStatePath = useMemo(() => {
-    if (!entityQuery) {
-      return [];
-    }
-
     return entityDefinition.getListStatePath(entityQuery);
   }, [entityDefinition, entityQuery]);
 
