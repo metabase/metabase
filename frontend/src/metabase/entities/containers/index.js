@@ -7,8 +7,6 @@ export function addEntityContainers(entity) {
   const ObjectName = entity.nameOne;
 
   /**
-   * TODO: remove this in https://github.com/metabase/metabase/issues/50324
-   *
    * @deprecated HOCs are deprecated
    */
   entity.load = ({ id, query, ...props } = {}) =>
@@ -23,6 +21,7 @@ export function addEntityContainers(entity) {
    * @deprecated HOCs are deprecated
    */
   entity.loadList = ({ query, ...props } = {}) => {
+    // TODO: remove this in https://github.com/metabase/metabase/issues/50324
     if (!entity.rtk) {
       return entityListLoader({
         entityType: entity.name,
