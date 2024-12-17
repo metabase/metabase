@@ -37,11 +37,11 @@
   :type :json
   :getter (fn []
             (when
-              true
-              ;; TEMP: check the setting when we are ready
-              ;; (setting/get-value-of-type :boolean :show-google-sheets-integration)
-              (or (setting/get-value-of-type :json :gsheets)
-                  {:status :no-auth}))))
+             true
+             ;; TEMP: check the setting when we are ready
+             ;; (setting/get-value-of-type :boolean :show-google-sheets-integration)
+             (or (setting/get-value-of-type :json :gsheets)
+                 {:status :no-auth}))))
 
 (defn- check-validate-drive-link-format
   "Checks if the given link is a valid Google Drive link. If not, throws an exception."
@@ -79,6 +79,7 @@
                             "/api/v2/mb/connections-google-oauth")]
     (= status :ok)))
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- oauth-setup? [gsheets-status]
   ;; When google drive oauth exists, set the gsheets setting to be auth-complete.
   (or
@@ -93,6 +94,7 @@
          true)
      false)))
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- get-temp-url
   "Makes the request to get a temp OAuth url from harbormaster.
    Also sends the redirection url to HM as well."
@@ -136,6 +138,7 @@
                             (format "/api/v2/mb/connections/%s/sync" gdrive-conn-id))]
     status))
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (mu/defn- trigger-gdrive-resync :- [:sequential [:enum :ok :error]]
   []
   (if-let [gdrive-conn-ids (get-gdrive-connections*)]
@@ -161,11 +164,12 @@
   (api/check-superuser)
   (when-not (setting/get-value-of-type :boolean :show-google-sheets-integration)
     (throw (ex-info "Google Sheets integration is not enabled." {})))
-
-  ;; TEMP: we are pretending that oauth exists, remove this and uncomment below when it works:
-  true
-
-  #_(oauth-setup? (:status (gsheets))))
+  {:oauth_setup
+   ;; TEMP: we are pretending that oauth exists, remove this and uncomment below when it works:
+   ;; We are not using a setting for this because we may need to make a request to HM to get the status,
+   ;; and we don't want to do that on every system/properties request.
+   true
+   #_(oauth-setup? (:status (gsheets)))})
 
 (api/defendpoint POST "/folder"
   "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase."
