@@ -205,7 +205,7 @@ export function QueryModals({
       return (
         <Modal medium onClose={onCloseModal}>
           <CreateAlertModalContent
-            type="alert"
+            notificationType="alert"
             onCancel={onCloseModal}
             onAlertCreated={onCloseModal}
           />

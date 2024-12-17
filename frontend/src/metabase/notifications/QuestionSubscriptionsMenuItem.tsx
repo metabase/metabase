@@ -3,12 +3,9 @@ import { t } from "ttag";
 import { skipToken, useListCardAlertsQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { CommonNotificationsMenuItem } from "metabase/notifications/CommonNotificationsMenuItem";
+import { isSubscription } from "metabase/notifications/utils";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import type Question from "metabase-lib/v1/Question";
-import type { Alert } from "metabase-types/api";
-
-const isSubscription = (notification: Alert) =>
-  notification.alert_condition === "rows";
 
 export function QuestionSubscriptionsMenuItem({
   question,

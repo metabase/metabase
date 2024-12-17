@@ -12,6 +12,7 @@ import type { Alert } from "metabase-types/api";
 import { AlertListItem } from "./AlertListItem";
 
 type AlertListPopoverContentProps = {
+  notificationType: "alert" | "subscription";
   questionAlerts?: Alert[];
   onCreate: () => void;
   onEdit: (alert: Alert) => void;
@@ -19,6 +20,7 @@ type AlertListPopoverContentProps = {
 };
 
 export const AlertListModalContent = ({
+  notificationType,
   questionAlerts,
   onCreate,
   onEdit,
@@ -90,7 +92,9 @@ export const AlertListModalContent = ({
             onClick={onCreate}
           >
             <Icon name="add" style={{ marginLeft: 9, marginRight: 17 }} />{" "}
-            {t`Set up your own alert`}
+            {notificationType === "alert"
+              ? t`Set up your own alert`
+              : t`Set up your own subscription`}
           </a>
         </div>
       )}

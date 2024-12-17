@@ -3,14 +3,10 @@ import { t } from "ttag";
 import { skipToken, useListCardAlertsQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { CommonNotificationsMenuItem } from "metabase/notifications/CommonNotificationsMenuItem";
-import { hasProperGoalForAlert } from "metabase/notifications/utils";
+import { hasProperGoalForAlert, isAlert } from "metabase/notifications/utils";
 import { getVisualizationSettings } from "metabase/query_builder/selectors";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import type Question from "metabase-lib/v1/Question";
-import type { Alert } from "metabase-types/api";
-
-const isAlert = (notification: Alert) =>
-  notification.alert_condition === "goal";
 
 export function QuestionAlertsMenuItem({
   question,

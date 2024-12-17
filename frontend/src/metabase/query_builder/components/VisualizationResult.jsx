@@ -105,7 +105,7 @@ export default class VisualizationResult extends Component {
           {showCreateAlertModal && (
             <Modal onClose={this.onCloseCreateAlertModal}>
               <CreateAlertModalContent
-                type="alert"
+                notificationType="alert"
                 onCancel={this.onCloseCreateAlertModal}
                 onAlertCreated={this.onCloseCreateAlertModal}
               />

@@ -3,7 +3,7 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/v1/Alert";
 import type Question from "metabase-lib/v1/Question";
-import type { VisualizationSettings } from "metabase-types/api";
+import type { Alert, VisualizationSettings } from "metabase-types/api";
 
 export const hasProperGoalForAlert = ({
   question,
@@ -23,3 +23,9 @@ export const hasProperGoalForAlert = ({
     alertType === ALERT_TYPE_PROGRESS_BAR_GOAL
   );
 };
+
+export const isAlert = (notification: Alert) =>
+  notification.alert_condition === "goal";
+
+export const isSubscription = (notification: Alert) =>
+  notification.alert_condition === "rows";

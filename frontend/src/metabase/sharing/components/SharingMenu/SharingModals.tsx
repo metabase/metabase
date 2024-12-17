@@ -54,11 +54,23 @@ export const SharingModals = ({
   dashboard,
 }: SharingModalProps) => {
   if (modalType === "question-alert") {
-    return <AlertListModal question={question} onClose={onClose} />;
+    return (
+      <AlertListModal
+        notificationType="alert"
+        question={question}
+        onClose={onClose}
+      />
+    );
   }
 
   if (modalType === "question-subscription") {
-    return <AlertListModal question={question} onClose={onClose} />;
+    return (
+      <AlertListModal
+        notificationType="subscription"
+        question={question}
+        onClose={onClose}
+      />
+    );
   }
 
   if (modalType === "question-public-link") {

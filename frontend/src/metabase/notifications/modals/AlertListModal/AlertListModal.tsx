@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useMount } from "react-use";
 
 import { useListCardAlertsQuery } from "metabase/api";
 import Modal from "metabase/components/Modal";
+import { isAlert, isSubscription } from "metabase/notifications/utils";
 import type Question from "metabase-lib/v1/Question";
 import type { Alert } from "metabase-types/api";
 
@@ -12,9 +14,11 @@ import { AlertListModalContent } from "./AlertListModalContent";
 type AlertModalMode = "list-modal" | "create-modal" | "update-modal";
 
 export const AlertListModal = ({
+  notificationType,
   question,
   onClose,
 }: {
+  notificationType: "alert" | "subscription";
   question: Question;
   onClose: () => void;
 }) => {
@@ -22,8 +26,22 @@ export const AlertListModal = ({
     useState<AlertModalMode>("list-modal");
   const [editingAlert, setEditingAlert] = useState<Alert | null>(null);
 
-  const { data: questionAlerts } = useListCardAlertsQuery({
+  const { data: questionNotifications } = useListCardAlertsQuery({
     id: question.id(),
+  });
+
+  const filteredByTypeNotifications = questionNotifications?.filter(
+    notificationType === "alert" ? isAlert : isSubscription,
+  );
+
+  useMount(() => {
+    // if there are no alerts when the component mounts, show the create modal
+    if (
+      filteredByTypeNotifications &&
+      filteredByTypeNotifications.length === 0
+    ) {
+      setShowingElement("create-modal");
+    }
   });
 
   if (!question.isSaved()) {
@@ -34,7 +52,8 @@ export const AlertListModal = ({
     <>
       <Modal isOpen={showingElement === "list-modal"} onClose={onClose}>
         <AlertListModalContent
-          questionAlerts={questionAlerts}
+          notificationType={notificationType}
+          questionAlerts={filteredByTypeNotifications}
           onCreate={() => setShowingElement("create-modal")}
           onEdit={(alert: Alert) => {
             setEditingAlert(alert);
@@ -46,7 +65,7 @@ export const AlertListModal = ({
 
       <Modal isOpen={showingElement === "create-modal"} onClose={onClose}>
         <CreateAlertModalContent
-          type="alert"
+          notificationType={notificationType}
           onCancel={onClose}
           onAlertCreated={onClose}
         />

@@ -8,7 +8,6 @@ import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { alertIsValid } from "metabase/lib/alert";
-import MetabaseCookies from "metabase/lib/cookies";
 import {
   getHasConfiguredAnyChannel,
   getHasConfiguredEmailChannel,
@@ -28,17 +27,16 @@ import { AlertEditForm } from "../AlertEditForm";
 import { AlertModalTitle } from "../AlertModalTitle";
 import { AlertModalFooter } from "../AlertModals.styled";
 
-import { AlertEducationalScreen } from "./AlertEducationalScreen";
 import ChannelSetupModal from "./ChannelSetupModal";
 
 interface CreateAlertModalContentProps {
-  type: "alert" | "subscription";
+  notificationType: "alert" | "subscription";
   onAlertCreated: () => void;
   onCancel: () => void;
 }
 
 export const CreateAlertModalContent = ({
-  type,
+  notificationType,
   onAlertCreated,
   onCancel,
 }: CreateAlertModalContentProps) => {
@@ -56,10 +54,6 @@ export const CreateAlertModalContent = ({
 
   const [alert, setAlert] = useState<any>(
     getDefaultAlert(question, user, visualizationSettings),
-  );
-
-  const [hasSeenEducationalScreen, setHasSeenEducationalScreen] = useState(
-    MetabaseCookies.getHasSeenAlertSplash(),
   );
 
   useEffect(() => {
@@ -82,11 +76,6 @@ export const CreateAlertModalContent = ({
     onAlertCreated();
   };
 
-  const proceedFromEducationalScreen = () => {
-    MetabaseCookies.setHasSeenAlertSplash(true);
-    setHasSeenEducationalScreen(true);
-  };
-
   const channelRequirementsMet = isAdmin
     ? hasConfiguredAnyChannel
     : hasConfiguredEmailChannel;
@@ -103,13 +92,6 @@ export const CreateAlertModalContent = ({
       />
     );
   }
-  if (!hasSeenEducationalScreen) {
-    return (
-      <ModalContent onClose={onCancel} data-testid="alert-education-screen">
-        <AlertEducationalScreen onProceed={proceedFromEducationalScreen} />
-      </ModalContent>
-    );
-  }
 
   return (
     <ModalContent data-testid="alert-create" onClose={onCancel}>
@@ -119,7 +101,7 @@ export const CreateAlertModalContent = ({
       >
         <AlertModalTitle text={t`Let's set up your alert`} />
         <AlertEditForm
-          type={type}
+          type={notificationType}
           alertType={question?.alertType(visualizationSettings)}
           alert={alert}
           onAlertChange={onAlertChange}

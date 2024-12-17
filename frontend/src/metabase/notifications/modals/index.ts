@@ -11,5 +11,4 @@ export { MultiSeriesAlertTip } from "./MultiSeriesAlertTip";
 export { RawDataAlertTip } from "./RawDataAlertTip";
 export { AlertGoalToggles } from "./AlertGoalToggles";
 export { DeleteAlertSection } from "./DeleteAlertSection";
-export { AlertEducationalScreen } from "./CreateAlertModal/AlertEducationalScreen";
 export { AlertEditSchedule } from "./AlertEditSchedule";
