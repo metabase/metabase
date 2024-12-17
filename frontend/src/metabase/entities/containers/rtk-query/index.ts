@@ -1,3 +1,3 @@
 export * from "./EntityListLoaderRtkQuery";
-export * from "./EntityObjectLoaderRtkQuery";
+export * from "./EntityObjectLoader";
 export * from "./types";
