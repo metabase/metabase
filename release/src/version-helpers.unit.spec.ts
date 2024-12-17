@@ -2,7 +2,9 @@ import type { Tag } from "./types";
 import {
   findNextPatchVersion,
   getBuildRequirements,
+  getDotXs,
   getEnterpriseVersion,
+  getExtraTagsForVersion,
   getGenericVersion,
   getLastReleaseFromTags,
   getMajorVersionNumberFromReleaseBranch,
@@ -16,7 +18,7 @@ import {
   isEnterpriseVersion,
   isPreReleaseVersion,
   isValidVersionString,
-  versionSort,
+  versionSort
 } from "./version-helpers";
 
 describe("version-helpers", () => {
@@ -660,6 +662,96 @@ describe("version-helpers", () => {
       ).toEqual("0.52.2-nightly");
 
       expect(() => getSdkVersionFromReleaseTagName("v0.51.5.1")).toThrow();
+    });
+  });
+
+  describe("getDotXs", ()=> {
+    it("should return the correct major dot Xs", () => {
+      expect(getDotXs("v1.75.0", 1)).toEqual("v1.75.x");
+      expect(getDotXs("v1.75.2", 1)).toEqual("v1.75.x");
+      expect(getDotXs("v1.75-beta", 1)).toEqual("v1.75.x");
+
+      expect(getDotXs("v1.75.0-beta", 1)).toEqual("v1.75.x");
+      expect(getDotXs("v1.75.0.1", 1)).toEqual("v1.75.x");
+      expect(getDotXs("v1.75.0.1-beta", 1)).toEqual("v1.75.x");
+
+      expect(getDotXs("v0.75.0", 1)).toEqual("v0.75.x");
+      expect(getDotXs("v0.75.34.1234", 1)).toEqual("v0.75.x");
+    });
+
+    it("should return the correct minor dot Xs", () => {
+      expect(getDotXs("v1.75.2.1", 2)).toEqual("v1.75.2.x");
+      expect(getDotXs("v1.75.2-beta", 2)).toEqual("v1.75.2.x");
+
+      expect(getDotXs("v0.75.2.1", 2)).toEqual("v0.75.2.x");
+      expect(getDotXs("v0.75.2.1-beta", 2)).toEqual("v0.75.2.x");
+    });
+  });
+
+  describe("getExtraTagsForVersion", () => {
+    it("should return the correct extra tags for a major version", () => {
+      expect(getExtraTagsForVersion({ version: "v1.75.0" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+      ]);
+
+      expect(getExtraTagsForVersion({ version: "v0.75.0" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+      ]);
+    });
+
+    it("should return the correct extra tags for a minor version", () => {
+      expect(getExtraTagsForVersion({ version: "v1.75.1" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+        "v0.75.1.x",
+        "v1.75.1.x",
+      ]);
+
+      expect(getExtraTagsForVersion({ version: "v0.75.1" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+        "v0.75.1.x",
+        "v1.75.1.x",
+      ]);
+    });
+
+    it("should return the correct extra tags for a patch version", () => {
+      expect(getExtraTagsForVersion({ version: "v1.75.1.3" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+        "v0.75.1.x",
+        "v1.75.1.x",
+      ]);
+
+      expect(getExtraTagsForVersion({ version: "v0.75.1.3" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+        "v0.75.1.x",
+        "v1.75.1.x",
+      ]);
+    });
+
+    it("should return the correct extra tags for a beta version", () => {
+      expect(getExtraTagsForVersion({ version: "v1.75.0-beta" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+      ]);
+
+      expect(getExtraTagsForVersion({ version: "v1.75.1-beta" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+        "v0.75.1.x",
+        "v1.75.1.x",
+      ]);
+
+      expect(getExtraTagsForVersion({ version: "v0.75.1.2-beta" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+        "v0.75.1.x",
+        "v1.75.1.x",
+      ]);
     });
   });
 });
