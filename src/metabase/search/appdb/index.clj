@@ -86,7 +86,7 @@
    (when (and table (exists? table))
      (t2/query (sql.helpers/drop-table (keyword (table-name table)))))))
 
-(defn- obsolete-indexes []
+(defn- orphan-indexes []
   (map (comp keyword u/lower-case-en :table_name)
        (t2/query {:select [:table_name]
                   :from   :information_schema.tables
@@ -106,8 +106,11 @@
                                   ")")]]]})))
 
 (defn- delete-obsolete-tables! []
+  ;; Delete metadata around indexes that are no longer needed.
+  (search-index-metadata/delete-obsolete! *index-version-id*)
+  ;; Drop any indexes that are no longer referenced.
   (let [dropped (volatile! 0)]
-    (doseq [table (obsolete-indexes)]
+    (doseq [table (orphan-indexes)]
       (try
         (t2/query (sql.helpers/drop-table table))
         (vswap! dropped inc)

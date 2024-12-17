@@ -1,6 +1,7 @@
 (ns metabase.models.search-index-metadata-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.models.search-index-metadata :as search-index-metadata]
    [metabase.util :as u]
    [toucan2.connection :as t2.connection]
@@ -45,6 +46,8 @@
           n             5
           kept          3
           versions      (map str (repeatedly n random-uuid))
+          ;; to make things interesting, we're not using the latest one
+          our-version   (nth versions 3)
           index-count   #(t2/count :model/SearchIndexMetadata)
           initial-count (index-count)]
       ;; create a bunch of indexes, more than we will want to keep
@@ -53,13 +56,20 @@
         (search-index-metadata/create-pending! engine v v))
       (is (= n (- (index-count) initial-count)))
       (testing "It deletes all but N of the versions"
-        (search-index-metadata/delete-obsolete!)
+        (search-index-metadata/delete-obsolete! our-version)
         (is (= kept (index-count))))
       (testing "It is idempotent"
-        (search-index-metadata/delete-obsolete!)
+        (search-index-metadata/delete-obsolete! our-version)
         (is (= kept (index-count))))
       (testing "It keeps the latest versions"
         (is (= (set (take-last 3 versions))
+               (t2/select-fn-set :version :model/SearchIndexMetadata))))
+      (testing "After 1 day, it deletes version which are neither the latest, nor used by this instance"
+        ;; Age each entry by a day, in a naive db agnostic way
+        (doseq [sim (t2/select :model/SearchIndexMetadata :engine :something-futureproof)]
+          (t2/update! :model/SearchIndexMetadata (:id sim) (update sim :updated_at #(t/minus % (t/days 1)))))
+        (search-index-metadata/delete-obsolete! our-version)
+        (is (= #{our-version (last versions)}
                (t2/select-fn-set :version :model/SearchIndexMetadata)))))))
 
 (comment

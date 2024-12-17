@@ -59,21 +59,22 @@
 (defn delete-obsolete!
   "Remove metadata corresponding to obsolete Metabase versions.
   It is up to the relevant engine to delete the actual indexes themselves."
-  []
+  [our-version]
   ;; If there are no recent versions, then there is nothing to delete.
-  (when-let [recent-versions (seq (map :version (t2/query {:select   [:version]
-                                                           :from     [(t2/table-name :model/SearchIndexMetadata)]
-                                                           :group-by [:version]
-                                                           ;; use pk as a tie-breaker
-                                                           :order-by [[[:max :updated_at] :desc]
-                                                                      [[:max :id] :desc]]
-                                                           :limit    3})))]
+  (when-let [most-recent (seq (map :version (t2/query {:select   [:version]
+                                                       :from     [(t2/table-name :model/SearchIndexMetadata)]
+                                                       :group-by [:version]
+                                                       ;; use pk as a tie-breaker
+                                                       :order-by [[[:max :updated_at] :desc]
+                                                                  [[:max :id] :desc]]
+                                                       :limit    3})))]
     (t2/query-one {:delete-from [(t2/table-name :model/SearchIndexMetadata)]
                    :where       [:or
-                                 [:not-in :version recent-versions]
+                                 [:not-in :version most-recent]
+                                 ;; Drop those older than 1 day, unless we are using them, or they are the most recent.
                                  [:and
-                                  [:not= :version (first recent-versions)]
-                                  [:< :updated_at
+                                  [:not-in :version (filter some? [our-version (first most-recent)])]
+                                  [:<= :updated_at
                                    (case (mdb/db-type)
                                      :h2       [:raw "DATEADD(DAY, -1, CURRENT_TIMESTAMP)"]
                                      :postgres [:raw "CURRENT_TIMESTAMP - INTERVAL '1 day'"]
