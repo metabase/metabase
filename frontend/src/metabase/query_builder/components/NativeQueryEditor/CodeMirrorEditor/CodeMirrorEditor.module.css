@@ -9,6 +9,8 @@
     }
 
     .cm-scroller {
+      padding-top: 4px;
+      padding-bottom: 4px;
       background-color: var(--mb-color-bg-light);
     }
 
