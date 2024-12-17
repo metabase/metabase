@@ -41,7 +41,9 @@ export const AddFilterParameterButton = () => {
   };
 
   useLayoutEffect(() => {
-    setRightSectionWidth(rightSectionWidthRef.current);
+    if (isOpened) {
+      setRightSectionWidth(rightSectionWidthRef.current);
+    }
   }, [isOpened]);
 
   return (
