@@ -8,7 +8,7 @@
    [toucan2.core :as t2]))
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/create-dashboard-subscription
-  [_tool-name {:keys [dashboard-id email schedule] :as _arguments} context]
+  [_tool-name {:keys [dashboard-id email schedule] :as _arguments} context _full-history]
   (let [dashboard (-> (t2/select-one :model/Dashboard :id dashboard-id)
                       (t2/hydrate [:dashcards :card]))
         cards (for [{:keys [id card]} (:dashcards dashboard)]

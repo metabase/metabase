@@ -1,0 +1,69 @@
+{
+    "name": "find-outliers",
+    "description": "Find outliers on a numeric column of a query- or report result . Use this if the user explicitly asks for outliers, unusual mins/maxes, whether values are within an normal range or records that stands out in results. Only use on columns that are numeric and present in the `result_columns` of a query or report. If the user asks for outliers on a column that is not present in the `result_columns`, ask the user for clarification before proceeding.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "data_source": {
+                "anyOf": [
+                    {
+                        "type": "object",
+                        "description": "Get outliers for a query result column.",
+                        "properties": {
+                            "query_id": {
+                                "type": "string",
+                                "description": "The ID of the query to analyze."
+                            },
+                            "result_field_id": {
+                                "type": "string",
+                                "description": "`field_id` of the column in the query result to calculate outliers on provided via `result_columns`."
+                            }
+                        },
+                        "required": [
+                            "query_id",
+                            "result_field_id"
+                        ],
+                        "additionalProperties": false
+                    },
+                    {
+                        "type": "object",
+                        "description": "Get outliers for a report result column.",
+                        "properties": {
+                            "report_id": {
+                                "type": "integer",
+                                "description": "The ID of the report to analyze."
+                            },
+                            "result_field_id": {
+                                "type": "string",
+                                "description": "`field_id` of the column in the query result to calculate outliers on provided via `result_columns`."
+                            }
+                        },
+                        "required": [
+                            "report_id",
+                            "result_field_id"
+                        ],
+                        "additionalProperties": false
+                    },
+                    {
+                        "type": "object",
+                        "description": "Get outliers for a metric",
+                        "properties": {
+                            "metric_id": {
+                                "type": "integer",
+                                "description": "The ID of the report to analyze."
+                            }
+                        },
+                        "required": [
+                            "metric_id"
+                        ],
+                        "additionalProperties": false
+                    }
+                ]
+            }
+        },
+        "required": [
+            "data_source"
+        ],
+        "additionalProperties": false
+    }
+}
