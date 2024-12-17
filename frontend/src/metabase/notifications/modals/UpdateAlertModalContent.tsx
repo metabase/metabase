@@ -16,6 +16,7 @@ import {
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { ALERT_TYPE_ROWS } from "metabase-lib/v1/Alert";
 import type { Alert } from "metabase-types/api";
 
 import { AlertEditForm } from "./AlertEditForm";
@@ -25,12 +26,14 @@ import { DeleteAlertSection } from "./DeleteAlertSection";
 
 interface UpdateAlertModalContentProps {
   alert: Alert;
+  notificationType: "alert" | "subscription";
   onAlertUpdated: () => void;
   onCancel: () => void;
 }
 
 export const UpdateAlertModalContent = ({
   alert,
+  notificationType,
   onAlertUpdated,
   onCancel,
 }: UpdateAlertModalContentProps) => {
@@ -62,6 +65,11 @@ export const UpdateAlertModalContent = ({
   const title = isCurrentUser ? t`Edit your alert` : t`Edit alert`;
   const isValid = alertIsValid(modifiedAlert, channelSpec);
 
+  const alertType =
+    notificationType === "subscription"
+      ? ALERT_TYPE_ROWS
+      : question?.alertType(visualizationSettings);
+
   // TODO: Remove PulseEdit css hack
   return (
     <ModalContent onClose={onCancel} data-testid="alert-edit">
@@ -71,7 +79,8 @@ export const UpdateAlertModalContent = ({
       >
         <AlertModalTitle text={title} />
         <AlertEditForm
-          alertType={question?.alertType(visualizationSettings)}
+          alertType={alertType}
+          type={notificationType}
           alert={modifiedAlert}
           onAlertChange={onAlertChange}
         />

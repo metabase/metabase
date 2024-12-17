@@ -63,7 +63,11 @@ export const AlertListModal = ({
         />
       </Modal>
 
-      <Modal isOpen={showingElement === "create-modal"} onClose={onClose}>
+      <Modal
+        medium
+        isOpen={showingElement === "create-modal"}
+        onClose={onClose}
+      >
         <CreateAlertModalContent
           notificationType={notificationType}
           onCancel={onClose}
@@ -71,10 +75,15 @@ export const AlertListModal = ({
         />
       </Modal>
 
-      <Modal isOpen={showingElement === "update-modal"} onClose={onClose}>
+      <Modal
+        medium
+        isOpen={showingElement === "update-modal"}
+        onClose={onClose}
+      >
         {editingAlert && (
           <UpdateAlertModalContent
             alert={editingAlert}
+            notificationType={notificationType}
             onCancel={onClose}
             onAlertUpdated={onClose}
           />

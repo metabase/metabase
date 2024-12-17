@@ -20,7 +20,7 @@ import {
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { getDefaultAlert } from "metabase-lib/v1/Alert";
+import { ALERT_TYPE_ROWS, getDefaultAlert } from "metabase-lib/v1/Alert";
 import type { Alert } from "metabase-types/api";
 
 import { AlertEditForm } from "../AlertEditForm";
@@ -52,8 +52,13 @@ export const CreateAlertModalContent = ({
   const hasConfiguredAnyChannel = getHasConfiguredAnyChannel(channelSpec);
   const hasConfiguredEmailChannel = getHasConfiguredEmailChannel(channelSpec);
 
+  const alertType =
+    (notificationType === "alert" &&
+      question?.alertType(visualizationSettings)) ||
+    ALERT_TYPE_ROWS;
+
   const [alert, setAlert] = useState<any>(
-    getDefaultAlert(question, user, visualizationSettings),
+    getDefaultAlert(question, alertType, user),
   );
 
   useEffect(() => {
@@ -102,7 +107,7 @@ export const CreateAlertModalContent = ({
         <AlertModalTitle text={t`Let's set up your alert`} />
         <AlertEditForm
           type={notificationType}
-          alertType={question?.alertType(visualizationSettings)}
+          alertType={alertType}
           alert={alert}
           onAlertChange={onAlertChange}
         />
