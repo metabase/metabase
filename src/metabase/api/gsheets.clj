@@ -12,22 +12,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
-;; Milestone 1: FE thoughts
-
-;; Once things are setup, we need to show the user that the Gsheet is setup.
-;; We only have the drive link, but we do know what user initiated the setup.
-;; So, we could show the actual link to the user who set it up, and a reset link to everyone else.
-
-;; You are setup guy
-#_[:a "Your Gsheet is synced"
-   {:href "https://drive.google.com/drive/folders/1KFNvWFz5ifat6pJqqNpCQvhO_uCWCJ3h"}]
-
-;; You are not setup guy
-#_[:span "Gsheet is set by X"
-   [:a "reset it" {:href "restart the flow, with a 'force' param"}]]
-
 (defsetting gsheets
- #_"Information about Google Sheets Integration.
+  #_"Information about Google Sheets Integration.
 
   This value can have 4 states:
 
@@ -51,9 +37,9 @@
   :type :json
   :getter (fn []
             (when
-                ;; TEMP: check the setting when we are ready
-              ;; (setting/get-value-of-type :boolean :show-google-sheets-integration)
               true
+              ;; TEMP: check the setting when we are ready
+              ;; (setting/get-value-of-type :boolean :show-google-sheets-integration)
               (or (setting/get-value-of-type :json :gsheets)
                   {:status :no-auth}))))
 
@@ -65,7 +51,7 @@
   drive-link)
 
 (defn- ->config
-  "This config is needed to call hm.client/make-request.
+  "This config is needed to call [[hm.client/make-request]].
 
    `->config` either gets the store-api-url and api-key from settings or throws an exception when one or both are
    unset or blank."
@@ -157,7 +143,6 @@
                (trigger-resync* gdrive-conn-id)))
     (throw (ex-info "No gdrive connections found." {}))))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; FE <-> MB APIs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -167,7 +152,7 @@
   [:as {redirect-url :body}]
   {redirect-url :string}
   ;; TEMP: call HM to get the temp-url with the site's url:
-  (get-temp-url (or redirect-url (public-settings/site-url)))
+  #_(get-temp-url (or redirect-url (public-settings/site-url)))
   {:oauth_url "http://store.metabase.com/oauth/abc123"})
 
 (api/defendpoint GET "/oauth"
@@ -193,21 +178,3 @@
       (throw (ex-info "Unable to setup drive folder sync" {})))))
 
 (api/define-routes)
-
-
-;; Steps of how this works:
-;;
-;; 0. FE checks `show-google-sheets-integration`, if true, show the button.
-;; 1. User clicks "Connect Google Sheets" button
-;; 2. FE calls /api/gsheets/oauth to get oauth signin link
-;; 3. MB calls HM to get the temp oauth url
-;; 4. MB returns the temp oauth url to the FE
-;; 5. FE opens a new tab with the temp oauth url
-;; 6. User logs in and gives permission
-;; 7. FE polls gsheets (through settings api) until it has auth-complete status
-;; 8. User pastes a google drive folder url
-;; 9. FE calls /api/gsheets/folder with the folder url (FE could do regex validation here.)
-;; 10. MB soft-validates the folder url and forwards it to HM
-;; 12. FE polls gsheets until it is `{:status :folder-saved :folder_url "https://drive.google.com/drive/folders/1KFNvWFz5ifat6pJqqNpCQvhO_uCWCJ3h"}`
-;; 13. User sees a message that the folder is connected
-;; 14. HM calls into MB starts syncing the folder
