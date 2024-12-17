@@ -100,10 +100,12 @@ function fonts() {
   return EditorView.theme({
     "&": {
       fontSize: "12px",
+      lineHeight: "16px",
       fontFamily: monospaceFontFamily,
     },
     ".cm-content": {
       fontFamily: monospaceFontFamily,
+      lineHeight: "16px",
     },
   });
 }
