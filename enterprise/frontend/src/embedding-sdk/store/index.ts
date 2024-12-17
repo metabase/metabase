@@ -5,8 +5,9 @@ import type {
   ThunkDispatch,
 } from "@reduxjs/toolkit";
 import { useContext } from "react";
-import { ReactReduxContext, useDispatch, useStore } from "react-redux";
+import { useDispatch, useStore } from "react-redux";
 
+import { MetabaseReduxContext } from "metabase/lib/redux";
 import { mainReducers } from "metabase/reducers-main";
 import { getStore } from "metabase/store";
 
@@ -46,7 +47,7 @@ export const useSdkStore = () => {
 };
 
 const useCheckSdkReduxContext = () => {
-  const context = useContext(ReactReduxContext);
+  const context = useContext(MetabaseReduxContext);
 
   if (!context) {
     console.warn(
