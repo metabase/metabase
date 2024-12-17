@@ -4,11 +4,9 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.task :as task]
-   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -20,16 +18,8 @@
 
 ;;; ------------------------------------------- Preemptive Caching ----------------------------------------------------
 
-(defsetting preemptive-caching-thread-pool-size
-  (deferred-tru "The size of the thread pool used to preemptively rerun cached queries.")
-  :default    10
-  :export?    false
-  :type       :integer
-  :visibility :internal)
-
 (defonce ^:private pool
-  (delay (Executors/newFixedThreadPool
-          (preemptive-caching-thread-pool-size)
+  (delay (Executors/newCachedThreadPool
           (.build
            (doto (BasicThreadFactory$Builder.)
              (.namingPattern "preemptive-caching-thread-pool-%d"))))))
@@ -96,11 +86,11 @@
                          [:= :qe.is_sandboxed false]
                          (if parameterized?
                            [:and
-                             [:= :qe.parameterized true]
+                            [:= :qe.parameterized true]
                              ;; Only rerun a parameterized query if it's had a cache hit within the last caching window
-                             [:= :qe.cache_hit true]
+                            [:= :qe.cache_hit true]
                              ;; Don't factor the last cache refresh into whether we should rerun a parameterized query
-                             [:not= :qe.context (name :cache-refresh)]]
+                            [:not= :qe.context (name :cache-refresh)]]
                            [:= :qe.parameterized false])]
               :group-by [:q.query_hash :q.query :qe.card_id]}}))]
     {:select [:u.query :u.card-id :u.count]

@@ -10195,6 +10195,8 @@ databaseChangeLog:
                   name: updated_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
 
   - changeSet:
       id: v52.2024-12-16T09:20:00
