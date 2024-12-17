@@ -70,12 +70,14 @@ export interface EntityDefinition<Entity, EntityWrapper> {
     [actionName: string]: (...args: unknown[]) => unknown;
   };
   actionTypes: Record<string, string>;
-  getQueryKey: (entityQuery: EntityQuery) => string;
+  getListStatePath: (entityQuery: EntityQuery) => string;
   getObjectStatePath: (entityId: EntityId) => string;
+  getQueryKey: (entityQuery: EntityQuery) => string;
   name: string;
   nameMany: string;
   nameOne: string;
   normalize: (object: unknown) => { object: unknown };
+  normalizeList: (object: unknown) => { object: unknown };
   objectSelectors: {
     getName: (entity: Entity | EntityWrapper) => string;
     getIcon: (entity: Entity | EntityWrapper) => { name: IconName };
@@ -90,6 +92,9 @@ export interface EntityDefinition<Entity, EntityWrapper> {
         QueryDefinition<unknown, BaseQueryFn, TagType, Entity>
       >;
     };
+    useListQuery: UseQuery<
+      QueryDefinition<unknown, BaseQueryFn, TagType, Entity[]>
+    >;
   };
   selectors: {
     getError: Selector<unknown | null | undefined>;

@@ -10,6 +10,7 @@ import {
   setRequestLoaded,
   setRequestLoading,
 } from "metabase/redux/requests";
+import { isObject } from "metabase-types/guards";
 
 import type {
   EntityDefinition,
@@ -17,7 +18,6 @@ import type {
   EntityQuerySelector,
   EntityType,
   EntityTypeSelector,
-  FetchType,
   ListMetadata,
 } from "./types";
 
@@ -54,7 +54,6 @@ interface Props<Entity, EntityWrapper> {
   ComposedComponent: (props: ChildrenProps<Entity, EntityWrapper>) => ReactNode;
   entityQuery?: EntityQuery | EntityQuerySelector;
   entityType: EntityType | EntityTypeSelector;
-  fetchType?: FetchType;
   listName?: string;
   loadingAndErrorWrapper?: boolean;
   LoadingAndErrorWrapper?: ComponentType<LoadingAndErrorWrapperProps>;
@@ -63,7 +62,20 @@ interface Props<Entity, EntityWrapper> {
   wrapped?: boolean;
 }
 
-const defaultTransformResponse = (data: unknown, _query: EntityQuery) => data;
+const transformResponse = (fetched: unknown) => {
+  let results;
+  let metadata = {};
+
+  if (isObject(fetched) && fetched.data) {
+    const { data, ...rest } = fetched;
+    results = data;
+    metadata = rest;
+  } else {
+    results = fetched;
+  }
+
+  return { results, metadata };
+};
 
 /**
  * Difference between the 2 generic types, using Database entity as an example:
@@ -80,7 +92,6 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   ComposedComponent,
   entityQuery: entityQueryProp,
   entityType: entityTypeProp,
-  fetchType = "fetch",
   listName,
   loadingAndErrorWrapper = true,
   LoadingAndErrorWrapper = DefaultLoadingAndErrorWrapper,
@@ -112,24 +123,11 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   );
 
   const {
-    action = entityDefinition.actionTypes.FETCH,
-    transformResponse = defaultTransformResponse,
-    /**
-     * Hack: this hook appears to be acquired conditionally, which in
-     * normal circumstances would violate the rules of React hooks.
-     * As long as fetchType never changes during component's lifecycle
-     * and getUseGetQuery is a pure function, we have a guarantee that
-     * the same hook will be used and rules of hooks are not violated.
-     */
-    useGetQuery,
-  } = entityDefinition.rtk.getUseGetQuery(fetchType);
-
-  const {
     data,
     error: rtkError,
     isFetching,
     refetch,
-  } = useGetQuery(entityQuery, {
+  } = entityDefinition.rtk.useListQuery(entityQuery, {
     refetchOnMountOrArgChange: reload,
   });
 
@@ -138,17 +136,17 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
     [entityDefinition, entityQuery],
   );
 
-  // const objectStatePath = useMemo(() => {
-  //   if (!entityId) {
-  //     return [];
-  //   }
+  const listStatePath = useMemo(() => {
+    if (!entityQuery) {
+      return [];
+    }
 
-  //   return entityDefinition.getObjectStatePath(entityId);
-  // }, [entityDefinition, entityId]);
+    return entityDefinition.getListStatePath(entityQuery);
+  }, [entityDefinition, entityQuery]);
 
-  // const requestStatePath = useMemo(() => {
-  //   return [...objectStatePath, requestType];
-  // }, [objectStatePath, requestType]);
+  const requestStatePath = useMemo(() => {
+    return [...listStatePath, "fetch"];
+  }, [listStatePath]);
 
   useEffect(() => {
     if (isFetching) {
@@ -166,10 +164,24 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
 
   useEffect(() => {
     if (data) {
-      const transformed = transformResponse(data, entityQuery);
-      const normalized = entityDefinition.normalize(transformed);
+      const { results, metadata } = transformResponse(data);
 
-      dispatch({ type: action, payload: normalized });
+      if (!Array.isArray(results)) {
+        throw new Error(`Invalid response listing ${entityDefinition.name}`);
+      }
+
+      const normalized = entityDefinition.normalizeList(results);
+
+      const result = {
+        ...normalized,
+        metadata,
+        entityQuery,
+      };
+
+      dispatch({
+        type: entityDefinition.actionTypes.FETCH_LIST,
+        payload: result,
+      });
 
       // NOTE Atte Keinänen 8/23/17:
       // Dispatch `setRequestLoaded` after clearing the call stack because we want to the actual data to be updated
@@ -178,12 +190,10 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
       setTimeout(() => dispatch(setRequestLoaded(requestStatePath, queryKey)));
     }
   }, [
-    action,
     dispatch,
     data,
     entityDefinition,
     entityQuery,
-    transformResponse,
     requestStatePath,
     queryKey,
   ]);
