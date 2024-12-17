@@ -99,7 +99,7 @@ function nonce() {
 function fonts() {
   const shared = {
     fontSize: "12px",
-    lineHeight: "16px",
+    lineHeight: "normal",
     fontFamily: monospaceFontFamily,
   };
 
