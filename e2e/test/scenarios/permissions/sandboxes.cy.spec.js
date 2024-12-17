@@ -221,13 +221,6 @@ H.describeEE("formatting > sandboxes", () => {
       };
       cy.createUserFromRawData(user);
 
-      cy.log("setup a dashboard");
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.editDashboard();
-      H.setFilter("Text or Category", "Is");
-      H.selectDashboardFilter(H.getDashboardCard(), "Category");
-      H.saveDashboard();
-
       cy.log("setup sandboxing");
       cy.visit(
         `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
@@ -239,6 +232,13 @@ H.describeEE("formatting > sandboxes", () => {
       H.popover().findByText("attr_cat").click();
       H.modal().button("Save").click();
       H.savePermissions();
+
+      cy.log("setup a dashboard");
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.editDashboard();
+      H.setFilter("Text or Category", "Is");
+      H.selectDashboardFilter(H.getDashboardCard(), "Category");
+      H.saveDashboard();
 
       cy.log("field values for admin");
       H.visitDashboard(ORDERS_DASHBOARD_ID);
