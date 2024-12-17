@@ -12,7 +12,7 @@
 }
 
 button.newButton {
-  width: 100%;
+  width: 50%;
   color: var(--mb-color-text-dark);
   border-color: #f0f0f0;
 
