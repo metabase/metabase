@@ -65,7 +65,7 @@
         (is (= (set (take-last 3 versions))
                (t2/select-fn-set :version :model/SearchIndexMetadata))))
       (testing "After 1 day, it deletes version which are neither the latest, nor used by this instance"
-        ;; Age each entry by a day, in a naive db agnostic way
+        ;; Age each entry by a day, in a naive db agnostic way. Note that we want to keep the relative differences.
         (doseq [sim (t2/select :model/SearchIndexMetadata :engine :something-futureproof)]
           (t2/update! :model/SearchIndexMetadata (:id sim) (update sim :updated_at #(t/minus % (t/days 1)))))
         (search-index-metadata/delete-obsolete! our-version)
