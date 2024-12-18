@@ -96,9 +96,9 @@ export function QuestionList({
         }
       : skipToken,
   );
-  const data = searchData || itemsData;
-  const error = searchError || itemsError;
-  const isLoading = searchIsLoading || itemsIsLoading;
+  const data = isSearching ? searchData : itemsData;
+  const error = isSearching ? searchError : itemsError;
+  const isLoading = isSearching ? searchIsLoading : itemsIsLoading;
   const dispatch = useDispatch();
   const list = useMemo(() => {
     return data?.data?.map(item => Search.wrapEntity(item, dispatch)) ?? [];
