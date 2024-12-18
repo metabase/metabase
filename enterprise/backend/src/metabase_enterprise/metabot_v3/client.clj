@@ -133,7 +133,7 @@
                       {}
                       e)))))
 
-(mu/defn select-metric-request
+(defn select-metric-request
   "Make a request to AI Service to select a metric."
   [metrics query]
   (try

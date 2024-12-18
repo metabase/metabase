@@ -5,8 +5,9 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription]
+   [metabase-enterprise.metabot-v3.tools.filters]
+   [metabase-enterprise.metabot-v3.tools.find-metric]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
-   [metabase-enterprise.metabot-v3.tools.query]
    [metabase-enterprise.metabot-v3.tools.who-is-your-favorite]
    [metabase.config :as config]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -20,7 +21,7 @@
 (set! *warn-on-reflection* true)
 
 (comment
-  metabase-enterprise.metabot-v3.tools.query/keep-me
+  metabase-enterprise.metabot-v3.tools.filters/keep-me
   metabase-enterprise.metabot-v3.tools.who-is-your-favorite/keep-me)
 
 (mu/defn- reducible-tool-metadata-file-paths :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)

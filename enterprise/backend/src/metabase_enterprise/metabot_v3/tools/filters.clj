@@ -1,8 +1,9 @@
-(ns metabase-enterprise.metabot-v3.tools.query-metric
+(ns metabase-enterprise.metabot-v3.tools.filters
   (:require
    [cheshire.core :as json]
    [clojure.edn :as edn]
    [clojure.string :as str]
+   [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.card :as api.card]
@@ -11,6 +12,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -19,7 +21,7 @@
   [{:keys [field_id] :as item} field-id-prefix columns]
   (when-not (str/starts-with? field_id field-id-prefix)
     (throw (ex-info (str "field " field_id " not found") {:expected-prefix field-id-prefix})))
-  (let [field-ref (-> field_id (subs (count field-id-prefix)) edn/read-string)
+  (let [field-ref (-> field_id (subs (count field-id-prefix)) edn/read-string lib.options/ensure-uuid)
         column (lib/find-matching-column field-ref columns)]
     (assoc item :column column)))
 
@@ -85,22 +87,87 @@
                           lib/remove-all-breakouts)
           filterable-cols (lib/filterable-columns base-query)
           breakoutable-cols (lib/breakoutable-columns base-query)
-          field-id-prefix (str "field_[card__" metric-id "]_")
+          filter-field-id-prefix (str "field_[card__" metric-id "]_")
           query (as-> base-query $q
-                  (reduce add-filter $q (map #(resolve-column % field-id-prefix filterable-cols) filters))
-                  (reduce add-breakout $q (map #(resolve-column % field-id-prefix breakoutable-cols) group-by)))]
+                  (reduce add-filter $q (map #(resolve-column % filter-field-id-prefix filterable-cols) filters))
+                  (reduce add-breakout $q (map #(resolve-column % filter-field-id-prefix breakoutable-cols) group-by)))
+          query-id (u/generate-nano-id)
+          query-field-id-prefix (str "field_[query__" query-id "]_")]
       {:type :query
-       :query-id (u/generate-nano-id)
+       :query_id query-id
        :query (lib.convert/->legacy-MBQL query)
-       :result-columns (mapv #(metabot-v3.tools.u/->result-column % field-id-prefix) (lib/returned-columns query))})
+       :result_columns (mapv #(metabot-v3.tools.u/->result-column % query-field-id-prefix) (lib/returned-columns query))})
     "metric not found"))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]
     (let [id 135]
-      (query-metric {:metric_id id})))
+      (query-metric {:metric-id id})))
   -)
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/query-metric
-  [_tool-name arguments _env]
+  [_tool-name arguments _e]
   {:output (json/generate-string (query-metric arguments))})
+
+(comment
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
+            api/*current-user-id* 2
+            api/*is-superuser?* true]
+    (query-metric {:metric-id 135,
+                   :filters
+                   [{:operation "number-greater-than",
+                     :field_id "field_[27]_[:field {:base-type :type/Float, :effective-type :type/Float} 257]",
+                     :value 35}],
+                   :group-by nil}))
+  -)
+
+(defn- base-query
+  [data-source e]
+  (let [{:keys [table_id query_id report_id]} data-source]
+    (cond
+      (some? table_id)
+      [(str "field_[" table_id "]_")
+       (let [table (metabot-v3.tools.u/get-table table_id :db_id)
+             mp (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
+         (lib/query mp (lib.metadata/table mp table_id)))]
+
+      (some? report_id)
+      [(str "field_[card__" report_id "]_")
+       (let [card (api.card/get-card report_id)
+             mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))]
+         (lib/query mp (lib.metadata/card mp report_id)))]
+
+      (some? query_id)
+      (if-let [query (metabot-v3.envelope/find-query e query_id)]
+        [(str "field_[query__" query_id "]_")
+         (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database query))]
+           (lib/query mp query))]
+        (throw (ex-info (str "No query found with id " query_id) {:data_source data-source}))))))
+
+(defn- filter-records
+  [{:keys [data-source filters] :as _arguments} e]
+  (let [[filter-field-id-prefix base] (base-query data-source e)
+        filterable-cols (lib/filterable-columns base)
+        query (reduce add-filter base (map #(resolve-column % filter-field-id-prefix filterable-cols) filters))
+        query-id (u/generate-nano-id)
+        query-field-id-prefix (str "field_[query__" query-id "]_")]
+    {:type :query
+     :query_id query-id
+     :query (lib.convert/->legacy-MBQL query)
+     :result_columns (mapv #(metabot-v3.tools.u/->result-column % query-field-id-prefix)
+                           (lib/returned-columns query))}))
+
+(comment
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
+            api/*current-user-id* 2
+            api/*is-superuser?* true]
+    (filter-records {:data-source {:table_id 27}
+                     :filters [{:operation "number-greater-than"
+                                :field_id "field_[27]_[:field {:base-type :type/Float, :effective-type :type/Float} 257]"
+                                :value 50}]}
+                    nil))
+  -)
+
+(mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/filter-records
+  [_tool-name arguments e]
+  {:output (json/generate-string (filter-records arguments e))})
