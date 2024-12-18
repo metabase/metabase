@@ -18,12 +18,16 @@ export function enterCustomColumnDetails({
   name?: string;
   blur?: boolean;
 }) {
-  const input = cy.get(".ace_text-input").first().as("formula");
-
-  input.should("exist").focus().clear().type(formula);
+  cy.get(".ace_text-input")
+    .first()
+    .as("formula")
+    .should("exist")
+    .focus()
+    .clear()
+    .type(formula);
 
   if (blur) {
-    input.blur();
+    cy.get("@formula").blur();
   }
 
   if (name) {
