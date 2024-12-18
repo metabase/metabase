@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { useGetChannelInfoQuery } from "metabase/api";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
-import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
@@ -22,21 +21,23 @@ import {
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { Flex } from "metabase/ui";
+import { Flex, Icon } from "metabase/ui";
 import { getDefaultAlert } from "metabase-lib/v1/Alert";
 import type { Alert } from "metabase-types/api";
 
-import { AlertEditForm } from "./AlertEditForm";
+import { AlertEditForm } from "../AlertEditForm";
+
 import { AlertEducationalScreen } from "./AlertEducationalScreen";
-import { AlertModalTitle } from "./AlertModalTitle";
-import AlertModalsS from "./AlertModals.module.css";
+import ChannelSetupModal from "./ChannelSetupModal";
 
 interface CreateAlertModalContentProps {
+  type: "alert" | "subscription";
   onAlertCreated: () => void;
   onCancel: () => void;
 }
 
 export const CreateAlertModalContent = ({
+  type,
   onAlertCreated,
   onCancel,
 }: CreateAlertModalContentProps) => {
@@ -109,20 +110,18 @@ export const CreateAlertModalContent = ({
     );
   }
 
-  // TODO: Remove PulseEdit css hack
   return (
-    <ModalContent data-testid="alert-create" onClose={onCancel}>
-      <div
-        className={cx(CS.mlAuto, CS.mrAuto, CS.mb4)}
-        style={{ maxWidth: "550px" }}
-      >
-        <AlertModalTitle text={t`Let's set up your alert`} />
-        <AlertEditForm
-          alertType={question?.alertType(visualizationSettings)}
-          alert={alert}
-          onAlertChange={onAlertChange}
-        />
-        <Flex className={AlertModalsS.AlertModalsFooter}>
+    <ModalContent
+      data-testid="alert-create"
+      title={
+        <Flex gap={10} align="center">
+          <Icon name="alert" />
+          {t`Create new alert`}
+        </Flex>
+      }
+      footer={
+        <Flex justify="space-between" w="100%">
+          {/*<span>{"Send test message now"}</span>*/}
           <Button onClick={onCancel} className={CS.mr2}>{t`Cancel`}</Button>
           <ButtonWithStatus
             titleForState={{ default: t`Done` }}
@@ -130,6 +129,16 @@ export const CreateAlertModalContent = ({
             onClickOperation={onCreateAlert}
           />
         </Flex>
+      }
+      onClose={onCancel}
+    >
+      <div className={cx(CS.borderBottom)}>
+        <AlertEditForm
+          type={type}
+          alertType={question?.alertType(visualizationSettings)}
+          alert={alert}
+          onAlertChange={onAlertChange}
+        />
       </div>
     </ModalContent>
   );

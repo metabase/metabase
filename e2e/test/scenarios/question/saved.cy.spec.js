@@ -461,7 +461,7 @@ describe(
 
     it("should allow you to enable a webhook alert", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      cy.findByTestId("sharing-menu-button").click();
+      cy.findByTestId("notifications-menu-button").click();
       H.popover().findByText("Create alert").click();
       H.modal().button("Set up an alert").click();
       H.modal().within(() => {
@@ -469,7 +469,7 @@ describe(
         H.toggleAlertChannel(secondWebhookName);
         cy.button("Done").click();
       });
-      cy.findByTestId("sharing-menu-button").click();
+      cy.findByTestId("notifications-menu-button").click();
       H.popover().findByText("Edit alerts").click();
       H.popover().within(() => {
         cy.findByText("You set up an alert").should("exist");
@@ -486,7 +486,7 @@ describe(
 
     it("should allow you to test a webhook", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      cy.findByTestId("sharing-menu-button").click();
+      cy.findByTestId("notifications-menu-button").click();
       H.popover().findByText("Create alert").click();
       H.modal().button("Set up an alert").click();
       H.modal().within(() => {

@@ -35,7 +35,7 @@ describe("QuestionSharingMenu > Enterprise", () => {
         hasPublicLink: true,
         isEnterprise: true,
       });
-      const sharingButton = screen.getByTestId("sharing-menu-button");
+      const sharingButton = screen.getByTestId("notifications-menu-button");
 
       expect(sharingButton).toBeEnabled();
       expect(sharingButton).toHaveAttribute("aria-label", "Public link");
@@ -50,7 +50,7 @@ describe("QuestionSharingMenu > Enterprise", () => {
         isEnterprise: true,
       });
 
-      await userEvent.click(screen.getByTestId("sharing-menu-button"));
+      await userEvent.click(screen.getByTestId("notifications-menu-button"));
 
       expect(
         screen.getByTestId("public-link-popover-content"),
@@ -67,7 +67,7 @@ describe("QuestionSharingMenu > Enterprise", () => {
         canManageSubscriptions: false,
         isEnterprise: true,
       });
-      const sharingButton = screen.getByTestId("sharing-menu-button");
+      const sharingButton = screen.getByTestId("notifications-menu-button");
 
       expect(sharingButton).toBeDisabled();
       expect(sharingButton).toHaveAttribute(
@@ -83,7 +83,7 @@ describe("QuestionSharingMenu > Enterprise", () => {
         canManageSubscriptions: false,
         hasPublicLink: false,
       });
-      const sharingButton = screen.getByTestId("sharing-menu-button");
+      const sharingButton = screen.getByTestId("notifications-menu-button");
 
       expect(sharingButton).toBeDisabled();
       expect(sharingButton).toHaveAttribute(
@@ -108,6 +108,8 @@ describe("QuestionSharingMenu > Enterprise", () => {
         }),
       },
     });
-    expect(screen.queryByTestId("sharing-menu-button")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("notifications-menu-button"),
+    ).not.toBeInTheDocument();
   });
 });

@@ -2,9 +2,10 @@ import { type JSX, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
+import { useSetting } from "metabase/common/hooks";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   onOpenQuestionSettings,
@@ -12,12 +13,14 @@ import {
   turnModelIntoQuestion,
 } from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
+import { EmbeddingQuestionActions } from "metabase/query_builder/components/view/ViewHeader/components/QuestionActions/EmbeddingQuestionActions";
 import DatasetMetadataStrengthIndicator from "metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator";
 import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import {
   MODAL_TYPES,
   type QueryModalType,
 } from "metabase/query_builder/constants";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -49,6 +52,9 @@ export const QuestionMoreActionsMenu = ({
   onOpenModal,
   onSetQueryBuilderMode,
 }: QuestionMoreActionsMenuProps): JSX.Element | null => {
+  const isAdmin = useSelector(getUserIsAdmin);
+  const isPublicSharingEnabled = useSetting("enable-public-sharing");
+
   const [opened, setOpened] = useState(false);
 
   const dispatch = useDispatch();
@@ -162,6 +168,13 @@ export const QuestionMoreActionsMenu = ({
         {t`Edit settings`}
       </Menu.Item>
     ),
+    <EmbeddingQuestionActions
+      key="embeddingActions"
+      question={question}
+      isAdmin={isAdmin}
+      isPublicSharingEnabled={isPublicSharingEnabled}
+      onOpenModal={onOpenModal}
+    />,
     hasCollectionPermissions && (
       <>
         <Menu.Divider />
