@@ -1,6 +1,6 @@
 {
     "name": "query-metric",
-    "description": "Execute a query that returns the value of a pre-defined metric (with a stored formula). You can filter the data before calculating the metric or break down the metric by one or more dimensions. Only use filters and groupings if the user explicitly requests them - otherwise, set them to null. You can calculate the metric over time (e.g. 'monthly <metric>') by specifying a time dimension and granularity in the group_by. Other dimension breakouts are supported as well for categorical fields. Filters can be applied without grouping and vice versa. If users ask for unspecific insights or interesting things, use the 'generate-insights' tool instead.",
+    "description": "Get the value of a curated and trustworthy business metric with optional filters or breakouts by dimension (e.g. over time or by a category). You can either choose the dimensions provided by the metric or the fields (also foreign key table fields) from the table the metric is based on. Filters can be applied without grouping and vice versa. If users ask for unspecific insights or interesting things, use the 'generate-insights' tool instead.",
     "parameters": {
         "type": "object",
         "properties": {
