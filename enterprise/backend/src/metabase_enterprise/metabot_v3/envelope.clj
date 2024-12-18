@@ -80,12 +80,6 @@
     (into llm-message-reactions
           (metabot-v3.context/create-reactions (:context e)))))
 
-(defn- add-reaction [e reaction]
-  (update e :reactions conj reaction))
-
-(defn- add-reactions [e reactions]
-  (reduce add-reaction e reactions))
-
 (defn add-user-message
   "Given a user message (a string) adds it to the envelope."
   [e msg]
@@ -110,8 +104,7 @@
 (defn- update-reactions
   "Given reactions, add them to the envelope"
   [e reactions]
-  (cond-> e
-    (some? reactions) (add-reactions reactions)))
+  (update e :reactions (fnil into []) reactions))
 
 (defn add-tool-response
   "Given an output string and new context, adds them to the envelope."
