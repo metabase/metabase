@@ -191,12 +191,7 @@ describe("issue 12581", () => {
 
     // Both delay and a repeated sequence of `{selectall}{backspace}` are there to prevent typing flakes
     // Without them at least 1 in 10 test runs locally didn't fully clear the field or type correctly
-    H.NativeEditor.focus()
-      .as("editor")
-      .click()
-      .type("{selectall}{backspace}", { delay: 50 })
-      .click()
-      .type("{selectall}{backspace}SELECT 1");
+    H.NativeEditor.clear().type("SELECT 1");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
@@ -228,7 +223,7 @@ describe("issue 12581", () => {
       .click();
 
     cy.log("Reported failing on v0.35.3");
-    H.NativeEditor.focus().should("be.visible").and("contain", ORIGINAL_QUERY);
+    H.NativeEditor.get().should("be.visible").and("contain", ORIGINAL_QUERY);
 
     H.tableInteractive().findByText("37.65");
 

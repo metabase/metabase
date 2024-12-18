@@ -40,12 +40,9 @@ describe("scenarios > question > native subquery", () => {
           // subsequently moving the cursor out from the tag should keep the data reference open
           H.NativeEditor.focus().type("{rightarrow}");
           cy.findByText("A People Question");
-          // typing a template tag id should open the editor
-          H.NativeEditor.focus().type(" ").type("{{#");
 
-          H.NativeEditor.focus()
-            .type("{leftarrow}{leftarrow}")
-            .type(questionId2.toString());
+          // typing a template tag id should open the editor
+          H.NativeEditor.focus().type(" ").type(`{{#${questionId2.toString()}`);
           cy.findByText("A People Model");
         });
       });
