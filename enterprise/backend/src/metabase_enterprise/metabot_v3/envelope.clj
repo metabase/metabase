@@ -116,7 +116,10 @@
   (-> e
       (add-message {:role :tool
                     :tool-call-id tool-call-id
-                    :content output})
+                    :content (cond-> output
+                               (not (or
+                                     (string? output)
+                                     (nil? output))) json/generate-string)})
       (update-context context)
       (update-reactions reactions)))
 
