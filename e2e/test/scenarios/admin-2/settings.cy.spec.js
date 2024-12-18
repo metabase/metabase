@@ -165,7 +165,9 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     H.popover().findByText("2018/1/31").click({ force: true });
     cy.wait("@saveFormatting");
 
-    cy.get("#date_style").should("have.value", "2018/1/31");
+    cy.findByTestId("chart-settings-widget-date_style")
+      .findByTestId("chart-setting-select")
+      .should("have.value", "2018/1/31");
 
     cy.findByTestId("custom-formatting-setting")
       .findByText("17:24 (24-hour clock)")
@@ -948,7 +950,9 @@ describe("scenarios > admin > localization", () => {
     cy.wait("@updateFormatting");
 
     cy.findByTestId("custom-formatting-setting").within(() => {
-      cy.get("#date_style").should("have.value", "2018/1/31");
+      cy.findByTestId("chart-settings-widget-date_style")
+        .findByTestId("chart-setting-select")
+        .should("have.value", "2018/1/31");
 
       // update the time style setting to 24 hour
       cy.findByText("17:24 (24-hour clock)").click();

@@ -376,12 +376,14 @@ describe("issue 18063", () => {
 
     // Select a Pin map
     cy.findByTestId("viz-settings-button").click();
-    cy.get('[id="map.type"]').click();
+    cy.findByTestId("chart-settings-widget-map.type")
+      .findByDisplayValue("Region map")
+      .click();
     H.popover().contains("Pin map").click();
 
     // Click on the popovers to close both popovers that open automatically.
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
-    ["Latitude field", "Longitude field"].map(field =>
+    ["Latitude field", "Longitude field"].forEach(field =>
       H.leftSidebar()
         .findByText(field)
         .parent()
