@@ -92,7 +92,8 @@ describe("issue 11580", () => {
   });
 
   it("shouldn't reorder template tags when updated (metabase#11580)", () => {
-    H.startNewNativeQuestion({ query: "{{foo}} {{bar}}" });
+    H.openNativeEditor();
+    SQLFilter.enterParameterizedQuery("{{foo}} {{bar}}");
 
     cy.findAllByText("Variable name").next().as("variableLabels");
 
@@ -970,7 +971,8 @@ describe("issue 29786", { tags: "@external" }, () => {
     "should allow using field filters with null schema (metabase#29786)",
     { tags: "@flaky" },
     () => {
-      H.startNewNativeQuestion({ databaseName: "QA MySQL8", query: SQL_QUERY });
+      H.openNativeEditor({ databaseName: "QA MySQL8" });
+      SQLFilter.enterParameterizedQuery(SQL_QUERY);
 
       cy.findAllByTestId("variable-type-select").first().click();
       SQLFilter.chooseType("Field Filter");
