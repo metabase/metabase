@@ -63,6 +63,7 @@ import {
   IsAuthenticated,
   IsNotAuthenticated,
 } from "./route-guards";
+import { EntityIdAwareRoute } from "./routes-stable-id-aware";
 import { getSetting } from "./selectors/settings";
 import { getApplicationName } from "./selectors/whitelabel";
 
@@ -158,10 +159,12 @@ export const getRoutes = store => {
             {getCollectionTimelineRoutes()}
           </Route>
 
-          <Route
+          <EntityIdAwareRoute
             path="dashboard/:slug"
             title={t`Dashboard`}
             component={DashboardAppConnected}
+            paramsToTranslate={{ dashboard: "slug" }}
+            searchParamsToTranslate={{ "dashboard-tab": "tab" }}
           >
             <ModalRoute
               path="move"
@@ -170,7 +173,7 @@ export const getRoutes = store => {
             />
             <ModalRoute path="copy" modal={DashboardCopyModalConnected} />
             <ModalRoute path="archive" modal={ArchiveDashboardModalConnected} />
-          </Route>
+          </EntityIdAwareRoute>
 
           <Route path="/question">
             <IndexRoute component={QueryBuilder} />
