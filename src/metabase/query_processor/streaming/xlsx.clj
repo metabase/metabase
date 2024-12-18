@@ -5,6 +5,7 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.formatter :as formatter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.models.visualization-settings :as mb.viz]
@@ -666,7 +667,8 @@
   (let [workbook-data      (volatile! nil)
         cell-styles        (volatile! nil)
         typed-cell-styles  (volatile! nil)
-        pivot-grouping-idx (volatile! nil)]
+        pivot-grouping-idx (volatile! nil)
+        start-time         (System/currentTimeMillis)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols format-rows? pivot? pivot-export-options]
                    :or   {format-rows? true
@@ -722,7 +724,9 @@
               (autosize-columns! sheet)))))
 
       (finish! [_ {:keys [row_count]}]
-        (let [{:keys [workbook sheet]} @workbook-data]
+        (let [{:keys [workbook sheet]} @workbook-data
+              duration (- (System/currentTimeMillis) start-time)]
+          (prometheus/observe! :metabase-streaming/xlsx-export-ms duration)
           (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
             ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
             (autosize-columns! sheet))
