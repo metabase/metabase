@@ -29,15 +29,20 @@ jobs:
           filters: .github/file-paths.yaml
 
   e2e-matrix-builder:
+    uses: ./.github/workflows/e2e-matrix-builder.yml
+    with:
+      chunks: 40
+
+  testing:
     runs-on: ubuntu-22.04
-    outputs:
-      matrix: ${{ steps.e2e-matrix-builder.outputs.matrix }}
-    timeout-minutes: 5
+    needs: e2e-matrix-builder
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - name: get e2e matrix
-        id: e2e-matrix-builder
-        uses: ./.github/workflows/e2e-matrix-builder.yml
+      - uses: actions/github-script@v7
+        with:
+          script: | # js
+            console.log( ${{ needs.e2e-matrix-builder.outputs.matrix }} );
+
 
   # if this is a test on a release branch, we need to check the build requirements
   get-build-requirements:
@@ -70,12 +75,12 @@ jobs:
               node_version: requirements.node,
             };
 
+
   build:
-    needs: [files-changed, e2e-matrix-builder, get-build-requirements]
+    needs: [files-changed, get-build-requirements]
     if: |
       !cancelled() &&
       github.event.pull_request.draft == false &&
-      needs.e2e-matrix-builder.result == 'success' &&
       needs.files-changed.outputs.e2e_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 25
@@ -108,45 +113,26 @@ jobs:
           name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
   e2e-tests:
+    name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}
+    uses: ./.github/workflows/e2e-test.yml
     needs: [build, e2e-matrix-builder]
     if: |
       !cancelled() && needs.build.result == 'success'
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
-    name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      DISPLAY: ""
-      QA_DB_ENABLED: true
-      # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
-      # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
-      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
-      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
-      CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
-      COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
-      MB_SNOWPLOW_AVAILABLE: true
-      MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
-      TZ: US/Pacific # to make node match the instance tz
-      CYPRESS_CI: true
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.e2e-matrix-builder.outputs.matrix) }}
-
-    steps:
-      - name: Run EE Cypress tests on ${{ matrix.name }}
-        if: matrix.context == 'folder' && github.event_name != 'schedule'
-        uses: ./.github/actions/e2e-test.yml
-        with:
-          secrets: inherit
-          name: ${{ matrix.name }}
-          edition: ${{ matrix.edition }}
-          specs: ${{ matrix.specs }}
-          openldap: ${{ startsWith(matrix.name, 'admin') }}
-          postgres: ${{ matrix.name != 'mongo'}}
-          mysql: ${{ matrix.name != 'mongo'}}
-          mongo: ${{ matrix.name == 'mongo'}}
-          maildev: true
-          webhook: true
+      matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
+    secrets: inherit
+    with:
+      runner: ${{ matrix.runner }}
+      name: ${{ matrix.name }}
+      edition: ${{ matrix.edition }}
+      specs: ${{ matrix.specs }}
+      openldap: ${{ startsWith(matrix.name, 'admin') }}
+      postgres: ${{ matrix.name != 'mongo'}}
+      mysql: ${{ matrix.name != 'mongo'}}
+      mongo: ${{ matrix.name == 'mongo'}}
+      maildev: true
+      webhook: true
 
   e2e-tests-skipped-stub:
     needs: [e2e-tests, e2e-matrix-builder]
@@ -159,7 +145,7 @@ jobs:
     strategy:
       fail-fast: false
       # TODO: not sure if we need this anymore
-      matrix: ${{ fromJSON(needs.e2e-matrix-builder.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"

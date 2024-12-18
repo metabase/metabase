@@ -43,10 +43,6 @@ on:
         type: boolean
         default: false
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
-  cancel-in-progress: true
-
 jobs:
   e2e-tests:
     runs-on: ${{ inputs.runner }}
