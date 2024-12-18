@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import EntityListLoader, { entityListLoader } from "./EntityListLoader";
+import { entityListLoader } from "./EntityListLoader";
 import { EntityName } from "./EntityName";
 import { entityListLoaderRtkQuery, entityObjectLoader } from "./rtk-query";
 
@@ -45,11 +45,6 @@ export function addEntityContainers(entity) {
       ...props,
     });
   };
-
-  entity.ListLoader = ({ query, ...props }) => (
-    <EntityListLoader entityType={entity.name} entityQuery={query} {...props} />
-  );
-  entity.ListLoader.displayName = `${ObjectName}.ListLoader`;
 
   entity.Name = ({ id, ...props }) => (
     <EntityName entityType={entity.name} entityId={id} {...props} />
