@@ -6,6 +6,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [potemkin :as p]
    [toucan2.core :as t2]))
@@ -14,7 +15,7 @@
  [notification.payload.execute
   process-virtual-dashcard])
 
-(def Notification
+(mr/def ::Notification
   "Schema for the notification."
   ;; TODO: how do we make this schema closed after :merge?
   [:merge #_{:closed true}
@@ -25,7 +26,7 @@
     [:active        {:optional true} :boolean]
     [:created_at    {:optional true} :any]
     [:updated_at    {:optional true} :any]
-    [:subscriptions {:optional true} [:sequential models.notification/NotificationSubscription]]]
+    [:subscriptions {:optional true} [:sequential ::models.notification/NotificationSubscription]]]
    [:multi {:dispatch :payload_type}
     ;; system event is a bit special in that part of the payload comes from the event itself
     [:notification/system-event
@@ -37,7 +38,7 @@
         [:event_info  [:maybe :map]]]]]]
     [:notification/card
      [:map
-      [:payload    {:optional true} models.notification/NotificationCard]
+      [:payload    {:optional true} ::models.notification/NotificationCard]
       [:creator_id                  ms/PositiveInt]]]
     [:notification/dashboard
      [:map
@@ -57,7 +58,7 @@
     ;; for testing only
     [:notification/testing :map]]])
 
-(def NotificationPayload
+(mr/def ::NotificationPayload
   "Schema for the notification payload."
   ;; TODO: how do we make this schema closed after :merge?
   [:merge
@@ -77,7 +78,7 @@
     [:notification/dashboard
      [:map
       [:payload [:map
-                 [:dashboard_parts             [:sequential notification.payload.execute/Part]]
+                 [:dashboard_parts             [:sequential ::notification.payload.execute/Part]]
                  [:dashboard                   :map]
                  [:dashboard_subscription      :map]
                  [:style                       :map]
@@ -85,11 +86,11 @@
     [:notification/card
      [:map
       [:payload [:map
-                 [:card_part         [:maybe notification.payload.execute/Part]]
+                 [:card_part         [:maybe ::notification.payload.execute/Part]]
                  [:card              :map]
                  [:style             :map]
-                 [:notification_card models.notification/NotificationCard]
-                 [:subscriptions     [:sequential models.notification/NotificationSubscription]]]]]]
+                 [:notification_card ::models.notification/NotificationCard]
+                 [:subscriptions     [:sequential ::models.notification/NotificationSubscription]]]]]]
     [:notification/testing   :map]]])
 
 (defn- logo-url
@@ -133,9 +134,9 @@
   "Given a notification info, return the notification payload."
   :payload_type)
 
-(mu/defn notification-payload :- NotificationPayload
+(mu/defn notification-payload :- ::NotificationPayload
   "Realize notification-info with :context and :payload."
-  [notification :- Notification]
+  [notification :- ::Notification]
   (assoc (select-keys notification [:payload_type])
          :creator (t2/select-one [:model/User :id :first_name :last_name :email] (:creator_id notification))
          :payload (payload notification)

@@ -7,6 +7,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -74,7 +75,7 @@
   #{:email/handlebars-text
     :email/handlebars-resource})
 
-(def ^:private ChannelTemplateEmailDetails
+(mr/def ::ChannelTemplateEmailDetails
   [:merge
    [:map
     [:type                            (apply ms/enum-keywords-and-strings channel-template-details-type)]
@@ -88,7 +89,7 @@
      [:map
       [:body string?]]]]])
 
-(def ChannelTemplate
+(mr/def ::ChannelTemplate
   "Channel Template schema."
   [:merge
    [:map
@@ -96,12 +97,12 @@
    [:multi {:dispatch :channel_type}
     [:channel/email
      [:map
-      [:details ChannelTemplateEmailDetails]]]
+      [:details ::ChannelTemplateEmailDetails]]]
     [::mc/default :any]]])
 
 (defn- check-valid-channel-template
   [channel-template]
-  (mu/validate-throw ChannelTemplate channel-template))
+  (mu/validate-throw ::ChannelTemplate channel-template))
 
 (t2/define-before-insert :model/ChannelTemplate
   [instance]
