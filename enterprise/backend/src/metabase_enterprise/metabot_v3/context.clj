@@ -43,9 +43,8 @@
 
 (mu/defn create-context
   "Create a tool context."
-  [_context]
-  (merge {}
-         #_(metabot-v3.tools.query/create-context context)))
+  [context]
+  (or context {}))
 
 (mu/defn describe-context
   "Transforms the tool context into LLM context."
