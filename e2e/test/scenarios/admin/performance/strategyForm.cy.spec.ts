@@ -34,28 +34,28 @@ describe("scenarios > admin > performance > strategy form", () => {
 
     it("can enable and disable model persistence", () => {
       cy.findByRole("tab", { name: "Model persistence" }).click();
-      cy.findByRole("switch", { name: "Disabled" }).next("label").click();
+      cy.findByRole("switch", { name: "Disabled" }).click({ force: true });
       cy.wait("@enablePersistence");
       cy.findByTestId("toast-undo").contains("Saved");
       cy.findByTestId("toast-undo")
         .findByRole("img", { name: /close icon/ })
         .click();
 
-      cy.findByRole("switch", { name: "Enabled" }).next("label").click();
+      cy.findByRole("switch", { name: "Enabled" }).click({ force: true });
       cy.wait("@disablePersistence");
       cy.findByTestId("toast-undo").contains("Saved");
     });
 
     it("can change when models are refreshed", () => {
       cy.findByRole("tab", { name: "Model persistence" }).click();
-      cy.findByRole("switch", { name: "Disabled" }).next("label").click();
+      cy.findByRole("switch", { name: "Disabled" }).click({ force: true });
       cy.wait("@enablePersistence");
       cy.findByTestId("toast-undo").contains("Saved");
       cy.findByTestId("toast-undo")
         .findByRole("img", { name: /close icon/ })
         .click();
-      cy.findByRole("combobox").click();
-      cy.findByRole("listbox").findByText("2 hours").click();
+      cy.findByRole("textbox").click();
+      H.popover().findByText("2 hours").click();
       cy.findByTestId("toast-undo").contains("Saved");
     });
 

@@ -174,7 +174,7 @@ describe("(metabase#46714)", () => {
     });
 
     //TODO: Fix this shame
-    cy.wait(500);
+    cy.wait(1000);
 
     cy.findByTestId("segment-editor")
       .findByText("Add filters to narrow your answer")

@@ -518,7 +518,7 @@ describe("dashboard filters auto-wiring", () => {
 
       H.dashboardParametersContainer().findByText("ID").click();
 
-      H.popover().within(() => {
+      H.dashboardParametersPopover().within(() => {
         H.multiAutocompleteInput().type("1,");
         cy.button("Add filter").click();
       });
@@ -568,7 +568,7 @@ describe("dashboard filters auto-wiring", () => {
 
       H.dashboardParametersContainer().findByText("ID").click();
 
-      H.popover().within(() => {
+      H.dashboardParametersPopover().within(() => {
         H.multiAutocompleteInput().type("1,");
         cy.button("Add filter").click();
       });

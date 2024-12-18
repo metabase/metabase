@@ -34,7 +34,7 @@ export function tooltip() {
 }
 
 export function selectDropdown() {
-  return cy.get('[data-testid="select-dropdown"]');
+  return popover().findByRole("listbox");
 }
 
 export function entityPickerModal() {
