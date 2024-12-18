@@ -10,7 +10,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.util.concurrent Callable ExecutorService Executors)
+   (java.util.concurrent Callable ExecutorService ThreadPoolExecutor TimeUnit SynchronousQueue)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)
    (org.quartz.spi MutableTrigger)))
 
@@ -19,10 +19,15 @@
 ;;; ------------------------------------------- Preemptive Caching ----------------------------------------------------
 
 (defonce ^:private pool
-  (delay (Executors/newCachedThreadPool
-          (.build
-           (doto (BasicThreadFactory$Builder.)
-             (.namingPattern "preemptive-caching-thread-pool-%d"))))))
+  (delay
+    (ThreadPoolExecutor.
+      0                     ;; core pool size
+      10                    ;; max pool size (upper limit)
+      100 TimeUnit/SECONDS  ;; keep-alive time for idle threads
+      (SynchronousQueue.)   ;; direct handoff
+      (.build
+        (doto (BasicThreadFactory$Builder.)
+          (.namingPattern "preemptive-caching-thread-pool-%d"))))))
 
 (def ^:dynamic *parameterized-queries-to-rerun-per-card*
   "Number of query variations (e.g. with different parameters) to run for a single cached card."
@@ -120,6 +125,8 @@
     (into {} config-to-card-ids)))
 
 (defn- select-parameterized-queries
+  "Given a list of parameterized query definitions from the Query table with additional :count and :card-id keys,
+  selects the 10 most common queries for each card ID that we should rerun."
   [parameterized-queries]
   (apply concat
          (-> (group-by :card-id parameterized-queries)
@@ -132,10 +139,10 @@
 
 (defn- duration-queries-to-rerun
   []
-  (let [cache-configs     (t2/select :model/CacheConfig :strategy :duration :refresh_automatically true)
-        configs->card-ids (cache-configs->card-ids cache-configs)]
+  (let [cache-configs     (t2/select :model/CacheConfig :strategy :duration :refresh_automatically true)]
     (when (seq cache-configs)
-      (let [base-queries          (t2/select :model/Query (duration-queries-to-rerun-honeysql configs->card-ids false))
+      (let [configs->card-ids     (cache-configs->card-ids cache-configs)
+            base-queries          (t2/select :model/Query (duration-queries-to-rerun-honeysql configs->card-ids false))
             parameterized-queries (t2/select :model/Query (duration-queries-to-rerun-honeysql configs->card-ids true))]
         (concat base-queries (select-parameterized-queries parameterized-queries))))))
 

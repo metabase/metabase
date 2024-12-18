@@ -161,9 +161,9 @@
                                  :value  "4"}]})]
       (with-query-execution! [qe query]
         (process-userland-query query)
-        (is (=? {:parameterized true} (qe))))))
+        (is (=? {:parameterized true} (qe)))))))
 
-  (def ^:private ^:dynamic *viewlog-call-count* nil))
+(def ^:private ^:dynamic *viewlog-call-count* nil)
 
 (methodical/defmethod events/publish-event! ::event
   [_topic _event]
