@@ -50,7 +50,7 @@ async function setup({
     card_name: model.displayName() as string,
   });
 
-  setupModelPersistenceEndpoints(modelCacheInfo);
+  setupModelPersistenceEndpoints([modelCacheInfo]);
 
   renderWithProviders(<ModelCacheManagementSection model={model} />);
 
