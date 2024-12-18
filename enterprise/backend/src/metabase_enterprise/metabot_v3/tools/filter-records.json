@@ -1,5 +1,5 @@
 {
-    "name": "filter-data",
+    "name": "filter-records",
     "description": "Filter records of a table, or the results of a query by specified conditions. Multiple filters can be combined to create complex queries but note that the filters are applied in a logical AND fashion (cannot be combined with OR). For querying metrics, always use the `query-metric` tool instead.",
     "parameters": {
         "type": "object",
