@@ -114,7 +114,7 @@ jobs:
     if: |
       !cancelled() && needs.build.result == 'success'
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
+    timeout-minutes: 90
     name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}
     env:
       MB_EDITION: ${{ matrix.edition }}
@@ -308,20 +308,24 @@ jobs:
     if: always()
     timeout-minutes: 10
     steps:
+      - uses: actions/checkout@v4
 
-    - name: Download all coverage artifacts
-      uses: actions/download-artifact@v4
-      with:
-        pattern: cypress-coverage-*
-        path: coverage/e2e
-        merge-multiple: true
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
 
-    - name: Merge and Upload Coverage Reports
-      run: |
-        if [ -d "coverage/e2e" ]; then
-          yarn nyc merge coverage/e2e coverage/merged-coverage.json
-          yarn nyc report --reporter=lcov --reporter=text --temp-dir coverage --report-dir coverage/merged-report
-        fi
+      - name: Download all coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: cypress-coverage-*
+          path: coverage/e2e
+          merge-multiple: true
+
+      - name: Merge and Upload Coverage Reports
+        run: |
+          if [ -d "coverage/e2e" ]; then
+            yarn nyc merge coverage/e2e coverage/merged-coverage.json
+            yarn nyc report --reporter=lcov --reporter=text --temp-dir coverage --report-dir coverage/merged-report
+          fi
 
   pr-env:
     needs: [build]
