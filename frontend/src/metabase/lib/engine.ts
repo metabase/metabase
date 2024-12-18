@@ -14,16 +14,6 @@ export function getNativeQueryLanguage(engine?: string) {
   return getEngineNativeType(engine).toUpperCase() as "SQL" | "JSON";
 }
 
-export function getEngineNativeAceMode(engine?: string | null) {
-  switch (engine) {
-    case "mongo":
-    case "druid":
-      return "ace/mode/json";
-    default:
-      return "ace/mode/sql";
-  }
-}
-
 type JSONQuery = Record<string, any> | Record<string, any>[];
 
 function formatJsonQuery(query: JSONQuery) {
