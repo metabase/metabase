@@ -452,14 +452,15 @@ describe("parameters/utils/targets", () => {
           );
         });
 
-        it("date breakouts in multiple stages - returns date column from the last stage only", () => {
+        it("date breakouts in multiple stages - returns date columns from all stages", () => {
           const question = createQuestion(queryDateBreakoutsMultiStage);
           const { query, columns } = getParameterColumns(question, parameter);
           const columnsInfos = getColumnsInfos(query, columns);
 
-          expect(columnsInfos).toEqual(
-            withColumnsStage(1, [["Orders", "Created At: Month"]]),
-          );
+          expect(columnsInfos).toEqual([
+            ...withColumnsStage(0, [["Orders", "Created At"]]),
+            ...withColumnsStage(1, [["Orders", "Created At: Month"]]),
+          ]);
         });
       });
 
