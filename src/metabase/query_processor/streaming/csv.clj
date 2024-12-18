@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.formatter :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
@@ -88,7 +89,8 @@
   [_ ^OutputStream os]
   (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
         ordered-formatters (volatile! nil)
-        pivot-data         (atom nil)]
+        pivot-data         (atom nil)
+        start-time         (System/currentTimeMillis)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot-export-options pivot?]
                    :or   {format-rows? true
@@ -150,6 +152,8 @@
 
       (finish! [_ _]
         ;; TODO -- not sure we need to flush both
+        (let [duration (- (System/currentTimeMillis) start-time)]
+          (prometheus/observe! :metabase-streaming/export-csv-ms duration))
         (when (and (contains? @pivot-data :config) (public-settings/enable-pivoted-exports))
           (doseq [xf-row (qp.pivot.postprocess/build-pivot-output @pivot-data @ordered-formatters)]
             (write-csv writer [xf-row])))

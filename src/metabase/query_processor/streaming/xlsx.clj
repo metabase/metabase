@@ -726,7 +726,7 @@
       (finish! [_ {:keys [row_count]}]
         (let [{:keys [workbook sheet]} @workbook-data
               duration (- (System/currentTimeMillis) start-time)]
-          (prometheus/observe! :metabase-streaming/xlsx-export-ms duration)
+          (prometheus/observe! :metabase-streaming/export-xlsx-ms duration)
           (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
             ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
             (autosize-columns! sheet))

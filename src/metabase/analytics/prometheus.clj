@@ -224,9 +224,16 @@
                        {:description "Number of successful search requests."})
    (prometheus/counter :metabase-search/response-error
                        {:description "Number of errors when responding to search requests."})
-   (prometheus/histogram :metabase-streaming/xlsx-export-ms
+   (prometheus/histogram :metabase-streaming/export-xlsx-ms
                          {:description "Duration of xlsx file export in ms."
-                          :buckets [100 500 1000 2000 5000 10000]})])
+                          :buckets [100 500 1000 2000 5000 10000]})
+   (prometheus/histogram :metabase-streaming/export-csv-ms
+                         {:description "Duration of csv file export in ms."
+                          :buckets [100 500 1000 2000 5000 10000]})
+   (prometheus/histogram :metabase-streaming/export-json-ms
+                         {:description "Duration of json file export in ms."
+                          :buckets [100 500 1000 2000 5000 10000]})
+   ])
 
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
