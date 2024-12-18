@@ -3,7 +3,6 @@ import { bindActionCreators } from "@reduxjs/toolkit";
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component, createRef } from "react";
-import { connect } from "react-redux";
 import { Link } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
@@ -17,6 +16,7 @@ import SaveStatus from "metabase/components/SaveStatus";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import title from "metabase/hoc/Title";
+import { connect } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { Box } from "metabase/ui";
 

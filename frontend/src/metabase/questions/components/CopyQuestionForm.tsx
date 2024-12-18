@@ -13,7 +13,7 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { Button, DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
+import { Button } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";
 
@@ -85,7 +85,6 @@ export const CopyQuestionForm = ({
           collectionIdFieldName="collection_id"
           dashboardIdFieldName="dashboard_id"
           title={t`Where do you want to save this?`}
-          zIndex={DEFAULT_MODAL_Z_INDEX + 1}
         />
         <FormFooter>
           <FormErrorMessage inline />

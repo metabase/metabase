@@ -1,6 +1,5 @@
 import type * as React from "react";
 import { useRef, useState } from "react";
-import { connect } from "react-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
@@ -15,7 +14,7 @@ import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
-import { useDispatch } from "metabase/lib/redux";
+import { connect, useDispatch } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Group, Stack, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";

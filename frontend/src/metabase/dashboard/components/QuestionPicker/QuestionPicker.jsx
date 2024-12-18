@@ -1,6 +1,5 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -12,7 +11,7 @@ import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { getCrumbs } from "metabase/lib/collections";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { useSelector } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/lib/redux";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Icon } from "metabase/ui";
 
