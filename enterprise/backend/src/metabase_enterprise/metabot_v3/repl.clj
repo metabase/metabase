@@ -36,6 +36,27 @@
   (doseq [reaction reactions]
     (handle-reaction reaction)))
 
+(defn- test-context
+  []
+  (let [test-query {:dataset_query {:database 1, :type "query", :query {:source-table 5}},
+                    :display "table",
+                    :visualization_settings {},
+                    :type "question"}]
+    {:user-is-viewing [{:type :dashboard
+                        :ref 10
+                        :parameters []
+                        :is-embedded false}
+                       {:type :table
+                        :ref 7}
+                       {:type :model
+                        :ref 2}
+                       {:type :metric
+                        :ref 120}
+                       {:type :report
+                        :ref 12}
+                       {:type :adhoc
+                        :query test-query}]}))
+
 (defn user-repl
   "REPL for interacting with MetaBot."
   ([]
@@ -53,12 +74,7 @@
                            (println "🗨 " (u/colorize :blue input))
                            (when (and (not (#{"quit" "exit" "bye" "goodbye" "\\q"} input))
                                       (not (str/blank? input)))
-                             (let [context {:current_page {:name "Visualizer",
-                                                           :description "A page where query results are visualized."}
-                                            :current_visualization_settings {:current_display_type "bar",
-                                                                             :visible_columns [{:name "Created At"}, {:name "Id"}, {:name "Order Number"}, {:name "Status"}, {:name "Total"}],
-                                                                             :hidden_columns [{:name "Customer Id"}, {:name "Customer Name"}, {:name "Customer Email"}]}}
-                                   env (api/request input context history session-id)]
+                             (let [env (api/request input (test-context) history session-id)]
                                (handle-reactions (metabot-v3.envelope/reactions env))
                                (metabot-v3.envelope/history env))))
                          (catch Throwable e
