@@ -9,7 +9,9 @@
                 "description": "A valid and complete email address (username + @ + domain + TLD) like 'peter.pan@neverland.com'. Cannot be used with incomplete emails (e.g. 'peter.pan@neverland'). If the email address is incomplete or missing a part like the TLD, ask the user for clarification before proceeding."
             }
         },
-        "required": ["email"],
+        "required": [
+            "email"
+        ],
         "additionalProperties": false
     }
-  }
+}

@@ -1,6 +1,6 @@
 {
     "name": "generate-insights",
-    "description": "Use this tool for exploratory data analysis, initial data exploration, or when you need a broad overview of your table, report_card, query or metric, including key metrics and general trends. This is a good starting point for unspecific data analysis or exploration.",
+    "description": "Use this tool for exploratory data analysis, initial data exploration, or when you need a broad overview of your table, report_card, query or curated metric, including key metrics and general trends. This is a good starting point for unspecific data analysis or exploration.",
     "parameters": {
         "type": "object",
         "properties": {

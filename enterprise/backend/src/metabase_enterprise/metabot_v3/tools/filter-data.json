@@ -1,228 +1,233 @@
 {
-  "name": "filter-data",
-  "description": "This tool filters data based on specified conditions applied to particular fields. It is ideal for narrowing down data to meet specific criteria by using various comparison operators such as less than, greater than, equals, contains, and more. Ensure that each 'column_id' corresponds to a valid field in your dataset and that the chosen 'operator' is compatible with the field's data type to avoid errors. Note that this tool solely focuses on filtering data and does not perform any aggregation or modification. The filtered results will be displayed to the user in the Metabase query editor. Note that this will fire a fresh query - the previous query state will be lost. In case you want to keep parts of the previous state, you need to include them in the parameters.",
-  "parameters": {
-    "type": "object",
-    "properties": {
-      "filters": {
-        "type": "array",
-        "items": {
-          "anyOf": [
-            {
-              "type": "object",
-              "description": "Filter query results by a string field and value. Note that strings could have both null and empty values.",
-              "properties": {
-                "operation": {
-                  "type": "string",
-                  "enum": [
-                    "add_string_filter"
-                  ]
-                },
-                "column_id": {
-                  "type": "integer",
-                  "description": "The ID of the string column to apply the filter to."
-                },
-                "operator": {
-                  "type": "string",
-                  "enum": [
-                    "=",
-                    "!=",
-                    "contains",
-                    "does-not-contain",
-                    "starts-with",
-                    "ends-with",
-                    "is-empty",
-                    "is-not-empty"
-                  ],
-                  "description": "The operator to use for filtering string values. Use 'is-empty' and 'is-not-empty' for filtering null and empty strings. If only filtering against null values, '!=' or '=' with a null value should be used."
-                },
-                "value": {
-                  "type": "string",
-                  "description": "The string to compare against the field's value. This value is case-insensitive. For 'is-empty' and 'is-not-empty' operators, this value should be set to an empty string."
-                }
-              },
-              "required": [
-                "operation",
-                "column_id",
-                "operator",
-                "value"
-              ],
-              "additionalProperties": false
+    "name": "filter-records",
+    "description": "Filter records of a table, or the results of a query by specified conditions. Multiple filters can be combined to create complex queries but note that the filters are applied in a logical AND fashion (cannot be combined with OR). For querying metrics, always use the `query-metric` tool instead.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "data_source": {
+                "anyOf": [
+                    {
+                        "type": "object",
+                        "description": "Filter the records of a table.",
+                        "properties": {
+                            "table_id": {
+                                "type": "integer",
+                                "description": "The ID of the table to filter"
+                            }
+                        },
+                        "required": [
+                            "table_id"
+                        ],
+                        "additionalProperties": false
+                    },
+                    {
+                        "type": "object",
+                        "description": "Filter the results of a query that you ran.",
+                        "properties": {
+                            "query_id": {
+                                "type": "string",
+                                "description": "The ID of the query to filter"
+                            }
+                        },
+                        "required": [
+                            "query_id"
+                        ],
+                        "additionalProperties": false
+                    },
+                    {
+                        "type": "object",
+                        "description": "Filter the results of a saved report.",
+                        "properties": {
+                            "report_id": {
+                                "type": "integer",
+                                "description": "The ID of the report to filter"
+                            }
+                        },
+                        "required": [
+                            "report_id"
+                        ],
+                        "additionalProperties": false
+                    }
+                ]
             },
-            {
-              "type": "object",
-              "description": "Filter query results by a numeric field and value.",
-              "properties": {
-                "operation": {
-                  "type": "string",
-                  "enum": [
-                    "add_numeric_filter"
-                  ]
-                },
-                "column_id": {
-                  "type": "integer",
-                  "description": "The ID of the numeric column to apply the filter to."
-                },
-                "operator": {
-                  "type": "string",
-                  "enum": [
-                    "<",
-                    "<=",
-                    ">",
-                    ">=",
-                    "=",
-                    "!="
-                  ],
-                  "description": "The operator to use for filtering numeric values."
-                },
-                "value": {
-                  "type": "number",
-                  "description": "The number to compare against the field's value."
+            "filters": {
+                "type": [
+                    "array",
+                    "null"
+                ],
+                "description": "An array of filter objects. Each filter specifies a field, an operation, and a value (if required). For single filters, pass one object. If you want to filter on multiple columns, pass multiple objects. If the user doesn't specify any filters, set this parameter to null.",
+                "items": {
+                    "anyOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "operation": {
+                                    "type": "string",
+                                    "enum": [
+                                        "is-null",
+                                        "is-not-null",
+                                        "string-is-empty",
+                                        "string-is-not-empty",
+                                        "is-true",
+                                        "is-false"
+                                    ],
+                                    "description": "Operation to apply. `string-is-empty` and `string-is-not-empty` refer to both empty strings and NULL values."
+                                },
+                                "field_id": {
+                                    "type": "string",
+                                    "description": "ID of the field to filter. Needs to exactly match the `field_id` in the database. Provide numeric IDs as strings but never make up IDs."
+                                }
+                            },
+                            "required": [
+                                "field_id",
+                                "operation"
+                            ],
+                            "additionalProperties": false
+                        },
+                        {
+                            "type": "object",
+                            "description": "Filter records on parts of a date or datetime field. Use this to include / exclude records based on the year, quarter, month, day-of-week, hour, minute, or second of a date or datetime field.",
+                            "properties": {
+                                "operation": {
+                                    "type": "string",
+                                    "enum": [
+                                        "year-equals",
+                                        "year-not-equals",
+                                        "quarter-equals",
+                                        "quarter-not-equals",
+                                        "month-equals",
+                                        "month-not-equals",
+                                        "day-of-week-equals",
+                                        "day-of-week-not-equals",
+                                        "hour-equals",
+                                        "hour-not-equals",
+                                        "minute-equals",
+                                        "minute-not-equals",
+                                        "second-equals",
+                                        "second-not-equals"
+                                    ],
+                                    "description": "Operation to apply"
+                                },
+                                "field_id": {
+                                    "type": "string",
+                                    "description": "ID of the date / datetime field to filter. Needs to exactly match the `field_id` in the database. Provide numeric IDs as strings but never make up IDs."
+                                },
+                                "value": {
+                                    "type": "integer",
+                                    "description": "Value to compare against. Needs to be integer: month (1-12), day-of-week (1-7 starting on Monday), hour (0-23), minute (0-59), second (0-59), quarter (1-4)."
+                                }
+                            },
+                            "required": [
+                                "operation",
+                                "field_id",
+                                "value"
+                            ],
+                            "additionalProperties": false
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "operation": {
+                                    "type": "string",
+                                    "enum": [
+                                        "date-equals",
+                                        "date-not-equals",
+                                        "date-before",
+                                        "date-on-or-before",
+                                        "date-after",
+                                        "date-on-or-after"
+                                    ],
+                                    "description": "Operation to apply"
+                                },
+                                "field_id": {
+                                    "type": "string",
+                                    "description": "ID of the date / datetime field to filter. Needs to exactly match the `field_id` in the database. Provide numeric IDs as strings but never make up IDs."
+                                },
+                                "value": {
+                                    "type": "string",
+                                    "description": "Value to compare against. Date needs to be in the format 'YYYY-MM-DD' and date-time in the format 'YYYY-MM-DDTHH:MM:SS' (without timezone). Datetime fields can also be compared against date values (this will return all records where the datetime field is on the same day as the date value)."
+                                }
+                            },
+                            "required": [
+                                "operation",
+                                "field_id",
+                                "value"
+                            ],
+                            "additionalProperties": false
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "operation": {
+                                    "type": "string",
+                                    "enum": [
+                                        "string-equals",
+                                        "string-not-equals",
+                                        "string-contains",
+                                        "string-not-contains",
+                                        "string-starts-with",
+                                        "string-ends-with"
+                                    ],
+                                    "description": "Operation to apply"
+                                },
+                                "field_id": {
+                                    "type": "string",
+                                    "description": "ID of the field to filter. Needs to exactly match the `field_id` in the database. Provide numeric IDs as strings but never make up IDs."
+                                },
+                                "value": {
+                                    "type": "string",
+                                    "description": "Value to compare against."
+                                }
+                            },
+                            "required": [
+                                "operation",
+                                "field_id",
+                                "value"
+                            ],
+                            "additionalProperties": false
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "operation": {
+                                    "type": "string",
+                                    "enum": [
+                                        "number-equals",
+                                        "number-not-equals",
+                                        "number-greater-than",
+                                        "number-greater-than-or-equal",
+                                        "number-less-than",
+                                        "number-less-than-or-equal"
+                                    ],
+                                    "description": "Operation to apply"
+                                },
+                                "field_id": {
+                                    "type": "string",
+                                    "description": "ID of the field to filter. Needs to exactly match the `field_id` in the database. Provide numeric IDs as strings but never make up IDs."
+                                },
+                                "value": {
+                                    "type": [
+                                        "number",
+                                        "integer"
+                                    ],
+                                    "description": "Value to compare against."
+                                }
+                            },
+                            "required": [
+                                "operation",
+                                "field_id",
+                                "value"
+                            ],
+                            "additionalProperties": false
+                        }
+                    ]
                 }
-              },
-              "required": [
-                "operation",
-                "column_id",
-                "operator",
-                "value"
-              ],
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "description": "Filter query results by a boolean field and value.",
-              "properties": {
-                "operation": {
-                  "type": "string",
-                  "enum": [
-                    "add_boolean_filter"
-                  ]
-                },
-                "column_id": {
-                  "type": "integer",
-                  "description": "The ID of the boolean column to apply the filter to."
-                },
-                "operator": {
-                  "type": "string",
-                  "enum": [
-                    "=",
-                    "!="
-                  ],
-                  "description": "The operator to use for filtering boolean values."
-                },
-                "value": {
-                  "type": "boolean",
-                  "description": "The boolean value to compare against the field's value."
-                }
-              },
-              "required": [
-                "operation",
-                "column_id",
-                "operator",
-                "value"
-              ],
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "description": "Filter query results by exact datetime/date field and value.",
-              "properties": {
-                "operation": {
-                  "type": "string",
-                  "enum": [
-                    "add_exact_date_filter"
-                  ]
-                },
-                "column_id": {
-                  "type": "integer",
-                  "description": "The ID of the date column to apply the filter to."
-                },
-                "operator": {
-                  "type": "string",
-                  "enum": [
-                    "<",
-                    "<=",
-                    ">",
-                    ">=",
-                    "=",
-                    "!="
-                  ],
-                  "description": "The operator to use for filtering date values."
-                },
-                "value": {
-                  "type": "string",
-                  "description": "The date to compare against the field's value. The date must be in the format 'YYYY-MM-DD' for dates and 'YYYY-MM-DD HH:MM:SS' for datetimes."
-                }
-              },
-              "required": [
-                "operation",
-                "column_id",
-                "operator",
-                "value"
-              ],
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "description": "Filter query results by date part of datetime/date field and value like year, month, day of week, day of year, week of year, hour, minute, second, etc.",
-              "properties": {
-                "operation": {
-                  "type": "string",
-                  "enum": [
-                    "add_date_part_filter"
-                  ]
-                },
-                "column_id": {
-                  "type": "integer",
-                  "description": "The ID of the date column to apply the filter to."
-                },
-                "date_part": {
-                  "type": "string",
-                  "description": "The date part to filter on.",
-                  "enum": [
-                    "year",
-                    "quarter",
-                    "month",
-                    "day",
-                    "hour",
-                    "minute",
-                    "second",
-                    "day-of-week"
-                  ]
-                },
-                "operator": {
-                  "type": "string",
-                  "enum": [
-                    "<",
-                    "<=",
-                    ">",
-                    ">=",
-                    "=",
-                    "!="
-                  ],
-                  "description": "The operator to use for filtering date part values."
-                },
-                "value": {
-                  "type": ["number"],
-                  "description": "The date part value to compare against the field's value. Use integers (1-12 for months, 1-7 for weekdays starting Monday)"
-                }
-              },
-              "required": [
-                "operation",
-                "column_id",
-                "date_part",
-                "operator",
-                "value"
-              ],
-              "additionalProperties": false
             }
-          ]
-        }
-      }
-    },
-    "required": [
-      "filters"
-    ],
-    "additionalProperties": false
-  }
+        },
+        "required": [
+            "data_source",
+            "filters"
+        ],
+        "additionalProperties": false
+    }
 }
