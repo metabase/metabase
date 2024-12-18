@@ -18,7 +18,7 @@ const {
   PEOPLE_ID,
 } = SAMPLE_DATABASE;
 
-const { DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
+const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 H.describeEE("formatting > sandboxes", () => {
   describe("admin", () => {
@@ -180,6 +180,85 @@ H.describeEE("formatting > sandboxes", () => {
           2,
         );
       });
+    });
+  });
+
+  describe("sandboxed user", () => {
+    const allCategories = ["Gadget", "Gizmo", "Doohickey", "Widget"];
+
+    function verifyCategoryList(visibleCategories) {
+      H.popover().within(() => {
+        allCategories.forEach(value => {
+          if (visibleCategories.includes(value)) {
+            cy.findByText(value).should("be.visible");
+          } else {
+            cy.findByText(value).should("not.exist");
+          }
+        });
+      });
+    }
+
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.setTokenFeatures("all");
+      preparePermissions();
+    });
+
+    it("should show field values for sandboxed users", () => {
+      cy.log("create another sandboxed user");
+      const user = {
+        email: "u2@metabase.test",
+        password: "12341234",
+        login_attributes: {
+          attr_uid: "2",
+          attr_cat: "Gadget",
+        },
+        user_group_memberships: [
+          { id: ALL_USERS_GROUP, is_group_manager: false },
+          { id: COLLECTION_GROUP, is_group_manager: false },
+        ],
+      };
+      cy.createUserFromRawData(user);
+
+      cy.log("setup sandboxing");
+      cy.visit(
+        `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
+      );
+      H.modifyPermission("collection", 0, "Sandboxed");
+      H.modal().findByText("Pick a column").click();
+      H.popover().findByText("Category").click();
+      H.modal().findByText("Pick a user attribute").click();
+      H.popover().findByText("attr_cat").click();
+      H.modal().button("Save").click();
+      H.savePermissions();
+
+      cy.log("setup a dashboard");
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.editDashboard();
+      H.setFilter("Text or Category", "Is");
+      H.selectDashboardFilter(H.getDashboardCard(), "Category");
+      H.saveDashboard();
+
+      cy.log("field values for admin");
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.filterWidget().click();
+      verifyCategoryList(allCategories);
+
+      cy.log("field values for the first sandboxed user");
+      cy.signIn("sandboxed");
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.filterWidget().click();
+      verifyCategoryList(["Widget"]);
+
+      cy.log("field values for the second sandboxed user");
+      cy.request("POST", "/api/session", {
+        username: user.email,
+        password: user.password,
+      });
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.filterWidget().click();
+      verifyCategoryList(["Gadget"]);
     });
   });
 
