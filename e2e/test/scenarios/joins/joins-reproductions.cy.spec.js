@@ -233,7 +233,7 @@ describe("issue 15578", () => {
 
     cy.button("Join data").click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText(JOINED_QUESTION_NAME).click();
     });
 
@@ -749,7 +749,7 @@ describe("issue 22859 - multiple levels of nesting", () => {
   it("third level of nesting with joins should result in proper column aliasing (metabase#22859-2)", () => {
     H.startNewQuestion();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("22859-Q2").click();
     });
 
@@ -793,9 +793,15 @@ describe("issue 23293", () => {
     cy.wait("@dataset");
 
     H.queryBuilderHeader().button("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
-      cy.findByText("Save").click();
+    cy.findByTestId("save-question-modal")
+      .findByLabelText(/Where do you want to save this/)
+      .click();
+    H.pickEntity({
+      tab: "Browse",
+      path: ["Our analytics"],
     });
+    H.entityPickerModal().findByText("Select this collection").click();
+    cy.findByTestId("save-question-modal").button("Save").click();
 
     cy.wait("@saveQuestion").then(({ response }) => {
       cy.button("Not now").click();
@@ -961,7 +967,7 @@ describe("issue 29795", () => {
     cy.icon("join_left_outer").click();
 
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText(NATIVE_QUESTION).click();
     });
 
@@ -1177,7 +1183,7 @@ describe.skip("issue 27521", () => {
     H.join();
 
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("Q1").click();
     });
 

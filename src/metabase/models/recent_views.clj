@@ -250,6 +250,8 @@
                          :card.display
                          :card.result_metadata
                          :card.visualization_settings
+                         [:dashboard.id :dashboard_id]
+                         [:dashboard.name :dashboard_name]
                          [:card.collection_id :entity-coll-id]
                          [:mr.status :moderated-status]
                          [:collection.id :collection_id]
@@ -265,7 +267,10 @@
                             [:collection]
                             [:and
                              [:= :collection.id :card.collection_id]
-                             [:= :collection.archived false]]]})))
+                             [:= :collection.archived false]]
+
+                            [:report_dashboard :dashboard]
+                            [:= :dashboard.id :card.dashboard_id]]})))
 
 (defn- fill-parent-coll [model-object]
   (if (:collection_id model-object)
@@ -289,6 +294,9 @@
                    (parent-collection-valid? model_object)
                    (ellide-archived model_object))]
     {:id model_id
+     :dashboard (when (:dashboard_id card)
+                  {:name (:dashboard_name card)
+                   :id (:dashboard_id card)})
      :name (:name card)
      :database_id (:database_id card)
      :description (:description card)

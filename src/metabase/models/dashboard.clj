@@ -46,6 +46,10 @@
 
 (methodical/defmethod t2/table-name :model/Dashboard [_model] :report_dashboard)
 
+(methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :dashboard]
+  [_original-model _k]
+  :model/Dashboard)
+
 (doto :model/Dashboard
   (derive :metabase/model)
   (derive ::perms/use-parent-collection-perms)
@@ -213,7 +217,14 @@
                           :where     [:and
                                       [:in :dashcard.dashboard_id (map :id dashboards)]
                                       [:or
+                                       ;; show it if:
+                                       ;; - the card isn't archived
                                        [:= :card.archived false]
+
+                                       ;; - the card is archived BUT it's a dashboard question that wasn't archived by itself
+                                       [:and
+                                        [:not= :card.dashboard_id nil]
+                                        [:= :card.archived_directly false]]
                                        [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
                           :order-by  [[:dashcard.dashboard_id] [:dashcard.created_at :asc]]}))
    :id
@@ -234,6 +245,26 @@
         (assoc dashboard :collection_authority_level (get coll-id->level (u/the-id dashboard)))))))
 
 (comment moderation/keep-me)
+
+(defn archive-or-unarchive-internal-dashboard-questions!
+  "When updating dashboard cards, if we're removing all references to a Dashboard Question (which is internal to the
+  dashboard, not displayed as part of a collection) we want to archive it. Similarly, we want to mark any Dashboard
+  Questions that *are* on the Dashboard as *not* archived. This function takes a dashboard and the set of dashcards
+  about to be saved, and ensures that all DQs that appear on the dashboard are unarchived and all DQs that DON'T
+  appear on the dashboard are archived."
+  [dashboard-id new-cards]
+  (let [;; the set of ALL Dashboard Questions (internal to the dashboard) for this Dashboard
+        internal-dashboard-question-ids (t2/select-pks-set :model/Card :dashboard_id dashboard-id)
+        ;; the set of all card IDs that are present on the dashboard
+        used-card-ids (into #{} (map :card_id new-cards))
+        ;; DQs that aren't used get archived
+        internal-dashboard-questions-to-archive (set/difference internal-dashboard-question-ids used-card-ids)
+        ;; DQs that ARE used get unarchived
+        internal-dashboard-questions-to-unarchive (set/intersection internal-dashboard-question-ids used-card-ids)]
+    (when-let [ids (seq internal-dashboard-questions-to-archive)]
+      (t2/update! :model/Card :id [:in ids] {:archived true :archived_directly true}))
+    (when-let [ids (seq internal-dashboard-questions-to-unarchive)]
+      (t2/update! :model/Card :id [:in ids] {:archived false :archived_directly false}))))
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
@@ -285,11 +316,19 @@
         (dashboard-card/update-dashboard-card! update-card (id->current-card (:id update-card)))))))
 
 (defn- remove-invalid-dashcards
-  "Given a list of dashcards, remove any dashcard that references cards that are either archived or not exist."
-  [dashcards]
+  "Given a list of dashcards, remove any dashcard that references cards that are archived, do not exist, or now belong to other dashboards ."
+  [dashboard-id dashcards]
   (let [card-ids          (set (keep :card_id dashcards))
         active-card-ids   (when-let [card-ids (seq card-ids)]
-                            (t2/select-pks-set :model/Card :id [:in card-ids] :archived false))
+                            (t2/select-pks-set :model/Card
+                                               {:where [:and
+                                                        [:in :id card-ids]
+                                                        ;; skip when archived
+                                                        [:= :archived false]
+                                                        ;; belong to this dashboard, or are not Dashboard Questions
+                                                        [:or
+                                                         [:= :dashboard_id dashboard-id]
+                                                         [:= :dashboard_id nil]]]}))
         inactive-card-ids (set/difference card-ids active-card-ids)]
     (remove #(contains? inactive-card-ids (:card_id %)) dashcards)))
 
@@ -302,9 +341,10 @@
         current-tabs              (t2/select-fn-vec #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
                                                     :model/DashboardTab :dashboard_id dashboard-id)
         {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! dashboard-id current-tabs (:tabs serialized-dashboard))
+        _                         (archive-or-unarchive-internal-dashboard-questions! dashboard-id serialized-dashcards)
         serialized-dashcards      (cond->> serialized-dashcards
                                     true
-                                    remove-invalid-dashcards
+                                    (remove-invalid-dashcards dashboard-id)
                                     ;; in case reverting result in new tabs being created,
                                     ;; we need to remap the tab-id
                                     (seq old->new-tab-id)

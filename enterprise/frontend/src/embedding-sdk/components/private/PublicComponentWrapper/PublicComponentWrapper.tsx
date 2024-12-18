@@ -7,12 +7,14 @@ import { SdkLoader } from "embedding-sdk/components/private/PublicComponentWrapp
 import { useSdkSelector } from "embedding-sdk/store";
 import { getLoginStatus, getUsageProblem } from "embedding-sdk/store/selectors";
 
-type PublicComponentWrapperProps = {
+import { RenderOnlyInSdkProvider } from "../SdkContext";
+
+export type PublicComponentWrapperProps = {
   children: React.ReactNode;
   className?: string;
   style?: CSSProperties;
 };
-export const PublicComponentWrapper = React.forwardRef<
+const PublicComponentWrapperInner = React.forwardRef<
   HTMLDivElement,
   PublicComponentWrapperProps
 >(function PublicComponentWrapper({ children, className, style }, ref) {
@@ -42,5 +44,16 @@ export const PublicComponentWrapper = React.forwardRef<
     <PublicComponentStylesWrapper className={className} style={style} ref={ref}>
       {content}
     </PublicComponentStylesWrapper>
+  );
+});
+
+export const PublicComponentWrapper = React.forwardRef<
+  HTMLDivElement,
+  PublicComponentWrapperProps
+>(function PublicComponentWrapper(props, ref) {
+  return (
+    <RenderOnlyInSdkProvider>
+      <PublicComponentWrapperInner ref={ref} {...props} />
+    </RenderOnlyInSdkProvider>
   );
 });

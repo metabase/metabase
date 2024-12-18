@@ -296,14 +296,9 @@ describe("scenarios > models", () => {
       H.startNewQuestion();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Models").click();
+        H.entityPickerModalTab("Collections").click();
         cy.findByText("Orders").should("exist");
         cy.findByText("Orders Model").should("exist");
-        cy.findByText("Orders, Count").should("not.exist");
-
-        H.entityPickerModalTab("Saved questions").click();
-        cy.findByText("Orders").should("not.exist");
-        cy.findByText("Orders Model").should("not.exist");
         cy.findByText("Orders, Count").should("exist");
         cy.findByText("Orders, Count, Grouped by Created At (year)").should(
           "exist",
@@ -360,7 +355,7 @@ describe("scenarios > models", () => {
 
       H.startNewQuestion();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Models").click();
+        H.entityPickerModalTab("Collections").click();
         cy.findByText("Orders").click();
       });
 
@@ -405,7 +400,7 @@ describe("scenarios > models", () => {
         cy.findByText("Save").click();
       });
 
-      cy.url().should("match", /\/question\/\d+-[a-z0-9-]*$/);
+      cy.url().should("match", /\/dashboard\/\d+#edit/);
     });
 
     it("should not display models if nested queries are disabled", () => {

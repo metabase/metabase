@@ -1,5 +1,7 @@
+import cx from "classnames";
 import { t } from "ttag";
 
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -13,7 +15,7 @@ import type Question from "metabase-lib/v1/Question";
 
 import { trackNotebookNativePreviewShown } from "../../../../../analytics";
 
-import { SqlButton } from "./ToggleNativeQueryPreview.styled";
+import ToggleNativeQueryPreviewS from "./ToggleNativeQueryPreview.module.css";
 
 const BUTTON_TOOLTIP = {
   sql: t`View the SQL`,
@@ -56,13 +58,16 @@ export const ToggleNativeQueryPreview = ({
 
   return (
     <Tooltip label={tooltip} position="top">
-      <SqlButton
-        isSelected={isShowingNotebookNativePreview}
+      <IconButtonWrapper
+        className={cx(ToggleNativeQueryPreviewS.SqlButton, {
+          [ToggleNativeQueryPreviewS.isSelected]:
+            isShowingNotebookNativePreview,
+        })}
         onClick={handleClick}
         aria-label={tooltip}
       >
         <Icon size="1rem" name="sql" />
-      </SqlButton>
+      </IconButtonWrapper>
     </Tooltip>
   );
 };

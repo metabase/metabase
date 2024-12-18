@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 
-import { connect } from "react-redux";
+import cx from "classnames";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
@@ -13,12 +13,14 @@ import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import Bookmarks from "metabase/entities/bookmarks";
 import Questions from "metabase/entities/questions";
+import { connect } from "metabase/lib/redux";
 import {
   rememberLastUsedDatabase,
   setArchivedQuestion,
 } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
+import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import DatasetEditor from "../../../DatasetEditor";
@@ -31,10 +33,7 @@ import { ViewLeftSidebarContainer } from "../ViewLeftSidebarContainer";
 import { ViewMainContainer } from "../ViewMainContainer";
 import { ViewRightSidebarContainer } from "../ViewRightSidebarContainer";
 
-import {
-  QueryBuilderContentContainer,
-  QueryBuilderViewRoot,
-} from "./View.styled";
+import S from "./View.module.css";
 
 const ViewInner = props => {
   const {
@@ -118,8 +117,9 @@ const ViewInner = props => {
             isRunning={isRunning}
             onChange={updateQuestion}
             onCreate={async question => {
-              await onCreate(question);
+              const result = await onCreate(question);
               setQueryBuilderMode("view");
+              return result;
             }}
             onSave={async question => {
               await onSave(question);
@@ -185,13 +185,13 @@ const ViewInner = props => {
 
   return (
     <div className={CS.fullHeight}>
-      <QueryBuilderViewRoot
-        className={QueryBuilderS.QueryBuilder}
+      <Flex
+        className={cx(QueryBuilderS.QueryBuilder, S.QueryBuilderViewRoot)}
         data-testid="query-builder-root"
       >
         {isHeaderVisible && <ViewHeaderContainer {...props} />}
 
-        <QueryBuilderContentContainer>
+        <Flex className={S.QueryBuilderContentContainer}>
           {!isNative && (
             <NotebookContainer
               isOpen={isNotebookContainerOpen}
@@ -236,8 +236,8 @@ const ViewInner = props => {
           >
             <ViewRightSidebarContainer {...props} />
           </ViewSidebar>
-        </QueryBuilderContentContainer>
-      </QueryBuilderViewRoot>
+        </Flex>
+      </Flex>
 
       {isShowingNewbModal && (
         <SavedQuestionIntroModal

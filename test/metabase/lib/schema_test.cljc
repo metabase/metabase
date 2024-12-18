@@ -113,6 +113,7 @@
        :joins        [{:lib/type    :mbql/join
                        :lib/options {:lib/uuid (str (random-uuid))}
                        :alias       "Q1"
+                       :ident       (u/generate-nano-id)
                        :fields      :all
                        :conditions  [[:=
                                       {:lib/uuid (str (random-uuid))}
@@ -163,6 +164,7 @@
      :joins        [{:lib/type    :mbql/join
                      :lib/options {:lib/uuid (str (random-uuid))}
                      :alias       "Q1"
+                     :ident       (u/generate-nano-id)
                      :fields      :all
                      :conditions  [[:=
                                     {:lib/uuid (str (random-uuid))}
@@ -190,6 +192,7 @@
    {:lib/type    :mbql/join
     :lib/options {:lib/uuid (str (random-uuid))}
     :alias       join-alias
+    :ident       (u/generate-nano-id)
     :conditions  [condition]
     :stages      [{:lib/type     :mbql.stage/mbql
                    :source-table 2}]}))

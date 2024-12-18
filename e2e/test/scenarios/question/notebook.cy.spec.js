@@ -14,13 +14,11 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   it("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {
     H.openOrdersTable();
     // save question initially
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
-      cy.findByText("Save").click();
+    H.saveQuestion(undefined, undefined, {
+      tab: "Browse",
+      path: ["Our analytics"],
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Not now").click();
+
     // enter "notebook" and visualize without changing anything
     H.openNotebook();
 
@@ -497,7 +495,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     H.join();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Models").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("Products model").click();
     });
 
@@ -554,7 +552,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.startNewQuestion();
 
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("Orders, Count").click();
     });
 
@@ -994,6 +992,31 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByLabelText("close icon").invoke("outerWidth").should("eq", 16);
       cy.findByLabelText("close icon").invoke("outerHeight").should("eq", 16);
     }
+  });
+
+  it("should let the user navigate back (metabase#50971)", () => {
+    cy.visit("/");
+    H.newButton("Model").click();
+    cy.findByTestId("new-model-options")
+      .findByText("Use the notebook editor")
+      .click();
+
+    H.entityPickerModal().should("be.visible");
+
+    // Cypress can emulate the browser's back button with cy.go('back'), but
+    // this does not trigger a confirmation modal, so we need to perform a
+    // similar action that also triggers the confirmation modal: clicking the
+    // cancel button in the edit bar.
+    cy.log('Triggering a "Discard your changes?" confirmation modal');
+    cy.findByTestId("dataset-edit-bar")
+      .findByRole("button", { name: "Cancel", hidden: true })
+      .click({ force: true });
+
+    cy.log(
+      'Clicking "Discard changes" in the confirmation modal to verify that this modal is above the data picker modal',
+    );
+    H.modal().should("be.visible").contains("Discard changes").click();
+    cy.findByTestId("greeting-message").should("be.visible");
   });
 });
 

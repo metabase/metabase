@@ -1,12 +1,13 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import _ from "underscore";
 
-import type { SdkPluginsConfig } from "embedding-sdk";
+import type { MetabasePluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { renderOnlyInSdkProvider } from "embedding-sdk/components/private/SdkContext";
 import { StyledPublicComponentWrapper } from "embedding-sdk/components/public/InteractiveDashboard/InteractiveDashboard.styled";
 import { useCommonDashboardParams } from "embedding-sdk/components/public/InteractiveDashboard/use-common-dashboard-params";
 import {
@@ -23,7 +24,9 @@ import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/publi
 import { InteractiveDashboardProvider } from "./context";
 
 export type InteractiveDashboardProps = {
-  plugins?: SdkPluginsConfig;
+  className?: string;
+  style?: CSSProperties;
+  plugins?: MetabasePluginsConfig;
 
   /**
    * A custom React component to render the question layout.
@@ -85,7 +88,7 @@ const InteractiveDashboardInner = ({
       {adhocQuestionUrl ? (
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}
-          withTitle={withTitle}
+          title={withTitle}
           height={drillThroughQuestionHeight}
           plugins={plugins}
           onNavigateBack={onNavigateBackToDashboard}
@@ -127,22 +130,21 @@ const InteractiveDashboardInner = ({
   );
 };
 
-export const InteractiveDashboard = ({
-  dashboardId,
-  ...rest
-}: InteractiveDashboardProps) => {
-  const { id, isLoading } = useValidatedEntityId({
-    type: "dashboard",
-    id: dashboardId,
-  });
+export const InteractiveDashboard = renderOnlyInSdkProvider(
+  ({ dashboardId, ...rest }: InteractiveDashboardProps) => {
+    const { id, isLoading } = useValidatedEntityId({
+      type: "dashboard",
+      id: dashboardId,
+    });
 
-  if (isLoading) {
-    return <SdkLoader />;
-  }
+    if (isLoading) {
+      return <SdkLoader />;
+    }
 
-  if (!id) {
-    return <SdkError message="ID not found" />;
-  }
+    if (!id) {
+      return <SdkError message="ID not found" />;
+    }
 
-  return <InteractiveDashboardInner dashboardId={id} {...rest} />;
-};
+    return <InteractiveDashboardInner dashboardId={id} {...rest} />;
+  },
+);

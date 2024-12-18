@@ -7,9 +7,9 @@ import {
   NORMAL_PERSONAL_COLLECTION_ID,
   NO_COLLECTION_PERSONAL_COLLECTION_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import * as H from "e2e/support/helpers";
 import type { DashboardCard } from "metabase-types/api";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -317,7 +317,7 @@ describe("scenarios > organization > entity picker", () => {
     });
 
     describe("cards", () => {
-      const tabs = ["Saved questions", "Models", "Metrics"];
+      const tabs = ["Collections"];
 
       it("should select a card from local search results", () => {
         cy.signInAsAdmin();
@@ -326,17 +326,17 @@ describe("scenarios > organization > entity picker", () => {
 
         const testCases = [
           {
-            tab: "Saved questions",
+            tab: "Collections",
             cardName: "Root question 1",
             sourceName: "Root question 1",
           },
           {
-            tab: "Models",
+            tab: "Collections",
             cardName: "Root model 2",
             sourceName: "Root model 2",
           },
           {
-            tab: "Metrics",
+            tab: "Collections",
             cardName: "Root metric 1",
             sourceName: "Orders",
           },
@@ -354,6 +354,22 @@ describe("scenarios > organization > entity picker", () => {
           H.getNotebookStep("data").findByText(sourceName).should("be.visible");
           H.visualize();
         });
+
+        cy.log("scope search in a dashboard");
+        H.startNewQuestion();
+        H.entityPickerModal().within(() => {
+          H.entityPickerModalTab("Collections").click();
+          H.entityPickerModalItem(1, "Orders in a dashboard").click();
+          enterSearchText({
+            text: "Orders",
+            placeholder: "Search this dashboard or everywhere…",
+          });
+          cy.findByText("Orders Dashboard question 2").click();
+        });
+        H.getNotebookStep("data")
+          .findByText("Orders Dashboard question 2")
+          .should("be.visible");
+        H.visualize();
       });
 
       it("should select a card from global search results", () => {
@@ -363,17 +379,17 @@ describe("scenarios > organization > entity picker", () => {
 
         const testCases = [
           {
-            tab: "Saved questions",
+            tab: "Collections",
             cardName: "Regular question 1",
             sourceName: "Regular question 1",
           },
           {
-            tab: "Models",
+            tab: "Collections",
             cardName: "Regular model 2",
             sourceName: "Regular model 2",
           },
           {
-            tab: "Metrics",
+            tab: "Collections",
             cardName: "Regular metric 1",
             sourceName: "Orders",
           },
@@ -392,6 +408,22 @@ describe("scenarios > organization > entity picker", () => {
           H.getNotebookStep("data").findByText(sourceName).should("be.visible");
           H.visualize();
         });
+
+        cy.log("should find dashboard questions in global search");
+        H.startNewQuestion();
+        H.entityPickerModal().within(() => {
+          H.entityPickerModalTab("Collections").click();
+          enterSearchText({
+            text: "Dashboard question 1",
+            placeholder: "Search this collection or everywhere…",
+          });
+          selectGlobalSearchTab();
+          cy.findByText("Orders Dashboard question 1").click();
+        });
+        H.getNotebookStep("data")
+          .findByText("Orders Dashboard question 1")
+          .should("be.visible");
+        H.visualize();
       });
 
       it("should search for cards for a normal user", () => {
@@ -580,7 +612,7 @@ describe("scenarios > organization > entity picker", () => {
 
       cy.log("regular collection");
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalTab("Browse").click();
         cy.findByText("First collection").click();
         enterSearchText({
           text: "collection",
@@ -595,7 +627,7 @@ describe("scenarios > organization > entity picker", () => {
 
       cy.log("personal collection");
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalTab("Browse").click();
         cy.findByText(/Personal Collection/).click();
         enterSearchText({
           text: "personal collection 1",
@@ -654,7 +686,7 @@ describe("scenarios > organization > entity picker", () => {
 
       cy.log("personal collection");
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalTab("Browse").click();
         cy.findByText(/Personal Collection/).click();
         enterSearchText({
           text: "personal collection 2",
@@ -682,7 +714,7 @@ describe("scenarios > organization > entity picker", () => {
       H.popover().findByText("Move").click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalTab("Browse").click();
         cy.findByText("All personal collections").click();
         enterSearchText({
           text: "personal collection",
@@ -695,7 +727,7 @@ describe("scenarios > organization > entity picker", () => {
             "Admin personal collection 1",
             "Admin personal collection 2",
             "Normal personal collection 1",
-            "Normal personal collection 2",
+            // "Normal personal collection 2", This does exist, but is just barely not visible. User must scroll down
           ],
         });
       });
@@ -746,6 +778,29 @@ describe("scenarios > organization > entity picker", () => {
           "true",
         );
       });
+    });
+
+    it("should show dashboards in personal collections when apropriate, even if there are no sub collections", () => {
+      cy.signInAsAdmin();
+      H.createDashboard({
+        collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+      });
+
+      H.openTable({ table: ORDERS_ID });
+      cy.button("Save").click();
+      H.modal().findByLabelText("Where do you want to save this?").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Browse").click();
+        H.entityPickerModalItem(
+          0,
+          "Bobby Tables's Personal Collection",
+        ).click();
+        H.entityPickerModalItem(1, "Test Dashboard").should("exist").click();
+        cy.button("Select this dashboard").click();
+      });
+      H.modal()
+        .findByLabelText("Where do you want to save this?")
+        .should("contain.text", "Test Dashboard");
     });
   });
 
@@ -983,6 +1038,14 @@ function createTestCards() {
       });
     });
   });
+
+  suffixes.forEach(suffix => {
+    H.createQuestion({
+      ...cardDetails,
+      name: `Orders Dashboard question ${suffix}`,
+      dashboard_id: ORDERS_DASHBOARD_ID,
+    });
+  });
 }
 
 function createTestCollections() {
@@ -1119,7 +1182,7 @@ function assertSearchResults({
   totalFoundItemsCount?: number;
 }) {
   foundItems.forEach(item => {
-    cy.findByText(item).should("be.visible");
+    cy.findByText(item).should("exist");
   });
 
   notFoundItems.forEach(item => {
@@ -1288,7 +1351,7 @@ function testCardSearchForInaccessibleRootCollection({
     cy.log("inaccessible root collection - manually selected");
     H.entityPickerModal().within(() => {
       H.entityPickerModalTab(tab).click();
-      cy.findByText("Collections").click();
+      H.entityPickerModalItem(0, "Collections").click();
       enterSearchText({
         text: "1",
         placeholder: "Search this collection or everywhere…",

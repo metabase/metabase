@@ -4,7 +4,7 @@ import _ from "underscore";
 import Databases from "metabase/entities/databases";
 import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import Questions from "metabase/entities/questions";
-import Revision from "metabase/entities/revisions";
+import Revisions from "metabase/entities/revisions";
 import { shouldOpenInBlankWindow } from "metabase/lib/dom";
 import { createThunkAction } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
@@ -59,6 +59,7 @@ export { SOFT_RELOAD_CARD };
 export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
   return async (dispatch, getState) => {
     const outdatedCard = getCard(getState());
+
     const action = await dispatch(
       Questions.actions.fetch({ id: outdatedCard.id }, { reload: true }),
     );
@@ -352,7 +353,7 @@ export const revertToRevision = createThunkAction(
   REVERT_TO_REVISION,
   revision => {
     return async dispatch => {
-      await dispatch(Revision.objectActions.revert(revision));
+      await dispatch(Revisions.objectActions.revert(revision));
       await dispatch(reloadCard());
     };
   },

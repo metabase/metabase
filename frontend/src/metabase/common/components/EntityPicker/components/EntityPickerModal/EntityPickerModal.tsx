@@ -1,12 +1,18 @@
 import { useWindowEvent } from "@mantine/hooks";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useDebounce, usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
-import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { Box, Flex, Icon, Modal, Skeleton, TextInput } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import type {
@@ -40,7 +46,6 @@ import { SearchTab } from "../SearchTab";
 
 import { ButtonBar } from "./ButtonBar";
 import {
-  GrowFlex,
   ModalBody,
   ModalContent,
   SinglePickerView,
@@ -50,7 +55,7 @@ import { TabsView } from "./TabsView";
 export type EntityPickerModalOptions = {
   showSearch?: boolean;
   hasConfirmButtons?: boolean;
-  confirmButtonText?: string;
+  confirmButtonText?: string | ((model?: string) => string);
   cancelButtonText?: string;
   hasRecents?: boolean;
 };
@@ -61,13 +66,12 @@ export const defaultOptions: EntityPickerModalOptions = {
   hasRecents: true,
 };
 
-// needs to be above popovers and bulk actions
-export const ENTITY_PICKER_Z_INDEX = BULK_ACTIONS_Z_INDEX;
-
 export const DEFAULT_RECENTS_CONTEXT: RecentContexts[] = [
   "selections",
   "views",
 ];
+
+const DEFAULT_RECENTS_FILTER = (item: RecentItem[]) => item;
 
 const DEFAULT_SEARCH_RESULT_FILTER = (results: SearchResult[]) => results;
 
@@ -96,6 +100,8 @@ export interface EntityPickerModalProps<
   onConfirm?: () => void;
   onItemSelect: (item: Item) => void;
   isLoadingTabs?: boolean;
+  searchExtraButtons?: ReactNode[];
+  children?: ReactNode;
 }
 
 export function EntityPickerModal<
@@ -111,7 +117,7 @@ export function EntityPickerModal<
   options,
   actionButtons = [],
   searchResultFilter = DEFAULT_SEARCH_RESULT_FILTER,
-  recentFilter,
+  recentFilter = DEFAULT_RECENTS_FILTER,
   trapFocus = true,
   searchParams,
   defaultToRecentTab = true,
@@ -120,6 +126,7 @@ export function EntityPickerModal<
   onConfirm,
   onItemSelect,
   isLoadingTabs = false,
+  children,
 }: EntityPickerModalProps<Id, Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchScope, setSearchScope] =
@@ -132,6 +139,7 @@ export function EntityPickerModal<
       },
     );
   const searchModels = useMemo(() => getSearchModels(passedTabs), [passedTabs]);
+
   const folderModels = useMemo(
     () => getSearchFolderModels(passedTabs),
     [passedTabs],
@@ -200,10 +208,8 @@ export function EntityPickerModal<
       return searchModels.includes(recentItem.model);
     });
 
-    return recentFilter
-      ? recentFilter(relevantModelRecents)
-      : relevantModelRecents;
-  }, [recentItems, searchModels, recentFilter]);
+    return recentFilter(relevantModelRecents);
+  }, [recentItems, recentFilter, searchModels]);
 
   const tabs: EntityPickerTab<Id, Model, Item>[] = (function getTabs() {
     const computedTabs: EntityPickerTab<Id, Model, Item>[] = [];
@@ -218,7 +224,7 @@ export function EntityPickerModal<
     if (hasRecentsTab || shouldOptimisticallyAddRecentsTabWhileLoading) {
       computedTabs.push({
         id: RECENTS_TAB_ID,
-        model: null,
+        models: [],
         folderModels: [],
         displayName: t`Recents`,
         icon: "clock",
@@ -238,7 +244,7 @@ export function EntityPickerModal<
     if (hasSearchTab) {
       computedTabs.push({
         id: SEARCH_TAB_ID,
-        model: null,
+        models: [],
         folderModels: [],
         displayName: getSearchTabText(finalSearchResults, searchQuery),
         icon: "search",
@@ -339,6 +345,8 @@ export function EntityPickerModal<
     { capture: true, once: true },
   );
 
+  const titleId = useUniqueId("entity-picker-modal-title-");
+
   return (
     <Modal.Root
       opened={open}
@@ -353,35 +361,40 @@ export function EntityPickerModal<
       h="100vh"
       trapFocus={trapFocus}
       closeOnEscape={false} // we're doing this manually in useWindowEvent
-      xOffset="10vw"
       yOffset="10dvh"
-      zIndex={ENTITY_PICKER_Z_INDEX} // needs to be above popovers and bulk actions
     >
       <Modal.Overlay />
-      <ModalContent h="100%">
+      <ModalContent
+        h="100%"
+        maw="57.5rem"
+        mah="40rem"
+        aria-labelledby={titleId}
+      >
         <Modal.Header
-          px="1.5rem"
+          px="2.5rem"
           pt="1rem"
           pb={hasTabs ? "1rem" : "1.5rem"}
           bg="var(--mb-color-background)"
         >
-          <GrowFlex justify="space-between">
-            <Modal.Title lh="2.5rem">{title}</Modal.Title>
-            {hydratedOptions.showSearch && (
+          <Modal.Title id={titleId} lh="2.5rem">
+            {title}
+          </Modal.Title>
+          <Modal.CloseButton size={21} pos="relative" top="1px" />
+        </Modal.Header>
+        <ModalBody p="0">
+          {hydratedOptions.showSearch && (
+            <Box px="2.5rem" mb="1.5rem">
               <TextInput
+                data-autofocus
                 type="search"
                 icon={<Icon name="search" size={16} />}
                 miw={400}
-                mr="2rem"
                 placeholder={getSearchInputPlaceholder(selectedFolder)}
                 value={searchQuery}
                 onChange={e => handleQueryChange(e.target.value ?? "")}
               />
-            )}
-          </GrowFlex>
-          <Modal.CloseButton size={21} pos="relative" top="1px" />
-        </Modal.Header>
-        <ModalBody p="0">
+            </Box>
+          )}
           {!isLoadingTabs && !isLoadingRecentItems ? (
             <ErrorBoundary>
               {hasTabs ? (
@@ -404,7 +417,11 @@ export function EntityPickerModal<
                   onCancel={onClose}
                   canConfirm={canSelectItem}
                   actionButtons={showActionButtons ? actionButtons : []}
-                  confirmButtonText={options?.confirmButtonText}
+                  confirmButtonText={
+                    typeof options?.confirmButtonText === "function"
+                      ? options.confirmButtonText(selectedItem?.model)
+                      : options?.confirmButtonText
+                  }
                   cancelButtonText={options?.cancelButtonText}
                 />
               )}
@@ -412,6 +429,7 @@ export function EntityPickerModal<
           ) : (
             <EntityPickerLoadingSkeleton />
           )}
+          {children}
         </ModalBody>
       </ModalContent>
     </Modal.Root>

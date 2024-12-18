@@ -2,16 +2,15 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback, useEffect } from "react";
 import type { ConnectedProps } from "react-redux";
-import { connect } from "react-redux";
 import type { Route, WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import CS from "metabase/css/core/index.css";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
+import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
 import {
   useDashboardUrlParams,
   useDashboardUrlQuery,
@@ -24,7 +23,7 @@ import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
 import { parseHashOptions } from "metabase/lib/browser";
-import { useDispatch } from "metabase/lib/redux";
+import { connect, useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, setErrorPage } from "metabase/redux/app";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
@@ -216,7 +215,11 @@ const DashboardApp = (props: DashboardAppProps) => {
 
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
-      <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
+      <DashboardLeaveConfirmationModal
+        route={route}
+        isDirty={isDirty}
+        isEditing={isEditing}
+      />
       <Dashboard
         dashboardId={dashboardId}
         editingOnLoad={editingOnLoad}

@@ -20,6 +20,7 @@ import type {
   FieldDimension,
   FieldId,
   ForeignKey,
+  Group,
   GroupListQuery,
   ModelCacheRefreshStatus,
   ModelIndex,
@@ -36,6 +37,7 @@ import type {
   Timeline,
   TimelineEvent,
   UserInfo,
+  WritebackAction,
 } from "metabase-types/api";
 import {
   ACTIVITY_MODELS,
@@ -72,6 +74,18 @@ export function invalidateTags(
 // ----------------------------------------------------------------------- //
 // Keep the below list of entity-specific functions alphabetically sorted. //
 // ----------------------------------------------------------------------- //
+
+export function provideActionListTags(
+  actions: WritebackAction[],
+): TagDescription<TagType>[] {
+  return [listTag("action"), ...actions.flatMap(provideActionTags)];
+}
+
+export function provideActionTags(
+  action: WritebackAction,
+): TagDescription<TagType>[] {
+  return [idTag("action", action.id)];
+}
 
 export function provideActivityItemListTags(
   items: RecentItem[] | PopularItem[],
@@ -359,14 +373,23 @@ export function providePermissionsGroupListTags(
 ): TagDescription<TagType>[] {
   return [
     listTag("permissions-group"),
-    ...groups.flatMap(providePermissionsGroupTags),
+    ...groups.flatMap(providePermissionsGroupListQueryTags),
   ];
 }
 
-export function providePermissionsGroupTags(
+export function providePermissionsGroupListQueryTags(
   group: GroupListQuery,
 ): TagDescription<TagType>[] {
   return [idTag("permissions-group", group.id)];
+}
+
+export function providePermissionsGroupTags(
+  group: Group,
+): TagDescription<TagType>[] {
+  return [
+    idTag("permissions-group", group.id),
+    ...group.members.map(member => idTag("user", member.user_id)),
+  ];
 }
 
 export function providePersistedInfoListTags(

@@ -3,10 +3,13 @@ import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
 
 import Subhead from "metabase/components/type/Subhead";
 import CS from "metabase/css/core/index.css";
+import { Flex, type FlexProps } from "metabase/ui";
 
-import { ViewSectionRoot } from "./ViewSection.styled";
+import S from "./ViewSection.module.css";
 
-interface ViewSectionProps extends HTMLAttributes<HTMLDivElement> {
+export interface ViewSectionProps
+  extends HTMLAttributes<HTMLDivElement>,
+    FlexProps {
   className?: string;
   style?: CSSProperties;
   children?: ReactNode;
@@ -18,9 +21,9 @@ const ViewSection = ({
   children,
   ...rest
 }: ViewSectionProps) => (
-  <ViewSectionRoot className={className} style={style} {...rest}>
+  <Flex className={cx(S.ViewSectionRoot, className)} style={style} {...rest}>
     {children}
-  </ViewSectionRoot>
+  </Flex>
 );
 
 interface ViewHeadingProps extends HTMLAttributes<HTMLDivElement> {
