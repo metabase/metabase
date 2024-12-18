@@ -50,18 +50,14 @@ describe("issue 16584", () => {
     // - the issue is unrelated to using a date filter, using a text filter works too
     // - the issue is unrelated to whether or not the parameter is required or if default value is set
     // - the space at the end of the query is not needed to reproduce this issue
-    H.openNativeEditor()
-      .type(
-        "SELECT COUNTRY FROM ACCOUNTS WHERE COUNTRY = {{ country }} LIMIT 1",
-        {
-          parseSpecialCharSequences: false,
-          delay: 0,
-        },
-      )
-      .type("{selectAll}");
+    H.openNativeEditor();
+    H.nativeEditorType(
+      "SELECT COUNTRY FROM ACCOUNTS WHERE COUNTRY = {{ country }} LIMIT 1",
+    );
 
     cy.findByPlaceholderText("Country").type("NL", { delay: 0 });
 
+    H.nativeEditorSelectAll();
     H.runNativeQuery();
 
     cy.findByTestId("query-visualization-root")
@@ -126,7 +122,7 @@ describe("issue 33327", () => {
     cy.findByTestId("scalar-value").should("have.text", "1");
 
     cy.findByTestId("visibility-toggler").click();
-    H.focusNativeEditor().should("contain", query).type("{leftarrow}--");
+    H.focusNativeEditor().should("contain", query).realType("{leftarrow}--");
 
     cy.intercept("POST", "/api/dataset").as("dataset");
     H.nativeEditor().should("be.visible").and("contain", "SELECT --1");
@@ -138,8 +134,9 @@ describe("issue 33327", () => {
 
     H.focusNativeEditor()
       .should("contain", "SELECT --1")
-      .type("{leftarrow}{backspace}{backspace}")
-      .should("contain", query);
+      .realType("{leftarrow}{backspace}{backspace}");
+
+    H.nativeEditor().should("contain", query);
 
     getRunQueryButton().click();
     cy.wait("@dataset");
@@ -173,11 +170,11 @@ describe("issue 49454", () => {
   });
 
   it("should be possible to use metrics in native queries (metabase#49454)", () => {
-    H.openNativeEditor().type("select * from {{ #test");
+    H.openNativeEditor().realType("select * from {{ #test");
 
     H.nativeEditorCompletions().within(() => {
-      cy.findByText("-question-49454").should("be.visible");
-      cy.findByText("-metric-49454").should("be.visible");
+      H.nativeEditorCompletion("-question-49454").should("be.visible");
+      H.nativeEditorCompletion("-metric-49454").should("be.visible");
     });
   });
 });

@@ -701,7 +701,7 @@ describe("issue 17963", { tags: "@mongo" }, () => {
       { string: "> quan", field: "Quantity" },
     ]);
 
-    H.blurNativeEditor();
+    cy.get(".ace_text-input").blur();
     cy.button("Done").click();
 
     H.getNotebookStep("filter").findByText("Discount is greater than Quantity");

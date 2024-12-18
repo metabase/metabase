@@ -21,9 +21,11 @@ describe("scenarios > question > snippets", () => {
 
   it("should let you create and use a snippet", () => {
     cy.log("Type a query and highlight some of the text");
-    H.openNativeEditor().type(
-      "select 'stuff'" + "{shift}{leftarrow}".repeat("'stuff'".length),
-    );
+    H.openNativeEditor().realType("select 'stuff'");
+
+    for (let i = 0; i < "'stuff'".length; i++) {
+      cy.realPress(["Shift", "ArrowLeft"]);
+    }
 
     cy.log("Add a snippet of that text");
     cy.findByTestId("native-query-editor-sidebar").icon("snippet").click();
@@ -51,7 +53,7 @@ describe("scenarios > question > snippets", () => {
 
     // Populate the native editor first
     // 1. select
-    H.openNativeEditor().type("select ");
+    H.openNativeEditor().realType("select ");
     // 2. snippet
     cy.icon("snippet").click();
     cy.findByTestId("sidebar-right").within(() => {
@@ -130,7 +132,7 @@ describe("scenarios > question > snippets", () => {
       .should("be.visible")
       .and("have.text", "select * from {{snippet: Table: Orders}} limit 1");
     // Replace "Orders" with "Reviews"
-    H.focusNativeEditor().type(
+    H.focusNativeEditor().realType(
       "{end}" +
         "{leftarrow}".repeat("}} limit 1".length) + // move left to "reach" the "Orders"
         "{backspace}".repeat("Orders".length) + // Delete orders character by character
@@ -194,8 +196,8 @@ H.describeEE("scenarios > question > snippets (EE)", () => {
       });
 
       cy.wait("@snippetCreated");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("{{snippet: one}}");
+
+      H.nativeEditor().should("have.text", "{{snippet: one}}");
 
       cy.icon("play").first().click();
       cy.findByTestId("scalar-value").contains(1);
