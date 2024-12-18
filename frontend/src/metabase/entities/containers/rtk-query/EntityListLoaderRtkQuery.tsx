@@ -265,12 +265,10 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   }, [data, onLoadedRef]);
 
   // merge props passed in from stacked Entity*Loaders:
-  const allError = error || (allErrorProp == null ? null : allErrorProp);
-  const allFetched =
-    fetched && (allFetchedProp == null ? true : allFetchedProp);
-  const allLoaded = loaded && (allLoadedProp == null ? true : allLoadedProp);
-  const allLoading =
-    loading || (allLoadingProp == null ? false : allLoadingProp);
+  const allError = error || (allErrorProp ?? null);
+  const allFetched = fetched && (allFetchedProp ?? true);
+  const allLoaded = loaded && (allLoadedProp ?? true);
+  const allLoading = loading || (allLoadingProp ?? false);
   const finalListName = listName || entityDefinition.nameMany;
 
   const children = (
