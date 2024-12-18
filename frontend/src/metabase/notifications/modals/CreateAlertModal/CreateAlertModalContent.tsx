@@ -20,12 +20,13 @@ import {
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { Flex } from "metabase/ui";
 import { ALERT_TYPE_ROWS, getDefaultAlert } from "metabase-lib/v1/Alert";
 import type { Alert } from "metabase-types/api";
 
 import { AlertEditForm } from "../AlertEditForm";
 import { AlertModalTitle } from "../AlertModalTitle";
-import { AlertModalFooter } from "../AlertModals.styled";
+import AlertModalsS from "../AlertModals.module.css";
 
 import ChannelSetupModal from "./ChannelSetupModal";
 
@@ -111,14 +112,14 @@ export const CreateAlertModalContent = ({
           alert={alert}
           onAlertChange={onAlertChange}
         />
-        <AlertModalFooter>
+        <Flex className={AlertModalsS.AlertModalsFooter}>
           <Button onClick={onCancel} className={CS.mr2}>{t`Cancel`}</Button>
           <ButtonWithStatus
             titleForState={{ default: t`Done` }}
             disabled={!isValid}
             onClickOperation={onCreateAlert}
           />
-        </AlertModalFooter>
+        </Flex>
       </div>
     </ModalContent>
   );
