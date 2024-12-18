@@ -249,14 +249,14 @@
      :result-columns (mapv #(metabot-v3.tools.u/->result-column % field-id-prefix) (lib/returned-columns query))}))
 
 (defn- dummy-run-query
-  [context]
+  [{:keys [context] :as env}]
   (transduce (filter (comp #{:adhoc} :type))
-             (completing (fn [messages {:keys [query]}]
+             (completing (fn [env {:keys [query]}]
                            (let [query-id (u/generate-nano-id)
                                  arguments {:query-id query-id}
                                  content (execute-query query-id query)]
-                             (into messages (dummy-tool-messages :run-query arguments content)))))
-             []
+                             (reduce envelope/add-dummy-message env (dummy-tool-messages :run-query arguments content)))))
+             env
              (:user-is-viewing context)))
 
 (def ^:private dummy-tool-registry
@@ -267,43 +267,24 @@
 (defn invoke-dummy-tools
   "Invoke `tool` with `context` if applicable and return the resulting context."
   [env]
-  (let [test-query {:database 5
-                    :type :query
-                    :query
-                    {:joins
-                     [{:strategy :left-join
-                       :alias "Products"
-                       :condition
-                       [:=
-                        [:field "PRODUCT_ID" {:base-type :type/Integer}]
-                        [:field 285 {:base-type :type/BigInteger, :join-alias "Products"}]]
-                       :source-table 30}]
-                     :breakout
-                     [[:field 279 {:base-type :type/Float, :join-alias "Products", :binning {:strategy :default}}]
-                      [:field "CREATED_AT" {:base-type :type/DateTime, :temporal-unit :month}]]
-                     :aggregation
-                     [[:min [:field "SUBTOTAL" {:base-type :type/Float}]]
-                      [:avg [:field "SUBTOTAL" {:base-type :type/Float}]]
-                      [:max [:field "SUBTOTAL" {:base-type :type/Float}]]]
-                     :source-table "card__136"
-                     :filter [:> [:field "SUBTOTAL" {:base-type :type/Float}] 50]}}
+  (let [test-query {:database 1, :type :query, :query {:source-table 5}},
         test-context ;; for testing purposes, pretend the user is viewing a bunch of things at once
                      {:user-is-viewing [{:type :dashboard
-                                         :ref 14
+                                         :ref 10
                                          :parameters []
                                          :is-embedded false}
                                         {:type :table
-                                         :ref 27}
+                                         :ref 6}
                                         {:type :model
-                                         :ref 137}
+                                         :ref 2}
                                         {:type :metric
-                                         :ref 135}
+                                         :ref 120}
                                         {:type :report
-                                         :ref 89}
+                                         :ref 12}
                                         {:type :adhoc
                                          :query test-query}]}
-        env (update env :context #(if (empty? %) test-context %))]
-    (reduce (fn [messages tool]
+        env (assoc env :context test-context)]
+    (reduce (fn [env tool]
               (tool env))
             env
             dummy-tool-registry)))
@@ -312,5 +293,5 @@
   (binding [api/*current-user-permissions-set* (delay #{"/"})
             api/*current-user-id* 2
             api/*is-superuser?* true]
-    (invoke-dummy-tools {}))
+    #p (invoke-dummy-tools {:dummy-history []}))
   -)
