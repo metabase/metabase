@@ -5,6 +5,8 @@ import type {
 import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { forwardRef, useLayoutEffect, useState } from "react";
 
+import type { NumberValue } from "metabase/querying/filters/hooks/use-number-filter";
+
 import { TextInput } from "../TextInput";
 
 export interface NumberInputProps
@@ -18,9 +20,9 @@ export interface NumberInputProps
     | "onChange"
     | "type"
   > {
-  value: number | "";
-  defaultValue?: number | "";
-  onChange?: (value: number) => void;
+  value: NumberValue;
+  defaultValue?: NumberValue;
+  onChange?: (value: NumberValue) => void;
   vars?: TextInputProps["vars"];
   classNames?: TextInputProps["classNames"];
   styles?: TextInputProps["styles"];
@@ -46,7 +48,7 @@ export const NumberInput = forwardRef(function NumberInput(
     setInputValue(newInputValue);
 
     const newValue = parseValue(newInputValue);
-    onChange?.(newValue || 0);
+    onChange?.(newValue);
   };
 
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {

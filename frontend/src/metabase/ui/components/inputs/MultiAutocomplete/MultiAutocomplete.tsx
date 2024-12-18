@@ -126,9 +126,6 @@ export function MultiAutocomplete({
         }
       }
     }
-    if (newSearchValue === "") {
-      setSelectedValues(unique([...lastSelectedValues]));
-    }
 
     const quotes = Array.from(newSearchValue).filter(ch => ch === '"').length;
 

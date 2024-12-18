@@ -308,6 +308,10 @@ export function tableHeaderClick(headerString) {
   });
 }
 
+export function clickActionsPopover() {
+  return popover("click-actions-popover");
+}
+
 export function assertTableData({ columns, firstRows = [] }) {
   tableInteractive()
     .findAllByTestId("header-cell")
