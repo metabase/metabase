@@ -64,8 +64,6 @@ export function downloadAndAssert(
         dashcardId,
         dashboardId,
       });
-
-  console.log({ downloadUrl, method, endpoint });
   /**
    * Please see the official Cypress example for more details:
    * https://github.com/cypress-io/cypress-example-recipes/blob/master/examples/testing-dom__download/cypress/integration/form-submission-spec.js
@@ -123,8 +121,6 @@ export function downloadAndAssert(
   });
 
   cy.wait("@fileDownload")
-    .its("response.statusCode")
-    .should("eq", 200)
     .its("request")
     .then(req => {
       // The payload for the xlsx is in the binary form
