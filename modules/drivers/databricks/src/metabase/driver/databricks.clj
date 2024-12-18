@@ -201,29 +201,34 @@
     (str/replace-first additional-options #"^(?!;)" ";")))
 
 (defmethod sql-jdbc.conn/connection-details->spec :databricks
-  [_driver {:keys [catalog host http-path log-level token additional-options] :as _details}]
+  [_driver {:keys [catalog host http-path log-level token additional-options client-id oauth-secret] :as _details}]
   (assert (string? (not-empty catalog)) "Catalog is mandatory.")
-  (merge
-   {:classname        "com.databricks.client.jdbc.Driver"
-    :subprotocol      "databricks"
-    ;; Reading through the changelog revealed `EnableArrow=0` solves multiple problems. Including the exception logged
-    ;; during first `can-connect?` call. Ref:
-    ;; https://databricks-bi-artifacts.s3.us-east-2.amazonaws.com/simbaspark-drivers/jdbc/2.6.40/docs/release-notes.txt
-    :subname          (str "//" host ":443/;EnableArrow=0"
-                           ";ConnCatalog=" (codec/url-encode catalog)
-                           (preprocess-additional-options additional-options))
-    :transportMode  "http"
-    :ssl            1
-    :AuthMech       3
-    :HttpPath       http-path
-    :uid            "token"
-    :pwd            token
-    :UserAgentEntry (format "Metabase/%s" (:tag config/mb-version-info))
-    :UseNativeQuery 1}
-   ;; Following is used just for tests. See the [[metabase.driver.sql-jdbc.connection-test/perturb-db-details]]
-   ;; and test that is using the function.
-   (when log-level
-     {:LogLevel log-level})))
+  (let [base-spec
+        {:classname        "com.databricks.client.jdbc.Driver"
+         :subprotocol      "databricks"
+         :subname          (str "//" host ":443/;EnableArrow=0"
+                                ";ConnCatalog=" (codec/url-encode catalog)
+                                (preprocess-additional-options additional-options))
+         :transportMode  "http"
+         :ssl            1
+         :HttpPath       http-path
+         :UserAgentEntry (format "Metabase/%s" (:tag config/mb-version-info))
+         :UseNativeQuery 1}
+        m2m? (and (not (str/blank? client-id)) (not (str/blank? oauth-secret)))]
+    (-> base-spec
+        (merge (when log-level
+                 {:LogLevel log-level}))
+        (cond->
+          ;; If M2M credentials are present, use M2M OAuth
+          m2m? (merge {:AuthMech       11
+                       :Auth_Flow      1
+                       :OAuth2ClientId client-id
+                       :OAuth2Secret   oauth-secret})
+
+          ;; If M2M credentials are not present, fallback to token-based auth
+          (not m2m?) (merge {:AuthMech 3
+                             :uid      "token"
+                             :pwd      token})))))
 
 (defmethod sql.qp/quote-style :databricks
   [_driver]
