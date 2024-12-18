@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -21,7 +20,7 @@ import {
 } from "metabase/collections/utils";
 import { ConfirmDeleteModal } from "metabase/components/ConfirmDeleteModal";
 import { bookmarks as BookmarkEntity } from "metabase/entities";
-import { useDispatch } from "metabase/lib/redux";
+import { connect, useDispatch } from "metabase/lib/redux";
 import { entityForObject } from "metabase/lib/schema";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";

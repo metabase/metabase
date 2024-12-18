@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -12,6 +11,7 @@ import Databases from "metabase/entities/databases";
 import Fields from "metabase/entities/fields";
 import Schemas from "metabase/entities/schemas";
 import Tables from "metabase/entities/tables";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";

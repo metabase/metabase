@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
@@ -14,6 +13,7 @@ import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { connect } from "metabase/lib/redux";
 import type {
   Collection,
   NativeQuerySnippet,

@@ -9,7 +9,6 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useCallback, useEffect, useState } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 
 import CollapseSection from "metabase/components/CollapseSection";
@@ -18,6 +17,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import CS from "metabase/css/core/index.css";
 import Bookmarks from "metabase/entities/bookmarks";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Icon } from "metabase/ui";
