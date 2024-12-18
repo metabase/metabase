@@ -84,6 +84,7 @@ H.describeWithSnowplow(
       cy.findByTestId("admin-metadata-header")
         .findByText("Sample Database")
         .click();
+
       H.popover().findByText("Writable Postgres12").click();
 
       cy.findByTestId("admin-metadata-table-list").within(() => {

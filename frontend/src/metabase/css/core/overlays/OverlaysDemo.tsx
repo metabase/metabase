@@ -10,9 +10,10 @@ import _ from "underscore";
 import { EntityPickerModal } from "metabase/common/components/EntityPicker";
 import { Sidesheet } from "metabase/common/components/Sidesheet";
 import LegacyModal from "metabase/components/Modal";
+import ModalContent from "metabase/components/ModalContent";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Toaster from "metabase/components/Toaster";
-import { FloatingUndoList, UndoToast } from "metabase/containers/UndoListing";
+import { UndoListOverlay, UndoToast } from "metabase/containers/UndoListing";
 import LegacySelect, { Option } from "metabase/core/components/Select";
 import TippyTooltip from "metabase/core/components/Tooltip";
 import { PaletteCard } from "metabase/palette/components/Palette";
@@ -38,7 +39,7 @@ import {
 } from "metabase/ui";
 import { createMockUndo } from "metabase-types/api/mocks";
 
-import { BulkActionBarInner } from "../../../components/BulkActionBar/BulkActionBar";
+import { BulkActionBarPortal } from "../../../components/BulkActionBar/BulkActionBar";
 
 const LauncherGroup = ({
   title,
@@ -226,27 +227,26 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
     <Stack p="lg">
       <Launchers />
       {undoCount > 0 && (
-        <FloatingUndoList>
+        <UndoListOverlay>
           <UndoToasts undoCount={undoCount} setUndoCount={setUndoCount} />
-        </FloatingUndoList>
+        </UndoListOverlay>
       )}
       {Array.from({ length: actionToastCount }).map((_, index) => (
-        <BulkActionBarInner
+        <BulkActionBarPortal
           key={`simple-bulk-action-bar-${index}`}
           opened
           isNavbarOpen={false}
           message="Action-style toast text content"
           aria-label="Action-style toast content"
+          p="lg"
         >
-          <Box p="lg">
-            <CloseButton
-              onClick={() => setActionToastCount(c => c - 1)}
-              c="#fff"
-              bg="transparent"
-            />
-            {enableNesting && <Launchers />}
-          </Box>
-        </BulkActionBarInner>
+          <CloseButton
+            onClick={() => setActionToastCount(c => c - 1)}
+            c="#fff"
+            bg="transparent"
+          />
+          {enableNesting && <Launchers />}
+        </BulkActionBarPortal>
       ))}
       {Array.from({ length: toastCount }).map((_, index) => (
         <Toaster
@@ -274,18 +274,19 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
             closeOnClickOutside
             onClose={() => setLegacyModalCount(c => c - 1)}
             aria-labelledby={modalTitleId}
-            enableTransition={false}
           >
-            <Group style={{ position: "relative" }}>
-              <Title p="md" order={3} id={modalTitleId}>
-                Legacy modal content
-              </Title>
-              <Stack spacing="md" p="md">
-                <Box p="1rem 0">Legacy modal text content</Box>
-                {enableNesting && <Launchers />}
-              </Stack>
-              <CloseButton onClick={() => setLegacyModalCount(c => c - 1)} />
-            </Group>
+            <ModalContent>
+              <Group style={{ position: "relative" }}>
+                <Title p="md" order={3} id={modalTitleId}>
+                  Legacy modal content
+                </Title>
+                <Stack spacing="md" p="md">
+                  <Box p="1rem 0">Legacy modal text content</Box>
+                  {enableNesting && <Launchers />}
+                </Stack>
+                <CloseButton onClick={() => setLegacyModalCount(c => c - 1)} />
+              </Group>
+            </ModalContent>
           </LegacyModal>
         );
       })}

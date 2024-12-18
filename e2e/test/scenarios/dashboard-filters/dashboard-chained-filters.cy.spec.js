@@ -41,7 +41,7 @@ describe("scenarios > dashboard > chained filter", () => {
       H.popover().findByText("Location").click();
 
       H.sidebar().findByText("Filter operator").next().click();
-      H.popover().findByText("Is").click();
+      H.selectDropdown().findByText("Is").click();
 
       // connect that to person.city
       H.getDashboardCard().within(() => {
@@ -87,28 +87,30 @@ describe("scenarios > dashboard > chained filter", () => {
         }
       });
 
-      H.popover()
-        .last()
-        .within(() => {
-          cy.findByText("Anchorage");
-          cy.findByText("Anacoco").should("not.exist");
-        });
+      const valuesWidget = () =>
+        has_field_values === "search"
+          ? cy.findByRole("listbox")
+          : cy.findByTestId("field-values-widget");
 
-      H.popover()
-        .first()
-        .within(() => {
-          if (has_field_values === "search") {
-            H.multiAutocompleteInput()
-              .type("{backspace}{backspace}")
-              // close the suggestion list
-              .blur();
-          }
-          if (has_field_values === "list") {
-            cy.findByPlaceholderText("Search the list").clear();
-          }
-        });
+      valuesWidget().within(() => {
+        cy.findByText("Anchorage");
+        cy.findByText("Anacoco").should("not.exist");
+      });
+
+      cy.findByTestId("parameter-value-dropdown").within(() => {
+        if (has_field_values === "search") {
+          H.multiAutocompleteInput()
+            .type("{backspace}{backspace}")
+            // close the suggestion list
+            .blur();
+        }
+        if (has_field_values === "list") {
+          cy.findByPlaceholderText("Search the list").clear();
+        }
+      });
 
       H.filterWidget().contains("AK").click();
+
       H.popover()
         .last()
         .within(() => {
@@ -120,7 +122,7 @@ describe("scenarios > dashboard > chained filter", () => {
 
       // do it again to make sure it isn't cached incorrectly
       H.filterWidget().contains("Location 1").click();
-      H.popover().within(() => {
+      cy.findByTestId("parameter-value-dropdown").within(() => {
         if (has_field_values === "search") {
           H.multiAutocompleteInput().type("An");
         }
@@ -129,20 +131,16 @@ describe("scenarios > dashboard > chained filter", () => {
         }
       });
 
-      H.popover()
-        .last()
-        .within(() => {
-          cy.findByText("Canton");
-          cy.findByText("Anchorage").should("not.exist");
-        });
+      valuesWidget().within(() => {
+        cy.findByText("Canton");
+        cy.findByText("Anchorage").should("not.exist");
+      });
 
       if (has_field_values === "search") {
-        H.popover()
-          .first()
-          .within(() => {
-            // close the suggestion list
-            H.multiAutocompleteInput().blur();
-          });
+        cy.findByTestId("parameter-value-dropdown").within(() => {
+          // close the suggestion list
+          H.multiAutocompleteInput().blur();
+        });
       }
 
       H.filterWidget().contains("GA").click();
@@ -155,24 +153,21 @@ describe("scenarios > dashboard > chained filter", () => {
 
       // do it again without a state filter to make sure it isn't cached incorrectly
       H.filterWidget().contains("Location 1").click();
-      H.popover()
-        .first()
-        .within(() => {
-          if (has_field_values === "search") {
-            H.multiAutocompleteInput().type("An");
-          }
-          if (has_field_values === "list") {
-            cy.findByRole("textbox").type("An");
-          }
-        });
 
-      H.popover()
-        .last()
-        .within(() => {
-          cy.findByText("Adrian");
-          cy.findByText("Anchorage");
-          cy.findByText("Canton");
-        });
+      cy.findByTestId("parameter-value-dropdown").within(() => {
+        if (has_field_values === "search") {
+          H.multiAutocompleteInput().type("An");
+        }
+        if (has_field_values === "list") {
+          cy.findByRole("textbox").type("An");
+        }
+      });
+
+      valuesWidget().within(() => {
+        cy.findByText("Adrian");
+        cy.findByText("Anchorage");
+        cy.findByText("Canton");
+      });
     });
   }
 
