@@ -23,7 +23,7 @@
 (api/defendpoint POST "/"
   "Create a new notification, return the created notification."
   [:as {body :body}]
-  {body :models.notification/FullyHydratedNotification}
+  {body ::models.notification/FullyHydratedNotification}
   (models.notification/hydrate-notification
    (models.notification/create-notification!
     (dissoc body :handlers :subscriptions)
@@ -35,7 +35,7 @@
   Return the updated notification."
   [id :as {body :body}]
   {id   ms/PositiveInt
-   body :models.notification/FullyHydratedNotification}
+   body ::models.notification/FullyHydratedNotification}
   (let [existing-notification (get-notification id)]
     (api/check-404 existing-notification)
     (models.notification/update-notification! existing-notification body)

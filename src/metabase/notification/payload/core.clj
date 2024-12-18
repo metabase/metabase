@@ -26,7 +26,7 @@
     [:active        {:optional true} :boolean]
     [:created_at    {:optional true} :any]
     [:updated_at    {:optional true} :any]
-    [:subscriptions {:optional true} [:sequential :models.notification/NotificationSubscription]]]
+    [:subscriptions {:optional true} [:sequential ::models.notification/NotificationSubscription]]]
    [:multi {:dispatch :payload_type}
     ;; system event is a bit special in that part of the payload comes from the event itself
     [:notification/system-event
@@ -78,7 +78,7 @@
     [:notification/dashboard
      [:map
       [:payload [:map
-                 [:dashboard_parts             [:sequential :notification.payload.execute/Part]]
+                 [:dashboard_parts             [:sequential ::notification.payload.execute/Part]]
                  [:dashboard                   :map]
                  [:dashboard_subscription      :map]
                  [:style                       :map]
@@ -86,11 +86,11 @@
     [:notification/card
      [:map
       [:payload [:map
-                 [:card_part         [:maybe :notification.payload.execute/Part]]
+                 [:card_part         [:maybe ::notification.payload.execute/Part]]
                  [:card              :map]
                  [:style             :map]
                  [:notification_card :models.notification/NotificationCard]
-                 [:subscriptions     [:sequential :models.notification/NotificationSubscription]]]]]]
+                 [:subscriptions     [:sequential ::models.notification/NotificationSubscription]]]]]]
     [:notification/testing   :map]]])
 
 (defn- logo-url
