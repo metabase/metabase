@@ -651,7 +651,7 @@ describe("issue 34330", () => {
 
   it("should only call the autocompleter with all text typed (metabase#34330)", () => {
     H.openNativeEditor();
-    H.NativeEditor.type("USER", { delay: 0 });
+    H.NativeEditor.type("USER", { delay: 10 });
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
