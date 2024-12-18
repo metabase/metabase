@@ -321,7 +321,7 @@ H.describeEE(
       ]);
     });
 
-    it("should warns when All Users group has 'impersonated' access and the target group has unrestricted access", () => {
+    it("should warn when All Users group has 'impersonated' access and the target group has unrestricted access", () => {
       cy.visit(`/admin/permissions/data/group/${COLLECTION_GROUP}`);
 
       H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Impersonated");
@@ -334,17 +334,10 @@ H.describeEE(
 
         cy.findByText("Revoke access").click();
       });
-      // Page leave confirmation should be on top
-      cy.findByTestId("leave-confirmation")
-        .as("leaveConfirmation")
-        .findByText("Discard your changes?")
-        .should("be.visible");
 
       H.selectImpersonatedAttribute("role");
       H.saveImpersonationSettings();
       H.savePermissions();
-      // Cancel
-      cy.get("@leaveConfirmation").findByText("Cancel").click();
 
       H.getPermissionRowPermissions("QA Postgres12")
         .eq(DATA_ACCESS_PERM_IDX)
@@ -398,7 +391,7 @@ H.describeEE(
     });
 
     it("impersonation modal should be positioned behind the page leave confirmation modal", () => {
-      // Try leaving the page
+      cy.log("Try leaving the page");
       cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
       H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Impersonated");
@@ -414,21 +407,21 @@ H.describeEE(
 
       cy.findByRole("dialog").findByText("Edit settings").click();
 
-      // Page leave confirmation should be on top
-      H.modal()
+      cy.log("Page leave confirmation should be on top");
+      cy.findByTestId("leave-confirmation")
         .as("leaveConfirmation")
         .findByText("Discard your changes?")
         .should("be.visible");
 
-      // Cancel
+      cy.log("Cancel page leave");
       cy.get("@leaveConfirmation").findByText("Cancel").click();
 
-      // Ensure the impersonation modal is still open
+      cy.log("Ensure the impersonation modal is still open");
       cy.findByRole("dialog")
         .findByText("Map a user attribute to database roles")
         .should("be.visible");
 
-      // Go to settings
+      cy.log("Go to settings");
       cy.findByRole("dialog").findByText("Edit settings").click();
       cy.get("@leaveConfirmation").findByText("Discard changes").click();
 
