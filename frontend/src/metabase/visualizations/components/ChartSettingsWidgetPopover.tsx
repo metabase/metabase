@@ -3,14 +3,9 @@ import _ from "underscore";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
+import type { Widget } from "./ChartSettings";
 import ChartSettingsWidget from "./ChartSettingsWidget";
 import { PopoverRoot, PopoverTabs } from "./ChartSettingsWidgetPopover.styled";
-
-interface Widget {
-  id: string;
-  section: string;
-  props: Record<string, unknown>;
-}
 
 interface ChartSettingsWidgetPopoverProps {
   anchor: HTMLElement;
@@ -27,7 +22,9 @@ const ChartSettingsWidgetPopover = ({
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    sections.current = _.chain(widgets).pluck("section").unique().value();
+    sections.current = Array.from(
+      new Set(widgets.map(widget => widget.section)),
+    );
   }, [widgets]);
 
   const [currentSection, setCurrentSection] = useState("");
