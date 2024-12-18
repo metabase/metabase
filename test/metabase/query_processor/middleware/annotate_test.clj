@@ -726,19 +726,16 @@
   (testing "Aggregated question with source is an aggregated models should infer display_name correctly (#23248)"
     (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                                       meta/metadata-provider
-                                      [(lib.tu.macros/$ids products
-                                         {:type     :query
-                                          :database (meta/id)
-                                          :query    {:source-table $$products
-                                                     :aggregation
-                                                     [[:aggregation-options
-                                                       [:sum $price]
-                                                       {:name "sum"}]
-                                                      [:aggregation-options
-                                                       [:max $rating]
-                                                       {:name "max"}]]
-                                                     :breakout     [$category]
-                                                     :order-by     [[:asc $category]]}})])
+                                      [(lib.tu.macros/mbql-query products
+                                         {:aggregation
+                                          [[:aggregation-options
+                                            [:sum $price]
+                                            {:name "sum"}]
+                                           [:aggregation-options
+                                            [:max $rating]
+                                            {:name "max"}]]
+                                          :breakout     [$category]
+                                          :order-by     [[:asc $category]]})])
       (let [query (qp.preprocess/preprocess
                    (lib.tu.macros/mbql-query nil
                      {:source-table "card__1"
@@ -837,16 +834,15 @@
                                                   :result-metadata [{:name         "B_COLUMN"
                                                                      :display_name "B Column"
                                                                      :base_type    :type/Text}]}]})
-        (let [query {:database (meta/id)
-                     :type     :query
-                     :query    {:source-table "card__1"
-                                :joins        [{:fields       "all"
-                                                :source-table "card__2"
-                                                :condition    [:=
-                                                               [:field "A_COLUMN" {:base-type :type/Text}]
-                                                               [:field "B_COLUMN" {:base-type  :type/Text
-                                                                                   :join-alias "alias"}]]
-                                                :alias        "alias"}]}}
+        (let [query (lib.tu.macros/mbql-query nil
+                      {:source-table "card__1"
+                       :joins        [{:fields       "all"
+                                       :source-table "card__2"
+                                       :condition    [:=
+                                                      [:field "A_COLUMN" {:base-type :type/Text}]
+                                                      [:field "B_COLUMN" {:base-type  :type/Text
+                                                                          :join-alias "alias"}]]
+                                       :alias        "alias"}]})
               cols  (qp.preprocess/query->expected-cols query)]
           (is (= "alias → B Column"
                  (-> cols second :display_name))

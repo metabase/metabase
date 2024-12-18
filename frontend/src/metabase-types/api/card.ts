@@ -314,6 +314,7 @@ export interface ListCardsRequest {
 
 export interface GetCardRequest {
   id: CardId;
+  context?: "collection";
   ignore_view?: boolean;
   ignore_error?: boolean;
 }

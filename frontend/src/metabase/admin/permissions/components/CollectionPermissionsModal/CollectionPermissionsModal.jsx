@@ -1,6 +1,5 @@
 import PropTypes from "prop-types";
 import { useCallback, useEffect } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -11,6 +10,7 @@ import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import Collections from "metabase/entities/collections";
 import Groups from "metabase/entities/groups";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 
 import {

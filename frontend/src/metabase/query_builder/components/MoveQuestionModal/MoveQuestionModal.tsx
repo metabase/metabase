@@ -12,6 +12,7 @@ import Modal from "metabase/components/Modal";
 import { MoveModal } from "metabase/containers/MoveModal";
 import Dashboards from "metabase/entities/dashboards";
 import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
+import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { API_UPDATE_QUESTION } from "metabase/query_builder/actions";
@@ -44,11 +45,16 @@ export const MoveQuestionModal = ({
     affectedDashboards?: any[];
     isLoading?: boolean;
   } | null>(null);
-  const [deleteOldDashcards, setDeleteOldDashcards] = useState<
+  const [deleteOldDashcardsState, setDeleteOldDashcardsState] = useState<
     boolean | undefined
   >();
 
-  const handleMove = async (destination: MoveDestination) => {
+  const [errorMessage, setErrorMessage] = useState<string>();
+
+  const handleMove = async (
+    destination: MoveDestination,
+    deleteOldDashcards?: boolean | undefined,
+  ) => {
     const update =
       destination.model === "dashboard"
         ? { dashboard_id: destination.id as number }
@@ -62,7 +68,8 @@ export const MoveQuestionModal = ({
       delete_old_dashcards: deleteOldDashcards,
       ...update,
     })
-      .then(({ data: updatedCard }) => {
+      .unwrap()
+      .then(updatedCard => {
         // HACK: entity framework would previously keep the qb in sync
         // with changing where the question lived
         dispatch({ type: API_UPDATE_QUESTION, payload: updatedCard });
@@ -93,13 +100,17 @@ export const MoveQuestionModal = ({
             ),
           );
         }
+
+        onClose();
       })
-      .finally(() => onClose());
+      .catch(e => {
+        setErrorMessage(getResponseErrorMessage(e));
+      });
   };
 
   const handleMoveConfirm = () => {
     if (confirmMoveState?.destination) {
-      handleMove(confirmMoveState?.destination);
+      handleMove(confirmMoveState?.destination, true);
     }
   };
 
@@ -128,7 +139,9 @@ export const MoveQuestionModal = ({
       <Modal>
         <ConfirmContent
           data-testid="dashboard-to-collection-move-confirmation"
-          onAction={() => handleMove(confirmMoveState?.destination)}
+          onAction={() =>
+            handleMove(confirmMoveState?.destination, deleteOldDashcardsState)
+          }
           onCancel={onClose}
           onClose={onClose}
           title={
@@ -144,8 +157,8 @@ export const MoveQuestionModal = ({
                 {t`It can still appear there even though you’re moving it into a collection.`}
               </Box>
               <Radio.Group
-                value={`${!deleteOldDashcards}`}
-                onChange={val => setDeleteOldDashcards(val !== "true")}
+                value={`${!deleteOldDashcardsState}`}
+                onChange={val => setDeleteOldDashcardsState(val !== "true")}
                 mt="2rem"
               >
                 <Radio
@@ -172,7 +185,7 @@ export const MoveQuestionModal = ({
       <Modal>
         <ConfirmContent
           data-testid="dashboard-to-dashboard-move-confirmation"
-          onAction={() => handleMove(confirmMoveState.destination)}
+          onAction={() => handleMove(confirmMoveState.destination, true)}
           onCancel={onClose}
           onClose={onClose}
           title={
@@ -207,6 +220,7 @@ export const MoveQuestionModal = ({
         onConfirm={handleMoveConfirm}
         onClose={onClose}
         destination={confirmMoveState.destination}
+        errorMessage={errorMessage}
       />
     );
   }

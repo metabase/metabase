@@ -52,6 +52,15 @@
                     (or (map? (:body req))
                         (sequential? (:body req))) (update :body json/encode)))))
 
+(defn- maybe-parse-json
+  [x]
+  (if (string? x)
+    (try
+      (json/decode x)
+      (catch Exception _e
+        x))
+    x))
+
 (defmethod channel/can-connect? :channel/http
   [_channel-type details]
   (channel.shared/validate-channel-details HTTPDetails details)
@@ -63,7 +72,7 @@
         ;; throw an appriopriate error if it's a connection error
         (if (= ::http/unexceptional-status (:type data))
           (throw (ex-info (tru "Failed to connect to channel") {:request-status (:status data)
-                                                                :request-body   (:body data)}))
+                                                                :request-body   (maybe-parse-json (:body data))}))
           (throw e))))))
 
 ;; ------------------------------------------------------------------------------------------------;;

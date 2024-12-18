@@ -7,7 +7,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
@@ -260,13 +259,12 @@
                    :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))))))))
 
 (defn- nested-venues-query [card-or-card-id]
-  {:database lib.schema.id/saved-questions-virtual-database-id
-   :type     :query
-   :query    {:source-table (str "card__" (u/the-id card-or-card-id))
-              :aggregation  [[:count]]
-              :breakout     [[:field
-                              (mt/format-name :latitude)
-                              {:base-type :type/Float, :binning {:strategy :num-bins, :num-bins 20}}]]}})
+  (mt/mbql-query nil
+    {:source-table (str "card__" (u/the-id card-or-card-id))
+     :aggregation  [[:count]]
+     :breakout     [[:field
+                     (mt/format-name :latitude)
+                     {:base-type :type/Float, :binning {:strategy :num-bins, :num-bins 20}}]]}))
 
 (deftest ^:parallel bin-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
