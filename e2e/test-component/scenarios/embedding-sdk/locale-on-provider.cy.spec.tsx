@@ -8,18 +8,18 @@ import { describeEE } from "e2e/support/helpers";
 import {
   AUTH_PROVIDER_URL,
   METABASE_INSTANCE_URL,
-  sdkJwtSignIn,
-  signInAsAdminAndEnableEmbeddingSdkForComponentTests,
+  mockAuthProviderAndJwtSignIn,
+  signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 describeEE("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
   beforeEach(() => {
-    signInAsAdminAndEnableEmbeddingSdkForComponentTests();
+    signInAsAdminAndEnableEmbeddingSdk();
 
     cy.signOut();
 
-    sdkJwtSignIn();
+    mockAuthProviderAndJwtSignIn();
   });
 
   it("when locale=de it should display german text", () => {

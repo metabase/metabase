@@ -2,7 +2,6 @@
 import cx from "classnames";
 import { assocIn, dissocIn, getIn } from "icepick";
 import { Component } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,6 +9,7 @@ import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import { getParameters } from "metabase/dashboard/selectors";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
+import { connect } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";

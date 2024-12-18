@@ -1,7 +1,7 @@
-import { connect } from "react-redux";
 import { t } from "ttag";
 
 import { getResponseErrorMessage } from "metabase/lib/errors";
+import { connect } from "metabase/lib/redux";
 import type { Dataset } from "metabase-types/api";
 import type { MetabotQueryStatus, State } from "metabase-types/store";
 

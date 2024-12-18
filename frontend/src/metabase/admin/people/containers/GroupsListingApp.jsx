@@ -1,8 +1,8 @@
 import { Component } from "react";
-import { connect } from "react-redux";
 import _ from "underscore";
 
 import Group from "metabase/entities/groups";
+import { connect } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 

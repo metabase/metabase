@@ -5,9 +5,9 @@ import {
   tableInteractiveBody,
 } from "e2e/support/helpers";
 import {
+  mockAuthProviderAndJwtSignIn,
   mountInteractiveQuestion,
-  sdkJwtSignIn,
-  signInAsAdminAndEnableEmbeddingSdkForComponentTests,
+  signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import type { DatasetColumn } from "metabase-types/api";
 
@@ -15,7 +15,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describeEE("scenarios > embedding-sdk > interactive-question > native", () => {
   beforeEach(() => {
-    signInAsAdminAndEnableEmbeddingSdkForComponentTests();
+    signInAsAdminAndEnableEmbeddingSdk();
 
     createNativeQuestion(
       {
@@ -38,7 +38,7 @@ describeEE("scenarios > embedding-sdk > interactive-question > native", () => {
     );
 
     cy.signOut();
-    sdkJwtSignIn();
+    mockAuthProviderAndJwtSignIn();
   });
 
   it("supports passing sql parameters to native questions", () => {

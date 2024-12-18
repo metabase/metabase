@@ -1,8 +1,8 @@
 import type { LocationDescriptorObject } from "history";
-import { connect } from "react-redux";
 import _ from "underscore";
 
 import Questions from "metabase/entities/questions";
+import { connect } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { extractEntityId } from "metabase/lib/urls";
 import type Question from "metabase-lib/v1/Question";

@@ -1,6 +1,5 @@
 import PropTypes from "prop-types";
 import { useCallback, useMemo, useState } from "react";
-import { connect } from "react-redux";
 import _ from "underscore";
 
 import {
@@ -14,6 +13,7 @@ import Collection, {
   PERSONAL_COLLECTIONS,
   buildCollectionTree,
 } from "metabase/entities/collections";
+import { connect } from "metabase/lib/redux";
 import { Icon } from "metabase/ui";
 
 import SavedEntityList from "./SavedEntityList";

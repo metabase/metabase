@@ -2,15 +2,15 @@ import { EditableDashboard } from "@metabase/embedding-sdk-react";
 
 import { describeEE } from "e2e/support/helpers";
 import {
+  mockAuthProviderAndJwtSignIn,
   mountSdkContent,
-  sdkJwtSignIn,
-  signInAsAdminAndEnableEmbeddingSdkForComponentTests,
+  signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 describeEE("scenarios > embedding-sdk > editable-dashboard", () => {
   beforeEach(() => {
-    signInAsAdminAndEnableEmbeddingSdkForComponentTests();
+    signInAsAdminAndEnableEmbeddingSdk();
 
     cy.createDashboard(
       {
@@ -21,7 +21,7 @@ describeEE("scenarios > embedding-sdk > editable-dashboard", () => {
 
     cy.signOut();
 
-    sdkJwtSignIn();
+    mockAuthProviderAndJwtSignIn();
     cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",

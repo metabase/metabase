@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { PureComponent } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -11,6 +10,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { formatNumber } from "metabase/lib/formatting";
+import { connect } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
 import { getIsShowingRawTable } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
