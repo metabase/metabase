@@ -79,6 +79,7 @@
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.underlying :as lib.underlying]
    [metabase.util.malli :as mu]))
 
 ;;;
@@ -88,13 +89,22 @@
 (mu/defn zoom-in-binning-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.binning]
   "Return a drill thru that 'zooms in' on a breakout that uses `:binning` if applicable.
   See [[metabase.lib.drill-thru.zoom-in-bins]] docstring for more information."
-  [query                                :- ::lib.schema/query
-   stage-number                         :- :int
-   {:keys [column value], :as _context} :- ::lib.schema.drill-thru/context]
+  [query                                 :- ::lib.schema/query
+   _stage-number                         :- :int
+   {:keys [column value], :as _context}  :- ::lib.schema.drill-thru/context]
   (when (and column value)
-    (when-let [existing-breakout (first (lib.breakout/existing-breakouts query stage-number column))]
+    (when-let [existing-breakout (first (lib.breakout/existing-breakouts query
+                                                                         (lib.underlying/top-level-stage-number query)
+                                                                         column))]
       (when-let [binning (lib.binning/binning existing-breakout)]
-        (when-let [{:keys [min-value max-value bin-width]} (lib.binning/resolve-bin-width query column value)]
+        (when-let [{:keys [min-value max-value bin-width]}
+                   ;; If the column has binning options, use those; otherwise, check the top-level-column.
+                   (or (lib.binning/resolve-bin-width query column value)
+                       (lib.binning/resolve-bin-width
+                        query
+                        ;; One of the "superflous" options is ::lib.field/binning, which we want to preserve here.
+                        (lib.underlying/top-level-column query column :rename-superflous-options? false)
+                        value))]
           (case (:strategy binning)
             (:num-bins :default)
             {:lib/type    :metabase.lib.drill-thru/drill-thru
@@ -129,11 +139,15 @@
   [query                                        :- ::lib.schema/query
    stage-number                                 :- :int
    {:keys [column min-value max-value new-binning]} :- ::lib.schema.drill-thru/drill-thru.zoom-in.binning]
-  (let [old-filters (filter (fn [[operator _opts filter-column]]
+  ;; We add and remove filters on the last stage rather than top-level-stage-number because that is
+  ;; where [[metabase.query-processor.middleware.binning/update-binning-strategy]] expects to find them. Adding the
+  ;; filters to top-level-stage-number breaks the binning.
+  (let [top-level-stage-number (lib.underlying/top-level-stage-number query)
+        old-filters (filter (fn [[operator _opts filter-column]]
                               (and (#{:>= :<} operator)
                                    (lib.equality/find-matching-column filter-column [column])))
                             (lib.filter/filters query stage-number))]
-    (-> (reduce lib.remove-replace/remove-clause query old-filters)
+    (-> (reduce #(lib.remove-replace/remove-clause %1 stage-number %2) query old-filters)
+        (update-breakout top-level-stage-number column new-binning)
         (lib.filter/filter stage-number (lib.filter/>= column min-value))
-        (lib.filter/filter stage-number (lib.filter/< column max-value))
-        (update-breakout stage-number column new-binning))))
+        (lib.filter/filter stage-number (lib.filter/< column max-value)))))
