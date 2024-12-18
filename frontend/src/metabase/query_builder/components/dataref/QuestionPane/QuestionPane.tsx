@@ -6,7 +6,7 @@ import DateTime from "metabase/components/DateTime";
 import {
   Description,
   EmptyDescription,
-} from "metabase/components/MetadataInfo/MetadataInfo.styled";
+} from "metabase/components/MetadataInfo/MetadataInfo";
 import Collections from "metabase/entities/collections";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";

@@ -320,7 +320,7 @@
                              "field_values"    false
                              "secrets"         false
                              "success"         false
-                             "error_message"   #"(?s)Exception extracting Card \d+ .*"}
+                             "error_message"   #"(?s)Error extracting Card \d+ .*"}
                             (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))
 
                   (testing "Full stacktrace"
