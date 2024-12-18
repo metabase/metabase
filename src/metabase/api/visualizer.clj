@@ -59,9 +59,9 @@
     ;; TODO: should probably add optional filters that are added when :visualization_settings and :result_metadata keys
     ;; exist, maybe?
 
-    search
+    :else
     (let [types-set (into #{} (mapcat (fn [col]
-                                        (vals (select-keys col [:base_type :effective_type :semantic_type])))
+                                        (mapv keyword (vals (select-keys col [:base_type :effective_type :semantic_type]))))
                                       dataset-columns))]
       (->> (search/search
             (search/search-context
