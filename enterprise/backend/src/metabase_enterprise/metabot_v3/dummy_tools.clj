@@ -1,6 +1,5 @@
 (ns metabase-enterprise.metabot-v3.dummy-tools
   (:require
-   [cheshire.core :as json]
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.envelope :as envelope]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription]
@@ -184,16 +183,13 @@
                     :name      tool-id
                     :arguments arguments}]}
 
-     {:content      (cond-> content
-                      (map? content)
-                      (-> (update-keys u/->snake_case_en)
-                          json/generate-string))
+     {:content      content
       :role         :tool
       :tool-call-id call-id}]))
 
 (defn- dummy-get-current-user
-  [{:keys [context] :as env}]
-  (let [content (:output (get-current-user :get-current-user {} context))]
+  [env]
+  (let [content (:output (get-current-user :get-current-user {} env))]
     (reduce envelope/add-dummy-message env (dummy-tool-messages :get-current-user {} content))))
 
 (def ^:private detail-getters

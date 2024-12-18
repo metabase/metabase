@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.envelope :as envelope]
+   [metabase-enterprise.metabot-v3.tools :as metabot-v3.tools]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase.util.o11y :as o11y]))
 
@@ -16,10 +17,13 @@
           (envelope/tool-calls-requiring-invocation e)))
 
 (defn- request-llm-response [e]
-  (let [new-response-message (:message (metabot-v3.client/*request*
-                                        (envelope/context e)
+  (let [context (envelope/context e)
+        new-response-message (:message (metabot-v3.client/*request*
+                                        context
                                         (envelope/full-history e)
-                                        (envelope/session-id e)))]
+                                        (envelope/session-id e)
+                                        (metabot-v3.tools/applicable-tools (metabot-v3.tools/*tools-metadata*)
+                                                                           context)))]
     (-> e
         envelope/decrement-round-trips
         (envelope/add-message new-response-message))))

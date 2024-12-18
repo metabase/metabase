@@ -29,7 +29,7 @@
                                                       :required ["email"]
                                                       :additionalProperties false}}])
                 metabot-v3.client/*request*
-                (fn [_context history _session-id]
+                (fn [_context history _session-id _tools]
                   (swap! calls conj [:api-request (last history)])
                   (swap! calls conj [:ai-proxy-request (last history)])
                   (let [response (cond
