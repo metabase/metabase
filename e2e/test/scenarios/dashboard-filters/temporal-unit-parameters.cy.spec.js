@@ -480,6 +480,76 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
   });
 
+  describe("multiple stages", () => {
+    function createDashboardWithMapping(questionDetails, columnName) {
+      H.createQuestion(questionDetails);
+      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
+        H.visitDashboard(dashboard.id),
+      );
+      H.editDashboard();
+      addQuestion(questionDetails.name);
+      addTemporalUnitParameter();
+      H.selectDashboardFilter(H.getDashboardCard(), columnName);
+      H.saveDashboard();
+    }
+
+    it("should change the temporal unit with a dependent filter in another stage", () => {
+      const questionDetails = {
+        name: "Multi-stage filter",
+        query: {
+          "source-query": {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          filter: [
+            "between",
+            ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+            "2024-01-01",
+            "2024-12-31",
+          ],
+        },
+      };
+
+      createDashboardWithMapping(questionDetails, "Created At");
+      H.filterWidget().eq(0).click();
+      H.popover().findByText("Quarter").click();
+      H.getDashboardCard().within(() => {
+        cy.findByText("Q1 2024").should("be.visible");
+        cy.findByText("Q1 2025").should("not.exist");
+      });
+    });
+
+    it("should change the temporal unit with a dependent breakout in another stage", () => {
+      const questionDetails = {
+        name: "Multi-stage breakout",
+        query: {
+          "source-query": {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          breakout: [
+            [
+              "field",
+              "CREATED_AT",
+              { "base-type": "type/DateTime", "temporal-unit": "year" },
+            ],
+          ],
+        },
+      };
+
+      createDashboardWithMapping(questionDetails, "Created At");
+      H.filterWidget().eq(0).click();
+      H.popover().findByText("Quarter").click();
+      H.getDashboardCard().findByText("2022").should("be.visible");
+    });
+  });
+
   describe("click behaviors", () => {
     it("should pass a temporal unit with 'update dashboard filter' click behavior", () => {
       createDashboardWithMappedQuestion({
