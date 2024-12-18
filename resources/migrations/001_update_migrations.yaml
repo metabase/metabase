@@ -10322,6 +10322,19 @@ databaseChangeLog:
             constraintName: fk_notification_creator_id
             nullable: true
 
+  - changeSet:
+      id: v53.2024-12-12T08:05:00
+      author: qnkhuat
+      comment: Migrate alert to notification
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateAlertToNotification"
+      rollback:
+        # delete all migrated notification on rollback so we can re-run the migration
+        - sql:
+            sql: >-
+              DELETE FROM notification WHERE internal_id IS NOT NULL;
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 ########################################################################################################################
 #
