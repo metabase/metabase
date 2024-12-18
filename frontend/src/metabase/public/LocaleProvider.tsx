@@ -49,8 +49,7 @@ export const LocaleProvider = ({
 };
 
 // Re-implementation of the fallback logic of the backend.
-// See `fallback-locale` in https://github.com/metabase/metabase/blob/master/src/metabase/util/i18n/impl.clj
-// for the original implementation
+// Should be kept in sync with `fallback-locale` in src/metabase/util/i18n/impl.clj
 export const getLocaleToUse = (
   // locale is in the format `en-US` or `zh-TW`
   locale: string | null,
