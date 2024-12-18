@@ -10,7 +10,6 @@ export const TokenFieldContainer = styled.ul`
   font-weight: bold;
   cursor: pointer;
   max-height: 130px;
-  background-color: var(--mb-color-bg-white);
   overflow-x: auto;
   overflow-y: auto;
   border-radius: ${space(1)};
@@ -23,6 +22,12 @@ export const TokenInputItem = styled.li`
   align-items: center;
   margin-right: 0.5rem;
   height: 46px;
+  background: none;
+`;
+
+export const TokenInputControl = styled.input`
+  background: none;
+  color: var(--mb-color-text-primary);
 `;
 
 export const PrefixContainer = styled.div`
