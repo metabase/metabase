@@ -192,7 +192,9 @@ export const CollectionContentView = ({
     sort_column: "name",
     sort_direction: SortDirection.Asc,
   });
-  const list = data?.data?.map(item => Search.wrapEntity(item, dispatch));
+  const list = useMemo(() => {
+    return data?.data?.map(item => Search.wrapEntity(item, dispatch));
+  }, [data, dispatch]);
 
   const pinnedItems = list && !isRootTrashCollection(collection) ? list : [];
   const hasPinnedItems = pinnedItems.length > 0;
