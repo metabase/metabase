@@ -1,6 +1,7 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useDebounce } from "react-use";
 import { t } from "ttag";
 
 import { useSearchQuery } from "metabase/api";
@@ -25,14 +26,26 @@ const propTypes = {
   ),
 };
 
+const SEARCH_DEBOUNCE_DURATION = 250;
+
 export function SearchResults({
   searchQuery,
   onSelect,
   databaseId,
   searchModels,
 }) {
+  const [debouncedSearchText, setDebouncedSearchText] = useState(searchQuery);
+
+  useDebounce(
+    () => {
+      setDebouncedSearchText(searchQuery);
+    },
+    SEARCH_DEBOUNCE_DURATION,
+    [searchQuery],
+  );
+
   const query = {
-    q: searchQuery,
+    q: debouncedSearchText,
     models: searchModels,
     limit: DEFAULT_SEARCH_LIMIT,
   };
