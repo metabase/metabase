@@ -201,34 +201,35 @@
     (str/replace-first additional-options #"^(?!;)" ";")))
 
 (defmethod sql-jdbc.conn/connection-details->spec :databricks
-  [_driver {:keys [catalog host http-path log-level token additional-options client-id oauth-secret] :as _details}]
+  [_driver {:keys [catalog host http-path use-token token client-id oauth-secret log-level additional-options] :as _details}]
   (assert (string? (not-empty catalog)) "Catalog is mandatory.")
   (let [base-spec
-        {:classname        "com.databricks.client.jdbc.Driver"
-         :subprotocol      "databricks"
-         :subname          (str "//" host ":443/;EnableArrow=0"
-                                ";ConnCatalog=" (codec/url-encode catalog)
-                                (preprocess-additional-options additional-options))
+        {:classname      "com.databricks.client.jdbc.Driver"
+         :subprotocol    "databricks"
+         :subname        (str "//" host ":443/;EnableArrow=0"
+                              ";ConnCatalog=" (codec/url-encode catalog)
+                              (when (and (string? additional-options) (not (str/blank? additional-options)))
+                                (if (str/starts-with? additional-options ";")
+                                  additional-options
+                                  (str ";" additional-options))))
          :transportMode  "http"
          :ssl            1
          :HttpPath       http-path
          :UserAgentEntry (format "Metabase/%s" (:tag config/mb-version-info))
          :UseNativeQuery 1}
-        m2m? (and (not (str/blank? client-id)) (not (str/blank? oauth-secret)))]
-    (-> base-spec
-        (merge (when log-level
-                 {:LogLevel log-level}))
-        (cond->
-          ;; If M2M credentials are present, use M2M OAuth
-          m2m? (merge {:AuthMech       11
-                       :Auth_Flow      1
-                       :OAuth2ClientId client-id
-                       :OAuth2Secret   oauth-secret})
-
-          ;; If M2M credentials are not present, fallback to token-based auth
-          (not m2m?) (merge {:AuthMech 3
-                             :uid      "token"
-                             :pwd      token})))))
+        base-spec (if log-level (assoc base-spec :LogLevel log-level) base-spec)]
+    (if use-token
+      ;; PAT authentication
+      (assoc base-spec
+             :AuthMech 3
+             :uid "token"
+             :pwd token)
+      ;; M2M OAuth
+      (assoc base-spec
+             :AuthMech 11
+             :Auth_Flow 1
+             :OAuth2ClientId client-id
+             :OAuth2Secret oauth-secret))))
 
 (defmethod sql.qp/quote-style :databricks
   [_driver]

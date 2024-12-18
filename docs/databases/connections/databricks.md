@@ -28,7 +28,7 @@ Additionally, see [Compute settings for the Databricks JDBC Driver](https://docs
 ## Authentication
 There are two ways to authenticate with Databricks on Metabase. You can use a personal access token (PAT) or a service principal using OAuth (OAuth M2M).
 
-The Databricks driver supports both options but will prioritize the OAuth M2M option if both are provided.
+The Databricks driver supports both options. Use the toggle to select the authentication method you want to use.
 
 ### Personal access token authentication
 See [Personal Access Token (PAT)](https://docs.databricks.com/en/dev-tools/auth/pat.html).
