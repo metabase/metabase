@@ -20,17 +20,11 @@ interface UseConfirmLeaveModalResult {
   nextLocation: Location | undefined;
 }
 
-export const IS_LOCATION_ALLOWED = (location?: Location) => {
-  /**
-   * If there is no "location" then it's beforeunload event, which is
-   * handled by useBeforeUnload hook - no reason to duplicate its work.
-   */
-  if (!location) {
-    return true;
-  }
-
-  return false;
-};
+/**
+ * If there is no "location" then it's beforeunload event, which is
+ * handled by useBeforeUnload hook - no reason to duplicate its work.
+ */
+export const IS_LOCATION_ALLOWED = (location?: Location) => !location;
 
 export const useConfirmLeaveModal = ({
   router,

@@ -47,7 +47,7 @@ export const DashboardLeaveConfirmationModal = withRouter(
         }
       : {
           title: t`Discard your changes?`,
-          message: t`Your changes haven't been saved, so you'll lose them if you navigate away.`,
+          message: t`Your changes haven’t been saved, so you’ll lose them if you navigate away.`,
           actionBtn: {
             color: "danger",
             message: t`Discard changes`,
