@@ -62,13 +62,13 @@ export function SearchResults({
     return data?.data?.map(item => Search.wrapEntity(item, dispatch));
   }, [data, dispatch]);
 
-  if (error || isFetching) {
-    return <LoadingAndErrorWrapper error={error} loading={isFetching} />;
-  }
-
   return (
     <Box w={CONTAINER_WIDTH} className={S.Root}>
-      {list.length === 0 && (
+      {(error || isFetching) && (
+        <LoadingAndErrorWrapper error={error} loading={isFetching} />
+      )}
+
+      {!error && !isFetching && list.length === 0 && (
         <div
           className={cx(
             CS.flex,
@@ -87,7 +87,7 @@ export function SearchResults({
         </div>
       )}
 
-      {list.length > 0 && (
+      {!error && !isFetching && list.length > 0 && (
         <ul>
           {list.map(item => (
             <li key={`${item.id}_${item.model}`}>
