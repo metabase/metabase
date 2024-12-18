@@ -21,7 +21,7 @@
   align-items: stretch;
   transition: border 300ms linear;
 
-  .cursorPointer {
+  &.cursorPointer {
     cursor: pointer;
   }
 
@@ -61,7 +61,7 @@
     background-color: transparent;
   }
 
-  .canHover:hover {
+  &.canHover:hover {
     background-color: color-mix(
       in srgb,
       var(--notebook-cell-item-content-container-color),
@@ -69,17 +69,17 @@
     );
   }
 
-  .leftBorder {
+  &.leftBorder {
     border-left: 1px solid
       color-mix(in srgb, var(--mb-color-bg-white), transparent 25%);
   }
 
-  .leftRoundedCorners {
+  &.leftRoundedCorners {
     border-top-left-radius: 6px;
     border-bottom-left-radius: 6px;
   }
 
-  .rightRoundedCorners {
+  &.rightRoundedCorners {
     border-top-right-radius: 6px;
     border-bottom-right-radius: 6px;
   }
