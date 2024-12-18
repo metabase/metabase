@@ -22,11 +22,7 @@ async function setup({ logs = [] }: { logs?: ModelCacheRefreshStatus[] } = {}) {
     });
   });
 
-  renderWithProviders(
-    <ModelCacheRefreshJobs>
-      <></>
-    </ModelCacheRefreshJobs>,
-  );
+  renderWithProviders(<ModelCacheRefreshJobs />);
 
   await screen.findByTestId("model-cache-logs");
 
