@@ -35,7 +35,7 @@
                                             :greeting "Hello!"}}]}
         invocations (atom [])]
     (binding [metabot-v3.tools.interface/*tool-applicable?* (constantly true)
-              metabot-v3.tools.interface/*invoke-tool*      (fn [tool-name args]
+              metabot-v3.tools.interface/*invoke-tool*      (fn [tool-name args _env]
                                                               (swap! invocations conj [tool-name args])
                                                               (let [msg (format "Invoked tool %s" tool-name)]
                                                                 {:output msg

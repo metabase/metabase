@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [medley.core :as m]
+   [metabase-enterprise.metabot-v3.envelope :as envelope]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.query]
    [metabase-enterprise.metabot-v3.tools.query-metric]
@@ -200,9 +201,9 @@
       :tool-call-id call-id}]))
 
 (defn- dummy-get-current-user
-  [context]
+  [{:keys [context] :as env}]
   (let [content (:output (get-current-user :get-current-user {} context))]
-    (dummy-tool-messages :get-current-user {} content)))
+    (reduce envelope/add-dummy-message env (dummy-tool-messages :get-current-user {} content))))
 
 (def ^:private detail-getters
   {:dashboard {:id :get-dashboard-details
@@ -225,16 +226,16 @@
             :id-name :report-id}})
 
 (defn- dummy-get-item-details
-  [context]
-  (reduce (fn [messages viewed]
+  [{:keys [context] :as env}]
+  (reduce (fn [env viewed]
             (if-let [{getter-id :id, getter-fn :fn, :keys [id-name]} (-> viewed :type detail-getters)]
               (let [item-id (or (:ref viewed) (u/generate-nano-id))
                     arguments {id-name item-id}
-                    content (-> (getter-fn getter-id arguments context)
+                    content (-> (getter-fn getter-id arguments (envelope/context env))
                                 :output)]
-                (into messages (dummy-tool-messages getter-id arguments content)))
-              messages))
-          []
+                (reduce envelope/add-dummy-message env (dummy-tool-messages getter-id arguments content)))
+              env))
+          env
           (:user-is-viewing context)))
 
 (defn- execute-query
@@ -265,7 +266,7 @@
 
 (defn invoke-dummy-tools
   "Invoke `tool` with `context` if applicable and return the resulting context."
-  [context]
+  [env]
   (let [test-query {:database 5
                     :type :query
                     :query
@@ -286,25 +287,25 @@
                       [:max [:field "SUBTOTAL" {:base-type :type/Float}]]]
                      :source-table "card__136"
                      :filter [:> [:field "SUBTOTAL" {:base-type :type/Float}] 50]}}
-        context (or (not-empty context)
-                    ;; for testing purposes, pretend the user is viewing a bunch of things at once
-                    {:user-is-viewing [{:type :dashboard
-                                        :ref 14
-                                        :parameters []
-                                        :is-embedded false}
-                                       {:type :table
-                                        :ref 27}
-                                       {:type :model
-                                        :ref 137}
-                                       {:type :metric
-                                        :ref 135}
-                                       {:type :report
-                                        :ref 89}
-                                       {:type :adhoc
-                                        :query test-query}]})]
+        test-context ;; for testing purposes, pretend the user is viewing a bunch of things at once
+                     {:user-is-viewing [{:type :dashboard
+                                         :ref 14
+                                         :parameters []
+                                         :is-embedded false}
+                                        {:type :table
+                                         :ref 27}
+                                        {:type :model
+                                         :ref 137}
+                                        {:type :metric
+                                         :ref 135}
+                                        {:type :report
+                                         :ref 89}
+                                        {:type :adhoc
+                                         :query test-query}]}
+        env (update env :context #(if (empty? %) test-context %))]
     (reduce (fn [messages tool]
-              (into messages (tool context)))
-            []
+              (tool env))
+            env
             dummy-tool-registry)))
 
 (comment

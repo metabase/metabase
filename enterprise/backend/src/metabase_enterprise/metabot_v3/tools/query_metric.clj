@@ -102,6 +102,5 @@
   -)
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/query-metric
-  [_tool-name arguments context _full-history]
-  {:output (json/generate-string (query-metric arguments))
-   :context context})
+  [_tool-name arguments _env]
+  {:output (json/generate-string (query-metric arguments))})

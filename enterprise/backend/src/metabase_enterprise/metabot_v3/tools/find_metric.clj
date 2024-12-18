@@ -5,11 +5,10 @@
             [toucan2.core :as t2]))
 
 (defmethod tools.interface/*invoke-tool* :metabot.tool/find-metric
-  [_ {:keys [message]} context]
+  [_ {:keys [message]} _env]
   (let [{:keys [id]} (client/select-metric-request
                       (t2/select [:model/Card :id :name :description]
                                  :type [:= "metric"])
                       message)]
     {:output (or (some-> id dummy-tools/metric-details)
-                 "Metric not found.")
-     :context context}))
+                 "Metric not found.")}))

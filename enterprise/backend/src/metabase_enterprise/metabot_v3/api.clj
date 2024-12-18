@@ -6,6 +6,7 @@
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
+   [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.handle-envelope :as metabot-v3.handle-envelope]
    [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
@@ -28,11 +29,16 @@
               {:name :api-response}
               (mtx/key-transformer {:encode u/->snake_case_en}))))
 
-(defn- request [message context history session-id]
-  (let [env (metabot-v3.handle-envelope/handle-envelope
-             (metabot-v3.envelope/add-user-message
-              (metabot-v3.envelope/create (metabot-v3.context/create-context context) history session-id)
-              message))]
+(defn request
+  "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
+  [message context history session-id]
+  (let [env (-> (metabot-v3.envelope/create
+                 (metabot-v3.context/create-context context)
+                 history
+                 session-id)
+                (metabot-v3.envelope/add-user-message message)
+                (metabot-v3.dummy-tools/invoke-dummy-tools)
+                (metabot-v3.handle-envelope/handle-envelope))]
     {:reactions (encode-reactions (metabot-v3.envelope/reactions env))
      :history (metabot-v3.envelope/history env)}))
 

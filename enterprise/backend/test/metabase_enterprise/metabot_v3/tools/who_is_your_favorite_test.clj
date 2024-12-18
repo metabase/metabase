@@ -4,4 +4,4 @@
 
 (deftest it-generates-a-reaction
   (is (= {:output "You are... but don't tell anyone!"}
-         (tools.interface/*invoke-tool* :metabot.tool/who-is-your-favorite {}))))
+         (tools.interface/*invoke-tool* :metabot.tool/who-is-your-favorite {} {}))))

@@ -2,21 +2,15 @@
   "Code for handling responses from AI Proxy ([[metabase-enterprise.metabot-v3.client]])."
   (:require
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
-   [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.envelope :as envelope]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase.util.o11y :as o11y]))
 
-(defn- full-history
-  [{:keys [context] :as e}]
-  (into (metabot-v3.dummy-tools/invoke-dummy-tools context)
-        (envelope/history e)))
-
-(defn- invoke-all-tool-calls! [{:keys [context] :as e}]
+(defn- invoke-all-tool-calls! [e]
   (reduce (fn [e {tool-name :name, tool-call-id :id, :keys [arguments]}]
             (let [{:keys [output context]}
                   (o11y/with-span :info {:name tool-name}
-                    (metabot-v3.tools.interface/*invoke-tool* tool-name arguments context (full-history e)))]
+                    (metabot-v3.tools.interface/*invoke-tool* tool-name arguments e))]
               (envelope/add-tool-response e tool-call-id output context)))
           e
           (envelope/tool-calls-requiring-invocation e)))
@@ -24,7 +18,7 @@
 (defn- request-llm-response [e]
   (let [new-response-message (:message (metabot-v3.client/*request*
                                         (envelope/context e)
-                                        (full-history e)
+                                        (envelope/full-history e)
                                         (envelope/session-id e)))]
     (-> e
         envelope/decrement-round-trips

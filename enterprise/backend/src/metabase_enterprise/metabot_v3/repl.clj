@@ -5,8 +5,8 @@
     clj -X:ee:metabot-v3/repl"
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.metabot-v3.api :as api]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
-   [metabase-enterprise.metabot-v3.handle-envelope :as metabot-v3.handle-envelope]
    [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
    [metabase.db :as mdb]
    [metabase.util :as u]
@@ -58,10 +58,7 @@
                                             :current_visualization_settings {:current_display_type "bar",
                                                                              :visible_columns [{:name "Created At"}, {:name "Id"}, {:name "Order Number"}, {:name "Status"}, {:name "Total"}],
                                                                              :hidden_columns [{:name "Customer Id"}, {:name "Customer Name"}, {:name "Customer Email"}]}}
-                                   env (metabot-v3.handle-envelope/handle-envelope
-                                        (metabot-v3.envelope/add-user-message
-                                         (metabot-v3.envelope/create context history session-id)
-                                         input))]
+                                   env (api/request input context history session-id)]
                                (handle-reactions (metabot-v3.envelope/reactions env))
                                (metabot-v3.envelope/history env))))
                          (catch Throwable e
