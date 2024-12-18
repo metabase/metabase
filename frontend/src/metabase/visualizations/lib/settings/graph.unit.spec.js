@@ -487,6 +487,61 @@ describe("graph.tooltip_columns", () => {
 
       expect(isHidden).toBe(false);
     });
+
+    describe("getValue", () => {
+      const getMockSeries = display => [
+        createMockSingleSeries(
+          createMockCard({ display }),
+          createMockDataset({
+            data: createMockDatasetData({
+              cols: [
+                createMockColumn({ name: "dim", base_type: "type/Text" }),
+                createMockColumn({
+                  name: "metric1",
+                  base_type: "type/Number",
+                }),
+                createMockColumn({
+                  name: "metric2",
+                  base_type: "type/Number",
+                }),
+                createMockColumn({
+                  name: "metric3",
+                  base_type: "type/Number",
+                }),
+                createMockColumn({
+                  name: "category",
+                  base_type: "type/Text",
+                }),
+              ],
+            }),
+          }),
+        ),
+      ];
+
+      it("should return all available columns on scatter charts by default", () => {
+        const value = tooltipColumnsSetting.getValue(getMockSeries("scatter"), {
+          "graph.tooltip_type": "series_comparison",
+          "graph.dimensions": ["dim"],
+          "graph.metrics": ["metric1"],
+        });
+
+        expect(value).toStrictEqual([
+          '["name","metric2"]',
+          '["name","metric3"]',
+          '["name","category"]',
+        ]);
+      });
+
+      it("should return no additional columns by default", () => {
+        const value = tooltipColumnsSetting.getValue(getMockSeries("line"), {
+          "graph.tooltip_type": "series_comparison",
+          "graph.dimensions": ["dim"],
+          "graph.metrics": ["metric1"],
+        });
+
+        expect(value).toHaveLength(0);
+      });
+    });
   });
 
   describe("getProps", () => {
