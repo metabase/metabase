@@ -78,7 +78,7 @@
   [id {:keys [include-foreign-key-tables? metadata-provider]}]
   (when-let [base (if metadata-provider
                     (lib.metadata/table metadata-provider id)
-                    (metabot-v3.tools.u/get-table id))]
+                    (metabot-v3.tools.u/get-table id :db_id :description))]
     (let [mp (or metadata-provider
                  (lib.metadata.jvm/application-database-metadata-provider (:db_id base)))
           table-query (lib/query mp (lib.metadata/table mp id))

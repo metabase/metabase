@@ -127,7 +127,7 @@
     (cond
       (some? table_id)
       [(str "field_[" table_id "]_")
-       (let [table (metabot-v3.tools.u/get-table table_id)
+       (let [table (metabot-v3.tools.u/get-table table_id :db_id)
              mp (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
          (lib/query mp (lib.metadata/table mp table_id)))]
 

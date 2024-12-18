@@ -30,10 +30,8 @@
       (m/assoc-some :description (get column :description))))
 
 (defn get-table
-  "Get the table for `id`."
-  [id]
-  (when-let [table (t2/select-one [:model/Table :id :name :description :db_id] id)]
+  "Get the `fields` of the table with ID `id`."
+  [id & fields]
+  (when-let [table (t2/select-one (into [:model/Table :id] fields) id)]
     (when (mi/can-read? table)
-      (-> table
-          (t2/hydrate :metrics)
-          (assoc :id id)))))
+      table)))
