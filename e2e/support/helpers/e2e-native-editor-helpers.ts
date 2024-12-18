@@ -35,11 +35,18 @@ function clearNativeEditor() {
   cy.realPress(["Backspace"]);
 }
 
+type TypeOptions = {
+  delay?: number;
+  focus?: boolean;
+};
+
 function nativeEditorType(
   text: string,
-  { delay = 10 }: { delay?: number } = {},
+  { delay = 10, focus = true }: TypeOptions = {},
 ) {
-  focusNativeEditor();
+  if (focus) {
+    focusNativeEditor();
+  }
 
   const parts = text.replaceAll("{{", "{{}{{}").split(/(\{[^}]+\})/);
 
@@ -101,8 +108,8 @@ function nativeEditorType(
 
 export const NativeEditor = {
   get: nativeEditor,
-  type(text: string) {
-    nativeEditorType(text);
+  type(text: string, options: TypeOptions) {
+    nativeEditorType(text, options);
     return NativeEditor;
   },
   focus() {

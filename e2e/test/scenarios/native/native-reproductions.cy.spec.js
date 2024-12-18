@@ -194,7 +194,7 @@ describe("issue 17060", () => {
     Cypress._.range(SELECTED_TEXT.length).forEach(() =>
       cy.realPress(["Shift", "ArrowRight"]),
     );
-    H.NativeEditor.type("RATING");
+    H.NativeEditor.type("RATING", { focus: false });
     runQuery();
 
     cy.findByTestId("query-visualization-root").within(() => {
