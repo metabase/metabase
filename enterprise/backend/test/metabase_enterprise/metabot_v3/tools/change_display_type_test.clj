@@ -6,4 +6,4 @@
   (is (= {:output "success",
           :reactions [{:display-type "foo"
                        :type :metabot.reaction/change-display-type}]}
-         (tools.interface/*invoke-tool* :metabot.tool/change-display-type {:type "foo"}))))
+         (tools.interface/*invoke-tool* :metabot.tool/change-display-type {:type "foo"} {}))))

@@ -95,7 +95,8 @@
 (defn update-context
   "Given a new context, set it in the envelope."
   [e context]
-  (assoc e :context context))
+  (cond-> e
+    (some? context) (assoc :context context)))
 
 (defn add-tool-response
   "Given an output string and new context, adds them to the envelope."

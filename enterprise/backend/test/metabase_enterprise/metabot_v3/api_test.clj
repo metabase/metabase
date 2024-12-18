@@ -53,7 +53,7 @@
                   (#'metabot-v3.client/decode-response-body response)))
 
               metabot-v3.tools.interface/*invoke-tool*
-              (fn [tool-name arguments]
+              (fn [tool-name arguments _env]
                 [{:type :metabot.reaction/invoke-tool, :tool-name tool-name, :arguments arguments}])]
       (let [response-1 (#'metabot-v3.api/request "Send an email to Cam" {} [])]
         (swap! calls conj [:api-response response-1])

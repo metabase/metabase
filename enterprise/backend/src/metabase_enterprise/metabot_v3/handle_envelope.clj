@@ -6,11 +6,11 @@
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase.util.o11y :as o11y]))
 
-(defn- invoke-all-tool-calls! [{:keys [context] :as e}]
+(defn- invoke-all-tool-calls! [e]
   (reduce (fn [e {tool-name :name, tool-call-id :id, :keys [arguments]}]
             (let [{:keys [output context]}
                   (o11y/with-span :info {:name tool-name}
-                    (metabot-v3.tools.interface/*invoke-tool* tool-name arguments context (envelope/full-history e)))]
+                    (metabot-v3.tools.interface/*invoke-tool* tool-name arguments e))]
               (envelope/add-tool-response e tool-call-id output context)))
           e
           (envelope/tool-calls-requiring-invocation e)))

@@ -4,6 +4,5 @@
    [metabase.util.malli :as mu]))
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/find-outliers
-  [_tool-name _arguments context]
-  {:output "Not implemented."
-   :context context})
+  [_tool-name _arguments _env]
+  {:output "Not implemented."})

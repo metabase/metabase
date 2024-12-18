@@ -103,9 +103,9 @@
   Different reactions should get bundled with different keys, for example `:metabot.reaction/message` should include
   `:message`. This should match what the frontend expects."
   {:arglists '([tool-name argument-map context full-history])}
-  (fn [tool-name _argument-map _context _full-history]
+  (fn [tool-name _argument-map _env]
     (keyword tool-name)))
 
 (mu/defmethod *invoke-tool* :default
-  [tool-name _argument-map _context _full-history]
+  [tool-name _argument-map _env]
   {:output (format "Tool '%s' is not yet implemented." tool-name)})

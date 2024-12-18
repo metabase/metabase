@@ -8,7 +8,7 @@
    [toucan2.core :as t2]))
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/create-dashboard-subscription
-  [_tool-name {:keys [dashboard-id email schedule] :as _arguments} context _full-history]
+  [_tool-name {:keys [dashboard-id email schedule] :as _arguments} _env]
   (let [dashboard (-> (t2/select-one :model/Dashboard :id dashboard-id)
                       (t2/hydrate [:dashcards :card]))
         cards (for [{:keys [id card]} (:dashcards dashboard)]
@@ -35,7 +35,5 @@
                               :skip_if_empty false))]
     (if recipient
       (do (models.pulse/create-pulse! (map models.pulse/card->ref cards) [channel] pulse-data)
-          {:output "success"
-           :context context})
-      {:output "no user with this email found"
-       :context context})))
+          {:output "success"})
+      {:output "no user with this email found"})))
