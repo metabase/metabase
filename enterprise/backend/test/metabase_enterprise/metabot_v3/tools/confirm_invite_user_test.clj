@@ -16,4 +16,4 @@
              [{:type :metabot.reaction/writeback,
                :message "<system message>The user refused the operation. Ask if they need anything else.</system message>"}]}}],
           :output "Confirmation required - awaiting user input."}
-         (tools.interface/*invoke-tool* :metabot.tool/confirm-invite-user {:email "email"}))))
+         (tools.interface/*invoke-tool* :metabot.tool/confirm-invite-user {:email "email"} {}))))

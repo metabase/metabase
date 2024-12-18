@@ -4,6 +4,7 @@
   The 'envelope' holds the context for our conversation with the LLM. Specifically, it bundles up the history, and the
   context into one convenient location, with a simple API for querying and modifying."
   (:require
+   [cheshire.core :as json]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase.util :as u]))
 
@@ -19,7 +20,15 @@
    :history history
    :context context
    :max-round-trips max-round-trips
-   :round-trips-remaining max-round-trips})
+   :round-trips-remaining max-round-trips
+   :dummy-history []
+   :query-id->query {}})
+
+(defn full-history
+  "History including the dummy tool invocations"
+  [e]
+  (into (:dummy-history e)
+        (:history e)))
 
 (defn session-id
   "Get the session ID from the envelope"
@@ -78,10 +87,16 @@
   [e msg]
   (update e :history conj msg))
 
+(defn add-dummy-message
+  "Adds a message to the dummy history. This is sent to the LLM, but not part of the history we send to the frontend."
+  [e msg]
+  (update e :dummy-history conj msg))
+
 (defn update-context
   "Given a new context, set it in the envelope."
   [e context]
-  (assoc e :context context))
+  (cond-> e
+    (some? context) (assoc :context context)))
 
 (defn add-tool-response
   "Given an output string and new context, adds them to the envelope."
@@ -102,6 +117,19 @@
   [{:keys [role tool-call-id]}]
   (and (= role :tool)
        tool-call-id))
+
+(defn find-query
+  "Given an envelope and a query-id, find the query in the history."
+  [e query-id]
+  (->> e
+       full-history
+       (filter is-tool-call-response?)
+       (keep :content)
+       (map #(json/parse-string % keyword))
+       (filter #(= (:type %) "query"))
+       (filter #(= (:query_id %) query-id))
+       first
+       :query))
 
 (defn requires-tool-invocation?
   "Does this envelope require tool call invocation?"
