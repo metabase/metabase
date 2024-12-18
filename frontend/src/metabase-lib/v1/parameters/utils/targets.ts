@@ -169,8 +169,7 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
     question.display() === "pivot" ? query : Lib.ensureFilterStage(query);
 
   if (parameter && isTemporalUnitParameter(parameter)) {
-    const stageIndex = Lib.stageCount(query) - 1;
-    const availableColumns = getTemporalColumns(nextQuery, stageIndex);
+    const availableColumns = getTemporalColumns(nextQuery);
     const columns = availableColumns.filter(({ column, stageIndex }) => {
       return columnFilterForParameter(nextQuery, stageIndex, parameter)(column);
     });
@@ -188,17 +187,19 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
   return { query: nextQuery, columns };
 }
 
-function getTemporalColumns(query: Lib.Query, stageIndex: number) {
-  const columns = Lib.breakouts(query, stageIndex).map(breakout => {
-    return Lib.breakoutColumn(query, stageIndex, breakout);
-  });
-  const [group] = Lib.groupColumns(columns);
+function getTemporalColumns(query: Lib.Query) {
+  return Lib.stageIndexes(query).flatMap(stageIndex => {
+    const columns = Lib.breakouts(query, stageIndex).map(breakout => {
+      return Lib.breakoutColumn(query, stageIndex, breakout);
+    });
+    const [group] = Lib.groupColumns(columns);
 
-  return columns.map(column => ({
-    stageIndex,
-    column,
-    group,
-  }));
+    return columns.map(column => ({
+      stageIndex,
+      column,
+      group,
+    }));
+  });
 }
 
 function getFilterableColumns(query: Lib.Query) {
