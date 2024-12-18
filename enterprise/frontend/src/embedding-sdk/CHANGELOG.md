@@ -1,3 +1,22 @@
+## [0.51.13](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.12...embedding-sdk-0.51.13) (2024-12-18)
+
+
+### Bug Fixes
+
+* **sdk:** migrate to custom redux context to allow using the sdk on host apps that use redux ([#51415](https://github.com/metabase/metabase/issues/51415)) ([efa8fc3](https://github.com/metabase/metabase/commit/efa8fc3d4d01623251f42182f259a5035bd10d36))
+* **sdk:** update define function names in Next.js compat ([#51454](https://github.com/metabase/metabase/issues/51454)) ([2a2b744](https://github.com/metabase/metabase/commit/2a2b7441fe01a84d899dd445095728dcd12ef2b7))
+* **sdk:** wrap InteractiveDashboard with renderOnlyInSdkProvider ([#51224](https://github.com/metabase/metabase/issues/51224)) ([#51330](https://github.com/metabase/metabase/issues/51330)) ([2fd02f9](https://github.com/metabase/metabase/commit/2fd02f9142e8c4caa334a3838180a48eb3589e81))
+
+
+### Features
+
+* **sdk:** move non-auth config options to provider ([#50585](https://github.com/metabase/metabase/issues/50585)) ([#51067](https://github.com/metabase/metabase/issues/51067)) ([9c8a567](https://github.com/metabase/metabase/commit/9c8a5672c5474ca3b07ec610d48d2bad9bcece47))
+* **sdk:** rename prop names to be clear and explicit ([#50848](https://github.com/metabase/metabase/issues/50848)) ([97d25a0](https://github.com/metabase/metabase/commit/97d25a0b3ca172697261b315016a964f4c89aa27))
+* **sdk:** support sql parameters in interactive questions ([#51062](https://github.com/metabase/metabase/issues/51062)) ([b2112ff](https://github.com/metabase/metabase/commit/b2112ff83d214f4bbf4acf802b495ee43f4cf95c)), closes [#50728](https://github.com/metabase/metabase/issues/50728)
+* **sdk:** use metabase type prefix and re-export types ([#51073](https://github.com/metabase/metabase/issues/51073)) ([3308b15](https://github.com/metabase/metabase/commit/3308b1503c4ab7bbaedbbcba772c866edd0260ee)), closes [#50862](https://github.com/metabase/metabase/issues/50862)
+
+
+
 ## [0.51.12](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.11...embedding-sdk-0.51.12) (2024-12-16)
 
 
