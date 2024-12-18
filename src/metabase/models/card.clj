@@ -657,18 +657,21 @@
 (defn- add-suggested-name-to-metric-card
   "Add `:suggested_name` key to returned card.
 
-  Some users were missing definition that was present in v1 metric API responses. This new key compensates for that."
+  Some users were missing definition that was present in v1 metric API responses. This new key compensates for that.
+
+  This function is used in `t2/define-after-select :model/Card`. Metadata provider caching should be considered when
+  fetching multiple metric cards having common database, as done in eg. dashboard API context."
   [card]
   (if-not (and (map? card)
                (= :metric (:type card))
-               (:database_id card)
-               (:dataset_query card))
+               (-> card :dataset_query not-empty)
+               (-> card :database_id))
     card
     (or (when-some [suggested-name (some-> (lib.metadata.jvm/application-database-metadata-provider
                                             (:database_id card))
                                            (lib/query (:dataset_query card))
                                            lib/suggested-name)]
-          (assoc card :suggested_name suggested-name))
+          (assoc card :query_description suggested-name))
         card)))
 
 (t2/define-after-select :model/Card
