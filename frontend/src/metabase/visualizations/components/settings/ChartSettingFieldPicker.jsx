@@ -97,7 +97,7 @@ export const ChartSettingFieldPicker = ({
         onChange={onChange}
         icon={
           showDragHandle || (showColorPicker && seriesKey) ? (
-            <Group noWrap spacing="xs" pl="sm" pr="xs">
+            <Group noWrap spacing="xs" p="xs">
               {showDragHandle && (
                 <GrabberHandle
                   name="grabber"
@@ -136,7 +136,7 @@ export const ChartSettingFieldPicker = ({
                 icon="ellipsis"
                 data-testid={`settings-${value}`}
                 onClick={e => {
-                  onShowWidget(menuWidgetInfo, e);
+                  onShowWidget(menuWidgetInfo, e.currentTarget);
                 }}
               />
             )}
