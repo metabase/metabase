@@ -9,6 +9,7 @@
   then we can use the information on the tables to track information about the embedding client,
   and TODO: send it out in `summarize-execution`."
   (:require [metabase.analytics.prometheus :as prometheus]
+            [metabase.util.log :as log]
             [metabase.util.malli :as mu]))
 
 (def ^:dynamic *version* "Used to track information about the metabase embedding client version." nil)
@@ -42,7 +43,7 @@
     [embedding-sdk-client :error]    (prometheus/inc! :metabase-sdk/response-error)
     [embedding-iframe-client :ok]    (prometheus/inc! :metabase-embedding-iframe/response-ok)
     [embedding-iframe-client :error] (prometheus/inc! :metabase-embedding-iframe/response-error)
-    nil))
+    (log/infof "Unknown client or status. client: %s status %s" sdk-client status)))
 
 (defn- embedding-context?
   "Should we track this request as being made by an embedding client?"
