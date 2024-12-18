@@ -59,7 +59,7 @@ function nativeEditorType(
       case "{clear}":
         return clearNativeEditor();
 
-      case "{selectAll}":
+      case "{selectall}":
         return nativeEditorSelectAll();
 
       case "{leftarrow}":
