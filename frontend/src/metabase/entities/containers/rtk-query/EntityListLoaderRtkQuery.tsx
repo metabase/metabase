@@ -68,18 +68,12 @@ interface Props<Entity, EntityWrapper> {
 }
 
 const transformResponse = (fetched: unknown) => {
-  let results;
-  let metadata = {};
-
-  if (isObject(fetched) && fetched.data) {
-    const { data, ...rest } = fetched;
-    results = data;
-    metadata = rest;
-  } else {
-    results = fetched;
+  if (!isObject(fetched) || !fetched.data) {
+    return { results: fetched, metadata: {} };
   }
 
-  return { results, metadata };
+  const { data, ...metadata } = fetched;
+  return { results: data, metadata };
 };
 
 /**
