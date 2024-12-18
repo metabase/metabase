@@ -431,9 +431,7 @@ describe("DataSelector", () => {
     );
 
     expect(
-      screen.getByText("Sample Database", {
-        selector: "[data-element-id=list-item] h4",
-      }),
+      screen.getByRole("heading", { name: "Sample Database" }),
     ).toBeInTheDocument();
   });
 

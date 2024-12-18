@@ -15,6 +15,7 @@ import type { ColumnListItem, SegmentListItem } from "../types";
 import { StyledAccordionList } from "./FilterColumnPicker.styled";
 
 export interface FilterColumnPickerProps {
+  className?: string;
   query: Lib.Query;
   stageIndex: number;
   checkItemIsSelected: (item: ColumnListItem | SegmentListItem) => boolean;
@@ -54,6 +55,7 @@ export const isSegmentListItem = (
  * Filter ColumnOrSegmentOrCustomExpressionPicker was too long of a name
  */
 export function FilterColumnPicker({
+  className,
   query,
   stageIndex,
   checkItemIsSelected,
@@ -117,6 +119,7 @@ export function FilterColumnPicker({
   return (
     <DelayGroup>
       <StyledAccordionList
+        className={className}
         sections={sections}
         onChange={handleSelect}
         onChangeSection={handleSectionChange}
