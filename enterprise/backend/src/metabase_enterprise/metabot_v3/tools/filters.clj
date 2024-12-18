@@ -102,13 +102,24 @@
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]
     (let [id 135]
-      (query-metric {:metric_id id})))
+      (query-metric {:metric-id id})))
   -)
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/query-metric
   [_tool-name arguments _e]
   {:output (json/generate-string (query-metric arguments))})
 
+(comment
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
+            api/*current-user-id* 2
+            api/*is-superuser?* true]
+    (query-metric {:metric-id 135,
+                   :filters
+                   [{:operation "number-greater-than",
+                     :field_id "field_[27]_[:field {:base-type :type/Float, :effective-type :type/Float} 257]",
+                     :value 35}],
+                   :group-by nil}))
+  -)
 
 (defn- base-query
   [data-source e]
