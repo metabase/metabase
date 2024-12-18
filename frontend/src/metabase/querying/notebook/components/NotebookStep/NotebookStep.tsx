@@ -15,12 +15,7 @@ import type {
 } from "../../types";
 
 import { NotebookActionButton } from "./NotebookActionButton";
-import {
-  PreviewButton,
-  StepButtonContainer,
-  StepContent,
-  StepRoot,
-} from "./NotebookStep.styled";
+import S from "./NotebookStep.module.css";
 import { NotebookStepPreview } from "./NotebookStepPreview";
 import { getStepConfig } from "./utils";
 
@@ -103,11 +98,11 @@ export function NotebookStep({
 
   return (
     <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
-      <StepRoot
-        className={cx(CS.hoverParent, CS.hoverVisibility)}
+      <Box
+        className={cx(CS.hoverParent, CS.hoverVisibility, S.StepRoot)}
         data-testid={step.testID}
       >
-        <StepContent>
+        <Box w={11 / 12} maw="75rem">
           <StepHeader
             step={step}
             title={title}
@@ -115,10 +110,10 @@ export function NotebookStep({
             canRevert={canRevert}
             onRevert={handleClickRevert}
           />
-        </StepContent>
+        </Box>
 
         <Flex align="center">
-          <StepContent>
+          <Box w={11 / 12} maw="75rem">
             <Step
               step={step}
               query={step.query}
@@ -129,20 +124,22 @@ export function NotebookStep({
               reportTimezone={reportTimezone}
               readOnly={readOnly}
             />
-          </StepContent>
+          </Box>
           {!readOnly && (
-            <StepButtonContainer>
-              <PreviewButton
-                as={NotebookActionButton}
+            <Box w={1 / 12}>
+              <Box
+                className={cx(S.PreviewButton, {
+                  [S.noPreviewButton]: !hasPreviewButton,
+                })}
+                component={NotebookActionButton}
                 icon="play"
                 title={t`Preview`}
                 color={c("text-light")}
                 transparent
-                hasPreviewButton={hasPreviewButton}
                 onClick={openPreview}
                 data-testid="step-preview-button"
               />
-            </StepButtonContainer>
+            </Box>
           )}
         </Flex>
 
@@ -155,7 +152,7 @@ export function NotebookStep({
             {actionButtons}
           </Box>
         )}
-      </StepRoot>
+      </Box>
     </ExpandingContent>
   );
 }

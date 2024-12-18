@@ -1,15 +1,26 @@
-import { forwardRef, isValidElement } from "react";
+import cx from "classnames";
+import { type CSSProperties, forwardRef, isValidElement } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { Icon } from "metabase/ui";
+import { Flex, type FlexProps, Icon, rem } from "metabase/ui";
 
-import type { BorderSide } from "./NotebookCell.styled";
-import {
-  CONTAINER_PADDING,
-  NotebookCellItemContainer,
-  NotebookCellItemContentContainer,
-  NotebookCell as _NotebookCell,
-} from "./NotebookCell.styled";
+import S from "./NotebookCell.module.css";
+import { CONTAINER_PADDING } from "./constants";
+
+const _NotebookCell = ({ className, ...props }: FlexProps) => {
+  return (
+    <Flex
+      className={cx(S.NotebookCell, className)}
+      p={props.p ?? rem("14px")}
+      {...props}
+      style={
+        {
+          "--notebook-cell-color": props.c,
+        } as CSSProperties
+      }
+    />
+  );
+};
 
 export const NotebookCell = Object.assign(_NotebookCell, {
   displayName: "NotebookCell",
@@ -48,42 +59,60 @@ export const NotebookCellItem = forwardRef<
   ref,
 ) {
   const hasRightSide = isValidElement(right) && !readOnly;
-  const mainContentRoundedCorners: BorderSide[] = ["left"];
-  if (!hasRightSide) {
-    mainContentRoundedCorners.push("right");
-  }
+
   return (
-    <NotebookCellItemContainer
-      inactive={inactive}
-      readOnly={readOnly}
-      disabled={disabled}
-      color={color}
+    <Flex
+      className={cx(S.NotebookCellItemContainer, {
+        [S.inactive]: inactive,
+        [S.disabled]: disabled,
+        [S.cursorPointer]:
+          (!inactive || restProps.onClick) && !readOnly && !disabled,
+      })}
+      style={{
+        "--notebook-cell-item-container-color": color,
+      }}
       {...restProps}
       data-testid={restProps["data-testid"] ?? "notebook-cell-item"}
       ref={ref}
     >
-      <NotebookCellItemContentContainer
-        inactive={inactive}
-        disabled={disabled}
-        readOnly={readOnly}
-        color={color}
-        roundedCorners={mainContentRoundedCorners}
-        style={containerStyle}
+      <Flex
+        className={cx(
+          S.NotebookCellItemContentContainer,
+          S.leftRoundedCorners,
+          {
+            [S.rightRoundedCorners]: !hasRightSide,
+            [S.canHover]: !inactive && !readOnly && !disabled,
+          },
+        )}
+        p={CONTAINER_PADDING}
+        style={{
+          ...containerStyle,
+          "--notebook-cell-item-content-container-color": color,
+        }}
       >
         {children}
-      </NotebookCellItemContentContainer>
+      </Flex>
       {hasRightSide && (
-        <NotebookCellItemContentContainer
-          inactive={inactive}
-          color={color}
-          border="left"
-          roundedCorners={["right"]}
-          style={rightContainerStyle}
+        <Flex
+          className={cx(
+            S.NotebookCellItemContentContainer,
+            S.rightRoundedCorners,
+            S.leftBorder,
+            {
+              [S.inactive]: inactive,
+              [S.canHover]: !inactive && !readOnly && !disabled,
+            },
+          )}
+          p={CONTAINER_PADDING}
+          style={{
+            ...rightContainerStyle,
+            "--notebook-cell-item-content-container-color": color,
+          }}
         >
           {right}
-        </NotebookCellItemContentContainer>
+        </Flex>
       )}
-    </NotebookCellItemContainer>
+    </Flex>
   );
 });
 

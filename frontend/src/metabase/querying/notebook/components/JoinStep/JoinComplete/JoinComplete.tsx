@@ -102,7 +102,7 @@ export function JoinComplete({
 
   return (
     <Flex miw="100%" gap="1rem">
-      <NotebookCell className={S.JoinConditionCell} color={color}>
+      <NotebookCell className={S.JoinConditionCell} c={color}>
         <Flex direction="row" gap={6}>
           <NotebookCellItem color={color} disabled aria-label={t`Left table`}>
             {lhsTableName}
@@ -135,7 +135,7 @@ export function JoinComplete({
       <Box mt="1.5rem">
         <Text color="brand" weight="bold">{t`on`}</Text>
       </Box>
-      <NotebookCell className={S.JoinConditionCell} color={color}>
+      <NotebookCell className={S.JoinConditionCell} c={color}>
         {conditions.map((condition, index) => {
           const testId = `join-condition-${index}`;
           const isLast = index === conditions.length - 1;

@@ -48,7 +48,7 @@ export const DataStep = ({
   };
 
   return (
-    <NotebookCell color={color}>
+    <NotebookCell c={color}>
       <NotebookCellItem
         color={color}
         inactive={!table}
