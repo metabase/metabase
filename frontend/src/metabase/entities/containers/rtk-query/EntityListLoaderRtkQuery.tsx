@@ -318,11 +318,12 @@ export const entityListLoaderRtkQuery =
       props: ChildrenProps<Entity, EntityWrapper>,
     ) => ReactNode,
   ) =>
-  // eslint-disable-next-line react/display-name
-  (props: any): ReactNode => (
-    <EntityListLoaderRtkQuery
-      ComposedComponent={ComposedComponent}
-      {...props}
-      {...eolProps}
-    />
-  );
+    function EntityListLoaderRtkQueryWrapper(props: any) {
+      return (
+        <EntityListLoaderRtkQuery
+          ComposedComponent={ComposedComponent}
+          {...props}
+          {...eolProps}
+        />
+      );
+    };

@@ -279,11 +279,12 @@ export const entityObjectLoader =
       props: ChildrenProps<Entity, EntityWrapper>,
     ) => ReactNode,
   ) =>
-  // eslint-disable-next-line react/display-name
-  (props: any): ReactNode => (
-    <EntityObjectLoader
-      ComposedComponent={ComposedComponent}
-      {...props}
-      {...eolProps}
-    />
-  );
+    function EntityObjectLoaderWrapper(props: any) {
+      return (
+        <EntityObjectLoader
+          ComposedComponent={ComposedComponent}
+          {...props}
+          {...eolProps}
+        />
+      );
+    };
