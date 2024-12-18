@@ -205,4 +205,4 @@
 ;; TIME SERIES
 ;; anything containing type/DateTime, or some temporal AND
 ;; at least 1 other column that's aggregated (if it's a question)
-;; just other columns... we can't totally know if thigns are aggregated or now (in SQL case)
+;; just other columns... we can't totally know if thigns are aggregated or not (in SQL case)

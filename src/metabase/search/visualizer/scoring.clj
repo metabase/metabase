@@ -307,6 +307,10 @@
   (and (= (-> fingerprint :global :distinct-count) 1)
        (some #(isa? (keyword %) :type/Number) [base_type effective_type semantic_type])))
 
+(defn- col-is-temporal?
+  [{:keys [fingerprint base_type effective_type semantic_type]}]
+  (some #(isa? (keyword %) :type/Temporal) [base_type effective_type semantic_type]))
+
 (defn- result-metadata->compatible-types
   "Given result-metadata, return a vector of compatible viz keys."
   [result-metadata]
@@ -319,20 +323,33 @@
         scalar?         (some col-is-scalar? result-metadata)]
     (cond
       (and scalar? (= (count result-metadata) 1)) 2
-      scalar?                                     1
+      ;; if we want to accept data sources that contain scalar columns, but more than 1 column.
+      ;; so, for example, questions with just 1 row
+      #_#_scalar?                                     1
       :else                                       0)))
+
+(defn- timeseries-score
+  [{:keys [result_metadata]}]
+  (let [result-metadata (json/decode result_metadata keyword)
+        timeseries?     (some col-is-temporal? result-metadata)]
+    (cond
+      timeseries? 2
+      :else       0)))
 
 (defn compatibility-weights-and-scores
   "Default weights and scores for a given result."
   [result {:keys [compatibility]}]
-  (let [{:keys [column-types column-count]} compatibility]
+  (let [{:keys [column-types]} compatibility]
     [{:weight 5
-      :score  (if (and
-                   (= column-count 1)
-                   (some #(isa? % :type/Number) column-types))
+      :score  (if (some #(isa? % :type/Number) column-types)
                 (scalar-score result)
                 0)
       :name   "scalar-compatibility"}
+     {:weight 7
+      :score  (if (some #(isa? % :type/Temporal) column-types)
+                (timeseries-score result)
+                0)
+      :name   "timeseries-compatibility"}
      #_{:weight 2 :score (pinned-score result) :name "pinned"}
      #_{:weight 2 :score (bookmarked-score result) :name "bookmarked"}
      #_{:weight 3/2 :score (recency-score result) :name "recency"}
