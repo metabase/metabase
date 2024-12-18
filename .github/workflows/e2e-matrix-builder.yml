@@ -2,14 +2,20 @@ name: E2E Matrix Builder
 
 on:
   workflow_call:
+    outputs:
+      matrix:
+        value: ${{ jobs.build-matrix.outputs.matrix }}
 
 jobs:
-  e2e-matrix-builder:
+  build-matrix:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     outputs:
-      matrix: ${{ steps.matrix.outputs.result }}
+      matrix: ${{ steps.matrix.outputs.config }}
     steps:
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
       - uses: actions/checkout@v4
         with:
           sparse-checkout: e2e
@@ -18,11 +24,7 @@ jobs:
         shell: bash
         run: |
           echo "::set-output name=filenames::$(find e2e/test/scenarios -name '*.cy.spec.*' | tr '\n' ',')"
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '20.x'
-      - run: npm install underscore
-        shell: bash
+      - run: yarn add underscore
       - uses: actions/github-script@v7
         id: matrix
         with:
@@ -46,14 +48,13 @@ jobs:
             const regularTests = chunkedFiles.map((files, index) => ({
               name: `e2e-group-${index}`,
               specs: files.join(","),
-              context: "files",
               tags: '',
             }));
 
             const specialTests = [
               { name: "embedding-sdk", specs: "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*" },
               { name: "oss-subset", edition: 'oss', tags: "@OSS" },
-              { name: "slow" tags: "@slow" },
+              { name: "slow", tags: "@slow" },
               { name: "flaky", tags: "@flaky" },
               { name: "mongo", tags: "@mongo" },
             ];
@@ -67,4 +68,4 @@ jobs:
 
             console.log("matrix config", config);
 
-            return config;
+            core.setOutput("config", JSON.stringify(config));
