@@ -30,10 +30,7 @@ JAR download: {{oss-download-url}}
 Docker image: {{ee-docker-tag}}
 JAR download: {{ee-download-url}}
 
-## Notes
-
-<details>
-<summary><h2>Changelog</h2></summary>
+## Changelog
 
 ### Enhancements
 
@@ -52,8 +49,6 @@ Issues confirmed to have been fixed in a previous release.
 ### Under the Hood
 
 {{under-the-hood}}
-
-</details>
 
 `;
 
