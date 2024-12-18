@@ -33,16 +33,6 @@
 (defmethod search.engine/supported-engine? :search.engine/visualizer [_]
   true)
 
-
-
-
-
-
-
-
-
-
-
 (def ^:private HoneySQLColumn
   [:or
    :keyword
@@ -456,57 +446,9 @@
        :order-by order-clause
        :limit    search.config/*db-max-results*})))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 (defmethod search.engine/results
   :search.engine/visualizer
   [search-ctx]
-  (println "MY SEARCH RESULTS")
   (let [search-query (full-search-query search-ctx)]
     (def sq search-query)
     (log/tracef "Searching with query:\n%s\n%s"
@@ -515,7 +457,6 @@
     (t2/reducible-query search-query)))
 
 (defmethod search.engine/score :search.engine/visualizer [search-ctx result]
-  (println "MY SCORING")
   (search.scoring/score-and-result result search-ctx))
 
 ;; TODO:

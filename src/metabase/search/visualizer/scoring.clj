@@ -110,14 +110,14 @@
 
   Some of the scorers can be tweaked with configuration in [[metabase.search.config]]."
   (:require
+   [cheshire.core :as json]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.compatibility :as compatibility]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search.config :as search.config]
    [metabase.search.in-place.util :as search.util]
-   [metabase.util :as u]
-   [metabase.compatibility :as compatibility]
-   [cheshire.core :as json]))
+   [metabase.util :as u]))
 
 (defn- matches?
   [search-token match-token]
@@ -317,7 +317,6 @@
   [{:keys [result_metadata]}]
   (let [result-metadata (json/decode result_metadata keyword)
         scalar?         (some col-is-scalar? result-metadata)]
-    (println "SCALAR SCORE RUNS" scalar?)
     (cond
       (and scalar? (= (count result-metadata) 1)) 2
       scalar?                                     1
@@ -326,7 +325,6 @@
 (defn compatibility-weights-and-scores
   "Default weights and scores for a given result."
   [result {:keys [column-types column-count] :as compatibility-requirements}]
-  (println "COMPAT SCORING" (first column-types) (isa? (first column-types) :type/Number))
   [{:weight 5
     :score  (if (and
                  #_(= column-count 1)
@@ -393,22 +391,21 @@
 
 (defn score-and-result
   "Returns a map with the normalized, combined score from relevant-scores as `:score` and `:result`."
-  [result {:keys [search-string search-native-query column-types] :as search-ctx}]
-  (println "SEARCH STRING IS" search-string)
-  (println "COL TYPES IS" column-types)
+  [result {:keys [search-string search-native-query] :as search-ctx}]
   (let [text-matches    (-> (text-scores-with-match result {:search-string       search-string
                                                             :search-native-query search-native-query})
                             (force-weight text-scores-weight))
         has-text-match? (some (comp pos? :score) text-matches)
-        #_#_
-        all-scores      (into (vec (score-result result reqs)) text-matches)
-        all-scores      (compatibility-weights-and-scores result search-ctx)
+        #_#_all-scores  (into (vec (score-result result reqs)) text-matches)
+        all-scores      (into (vec (compatibility-weights-and-scores result search-ctx)) text-matches)
         relevant-scores (remove (comp zero? :score) all-scores)
         total-score     (compute-normalized-score all-scores)]
     ;; Searches with a blank search string mean "show me everything, ranked";
     ;; see https://github.com/metabase/metabase/pull/15604 for archived search.
     ;; If the search string is non-blank, results with no text match have a score of zero.
-    (when (or has-text-match? (str/blank? search-string))
+    (when (and
+           (> total-score 0)
+           (or has-text-match? (str/blank? search-string)))
       {:score  total-score
        :result (assoc result :all-scores all-scores :relevant-scores relevant-scores)})))
 

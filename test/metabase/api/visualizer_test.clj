@@ -47,7 +47,6 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-
 (defn asdf
   [{:keys [search display dataset-columns] :as body}]
   (mt/user-http-request 1 :post 200

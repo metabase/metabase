@@ -1,9 +1,6 @@
 (ns metabase.api.visualizer
   "/api/card endpoints."
   (:require
-   ;; Allowing search.config to be accessed for developer API to set weights
-   ^{:clj-kondo/ignore [:metabase/ns-module-checker]}
-   [metabase.search.config :as search.config]
    [clojure.string :as str]
    [compojure.core :refer [DELETE GET POST PUT]]
    [compojure.core :refer [GET]]
@@ -14,6 +11,9 @@
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.request.core :as request]
+   ;; Allowing search.config to be accessed for developer API to set weights
+   ^{:clj-kondo/ignore [:metabase/ns-module-checker]}
+   [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.task :as task]
    [metabase.task.search-index :as task.search-index]
@@ -29,37 +29,6 @@
 
 (set! *warn-on-reflection* true)
 
-#_
-(api/defendpoint POST "/"
-  "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
-  [:as {{:keys [collection_id collection_position dataset_query description display name
-                parameters parameter_mappings result_metadata visualization_settings cache_ttl type], :as body} :body}]
-  {name                   ms/NonBlankString
-   type                   [:maybe ::card-type]
-   dataset_query          ms/Map
-   parameters             [:maybe [:sequential ms/Parameter]]
-   parameter_mappings     [:maybe [:sequential ms/ParameterMapping]]
-   description            [:maybe ms/NonBlankString]
-   display                ms/NonBlankString
-   visualization_settings ms/Map
-   collection_id          [:maybe ms/PositiveInt]
-   collection_position    [:maybe ms/PositiveInt]
-   result_metadata        [:maybe analyze/ResultsMetadata]
-   cache_ttl              [:maybe ms/PositiveInt]}
-  (check-if-card-can-be-saved dataset_query type)
-  ;; check that we have permissions to run the query that we're trying to save
-  (check-permissions-for-query dataset_query)
-  ;; check that we have permissions for the collection we're trying to save this card to, if applicable
-  (collection/check-write-perms-for-collection collection_id)
-  (let [body (cond-> body
-               (string? (:type body)) (update :type keyword))]
-    (-> (card/create-card! body @api/*current-user*)
-        hydrate-card-details
-        (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
-
-
-
-
 ;; The visualizer search endpoint should return
 ;; Cards, Datasets, and Metrics that are compatible with the current set of
 ;; data sources in the visualizer. So, for example, a source that has a timeseries column
@@ -74,8 +43,9 @@
 (def DatasetColumn
   [:map
    [:id ms/PositiveInt]
-   [:type ms/FieldTypeKeywordOrString]
-   [:type ms/FieldSemanticTypeKeywordOrString]])
+   [:base_type ms/FieldTypeKeywordOrString]
+   [:effective_type ms/FieldTypeKeywordOrString]
+   [:semantic_type ms/FieldSemanticTypeKeywordOrString]])
 
 (api/defendpoint POST "/"
   "WIP Searches for data sources"
@@ -86,9 +56,7 @@
          :recents
          (take 2))
 
-
-
-    ;; TODO: should probably add optional filters that are added when :visualization_settings and :result_metadata keys
+;; TODO: should probably add optional filters that are added when :visualization_settings and :result_metadata keys
     ;; exist, maybe?
 
     search
@@ -108,8 +76,6 @@
          :data
          (take 2))))
 
-
-
 (defn asdf
   [{:keys [search display dataset-columns] :as body}]
   (let [types-set (into #{} (mapcat (fn [col]
@@ -127,22 +93,12 @@
          :offset                (request/offset)
          :limit                 (request/limit)
          :search-native-query   true
-         :search-string         (str/join " " (concat [search] (map util/qualified-name types-set)))
+         :search-string         search
          #_#_:display           display
          :column-types          types-set
          :search-engine         "visualizer"})))))
 
 (api/define-routes)
-
-
-
-
-
-
-
-
-
-
 
 ;; # What the Data Importer suggests to you if you select a chart type first:
 
@@ -227,8 +183,6 @@
 
 ;; Determining Compatibilities with just Result Metadata
 
-
-
 ;; SCALAR
 
 ;; result_metadata contains 1 column
@@ -237,13 +191,10 @@
 ;; the field_ref is an :aggregation -> will only work for Questions, not NATIVE, so maybe don't rely on this
 ;; semantic_type type/Quantity -> can be nil for a native Q, so can't rely on this entirely
 
-
 ;; so, steps to find all scalars:
 ;;  - maybe pre-filter with a string match for the types in result_metadata
 ;;  - parse result_metadata
 ;;  - if the entity matches the above, it's a valid result to pass to the FE
-
-
 
 ;; TIME SERIES
 ;; anything containing type/DateTime, or some temporal AND
