@@ -277,20 +277,20 @@
                      :source-table "card__136"
                      :filter [:> [:field "SUBTOTAL" {:base-type :type/Float}] 50]}}
         test-context ;; for testing purposes, pretend the user is viewing a bunch of things at once
-                     {:user-is-viewing [{:type :dashboard
-                                         :ref 14
-                                         :parameters []
-                                         :is-embedded false}
-                                        {:type :table
-                                         :ref 27}
-                                        {:type :model
-                                         :ref 137}
-                                        {:type :metric
-                                         :ref 135}
-                                        {:type :report
-                                         :ref 89}
-                                        {:type :adhoc
-                                         :query test-query}]}
+        {:user-is-viewing [{:type :dashboard
+                            :ref 10
+                            :parameters []
+                            :is-embedded false}
+                           {:type :table
+                            :ref 27}
+                           {:type :model
+                            :ref 137}
+                           {:type :metric
+                            :ref 135}
+                           {:type :report
+                            :ref 89}
+                           {:type :adhoc
+                            :query test-query}]}
         env (update env :context #(if (empty? %) test-context %))]
     (reduce (fn [env tool]
               (tool env))
@@ -301,5 +301,5 @@
   (binding [api/*current-user-permissions-set* (delay #{"/"})
             api/*current-user-id* 2
             api/*is-superuser?* true]
-    (invoke-dummy-tools {}))
+    (invoke-dummy-tools {:dummy-history []}))
   -)
