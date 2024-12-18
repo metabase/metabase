@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import _ from "underscore";
 
-import type { SdkPluginsConfig } from "embedding-sdk";
+import type { MetabasePluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
   SdkError,
@@ -25,7 +25,7 @@ import { InteractiveDashboardProvider } from "./context";
 
 export type InteractiveDashboardProps = {
   drillThroughQuestionHeight?: number;
-  plugins?: SdkPluginsConfig;
+  plugins?: MetabasePluginsConfig;
   className?: string;
   style?: CSSProperties;
 
