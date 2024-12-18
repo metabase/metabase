@@ -21,14 +21,18 @@ const Target = ({ children }: PropsWithChildren) => {
   return <>{children}</>;
 };
 
-type MultiStepPopoverProps = PropsWithChildren<{
-  currentStep: StepValue;
-}>;
+export type MultiStepState<T extends StepValue = StepValue> = T | null;
+
+type MultiStepPopoverProps<T extends StepValue = StepValue> =
+  PropsWithChildren<{
+    currentStep: MultiStepState<T>;
+    onClose?: () => void;
+  }>;
 
 const MultiStepPopoverContent = ({
   currentStep,
+  onClose,
   children,
-  ...popoverProps
 }: MultiStepPopoverProps & PopoverProps) => {
   const findChild = <T extends ReactElement>(
     predicate: (child: ReactElement) => child is T,
@@ -49,9 +53,13 @@ const MultiStepPopoverContent = ({
   )?.props.children;
 
   return (
-    <Popover {...popoverProps}>
-      <Popover.Target>{targetElement}</Popover.Target>;
-      <Popover.Dropdown>{currentStepContent}</Popover.Dropdown>;
+    <Popover
+      position="bottom-start"
+      opened={currentStep !== null}
+      onClose={onClose}
+    >
+      <Popover.Target>{targetElement}</Popover.Target>
+      <Popover.Dropdown>{currentStepContent}</Popover.Dropdown>
     </Popover>
   );
 };
