@@ -38,7 +38,7 @@
         [:event_info  [:maybe :map]]]]]]
     [:notification/card
      [:map
-      [:payload    {:optional true} :models.notification/NotificationCard]
+      [:payload    {:optional true} ::models.notification/NotificationCard]
       [:creator_id                  ms/PositiveInt]]]
     [:notification/dashboard
      [:map
@@ -89,7 +89,7 @@
                  [:card_part         [:maybe ::notification.payload.execute/Part]]
                  [:card              :map]
                  [:style             :map]
-                 [:notification_card :models.notification/NotificationCard]
+                 [:notification_card ::models.notification/NotificationCard]
                  [:subscriptions     [:sequential ::models.notification/NotificationSubscription]]]]]]
     [:notification/testing   :map]]])
 
