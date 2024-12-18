@@ -526,8 +526,8 @@ describe("scenarios > dashboard > subscriptions", () => {
           H.removeFieldValuesValue(0);
           H.fieldValuesInput().type("Sallie");
         });
-        H.popover().last().findByText("Sallie Flatley").click();
-        H.popover().first().button("Update filter").click();
+        cy.findByRole("option", { name: "Sallie Flatley" }).click();
+        H.popover().button("Update filter").click();
 
         cy.button("Save").click();
 
@@ -638,14 +638,11 @@ describe("scenarios > dashboard > subscriptions", () => {
           .next("aside")
           .findByText("Corbin Mertz")
           .click();
+
         H.removeFieldValuesValue(0, ":eq(1)");
         H.popover().within(() => H.fieldValuesInput().type("Sallie"));
-        H.popover().last().findByText("Sallie Flatley").click();
-        H.popover()
-          .first()
-          .within(() => {
-            cy.button("Update filter").click();
-          });
+        cy.findByRole("option", { name: "Sallie Flatley" }).click();
+        H.popover().button("Update filter").click();
         cy.button("Save").click();
 
         // verify existing subscription shows new default in UI
@@ -671,7 +668,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         cy.findAllByText("Corbin Mertz").last().click();
         H.popover().within(() => H.fieldValuesInput().type("Bob"));
-        H.popover().last().findByText("Bobby Kessler").click();
+        H.selectDropdown().findByText("Bobby Kessler").click();
         H.popover().contains("Update filter").click();
 
         cy.findAllByText("Text 1").last().click();
@@ -776,9 +773,9 @@ function addParametersToDashboard() {
     H.fieldValuesInput().type("Corbin");
   });
 
-  H.popover().last().findByText("Corbin Mertz").click();
+  H.selectDropdown().findByText("Corbin Mertz").click();
 
-  H.popover().first().contains("Add filter").click({ force: true });
+  H.popover().contains("Add filter").click({ force: true });
 
   H.setFilter("Text or Category", "Is");
 

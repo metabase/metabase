@@ -18,6 +18,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        End-to-end 'MovieDB' Sync Tests                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -266,7 +268,8 @@
 
 (defmethod driver/describe-database ::sync-database-error-test
   [_driver _database]
-  (throw (Exception. "OOPS!")))
+  (throw (doto (Exception. "OOPS!")
+           (.setStackTrace (into-array StackTraceElement [])))))
 
 (deftest sync-database!-error-test
   (testing "Errors in sync-database! should be caught and handled correctly (#45848)"

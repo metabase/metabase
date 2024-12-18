@@ -75,6 +75,7 @@ export const getSankeyData = (
       hasOutputs: false,
       inputColumnValues: {},
       outputColumnValues: {},
+      outputLinkByTarget: new Map<RowValue, SankeyLink>(),
     };
 
     node.level = Math.max(node.level, level);
@@ -117,18 +118,21 @@ export const getSankeyData = (
     const source = row[sankeyColumns.source.index];
     const target = row[sankeyColumns.target.index];
     const value = row[sankeyColumns.value.index];
-
-    const sourceInfo = updateNode(source, 0, "source", row);
-    updateNode(target, sourceInfo.level + 1, "target", row);
-
     const linkKey = `${NULL_CHAR}${source}->${target}`;
 
+    const sourceNode = updateNode(source, 0, "source", row);
+    const targetNode = updateNode(target, sourceNode.level + 1, "target", row);
+
     const link: SankeyLink = linkMap.get(linkKey) ?? {
+      sourceNode,
+      targetNode,
       source,
       target,
       value: 0,
       columnValues: {},
     };
+
+    sourceNode.outputLinkByTarget.set(target, link);
 
     link.value = sumMetric(link.value, value);
     cols.forEach((_column, index) => {

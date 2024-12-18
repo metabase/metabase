@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
 
 import { archiveAndTrack } from "metabase/archive/analytics";
 import {
   BulkActionBar,
   BulkActionButton,
 } from "metabase/components/BulkActionBar";
-import { UndoToast } from "metabase/containers/UndoListing";
+import { UndoListOverlay, UndoToast } from "metabase/containers/UndoListing";
 import type { CollectionItem } from "metabase-types/api";
 import type { Undo } from "metabase-types/store/undo";
 
@@ -97,13 +96,13 @@ export const CleanupCollectionBulkActions = ({
   return (
     <>
       {undo && (
-        <div className={CS.undoContainer} data-testid="undo-list">
+        <UndoListOverlay>
           <UndoToast
             undo={undo}
             onUndo={() => undo.actions?.[0]()}
             onDismiss={() => setUndo(undefined)}
           />
-        </div>
+        </UndoListOverlay>
       )}
 
       <BulkActionBar

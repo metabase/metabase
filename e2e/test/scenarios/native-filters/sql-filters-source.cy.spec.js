@@ -437,7 +437,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.openEntryForm();
 
       H.fieldValuesInput().type("101");
-      H.popover().last().findByText("1018947080336").click();
+      H.selectDropdown().findByText("1018947080336").click();
 
       H.fieldValuesValue(0)
         .should("be.visible")
@@ -460,7 +460,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.openEntryForm();
 
       H.fieldValuesInput().type("101");
-      H.popover().last().findByText("1018947080336").click();
+      H.selectDropdown().findByText("1018947080336").click();
       H.fieldValuesValue(0)
         .should("be.visible")
         .should("contain", "1018947080336");
@@ -482,7 +482,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.openEntryForm();
 
       H.fieldValuesInput().type("101");
-      H.popover().last().findByText("1018947080336").click();
+      H.selectDropdown().findByText("1018947080336").click();
       H.fieldValuesValue(0)
         .should("be.visible")
         .should("contain", "1018947080336");

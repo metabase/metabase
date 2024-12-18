@@ -1,8 +1,8 @@
 // Storybook helpers
-import { Provider } from "react-redux";
 
 import type { MetabaseTheme } from "embedding-sdk";
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
+import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { mainReducers } from "metabase/reducers-main";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
@@ -22,9 +22,9 @@ export const ReduxProvider = ({
   children: React.ReactNode;
   storeInitialState?: Record<string, any>;
 }) => (
-  <Provider store={getStore(mainReducers, storeInitialState)}>
+  <MetabaseReduxProvider store={getStore(mainReducers, storeInitialState)}>
     {children}
-  </Provider>
+  </MetabaseReduxProvider>
 );
 
 export const VisualizationWrapper = ({

@@ -724,7 +724,7 @@ function checkDashboardParameters<T = string>({
   checkResetAllFiltersShown();
 
   // reset all filters
-  cy.button("Move, trash, and more…").click();
+  cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").click();
   filter(NO_DEFAULT_NON_REQUIRED).should("have.text", NO_DEFAULT_NON_REQUIRED);
   checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
@@ -750,7 +750,7 @@ function checkDashboardParameters<T = string>({
   checkResetAllFiltersShown();
 
   // reset all filters
-  cy.button("Move, trash, and more…").click();
+  cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").click();
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
   filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
@@ -778,7 +778,7 @@ function checkDashboardParameters<T = string>({
   checkResetAllFiltersShown();
 
   // reset all filters
-  cy.button("Move, trash, and more…").click();
+  cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").click();
   filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
@@ -804,7 +804,7 @@ function checkDashboardParameters<T = string>({
   checkResetAllFiltersShown();
 
   // reset all filters
-  cy.button("Move, trash, and more…").click();
+  cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").click();
   filter(DEFAULT_REQUIRED).should("have.text", defaultValueFormatted);
   checkStatusIcon(DEFAULT_REQUIRED, "none");
@@ -980,7 +980,7 @@ function checkResetAllFiltersWorksAcrossTabs({
   filter(PARAMETER_B.name).should("have.text", "January 1, 2023");
   H.getDashboardCard(0).findByText("5").should("be.visible");
 
-  cy.button("Move, trash, and more…").click();
+  cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").click();
   checkResetAllFiltersHidden();
   filter(PARAMETER_B.name).should("have.text", PARAMETER_B.name);
@@ -1025,7 +1025,7 @@ function checkResetAllFiltersToDefaultWorksAcrossTabs({
   filter(PARAMETER_B.name).should("have.text", "January 1, 2023");
   H.getDashboardCard(0).findByText("5").should("be.visible");
 
-  cy.button("Move, trash, and more…").click();
+  cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").click();
   checkResetAllFiltersHidden();
   filter(PARAMETER_B.name).should("have.text", "January 5, 2023");
@@ -1039,15 +1039,15 @@ function checkResetAllFiltersToDefaultWorksAcrossTabs({
 }
 
 function checkResetAllFiltersShown() {
-  cy.button("Move, trash, and more…").click();
+  cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").should("be.visible");
-  cy.button("Move, trash, and more…").click();
+  cy.findByLabelText("Move, trash, and more…").click();
 }
 
 function checkResetAllFiltersHidden() {
-  cy.button("Move, trash, and more…").click();
+  cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").should("not.exist");
-  cy.button("Move, trash, and more…").click();
+  cy.findByLabelText("Move, trash, and more…").click();
 }
 
 function filter(label: string) {
