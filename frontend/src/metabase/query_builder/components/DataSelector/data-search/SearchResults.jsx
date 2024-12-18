@@ -41,7 +41,9 @@ export function SearchResults({
     query["table_db_id"] = databaseId;
   }
 
-  const { data, error, isLoading } = useSearchQuery(query);
+  const { data, error, isLoading } = useSearchQuery(query, {
+    refetchOnMountOrArgChange: true,
+  });
   const dispatch = useDispatch();
   const list = useMemo(() => {
     return data?.data?.map(item => Search.wrapEntity(item, dispatch));

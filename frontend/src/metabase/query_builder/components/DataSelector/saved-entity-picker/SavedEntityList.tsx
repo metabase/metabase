@@ -1,4 +1,4 @@
-import { Fragment, useMemo } from "react";
+import { Fragment } from "react";
 import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
@@ -6,8 +6,6 @@ import EmptyState from "metabase/components/EmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import SelectList from "metabase/components/SelectList";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
-import Search from "metabase/entities/search";
-import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -48,10 +46,7 @@ const SavedEntityList = ({
         }
       : skipToken,
   );
-  const dispatch = useDispatch();
-  const list = useMemo(() => {
-    return data?.data?.map(item => Search.wrapEntity(item, dispatch)) ?? [];
-  }, [data, dispatch]);
+  const list = data?.data ?? [];
 
   return (
     <SelectList className={SavedEntityListS.SavedEntityListRoot}>
