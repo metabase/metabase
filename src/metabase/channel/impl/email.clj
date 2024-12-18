@@ -138,7 +138,7 @@
   [recipients]
   (update-vals
    {:user-emails     (mapv (comp :email :user) (filter #(= :notification-recipient/user (:type %)) recipients))
-    :non-user-emails (mapv (comp :email :details) (filter #(= :notification-recipient/external-email (:type %)) recipients))}
+    :non-user-emails (mapv (comp :value :details) (filter #(= :notification-recipient/raw-value (:type %)) recipients))}
    #(filter u/email? %)))
 
 (defn- construct-emails
@@ -298,8 +298,8 @@
                                     [(-> recipient :user :email)]
                                     :notification-recipient/group
                                     (->> recipient :permissions_group :members (map :email))
-                                    :notification-recipient/external-email
-                                    [(:email details)]
+                                    :notification-recipient/raw-value
+                                    [(:value details)]
                                     :notification-recipient/template
                                     [(not-empty (channel.params/substitute-params (:pattern details) notification-payload :ignore-missing? (:is_optional details)))]
                                     nil)]
