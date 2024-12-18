@@ -28,7 +28,7 @@ export function addWidgetStringFilter(
   { buttonLabel = "Add filter" } = {},
 ) {
   setWidgetStringFilter(value);
-  cy.button(buttonLabel).click();
+  cy.button(buttonLabel).should("not.be.disabled").click();
 }
 
 export function clearWidgetValue() {
