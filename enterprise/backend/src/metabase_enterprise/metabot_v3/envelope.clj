@@ -27,8 +27,11 @@
 (defn full-history
   "History including the dummy tool invocations"
   [e]
-  (into (:dummy-history e)
-        (:history e)))
+  (map (fn [{:keys [content] :as msg}]
+         (assoc msg :content (cond-> content
+                               (map? content) json/generate-string)))
+       (into (:dummy-history e)
+             (:history e))))
 
 (defn session-id
   "Get the session ID from the envelope"
@@ -98,14 +101,20 @@
   (cond-> e
     (some? context) (assoc :context context)))
 
+(defn- update-reactions
+  "Given reactions, add them to the envelope"
+  [e reactions]
+  (update e :reactions (fnil into []) reactions))
+
 (defn add-tool-response
   "Given an output string and new context, adds them to the envelope."
-  [e tool-call-id output context]
+  [e tool-call-id {:keys [output context reactions]}]
   (-> e
       (add-message {:role :tool
                     :tool-call-id tool-call-id
                     :content output})
-      (update-context context)))
+      (update-context context)
+      (update-reactions reactions)))
 
 (defn is-tool-call?
   "Is this message a tool call?"
@@ -125,8 +134,7 @@
        full-history
        (filter is-tool-call-response?)
        (keep :content)
-       (map #(json/parse-string % keyword))
-       (filter #(= (:type %) "query"))
+       (filter #(contains? #{:query "query"} (:type %)))
        (filter #(= (:query_id %) query-id))
        first
        :query))

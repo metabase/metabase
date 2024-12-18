@@ -1,6 +1,5 @@
 (ns metabase-enterprise.metabot-v3.dummy-tools
   (:require
-   [cheshire.core :as json]
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.envelope :as envelope]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription]
@@ -184,16 +183,13 @@
                     :name      tool-id
                     :arguments arguments}]}
 
-     {:content      (cond-> content
-                      (map? content)
-                      (-> (update-keys u/->snake_case_en)
-                          json/generate-string))
+     {:content      content
       :role         :tool
       :tool-call-id call-id}]))
 
 (defn- dummy-get-current-user
-  [{:keys [context] :as env}]
-  (let [content (:output (get-current-user :get-current-user {} context))]
+  [env]
+  (let [content (:output (get-current-user :get-current-user {} env))]
     (reduce envelope/add-dummy-message env (dummy-tool-messages :get-current-user {} content))))
 
 (def ^:private detail-getters
@@ -254,50 +250,56 @@
 (defn invoke-dummy-tools
   "Invoke `tool` with `context` if applicable and return the resulting context."
   [env]
-  (let [test-query {:database 5
-                    :type :query
-                    :query
-                    {:joins
-                     [{:strategy :left-join
-                       :alias "Products"
-                       :condition
-                       [:=
-                        [:field "PRODUCT_ID" {:base-type :type/Integer}]
-                        [:field 285 {:base-type :type/BigInteger, :join-alias "Products"}]]
-                       :source-table 30}]
-                     :breakout
-                     [[:field 279 {:base-type :type/Float, :join-alias "Products", :binning {:strategy :default}}]
-                      [:field "CREATED_AT" {:base-type :type/DateTime, :temporal-unit :month}]]
-                     :aggregation
-                     [[:min [:field "SUBTOTAL" {:base-type :type/Float}]]
-                      [:avg [:field "SUBTOTAL" {:base-type :type/Float}]]
-                      [:max [:field "SUBTOTAL" {:base-type :type/Float}]]]
-                     :source-table "card__136"
-                     :filter [:> [:field "SUBTOTAL" {:base-type :type/Float}] 50]}}
-        test-context ;; for testing purposes, pretend the user is viewing a bunch of things at once
-        {:user-is-viewing [{:type :dashboard
-                            :ref 10
-                            :parameters []
-                            :is-embedded false}
-                           {:type :table
-                            :ref 27}
-                           {:type :model
-                            :ref 137}
-                           {:type :metric
-                            :ref 135}
-                           {:type :report
-                            :ref 89}
-                           {:type :adhoc
-                            :query test-query}]}
-        env (update env :context #(if (empty? %) test-context %))]
-    (reduce (fn [env tool]
-              (tool env))
-            env
-            dummy-tool-registry)))
+  (reduce (fn [env tool]
+            (tool env))
+          env
+          dummy-tool-registry))
 
 (comment
+  (def test-query {:database 5
+                   :type :query
+                   :query
+                   {:joins
+                    [{:strategy :left-join
+                      :alias "Products"
+                      :condition
+                      [:=
+                       [:field "PRODUCT_ID" {:base-type :type/Integer}]
+                       [:field 285 {:base-type :type/BigInteger, :join-alias "Products"}]]
+                      :source-table 30}]
+                    :breakout
+                    [[:field 279 {:base-type :type/Float, :join-alias "Products", :binning {:strategy :default}}]
+                     [:field "CREATED_AT" {:base-type :type/DateTime, :temporal-unit :month}]]
+                    :aggregation
+                    [[:min [:field "SUBTOTAL" {:base-type :type/Float}]]
+                     [:avg [:field "SUBTOTAL" {:base-type :type/Float}]]
+                     [:max [:field "SUBTOTAL" {:base-type :type/Float}]]]
+                    :source-table "card__136"
+                    :filter [:> [:field "SUBTOTAL" {:base-type :type/Float}] 50]}})
+  (def test-context
+    ;; for testing purposes, pretend the user is viewing a bunch of things at once
+    {:user-is-viewing [{:type :dashboard
+                        :ref 10
+                        :parameters []
+                        :is-embedded false}
+                       {:type :table
+                        :ref 27}
+                       {:type :model
+                        :ref 137}
+                       {:type :metric
+                        :ref 135}
+                       {:type :report
+                        :ref 89}
+                       {:type :adhoc
+                        :query test-query}]})
+
+  (defn test-envelope []
+    {:context test-context
+     :dummy-history []
+     :history []})
+
   (binding [api/*current-user-permissions-set* (delay #{"/"})
             api/*current-user-id* 2
             api/*is-superuser?* true]
-    (invoke-dummy-tools {:dummy-history []}))
+    (invoke-dummy-tools (test-envelope)))
   -)
