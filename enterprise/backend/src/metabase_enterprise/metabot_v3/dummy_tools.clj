@@ -4,8 +4,7 @@
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.envelope :as envelope]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription]
-   [metabase-enterprise.metabot-v3.tools.query]
-   [metabase-enterprise.metabot-v3.tools.query-metric]
+   [metabase-enterprise.metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.metabot-v3.tools.who-is-your-favorite]
    [metabase.api.card :as api.card]
@@ -53,21 +52,13 @@
                                              :metadata-provider metadata-provider})))
            not-empty))))
 
-(defn- get-table
-  [id]
-  (when-let [table (t2/select-one [:model/Table :id :name :description :db_id] id)]
-    (when (mi/can-read? table)
-      (-> table
-          (t2/hydrate :metrics)
-          (assoc :id id)))))
-
 (comment
   (mi/can-read? (t2/select-one :model/Table 27))
   (binding [api/*current-user-permissions-set* (delay #{"/"})
             api/*current-user-id* 2
             api/*is-superuser?* true]
     (mi/can-read? (t2/select-one :model/Table 27))
-    #_(get-table 27))
+    #_(metabot-v3.tools.u/get-table 27))
 
   (t2/select :model/User)
 
@@ -89,7 +80,7 @@
   [id {:keys [include-foreign-key-tables? metadata-provider]}]
   (when-let [base (if metadata-provider
                     (lib.metadata/table metadata-provider id)
-                    (get-table id))]
+                    (metabot-v3.tools.u/get-table id))]
     (let [mp (or metadata-provider
                  (lib.metadata.jvm/application-database-metadata-provider (:db_id base)))
           table-query (lib/query mp (lib.metadata/table mp id))
@@ -172,7 +163,9 @@
 
 (defn- get-report-details
   [_ {:keys [report-id]} context]
-  (let [details (card-details report-id)
+  (let [details (if-let [[_ card-id] (re-matches #"card__(\d+)" report-id)]
+                  (card-details (parse-long card-id))
+                  "invalid report_id")
         details' (some-> details
                          (select-keys [:id :description :name])
                          (assoc :result-columns (:fields details)))]
@@ -208,29 +201,25 @@
 (def ^:private detail-getters
   {:dashboard {:id :get-dashboard-details
                :fn get-dashboard-details
-               :id-name :dashboard-id}
+               :arg-fn (fn [ref] {:dashboard-id ref})}
    :table {:id :get-table-details
-           :fn (fn [tool-id args context]
-                 (get-table-details tool-id (update args :table-id str) context))
-           :id-name :table-id}
+           :fn get-table-details
+           :arg-fn (fn [ref] {:table-id (str ref)})}
    :model {:id :get-table-details
-           :fn (fn [tool-id args context]
-                 (get-table-details tool-id (update args :table-id #(str "card__" %)) context))
-           :id-name :table-id}
+           :fn get-table-details
+           :arg-fn (fn [ref] {:table-id (str "card__" ref)})}
    :metric {:id :get-metric-details
-            :fn (fn [tool-id args context]
-                  (get-metric-details tool-id (update args :metric-id #(str "card__" %)) context))
-            :id-name :metric-id}
+            :fn get-metric-details
+            :arg-fn (fn [ref] {:metric-id (str "card__" ref)})}
    :report {:id :get-report-details
             :fn get-report-details
-            :id-name :report-id}})
+            :arg-fn (fn [ref] {:report-id (str "card__" ref)})}})
 
 (defn- dummy-get-item-details
   [{:keys [context] :as env}]
   (reduce (fn [env viewed]
-            (if-let [{getter-id :id, getter-fn :fn, :keys [id-name]} (-> viewed :type detail-getters)]
-              (let [item-id (or (:ref viewed) (u/generate-nano-id))
-                    arguments {id-name item-id}
+            (if-let [{getter-id :id, getter-fn :fn, :keys [arg-fn]} (-> viewed :type detail-getters)]
+              (let [arguments (arg-fn (:ref viewed))
                     content (-> (getter-fn getter-id arguments (envelope/context env))
                                 :output)]
                 (reduce envelope/add-dummy-message env (dummy-tool-messages getter-id arguments content)))
@@ -249,14 +238,14 @@
      :result-columns (mapv #(metabot-v3.tools.u/->result-column % field-id-prefix) (lib/returned-columns query))}))
 
 (defn- dummy-run-query
-  [context]
+  [{:keys [context] :as env}]
   (transduce (filter (comp #{:adhoc} :type))
-             (completing (fn [messages {:keys [query]}]
+             (completing (fn [env {:keys [query]}]
                            (let [query-id (u/generate-nano-id)
                                  arguments {:query-id query-id}
                                  content (execute-query query-id query)]
-                             (into messages (dummy-tool-messages :run-query arguments content)))))
-             []
+                             (reduce envelope/add-dummy-message env (dummy-tool-messages :run-query arguments content)))))
+             env
              (:user-is-viewing context)))
 
 (def ^:private dummy-tool-registry
@@ -303,7 +292,7 @@
                                         {:type :adhoc
                                          :query test-query}]}
         env (update env :context #(if (empty? %) test-context %))]
-    (reduce (fn [messages tool]
+    (reduce (fn [env tool]
               (tool env))
             env
             dummy-tool-registry)))

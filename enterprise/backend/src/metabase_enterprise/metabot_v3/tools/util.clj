@@ -4,7 +4,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.util :as u]))
+   [metabase.models.interface :as mi]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (defn convert-field-type
   "Return tool type for `column`."
@@ -26,3 +28,12 @@
        :name (get column :display-name)
        :type (convert-field-type column)}
       (m/assoc-some :description (get column :description))))
+
+(defn get-table
+  "Get the table for `id`."
+  [id]
+  (when-let [table (t2/select-one [:model/Table :id :name :description :db_id] id)]
+    (when (mi/can-read? table)
+      (-> table
+          (t2/hydrate :metrics)
+          (assoc :id id)))))
