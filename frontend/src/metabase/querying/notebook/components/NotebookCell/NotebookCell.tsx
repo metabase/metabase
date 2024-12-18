@@ -68,9 +68,11 @@ export const NotebookCellItem = forwardRef<
         [S.cursorPointer]:
           (!inactive || restProps.onClick) && !readOnly && !disabled,
       })}
-      style={{
-        "--notebook-cell-item-container-color": color,
-      }}
+      style={
+        {
+          "--notebook-cell-item-container-color": color,
+        } as CSSProperties
+      }
       {...restProps}
       data-testid={restProps["data-testid"] ?? "notebook-cell-item"}
       ref={ref}
@@ -85,10 +87,12 @@ export const NotebookCellItem = forwardRef<
           },
         )}
         p={CONTAINER_PADDING}
-        style={{
-          ...containerStyle,
-          "--notebook-cell-item-content-container-color": color,
-        }}
+        style={
+          {
+            ...containerStyle,
+            "--notebook-cell-item-content-container-color": color,
+          } as CSSProperties
+        }
       >
         {children}
       </Flex>
@@ -104,10 +108,12 @@ export const NotebookCellItem = forwardRef<
             },
           )}
           p={CONTAINER_PADDING}
-          style={{
-            ...rightContainerStyle,
-            "--notebook-cell-item-content-container-color": color,
-          }}
+          style={
+            {
+              ...rightContainerStyle,
+              "--notebook-cell-item-content-container-color": color,
+            } as CSSProperties
+          }
         >
           {right}
         </Flex>

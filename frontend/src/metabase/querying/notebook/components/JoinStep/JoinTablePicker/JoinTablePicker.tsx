@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -76,9 +76,11 @@ function JoinTableColumnPicker({ columnPicker }: JoinTableColumnPickerProps) {
         <Tooltip label={t`Pick columns`}>
           <IconButtonWrapper
             className={S.ColumnPickerButton}
-            style={{
-              "--notebook-cell-container-padding": CONTAINER_PADDING,
-            }}
+            style={
+              {
+                "--notebook-cell-container-padding": CONTAINER_PADDING,
+              } as CSSProperties
+            }
             onClick={() => setIsOpened(!isOpened)}
             aria-label={t`Pick columns`}
             data-testid="fields-picker"
