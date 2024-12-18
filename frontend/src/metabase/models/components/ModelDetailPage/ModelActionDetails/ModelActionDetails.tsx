@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,6 +7,7 @@ import Link from "metabase/core/components/Link";
 import Actions from "metabase/entities/actions";
 import Databases from "metabase/entities/databases";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
+import { connect } from "metabase/lib/redux";
 import { parseTimestamp } from "metabase/lib/time";
 import * as Urls from "metabase/lib/urls";
 import type Question from "metabase-lib/v1/Question";

@@ -32,7 +32,6 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   initialOpenCollectionId?: CollectionId;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
-  zIndex?: number;
   collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
 }
 

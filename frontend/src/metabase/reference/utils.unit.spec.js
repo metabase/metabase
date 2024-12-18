@@ -141,6 +141,43 @@ describe("Reference utils.js", () => {
       return card;
     };
 
+    function areLegacyQueriesEqual(a, b, customTesters) {
+      // If a and b are (inner) legacy query maps and one has aggregation-idents, expression-idents or breakout-idents
+      // but the other does not, compare the two maps without the idents.
+      if (typeof a !== "object" || typeof b !== "object") {
+        return undefined; // Let other logic handle it.
+      }
+
+      function hasIdents(x) {
+        return (
+          "aggregation-idents" in x ||
+          "breakout-idents" in x ||
+          "expression-idents" in x
+        );
+      }
+
+      // Using an arrow function so this inherits this.equals from the outer function, which gets it from Jest.
+      const compareWithoutIdents = (withIdents, noIdents) => {
+        const copy = { ...withIdents };
+        delete copy["aggregation-idents"];
+        delete copy["breakout-idents"];
+        delete copy["expression-idents"];
+        return this.equals(copy, noIdents, customTesters);
+      };
+
+      const aHasIdents = hasIdents(a);
+      const bHasIdents = hasIdents(b);
+      if (aHasIdents && !bHasIdents) {
+        return compareWithoutIdents(a, b);
+      } else if (!aHasIdents && bHasIdents) {
+        return compareWithoutIdents(b, a);
+      } else {
+        // If either both have idents or neither, just fall through to the rest of the equality logic.
+        return undefined;
+      }
+    }
+    expect.addEqualityTesters([areLegacyQueriesEqual]);
+
     it("should generate correct question for table raw data", () => {
       const question = getQuestion({
         dbId,

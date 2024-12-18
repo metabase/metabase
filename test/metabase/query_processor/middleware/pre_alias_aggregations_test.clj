@@ -17,85 +17,85 @@
       (qp.pre-alias-aggregations/pre-alias-aggregations query))))
 
 (deftest ^:parallel pre-alias-aggregations-test
-  (is (= (mt/mbql-query checkins
-           {:source-table $$checkins
-            :aggregation  [[:aggregation-options [:sum $user_id]  {:name "sum"}]
-                           [:aggregation-options [:sum $venue_id] {:name "sum_2"}]]})
-         (pre-alias
-          (mt/mbql-query checkins
+  (is (=? (mt/mbql-query checkins
             {:source-table $$checkins
-             :aggregation  [[:sum $user_id] [:sum $venue_id]]})))))
+             :aggregation  [[:aggregation-options [:sum $user_id]  {:name "sum"}]
+                            [:aggregation-options [:sum $venue_id] {:name "sum_2"}]]})
+          (pre-alias
+           (mt/mbql-query checkins
+             {:source-table $$checkins
+              :aggregation  [[:sum $user_id] [:sum $venue_id]]})))))
 
 (deftest ^:parallel named-aggregations-test
   (testing "if one or more aggregations are already named, do things still work correctly?"
-    (is (= (mt/mbql-query checkins
-             {:source-table $$checkins
-              :aggregation  [[:aggregation-options [:sum $user_id]  {:name "sum"}]
-                             [:aggregation-options [:sum $venue_id] {:name "sum_2"}]]})
-           (pre-alias
-            (mt/mbql-query checkins
+    (is (=? (mt/mbql-query checkins
               {:source-table $$checkins
-               :aggregation  [[:sum $user_id]
-                              [:aggregation-options [:sum $venue_id] {:name "sum"}]]}))))))
+               :aggregation  [[:aggregation-options [:sum $user_id]  {:name "sum"}]
+                              [:aggregation-options [:sum $venue_id] {:name "sum_2"}]]})
+            (pre-alias
+             (mt/mbql-query checkins
+               {:source-table $$checkins
+                :aggregation  [[:sum $user_id]
+                               [:aggregation-options [:sum $venue_id] {:name "sum"}]]}))))))
 
 (deftest ^:parallel source-queries-test
   (testing "do aggregations inside source queries get pre-aliased?"
-    (is (= (mt/mbql-query checkins
-             {:source-query {:source-table $$checkins
-                             :aggregation  [[:aggregation-options [:sum $user_id]  {:name "sum"}]
-                                            [:aggregation-options [:sum $venue_id] {:name "sum_2"}]]}
-              :aggregation  [[:aggregation-options [:count] {:name "count"}]]})
-           (pre-alias
-            (mt/mbql-query checkins
+    (is (=? (mt/mbql-query checkins
               {:source-query {:source-table $$checkins
-                              :aggregation  [[:sum $user_id] [:sum $venue_id]]}
-               :aggregation  [[:count]]}))))))
+                              :aggregation  [[:aggregation-options [:sum $user_id]  {:name "sum"}]
+                                             [:aggregation-options [:sum $venue_id] {:name "sum_2"}]]}
+               :aggregation  [[:aggregation-options [:count] {:name "count"}]]})
+            (pre-alias
+             (mt/mbql-query checkins
+               {:source-query {:source-table $$checkins
+                               :aggregation  [[:sum $user_id] [:sum $venue_id]]}
+                :aggregation  [[:count]]}))))))
 
 (deftest ^:parallel source-queries-inside-joins-test
   (testing "do aggregatons inside of source queries inside joins get pre-aliased?"
-    (is (= (mt/mbql-query checkins
-             {:source-table $$venues
-              :aggregation  [[:aggregation-options [:count] {:name "count"}]]
-              :joins        [{:source-query {:source-table $$checkins
-                                             :aggregation  [[:aggregation-options [:sum $user_id]  {:name "sum"}]
-                                                            [:aggregation-options [:sum $venue_id] {:name "sum_2"}]]
-                                             :breakout     [$venue_id]}
-                              :alias        "checkins"
-                              :condition    [:= &checkins.venue_id $venues.id]}]})
-           (pre-alias
-            (mt/mbql-query checkins
+    (is (=? (mt/mbql-query checkins
               {:source-table $$venues
-               :aggregation  [[:count]]
+               :aggregation  [[:aggregation-options [:count] {:name "count"}]]
                :joins        [{:source-query {:source-table $$checkins
-                                              :aggregation  [[:sum $user_id] [:sum $venue_id]]
+                                              :aggregation  [[:aggregation-options [:sum $user_id]  {:name "sum"}]
+                                                             [:aggregation-options [:sum $venue_id] {:name "sum_2"}]]
                                               :breakout     [$venue_id]}
                                :alias        "checkins"
-                               :condition    [:= &checkins.venue_id $venues.id]}]}))))))
+                               :condition    [:= &checkins.venue_id $venues.id]}]})
+            (pre-alias
+             (mt/mbql-query checkins
+               {:source-table $$venues
+                :aggregation  [[:count]]
+                :joins        [{:source-query {:source-table $$checkins
+                                               :aggregation  [[:sum $user_id] [:sum $venue_id]]
+                                               :breakout     [$venue_id]}
+                                :alias        "checkins"
+                                :condition    [:= &checkins.venue_id $venues.id]}]}))))))
 
 (deftest ^:parallel expressions-test
   (testing "does pre-aliasing work the way we'd expect with expressions?"
-    (is (= (mt/mbql-query checkins
-             {:source-table $$venues
-              :aggregation  [[:aggregation-options [:+ 20 [:sum $user_id]] {:name "expression"}]]})
-           (pre-alias
-            (mt/mbql-query checkins
+    (is (=? (mt/mbql-query checkins
               {:source-table $$venues
-               :aggregation  [[:+ 20 [:sum $user_id]]]}))))))
+               :aggregation  [[:aggregation-options [:+ 20 [:sum $user_id]] {:name "expression"}]]})
+            (pre-alias
+             (mt/mbql-query checkins
+               {:source-table $$venues
+                :aggregation  [[:+ 20 [:sum $user_id]]]}))))))
 
 (deftest ^:parallel expressions-test-2
-  (is (= (mt/mbql-query checkins
-           {:source-table $$venues
-            :aggregation  [[:aggregation-options
-                            [:+ 20 [:sum $user_id]]
-                            {:name "expression"}]
-                           [:aggregation-options
-                            [:- 20 [:sum $user_id]]
-                            {:name "expression_2"}]]})
-         (pre-alias
-          (mt/mbql-query checkins
+  (is (=? (mt/mbql-query checkins
             {:source-table $$venues
-             :aggregation  [[:+ 20 [:sum $user_id]]
-                            [:- 20 [:sum $user_id]]]})))))
+             :aggregation  [[:aggregation-options
+                             [:+ 20 [:sum $user_id]]
+                             {:name "expression"}]
+                            [:aggregation-options
+                             [:- 20 [:sum $user_id]]
+                             {:name "expression_2"}]]})
+          (pre-alias
+           (mt/mbql-query checkins
+             {:source-table $$venues
+              :aggregation  [[:+ 20 [:sum $user_id]]
+                             [:- 20 [:sum $user_id]]]})))))
 
 (driver/register! ::test-driver, :parent :sql)
 

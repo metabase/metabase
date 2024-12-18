@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useLatest } from "react-use";
 import { jt, msgid, ngettext, t } from "ttag";
+import { first } from "underscore";
 
 import { useGetMultipleCardsDashboardsQuery } from "metabase/api";
 import { Button, Flex, List, Loader, Modal, Text, Title } from "metabase/ui";
@@ -28,11 +29,13 @@ export const QuestionMoveConfirmModal = ({
   onConfirm,
   onClose,
   destination,
+  errorMessage,
 }: {
   selectedItems: Pick<CollectionItem, "id" | "model" | "name">[];
   onConfirm: () => void;
   onClose: () => void;
   destination: Destination | null;
+  errorMessage?: string;
 }) => {
   const onConfirmRef = useLatest(onConfirm);
   const { currentData: cardDashboards, isFetching: isLoading } =
@@ -47,10 +50,17 @@ export const QuestionMoveConfirmModal = ({
 
   const cardsThatAppearInOtherDashboards = useMemo(
     () =>
-      cardDashboards?.filter(
-        cd =>
-          cd.dashboards.length > 1 || cd.dashboards[0].id !== destination?.id,
-      ),
+      cardDashboards?.filter(cd => {
+        if (cd.dashboards.length === 0) {
+          return false;
+        }
+
+        if (cd.dashboards.length > 1) {
+          return true;
+        }
+
+        return first(cd.dashboards)?.id !== destination?.id;
+      }),
     [destination, cardDashboards],
   );
 
@@ -146,17 +156,20 @@ export const QuestionMoveConfirmModal = ({
               })}
             </List>
 
-            <Flex justify="end" gap="1rem" mt="1rem">
-              <Button variant="subtle" onClick={onClose}>
-                {t`Cancel`}
-              </Button>
-              <Button variant="filled" onClick={onConfirm}>
-                {ngettext(
-                  msgid`Move it`,
-                  `Move them`,
-                  cardsThatAppearInOtherDashboards.length,
-                )}
-              </Button>
+            <Flex justify="space-between" mt="1rem">
+              <Text c="error">{errorMessage}</Text>
+              <Flex justify="end" gap="1rem">
+                <Button variant="subtle" onClick={onClose}>
+                  {t`Cancel`}
+                </Button>
+                <Button variant="filled" onClick={onConfirm}>
+                  {ngettext(
+                    msgid`Move it`,
+                    `Move them`,
+                    cardsThatAppearInOtherDashboards.length,
+                  )}
+                </Button>
+              </Flex>
             </Flex>
           </>
         );
@@ -170,6 +183,7 @@ export const QuestionMoveConfirmModal = ({
     destination,
     selectedItems,
     hasError,
+    errorMessage,
   ]);
 
   return (

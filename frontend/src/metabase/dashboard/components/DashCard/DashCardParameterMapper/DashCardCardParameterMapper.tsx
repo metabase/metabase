@@ -1,6 +1,4 @@
-import { connect } from "react-redux";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import {
@@ -10,6 +8,7 @@ import {
   getQuestionByCard,
 } from "metabase/dashboard/selectors";
 import { isNativeDashCard, isQuestionDashCard } from "metabase/dashboard/utils";
+import { connect } from "metabase/lib/redux";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import { getIsRecentlyAutoConnectedDashcard } from "metabase/redux/undo";
 import { Flex, Icon, Text, Transition } from "metabase/ui";

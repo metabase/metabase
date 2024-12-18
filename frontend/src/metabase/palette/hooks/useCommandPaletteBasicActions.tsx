@@ -188,10 +188,11 @@ export const useCommandPaletteBasicActions = ({
     ];
 
     const diagnosticAction = {
-      id: "diagnostic_modal",
-      name: t`Open error diagnostic modal`,
+      id: "report-issue",
+      name: t`Report an issue`,
       section: "basic",
-      icon: "info",
+      icon: "bug",
+      keywords: "bug, issue, problem, error, diagnostic",
       shortcut: ["$mod+f1"],
       perform: () => {
         dispatch(openDiagnostics());

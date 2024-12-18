@@ -1,25 +1,35 @@
+import { useState } from "react";
 import _ from "underscore";
 
-import InputBlurChange from "metabase/components/InputBlurChange";
+import { TextInput } from "metabase/ui";
 
 interface ChartSettingInputProps {
   value: string;
+  placeholder: string;
   onChange: (value: string) => void;
   id?: string;
 }
 
-const ChartSettingInput = ({
+export const ChartSettingInput = ({
   value,
   onChange,
-  ...props
-}: ChartSettingInputProps) => (
-  <InputBlurChange
-    {..._.omit(props, "onChangeSettings")}
-    data-testid={props.id}
-    value={value}
-    onBlurChange={e => onChange(e.target.value)}
-  />
-);
+  placeholder,
+  id,
+}: ChartSettingInputProps) => {
+  const [inputValue, setInputValue] = useState(value);
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ChartSettingInput;
+  return (
+    <TextInput
+      id={id}
+      data-testid={id}
+      placeholder={placeholder}
+      value={inputValue}
+      onChange={e => setInputValue(e.target.value)}
+      onBlur={() => {
+        if (inputValue !== (value || "")) {
+          onChange(inputValue);
+        }
+      }}
+    />
+  );
+};
