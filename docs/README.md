@@ -263,7 +263,7 @@ We tweet stuff.
 
 Follow us on GitHub.
 
-### [List of releases](./releases.md)
+### [List of releases](https://github.com/metabase/metabase/releases)
 
 A list of all Metabase releases, including both the Enterprise Edition and the Open Source Edition.
 

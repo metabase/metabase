@@ -59,7 +59,7 @@ describe("scenarios > question > custom column", () => {
 
     H.startNewQuestion();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText(name).click();
     });
     cy.button("Custom column").click();
@@ -714,7 +714,7 @@ describe("scenarios > question > custom column", () => {
     cy.log("custom columns");
     H.getNotebookStep("data").button("Custom column").click();
     H.popover()
-      .first()
+      .findByTestId("expression-editor")
       .within(() => {
         H.enterCustomColumnDetails({
           formula: 'if([ID] = 1, "First", [ID] = 2, "Second", "Other")',
@@ -773,7 +773,7 @@ describe("scenarios > question > custom column", () => {
     cy.log("custom columns - in");
     H.getNotebookStep("data").button("Custom column").click();
     H.popover()
-      .first()
+      .findByTestId("expression-editor")
       .within(() => {
         H.enterCustomColumnDetails({
           formula: 'in("Gadget", [Vendor], [Category])',

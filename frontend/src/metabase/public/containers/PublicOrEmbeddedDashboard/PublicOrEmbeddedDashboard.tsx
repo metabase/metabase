@@ -1,7 +1,6 @@
 import type { Query } from "history";
 import { useEffect, useRef } from "react";
 import type { ConnectedProps } from "react-redux";
-import { connect } from "react-redux";
 import { usePrevious, useUnmount } from "react-use";
 import _ from "underscore";
 
@@ -29,6 +28,7 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
+import { connect } from "metabase/lib/redux";
 import { type DispatchFn, useDispatch } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";

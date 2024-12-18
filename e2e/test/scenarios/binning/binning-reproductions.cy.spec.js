@@ -18,7 +18,7 @@ describe("binning related reproductions", () => {
 
     H.startNewQuestion();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("16327").click();
     });
 
@@ -90,7 +90,7 @@ describe("binning related reproductions", () => {
 
     H.startNewQuestion();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("17975").click();
     });
 
@@ -130,7 +130,7 @@ describe("binning related reproductions", () => {
     cy.icon("join_left_outer").click();
 
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("18646").click();
     });
 
@@ -176,7 +176,7 @@ describe("binning related reproductions", () => {
     // (for example, visiting `/collection/root` would yield different result)
     H.startNewQuestion();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("11439").click();
     });
 
@@ -365,7 +365,7 @@ describe("binning related reproductions", () => {
 function openSummarizeOptions(questionType) {
   H.startNewQuestion();
   H.entityPickerModal().within(() => {
-    H.entityPickerModalTab("Saved questions").click();
+    H.entityPickerModalTab("Collections").click();
     cy.findByText("16379").click();
   });
 

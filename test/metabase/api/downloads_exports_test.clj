@@ -1542,3 +1542,62 @@
                     ["5" "5" "165" "33.0" "11" "55"]
                     ["Grand totals" "25" "490" "19.6" "-5" "55"]]
                    result))))))))
+
+(deftest table-exports-with-non-integral-scale
+  (testing "Non integral scale values should be respected in table exports (csv, xlsx, json)"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card-scaled  {:display                :table
+                                               :type                   :model
+                                               :dataset_query          {:database (mt/id)
+                                                                        :type     :query
+                                                                        :query    {:source-table (mt/id :orders)
+                                                                                   :limit        1}}
+                                               :visualization_settings {:table.columns
+                                                                        [{:name "ID" :enabled false}
+                                                                         {:name "USER_ID" :enabled false}
+                                                                         {:name "PRODUCT_ID" :enabled false}
+                                                                         {:name "SUBTOTAL" :enabled false}
+                                                                         {:name "TAX" :enabled false}
+                                                                         {:name "TOTAL" :enabled false}
+                                                                         {:name "DISCOUNT" :enabled false}
+                                                                         {:name "CREATED_AT" :enabled false}
+                                                                         {:name "QUANTITY" :enabled true}]
+                                                                        :table.cell_column "SUBTOTAL"
+                                                                        :column_settings   {(format "[\"ref\",[\"field\",%s,null]]" (mt/id :orders :discount))
+                                                                                            {:currency_in_header false}
+                                                                                            "[\"name\",\"QUANTITY\"]"
+                                                                                            {:scale 2.13}}}}
+                     :model/Card card-unscaled  {:display                :table
+                                                 :type                   :model
+                                                 :dataset_query          {:database (mt/id)
+                                                                          :type     :query
+                                                                          :query    {:source-table (mt/id :orders)
+                                                                                     :limit        1}}
+                                                 :visualization_settings {:table.columns
+                                                                          [{:name "ID" :enabled false}
+                                                                           {:name "USER_ID" :enabled false}
+                                                                           {:name "PRODUCT_ID" :enabled false}
+                                                                           {:name "SUBTOTAL" :enabled false}
+                                                                           {:name "TAX" :enabled false}
+                                                                           {:name "TOTAL" :enabled false}
+                                                                           {:name "DISCOUNT" :enabled false}
+                                                                           {:name "CREATED_AT" :enabled false}
+                                                                           {:name "QUANTITY" :enabled true}]
+                                                                          :table.cell_column "SUBTOTAL"
+                                                                          :column_settings   {(format "[\"ref\",[\"field\",%s,null]]" (mt/id :orders :discount))
+                                                                                              {:currency_in_header false}}}}]
+        (testing "for csv"
+          (let [result-scaled (card-download card-scaled {:export-format :csv :format-rows true})
+                result-unscaled (card-download card-unscaled {:export-format :csv :format-rows true})
+                val-scaled (Double/parseDouble (first (second result-scaled)))
+                val-unscaled (Double/parseDouble (first (second result-unscaled)))]
+            (is (= val-scaled
+                   (* val-unscaled 2.13)))))
+
+        (testing "for json"
+          (let [result-scaled (card-download card-scaled {:export-format :json :format-rows true})
+                result-unscaled (card-download card-unscaled {:export-format :json :format-rows true})
+                val-scaled (Double/parseDouble (first (second result-scaled)))
+                val-unscaled (Double/parseDouble (first (second result-unscaled)))]
+            (is (= val-scaled
+                   (* val-unscaled 2.13)))))))))
