@@ -92,8 +92,7 @@ describe("issue 11580", () => {
   });
 
   it("shouldn't reorder template tags when updated (metabase#11580)", () => {
-    H.openNativeEditor();
-    SQLFilter.enterParameterizedQuery("{{foo}} {{bar}}");
+    H.startNewNativeQuestion({ query: "{{foo}} {{bar}}" });
 
     cy.findAllByText("Variable name").next().as("variableLabels");
 
