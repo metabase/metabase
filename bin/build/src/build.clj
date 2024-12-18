@@ -34,6 +34,7 @@
         (u/sh {:dir u/project-root-directory
                :env {"PATH"       (env/env :path)
                      "HOME"       (env/env :user-home)
+                     "CYPRESS_COVERAGE" (env/env :cypress-coverage)
                      "WEBPACK_BUNDLE"   "production"
                      "MB_EDITION" mb-edition}}
               "yarn" "build-release"))
