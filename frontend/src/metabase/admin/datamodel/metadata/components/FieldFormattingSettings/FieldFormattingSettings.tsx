@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
-import { connect } from "react-redux";
 
 import Fields from "metabase/entities/fields";
+import { connect } from "metabase/lib/redux";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import type Field from "metabase-lib/v1/metadata/Field";

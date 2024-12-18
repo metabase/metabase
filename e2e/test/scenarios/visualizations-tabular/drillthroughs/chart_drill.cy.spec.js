@@ -799,7 +799,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     cy.findAllByTestId("choropleth-feature").first().click();
 
-    H.popover().within(() => {
+    cy.findByTestId("click-actions-popover-content-for-Count").within(() => {
       cy.findByText("See these People").should("be.visible");
       cy.findByText("Zoom in").should("be.visible");
 

@@ -1,4 +1,4 @@
-import { skipToken, useGetDashboardItemsListQuery } from "metabase/api";
+import { skipToken, useListDashboardItemsQuery } from "metabase/api";
 
 import { ItemList } from "../../EntityPicker";
 import type { CollectionItemListProps, CollectionPickerItem } from "../types";
@@ -16,7 +16,7 @@ export const DashboardItemList = ({
     data: dashboardItems,
     error,
     isLoading,
-  } = useGetDashboardItemsListQuery<{
+  } = useListDashboardItemsQuery<{
     data: {
       data: CollectionPickerItem[];
     };

@@ -1334,7 +1334,7 @@ describe("issue 31663", () => {
 
     H.main().findByText("Orders Model").click();
     cy.wait("@dataset");
-    cy.findByLabelText("Move, trash, and more...").click();
+    cy.findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Edit metadata").click();
 
     cy.findByTestId("TableInteractive-root").findByText("Product ID").click();

@@ -1,8 +1,8 @@
 import { useEffect } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 
 import { setEditingDashcardId } from "metabase/dashboard/actions";
+import { connect } from "metabase/lib/redux";
 import type { ActionDashboardCard, Dashboard } from "metabase-types/api";
 
 import { DashCardActionButton } from "../DashCardActionButton/DashCardActionButton";
