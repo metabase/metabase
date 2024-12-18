@@ -18,21 +18,19 @@
    [toucan2.core :as t2]))
 
 (defn- get-current-user
-  [_ _ context]
+  [_tool-id _arguments _e]
   {:output (if-let [{:keys [id email first_name last_name]}
                     (or (some-> api/*current-user* deref)
                         (t2/select-one [:model/User :id :email :first_name :last_name] api/*current-user-id*))]
              {:id id
               :name (str first_name " " last_name)
               :email-address email}
-             {:error "current user not found"})
-   :context context})
+             "current user not found")})
 
 (defn- get-dashboard-details
-  [_ {:keys [dashboard-id]} context]
+  [_tool-id {:keys [dashboard-id]} _e]
   {:output (or (t2/select-one [:model/Dashboard :id :description :name] dashboard-id)
-               {:error "dashboard not found"})
-   :context context})
+               "dashboard not found")})
 
 (defn- convert-metric
   [db-metric]
@@ -110,12 +108,11 @@
                         :queryable-foreign-key-tables (not-empty (foreign-key-tables mp cols)))))))
 
 (defn- get-table-details
-  [_ {:keys [table-id]} context]
+  [_tool-id {:keys [table-id]} _e]
   (let [details (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
                   (card-details (parse-long card-id))
                   (table-details (parse-long table-id) {:include-foreign-key-tables? true}))]
-    {:output (or details "table not found")
-     :context context}))
+    {:output (or details "table not found")}))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})
@@ -154,28 +151,29 @@
   -)
 
 (defn- get-metric-details
-  [_ {:keys [metric-id]} context]
-  (let [details (if-let [[_ card-id] (re-matches #"card__(\d+)" metric-id)]
+  [_tool-id {:keys [metric-id]} _e]
+  (let [details (if-let [[_ card-id] (when (string? metric-id)
+                                       (re-matches #"card__(\d+)" metric-id))]
                   (metric-details (parse-long card-id))
                   "invalid metric_id")]
-    {:output (or details "metric not found")
-     :context context}))
+    {:output (or details "metric not found")}))
 
 (defn- get-report-details
-  [_ {:keys [report-id]} context]
-  (let [details (if-let [[_ card-id] (re-matches #"card__(\d+)" report-id)]
-                  (card-details (parse-long card-id))
-                  "invalid report_id")
-        details' (some-> details
-                         (select-keys [:id :description :name])
-                         (assoc :result-columns (:fields details)))]
-    {:output (or details' "report not found")
-     :context context}))
+  [_tool-id {:keys [report-id]} _e]
+  (let [details (if-let [[_ card-id] (when (string? report-id)
+                                       (re-matches #"card__(\d+)" report-id))]
+                  (let [details (card-details (parse-long card-id))]
+                    (some-> details
+                            (select-keys [:id :description :name])
+                            (assoc :result-columns (:fields details))))
+                  "invalid report_id")]
+    {:output (or details "report not found")}))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]
     (let [id "card__90" #_"card__136" #_"27"]
-      (get-table-details :get-table-details {:table_id id} {}))))
+      (get-table-details :get-table-details {:table-id id} {})))
+  -)
 
 (defn- dummy-tool-messages
   [tool-id arguments content]
