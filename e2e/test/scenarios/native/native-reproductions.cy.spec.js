@@ -709,16 +709,16 @@ describe("issue 35344", () => {
 
     // make sure normal undo still works
     H.NativeEditor.type("--");
-    expect(H.NativeEditor.focus().findByText("--")).to.exist;
+    expect(H.NativeEditor.get().findByText("--")).to.exist;
 
     H.NativeEditor.focus();
     cy.realPress(["Meta", "z"]);
-    H.NativeEditor.focus().findByText("--").should("not.exist");
+    H.NativeEditor.get().findByText("--").should("not.exist");
 
     // more undoing does not change to empty editor
     H.NativeEditor.focus();
     cy.realPress(["Meta", "z"]);
-    expect(H.NativeEditor.focus().findByText("select")).to.exist;
+    expect(H.NativeEditor.get().findByText("select")).to.exist;
   });
 });
 
