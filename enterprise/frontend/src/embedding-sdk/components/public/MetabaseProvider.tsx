@@ -6,7 +6,7 @@ import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvi
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import { useInitData } from "embedding-sdk/hooks";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
-import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
+import type { MetabasePluginsConfig } from "embedding-sdk/lib/plugins";
 import { getSdkStore } from "embedding-sdk/store";
 import {
   setErrorComponent,
@@ -42,7 +42,7 @@ import "metabase/css/vendor.css";
 export interface MetabaseProviderProps {
   children: ReactNode;
   authConfig: MetabaseAuthConfig;
-  pluginsConfig?: SdkPluginsConfig;
+  pluginsConfig?: MetabasePluginsConfig;
   eventHandlers?: SdkEventHandlersConfig;
   theme?: MetabaseTheme;
   className?: string;
