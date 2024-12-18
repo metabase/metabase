@@ -24,25 +24,24 @@ describe("scenarios > visualizations > waterfall", () => {
   }
 
   it("should work with ordinal series", () => {
-    H.openNativeEditor().type(
-      "select 'A' as product, 10 as profit union select 'B' as product, -4 as profit",
-    );
+    H.startNewNativeQuestion({
+      query:
+        "select 'A' as product, 10 as profit union select 'B' as product, -4 as profit",
+    });
     cy.findByTestId("native-query-editor-container").icon("play").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Visualization").click();
+    cy.findByTestId("view-footer").findByText("Visualization").click();
     cy.icon("waterfall").click();
 
     verifyWaterfallRendering("PRODUCT", "PROFIT");
   });
 
   it("should work with ordinal series and numeric X-axis (metabase#15550)", () => {
-    H.openNativeEditor().type(
-      "select 1 as X, 20 as Y union select 2 as X, -10 as Y",
-    );
+    H.startNewNativeQuestion({
+      query: "select 1 as X, 20 as Y union select 2 as X, -10 as Y",
+    });
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Visualization").click();
+    cy.findByTestId("view-footer").findByText("Visualization").click();
     switchToWaterfallDisplay();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -64,9 +63,9 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   it("should work with quantitative series", () => {
-    H.openNativeEditor().type(
-      "select 1 as X, 10 as Y union select 2 as X, -2 as Y",
-    );
+    H.startNewNativeQuestion({
+      query: "select 1 as X, 10 as Y union select 2 as X, -2 as Y",
+    });
     cy.findByTestId("native-query-editor-container").icon("play").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
@@ -429,10 +428,10 @@ describe("scenarios > visualizations > waterfall", () => {
       H.restore();
       cy.signInAsNormalUser();
 
-      H.openNativeEditor().type("select 'A' as X, -4.56 as Y");
-      cy.findByTestId("native-query-editor-container").icon("play").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Visualization").click();
+      H.startNewNativeQuestion({ query: "select 'A' as X, -4.56 as Y" });
+      H.runNativeQuery();
+
+      cy.findByTestId("view-footer").findByText("Visualization").click();
       switchToWaterfallDisplay();
     });
 
