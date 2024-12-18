@@ -18,6 +18,7 @@ const propTypes = {
   onKeyDown: PropTypes.func,
   options: PropTypes.array,
   onChange: PropTypes.func,
+  className: PropTypes.string,
 };
 
 function SemanticTypePicker({
@@ -27,6 +28,7 @@ function SemanticTypePicker({
   options,
   label,
   onChange,
+  className,
 }) {
   const [field, _, { setValue }] = useField(name);
 
@@ -57,6 +59,7 @@ function SemanticTypePicker({
     const icon = getSemanticTypeIcon(field.value, "ellipsis");
     return (
       <SelectButton
+        className={className}
         hasValue={!!field.value}
         onKeyDown={onKeyDown}
         tabIndex={tabIndex}
@@ -74,7 +77,7 @@ function SemanticTypePicker({
         {pickerLabel}
       </SelectButton>
     );
-  }, [field, tabIndex, pickerLabel, onKeyDown]);
+  }, [field.value, className, onKeyDown, tabIndex, pickerLabel]);
 
   return (
     <>
@@ -82,6 +85,7 @@ function SemanticTypePicker({
         {label}
       </Text>
       <Select
+        className={className}
         value={field.value}
         options={options}
         onChange={onSelectValue}

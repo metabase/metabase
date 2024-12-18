@@ -96,7 +96,8 @@
           (try
             (ingest-file (second target))
             (catch Exception e
-              (throw (ex-info "Unable to ingest file" {:abs-path abs-path} e))))
+              (throw (ex-info "Unable to ingest file" {:file     (.getName ^File (second target))
+                                                       :abs-path abs-path} e))))
           (throw (ex-info "Cannot find file" {:abs-path abs-path})))))))
 
 (defn ingest-yaml

@@ -1,4 +1,7 @@
 .TabsListSidebar {
-  overflow-y: auto;
-  flex-wrap: nowrap;
+  /* increase specificity to override emotion */
+  &[role="tablist"] {
+    overflow-y: auto;
+    flex-wrap: nowrap;
+  }
 }
