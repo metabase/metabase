@@ -21,13 +21,13 @@
 (defonce ^:private pool
   (delay
     (ThreadPoolExecutor.
-      0                     ;; core pool size
-      10                    ;; max pool size (upper limit)
-      100 TimeUnit/SECONDS  ;; keep-alive time for idle threads
-      (SynchronousQueue.)   ;; direct handoff
-      (.build
-        (doto (BasicThreadFactory$Builder.)
-          (.namingPattern "preemptive-caching-thread-pool-%d"))))))
+     0                     ;; core pool size
+     10                    ;; max pool size (upper limit)
+     100 TimeUnit/SECONDS  ;; keep-alive time for idle threads
+     (SynchronousQueue.)   ;; direct handoff
+     (.build
+      (doto (BasicThreadFactory$Builder.)
+        (.namingPattern "preemptive-caching-thread-pool-%d"))))))
 
 (def ^:dynamic *parameterized-queries-to-rerun-per-card*
   "Number of query variations (e.g. with different parameters) to run for a single cached card."
