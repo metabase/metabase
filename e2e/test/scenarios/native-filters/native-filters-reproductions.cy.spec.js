@@ -967,7 +967,7 @@ describe("issue 29786", { tags: "@external" }, () => {
     cy.signInAsAdmin();
   });
 
-  it.only(
+  it(
     "should allow using field filters with null schema (metabase#29786)",
     { tags: "@flaky" },
     () => {
