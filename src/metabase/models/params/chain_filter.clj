@@ -446,7 +446,7 @@
             ;; FIXME: this can OOM for text column if each value are too large. See #46411
             ;; Consider using the [[field-values/distinct-text-field-rff] rff]
             values      (qp/process-query mbql-query (constantly conj))]
-        (try ; Feature issue #46888: log chain filter.
+        (try ; Feature issue #46888: log chain filter query.
           (log/debugf "Chain filter native query: `%s`."
                       (:query (qp.compile/compile mbql-query)))
           (catch Throwable _
