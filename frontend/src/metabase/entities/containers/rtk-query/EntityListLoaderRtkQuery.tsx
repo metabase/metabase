@@ -312,8 +312,12 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
  * @deprecated HOCs are deprecated
  */
 export const entityListLoaderRtkQuery =
-  (eolProps: any) =>
-  (ComposedComponent: (props: any) => ReactNode) =>
+  <Entity, EntityWrapper>(eolProps: any) =>
+  (
+    ComposedComponent: (
+      props: ChildrenProps<Entity, EntityWrapper>,
+    ) => ReactNode,
+  ) =>
   // eslint-disable-next-line react/display-name
   (props: any): ReactNode => (
     <EntityListLoaderRtkQuery
