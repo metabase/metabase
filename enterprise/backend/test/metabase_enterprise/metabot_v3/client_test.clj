@@ -13,7 +13,7 @@
                                                                                               :description "A valid email address of the user to invite"}}
                                                               :required              [:email]
                                                               :additional-properties false}}])]
-    (let [session-id (random-uuid)]
+    (let [session-id (str (random-uuid))]
       (is (=? {:messages      [{:role :user, :content "Hello"}]
                :context       {}
                :tools         [{:name        "invite_user"
@@ -23,7 +23,6 @@
                                                                     :description "A valid email address of the user to invite"}}
                                               :required   ["email"]
                                               :additionalProperties false}}]
-               :instance_info {}
                :session_id    session-id}
               (#'metabot-v3.client/build-request-body {} [{:role :user :content "Hello"}] session-id))))))
 
