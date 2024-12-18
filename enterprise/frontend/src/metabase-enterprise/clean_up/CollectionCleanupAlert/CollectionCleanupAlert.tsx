@@ -14,15 +14,6 @@ import type { Collection } from "metabase-types/api";
 
 import { getDateFilterValue } from "../CleanupCollectionModal/utils";
 
-const TEXT = {
-  CLEAN_THINGS_UP: c(
-    "This is the heading of a banner that invites the user to clean up a collection.",
-  ).t`Clean things up!`,
-  GET_RID_OF_UNUSED_CONTENT: c(
-    "This is the heading of a banner that invites the user to clean up a collection.",
-  ).t`Get rid of unused content in this collection`,
-};
-
 export const CollectionCleanupAlert = ({
   collection,
 }: {
@@ -73,7 +64,9 @@ export const CollectionCleanupAlert = ({
       }}
     >
       <Box fz="md" c={"text-dark"}>
-        {TEXT.CLEAN_THINGS_UP}{" "}
+        {c(
+          "This is the heading of a banner that invites the user to clean up a collection.",
+        ).t`Keep your collections tidy!`}{" "}
         <Box
           component={Link}
           ml="2.5rem"
@@ -81,7 +74,9 @@ export const CollectionCleanupAlert = ({
           variant="brand"
           to={`${Urls.collection(collection)}/cleanup`}
         >
-          {TEXT.GET_RID_OF_UNUSED_CONTENT}
+          {c(
+            "This is the heading of a banner that invites the user to clean up a collection.",
+          ).t`View unused items and select which ones to move to the trash.`}
         </Box>
       </Box>
     </Alert>
