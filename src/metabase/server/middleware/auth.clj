@@ -91,9 +91,23 @@
   :setter :none
   :getter (fn []
             (and
-             ;; TEMP: check these setting when we are ready
+             ;; TEMP (gsheets): check these setting when we are ready
              ;; (premium-features/is-hosted?)
              ;; (premium-features/has-feature? :attached-dwh)
              ;; (premium-features/has-feature? :etl-connections)
-             (some? (static-api-key))
+             (some? (api-key))
              (some? (setting/get-value-of-type :string :store-api-url)))))
+
+(comment ;; TEMP (gsheets):
+
+  (requiring-resolve 'metabase.models.cloud-migration)
+  (metabase.models.cloud-migration/store-api-url! "http://localhost:5010")
+
+  (show-google-sheets-integration)
+
+  (show-google-sheets-integration)
+;; => true
+
+  (setting/get-raw-value :show-google-sheets-integration)
+
+ )

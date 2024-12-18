@@ -28,6 +28,11 @@
 ;; PUBLIC API:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(mu/defn- get-safe-status
+  [response]
+  (when (number? (:status response))
+    (http/success? response)))
+
 (mu/defn make-request :- [:tuple [:enum :ok :error] :map]
   "Makes a request to the store-api-url with the given method, path, and body.
 
@@ -41,21 +46,32 @@
         request           (cond-> {:headers {"Authorization" (str "Bearer " api-key)
                                              "Content-Type" "application/json"}}
                             body (assoc :body (json/encode body)))
+        request-method-fn (->requestor method)
         unparsed-response (try
-                            (-> (str store-api-url (+slash-prefix url))
-                                ((->requestor method) request))
+                            (request-method-fn
+                             (str store-api-url (+slash-prefix url))
+                             request)
                             (catch Exception e
                               (log/errorf e "Error making request to %s" url)
                               {:ex-data (ex-data e)
                                :request request
                                :url url}))
-        response          (try
-                            (m/update-existing unparsed-response :body json/decode+kw)
-                            (catch Exception e
-                              (log/errorf e "Error decoding response from %s, is it json?" url)
-                              {:ex-data (ex-data e)
-                               :unparsed-response unparsed-response
-                               :request request
-                               :url url}))]
-    [(if (and response (http/success? response)) :ok :error)
-     response]))
+        response          (if (some? (:ex-data unparsed-response)) ;; skip failed responses
+                            unparsed-response
+                            (try
+                              (m/update-existing unparsed-response :body json/decode+kw)
+                              (catch Exception e
+                                (log/errorf e "Error decoding response from %s, is it json?" url)
+                                {:ex-data (ex-data e)
+                                 :unparsed-response unparsed-response
+                                 :request request
+                                 :url url})))
+        success? (try
+                   (get-safe-status response)
+                   (catch Exception e
+                     (log/errorf e "Error decoding response from %s, is it json?" url)
+                     {:response response
+                      :request request
+                      :url url
+                      :ex-data (ex-data e)}))]
+    [(if success? :ok :error) response]))

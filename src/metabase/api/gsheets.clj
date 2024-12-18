@@ -33,7 +33,7 @@
   (deferred-tru "Information about Google Sheets Integration")
   :encryption :when-encryption-key-set
   :export? true
-  :visibility :internal
+  :visibility :public
   :type :json
   :getter (fn []
             ;; TEMP: check the setting when we are ready
@@ -44,10 +44,18 @@
             (or (setting/get-value-of-type :json :gsheets)
                 {:status :no-auth})))
 
+(comment
+
+  (gsheets)
+
+  (->config)
+
+  )
+
 (defn- check-validate-drive-link-format
   "Checks if the given link is a valid Google Drive link. If not, throws an exception."
   [drive-link]
-  (when-not (re-matches #".*drive\.google\.com.*" drive-link)
+  (when-not (re-matches #".*docs\.google\.com\/spreadsheet.*" drive-link)
     (throw (ex-info "Invalid Google Drive link." {:drive-link drive-link})))
   drive-link)
 
@@ -65,7 +73,11 @@
         _ (when (str/blank? api-key)
             (log/error "Missing api-key. Cannot create hm client config.")
             (throw (ex-info "Missing api-key." {:api-key api-key})))]
-    {:store-api-url store-api-url :api-key api-key}))
+    {:store-api-url store-api-url
+     ;; FIXME: TEMP:
+     ;; :api-key "mb_api_key_bfbd521277757d009445242aa34bd2f91c8f575c25f8f5fdc9a2c8ee8470c769"
+     :api-key api-key
+     }))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; MB <-> HM APIs
@@ -95,6 +107,12 @@
          true)
      false)))
 
+(comment
+
+  (oauth-setup? (:status (gsheets)))
+
+  )
+
 #_{:clj-kondo/ignore [:unused-private-var]}
 (defn- get-temp-url
   "Makes the request to get a temp OAuth url from harbormaster.
@@ -116,6 +134,8 @@
   "Start the sync w/ drive folder"
   [drive-folder-url]
   (check-validate-drive-link-format drive-folder-url)
+  (def drive-folder-url
+    "https://docs.google.com/spreadsheets/d/1YzUq24D2txbcQ8vlOrCeBtxC-K6jmwTQXHf5N2S3nqA/edit?gid=116303473#gid=116303473")
   (hm.client/make-request
    (->config)
    :post
@@ -153,17 +173,20 @@
 
 (api/defendpoint POST "/oauth"
   "Checks with HM to see what the temporary, ephemeral oauth-signin url is, and returns it in the response."
-  [:as {redirect-url :body}]
+  [:as {{redirect-url :redirect_url} :body :as body}]
   {redirect-url :string}
   ;; TEMP: call HM to get the temp-url with the site's url:
   #_(get-temp-url (or redirect-url (public-settings/site-url)))
-  {:oauth_url "http://store.metabase.com/oauth/abc123"})
+  {:oauth_url "https://letmegooglethat.com/?q=how+do+I+setup+oauth"})
+
+;; TODO shuffle this setting somewhere it is allowed to be accessed from:
+(require '[metabase.server.middleware.auth])
 
 (api/defendpoint GET "/oauth"
   "Checks to see if oauth is setup or not, delegates to HM only if we haven't set it up before."
   [] {}
   (api/check-superuser)
-  (when-not (setting/get-value-of-type :boolean :show-google-sheets-integration)
+  (when-not (metabase.server.middleware.auth/show-google-sheets-integration)
     (throw (ex-info "Google Sheets integration is not enabled." {})))
   {:oauth_setup
    ;; TEMP: we are pretending that oauth exists, remove this and uncomment below when it works:
@@ -174,7 +197,7 @@
 
 (api/defendpoint POST "/folder"
   "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase."
-  [:as {url :body}]
+  [:as {{url :url} :body}]
   {url :string}
   (let [[status _resp] (setup-drive-folder-sync url)]
     (if (= status :ok)
