@@ -657,7 +657,7 @@
 (defn- add-suggested-name-to-metric-card
   "Add `:suggested_name` key to returned card.
 
-  Some users were missing definition that was present in v1 metric API responses. This new key compensates for that.
+  Some users were missing description that was present in v1 metric API responses. This new key compensates for that.
 
   This function is used in `t2/define-after-select :model/Card`. Metadata provider caching should be considered when
   fetching multiple metric cards having common database, as done in eg. dashboard API context."
