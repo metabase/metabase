@@ -799,7 +799,7 @@ describe("scenarios > question > custom column", () => {
           formula: 'notIn("Gadget", [Vendor], [Category])',
           name: "InColumn",
         });
-        cy.button("Update").should("not.be.disabled").click();
+        cy.button("Update").click();
       });
     H.visualize();
     H.assertQueryBuilderRowCount(147);
