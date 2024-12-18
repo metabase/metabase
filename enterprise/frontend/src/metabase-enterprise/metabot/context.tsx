@@ -10,6 +10,7 @@ import type {
 
 export const defaultContext = {
   getChatContext: () => ({
+    user_is_viewing: [],
     current_time_with_timezone: dayjs.tz(dayjs()).format(),
   }),
   registerChatContextProvider: () => () => {},
@@ -29,6 +30,7 @@ export const MetabotProvider = ({
     const state = store.getState();
 
     const baseContext = {
+      user_is_viewing: [],
       current_time_with_timezone: dayjs.tz(dayjs()).format(),
     };
 
