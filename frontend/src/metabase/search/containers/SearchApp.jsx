@@ -72,7 +72,7 @@ function SearchApp({ location }) {
     [onChangeLocation, searchText],
   );
 
-  const { data, error, isLoading } = useSearchQuery(query);
+  const { data, error, isFetching } = useSearchQuery(query);
   const list = useMemo(() => {
     return data?.data?.map(item => Search.wrapEntity(item, dispatch)) ?? [];
   }, [data, dispatch]);
@@ -93,11 +93,11 @@ function SearchApp({ location }) {
           <SearchSidebar value={searchFilters} onChange={onFilterChange} />
         </SearchControls>
         <SearchResultContainer>
-          {(error || isLoading) && (
-            <LoadingAndErrorWrapper error={error} loading={isLoading} />
+          {(error || isFetching) && (
+            <LoadingAndErrorWrapper error={error} loading={isFetching} />
           )}
 
-          {!error && !isLoading && list.length === 0 && (
+          {!error && !isFetching && list.length === 0 && (
             <Paper shadow="lg" p="2rem">
               <EmptyState
                 title={t`Didn't find anything`}
@@ -107,7 +107,7 @@ function SearchApp({ location }) {
             </Paper>
           )}
 
-          {!error && !isLoading && list.length > 0 && (
+          {!error && !isFetching && list.length > 0 && (
             <Box>
               <SearchResultSection totalResults={data.total} results={list} />
               <Group justify="flex-end" align="center" my="1rem">

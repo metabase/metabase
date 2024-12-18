@@ -111,7 +111,7 @@ const mapDispatchToProps = {
 
 function ModelCacheRefreshJobs({ onRefresh }: Props) {
   const { page, handleNextPage, handlePreviousPage } = usePagination();
-  const { data, error, isLoading } = useListPersistedInfoQuery({
+  const { data, error, isFetching } = useListPersistedInfoQuery({
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
   });
@@ -121,8 +121,8 @@ function ModelCacheRefreshJobs({ onRefresh }: Props) {
     cacheInfo => cacheInfo.state !== "deletable",
   );
 
-  if (error || isLoading) {
-    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+  if (error || isFetching) {
+    return <LoadingAndErrorWrapper error={error} loading={isFetching} />;
   }
 
   if (modelCacheInfo.length === 0) {

@@ -186,7 +186,7 @@ export const CollectionContentView = ({
     ? getComposedDragProps(getRootProps())
     : {};
 
-  const { data, isLoading: loadingPinnedItems } = useListCollectionItemsQuery({
+  const { data, isFetching: loadingPinnedItems } = useListCollectionItemsQuery({
     id: collectionId,
     pinned_state: "is_pinned",
     sort_column: "name",

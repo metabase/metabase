@@ -164,7 +164,7 @@ export function UploadSettingsFormView({
   const {
     data: schemas,
     error: schemasError,
-    isLoading: schemasIsLoading,
+    isFetching: schemasIsFetching,
   } = useListSyncableDatabaseSchemasQuery(
     showSchema && dbId != null ? dbId : skipToken,
   );
@@ -194,14 +194,14 @@ export function UploadSettingsFormView({
           />
         </Stack>
 
-        {showSchema && (schemasError || schemasIsLoading) && (
+        {showSchema && (schemasError || schemasIsFetching) && (
           <LoadingAndErrorWrapper
             error={schemasError}
-            loading={schemasIsLoading}
+            loading={schemasIsFetching}
           />
         )}
 
-        {showSchema && !schemasError && !schemasIsLoading && (
+        {showSchema && !schemasError && !schemasIsFetching && (
           <Stack>
             <SectionTitle>{t`Schema`}</SectionTitle>
             {schemas?.length ? (

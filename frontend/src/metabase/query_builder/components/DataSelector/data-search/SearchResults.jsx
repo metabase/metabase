@@ -54,7 +54,7 @@ export function SearchResults({
     query["table_db_id"] = databaseId;
   }
 
-  const { data, error, isLoading } = useSearchQuery(query, {
+  const { data, error, isFetching } = useSearchQuery(query, {
     refetchOnMountOrArgChange: true,
   });
   const dispatch = useDispatch();
@@ -62,8 +62,8 @@ export function SearchResults({
     return data?.data?.map(item => Search.wrapEntity(item, dispatch));
   }, [data, dispatch]);
 
-  if (error || isLoading) {
-    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+  if (error || isFetching) {
+    return <LoadingAndErrorWrapper error={error} loading={isFetching} />;
   }
 
   return (

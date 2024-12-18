@@ -64,7 +64,7 @@ export function QuestionList({
   const {
     data: searchData,
     error: searchError,
-    isLoading: searchIsLoading,
+    isFetching: searchIsFetching,
   } = useSearchQuery(
     isSearching
       ? {
@@ -83,7 +83,7 @@ export function QuestionList({
   const {
     data: itemsData,
     error: itemsError,
-    isLoading: itemsIsLoading,
+    isFetching: itemsIsFetching,
   } = useListCollectionItemsQuery(
     !isSearching
       ? {
@@ -98,7 +98,7 @@ export function QuestionList({
   );
   const data = isSearching ? searchData : itemsData;
   const error = isSearching ? searchError : itemsError;
-  const isLoading = isSearching ? searchIsLoading : itemsIsLoading;
+  const isFetching = isSearching ? searchIsFetching : itemsIsFetching;
   const dispatch = useDispatch();
   const list = useMemo(() => {
     return data?.data?.map(item => Search.wrapEntity(item, dispatch)) ?? [];
@@ -108,8 +108,8 @@ export function QuestionList({
     return null;
   }
 
-  if (error || isLoading) {
-    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+  if (error || isFetching) {
+    return <LoadingAndErrorWrapper error={error} loading={isFetching} />;
   }
 
   const shouldShowEmptyState =

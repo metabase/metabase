@@ -149,8 +149,8 @@ export const CollectionItemsTable = ({
 
   const showAllItems = isEmbeddingSdk || isRootTrashCollection(collection);
 
-  const { data, isLoading: loadingUnpinnedItems } = useListCollectionItemsQuery(
-    {
+  const { data, isFetching: loadingUnpinnedItems } =
+    useListCollectionItemsQuery({
       id: collectionId,
       models,
       limit: pageSize,
@@ -159,8 +159,7 @@ export const CollectionItemsTable = ({
         ? { show_dashboard_questions: true }
         : { pinned_state: "is_not_pinned" }),
       ...unpinnedItemsSorting,
-    },
-  );
+    });
 
   const dispatch = useDispatch();
   const unpinnedItems = useMemo(() => {

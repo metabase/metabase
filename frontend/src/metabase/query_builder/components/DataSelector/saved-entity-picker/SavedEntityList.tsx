@@ -36,7 +36,7 @@ const SavedEntityList = ({
 
   const isVirtualCollection = collection?.id === PERSONAL_COLLECTIONS.id;
 
-  const { data, error, isLoading } = useListCollectionItemsQuery(
+  const { data, error, isFetching } = useListCollectionItemsQuery(
     collection && !isVirtualCollection
       ? {
           id: collection.id,
@@ -52,7 +52,7 @@ const SavedEntityList = ({
     <SelectList className={SavedEntityListS.SavedEntityListRoot}>
       <LoadingAndErrorWrapper
         className={SavedEntityListS.LoadingWrapper}
-        loading={!collection || isLoading}
+        loading={!collection || isFetching}
         error={error}
       >
         <Fragment>
