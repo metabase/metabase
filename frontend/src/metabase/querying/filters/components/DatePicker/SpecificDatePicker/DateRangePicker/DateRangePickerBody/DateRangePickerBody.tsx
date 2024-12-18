@@ -55,7 +55,7 @@ export function DateRangePickerBody({
   };
 
   return (
-    <Stack>
+    <Stack className={S.Root}>
       <Group align="center">
         <DateInput
           className={S.FlexDateInput}

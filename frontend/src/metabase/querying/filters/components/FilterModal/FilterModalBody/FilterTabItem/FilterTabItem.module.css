@@ -8,7 +8,7 @@
   }
 
   &:hover,
-  :focus-within {
+  &:focus-within {
     background-color: var(--mb-color-bg-light);
   }
 }

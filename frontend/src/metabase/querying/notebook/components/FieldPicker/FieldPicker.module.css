@@ -34,26 +34,3 @@
     margin-left: 1em;
   }
 }
-
-/* export const ToggleItem = styled.li`
-  border-bottom: 1px solid var(--mb-color-border);
-  margin-bottom: 0.5em;
-
-  ${ItemTitle} {
-    margin-left: 1em;
-  }
-`;
-
-export const Label = styled(HoverParent)`
-  display: flex;
-  align-items: center;
-  padding: 0 0.5em;
-  padding-right: 0;
-  border-radius: 6px;
-  cursor: pointer;
-  min-height: 2.25rem;
-
-  &:hover {
-    background: var(--mb-color-bg-medium);
-  }
-`; */
