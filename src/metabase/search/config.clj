@@ -258,7 +258,7 @@
    [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:include-dashboard-questions?        {:optional true} :boolean]
 
-   [:column-types {:optional true} [:maybe set?]]])
+   [:compatibility {:optional true} :map]])
 
 (defmulti column->string
   "Turn a complex column into a string"

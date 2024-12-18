@@ -324,19 +324,20 @@
 
 (defn compatibility-weights-and-scores
   "Default weights and scores for a given result."
-  [result {:keys [column-types column-count] :as compatibility-requirements}]
-  [{:weight 5
-    :score  (if (and
-                 #_(= column-count 1)
-                 (isa? (first column-types) :type/Number))
-              (scalar-score result)
-              0)
-    :name "scalar-compatibility"}
-   #_{:weight 2 :score (pinned-score result) :name "pinned"}
-   #_{:weight 2 :score (bookmarked-score result) :name "bookmarked"}
-   #_{:weight 3/2 :score (recency-score result) :name "recency"}
-   #_{:weight 1 :score (dashboard-count-score result) :name "dashboard"}
-   #_{:weight 1/2 :score (model-score result) :name "model"}])
+  [result {:keys [compatibility]}]
+  (let [{:keys [column-types column-count]} compatibility]
+    [{:weight 5
+      :score  (if (and
+                   (= column-count 1)
+                   (some #(isa? % :type/Number) column-types))
+                (scalar-score result)
+                0)
+      :name   "scalar-compatibility"}
+     #_{:weight 2 :score (pinned-score result) :name "pinned"}
+     #_{:weight 2 :score (bookmarked-score result) :name "bookmarked"}
+     #_{:weight 3/2 :score (recency-score result) :name "recency"}
+     #_{:weight 1 :score (dashboard-count-score result) :name "dashboard"}
+     #_{:weight 1/2 :score (model-score result) :name "model"}]))
 
 (defn weights-and-scores
   "Default weights and scores for a given result."

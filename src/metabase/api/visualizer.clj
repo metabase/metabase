@@ -56,25 +56,30 @@
          :recents
          (take 2))
 
-;; TODO: should probably add optional filters that are added when :visualization_settings and :result_metadata keys
+    ;; TODO: should probably add optional filters that are added when :visualization_settings and :result_metadata keys
     ;; exist, maybe?
 
     search
-    (->> (search/search
-          (search/search-context
-           {:current-user-id             api/*current-user-id*
-            :is-impersonated-user?       (premium-features/impersonated-user?)
-            :is-sandboxed-user?          (premium-features/sandboxed-user?)
-            :is-superuser?               api/*is-superuser?*
-            :current-user-perms          @api/*current-user-permissions-set*
-            :models                      #{"dataset" "metric" "card"} ;; should we search table too?
-            :offset                      (request/offset)
-            :limit                       (request/limit)
-            :search-native-query         true
-            :calculate-available-models? true
-            :search-string               search}))
-         :data
-         (take 2))))
+    (let [types-set (into #{} (mapcat (fn [col]
+                                        (vals (select-keys col [:base_type :effective_type :semantic_type])))
+                                      dataset-columns))]
+      (->> (search/search
+            (search/search-context
+             {:current-user-id       api/*current-user-id*
+              :is-impersonated-user? (premium-features/impersonated-user?)
+              :is-sandboxed-user?    (premium-features/sandboxed-user?)
+              :is-superuser?         api/*is-superuser?*
+              :current-user-perms    @api/*current-user-permissions-set*
+              :models                #{"dataset" "metric" "card"}
+              :offset                (request/offset)
+              :limit                 (request/limit)
+              :search-native-query   true
+              :search-string         search
+              :compatibility         {:display      display
+                                      :column-types types-set
+                                      :column-count (count dataset-columns)}
+              :search-engine         "visualizer"}))
+           :data))))
 
 (defn asdf
   [{:keys [search display dataset-columns] :as body}]
@@ -94,8 +99,9 @@
          :limit                 (request/limit)
          :search-native-query   true
          :search-string         search
-         #_#_:display           display
-         :column-types          types-set
+         :compatibility         {:display      display
+                                 :column-types types-set
+                                 :column-count (count dataset-columns)}
          :search-engine         "visualizer"})))))
 
 (api/define-routes)
