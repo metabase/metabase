@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { Stack } from "metabase/ui";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
 import { PopoverRoot, PopoverTabs } from "./ChartSettingsWidgetPopover.styled";
@@ -63,15 +64,17 @@ const ChartSettingsWidgetPopover = ({
                 variant="underlined"
               />
             )}
-            {widgets
-              .filter(widget => widget.section === currentSection)
-              ?.map(widget => (
-                <ChartSettingsWidget
-                  key={widget.id}
-                  {...widget}
-                  hidden={false}
-                />
-              ))}
+            <Stack px="lg">
+              {widgets
+                .filter(widget => widget.section === currentSection)
+                ?.map(widget => (
+                  <ChartSettingsWidget
+                    key={widget.id}
+                    {...widget}
+                    hidden={false}
+                  />
+                ))}
+            </Stack>
           </PopoverRoot>
         ) : null
       }

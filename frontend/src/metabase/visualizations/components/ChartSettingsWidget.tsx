@@ -69,6 +69,7 @@ const ChartSettingsWidget = ({
           variant={variant}
           className={cx({ [FormS.FormLabel]: isFormField })}
           htmlFor={extraWidgetProps.id}
+          style={{ border: "1px solid red" }}
         >
           {title}
           {hint && (
@@ -84,7 +85,7 @@ const ChartSettingsWidget = ({
         </Title>
       )}
       {description && <Description>{description}</Description>}
-      {Widget && <Widget {...extraWidgetProps} {...props} />}
+      {Widget && <Widget label={title} {...extraWidgetProps} {...props} />}
     </Root>
   );
 };
