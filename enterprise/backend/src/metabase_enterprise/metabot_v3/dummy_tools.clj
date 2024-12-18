@@ -4,8 +4,7 @@
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.envelope :as envelope]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription]
-   [metabase-enterprise.metabot-v3.tools.query]
-   [metabase-enterprise.metabot-v3.tools.query-metric]
+   [metabase-enterprise.metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.metabot-v3.tools.who-is-your-favorite]
    [metabase.api.card :as api.card]
@@ -19,21 +18,19 @@
    [toucan2.core :as t2]))
 
 (defn- get-current-user
-  [_ _ context]
+  [_tool-id _arguments _e]
   {:output (if-let [{:keys [id email first_name last_name]}
                     (or (some-> api/*current-user* deref)
                         (t2/select-one [:model/User :id :email :first_name :last_name] api/*current-user-id*))]
              {:id id
               :name (str first_name " " last_name)
               :email-address email}
-             {:error "current user not found"})
-   :context context})
+             "current user not found")})
 
 (defn- get-dashboard-details
-  [_ {:keys [dashboard-id]} context]
+  [_tool-id {:keys [dashboard-id]} _e]
   {:output (or (t2/select-one [:model/Dashboard :id :description :name] dashboard-id)
-               {:error "dashboard not found"})
-   :context context})
+               "dashboard not found")})
 
 (defn- convert-metric
   [db-metric]
@@ -53,21 +50,13 @@
                                              :metadata-provider metadata-provider})))
            not-empty))))
 
-(defn- get-table
-  [id]
-  (when-let [table (t2/select-one [:model/Table :id :name :description :db_id] id)]
-    (when (mi/can-read? table)
-      (-> table
-          (t2/hydrate :metrics)
-          (assoc :id id)))))
-
 (comment
   (mi/can-read? (t2/select-one :model/Table 27))
   (binding [api/*current-user-permissions-set* (delay #{"/"})
             api/*current-user-id* 2
             api/*is-superuser?* true]
     (mi/can-read? (t2/select-one :model/Table 27))
-    #_(get-table 27))
+    #_(metabot-v3.tools.u/get-table 27))
 
   (t2/select :model/User)
 
@@ -89,7 +78,7 @@
   [id {:keys [include-foreign-key-tables? metadata-provider]}]
   (when-let [base (if metadata-provider
                     (lib.metadata/table metadata-provider id)
-                    (get-table id))]
+                    (metabot-v3.tools.u/get-table id :db_id :description))]
     (let [mp (or metadata-provider
                  (lib.metadata.jvm/application-database-metadata-provider (:db_id base)))
           table-query (lib/query mp (lib.metadata/table mp id))
@@ -119,12 +108,11 @@
                         :queryable-foreign-key-tables (not-empty (foreign-key-tables mp cols)))))))
 
 (defn- get-table-details
-  [_ {:keys [table-id]} context]
+  [_tool-id {:keys [table-id]} _e]
   (let [details (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
                   (card-details (parse-long card-id))
                   (table-details (parse-long table-id) {:include-foreign-key-tables? true}))]
-    {:output (or details "table not found")
-     :context context}))
+    {:output (or details "table not found")}))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})
@@ -163,26 +151,29 @@
   -)
 
 (defn- get-metric-details
-  [_ {:keys [metric-id]} context]
-  (let [details (if-let [[_ card-id] (re-matches #"card__(\d+)" metric-id)]
+  [_tool-id {:keys [metric-id]} _e]
+  (let [details (if-let [[_ card-id] (when (string? metric-id)
+                                       (re-matches #"card__(\d+)" metric-id))]
                   (metric-details (parse-long card-id))
                   "invalid metric_id")]
-    {:output (or details "metric not found")
-     :context context}))
+    {:output (or details "metric not found")}))
 
 (defn- get-report-details
-  [_ {:keys [report-id]} context]
-  (let [details (card-details report-id)
-        details' (some-> details
-                         (select-keys [:id :description :name])
-                         (assoc :result-columns (:fields details)))]
-    {:output (or details' "report not found")
-     :context context}))
+  [_tool-id {:keys [report-id]} _e]
+  (let [details (if-let [[_ card-id] (when (string? report-id)
+                                       (re-matches #"card__(\d+)" report-id))]
+                  (let [details (card-details (parse-long card-id))]
+                    (some-> details
+                            (select-keys [:id :description :name])
+                            (assoc :result-columns (:fields details))))
+                  "invalid report_id")]
+    {:output (or details "report not found")}))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]
     (let [id "card__90" #_"card__136" #_"27"]
-      (get-table-details :get-table-details {:table_id id} {}))))
+      (get-table-details :get-table-details {:table-id id} {})))
+  -)
 
 (defn- dummy-tool-messages
   [tool-id arguments content]
@@ -208,29 +199,25 @@
 (def ^:private detail-getters
   {:dashboard {:id :get-dashboard-details
                :fn get-dashboard-details
-               :id-name :dashboard-id}
+               :arg-fn (fn [ref] {:dashboard-id ref})}
    :table {:id :get-table-details
-           :fn (fn [tool-id args context]
-                 (get-table-details tool-id (update args :table-id str) context))
-           :id-name :table-id}
+           :fn get-table-details
+           :arg-fn (fn [ref] {:table-id (str ref)})}
    :model {:id :get-table-details
-           :fn (fn [tool-id args context]
-                 (get-table-details tool-id (update args :table-id #(str "card__" %)) context))
-           :id-name :table-id}
+           :fn get-table-details
+           :arg-fn (fn [ref] {:table-id (str "card__" ref)})}
    :metric {:id :get-metric-details
-            :fn (fn [tool-id args context]
-                  (get-metric-details tool-id (update args :metric-id #(str "card__" %)) context))
-            :id-name :metric-id}
+            :fn get-metric-details
+            :arg-fn (fn [ref] {:metric-id (str "card__" ref)})}
    :report {:id :get-report-details
             :fn get-report-details
-            :id-name :report-id}})
+            :arg-fn (fn [ref] {:report-id (str "card__" ref)})}})
 
 (defn- dummy-get-item-details
   [{:keys [context] :as env}]
   (reduce (fn [env viewed]
-            (if-let [{getter-id :id, getter-fn :fn, :keys [id-name]} (-> viewed :type detail-getters)]
-              (let [item-id (or (:ref viewed) (u/generate-nano-id))
-                    arguments {id-name item-id}
+            (if-let [{getter-id :id, getter-fn :fn, :keys [arg-fn]} (-> viewed :type detail-getters)]
+              (let [arguments (arg-fn (:ref viewed))
                     content (-> (getter-fn getter-id arguments (envelope/context env))
                                 :output)]
                 (reduce envelope/add-dummy-message env (dummy-tool-messages getter-id arguments content)))
@@ -267,23 +254,42 @@
 (defn invoke-dummy-tools
   "Invoke `tool` with `context` if applicable and return the resulting context."
   [env]
-  (let [test-query {:database 1, :type :query, :query {:source-table 5}},
+  (let [test-query {:database 5
+                    :type :query
+                    :query
+                    {:joins
+                     [{:strategy :left-join
+                       :alias "Products"
+                       :condition
+                       [:=
+                        [:field "PRODUCT_ID" {:base-type :type/Integer}]
+                        [:field 285 {:base-type :type/BigInteger, :join-alias "Products"}]]
+                       :source-table 30}]
+                     :breakout
+                     [[:field 279 {:base-type :type/Float, :join-alias "Products", :binning {:strategy :default}}]
+                      [:field "CREATED_AT" {:base-type :type/DateTime, :temporal-unit :month}]]
+                     :aggregation
+                     [[:min [:field "SUBTOTAL" {:base-type :type/Float}]]
+                      [:avg [:field "SUBTOTAL" {:base-type :type/Float}]]
+                      [:max [:field "SUBTOTAL" {:base-type :type/Float}]]]
+                     :source-table "card__136"
+                     :filter [:> [:field "SUBTOTAL" {:base-type :type/Float}] 50]}}
         test-context ;; for testing purposes, pretend the user is viewing a bunch of things at once
-                     {:user-is-viewing [{:type :dashboard
-                                         :ref 10
-                                         :parameters []
-                                         :is-embedded false}
-                                        {:type :table
-                                         :ref 6}
-                                        {:type :model
-                                         :ref 2}
-                                        {:type :metric
-                                         :ref 120}
-                                        {:type :report
-                                         :ref 12}
-                                        {:type :adhoc
-                                         :query test-query}]}
-        env (assoc env :context test-context)]
+        {:user-is-viewing [{:type :dashboard
+                            :ref 10
+                            :parameters []
+                            :is-embedded false}
+                           {:type :table
+                            :ref 27}
+                           {:type :model
+                            :ref 137}
+                           {:type :metric
+                            :ref 135}
+                           {:type :report
+                            :ref 89}
+                           {:type :adhoc
+                            :query test-query}]}
+        env (update env :context #(if (empty? %) test-context %))]
     (reduce (fn [env tool]
               (tool env))
             env
@@ -293,5 +299,5 @@
   (binding [api/*current-user-permissions-set* (delay #{"/"})
             api/*current-user-id* 2
             api/*is-superuser?* true]
-    #p (invoke-dummy-tools {:dummy-history []}))
+    (invoke-dummy-tools {:dummy-history []}))
   -)
