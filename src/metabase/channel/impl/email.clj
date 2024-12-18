@@ -311,8 +311,8 @@
   [:channel/email :notification/system-event]
   [_channel-type
    notification-payload #_:- #_notification/NotificationPayload
-   template             :- models.channel/ChannelTemplate
-   recipients           :- [:sequential models.notification/NotificationRecipient]]
+   template             :- ::models.channel/ChannelTemplate
+   recipients           :- [:sequential ::models.notification/NotificationRecipient]]
   (assert (some? template) "Template is required for system event notifications")
   [(construct-email (channel.params/substitute-params (-> template :details :subject) notification-payload)
                     (notification-recipients->emails recipients notification-payload)
