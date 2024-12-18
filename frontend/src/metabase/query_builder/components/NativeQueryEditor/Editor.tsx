@@ -3,7 +3,6 @@ import { forwardRef } from "react";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { CardId } from "metabase-types/api";
 
-import { AceEditor } from "./AceEditor";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import type { SelectionRange } from "./types";
 
@@ -29,10 +28,10 @@ function getMode(): "ace" | "codemirror" {
 export const Editor = forwardRef<EditorRef, EditorProps>(
   function Editor(props, ref) {
     switch (getMode()) {
-      case "ace":
-        return <AceEditor {...props} ref={ref} />;
       case "codemirror":
         return <CodeMirrorEditor {...props} ref={ref} />;
+      default:
+        throw new Error("Unknown editor mode");
     }
   },
 );
