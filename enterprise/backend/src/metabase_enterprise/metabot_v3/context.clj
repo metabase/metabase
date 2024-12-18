@@ -6,7 +6,10 @@
    [metabase.config :as config]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  (:import
+   (java.time OffsetDateTime)
+   (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
 ;; todo: remove this before shipping. This is quick and dirty
@@ -41,19 +44,25 @@
    :keyword
    :any])
 
+(def ^:private ^DateTimeFormatter current-user-time-format
+  (DateTimeFormatter/ofPattern "'Today is' EEEE, 'Year' yyyy, 'Date' yyyy-MM-dd, HH:mm:ss"))
+
+(defn- set-user-time
+  [context]
+  (let [offset-time (or (some-> context :current_time_with_timezone OffsetDateTime/parse)
+                        (OffsetDateTime/now))]
+    (-> context
+        (dissoc :current_time_with_timezone)
+        (assoc :current_user_time (.format current-user-time-format offset-time)))))
+
 (mu/defn create-context
   "Create a tool context."
-  [_context]
-  (merge {}
-         #_(metabot-v3.tools.query/create-context context)))
-
-(mu/defn describe-context
-  "Transforms the tool context into LLM context."
-  [_context]
-  (merge {}
-         #_(metabot-v3.tools.query/describe-context context)))
+  [context]
+  (-> context
+      set-user-time
+      (select-keys [:current_user_time])))
 
 (mu/defn create-reactions
   "Extracts reactions based on the current context."
   [context]
-  (into [] (concat (metabot-v3.tools.query/create-reactions context))))
+  (vec (metabot-v3.tools.query/create-reactions context)))

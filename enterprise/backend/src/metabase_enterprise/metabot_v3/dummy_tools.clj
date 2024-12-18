@@ -289,7 +289,7 @@
                             :ref 89}
                            {:type :adhoc
                             :query test-query}]}
-        env (update env :context #(if (empty? %) test-context %))]
+        env (update env :context #(if (empty? (dissoc % :current_user_time)) test-context %))]
     (reduce (fn [env tool]
               (tool env))
             env
