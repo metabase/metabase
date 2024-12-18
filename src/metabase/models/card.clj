@@ -654,8 +654,8 @@
       (pre-update-check-sandbox-constraints changes)
       (assert-valid-type (merge old-card-info changes)))))
 
-(defn- add-suggested-name-to-metric-card
-  "Add `:suggested_name` key to returned card.
+(defn- add-query-description-to-metric-card
+  "Add `:query_description` key to returned card.
 
   Some users were missing description that was present in v1 metric API responses. This new key compensates for that.
 
@@ -680,7 +680,7 @@
       (dissoc :dataset_query_metrics_v2_migration_backup)
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
       public-settings/remove-public-uuid-if-public-sharing-is-disabled
-      add-suggested-name-to-metric-card))
+      add-query-description-to-metric-card))
 
 (t2/define-before-insert :model/Card
   [card]
