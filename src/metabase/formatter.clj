@@ -125,7 +125,7 @@
 
         currency           (when currency?
                              (keyword (or currency "USD")))
-        integral?          (isa? (or effective_type base_type) :type/Integer)
+        integral?          (and (isa? (or effective_type base_type) :type/Integer) (integer? (or scale 1)))
         relation?          (isa? semantic_type :Relation/*)
         percent?           (or (isa? semantic_type :type/Percentage) (= number-style "percent"))
         scientific?        (= number-style "scientific")

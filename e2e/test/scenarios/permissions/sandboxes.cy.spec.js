@@ -882,7 +882,7 @@ H.describeEE("formatting > sandboxes", () => {
 
       H.startNewQuestion();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Saved questions").click();
+        H.entityPickerModalTab("Collections").click();
         cy.findByText("14766_joined").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
