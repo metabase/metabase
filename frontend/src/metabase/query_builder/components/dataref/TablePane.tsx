@@ -1,4 +1,3 @@
-import { connect } from "react-redux";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
@@ -8,6 +7,7 @@ import {
 } from "metabase/components/MetadataInfo/MetadataInfo.styled";
 import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
+import { connect } from "metabase/lib/redux";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import ConnectedTableList from "metabase/query_builder/components/dataref/ConnectedTableList";
 import type Table from "metabase-lib/v1/metadata/Table";

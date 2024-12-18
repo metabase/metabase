@@ -132,7 +132,11 @@ export const DataPickerModal = ({
   );
 
   const searchParams = useMemo(() => {
-    return databaseId ? { table_db_id: databaseId } : undefined;
+    const tableParams = databaseId ? { table_db_id: databaseId } : undefined;
+    return {
+      include_dashboard_questions: true,
+      ...tableParams,
+    };
   }, [databaseId]);
 
   const handleItemSelect = useCallback(
@@ -199,7 +203,7 @@ export const DataPickerModal = ({
         id: "questions-tab",
         displayName: t`Collections`,
         models: ["card" as const, "dataset" as const, "metric" as const],
-        folderModels: ["collection" as const],
+        folderModels: ["collection" as const, "dashboard" as const],
         icon: "folder",
         extraButtons: [filterButton],
         render: ({ onItemSelect }) => (
