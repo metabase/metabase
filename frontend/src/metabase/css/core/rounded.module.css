@@ -1,5 +1,6 @@
 :root {
   --default-border-radius: 8px;
+  --border-radius-xl: 99px;
 }
 
 .rounded {

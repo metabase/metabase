@@ -291,7 +291,6 @@ export const TimelineEventApi = {
 };
 
 export const MetabaseApi = {
-  db_add_sample_database: POST("/api/database/sample_database"),
   db_autocomplete_suggestions: GET(
     "/api/database/:dbId/autocomplete_suggestions?:matchStyle=:query",
   ),

@@ -7,13 +7,9 @@ import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import { turnQuestionIntoModel } from "metabase/query_builder/actions";
+import { Box, Text } from "metabase/ui";
 
-import {
-  DatasetImg,
-  DatasetTitle,
-  DatasetValueProp,
-  FeatureOverviewContainer,
-} from "./NewDatasetModal.styled";
+import NewDatasetModalS from "./NewDatasetModal.module.css";
 
 const propTypes = {
   turnQuestionIntoModel: PropTypes.func.isRequired,
@@ -45,24 +41,24 @@ function NewDatasetModal({ turnQuestionIntoModel, onClose }) {
         >{t`Turn this into a model`}</Button>,
       ]}
     >
-      <FeatureOverviewContainer>
-        <DatasetImg src="app/img/model-illustration.svg" />
-        <DatasetTitle>{t`Models`}</DatasetTitle>
+      <Box p="2rem 1rem 0">
+        <Box component="img" pt="md" src="app/img/model-illustration.svg" />
+        <Text component="h2" mt="2rem" mb="md">{t`Models`}</Text>
         <ul>
-          <DatasetValueProp>
+          <li className={NewDatasetModalS.DatasetValueProp}>
             {t`Let you update column descriptions and customize metadata to create
             great starting points for exploration.`}
-          </DatasetValueProp>
-          <DatasetValueProp>
+          </li>
+          <li className={NewDatasetModalS.DatasetValueProp}>
             {t`Show up higher in search results and get highlighted when other
             users start new questions to promote reuse.`}
-          </DatasetValueProp>
-          <DatasetValueProp>
+          </li>
+          <li className={NewDatasetModalS.DatasetValueProp}>
             {t`Live in collections to keep them separate from messy database
             schemas.`}
-          </DatasetValueProp>
+          </li>
         </ul>
-      </FeatureOverviewContainer>
+      </Box>
     </ModalContent>
   );
 }
