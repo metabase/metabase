@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase.audit :as audit]
    [metabase.config :as config]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -1173,3 +1174,17 @@
       (t2/update! :model/Card :id [:in [card-1-id card-2-id]]
                   {:name "Flippy"})
       (is (= "Petey" (t2/select-one-fn :name :model/Card :id card-3-id))))))
+
+(deftest ^:parallel query-description-in-metric-cards-test
+  (testing "Metric cards contain query_description key (#51303)"
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+      (mt/with-temp
+        [:model/Card
+         {id :id}
+         {:name "My metric"
+          :type :metric
+          :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                             (lib/aggregate (lib/count))
+                             lib.convert/->legacy-MBQL)}]
+        (is (= "Orders, Count"
+               (:query_description (t2/select-one :model/Card :id id))))))))
