@@ -18,10 +18,10 @@ import {
   tableInteractive,
 } from "e2e/support/helpers";
 import {
+  mockAuthProviderAndJwtSignIn,
   mountInteractiveQuestion,
   mountSdkContent,
-  sdkJwtSignIn,
-  signInAsAdminAndEnableEmbeddingSdkForComponentTests,
+  signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
@@ -33,7 +33,7 @@ type InteractiveQuestionProps = ComponentProps<typeof InteractiveQuestion>;
 
 describeEE("scenarios > embedding-sdk > interactive-question", () => {
   beforeEach(() => {
-    signInAsAdminAndEnableEmbeddingSdkForComponentTests();
+    signInAsAdminAndEnableEmbeddingSdk();
 
     createQuestion(
       {
@@ -50,7 +50,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
 
     cy.signOut();
 
-    sdkJwtSignIn();
+    mockAuthProviderAndJwtSignIn();
   });
 
   it("should show question content", () => {

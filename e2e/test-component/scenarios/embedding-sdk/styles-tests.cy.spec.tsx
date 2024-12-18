@@ -9,18 +9,18 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { describeEE, modal, updateSetting } from "e2e/support/helpers";
 import {
   DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
-  sdkJwtSignIn,
-  signInAsAdminAndEnableEmbeddingSdkForComponentTests,
+  mockAuthProviderAndJwtSignIn,
+  signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 describeEE("scenarios > embedding-sdk > styles", () => {
   beforeEach(() => {
-    signInAsAdminAndEnableEmbeddingSdkForComponentTests();
+    signInAsAdminAndEnableEmbeddingSdk();
 
     cy.signOut();
 
-    sdkJwtSignIn();
+    mockAuthProviderAndJwtSignIn();
 
     cy.intercept("GET", "/api/user/current").as("getUser");
   });

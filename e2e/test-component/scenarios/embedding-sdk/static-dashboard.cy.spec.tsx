@@ -6,15 +6,15 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import { describeEE, getTextCardDetails } from "e2e/support/helpers";
 import {
+  mockAuthProviderAndJwtSignIn,
   mountSdkContent,
-  sdkJwtSignIn,
-  signInAsAdminAndEnableEmbeddingSdkForComponentTests,
+  signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 describeEE("scenarios > embedding-sdk > static-dashboard", () => {
   beforeEach(() => {
-    signInAsAdminAndEnableEmbeddingSdkForComponentTests();
+    signInAsAdminAndEnableEmbeddingSdk();
 
     const textCard = getTextCardDetails({ col: 16, text: "Text text card" });
     const questionCard = {
@@ -39,7 +39,7 @@ describeEE("scenarios > embedding-sdk > static-dashboard", () => {
 
     cy.signOut();
 
-    sdkJwtSignIn();
+    mockAuthProviderAndJwtSignIn();
 
     cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
