@@ -1,7 +1,6 @@
 import type { ChangeEvent } from "react";
 import { useRef, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { UploadInput } from "metabase/components/upload";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
@@ -9,7 +8,6 @@ import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
-import { QuestionMoreActionsMenu } from "metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
 import { Box, Icon, Menu } from "metabase/ui";
@@ -20,6 +18,7 @@ import { UploadMode } from "metabase-types/store/upload";
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 
 import QuestionActionsS from "./QuestionActions.module.css";
+import { QuestionMoreActionsMenu } from "./QuestionMoreActionsMenu";
 
 const HEADER_ICON_SIZE = 16;
 

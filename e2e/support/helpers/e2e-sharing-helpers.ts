@@ -1,5 +1,6 @@
-export const sharingMenuButton = () => cy.findByTestId("sharing-menu-button");
-export const sharingMenu = () => cy.findByTestId("sharing-menu");
+export const sharingMenuButton = () =>
+  cy.findByTestId("notifications-menu-button");
+export const sharingMenu = () => cy.findByTestId("notifications-menu");
 
 export const openSharingMenu = (menuItemText?: string) => {
   sharingMenuButton().click();

@@ -10,7 +10,6 @@ import {
 import { useSelector } from "metabase/lib/redux";
 import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
 import { hasMapping } from "metabase/parameters/utils/dashboards";
-import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import type {
   CardId,
   DashCardId,
@@ -27,6 +26,8 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import type { SelectedTabId, State } from "metabase-types/store";
+
+import SharingSidebar from "../../notifications/SharingSidebar";
 
 import { ActionSidebarConnected } from "./ActionSidebar";
 import { AddCardSidebar } from "./AddCardSidebar";
