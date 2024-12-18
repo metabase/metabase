@@ -1,21 +1,15 @@
 import React from "react";
 import { ThemeProvider } from "metabase/ui";
-import { GlobalTypes } from "@storybook/types";
-
-const isEmbeddingSDK = process.env.IS_EMBEDDING_SDK === "true";
 
 // @ts-expect-error: See metabase/lib/delay
 // This will skip the skippable delays in stories
 window.METABASE_REMOVE_DELAYS = true;
 
-if (!isEmbeddingSDK) {
-  require("metabase/css/core/index.css");
-  require("metabase/css/vendor.css");
-  require("metabase/css/index.module.css");
-  require("metabase/lib/dayjs");
-}
+require("metabase/css/core/index.css");
+require("metabase/css/vendor.css");
+require("metabase/css/index.module.css");
+require("metabase/lib/dayjs");
 
-import { storybookThemeOptions } from "embedding-sdk/test/storybook-themes";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { css, Global, useTheme } from "@emotion/react";
@@ -45,24 +39,22 @@ const globalStyles = css`
   ${baseStyle}
 `;
 
-export const decorators = isEmbeddingSDK
-  ? [] // No decorators for Embedding SDK stories, as we want to simulate real use cases
-  : [
-      renderStory => {
-        if (!document.body.classList.contains("mb-wrapper")) {
-          document.body.classList.add("mb-wrapper");
-        }
-        return (
-          <EmotionCacheProvider>
-            <ThemeProvider>
-              <Global styles={globalStyles} />
-              <CssVariables />
-              {renderStory()}
-            </ThemeProvider>
-          </EmotionCacheProvider>
-        );
-      },
-    ];
+export const decorators = [
+  renderStory => {
+    if (!document.body.classList.contains("mb-wrapper")) {
+      document.body.classList.add("mb-wrapper");
+    }
+    return (
+      <EmotionCacheProvider>
+        <ThemeProvider>
+          <Global styles={globalStyles} />
+          <CssVariables />
+          {renderStory()}
+        </ThemeProvider>
+      </EmotionCacheProvider>
+    );
+  },
+];
 
 function CssVariables() {
   const theme = useTheme();
@@ -89,18 +81,3 @@ function CssVariables() {
 
   return <Global styles={styles} />;
 }
-
-const sdkGlobalTypes: GlobalTypes = {
-  sdkTheme: {
-    name: "SDK Theme",
-    description: "Global theme for sdk components",
-    defaultValue: "default",
-    toolbar: {
-      icon: "paintbrush",
-      items: storybookThemeOptions,
-      showName: true,
-    },
-  },
-};
-
-export const globalTypes: GlobalTypes = isEmbeddingSDK ? sdkGlobalTypes : {};
