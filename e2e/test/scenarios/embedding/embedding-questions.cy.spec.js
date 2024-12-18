@@ -230,7 +230,7 @@ describe("scenarios > embedding > questions", () => {
       cy.findByTestId("download-results-button").click();
     });
 
-    cy.get("@dl").its("response.statusCode").should("not.be.gte", 400);
+    cy.get("@dl").its("response.statusCode").should("eq", 302);
   });
 });
 
