@@ -1,6 +1,6 @@
 {
     "name": "find-outliers",
-    "description": "Find outliers on a numeric column of a query- or report result . Use this if the user explicitly asks for outliers, unusual mins/maxes, whether values are within an normal range or records that stands out in results. Only use on columns that are numeric and present in the `result_columns` of a query or report. If the user asks for outliers on a column that is not present in the `result_columns`, ask the user for clarification before proceeding.",
+    "description": "Find outliers for a metric, or the numeric column of a query- or report result. Use this if the user explicitly asks for outliers, unusual mins/maxes, whether values are within an normal range or records that stands out in results.",
     "parameters": {
         "type": "object",
         "properties": {
