@@ -79,6 +79,9 @@ function nativeEditorType(
       case "{movetoend}":
         return cy.realPress(["Control", "E"]);
 
+      case "{backspace}":
+        return cy.realPress(["Backspace"]);
+
       case "{{}":
         return cy.realType("{");
     }
