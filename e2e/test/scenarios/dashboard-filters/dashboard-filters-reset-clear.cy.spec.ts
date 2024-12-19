@@ -282,13 +282,17 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "Washington",
       setValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").focus().type(value).blur();
-        H.popover().button("Add filter").click();
+        H.dashboardParametersPopover().within(() => {
+          H.multiAutocompleteInput().type(value).blur();
+          cy.button("Add filter").click();
+        });
       },
       updateValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").clear().type(value).blur();
-        H.popover().button("Update filter").click();
+        H.dashboardParametersPopover().within(() => {
+          H.multiAutocompleteInput().type(value).blur();
+          cy.button("Update filter").click();
+        });
       },
     });
   });
@@ -330,13 +334,17 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "2",
       setValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").focus().type(value).blur();
-        H.popover().button("Add filter").click();
+        H.dashboardParametersPopover().within(() => {
+          H.multiAutocompleteInput().type(value).blur();
+          cy.button("Add filter").click();
+        });
       },
       updateValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").clear().type(value).blur();
-        H.popover().button("Update filter").click();
+        H.dashboardParametersPopover().within(() => {
+          H.multiAutocompleteInput().type(value).blur();
+          cy.button("Update filter").click();
+        });
       },
     });
   });
@@ -375,13 +383,17 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "3",
       setValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").focus().type(value).blur();
-        H.popover().button("Add filter").click();
+        H.dashboardParametersPopover().within(() => {
+          H.multiAutocompleteInput().type(value).blur();
+          cy.button("Add filter").click();
+        });
       },
       updateValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").clear().type(value).blur();
-        H.popover().button("Update filter").click();
+        H.dashboardParametersPopover().within(() => {
+          H.multiAutocompleteInput().type(value).blur();
+          cy.button("Update filter").click();
+        });
       },
     });
   });

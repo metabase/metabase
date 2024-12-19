@@ -718,7 +718,7 @@ describe("scenarios > dashboard > parameters", () => {
 
       H.filterWidget().click();
 
-      H.popover().within(() => {
+      H.dashboardParametersPopover().within(() => {
         H.multiAutocompleteInput().type("Antwan Fisher");
         cy.button("Add filter").click();
       });
@@ -747,7 +747,7 @@ describe("scenarios > dashboard > parameters", () => {
     it("should allow resetting last used value", () => {
       H.filterWidget().click();
 
-      H.popover().within(() => {
+      H.dashboardParametersPopover().within(() => {
         H.multiAutocompleteInput().type("Antwan Fisher");
         cy.button("Add filter").click();
       });
