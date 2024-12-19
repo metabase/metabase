@@ -1,6 +1,5 @@
 (ns metabase-enterprise.metabot-v3.tools.filters
   (:require
-   [cheshire.core :as json]
    [clojure.edn :as edn]
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
@@ -107,7 +106,7 @@
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/query-metric
   [_tool-name arguments _e]
-  {:output (json/generate-string (query-metric arguments))})
+  {:output (query-metric arguments)})
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})
@@ -170,4 +169,4 @@
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/filter-records
   [_tool-name arguments e]
-  {:output (json/generate-string (filter-records arguments e))})
+  {:output (filter-records arguments e)})
