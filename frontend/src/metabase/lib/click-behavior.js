@@ -9,9 +9,13 @@ export function getClickBehaviorDescription(dashcard) {
     ? t`Open the drill-through menu`
     : t`Do nothing`;
   if (isTableDisplay(dashcard)) {
-    const count = Object.values(
+    const activeFields = dashcard.card.result_metadata.map(field => field.id);
+    const count = Object.entries(
       getIn(dashcard, ["visualization_settings", "column_settings"]) || {},
-    ).filter(settings => settings.click_behavior != null).length;
+    ).filter(([ref, settings]) => {
+      const fieldRef = parseInt(ref.split(",")[2]);
+      return settings.click_behavior != null && activeFields.includes(fieldRef);
+    }).length;
     if (count === 0) {
       return noBehaviorMessage;
     }
