@@ -48,9 +48,11 @@ export const ColumnItem = ({
     bg="bg-white"
     c="text-medium"
     className={cx(
+      CS.overflowHidden,
+      CS.bordered,
       ColumnItemS.ColumnItemRoot,
       {
-        [ColumnItemS.Draggable]: draggable,
+        [cx(ColumnItemS.Draggable, CS.cursorGrab)]: draggable,
       },
       className,
     )}
@@ -65,7 +67,10 @@ export const ColumnItem = ({
   >
     <Group noWrap spacing="xs" p="xs">
       {draggable && (
-        <Icon className={ColumnItemS.ColumnItemDragHandle} name="grabber" />
+        <Icon
+          className={cx(CS.flexNoShrink, ColumnItemS.ColumnItemDragHandle)}
+          name="grabber"
+        />
       )}
       {onColorChange && color && (
         <ChartSettingColorPicker
