@@ -167,7 +167,6 @@ export const ChartSettingFieldPicker = ({
             },
             border: "none",
             width: "100%",
-            lineHeight: theme.lineHeight,
           },
           rightSection: {
             pointerEvents: "none",
