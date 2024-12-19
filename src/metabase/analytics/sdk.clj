@@ -9,6 +9,7 @@
   then we can use the information on the tables to track information about the embedding client,
   and TODO: send it out in `summarize-execution`."
   (:require [metabase.analytics.prometheus :as prometheus]
+            [metabase.util.log :as log]
             [metabase.util.malli :as mu]))
 
 (def ^:dynamic *version* "Used to track information about the metabase embedding client version." nil)
@@ -22,7 +23,7 @@
       (update :embedding_client (fn [client] (or *client* client)))
       (update :embedding_version (fn [version] (or *version* version)))))
 
-(mu/defn- categorize-request :- [:maybe [:enum :ok :error]]
+(mu/defn- categorize-response :- [:maybe [:enum :ok :error]]
   [{:keys [status]}]
   (when status
     (cond
@@ -41,7 +42,8 @@
     [embedding-sdk-client :ok]       (prometheus/inc! :metabase-sdk/response-ok)
     [embedding-sdk-client :error]    (prometheus/inc! :metabase-sdk/response-error)
     [embedding-iframe-client :ok]    (prometheus/inc! :metabase-embedding-iframe/response-ok)
-    [embedding-iframe-client :error] (prometheus/inc! :metabase-embedding-iframe/response-error)))
+    [embedding-iframe-client :error] (prometheus/inc! :metabase-embedding-iframe/response-error)
+    (log/infof "Unknown client or status. client: %s status %s" sdk-client status)))
 
 (defn- embedding-context?
   "Should we track this request as being made by an embedding client?"
@@ -60,8 +62,9 @@
                 *version* version]
         (handler request
                  (fn responder [response]
-                   (when (embedding-context? sdk-client)
-                     (track-sdk-response sdk-client (categorize-request response)))
+                   (when-let [response-status (and (embedding-context? sdk-client)
+                                                   (categorize-response response))]
+                     (track-sdk-response sdk-client response-status))
                    (respond response))
                  (fn raiser [response]
                    (when (embedding-context? sdk-client)
