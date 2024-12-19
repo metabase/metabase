@@ -3,6 +3,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.channel.core :as channel]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.notification.core :as notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings :as public-settings]
@@ -145,6 +148,41 @@
                 (is (= 1 (count messages)))
                 (is (= 0 (count messages)))))}))))))
 
+(deftest ^:parallel goal-met-test
+  (let [alert-above-pulse {:send_condition "goal_above"}
+        alert-below-pulse {:send_condition "goal_below"}
+        progress-result   (fn [val] {:card   {:display                :progress
+                                              :visualization_settings {:progress.goal    5}}
+                                     :result {:data {:rows [[val]]}}})
+        timeseries-result (fn [val] {:card   {:display                :bar
+                                              :visualization_settings {:graph.goal_value 5}}
+                                     :result {:data {:cols [{:source :breakout}
+                                                            {:name           "avg"
+                                                             :source         :aggregation
+                                                             :base_type      :type/Integer
+                                                             :effective-type :type/Integer
+                                                             :semantic_type  :type/Quantity}]
+                                                     :rows [["2021-01-01T00:00:00Z" val]]}}})
+        goal-met?           (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
+    (testing "Progress bar"
+      (testing "alert above"
+        (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (progress-result 4)))))
+        (testing "value equals goal" (is (=  true (goal-met? alert-above-pulse (progress-result 5)))))
+        (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (progress-result 6))))))
+      (testing "alert below"
+        (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (progress-result 4)))))
+        (testing "value equals goal (#10899)" (is (= false (goal-met? alert-below-pulse (progress-result 5)))))
+        (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (progress-result 6)))))))
+    (testing "Timeseries"
+      (testing "alert above"
+        (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (timeseries-result 4)))))
+        (testing "value equals goal" (is (=  true (goal-met? alert-above-pulse (timeseries-result 5)))))
+        (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (timeseries-result 6))))))
+      (testing "alert below"
+        (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (timeseries-result 4)))))
+        (testing "value equals goal" (is (= false (goal-met? alert-below-pulse (timeseries-result 5)))))
+        (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (timeseries-result 6)))))))))
+
 (deftest send-condition-above-goal-test
   (testing "skip is the goal is not met"
     (notification.tu/with-card-notification
@@ -189,46 +227,12 @@
                    :message [{notification.tu/default-card-name true
                               "This question has reached its goal of 5\\.9\\." true}
                              notification.tu/png-attachment
+                             notification.tu/png-attachment
                              notification.tu/csv-attachment]})
                  (mt/summarize-multipart-single-email
                   email
                   card-name-regex
                   #"This question has reached its goal of 5\.9\."))))}))))
-
-(deftest ^:parallel goal-met-test
-  (let [alert-above-pulse {:send_condition "goal_above"}
-        alert-below-pulse {:send_condition "goal_below"}
-        progress-result   (fn [val] {:card   {:display                :progress
-                                              :visualization_settings {:progress.goal    5}}
-                                     :result {:data {:rows [[val]]}}})
-        timeseries-result (fn [val] {:card   {:display                :bar
-                                              :visualization_settings {:graph.goal_value 5}}
-                                     :result {:data {:cols [{:source :breakout}
-                                                            {:name           "avg"
-                                                             :source         :aggregation
-                                                             :base_type      :type/Integer
-                                                             :effective-type :type/Integer
-                                                             :semantic_type  :type/Quantity}]
-                                                     :rows [["2021-01-01T00:00:00Z" val]]}}})
-        goal-met?           (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
-    (testing "Progress bar"
-      (testing "alert above"
-        (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (progress-result 4)))))
-        (testing "value equals goal" (is (=  true (goal-met? alert-above-pulse (progress-result 5)))))
-        (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (progress-result 6))))))
-      (testing "alert below"
-        (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (progress-result 4)))))
-        (testing "value equals goal (#10899)" (is (= false (goal-met? alert-below-pulse (progress-result 5)))))
-        (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (progress-result 6)))))))
-    (testing "Timeseries"
-      (testing "alert above"
-        (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (timeseries-result 4)))))
-        (testing "value equals goal" (is (=  true (goal-met? alert-above-pulse (timeseries-result 5)))))
-        (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (timeseries-result 6))))))
-      (testing "alert below"
-        (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (timeseries-result 4)))))
-        (testing "value equals goal" (is (= false (goal-met? alert-below-pulse (timeseries-result 5)))))
-        (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (timeseries-result 6)))))))))
 
 (deftest send-condition-below-goal-test
   (testing "skip is the goal is not met"
@@ -274,6 +278,7 @@
                    :message [{notification.tu/default-card-name true
                               "This question has gone below its goal of 1\\.1\\." true}
                              notification.tu/png-attachment
+                             notification.tu/png-attachment
                              notification.tu/csv-attachment]})
                  (mt/summarize-multipart-single-email
                   email
@@ -303,4 +308,69 @@
                 #"Unsubscribe"))))})))
 
 (deftest permission-test
-  (testing "question is executed using notification's creator permissions"))
+  (mt/with-temp [:model/Collection coll {}]
+    (letfn [(payload! [user-kw]
+              (notification.tu/with-card-notification
+                [notification {:card {:collection_id (:id coll)}
+                               :notification {:creator_id (mt/user->id user-kw)}}]
+                (perms/revoke-collection-permissions! (perms-group/all-users) coll)
+                (get-in (notification/notification-payload notification)
+                        [:payload :card_part :result])))]
+      (testing "rasta has no permissions and will get error"
+        (let [rasta-result (payload! :rasta)]
+         (is (= 0 (:row_count rasta-result)))
+         (is (re-find #"You do not have permissions to view Card \d+"
+                      (:error rasta-result)))))
+      (testing "crowberto can see the card"
+       (is (pos-int? (:row_count (payload! :crowberto))))))))
+
+(deftest alerts-do-not-remove-user-metadata
+  (testing "Alerts that exist on a Model shouldn't remove metadata (#35091)."
+    (let [result-metadata [{:display_name   "Count"
+                            :semantic_type  :type/Quantity
+                            :field_ref      [:aggregation 0]
+                            :base_type      :type/BigInteger
+                            :effective_type :type/BigInteger
+                            :name           "count"}]]
+      (notification.tu/with-card-notification
+        [notification {:card     {:type            :model
+                                  :dataset_query   (mt/mbql-query orders {:aggregation [["count"]]})
+                                  :result_metadata result-metadata}
+                       :handlers [@notification.tu/default-email-handler]}]
+        (notification/send-notification! notification)
+        (is (= result-metadata
+               (t2/select-one-fn :result_metadata :model/Card (-> notification :payload :card_id))))))))
+
+(deftest partial-channel-failure-will-deliver-all-that-success-test
+  (testing "if a pulse is set to send to multiple channels and one of them fail, the other channels should still receive the message"
+    (notification.tu/with-send-notification-sync
+      (notification.tu/with-card-notification
+        [notification {:handlers [@notification.tu/default-email-handler
+                                  notification.tu/default-slack-handler]}]
+
+        (let [original-render-noti (var-get #'channel/render-notification)]
+          (with-redefs [channel/render-notification (fn [& args]
+                                                      (if (= :channel/slack (first args))
+                                                        (throw (ex-info "Slack failed" {}))
+                                                        (apply original-render-noti args)))]
+            ;; slack failed but email should still be sent
+            (notification.tu/test-send-notification!
+             notification
+             {:channel/email
+              (fn [emails]
+                (is (pos-int? (count emails))))
+              :channel/slack
+              (fn [messages]
+                (is (nil?  messages)))})))))))
+
+(deftest skip-for-archived-cards-test
+  (testing "should not send for archived cards"
+    (notification.tu/with-card-notification
+      [notification {:card     {:archived true}
+
+                     :handlers [@notification.tu/default-email-handler]}]
+      (notification.tu/test-send-notification!
+       notification
+       {:channel/email
+        (fn [emails]
+          (is (empty? emails)))}))))

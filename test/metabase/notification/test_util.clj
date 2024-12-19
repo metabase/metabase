@@ -128,6 +128,7 @@
   "Macro that sets up a card notification for testing.
     (with-card-notification
       [notification {:card              {:name \"My Card\"}
+                     :notification      {:creator_id 1}
                      :notification-card {:send_condition :rows}
                      :subscriptions     []
                      :handlers          []}]"
