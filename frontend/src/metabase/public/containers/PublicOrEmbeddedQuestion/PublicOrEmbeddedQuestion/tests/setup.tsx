@@ -79,10 +79,6 @@ export async function setup(
 ) {
   const settings = mockSettings({
     "token-features": tokenFeatures,
-    "available-locales": [
-      ["en", "English"],
-      ["ko", "Korean"],
-    ],
   });
 
   if (hasEnterprisePlugins) {
