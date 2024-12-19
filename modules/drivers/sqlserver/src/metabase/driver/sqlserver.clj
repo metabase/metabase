@@ -25,7 +25,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log])
   (:import
-   (java.sql Connection ResultSet Time)
+   (java.sql Connection PreparedStatement ResultSet Time)
    (java.time
     LocalDate
     LocalDateTime
@@ -805,6 +805,12 @@
 (defmethod sql-jdbc.execute/set-parameter [:sqlserver OffsetTime]
   [driver ps i t]
   (sql-jdbc.execute/set-parameter driver ps i (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
+
+;; Azure Synapse supports the uuid data type, but it errors if you actually pass it a uuid as a parameter.
+;; Passing uuids as strings avoids that issue, and normal SQL Server also seems to be fine with this.
+(defmethod sql-jdbc.execute/set-parameter [:sqlserver UUID]
+  [_ ^PreparedStatement prepared-statement i object]
+  (.setObject prepared-statement i (str object)))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:sqlserver java.sql.Types/CHAR]
   [driver ^java.sql.ResultSet rs ^java.sql.ResultSetMetaData rsmeta ^Integer i]
