@@ -100,7 +100,6 @@ If set to 0, Metabase will keep all rows.")
               (t/minus (t/offset-date-time) (t/days (audit-max-retention-days)))]
       :limit (audit-table-truncation-batch-size)})))
 
-
 (defn- truncate-table!
   "Given a model, deletes all rows older than the configured threshold"
   [model time-column]
