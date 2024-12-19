@@ -570,7 +570,7 @@ describe("issue 30680", () => {
   });
 });
 
-describe("issue 34330", () => {
+describe("issue 34330", { tags: "@flaky" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
