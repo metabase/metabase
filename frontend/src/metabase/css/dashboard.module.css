@@ -6,6 +6,10 @@
 
 /* Night mode */
 .Dashboard.DashboardNight {
+  /** Apply dark mode colors to semantic color variables. */
+  --mb-color-text-primary: var(--mb-color-text-white-alpha-85);
+  --mb-color-text-dark: var(--mb-color-text-white-alpha-85);
+
   background-color: var(--mb-color-bg-black);
 }
 

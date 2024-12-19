@@ -25,6 +25,7 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
     hasBackground = true,
     children,
     disabled,
+    className,
     ...actionIconProps
   }: ToolbarButtonProps,
   ref: Ref<HTMLButtonElement>,
@@ -51,6 +52,7 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
       onClick={handleButtonClick}
       bg={hasBackground ? undefined : "transparent"}
       disabled={disabled}
+      c="var(--mb-color-text-primary)"
       {...actionIconProps}
     >
       {children ?? (
