@@ -1,0 +1,10 @@
+/* increase specificity */
+.Root {
+  .FlexDateInput {
+    flex: 1 1 auto;
+  }
+
+  .FlexTimeInput {
+    flex: 1 1 auto;
+  }
+}

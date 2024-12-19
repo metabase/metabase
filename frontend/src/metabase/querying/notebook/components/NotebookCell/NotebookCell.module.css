@@ -1,0 +1,86 @@
+.NotebookCell {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  border-radius: 8px;
+  background-color: color-mix(
+    in srgb,
+    var(--notebook-cell-color),
+    transparent 90%
+  );
+}
+
+.NotebookCellItemContainer {
+  display: flex;
+  font-weight: bold;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: default;
+  color: var(--mb-color-text-white);
+  align-items: stretch;
+  transition: border 300ms linear;
+
+  &.cursorPointer {
+    cursor: pointer;
+  }
+
+  &.inactive {
+    color: var(--notebook-cell-item-container-color);
+    border-color: color-mix(
+      in srgb,
+      var(--notebook-cell-item-container-color),
+      transparent 75%
+    );
+
+    &:hover {
+      border-color: color-mix(
+        in srgb,
+        var(--notebook-cell-item-container-color),
+        transparent 20%
+      );
+    }
+  }
+
+  &.disabled {
+    pointer-events: none;
+  }
+
+  :global(.Icon-close) {
+    opacity: 0.6;
+  }
+}
+
+.NotebookCellItemContentContainer {
+  display: flex;
+  align-items: center;
+  background-color: var(--notebook-cell-item-content-container-color);
+  transition: background 300ms linear;
+  /* background-color: transparent; */
+
+  &.inactive {
+    background-color: transparent;
+  }
+
+  &.canHover:hover {
+    background-color: color-mix(
+      in srgb,
+      var(--notebook-cell-item-content-container-color),
+      transparent 20%
+    );
+  }
+
+  &.leftBorder {
+    border-left: 1px solid
+      color-mix(in srgb, var(--mb-color-bg-white), transparent 25%);
+  }
+
+  &.leftRoundedCorners {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+  }
+
+  &.rightRoundedCorners {
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+  }
+}
