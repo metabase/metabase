@@ -17,10 +17,9 @@ import {
 } from "../../analytics";
 
 import { CombineColumns, hasCombinations } from "./CombineColumns";
-import {
-  ExpressionEditorTextfield,
-  type SuggestionShortcut,
-} from "./ExpressionEditorTextfield";
+import { Editor as ExpressionEditorTextfield } from "./Editor";
+// import { ExpressionEditorTextfield } from "./ExpressionEditorTextfield";
+import type { SuggestionShortcut } from "./ExpressionEditorTextfield";
 import ExpressionWidgetS from "./ExpressionWidget.module.css";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
