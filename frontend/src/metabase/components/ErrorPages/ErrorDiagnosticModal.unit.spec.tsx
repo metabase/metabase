@@ -1,5 +1,4 @@
-import { render, screen } from "@testing-library/react";
-
+import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockCard,
   createMockDatasetData,
@@ -62,7 +61,7 @@ const defaultErrorPayload: ErrorPayload = {
 };
 
 const setup = (errorInfo: ErrorPayload) => {
-  render(
+  renderWithProviders(
     <ErrorDiagnosticModal
       errorInfo={errorInfo}
       onClose={() => undefined}
