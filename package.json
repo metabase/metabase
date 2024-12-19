@@ -10,6 +10,7 @@
     "yarn": "^1.12.3"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "^6.18.4",
     "@codemirror/language": "^6.10.7",
     "@codemirror/lint": "^6.8.4",
     "@dnd-kit/core": "^6.0.8",
