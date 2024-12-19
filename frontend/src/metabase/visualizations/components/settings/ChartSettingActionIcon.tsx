@@ -1,5 +1,3 @@
-import type { MouseEvent } from "react";
-
 import CS from "metabase/css/core/index.css";
 import {
   ActionIcon,
@@ -10,7 +8,6 @@ import {
 
 interface ChartSettingActionIconProps extends ActionIconProps {
   icon: IconName;
-  onClick: (target: MouseEvent<HTMLButtonElement>) => void;
   "data-testid"?: string;
 }
 
