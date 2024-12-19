@@ -21,10 +21,7 @@ export const ChartSettingActionIcon = ({
 }: ChartSettingActionIconProps) => (
   <ActionIcon
     data-testid={dataTestId}
-    onClick={e => {
-      e.stopPropagation();
-      onClick(e);
-    }}
+    onClick={onClick}
     p={0}
     c="text-medium"
     size="sm"
