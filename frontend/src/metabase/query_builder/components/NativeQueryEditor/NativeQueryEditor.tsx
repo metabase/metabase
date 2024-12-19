@@ -25,8 +25,12 @@ import type {
 
 import { ResponsiveParametersList } from "../ResponsiveParametersList";
 
+import {
+  CodeMirrorEditor as Editor,
+  type EditorProps,
+  type EditorRef,
+} from "./CodeMirrorEditor";
 import DataSourceSelectors from "./DataSourceSelectors";
-import { Editor, type EditorProps, type EditorRef } from "./Editor";
 import S from "./NativeQueryEditor.module.css";
 import type { Features as SidebarFeatures } from "./NativeQueryEditorSidebar";
 import { NativeQueryEditorSidebar } from "./NativeQueryEditorSidebar";
