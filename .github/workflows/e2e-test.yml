@@ -25,16 +25,16 @@ on:
       mongo:
         type: boolean
         default: false
-      maildev:
-        type: boolean
-        default: false
-      openldap:
-        type: boolean
-        default: false
       postgres:
         type: boolean
         default: false
       mysql:
+        type: boolean
+        default: false
+      maildev:
+        type: boolean
+        default: false
+      openldap:
         type: boolean
         default: false
       webhook:
