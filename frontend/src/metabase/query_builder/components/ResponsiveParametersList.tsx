@@ -1,18 +1,15 @@
+import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
+import { Box, Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Parameter, ParameterId } from "metabase-types/api";
 
-import {
-  FilterButton,
-  ParametersListContainer,
-  ParametersListHeader,
-  ResponsiveParametersListRoot,
-  StyledParametersList,
-} from "./ResponsiveParametersList.styled";
+import ResponsiveParametersListS from "./ResponsiveParametersList.module.css";
+import { SyncedParametersList } from "./SyncedParametersList";
 
 interface ResponsiveParametersListProps {
   question: Question;
@@ -43,12 +40,10 @@ export const ResponsiveParametersList = ({
   }, [parameters]);
 
   return (
-    <ResponsiveParametersListRoot
-      isSmallScreen={isSmallScreen}
-      isShowingMobile={mobileShowParameterList}
-    >
+    <Box w={isSmallScreen && mobileShowParameterList ? "100%" : undefined}>
       {isSmallScreen && (
-        <FilterButton
+        <Button
+          className={ResponsiveParametersListS.filterButton}
           borderless
           primary
           icon="filter"
@@ -61,14 +56,16 @@ export const ResponsiveParametersList = ({
                 activeFilters,
               )
             : `Filters`}
-        </FilterButton>
+        </Button>
       )}
-      <ParametersListContainer
-        isSmallScreen={isSmallScreen}
-        isShowingMobile={mobileShowParameterList}
+      <Box
+        className={cx(ResponsiveParametersListS.ParametersListContainer, {
+          [ResponsiveParametersListS.isSmallScreen]: isSmallScreen,
+          [ResponsiveParametersListS.isShowingMobile]: mobileShowParameterList,
+        })}
       >
         {isSmallScreen && (
-          <ParametersListHeader>
+          <Flex p="0.75rem 1rem" align="center" justify="space-between">
             <h3>Filters</h3>
             <Button
               onlyIcon
@@ -76,9 +73,10 @@ export const ResponsiveParametersList = ({
               icon="close"
               onClick={handleFilterButtonClick}
             />
-          </ParametersListHeader>
+          </Flex>
         )}
-        <StyledParametersList
+        <SyncedParametersList
+          className={ResponsiveParametersListS.StyledParametersList}
           question={question}
           parameters={parameters}
           setParameterValue={setParameterValue}
@@ -88,7 +86,7 @@ export const ResponsiveParametersList = ({
           isEditing
           commitImmediately
         />
-      </ParametersListContainer>
-    </ResponsiveParametersListRoot>
+      </Box>
+    </Box>
   );
 };
