@@ -45,7 +45,10 @@
       (let [request (mock-request {:client @#'sdk/embedding-sdk-client})
             good (sdk/embedding-mw (fn [_ respond _] (respond {:status 200})))
             bad (sdk/embedding-mw (fn [_ respond _] (respond {:status 400})))
+            ignored (sdk/embedding-mw (fn [_ respond _] (respond {:status 302})))
             exception (sdk/embedding-mw (fn [_ _respond raise] (raise {})))]
+        (ignored request identity identity)
+        (is (= {} @prometheus-standin))
         (good request identity identity)
         (is (= {:metabase-sdk/response-ok 1} @prometheus-standin))
         (bad request identity identity)
@@ -62,7 +65,10 @@
       (let [request (mock-request {:client @#'sdk/embedding-iframe-client})
             good (sdk/embedding-mw (fn [_ respond _] (respond {:status 200})))
             bad (sdk/embedding-mw (fn [_ respond _] (respond {:status 400})))
+            ignored (sdk/embedding-mw (fn [_ respond _] (respond {:status 302})))
             exception (sdk/embedding-mw (fn [_ _respond raise] (raise {})))]
+        (ignored request identity identity)
+        (is (= {} @prometheus-standin))
         (good request identity identity)
         (is (= {:metabase-embedding-iframe/response-ok 1} @prometheus-standin))
         (bad request identity identity)
@@ -79,7 +85,10 @@
       (let [request (mock-request {:client "my-client"})
             good (sdk/embedding-mw (fn [_ respond _] (respond {:status 200})))
             bad (sdk/embedding-mw (fn [_ respond _] (respond {:status 400})))
+            ignored (sdk/embedding-mw (fn [_ respond _] (respond {:status 302})))
             exception (sdk/embedding-mw (fn [_ _respond raise] (raise {})))]
+        (ignored request identity identity)
+        (is (= {} @prometheus-standin))
         (good request identity identity)
         (is (= {} @prometheus-standin))
         (bad request identity identity)
@@ -93,7 +102,10 @@
       (let [request (mock-request {}) ;; <= no X-Metabase-Client header => no SDK context
             good (sdk/embedding-mw (fn [_ respond _] (respond {:status 200})))
             bad (sdk/embedding-mw (fn [_ respond _] (respond {:status 400})))
+            ignored (sdk/embedding-mw (fn [_ respond _] (respond {:status 302})))
             exception (sdk/embedding-mw (fn [_ _respond raise] (raise {})))]
+        (ignored request identity identity)
+        (is (= {} @prometheus-standin))
         (good request identity identity)
         (is (= {} @prometheus-standin))
         (bad request identity identity)
