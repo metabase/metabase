@@ -53,8 +53,8 @@ export const baseStyle = css`
     text-align: left;
   }
 
-  /* reset button element */
   button {
+    /* reset button element */
     font-size: 100%;
     -webkit-appearance: none;
     border: 0;
@@ -62,6 +62,13 @@ export const baseStyle = css`
     margin: 0;
     outline: none;
     background-color: transparent;
+  }
+
+  a:focus,
+  button:focus,
+  [role="button"]:focus {
+    outline: 2px solid var(--mb-color-focus);
+    transition: outline 0ms;
   }
 
   a {
