@@ -1,14 +1,16 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { NotebookCellItem } from "../../NotebookCell";
+import { CONTAINER_PADDING } from "../../NotebookCell/constants";
 import { NotebookDataPicker } from "../../NotebookDataPicker";
 
-import { ColumnPickerButton } from "./JoinTablePicker.styled";
+import S from "./JoinTablePicker.module.css";
 
 interface JoinTablePickerProps {
   query: Lib.Query;
@@ -72,13 +74,19 @@ function JoinTableColumnPicker({ columnPicker }: JoinTableColumnPickerProps) {
     <Popover opened={isOpened} onChange={setIsOpened}>
       <Popover.Target>
         <Tooltip label={t`Pick columns`}>
-          <ColumnPickerButton
+          <IconButtonWrapper
+            className={S.ColumnPickerButton}
+            style={
+              {
+                "--notebook-cell-container-padding": CONTAINER_PADDING,
+              } as CSSProperties
+            }
             onClick={() => setIsOpened(!isOpened)}
             aria-label={t`Pick columns`}
             data-testid="fields-picker"
           >
             <Icon name="chevrondown" />
-          </ColumnPickerButton>
+          </IconButtonWrapper>
         </Tooltip>
       </Popover.Target>
       <Popover.Dropdown>{columnPicker}</Popover.Dropdown>
