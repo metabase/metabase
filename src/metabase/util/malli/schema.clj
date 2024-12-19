@@ -268,7 +268,7 @@
 
 (def ^:private keyword-or-non-blank-str-malli
   (mc/schema
-   [:or :keyword NonBlankString]))
+   [:or {:json-schema {:type "string" :minLength 1}} :keyword NonBlankString]))
 
 (def BooleanValue
   "Schema for a valid representation of a boolean
