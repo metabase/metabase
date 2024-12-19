@@ -45,20 +45,31 @@ jobs:
               "/cross-version/"
             ];
 
+                        const defaultOptions = {
+              "java-version": java,
+              runner: defaultRunner,
+              specs: "./e2e/test/scenarios/**/*.cy.spec.*",
+              edition: "ee",
+            };
+
+            const specialTests = [
+              { name: "embedding-sdk", specs: "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*" },
+              { name: "oss-subset", edition: 'oss', tags: "@OSS" },
+              { name: "slow", tags: "@slow" },
+              { name: "mongo", tags: "@mongo" },
+            ];
+
             const fileNames = "${{ steps.test-files.outputs.filenames }}"
               .split(",")
               .filter(Boolean)
               .filter(testPath => !blacklist.some(blacklisted => testPath.includes(blacklisted)));
 
             const fileCount = fileNames.length;
-            const chunkSize = fileCount / Number('${{ inputs.chunks }}');
 
-            const defaultOptions = {
-              "java-version": java,
-              runner: defaultRunner,
-              specs: "./e2e/test/scenarios/**/*.cy.spec.*",
-              edition: "ee",
-            };
+            // subtract the special tests since they all get their own runners
+            const chunkSize = fileCount / (Number('${{ inputs.chunks }}') - specialTests.length);
+
+
 
             const chunkedFiles = _.chunk(fileNames, chunkSize);
 
@@ -67,14 +78,6 @@ jobs:
               specs: files.join(","),
               tags: '',
             }));
-
-            const specialTests = [
-              { name: "embedding-sdk", specs: "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*" },
-              { name: "oss-subset", edition: 'oss', tags: "@OSS" },
-              { name: "slow", tags: "@slow" },
-              { name: "flaky", tags: "@flaky" },
-              { name: "mongo", tags: "@mongo" },
-            ];
 
             const testSets = [...regularTests, ...specialTests];
 
