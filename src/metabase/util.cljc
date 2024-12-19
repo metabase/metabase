@@ -337,7 +337,7 @@
 (defn email?
   "Is `s` a valid email address string?"
   ^Boolean [^String s]
-  (boolean (when (string? s)
+  (boolean (when (and (string? s) (str/includes? s "@")) ;; early bail
              (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
                          (lower-case-en s)))))
 
@@ -365,10 +365,15 @@
 (defn url?
   "Is `s` a valid HTTP/HTTPS URL string?"
   ^Boolean [s]
-  #?(:clj  (let [validator (UrlValidator. (u.jvm/varargs String ["http" "https"])
-                                          (RegexValidator. url-regex-pattern)
-                                          UrlValidator/ALLOW_LOCAL_URLS)]
-             (.isValid validator (str s)))
+  #?(:clj  (and s
+                ;; UrlValidator is very expensive when non-URLs are passed to it, so we verify if the string looks
+                ;; urlish before passing to UrlValidator.
+                (str/includes? s "://")
+                (let [validator (UrlValidator. (u.jvm/varargs String ["http" "https"])
+                                               (RegexValidator. url-regex-pattern)
+                                               UrlValidator/ALLOW_LOCAL_URLS)]
+                  ;; (swap! -args conj s)
+                  (.isValid validator (str s))))
      :cljs (try
              (let [url (js/URL. (str s))]
                (boolean (and (re-matches (js/RegExp. url-regex-pattern "u")
