@@ -123,33 +123,57 @@ jobs:
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
     secrets: inherit
     with:
-      runner: ${{ matrix.runner }}
       name: ${{ matrix.name }}
       edition: ${{ matrix.edition }}
       specs: ${{ matrix.specs }}
       tags: ${{ matrix.tags }}
-      openldap: ${{ contains(matrix.specs, 'ldap') }}
+      runner: ${{ matrix.runner }}
+      mongo: ${{ matrix.name == 'mongo'}}
       postgres: ${{ matrix.name != 'mongo'}}
       mysql: ${{ matrix.name != 'mongo'}}
-      mongo: ${{ matrix.name == 'mongo'}}
+      maildev: true
+      openldap: ${{ contains(matrix.specs, 'ldap') }}
+      webhook: true
+
+  flaky-e2e-tests:
+    name: Flaky e2e Tests
+    uses: ./.github/workflows/e2e-test.yml
+    needs: build
+    secrets: inherit
+    with:
+      name: Flaky Tests
+      tags: "@flaky"
+      openldap: true
+      postgres: true
+      mysql: true
+      mongo: true
       maildev: true
       webhook: true
 
-  e2e-tests-skipped-stub:
-    needs: [e2e-tests, e2e-matrix-builder]
-    if: |
-      !cancelled() &&
-      needs.e2e-tests.result == 'skipped'
-    runs-on: ${{ matrix.runner }}
+  e2e-tests-result:
+    needs: [e2e-tests, flaky-e2e-tests]
+    runs-on: ubuntu-latest
     timeout-minutes: 5
-    name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}
-    strategy:
-      fail-fast: false
-      # TODO: not sure if we need this anymore
-      matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
+    name: e2e-tests-result
+    if: always() && !cancelled()
+    env:
+      E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
+      FLAKY_E2E_TESTS_RESULT: ${{ needs.flaky-e2e-tests.result }}
     steps:
-      - run: |
+      - name: Stub
+        if: ${{ needs.e2e-tests.result == 'skipped' }}
+        run: |
           echo "Didn't run due to conditional filtering"
+      - name: Test results
+        if: ${{ needs.e2e-tests.result != 'skipped' }}
+        run: | # sh
+          echo "E2E Tests: ${{ needs.e2e-tests.result }}"
+          echo "Flaky E2E Tests: ${{ needs.flaky-e2e-tests.result }}"
+
+          if [ "${{ needs.e2e-tests.result }}" != "success" ]; then
+            echo "E2E Tests failed"
+            exit 1
+          fi
 
   pr-env:
     needs: [build]

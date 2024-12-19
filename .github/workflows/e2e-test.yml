@@ -8,22 +8,20 @@ on:
         required: true
         type: string
       edition: # oss | ee
-        required: true
+        required: false
         type: string
+        default: ee
       specs:
-        required: true
-        default: ''
+        required: false
+        default: ./e2e/test/scenarios/**/*.cy.spec.*
         type: string
       tags:
         required: false
         type: string
-      folder:
+      runner:
         required: false
         type: string
-      runner:
-        required: true
-        type: string
-        default: 'ubuntu-latest'
+        default: ubuntu-22.04
       mongo:
         type: boolean
         default: false
