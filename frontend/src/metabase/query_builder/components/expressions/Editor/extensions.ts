@@ -9,11 +9,14 @@ import { Prec } from "@uiw/react-codemirror";
 import { getNonce } from "get-nonce";
 import { useMemo } from "react";
 
+import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
+import { getMetadata } from "metabase/selectors/metadata";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
 import type * as Lib from "metabase-lib";
 
 import { customExpression } from "./language";
+import { suggestions } from "./suggestions";
 
 type Options = {
   startRule: "expression" | "aggregation" | "boolean";
@@ -22,11 +25,21 @@ type Options = {
   name?: string | null;
   expressionIndex: number | undefined;
   onCommit: () => void;
+  reportTimezone?: string;
 };
 
 export function useExtensions(options: Options) {
-  const { startRule, query, stageIndex, name, expressionIndex, onCommit } =
-    options;
+  const {
+    startRule,
+    query,
+    stageIndex,
+    name,
+    expressionIndex,
+    onCommit,
+    reportTimezone,
+  } = options;
+
+  const metadata = useSelector(getMetadata);
 
   return useMemo(() => {
     return [
@@ -62,10 +75,27 @@ export function useExtensions(options: Options) {
           },
         ]),
       ),
+      suggestions({
+        query,
+        stageIndex,
+        reportTimezone,
+        startRule,
+        expressionIndex,
+        metadata,
+      }),
     ]
       .flat()
       .filter(isNotNull);
-  }, [startRule, query, stageIndex, name, expressionIndex, onCommit]);
+  }, [
+    startRule,
+    query,
+    stageIndex,
+    name,
+    expressionIndex,
+    onCommit,
+    metadata,
+    reportTimezone,
+  ]);
 }
 
 function nonce() {
