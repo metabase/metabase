@@ -7,7 +7,7 @@ import type { DatePickerUnit, RelativeDatePickerValue } from "../types";
 import { CurrentDatePicker } from "./CurrentDatePicker";
 import { DateIntervalPicker } from "./DateIntervalPicker";
 import { DateOffsetIntervalPicker } from "./DateOffsetIntervalPicker";
-import { TabList } from "./RelativeDatePicker.styled";
+import S from "./RelativeDatePicker.module.css";
 import { DEFAULT_VALUE, TABS } from "./constants";
 import {
   getDirection,
@@ -55,13 +55,13 @@ export function RelativeDatePicker({
     <Tabs value={direction} onTabChange={handleTabChange}>
       <Flex>
         <PopoverBackButton p="sm" onClick={onBack} />
-        <TabList>
+        <Tabs.List className={S.TabList}>
           {TABS.map(tab => (
             <Tabs.Tab key={tab.direction} value={tab.direction}>
               {tab.label}
             </Tabs.Tab>
           ))}
-        </TabList>
+        </Tabs.List>
       </Flex>
       <Divider />
       {TABS.map(tab => (
