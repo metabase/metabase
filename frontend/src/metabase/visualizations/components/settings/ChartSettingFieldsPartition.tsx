@@ -155,6 +155,7 @@ export const ChartSettingFieldsPartition = ({
                   ref={provided.innerRef}
                   mih="2.5rem"
                   pos="relative"
+                  mt={updatedColumns.length === 0 ? "sm" : undefined}
                   style={{ borderRadius: theme.radius.md }}
                 >
                   {updatedColumns.length === 0 ? (
