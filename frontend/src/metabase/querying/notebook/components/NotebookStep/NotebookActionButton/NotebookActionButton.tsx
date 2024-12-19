@@ -19,6 +19,7 @@ interface NotebookActionButtonProps {
 }
 
 export function NotebookActionButton({
+  className,
   icon,
   title,
   color,
@@ -31,9 +32,13 @@ export function NotebookActionButton({
 
   const button = (
     <Button
-      className={cx(S.ColorButton, {
-        [S.transparent]: transparent,
-      })}
+      className={cx(
+        S.ColorButton,
+        {
+          [S.transparent]: transparent,
+        },
+        className,
+      )}
       icon={icon}
       small={!large}
       iconVertical={large}

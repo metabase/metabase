@@ -5,7 +5,7 @@
   background-color: color-mix(
     in srgb,
     var(--notebook-action-button-color),
-    transparent 20%
+    transparent 80%
   );
 
   &.transparent {

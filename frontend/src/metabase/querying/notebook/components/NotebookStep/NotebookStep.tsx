@@ -102,7 +102,7 @@ export function NotebookStep({
         className={cx(CS.hoverParent, CS.hoverVisibility, S.StepRoot)}
         data-testid={step.testID}
       >
-        <Box w={11 / 12} maw="75rem">
+        <Box w={`${(11 / 12) * 100}%`} maw="75rem">
           <StepHeader
             step={step}
             title={title}
@@ -113,7 +113,7 @@ export function NotebookStep({
         </Box>
 
         <Flex align="center">
-          <Box w={11 / 12} maw="75rem">
+          <Box w={`${(11 / 12) * 100}%`} maw="75rem">
             <Step
               step={step}
               query={step.query}
@@ -126,7 +126,7 @@ export function NotebookStep({
             />
           </Box>
           {!readOnly && (
-            <Box w={1 / 12}>
+            <Box w={`${(1 / 12) * 100}%`}>
               <Box
                 className={cx(S.PreviewButton, {
                   [S.noPreviewButton]: !hasPreviewButton,

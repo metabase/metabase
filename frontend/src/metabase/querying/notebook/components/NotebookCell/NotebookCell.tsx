@@ -39,6 +39,7 @@ interface NotebookCellItemProps {
   onClick?: React.MouseEventHandler;
   "data-testid"?: string;
   ref?: React.Ref<HTMLDivElement>;
+  className?: string;
 }
 
 export const NotebookCellItem = forwardRef<
@@ -54,6 +55,7 @@ export const NotebookCellItem = forwardRef<
     rightContainerStyle,
     children,
     readOnly,
+    className,
     ...restProps
   },
   ref,
@@ -62,12 +64,16 @@ export const NotebookCellItem = forwardRef<
 
   return (
     <Flex
-      className={cx(S.NotebookCellItemContainer, {
-        [S.inactive]: inactive,
-        [S.disabled]: disabled,
-        [S.cursorPointer]:
-          (!inactive || restProps.onClick) && !readOnly && !disabled,
-      })}
+      className={cx(
+        S.NotebookCellItemContainer,
+        {
+          [S.inactive]: inactive,
+          [S.disabled]: disabled,
+          [S.cursorPointer]:
+            (!inactive || restProps.onClick) && !readOnly && !disabled,
+        },
+        className,
+      )}
       style={
         {
           "--notebook-cell-item-container-color": color,
@@ -82,6 +88,7 @@ export const NotebookCellItem = forwardRef<
           S.NotebookCellItemContentContainer,
           S.leftRoundedCorners,
           {
+            [S.inactive]: inactive,
             [S.rightRoundedCorners]: !hasRightSide,
             [S.canHover]: !inactive && !readOnly && !disabled,
           },
