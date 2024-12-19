@@ -150,7 +150,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
