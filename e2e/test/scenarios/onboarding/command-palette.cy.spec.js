@@ -4,6 +4,7 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { describeEE } from "e2e/support/helpers";
 
 const { admin } = USERS;
 
@@ -150,30 +151,91 @@ describe("command palette", () => {
     });
   });
 
-  it("should render links to site settings in settings pages", () => {
-    cy.visit("/admin");
-    cy.findByRole("heading", { name: "Getting set up" }).should("exist");
-    H.openCommandPalette();
+  describe("admin settings links", () => {
+    it("should render links to all admin settings pages for admins", () => {
+      cy.visit("/");
+      cy.findByTestId("home-page")
+        .findByText(/see what metabase can do/i)
+        .should("exist");
 
-    H.commandPalette().within(() => {
-      H.commandPaletteInput().type("Custom Homepage");
-      cy.findByRole("option", { name: "Custom Homepage" }).click();
+      H.openCommandPalette();
+      H.commandPalette().within(() => {
+        H.commandPaletteInput().type("Settings -");
+        cy.log("check admin sees all settings links");
+        H.commandPaletteAction("Settings - Setup").should("exist");
+        H.commandPaletteAction("Settings - General").should("exist");
+        H.commandPaletteInput().clear();
+
+        cy.log("shouldsee admin links");
+        H.commandPaletteInput().type("Performance");
+        H.commandPaletteAction("Performance").should("exist");
+      });
     });
 
-    cy.findByTestId("custom-homepage-setting").should("be.visible");
+    it("should not render any links to settings or admin pages for non-admins without settings access", () => {
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      cy.findByTestId("home-page")
+        .findByText(/see what metabase can do/i)
+        .should("exist");
 
-    cy.location("pathname").should("contain", "settings/general");
-    cy.location("hash").should("contain", "#custom-homepage");
+      H.openCommandPalette();
+      H.commandPalette().within(() => {
+        cy.log("check normal user does not see any setting links");
+        H.commandPaletteInput().type("Settings -");
+        H.commandPaletteAction("Settings - Setup").should("not.exist");
+        H.commandPaletteAction("Settings - General").should("not.exist");
+        H.commandPaletteInput().clear();
 
-    H.openCommandPalette();
-
-    H.commandPalette().within(() => {
-      H.commandPaletteInput().clear().type("Week");
-      cy.findByRole("option", { name: "First day of the week" }).click();
+        cy.log("should not see admin links");
+        H.commandPaletteInput().type("Performance");
+        H.commandPaletteAction("Performance").should("not.exist");
+      });
     });
 
-    cy.location("pathname").should("contain", "settings/localization");
-    cy.location("hash").should("contain", "#start-of-week");
+    describeEE("with advanced permissions", () => {
+      it("should render links to settings pages but not other admin pages for non-admins with settings access", () => {
+        // setup
+        cy.log("setup permissions");
+
+        H.setTokenFeatures("all");
+        cy.visit("/admin/permissions/application");
+
+        const SETTINGS_INDEX = 0;
+        H.modifyPermission("All Users", SETTINGS_INDEX, "Yes");
+
+        cy.button("Save changes").click();
+
+        H.modal().within(() => {
+          cy.findByText("Save permissions?");
+          cy.findByText("Are you sure you want to do this?");
+          cy.button("Yes").click();
+        });
+
+        cy.signInAsNormalUser();
+
+        // test
+        cy.visit("/");
+        cy.findByTestId("home-page")
+          .findByText(/see what metabase can do/i)
+          .should("exist");
+
+        H.openCommandPalette();
+        H.commandPalette().within(() => {
+          H.commandPaletteInput().type("Settings -");
+          cy.log(
+            "check user with settings permissions see non-admin restricted settings links",
+          );
+          H.commandPaletteAction("Settings - Setup").should("not.exist");
+          H.commandPaletteAction("Settings - General").should("exist");
+          H.commandPaletteInput().clear();
+
+          cy.log("should not see admin links");
+          H.commandPaletteInput().type("Performance");
+          H.commandPaletteAction("Performance").should("not.exist");
+        });
+      });
+    });
   });
 
   it("should not be accessible when doing full app embedding", () => {
