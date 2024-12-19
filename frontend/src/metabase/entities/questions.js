@@ -1,7 +1,12 @@
 import { updateIn } from "icepick";
 import { t } from "ttag";
 
-import { cardApi, datasetApi, useGetCardQuery } from "metabase/api";
+import {
+  cardApi,
+  datasetApi,
+  useGetCardQuery,
+  useListCardsQuery,
+} from "metabase/api";
 import {
   canonicalCollectionId,
   isRootTrashCollection,
@@ -46,6 +51,7 @@ const Questions = createEntity({
     getUseGetQuery: () => ({
       useGetQuery: useGetCardQuery,
     }),
+    useListQuery: useListCardsQuery,
   },
 
   api: {
