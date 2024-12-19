@@ -2,9 +2,9 @@ import type { ComponentType, ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 import { useLatest } from "react-use";
 import { match } from "ts-pattern";
+import _ from "underscore";
 
 import DefaultLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { useDeepMemo } from "metabase/hooks/use-deep-memo";
 import { capitalize } from "metabase/lib/formatting";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -118,13 +118,13 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
       return entitiesDefinitions[entityType];
     }, [entityType]);
 
-  const entityQueryRaw = useSelector(state =>
-    typeof entityQueryProp === "function"
-      ? entityQueryProp(state, props)
-      : entityQueryProp,
+  const entityQuery = useSelector(
+    state =>
+      typeof entityQueryProp === "function"
+        ? entityQueryProp(state, props)
+        : entityQueryProp,
+    _.isEqual,
   );
-
-  const entityQuery = useDeepMemo(() => entityQueryRaw, [entityQueryRaw]);
 
   const entityOptions = useMemo(() => ({ entityQuery }), [entityQuery]);
 
