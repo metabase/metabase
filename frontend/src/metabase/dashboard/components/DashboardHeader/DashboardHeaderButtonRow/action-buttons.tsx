@@ -32,7 +32,7 @@ export const DASHBOARD_ACTION = {
   EXTRA_EDIT_BUTTONS_MENU: "EXTRA_EDIT_BUTTONS_MENU",
   COPY_ANALYTICS_DASHBOARD: "COPY_ANALYTICS_DASHBOARD",
   EDIT_DASHBOARD: "EDIT_DASHBOARD",
-  DASHBOARD_SHARING: "DASHBOARD_SHARING",
+  DASHBOARD_NOTIFICATIONS: "DASHBOARD_NOTIFICATIONS",
   REFRESH_WIDGET: "REFRESH_WIDGET",
   NIGHT_MODE_TOGGLE: "NIGHT_MODE_TOGGLE",
   FULLSCREEN_TOGGLE: "FULLSCREEN_TOGGLE",
@@ -86,7 +86,7 @@ export const dashboardActionButtons: Record<
     enabled: ({ isFullscreen, isEditing, canEdit }) =>
       !isFullscreen && !isEditing && canEdit,
   },
-  [DASHBOARD_ACTION.DASHBOARD_SHARING]: {
+  [DASHBOARD_ACTION.DASHBOARD_NOTIFICATIONS]: {
     component: DashboardNotificationsMenu,
     enabled: ({ isEditing }) => !isEditing,
   },
