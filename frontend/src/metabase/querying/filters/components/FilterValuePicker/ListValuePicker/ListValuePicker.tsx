@@ -1,4 +1,4 @@
-import type { ChangeEvent, FocusEvent } from "react";
+import type { CSSProperties, ChangeEvent, FocusEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -9,12 +9,13 @@ import {
   Stack,
   Text,
   TextInput,
+  useMantineTheme,
 } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
 
 import { getEffectiveOptions, getFieldOptions } from "../utils";
 
-import { ColumnGrid } from "./ListValuePicker.styled";
+import S from "./ListValuePicker.module.css";
 import { LONG_OPTION_LENGTH, MAX_INLINE_OPTIONS } from "./constants";
 import { searchOptions } from "./utils";
 
@@ -139,10 +140,19 @@ function CheckboxGridPicker({
   );
   const cols = hasLongOptions ? 1 : 2;
   const rows = Math.ceil(options.length / cols);
+  const theme = useMantineTheme();
 
   return (
     <Checkbox.Group value={selectedValues} onChange={onChange}>
-      <ColumnGrid rows={rows}>
+      <div
+        className={S.ColumnGrid}
+        style={
+          {
+            "--column-grid-rows": rows,
+            "--column-grid-gap": theme.spacing.md,
+          } as CSSProperties
+        }
+      >
         {options.map(option => (
           <Checkbox
             key={option.value}
@@ -150,7 +160,7 @@ function CheckboxGridPicker({
             label={option.label}
           />
         ))}
-      </ColumnGrid>
+      </div>
     </Checkbox.Group>
   );
 }
