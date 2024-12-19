@@ -1,25 +1,10 @@
 import {
   formatNativeQuery,
-  getEngineNativeAceMode,
   getEngineNativeType,
   getNativeQueryLanguage,
   isDeprecatedEngine,
 } from "metabase/lib/engine";
 import type { Engine } from "metabase-types/api";
-
-describe("getEngineNativeAceMode", () => {
-  it("should be SQL when engine is undefined", () => {
-    expect(getEngineNativeAceMode()).toBe("ace/mode/sql");
-  });
-
-  it("should be SQL mode for H2", () => {
-    expect(getEngineNativeAceMode("h2")).toBe("ace/mode/sql");
-  });
-
-  it("should be JSON for MongoDB", () => {
-    expect(getEngineNativeAceMode("mongo")).toBe("ace/mode/json");
-  });
-});
 
 describe("getEngineNativeType", () => {
   it("should be sql when engine is undefined", () => {

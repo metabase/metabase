@@ -1,1 +1,5 @@
-export { CodeMirrorEditor } from "./CodeMirrorEditor";
+export {
+  CodeMirrorEditor,
+  type EditorProps,
+  type EditorRef,
+} from "./CodeMirrorEditor";
