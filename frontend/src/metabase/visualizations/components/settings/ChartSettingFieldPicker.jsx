@@ -3,18 +3,20 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
+import { ActionIcon, Group, Icon, useMantineTheme } from "metabase/ui";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
+import { ChartSettingActionIcon } from "./ChartSettingActionIcon";
+import { ChartSettingColorPicker } from "./ChartSettingColorPicker";
 import {
   ChartSettingFieldPickerRoot,
-  FieldPickerColorPicker,
   GrabberHandle,
-  SettingsButton,
 } from "./ChartSettingFieldPicker.styled";
 import ChartSettingSelect from "./ChartSettingSelect";
 
-const ChartSettingFieldPicker = ({
+export const ChartSettingFieldPicker = ({
   value,
   options,
   onChange,
@@ -32,6 +34,8 @@ const ChartSettingFieldPicker = ({
   autoOpenWhenUnset = true,
   fieldSettingWidget = null,
 }) => {
+  const theme = useMantineTheme();
+
   let columnKey;
   if (value && showColumnSetting && columns) {
     const column = _.findWhere(columns, { name: value });
@@ -69,52 +73,106 @@ const ChartSettingFieldPicker = ({
       seriesKey = keyForSingleSeries(seriesForColumn);
     }
   }
+
+  const disabled =
+    options.length === 0 ||
+    (options.length === 1 && options[0].value === value);
+
   return (
     <ChartSettingFieldPickerRoot
       className={className}
-      disabled={options.length === 1 && options[0].value === value}
       showDragHandle={showDragHandle}
       data-testid="chartsettings-field-picker"
+      bg="bg-white"
+      align="center"
     >
-      {showDragHandle && <GrabberHandle name="grabber" noPointer noMargin />}
-      {showColorPicker && seriesKey && (
-        <FieldPickerColorPicker
-          pillSize="small"
-          value={colors[seriesKey]}
-          onChange={value => {
-            onChangeSeriesColor(seriesKey, value);
-          }}
-        />
-      )}
       <ChartSettingSelect
-        value={value}
-        options={options}
-        onChange={onChange}
-        placeholder={t`Select a field`}
-        placeholderNoOptions={t`No valid fields`}
+        data-testid="chartsettings-field-picker-select"
+        pl="sm"
+        pr="xs"
+        w="100%"
         isInitiallyOpen={autoOpenWhenUnset && value === undefined}
-        hiddenIcons
+        options={options}
+        value={value}
+        onChange={onChange}
+        icon={
+          showDragHandle || (showColorPicker && seriesKey) ? (
+            <Group noWrap spacing="sm" p="xs" ml="sm">
+              {showDragHandle && (
+                <GrabberHandle
+                  name="grabber"
+                  noMargin
+                  onClick={e => e.stopPropagation()}
+                  c="text-medium"
+                  className={CS.pointerEventsAll}
+                />
+              )}
+              {showColorPicker && seriesKey && (
+                <ChartSettingColorPicker
+                  pillSize="small"
+                  value={colors[seriesKey]}
+                  onChange={value => {
+                    onChangeSeriesColor(seriesKey, value);
+                  }}
+                  className={CS.pointerEventsAll}
+                />
+              )}
+            </Group>
+          ) : null
+        }
+        placeholderNoOptions={t`No valid fields`}
+        placeholder={t`Select a field`}
+        iconWidth="auto"
+        rightSectionWidth="auto"
+        rightSection={
+          <Group noWrap spacing="sm" p="xs" mr="sm">
+            {!disabled && (
+              <ActionIcon c="text-medium" size="sm" radius="xl" p={0}>
+                <Icon name="chevrondown" />
+              </ActionIcon>
+            )}
+            {menuWidgetInfo && (
+              <ChartSettingActionIcon
+                icon="ellipsis"
+                data-testid={`settings-${value}`}
+                onClick={e => onShowWidget(menuWidgetInfo, e.currentTarget)}
+              />
+            )}
+            {onRemove && (
+              <ChartSettingActionIcon
+                icon="close"
+                data-testid={`remove-${value}`}
+                onClick={onRemove}
+              />
+            )}
+          </Group>
+        }
+        styles={{
+          wrapper: {
+            display: "flex",
+          },
+          icon: {
+            position: "static",
+            width: "auto",
+          },
+          input: {
+            "&[data-with-icon]": {
+              paddingLeft: 0,
+            },
+            marginLeft: theme.spacing.xs,
+            textOverflow: "ellipsis",
+            fontWeight: "bold",
+            "&[data-disabled]": {
+              backgroundColor: "var(--mb-color-bg-white) !important",
+            },
+            border: "none",
+            width: "100%",
+          },
+          rightSection: {
+            pointerEvents: "none",
+          },
+        }}
       />
-      {menuWidgetInfo && (
-        <SettingsButton
-          onlyIcon
-          icon="ellipsis"
-          onClick={e => {
-            onShowWidget(menuWidgetInfo, e.target);
-          }}
-          data-testid={`settings-${value}`}
-        />
-      )}
-      {onRemove && (
-        <SettingsButton
-          data-testid={`remove-${value}`}
-          icon="close"
-          onlyIcon
-          onClick={onRemove}
-        />
-      )}
     </ChartSettingFieldPickerRoot>
   );
 };
-
-export default ChartSettingFieldPicker;
