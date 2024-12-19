@@ -64,6 +64,11 @@
   []
   (= @(:status mdb.connection/*application-db*) ::setup-finished))
 
+(defn finish-db-setup
+  "Mark the bound Metabase DB as set up and ready."
+  []
+  (reset! (:status mdb.connection/*application-db*) ::setup-finished))
+
 (defn app-db
   "The Application database. A record, but use accessors [[db-type]], [[data-source]], etc to access. Also
   implements [[javax.sql.DataSource]] directly, so you can call [[.getConnection]] on it directly."
@@ -89,7 +94,7 @@
               data-source   (data-source)
               auto-migrate? (config/config-bool :mb-db-automigrate)]
           (mdb.setup/setup-db! db-type data-source auto-migrate? create-sample-content?))
-        (reset! (:status mdb.connection/*application-db*) ::setup-finished))))
+        (finish-db-setup))))
   :done)
 
 (defn release-migration-locks!
