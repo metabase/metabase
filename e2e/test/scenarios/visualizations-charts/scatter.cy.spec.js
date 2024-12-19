@@ -175,13 +175,15 @@ select 10 as size, 2 as x, 5 as y`,
   });
 
   it("should allow adding non-series columns to the tooltip", () => {
-    const additionalColumns = [
-      "Total",
-      "Discount",
-      "Created At",
-      "ID",
-      "User ID",
-      "Product ID",
+    const allTooltipRows = [
+      { name: "Tax", value: "0.86" },
+      { name: "ID", value: "562" },
+      { name: "User ID", value: "70" },
+      { name: "Product ID", value: "61" },
+      { name: "Total", value: "16.55" },
+      { name: "Discount", value: "" },
+      { name: "Created At", value: "July 4, 2023, 4:57 AM" },
+      { name: "Quantity", value: "4" },
     ];
 
     H.visitQuestionAdhoc({
@@ -200,35 +202,33 @@ select 10 as size, 2 as x, 5 as y`,
     H.cartesianChartCircle().first().realHover();
     H.assertEChartsTooltip({
       header: "15.69",
-      rows: [{ name: "Tax", value: "0.86" }],
+      rows: allTooltipRows,
     });
 
-    H.assertEChartsTooltipNotContain(additionalColumns);
-
     cy.findByTestId("viz-settings-button").click();
+    // Resizing animation due to the sidebar
+    cy.wait(200);
+
+    const columnsToRemove = allTooltipRows.slice(2).map(row => row.name);
 
     H.leftSidebar().within(() => {
       cy.findByText("Display").click();
-      cy.findByPlaceholderText("Enter metric names").click();
+
+      columnsToRemove.map(columnName => {
+        cy.findByRole("combobox")
+          .findByText(columnName)
+          .siblings("button")
+          .click();
+      });
     });
-
-    additionalColumns.forEach(name =>
-      cy.findByRole("option", { name }).click(),
-    );
-
-    // Close the popover
-    cy.get("body").type("{esc}");
 
     H.cartesianChartCircle().first().realHover();
+
+    H.assertEChartsTooltipNotContain(columnsToRemove);
     H.assertEChartsTooltip({
       header: "15.69",
-      rows: [
-        { name: "Tax", value: "0.86" },
-        { name: "Total", value: "16.55" },
-        { name: "Discount", value: "(empty)" },
-      ],
+      rows: allTooltipRows.slice(0, 2),
     });
-    H.assertEChartsTooltipNotContain(["Quantity"]);
   });
 });
 

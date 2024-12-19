@@ -430,13 +430,17 @@ export function getComputedAdditionalColumnsValue(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
 ) {
-  const isAggregatedChart = rawSeries[0].card.display !== "scatter";
+  const isScatter = rawSeries[0].card.display === "scatter";
 
   const availableAdditionalColumnKeys = new Set(
-    getAvailableAdditionalColumns(rawSeries, settings, isAggregatedChart).map(
-      column => getColumnKey(column),
+    getAvailableAdditionalColumns(rawSeries, settings, !isScatter).map(column =>
+      getColumnKey(column),
     ),
   );
+
+  if (!settings["graph.tooltip_columns"] && isScatter) {
+    return Array.from(availableAdditionalColumnKeys);
+  }
 
   const filteredStoredColumns = (
     settings["graph.tooltip_columns"] ?? []
