@@ -512,9 +512,9 @@
   []
   (boolean
    (or (.exists (io/file "/.dockerenv"))
-       (when (.exists (io/file "/proc/self/cgroup"))
-         (some #(re-find #"docker" %)
-               (line-seq (io/reader "/proc/self/cgroup")))))))
+       #_(when (.exists (io/file "/proc/self/cgroup"))
+           (some #(re-find #"docker" %)
+                 (line-seq (io/reader "/proc/self/cgroup")))))))
 
 (defn- deployment-model
   []
