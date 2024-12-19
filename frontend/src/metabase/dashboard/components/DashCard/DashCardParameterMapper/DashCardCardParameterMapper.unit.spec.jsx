@@ -13,6 +13,7 @@ import {
   createMockCard,
   createMockDashboardCard,
   createMockHeadingDashboardCard,
+  createMockIFrameDashboardCard,
   createMockLinkDashboardCard,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
@@ -107,6 +108,19 @@ describe("DashCardCardParameterMapper", () => {
       expect(
         screen.getByText(
           "You can connect widgets to {{variables}} in text cards.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("should render an informative parameter mapping state for iframe cards without variables", () => {
+      const textCard = createMockIFrameDashboardCard({ size_y: 3 });
+      setup({
+        dashcard: textCard,
+      });
+      expect(getIcon("info")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "You can connect widgets to {{variables}} in iframe cards.",
         ),
       ).toBeInTheDocument();
     });
