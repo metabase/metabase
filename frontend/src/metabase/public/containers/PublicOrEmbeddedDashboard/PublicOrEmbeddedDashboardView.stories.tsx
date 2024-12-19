@@ -2,15 +2,14 @@
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
 import { type ComponentProps, useEffect } from "react";
-import { Provider } from "react-redux";
 
 import { getStore } from "__support__/entities-store";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { waitTimeContext } from "metabase/context/wait-time";
 import LegacyTooltip from "metabase/core/components/Tooltip";
+import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { publicReducers } from "metabase/reducers-public";
 import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
@@ -42,7 +41,6 @@ export default {
   component: PublicOrEmbeddedDashboardView,
   decorators: [
     ReduxDecorator,
-    FasterExplicitSizeUpdateDecorator,
     WaitForResizeToStopDecorator,
     MockIsEmbeddingDecorator,
   ],
@@ -53,24 +51,15 @@ export default {
 
 function ReduxDecorator(Story: StoryFn) {
   return (
-    <Provider store={store}>
+    <MetabaseReduxProvider store={store}>
       <Story />
-    </Provider>
-  );
-}
-
-function FasterExplicitSizeUpdateDecorator(Story: StoryFn) {
-  return (
-    <waitTimeContext.Provider value={0}>
-      <Story />
-    </waitTimeContext.Provider>
+    </MetabaseReduxProvider>
   );
 }
 
 /**
  * This is an arbitrary number, it should be big enough to pass CI tests.
- * This value works together with FasterExplicitSizeUpdateDecorator which
- * make sure we finish resizing any ExplicitSize components the fastest.
+ * This works because we set delays for ExplicitSize to 0 in storybook.
  */
 const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1000;
 function WaitForResizeToStopDecorator(Story: StoryFn) {
@@ -438,13 +427,21 @@ export const CardVisualizationsDarkTheme = {
   },
 };
 
-const EXPLICIT_SIZE_WAIT_TIME = 300;
 function ScrollDecorator(Story: StoryFn) {
+  const asyncCallback = createAsyncCallback();
+
   useEffect(() => {
-    setTimeout(() => {
-      document.querySelector("[data-testid=embed-frame]")?.scrollBy(0, 9999);
-    }, EXPLICIT_SIZE_WAIT_TIME);
-  }, []);
+    const scrollContainer = document.querySelector("[data-testid=embed-frame]");
+    const intervalId = setInterval(() => {
+      const contentHeight = scrollContainer?.scrollHeight ?? 0;
+      if (contentHeight > 1000) {
+        scrollContainer?.scrollBy(0, 9999);
+        clearInterval(intervalId);
+        asyncCallback();
+      }
+    }, 100);
+  }, [asyncCallback]);
+
   return <Story />;
 }
 

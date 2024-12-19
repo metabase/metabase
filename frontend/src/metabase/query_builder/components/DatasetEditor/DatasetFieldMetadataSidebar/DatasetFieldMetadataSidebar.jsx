@@ -31,11 +31,7 @@ import { isFK } from "metabase-lib/v1/types/utils/isa";
 
 import { EDITOR_TAB_INDEXES } from "../constants";
 
-import {
-  Divider,
-  MainFormContainer,
-  ViewAsFieldContainer,
-} from "./DatasetFieldMetadataSidebar.styled";
+import DatasetFieldMetadataSidebarS from "./DatasetFieldMetadataSidebar.module.css";
 import MappedFieldPicker from "./MappedFieldPicker";
 import SemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
 
@@ -233,7 +229,7 @@ function DatasetFieldMetadataSidebar({
         {({ values: formFieldValues }) => {
           return (
             <Form>
-              <MainFormContainer>
+              <div className={DatasetFieldMetadataSidebarS.MainFormContainer}>
                 <FormTextInput
                   name="display_name"
                   onChange={handleDisplayNameChange}
@@ -275,6 +271,7 @@ function DatasetFieldMetadataSidebar({
                 {isNative && (
                   <Box mb="1.5rem">
                     <MappedFieldPicker
+                      className={DatasetFieldMetadataSidebarS.SelectButton}
                       name="id"
                       label={t`Database column this maps to`}
                       tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
@@ -285,6 +282,7 @@ function DatasetFieldMetadataSidebar({
                 )}
                 <Box mb="1.5rem">
                   <SemanticTypePicker
+                    className={DatasetFieldMetadataSidebarS.SelectButton}
                     name="semantic_type"
                     label={t`Column type`}
                     tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
@@ -302,7 +300,7 @@ function DatasetFieldMetadataSidebar({
                     />
                   </Box>
                 )}
-              </MainFormContainer>
+              </div>
 
               <Tabs value={tab} onTabChange={setTab}>
                 {hasColumnFormattingOptions ? (
@@ -317,7 +315,7 @@ function DatasetFieldMetadataSidebar({
                     ))}
                   </Tabs.List>
                 ) : (
-                  <Divider />
+                  <Box className={DatasetFieldMetadataSidebarS.Divider} />
                 )}
                 <Tabs.Panel value={TAB.SETTINGS} p="1.5rem">
                   <Box mb="1.5rem">
@@ -345,12 +343,12 @@ function DatasetFieldMetadataSidebar({
                       ))}
                     </FormRadioGroup>
                   </Box>
-                  <ViewAsFieldContainer>
+                  <Box fw="bold">
                     <ColumnSettings
                       {...columnSettingsProps}
                       allowlist={VIEW_AS_RELATED_FORMATTING_OPTIONS}
                     />
-                  </ViewAsFieldContainer>
+                  </Box>
                 </Tabs.Panel>
                 <Tabs.Panel value={TAB.FORMATTING} p="1.5rem">
                   <ColumnSettings

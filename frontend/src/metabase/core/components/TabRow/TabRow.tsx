@@ -13,7 +13,13 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { usePreviousDistinct } from "react-use";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -123,10 +129,9 @@ function TabRowInner<T>({
   );
 }
 
-const TabRowInnerWithSize = ExplicitSize()(TabRowInner);
-export function TabRow<T>(props: TabRowProps<T>) {
-  return <TabRowInnerWithSize {...props} />;
-}
+export const TabRow = ExplicitSize<TabRowProps<unknown>>()(TabRowInner) as <T>(
+  props: TabRowProps<T>,
+) => ReactNode;
 
 interface ScrollArrowProps {
   direction: "left" | "right";

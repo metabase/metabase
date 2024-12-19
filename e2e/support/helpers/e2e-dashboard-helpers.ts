@@ -113,7 +113,7 @@ export function setFilter(type: string, subType?: string, name?: string) {
 
   if (subType) {
     sidebar().findByText("Filter operator").next().click();
-    popover().findByText(subType).click();
+    cy.findByRole("listbox").findByText(subType).click();
   }
 
   if (name) {
@@ -211,7 +211,7 @@ export function addHeadingWhileEditing(
 }
 
 export function openQuestionsSidebar() {
-  cy.findByTestId("dashboard-header").findByLabelText("Add questions").click();
+  dashboardHeader().findByLabelText("Add questions").click();
 }
 
 export function createNewTab() {
@@ -311,8 +311,12 @@ export const closeDashboardSettingsSidebar = () => {
   sidesheet().findByLabelText("Close").click();
 };
 
-export function openDashboardMenu() {
+export function openDashboardMenu(option?: string) {
   dashboardHeader().findByLabelText("Move, trash, and more…").click();
+
+  if (option) {
+    popover().findByText(option).click();
+  }
 }
 
 export const dashboardHeader = () => {
@@ -369,7 +373,7 @@ export function getTextCardDetails({
       },
       text,
     },
-  };
+  } as const;
 }
 
 export function getHeadingCardDetails({

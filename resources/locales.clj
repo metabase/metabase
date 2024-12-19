@@ -14,6 +14,7 @@
    "fi"
    "fr"
    "he"
+   "hu"
    "id"
    "it"
    "ja"

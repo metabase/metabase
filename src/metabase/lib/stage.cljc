@@ -236,26 +236,25 @@
            ;; 1a. columns returned by previous stage
            (previous-stage-metadata query stage-number unique-name-fn)
            ;; 1b or 1c
-           (or
-            ;; 1b: default visible Fields for the source Table
-            (when source-table
-              (assert (integer? source-table))
-              (let [table-metadata (lib.metadata/table query source-table)]
-                (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
-            ;; 1e. Metadata associated with a Metric
-            (when metric-based?
-              (metric-metadata query stage-number card options))
-            ;; 1c. Metadata associated with a saved Question
-            (when source-card
-              (saved-question-metadata query stage-number source-card (assoc options :include-implicitly-joinable? false)))
-            ;; 1d: `:lib/stage-metadata` for the (presumably native) query
-            (for [col (:columns (:lib/stage-metadata this-stage))]
-              (assoc col
-                     :lib/source :source/native
-                     :lib/source-column-alias  (:name col)
-                     ;; these should already be unique, but run them thru `unique-name-fn` anyway to make sure anything
-                     ;; that gets added later gets deduplicated from these.
-                     :lib/desired-column-alias (unique-name-fn (:name col)))))))))
+           ;; 1b: default visible Fields for the source Table
+           (when source-table
+             (assert (integer? source-table))
+             (let [table-metadata (lib.metadata/table query source-table)]
+               (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
+           ;; 1e. Metadata associated with a Metric
+           (when metric-based?
+             (metric-metadata query stage-number card options))
+           ;; 1c. Metadata associated with a saved Question
+           (when source-card
+             (saved-question-metadata query stage-number source-card (assoc options :include-implicitly-joinable? false)))
+           ;; 1d: `:lib/stage-metadata` for the (presumably native) query
+           (for [col (:columns (:lib/stage-metadata this-stage))]
+             (assoc col
+                    :lib/source :source/native
+                    :lib/source-column-alias  (:name col)
+                    ;; these should already be unique, but run them thru `unique-name-fn` anyway to make sure anything
+                    ;; that gets added later gets deduplicated from these.
+                    :lib/desired-column-alias (unique-name-fn (:name col))))))))
 
 (mu/defn- existing-visible-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
   [query        :- ::lib.schema/query
@@ -398,19 +397,18 @@
   [query]
   (let [inner-query (:query query)]
     (cond-> query
-      (and (:aggregation inner-query)
-           (:breakout inner-query))
+      (:breakout inner-query)
       (assoc :query {:source-query inner-query}))))
 
 (defn ensure-filter-stage
-  "Adds an empty stage to `query` if its last stage contains both breakouts and aggregations.
+  "Adds an empty stage to `query` if its last stage contains breakouts.
 
-  This is so that parameters can address both the stage before and after the aggregation.
-  Adding filters to the result at stage -1 will filter after the summary, filters added at
-  stage -2 filter before the summary."
+  This is so that parameters can address both the stage before and after the breakouts.
+  Adding filters to the result at stage -1 will filter after the breakouts. Filters added at
+  stage -2 filter before the breakouts."
   [query]
   (if (#{:query :native} (lib.util/normalized-query-type query))
     (ensure-legacy-filter-stage query)
     (cond-> query
-      (and (lib.breakout/breakouts query) (lib.aggregation/aggregations query))
+      (lib.breakout/breakouts query)
       append-stage)))

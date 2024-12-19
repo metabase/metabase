@@ -62,18 +62,25 @@
 (deftest with-filters-test
   (testing "The kitchen sink context is complete"
     (is (empty? (remove kitchen-sink-filter-context (filter-keys)))))
-  (testing "We leave the query alone if there are no filters"
+
+  (testing "In the general case, we simply filter by models"
     (is (= {:select [:some :stuff]
-            :from   :somewhere}
-           (search.filter/with-filters {} {:select [:some :stuff], :from :somewhere}))))
+            :from   :somewhere
+            :where [:= 1 2]}
+           (search.filter/with-filters {:models []} {:select [:some :stuff], :from :somewhere})))
+    (is (= {:select [:some :stuff]
+            :from   :somewhere
+            :where [:in :search_index.model ["a"]]}
+           (search.filter/with-filters {:models ["a"]} {:select [:some :stuff], :from :somewhere}))))
+
   (testing "We can insert appropriate constraints for all the filters"
     (is (= {:select [:some :stuff]
             :from   :somewhere
             ;; This :where clause is a set to avoid flakes, since the clause order will be non-deterministic.
             :where  #{:and
-                      [:in :model #{"dashboard" "table" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"}]
-                      [:in :model_id [1 2 3 4]]
-                      [:in :model ["card" "dataset" "metric" "dashboard" "action"]]
+                      [:in :search_index.model #{"dashboard" "table" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"}]
+                      [:in :search_index.model_id [1 2 3 4]]
+                      [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]
                       [:= :search_index.archived true]
                       [:>= [:cast :search_index.model_created_at :date] #t"2024-10-01"]
                       [:< [:cast :search_index.model_created_at :date] #t"2024-10-02"]

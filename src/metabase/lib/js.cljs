@@ -77,6 +77,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
@@ -346,6 +347,26 @@
                   (str "is-" (str/replace key-str #"\?$" ""))
                   key-str)]
     (u/->camelCaseEn key-str)))
+
+(defn- js-key->cljs-key
+  "Converts idiomatic JavaScript keys (`\"camelCaseStrings\"`) into idiomatic Clojure keys (`:kebab-case-keywords`).
+
+  A `\"is\"` prefix in JavaScript is replaced with a `?` suffix in Clojure , eg. `isManyPks` becomes `:many-pks?`."
+  [js-key]
+  (let [key-str (if (str/starts-with? js-key "is")
+                  (str (subs js-key 2) "?")
+                  js-key)]
+    (-> key-str u/->kebab-case-en keyword)))
+
+(defn- js-obj->cljs-map
+  "Converts a JavaScript object with `\"camelCase\"` keys into a Clojure map with `:kebab-case` keys."
+  [an-object]
+  (-> an-object js->clj (update-keys js-key->cljs-key)))
+
+(defn- cljs-map->js-obj
+  "Converts a Clojure map with `:kebab-case` keys into a JavaScript object with `\"camelCase\"` keys."
+  [a-map]
+  (-> a-map (update-keys cljs-key->js-key) clj->js))
 
 (defn- display-info-map->js* [x]
   (reduce (fn [obj [cljs-key cljs-val]]
@@ -680,6 +701,8 @@
 ;; **This currently only works for legacy queries in JSON form.** At some point MLv2 queries will become the source of
 ;; truth, and the format used on the wire. At that point, we'll want a similar comparison for MLv2 queries.
 
+;; TODO: These equality checks only seem to clean and check the last stages - does that really suffice?
+
 (defn- prep-query-for-equals-legacy [a-query field-ids]
   (-> a-query
       ;; If `:native` exists, but it doesn't have `:template-tags`, add it.
@@ -688,16 +711,22 @@
                                   (let [fields (or (:fields inner-query)
                                                    (for [id field-ids]
                                                      [:field id nil]))]
-                                    ;; We ignore the order of the fields in the lists, but need to make sure any dupes
-                                    ;; match up. Therefore de-dupe with `frequencies` rather than simply `set`.
-                                    (assoc inner-query :fields (frequencies fields)))))))
+                                    (-> inner-query
+                                        ;; We ignore the order of the fields in the lists, but need to make sure any
+                                        ;; dupes match up. Therefore de-dupe with `frequencies` rather than `set`.
+                                        (assoc :fields (frequencies fields))
+                                        ;; Remove the randomized idents, which are of course not going to match.
+                                        (dissoc :aggregation-idents :breakout-idents :expression-idents)))))))
 
 (defn- prep-query-for-equals-pMBQL
   [a-query field-ids]
   (let [fields (or (some->> (lib.core/fields a-query)
                             (map #(assoc % 1 {})))
                    (mapv (fn [id] [:field {} id]) field-ids))]
-    (lib.util/update-query-stage a-query -1 assoc :fields (frequencies fields))))
+    (lib.util/update-query-stage a-query -1
+                                 #(-> %
+                                      (assoc :fields (frequencies fields))
+                                      lib.schema.util/remove-randomized-idents))))
 
 (defn- prep-query-for-equals [a-query field-ids]
   (when-let [normalized-query (some-> a-query normalize-to-clj)]
@@ -728,11 +757,10 @@
          (= (first x) (first y) :field))
     (compare-field-refs x y)
 
-    ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid values don't
-    ;; have to match.
+    ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid and :ident values don't have to match.
     (and (map? x) (map? y))
-    (let [x (dissoc x :lib/uuid)
-          y (dissoc y :lib/uuid)]
+    (let [x (dissoc x :lib/uuid :ident)
+          y (dissoc y :lib/uuid :ident)]
       (and (= (set (keys x)) (set (keys y)))
            (every? (fn [[k v]]
                      (query=* v (get y k)))
@@ -1031,6 +1059,185 @@
          node))
      parts)))
 
+(defn ^:export string-filter-clause
+  "Creates a string filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[string-filter-parts]]. To avoid mistakes the function requires `options` for all operators even
+  though they might not be used. Note that the FE does not support `:is-null` and `:not-null` operators with string
+  columns."
+  [operator column values options]
+  (lib.core/string-filter-clause (keyword operator)
+                                 column
+                                 (js->clj values)
+                                 (js-obj->cljs-map options)))
+
+(defn ^:export string-filter-parts
+  "Destructures a string filter clause created by [[string-filter-clause]]. Returns `nil` if the clause does not match
+  the expected shape. To avoid mistakes the function returns `options` for all operators even though they might not be
+  used. Note that the FE does not support `:is-null` and `:not-null` operators with string columns."
+  [a-query stage-number a-filter-clause]
+  (when-let [filter-parts (lib.core/string-filter-parts a-query stage-number a-filter-clause)]
+    (let [{:keys [operator column values options]} filter-parts]
+      #js {:operator (name operator)
+           :column   column
+           :values   (to-array (map clj->js values))
+           :options  (cljs-map->js-obj options)})))
+
+(defn ^:export number-filter-clause
+  "Creates a numeric filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[number-filter-parts]]."
+  [operator column values]
+  (lib.core/number-filter-clause (keyword operator)
+                                 column
+                                 (js->clj values)))
+
+(defn ^:export number-filter-parts
+  "Destructures a numeric filter clause created by [[number-filter-clause]]. Returns `nil` if the clause does not match
+  the expected shape."
+  [a-query stage-number a-filter-clause]
+  (when-let [filter-parts (lib.core/number-filter-parts a-query stage-number a-filter-clause)]
+    (let [{:keys [operator column values]} filter-parts]
+      #js {:operator (name operator)
+           :column   column
+           :values   (to-array (map clj->js values))})))
+
+(defn ^:export coordinate-filter-clause
+  "Creates a coordinate filter clause based on FE-friendly filter parts. It should be possible to destructure each
+  created expression with [[coordinate-filter-parts]]."
+  [operator column longitude-column values]
+  (lib.core/coordinate-filter-clause (keyword operator)
+                                     column
+                                     longitude-column
+                                     (js->clj values)))
+
+(defn ^:export coordinate-filter-parts
+  "Destructures a coordinate filter clause created by [[coordinate-filter-clause]]. Returns `nil` if the clause does not
+  match the expected shape. Unlike regular numeric filters, coordinate filters do not support `:is-null` and
+  `:not-null`. There is also a special `:inside` operator that requires both latitude and longitude columns."
+  [a-query stage-number a-filter-clause]
+  (when-let [filter-parts (lib.core/coordinate-filter-parts a-query stage-number a-filter-clause)]
+    (let [{:keys [operator column longitude-column values]} filter-parts]
+      #js {:operator        (name operator)
+           :column          column
+           :longitudeColumn longitude-column
+           :values          (to-array (map clj->js values))})))
+
+(defn ^:export boolean-filter-clause
+  "Creates a boolean filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[boolean-filter-parts]]."
+  [operator column values]
+  (lib.core/boolean-filter-clause (keyword operator)
+                                  column
+                                  (js->clj values)))
+
+(defn ^:export boolean-filter-parts
+  "Destructures a boolean filter clause created by [[boolean-filter-clause]]. Returns `nil` if the clause does not match
+  the expected shape."
+  [a-query stage-boolean a-filter-clause]
+  (when-let [filter-parts (lib.core/boolean-filter-parts a-query stage-boolean a-filter-clause)]
+    (let [{:keys [operator column values]} filter-parts]
+      #js {:operator (name operator)
+           :column   column
+           :values   (to-array (map clj->js values))})))
+
+(defn ^:export specific-date-filter-clause
+  "Creates a specific date filter clause based on FE-friendly filter parts. It should be possible to destructure each
+   created expression with [[specific-date-filter-parts]]."
+  [operator column values with-time?]
+  (lib.core/specific-date-filter-clause (keyword operator)
+                                        column
+                                        (js->clj values)
+                                        with-time?))
+
+(defn ^:export specific-date-filter-parts
+  "Destructures a specific date filter clause created by [[specific-date-filter-clause]]. Returns `nil` if the clause
+  does not match the expected shape."
+  [a-query stage-number a-filter-clause]
+  (when-let [filter-parts (lib.core/specific-date-filter-parts a-query stage-number a-filter-clause)]
+    (let [{:keys [operator column values with-time?]} filter-parts]
+      #js {:operator (name operator)
+           :column   column
+           :values   (to-array (map clj->js values))
+           :hasTime  with-time?})))
+
+(defn ^:export relative-date-filter-clause
+  "Creates a relative date filter clause based on FE-friendly filter parts. It should be possible to destructure each
+   created expression with [[relative-date-filter-parts]]."
+  [column value unit offset-value offset-unit options]
+  (lib.core/relative-date-filter-clause column
+                                        (if (string? value) (keyword value) value)
+                                        (keyword unit)
+                                        offset-value
+                                        (some-> offset-unit keyword)
+                                        (js-obj->cljs-map options)))
+
+(defn ^:export relative-date-filter-parts
+  "Destructures a relative date filter clause created by [[relative-date-filter-clause]]. Returns `nil` if the clause
+  does not match the expected shape."
+  [a-query stage-number a-filter-clause]
+  (when-let [filter-parts (lib.core/relative-date-filter-parts a-query stage-number a-filter-clause)]
+    (let [{:keys [column value unit offset-value offset-unit options]} filter-parts]
+      #js {:column      column
+           :value       (if (keyword? value) (name value) value)
+           :unit        (name unit)
+           :offsetValue offset-value
+           :offsetUnit  (some-> offset-unit name)
+           :options     (cljs-map->js-obj options)})))
+
+(defn ^:export exclude-date-filter-clause
+  "Creates an exclude date filter clause based on FE-friendly filter parts. It should be possible to destructure each
+   created expression with [[exclude-date-filter-parts]]."
+  [operator column unit values]
+  (lib.core/exclude-date-filter-clause (keyword operator)
+                                       column
+                                       (some-> unit keyword)
+                                       (js->clj values)))
+
+(defn ^:export exclude-date-filter-parts
+  "Destructures an exclude date filter clause created by [[exclude-date-filter-clause]]. Returns `nil` if the clause
+  does not match the expected shape."
+  [a-query stage-number a-filter-clause]
+  (when-let [filter-parts (lib.core/exclude-date-filter-parts a-query stage-number a-filter-clause)]
+    (let [{:keys [operator column unit values]} filter-parts]
+      #js {:operator    (name operator)
+           :column      column
+           :unit        (some-> unit name)
+           :values      (to-array (map clj->js values))})))
+
+(defn ^:export time-filter-clause
+  "Creates a time filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[time-filter-parts]]."
+  [operator column values]
+  (lib.core/time-filter-clause (keyword operator)
+                               column
+                               (js->clj values)))
+
+(defn ^:export time-filter-parts
+  "Destructures a time filter clause created by [[time-filter-clause]]. Returns `nil` if the clause does not match the
+  expected shape."
+  [a-query stage-boolean a-filter-clause]
+  (when-let [filter-parts (lib.core/time-filter-parts a-query stage-boolean a-filter-clause)]
+    (let [{:keys [operator column values]} filter-parts]
+      #js {:operator (name operator)
+           :column   column
+           :values   (to-array (map clj->js values))})))
+
+(defn ^:export default-filter-clause
+  "Creates a default filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[default-filter-parts]]. This clause works as a fallback for more specialized column types."
+  [operator column]
+  (lib.core/default-filter-clause (keyword operator) column))
+
+(defn ^:export default-filter-parts
+  "Destructures a default filter clause created by [[default-filter-clause]]. Returns `nil` if the clause does not match
+  the expected shape or if the clause uses a string column; the FE allows only `:is-empty` and `:not-empty` operators
+  for string columns."
+  [a-query stage-boolean a-filter-clause]
+  (when-let [filter-parts (lib.core/default-filter-parts a-query stage-boolean a-filter-clause)]
+    (let [{:keys [operator column]} filter-parts]
+      #js {:operator (name operator)
+           :column   column})))
+
+;; TODO remove once all filter-parts are migrated to MBQL lib
 (defn ^:export is-column-metadata
   "Returns true if arg is an MLv2 column, ie. has `:lib/type :metadata/column`.
 

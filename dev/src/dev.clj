@@ -75,8 +75,8 @@
    [metabase.models.setting :as setting]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.server :as server]
    [metabase.server.handler :as handler]
+   [metabase.server.instance :as server]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test-runner]
@@ -377,6 +377,13 @@
   See https://github.com/weavejester/hashp"
   [form]
   (hashp/p* form))
+
+#_:clj-kondo/ignore
+(defn tap
+  "#tap, but to use in pipelines like `(-> 1 inc dev/tap prn inc)`."
+  [form]
+  (u/prog1 form
+    (tap> <>)))
 
 (defn- tests-in-var-ns [test-var]
   (->> test-var meta :ns ns-interns vals

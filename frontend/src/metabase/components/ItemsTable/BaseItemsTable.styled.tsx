@@ -166,11 +166,6 @@ export const RowActionsContainer = styled.div`
   }
 `;
 
-export const TableItemSecondaryField = styled.span`
-  font-size: 0.95em;
-  color: var(--mb-color-text-medium);
-`;
-
 export const TBody = styled.tbody`
   td {
     border: none;

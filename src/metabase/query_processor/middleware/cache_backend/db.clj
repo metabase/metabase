@@ -22,21 +22,20 @@
 (defn- seconds-ago [n]
   (ms-ago (long (* 1000 n))))
 
-(def ^:private ^{:arglists '([])} cached-results-query-sql
-  ;; this is memoized for a given application DB so we can deliver cached results EXTRA FAST and not have to spend an
-  ;; extra microsecond compiling the same exact query every time. :shrug:
-  ;;
-  ;; Since application DB can change at run time (during tests) it's not just a plain delay
-  (let [f (memoize (fn [_db-type]
-                     (first (mdb.query/compile {:select   [:results]
-                                                :from     [:query_cache]
-                                                :where    [:and
-                                                           [:= :query_hash [:raw "?"]]
-                                                           [:>= :updated_at [:raw "?"]]]
-                                                :order-by [[:updated_at :desc]]
-                                                :limit    [:inline 1]}))))]
-    (fn []
-      (f (mdb/db-type)))))
+;; this is memoized for a given application DB so we can deliver cached results EXTRA FAST and not have to spend an
+;; extra microsecond compiling the same exact query every time. :shrug:
+;;
+;; Since application DB can change at run time (during tests) it's not just a plain delay
+(let [f (memoize (fn [_db-type]
+                   (first (mdb.query/compile {:select   [:results]
+                                              :from     [:query_cache]
+                                              :where    [:and
+                                                         [:= :query_hash [:raw "?"]]
+                                                         [:>= :updated_at [:raw "?"]]]
+                                              :order-by [[:updated_at :desc]]
+                                              :limit    [:inline 1]}))))]
+  (defn- cached-results-query-sql []
+    (f (mdb/db-type))))
 
 (defn prepare-statement
   "Create a prepared statement to query cache"
@@ -105,10 +104,10 @@
   [^bytes query-hash ^bytes results]
   (log/debugf "Caching results for query with hash %s." (pr-str (i/short-hex-hash query-hash)))
   (try
-    (or (pos? (t2/update! QueryCache {:query_hash query-hash}
+    (or (pos? (t2/update! :model/QueryCache {:query_hash query-hash}
                           {:updated_at (t/offset-date-time)
                            :results    results}))
-        (first (t2/insert-returning-instances! QueryCache
+        (first (t2/insert-returning-instances! :model/QueryCache
                                                :updated_at (t/offset-date-time)
                                                :query_hash query-hash
                                                :results    results)))

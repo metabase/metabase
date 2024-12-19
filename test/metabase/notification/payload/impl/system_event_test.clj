@@ -12,7 +12,7 @@
 
 (use-fixtures
   :once
-  (fixtures/initialize :test-users-personal-collections :web-server :plugins))
+  (fixtures/initialize :test-users-personal-collections :web-server :plugins :notifications))
 
 (defn- publish-user-invited-event!
   [user invitor from-setup?]
@@ -175,13 +175,13 @@
 
         (doseq [[alert-condition condition-regex]
                 [[{:alert_condition "rows"}
-                  #"This alert will be sent whenever this question has any results"]
+                  #"This alert will be sent\s+whenever this question has any results"]
                  [{:alert_condition "goal"
                    :alert_above_goal true}
-                  #"This alert will be sent when this question meets its goal"]
+                  #"This alert will be sent\s+when this question meets its goal"]
                  [{:alert_condition "goal"
                    :alert_above_goal false}
-                  #"This alert will be sent when this question goes below its goal"]]]
+                  #"This alert will be sent\s+when this question goes below its goal"]]]
           (check alert-condition condition-regex))))))
 
 (deftest slack-error-token-email-test
@@ -201,7 +201,7 @@
         admin-emails (t2/select-fn-set :email :model/User :is_superuser true)]
     (testing "send to admins with a link to setting page"
       (check admin-emails [#"Your Slack connection stopped working"
-                           #"<a[^>]*href=\"https?://metabase\.com/admin/settings/slack\"[^>]*>Go to settings</a>"]))
+                           #"<a[^>]*href=\"https?://metabase\.com/admin/settings/notifications/slack\"[^>]*>Go to settings</a>"]))
 
     (mt/with-temporary-setting-values
       [admin-email "it@metabase.com"]

@@ -102,7 +102,8 @@
                :running_time true
                :cache_hit    false
                :cache_hash   nil ;; this is filled only for eligible queries
-               :dashboard_id nil}
+               :dashboard_id nil
+               :parameterized false}
               (qe))
           "QueryExecution should be saved"))))
 
@@ -115,22 +116,52 @@
              clojure.lang.ExceptionInfo
              #"Oops!"
              (process-userland-query query))))
-      (is (=? {:hash         "58af781ea2ba252ce3131462bdc7c54bc57538ed965d55beec62928ce8b32635"
-               :database_id  2
-               :error        "Oops!"
-               :result_rows  0
-               :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
-               :executor_id  nil
-               :json_query   (dissoc (mt/userland-query query) :info)
-               :native       false
-               :pulse_id     nil
-               :action_id    nil
-               :card_id      nil
-               :context      nil
-               :running_time true
-               :dashboard_id nil}
+      (is (=? {:hash          "58af781ea2ba252ce3131462bdc7c54bc57538ed965d55beec62928ce8b32635"
+               :database_id   2
+               :error         "Oops!"
+               :result_rows   0
+               :started_at    #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
+               :executor_id   nil
+               :json_query    (dissoc (mt/userland-query query) :info)
+               :native        false
+               :pulse_id      nil
+               :action_id     nil
+               :card_id       nil
+               :context       nil
+               :running_time  true
+               :dashboard_id  nil
+               :parameterized false}
               (qe))
           "QueryExecution saved in the DB should have query execution info. empty `:data` should get added to failures"))))
+
+(deftest parameterized-test
+  (testing ":parameterized should indicate if any parameters with values are provided to the query"
+    (let [query (mt/query venues
+                  {:query      {:aggregation [[:count]]}
+                   :parameters nil})]
+      (with-query-execution! [qe query]
+        (process-userland-query query)
+        (is (=? {:parameterized false} (qe)))))
+
+    (let [query (mt/query venues
+                  {:query      {:aggregation [[:count]]}
+                   :parameters [{:name   "price"
+                                 :type   :category
+                                 :target $price
+                                 :value  nil}]})]
+      (with-query-execution! [qe query]
+        (process-userland-query query)
+        (is (=? {:parameterized false} (qe)))))
+
+    (let [query (mt/query venues
+                  {:query      {:aggregation [[:count]]}
+                   :parameters [{:name   "price"
+                                 :type   :category
+                                 :target $price
+                                 :value  "4"}]})]
+      (with-query-execution! [qe query]
+        (process-userland-query query)
+        (is (=? {:parameterized true} (qe)))))))
 
 (def ^:private ^:dynamic *viewlog-call-count* nil)
 

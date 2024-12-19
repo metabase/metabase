@@ -1,6 +1,5 @@
 (ns ^:mb/once metabase-enterprise.serialization.v2.extract-test
   (:require
-   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -31,6 +30,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (comment
@@ -1238,7 +1238,7 @@
                                                                  :visualization_settings
                                                                  ;; Top-level click behavior for the card.
                                                                  (let [dimension  [:dimension [:field "something" {:base-type "type/Text"}]]
-                                                                       mapping-id (json/generate-string dimension)]
+                                                                       mapping-id (json/encode dimension)]
                                                                    {:click_behavior {:type     "link"
                                                                                      :linkType "question"
                                                                                      :targetId c3-2-id
@@ -1384,6 +1384,85 @@
                                (messages))]
                 (is (some #(str/starts-with? % "Failed to export Dashboard") msgs))
                 (is (some #(str/starts-with? % "Failed to export Cards") msgs))))))))))
+
+(deftest click-behavior-references-to-deleted-cards
+  (mt/with-empty-h2-app-db
+    (ts/with-temp-dpc [:model/User       {mark-id :id}              {:first_name "Mark"
+                                                                     :last_name  "Knopfler"
+                                                                     :email      "mark@direstrai.ts"}
+                       :model/Collection {coll-id   :id
+                                          coll-eid  :entity_id}    {:name "Some Collection"}
+                       :model/Database   {db-id      :id}           {:name "My Database"}
+                       :model/Table      {no-schema-id :id}         {:name "Schemaless Table" :db_id db-id}
+                       :model/Field      _                          {:name "Some Field" :table_id no-schema-id}
+                       :model/Table      {schema-id    :id}         {:name        "Schema'd Table"
+                                                                     :db_id       db-id
+                                                                     :schema      "PUBLIC"}
+                       :model/Field      {field-id :id}             {:name "Other Field" :table_id schema-id}
+                       :model/Field      {field-id3 :id}            {:name "Field To Click 2" :table_id schema-id}
+
+                       :model/Card       {card-id  :id
+                                          card-eid :entity_id}      {:name          "A Normal Question"
+                                                                     :database_id   db-id
+                                                                     :table_id      no-schema-id
+                                                                     :collection_id coll-id
+                                                                     :creator_id    mark-id}
+
+                       :model/Card       {deleted-card-id :id}      {:collection_id coll-id}
+
+                       :model/Dashboard  {deleted-dash-id :id}      {:collection_id coll-id}
+
+                       :model/Dashboard     {clickdash-id  :id
+                                             clickdash-eid :entity_id} {:name          "Dashboard"
+                                                                        :collection_id coll-id
+                                                                        :creator_id    mark-id}
+                       :model/DashboardCard _                          {:card_id      card-id
+                                                                        :dashboard_id clickdash-id
+                                                                        :visualization_settings
+                                                                        ;; links to a (soon-to-be) deleted card
+                                                                        {:click_behavior {:type     "link"
+                                                                                          :linkType "question"
+                                                                                          :targetId deleted-card-id}}}
+                       ;;; stress-test that exporting various visualization_settings does not break
+                       :model/DashboardCard _                          {:card_id card-id
+                                                                        :dashboard_id clickdash-id
+                                                                        :visualization_settings
+                                                                        {:column_settings
+                                                                         {(str "[\"ref\",[\"field\"," field-id ",null]]")
+                                                                          {:click_behavior
+                                                                           {:type     "link"
+                                                                            :linkType "dashboard"
+                                                                            :targetId deleted-dash-id}}
+
+                                                                          (str "[\"ref\",[\"field\"," field-id3 ",null]]")
+                                                                          {:click_behavior
+                                                                           {:type "link"
+                                                                            :linkType "question"
+                                                                            :targetId deleted-card-id}}}}}]
+
+      (t2/delete! :model/Card deleted-card-id)
+      (t2/delete! :model/Dashboard deleted-dash-id)
+      (testing "the references to deleted cards and dashboards are ignored"
+        (is (= #{[{:model "Dashboard" :id clickdash-eid :label "dashboard"}]
+                 [{:model "Collection" :id coll-eid :label "some_collection"}]
+                 [{:model "Card" :id card-eid :label "a_normal_question"}]}
+               (->> {:targets [["Collection" coll-id]]
+                     :no-settings true :no-data-model true}
+                    extract/extract
+                    (map serdes/path)
+                    (into #{})))))
+      (testing "the click behavior looks sane"
+        (is (= #{{:column_settings nil}
+                 {:column_settings {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {}
+                                    "[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Field To Click 2\"],null]]" {}}}}
+               (->> {:targets [["Collection" coll-id]]
+                     :no-settings true :no-data-model true}
+                    extract/extract
+                    (filter #(= (:entity_id %) clickdash-eid))
+                    first
+                    :dashcards
+                    (map :visualization_settings)
+                    (into #{}))))))))
 
 (deftest field-references-test
   (mt/with-empty-h2-app-db

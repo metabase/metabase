@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
 
 import { useLoadQuestion } from "embedding-sdk/hooks/private/use-load-question";
+import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import type { DataPickerValue } from "metabase/common/components/DataPicker";
@@ -53,6 +54,7 @@ export const InteractiveQuestionProvider = ({
   isSaveEnabled = true,
   entityTypeFilter,
   saveToCollectionId,
+  initialSqlParameters,
 }: InteractiveQuestionProviderProps) => {
   const { id: cardId, isLoading: isLoadingValidatedId } = useValidatedEntityId({
     type: "card",
@@ -64,16 +66,32 @@ export const InteractiveQuestionProvider = ({
 
   const handleSave = async (question: Question) => {
     if (isSaveEnabled) {
-      await onBeforeSave?.(question);
+      const saveContext = { isNewQuestion: false };
+      const sdkQuestion = transformSdkQuestion(question);
+
+      await onBeforeSave?.(sdkQuestion, saveContext);
       await handleSaveQuestion(question);
-      onSave?.(question);
+      onSave?.(sdkQuestion, saveContext);
       await loadQuestion();
     }
   };
 
-  const handleCreate = async (question: Question) => {
-    await handleCreateQuestion(question);
-    await loadQuestion();
+  const handleCreate = async (question: Question): Promise<Question> => {
+    if (isSaveEnabled) {
+      const saveContext = { isNewQuestion: true };
+      const sdkQuestion = transformSdkQuestion(question);
+
+      await onBeforeSave?.(sdkQuestion, saveContext);
+
+      const createdQuestion = await handleCreateQuestion(question);
+      onSave?.(sdkQuestion, saveContext);
+
+      // Set the latest saved question object to update the question title.
+      replaceQuestion(createdQuestion);
+      return createdQuestion;
+    }
+
+    return question;
   };
 
   const {
@@ -86,6 +104,7 @@ export const InteractiveQuestionProvider = ({
     isQueryRunning,
 
     runQuestion,
+    replaceQuestion,
     loadQuestion,
     updateQuestion,
     navigateToNewCard,
@@ -93,6 +112,7 @@ export const InteractiveQuestionProvider = ({
     cardId,
     options,
     deserializedCard,
+    initialSqlParameters,
   });
 
   const globalPlugins = useSdkSelector(getPlugins);
@@ -112,6 +132,7 @@ export const InteractiveQuestionProvider = ({
     onReset: loadQuestion,
     onNavigateBack,
     runQuestion,
+    replaceQuestion,
     updateQuestion,
     navigateToNewCard,
     plugins: combinedPlugins,

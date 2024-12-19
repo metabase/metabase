@@ -1,12 +1,12 @@
 (ns metabase.models.revision
   (:require
-   [cheshire.core :as json]
    [clojure.data :as data]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.models.revision.diff :refer [diff-strings*]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -83,9 +83,16 @@
   {:object mi/transform-json})
 
 (t2/define-before-insert :model/Revision
-  [revision]
+  [{:keys [model model_id] :as revision}]
+  ;; obtain a lock on the existing revisions for this entity to prevent concurrent inserts of new revisions
+  (t2/query {:select [:id]
+             :from [:revision]
+             :where [:and
+                     [:= :model model]
+                     [:= :model_id model_id]]
+             :for :update})
   (assoc revision
-         :timestamp :%now
+         :timestamp (or (:timestamp revision) :%now)
          :metabase_version config/mb-version-string
          :most_recent true))
 
@@ -202,8 +209,8 @@
     ;; even though we call `post-select` on the `object`, the nested object might not be transformed correctly
     ;; E.g: Cards inside Dashboard will not be transformed
     ;; so to be safe, we'll just compare them as string
-    (when-not (= (json/generate-string serialized-object)
-                 (json/generate-string last-object))
+    (when-not (= (json/encode serialized-object)
+                 (json/encode last-object))
       (t2/insert! Revision
                   :model        entity-name
                   :model_id     id

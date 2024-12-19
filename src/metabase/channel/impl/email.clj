@@ -1,7 +1,6 @@
 (ns metabase.channel.impl.email
   (:require
    [buddy.core.codecs :as codecs]
-   [cheshire.core :as json]
    [hiccup.core :refer [html]]
    [medley.core :as m]
    [metabase.channel.core :as channel]
@@ -18,10 +17,12 @@
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.markdown :as markdown]
+   [metabase.util.ui-logic :as ui-logic]
    [metabase.util.urls :as urls]
    [ring.util.codec :as codec]))
 
@@ -52,9 +53,9 @@
   [pulse-id email]
   (codecs/bytes->hex
    (encryption/validate-and-hash-secret-key
-    (json/generate-string {:salt     (public-settings/site-uuid-for-unsubscribing-url)
-                           :email    email
-                           :pulse-id pulse-id}))))
+    (json/encode {:salt     (public-settings/site-uuid-for-unsubscribing-url)
+                  :email    email
+                  :pulse-id pulse-id}))))
 
 (defn- unsubscribe-url-for-non-user
   [dashboard-subscription-id non-user-email]
@@ -162,20 +163,7 @@
 ;;                                           Alerts                                                ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defn- find-goal-value
-  "The goal value can come from a progress goal or a graph goal_value depending on it's type"
-  [card]
-  (case (:display card)
-
-    (:area :bar :line)
-    (get-in card [:visualization_settings :graph.goal_value])
-
-    :progress
-    (get-in card [:visualization_settings :progress.goal])
-
-    nil))
-
-(mu/defmethod channel/render-notification [:channel/email :notification/alert] :- [:sequential EmailMessage]
+(mu/defmethod channel/render-notification [:channel/email :notification/card] :- [:sequential EmailMessage]
   [_channel-type {:keys [payload] :as notification-payload} template recipients]
   (let [{:keys [card_part
                 alert
@@ -186,6 +174,7 @@
         attachments        (concat [icon-attachment]
                                    (email-attachment rendered-card
                                                      (assoc-attachment-booleans [alert] [card_part])))
+        goal               (ui-logic/find-goal-value payload)
         message-context-fn (fn [non-user-email]
                              (assoc notification-payload
                                     :computed {:subject         (case (messages/pulse->alert-condition-kwd alert)
@@ -193,13 +182,12 @@
                                                                   :below (trs "Alert: {0} has gone below its goal" (:name card))
                                                                   :rows  (trs "Alert: {0} has results" (:name card)))
                                                :icon_cid        (:content-id icon-attachment)
-                                               :card_url        (urls/card-url (:id card))
+                                               :goal_value      goal
                                                :alert_content   (html (:content rendered-card))
                                                :alert_schedule  (messages/alert-schedule-text (:schedule alert))
                                                :management_text (if (nil? non-user-email)
                                                                   "Manage your subscriptions"
                                                                   "Unsubscribe")
-                                               :alert_condition (get (find-goal-value card) (messages/pulse->alert-condition-kwd alert))
                                                :management_url  (if (nil? non-user-email)
                                                                   (urls/notification-management-url)
                                                                   (unsubscribe-url-for-non-user (:id alert) non-user-email))}))]
@@ -250,7 +238,7 @@
       (for [row rows]
         [:tr {} row])])))
 
-(mu/defmethod channel/render-notification [:channel/email :notification/dashboard-subscription] :- [:sequential EmailMessage]
+(mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
   [_channel-type {:keys [payload] :as notification-payload} template recipients]
   (let [{:keys [dashboard_parts
                 dashboard_subscription
@@ -268,7 +256,6 @@
                               (-> notification-payload
                                   (assoc :computed {:dashboard_content  (html (vec (cons :div (map :content rendered-cards))))
                                                     :icon_cid           (:content-id icon-attachment)
-                                                    :dashboard_url      (urls/dashboard-url (:id dashboard) parameters)
                                                     :dashboard_has_tabs (some-> dashboard :tabs seq)
                                                     :management_text    (if (nil? non-user-email)
                                                                           "Manage your subscriptions"

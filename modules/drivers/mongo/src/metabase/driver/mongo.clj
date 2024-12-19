@@ -1,8 +1,6 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
   (:require
-   [cheshire.core :as json]
-   [cheshire.generate :as json.generate]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
@@ -22,6 +20,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [taoensso.nippy :as nippy])
@@ -36,7 +35,7 @@
 ;; JSON Encoding (etc.)
 
 ;; Encode BSON undefined like `nil`
-(json.generate/add-encoder org.bson.BsonUndefined json.generate/encode-nil)
+(json/add-encoder org.bson.BsonUndefined json/generate-nil)
 
 (nippy/extend-freeze ObjectId :mongodb/ObjectId
   [^ObjectId oid data-output]
@@ -119,28 +118,34 @@
   [_ database]
   (mongo.connection/with-mongo-database [^MongoDatabase db database]
     {:tables (set (for [collection (mongo.util/list-collection-names db)
-                        :when (not= collection "system.indexes")]
+                        :when (not (contains? #{"system.indexes" "system.views"} collection))]
                     {:schema nil, :name collection}))}))
 
 (defmethod driver/describe-table-indexes :mongo
   [_ database table]
   (mongo.connection/with-mongo-database [^MongoDatabase db database]
     (let [collection (mongo.util/collection db (:name table))]
-      (->> (mongo.util/list-indexes collection)
-           (map (fn [index]
-                ;; for text indexes, column names are specified in the weights
-                  (if (contains? index "textIndexVersion")
-                    (get index "weights")
-                    (get index "key"))))
-           (map (comp name first keys))
-           ;; mongo support multi key index, aka nested fields index, so we need to split the keys
-           ;; and represent it as a list of field names
-           (map #(if (str/includes? % ".")
-                   {:type  :nested-column-index
-                    :value (str/split % #"\.")}
-                   {:type  :normal-column-index
-                    :value %}))
-           set))))
+      (try
+        (->> (mongo.util/list-indexes collection)
+             (map (fn [index]
+                    ;; for text indexes, column names are specified in the weights
+                    (if (contains? index "textIndexVersion")
+                      (get index "weights")
+                      (get index "key"))))
+             (map (comp name first keys))
+             ;; mongo support multi key index, aka nested fields index, so we need to split the keys
+             ;; and represent it as a list of field names
+             (map #(if (str/includes? % ".")
+                     {:type  :nested-column-index
+                      :value (str/split % #"\.")}
+                     {:type  :normal-column-index
+                      :value %}))
+             set)
+        (catch com.mongodb.MongoCommandException e
+          ;; com.mongodb.MongoCommandException: Command failed with error 166 (CommandNotSupportedOnView): 'Namespace test-data.orders_m is a view, not a collection' on server bee:27017. The full response is {"ok": 0.0, "errmsg": "Namespace test-data.orders_m is a view, not a collection", "code": 166, "codeName": "CommandNotSupportedOnView"}
+          (if (= (.getErrorCode e) 166)
+            #{}
+            (throw e)))))))
 
 (defn- describe-table-query-step
   "A single reduction step in the [[describe-table-query]] pipeline.
@@ -302,7 +307,7 @@
         data  (:data (qp/process-query {:database (:id db)
                                         :type     "native"
                                         :native   {:collection (:name table)
-                                                   :query      (json/generate-string query)}}))
+                                                   :query      (json/encode query)}}))
         cols  (map (comp keyword :name) (:cols data))]
     (map #(zipmap cols %) (:rows data))))
 
@@ -407,6 +412,12 @@
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)
+
+(defmethod driver/database-supports? [:mongo :window-functions/cumulative]
+  [_driver _feat db]
+  (-> ((some-fn :dbms-version :dbms_version) db)
+      :semantic-version
+      (driver.u/semantic-version-gte [5])))
 
 (defmethod driver/database-supports? [:mongo :expressions]
   [_driver _feature db]

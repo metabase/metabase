@@ -1,32 +1,29 @@
+import { H } from "e2e/support";
 import { USERS } from "e2e/support/cypress_data";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  getTextCardDetails,
-  restore,
-  setTokenFeatures,
-  visitFullAppEmbeddingUrl,
-} from "e2e/support/helpers";
+import { visitFullAppEmbeddingUrl } from "e2e/support/helpers/e2e-embedding-helpers";
 import {
   EMBEDDING_SDK_STORY_HOST,
-  describeSDK,
+  getSdkRoot,
 } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
   JWT_SHARED_SECRET,
-  setupJwt,
+  enableJwtAuth,
 } from "e2e/support/helpers/e2e-jwt-helpers";
 
 const STORYBOOK_ID = "embeddingsdk-cypressstaticdashboardwithcors--default";
-describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
-    setTokenFeatures("all");
-    setupJwt();
 
-    const textCard = getTextCardDetails({ col: 16, text: "Text text card" });
+H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.setTokenFeatures("all");
+    enableJwtAuth();
+
+    const textCard = H.getTextCardDetails({ col: 16, text: "Text text card" });
     const questionCard = {
       id: ORDERS_DASHBOARD_DASHCARD_ID,
       card_id: ORDERS_QUESTION_ID,
@@ -89,7 +86,7 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
       });
     });
 
-    cy.get("#metabase-sdk-root").within(() => {
+    getSdkRoot().within(() => {
       cy.findByText(
         "Failed to fetch the user, the session might be invalid.",
       ).should("be.visible");
@@ -120,16 +117,14 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
       expect(response?.statusCode).to.equal(200);
     });
 
-    cy.get("#metabase-sdk-root")
-      .should("be.visible")
-      .within(() => {
-        cy.findByText("Embedding Sdk Test Dashboard").should("be.visible"); // dashboard title
+    getSdkRoot().within(() => {
+      cy.findByText("Embedding Sdk Test Dashboard").should("be.visible"); // dashboard title
 
-        cy.findByText("Text text card").should("be.visible"); // text card content
+      cy.findByText("Text text card").should("be.visible"); // text card content
 
-        cy.wait("@dashcardQuery");
-        cy.findByText("Test question card").should("be.visible"); // question card content
-      });
+      cy.wait("@dashcardQuery");
+      cy.findByText("Test question card").should("be.visible"); // question card content
+    });
   });
 
   it("should not render the SDK on non localhost sites when embedding SDK origins is not set", () => {
@@ -151,7 +146,7 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
       });
     });
 
-    cy.get("#metabase-sdk-root").within(() => {
+    getSdkRoot().within(() => {
       cy.findByText(
         "Failed to fetch the user, the session might be invalid.",
       ).should("be.visible");
@@ -183,15 +178,13 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
       expect(response?.statusCode).to.equal(200);
     });
 
-    cy.get("#metabase-sdk-root")
-      .should("be.visible")
-      .within(() => {
-        cy.findByText("Embedding Sdk Test Dashboard").should("be.visible"); // dashboard title
+    getSdkRoot().within(() => {
+      cy.findByText("Embedding Sdk Test Dashboard").should("be.visible"); // dashboard title
 
-        cy.findByText("Text text card").should("be.visible"); // text card content
+      cy.findByText("Text text card").should("be.visible"); // text card content
 
-        cy.wait("@dashcardQuery");
-        cy.findByText("Test question card").should("be.visible"); // question card content
-      });
+      cy.wait("@dashcardQuery");
+      cy.findByText("Test question card").should("be.visible"); // question card content
+    });
   });
 });

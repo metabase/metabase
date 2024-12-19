@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -6,15 +7,18 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import AccordionList from "metabase/core/components/AccordionList";
 import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { WIDTH } from "../constants";
 import type { ColumnListItem, SegmentListItem } from "../types";
 
-import { StyledAccordionList } from "./FilterColumnPicker.styled";
+import S from "./FilterColumnPicker.module.css";
 
 export interface FilterColumnPickerProps {
+  className?: string;
   query: Lib.Query;
   stageIndex: number;
   checkItemIsSelected: (item: ColumnListItem | SegmentListItem) => boolean;
@@ -54,6 +58,7 @@ export const isSegmentListItem = (
  * Filter ColumnOrSegmentOrCustomExpressionPicker was too long of a name
  */
 export function FilterColumnPicker({
+  className,
   query,
   stageIndex,
   checkItemIsSelected,
@@ -116,7 +121,8 @@ export function FilterColumnPicker({
 
   return (
     <DelayGroup>
-      <StyledAccordionList
+      <AccordionList
+        className={cx(S.StyledAccordionList, className)}
         sections={sections}
         onChange={handleSelect}
         onChangeSection={handleSectionChange}
@@ -128,7 +134,7 @@ export function FilterColumnPicker({
           withColumnItemIcon ? renderItemIcon(item) : null
         }
         // disable scrollbars inside the list
-        style={{ overflow: "visible" }}
+        style={{ overflow: "visible", "--accordion-list-width": `${WIDTH}px` }}
         maxHeight={Infinity}
         // Compat with E2E tests around MLv1-based components
         // Prefer using a11y role selectors

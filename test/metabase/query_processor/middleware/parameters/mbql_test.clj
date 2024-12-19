@@ -71,7 +71,7 @@
             :type     :query,
             :query    {:source-query {:source-table 1000,
                                       :aggregation  [[:count]],
-                                      :breakout     [[:field 17 nil]],
+                                      :breakout     [[:field 17 {:temporal-unit :year}]],
                                       :filter       [:= [:field 809 nil] "Cam's Toucannery"]},
                        :filter [:and
                                 [:> [:field "count" {:base-type :type/Integer}] 0]
@@ -81,7 +81,7 @@
              :type       :query
              :query      {:source-query {:source-table 1000
                                          :aggregation  [[:count]]
-                                         :breakout     [[:field 17 nil]]}
+                                         :breakout     [[:field 17 {:temporal-unit :day}]]}
                           :filter       [:> [:field "count" {:base-type :type/Integer}] 0]}
              :parameters [{:hash   "abc123"
                            :name   "foo"
@@ -92,7 +92,13 @@
                            :name   "bar"
                            :type   :number/<=
                            :target [:dimension [:field "count" {:base-type :type/Integer}] {:stage-number 1}]
-                           :value  [30]}]})))))
+                           :value  [30]}
+                          {:value "year"
+                           :type :temporal-unit
+                           :id "66cf9285"
+                           :target [:dimension
+                                    [:field 17 {:base-type :type/DateTime, :temporal-unit :day}]
+                                    {:stage-number -2}]}]})))))
 
 (deftest ^:parallel date-range-parameters-test
   (testing "date range parameters"
@@ -413,14 +419,12 @@
               (ffirst
                (mt/rows
                 (mt/process-query
-                 {:database   (mt/id)
-                  :type       :query
-                  :query      {:source-table (mt/id :venues)
-                               :aggregation  [[:count]]}
-                  :parameters [(merge
-                                {:type   :category
-                                 :target [:dimension [:field (mt/id :venues :price) nil]]}
-                                param)]}))))]
+                 (merge (mt/mbql-query venues
+                          {:aggregation [[:count]]})
+                        {:parameters [(merge
+                                       {:type   :category
+                                        :target [:dimension [:field (mt/id :venues :price) nil]]}
+                                       param)]})))))]
       (doseq [[price expected] {1 22
                                 2 59}]
         (testing (format ":value = %d" price)
@@ -439,15 +443,13 @@
                      [:field
                       (mt/id :orders :created_at)
                       {:base-type :type/DateTimeWithLocalTZ, :temporal-unit unit}])
-          query    {:database (mt/id)
-                    :type     :query
-                    :query    {:source-table (mt/id :orders)
-                               :aggregation  [[:count]]
-                               :breakout     [(by-unit :day)
-                                              (by-unit :month)]
-                               :order-by     [[:asc (by-unit :month)]]}
-                    :parameters [{:type   :temporal-unit
-                                  :target [:dimension (by-unit :month)]
-                                  :value  :week}]}]
+          query    (merge (mt/mbql-query orders
+                            {:aggregation  [[:count]]
+                             :breakout     [(by-unit :day)
+                                            (by-unit :month)]
+                             :order-by     [[:asc (by-unit :month)]]})
+                          {:parameters [{:type   :temporal-unit
+                                         :target [:dimension (by-unit :month)]
+                                         :value  :week}]})]
       (is (= ["2016-04-30T00:00:00Z" "2016-04-24T00:00:00Z" 1]
              (first (mt/rows (mt/process-query query))))))))

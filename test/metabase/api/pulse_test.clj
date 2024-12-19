@@ -1,5 +1,6 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -7,7 +8,7 @@
    [metabase.api.card-test :as api.card-test]
    [metabase.api.channel-test :as api.channel-test]
    [metabase.api.pulse :as api.pulse]
-   [metabase.channel.http-test :as channel.http-test]
+   [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.style :as style]
    [metabase.http-client :as client]
    [metabase.integrations.slack :as slack]
@@ -26,7 +27,7 @@
    [metabase.models.pulse-test :as pulse-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.test-util :as pulse.test-util]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
@@ -104,8 +105,8 @@
 ;; authentication test on every single individual endpoint
 
 (deftest authentication-test
-  (is (= (:body req.util/response-unauthentic) (client/client :get 401 "pulse")))
-  (is (= (:body req.util/response-unauthentic) (client/client :put 401 "pulse/13"))))
+  (is (= (:body request/response-unauthentic) (client/client :get 401 "pulse")))
+  (is (= (:body request/response-unauthentic) (client/client :put 401 "pulse/13"))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                POST /api/pulse                                                 |

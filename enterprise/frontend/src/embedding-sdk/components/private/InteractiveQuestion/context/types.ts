@@ -1,25 +1,37 @@
 import type { PropsWithChildren } from "react";
 
-import type { SdkPluginsConfig } from "embedding-sdk";
+import type { MetabasePluginsConfig } from "embedding-sdk";
 import type { LoadQuestionHookResult } from "embedding-sdk/hooks/private/use-load-question";
+import type { MetabaseQuestion } from "embedding-sdk/types/public/question";
 import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
 import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
 import type { NotebookProps as QBNotebookProps } from "metabase/querying/notebook/components/Notebook";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Question from "metabase-lib/v1/Question";
-import type { CardEntityId, CardId } from "metabase-types/api";
+import type { CardId, ParameterId } from "metabase-types/api";
 
 export type EntityTypeFilterKeys = "table" | "question" | "model" | "metric";
 
+export type ParameterValues = Record<ParameterId, string | number>;
+
 type InteractiveQuestionConfig = {
-  componentPlugins?: SdkPluginsConfig;
+  componentPlugins?: MetabasePluginsConfig;
   onNavigateBack?: () => void;
-  onBeforeSave?: (question?: Question) => Promise<void>;
-  onSave?: (question?: Question) => void;
+  onBeforeSave?: (
+    question: MetabaseQuestion | undefined,
+    context: { isNewQuestion: boolean },
+  ) => Promise<void>;
+  onSave?: (
+    question: MetabaseQuestion | undefined,
+    context: { isNewQuestion: boolean },
+  ) => void;
   entityTypeFilter?: EntityTypeFilterKeys[];
 
   /** Is the save question button visible? */
   isSaveEnabled?: boolean;
+
+  /** Initial values for the SQL parameters */
+  initialSqlParameters?: ParameterValues;
 } & Pick<SaveQuestionProps, "saveToCollectionId">;
 
 export type QuestionMockLocationParameters = {
@@ -33,7 +45,7 @@ export type InteractiveQuestionProviderWithLocationProps = PropsWithChildren<
 
 export type InteractiveQuestionProviderProps = PropsWithChildren<
   InteractiveQuestionConfig &
-    Omit<LoadSdkQuestionParams, "cardId"> & { cardId?: CardId | CardEntityId }
+    Omit<LoadSdkQuestionParams, "cardId"> & { cardId?: CardId | string }
 >;
 
 export type InteractiveQuestionContextType = Omit<
@@ -49,6 +61,6 @@ export type InteractiveQuestionContextType = Omit<
     mode: Mode | null | undefined;
     resetQuestion: () => void;
     onReset: () => void;
-    onCreate: (question: Question) => Promise<void>;
+    onCreate: (question: Question) => Promise<Question>;
     onSave: (question: Question) => Promise<void>;
   };

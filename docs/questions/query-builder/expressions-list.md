@@ -33,6 +33,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [between](#between)
     - [case](./expressions/case.md)
     - [coalesce](./expressions/coalesce.md)
+    - [if](./expressions/case.md)
     - [isnull](./expressions/isnull.md)
     - [notnull](#notnull)
 
@@ -52,7 +53,9 @@ For an introduction to expressions, check out the [overview of custom expression
     - [concat](./expressions/concat.md)
     - [contains](#contains)
     - [doesNotContain](#doesnotcontain)
+    - [domain](#domain)
     - [endsWith](#endswith)
+    - [host](#host)
     - [isempty](./expressions/isempty.md)
     - [ltrim](#ltrim)
     - [length](#length)
@@ -62,6 +65,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [replace](#replace)
     - [rtrim](#rtrim)
     - [startsWith](#startswith)
+    - [subdomain](#subdomain)
     - [substring](./expressions/substring.md)
     - [trim](#trim)
     - [upper](#upper)
@@ -73,12 +77,15 @@ For an introduction to expressions, check out the [overview of custom expression
     - [datetimeDiff](./expressions/datetimediff.md)
     - [datetimeSubtract](./expressions/datetimesubtract.md)
     - [day](#day)
+    - [dayName](#dayname)
     - [hour](#hour)
     - [interval](#interval)
     - [minute](#minute)
     - [month](#month)
+    - [monthName](#monthname)
     - [now](./expressions/now.md)
     - [quarter](#quarter)
+    - [quarterName](#quartername)
     - [relativeDateTime](#relativedatetime)
     - [second](#second)
     - [week](#week)
@@ -227,17 +234,17 @@ Logical functions determine if a condition is satisfied or determine what value 
 
 ### between
 
-Checks a date or number column's values to see if they're within the specified range.
+Returns true if the value of a date or number column falls within a specified range. Otherwise returns false.
 
 Syntax: `between(column, start, end)`
 
-Example: `between([Created At], "2019-01-01", "2020-12-31")` would return rows where `Created At` date fell within the range of January 1, 2019 and December 31, 2020.
+Example: If you filtered with the expression `between([Created At], "2019-01-01", "2020-12-31")`, Metabase would return rows that returned true for that expression, in this case where the `Created At` date fell _within_ the range of January 1, 2019 and December 31, 2020, including the start (`2019-01-01`) and end (`2020-12-31`) dates.
 
 Related: [interval](#interval).
 
 ### [case](./expressions/case.md)
 
-Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.
+`case` (alias `if`) tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.
 
 Syntax: `case(condition, output, …)`
 
@@ -250,6 +257,14 @@ Looks at the values in each argument in order and returns the first non-null val
 Syntax: `coalesce(value1, value2, …)`
 
 Example: `coalesce([Comments], [Notes], "No comments")`. If both the `Comments` and `Notes` columns are null for that row, the expression will return the string "No comments".
+
+### [if](./expressions/case.md)
+
+`if` is an alias for [case](./expressions/case.md). Tests an expression against a list of conditionals and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.
+
+Syntax: `if(condition, output, ...)`
+
+Example: `if([Weight] > 200, "Large", [Weight] > 150, "Medium", "Small")` If a `Weight` is 250, the expression would return "Large". In this case, the default value is "Small", so any `Weight` 150 or less would return "Small".
 
 ### [isnull](./expressions/isnull.md)
 
@@ -399,6 +414,16 @@ Example: `doesNotContain([Status], "Class")`. If `Status` were "Classified", the
 
 Related: [contains](#contains), [regexextract](#regexextract).
 
+### domain
+
+Extracts the domain name from a URL or email.
+
+Syntax: `domain(urlOrEmail)`.
+
+Example: `domain([Page URL])`. If the `[Page URL]` column had a value of `https://www.metabase.com`, `domain([Page URL])` would return `metabase`. `domain([Email])` would extract `metabase` from `hello@metabase.com`.
+
+Related: [host](#host), [subdomain](#subdomain).
+
 ### endsWith
 
 Returns true if the end of the text matches the comparison text.
@@ -413,6 +438,16 @@ Syntax: `endsWith(text, comparison)` for case-sensitive match.
 Example: `endsWith([Appetite], "hungry")`
 
 Related: [startsWith](#startswith), [contains](#contains), [doesNotContain](#doesnotcontain).
+
+### host
+
+Extracts the host, which is the domain and the TLD, from a URL or email.
+
+Syntax: `host(urlOrEmail)`.
+
+Example: `host([Page URL])`. If the `[Page URL]` column had a value of `https://www.metabase.com`, `host([Page URL])` would return `metabase.com`. `host([Email])` would extract `metabase.com` from `hello@metabase.com`.
+
+Related: [domain](#domain), [subdomain](#subdomain).
 
 ### [isempty](./expressions/isempty.md)
 
@@ -511,6 +546,16 @@ It would return false for "Computer **s**cience 201: Data structures" because th
 
 Related: [endsWith](#endswith), [contains](#contains), [doesNotContain](#doesnotcontain).
 
+### subdomain
+
+Extracts the subdomain from a URL. Ignores `www` (returns a blank string).
+
+Syntax: `subdomain(url)`.
+
+Example: `subdomain([Page URL])`. If the `[Page URL]` column had a value of `https://status.metabase.com`, `subdomain([Page URL])` would return `status`.
+
+Related: [host](#host), [domain](#domain).
+
 ### [substring](./expressions/substring.md)
 
 Returns a portion of the supplied text, specified by a starting position and a length.
@@ -593,6 +638,16 @@ Syntax: `day([datetime column])`.
 
 Example: `day("2021-03-25T12:52:37")` would return the day as an integer, `25`.
 
+### dayName
+
+Returns the localized name of a day of the week, given the day's number (1-7). Respects the [first day of the week setting](../../configuring-metabase/localization.md#first-day-of-the-week).
+
+Syntax: `dayName(dayNumber)`.
+
+Example: `dayName(1)` would return `Sunday`, unless you change the [first day of the week setting](../../configuring-metabase/localization.md#first-day-of-the-week).
+
+Related: [quarterName](#quartername), [monthName](#monthname).
+
 ### hour
 
 Takes a datetime and returns the hour as an integer (0-23).
@@ -629,6 +684,16 @@ Syntax: `month([datetime column])`.
 
 Example: `month("2021-03-25T12:52:37")` would return the month as an integer, `3`.
 
+### monthName
+
+Returns the localized short name for the given month.
+
+Syntax: `monthName([Birthday Month])`
+
+Example: `monthName(10)` would return `Oct` for October.
+
+Related: [dayName](#dayname), [quarterName](#quartername).
+
 ### [now](./expressions/now.md)
 
 Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/localization.md#report-timezone).
@@ -642,6 +707,16 @@ Takes a datetime and returns the number of the quarter in a year (1-4) as an int
 Syntax: `quarter([datetime column])`.
 
 Example: `quarter("2021-03-25T12:52:37")` would return `1` for the first quarter.
+
+### quarterName
+
+Given the quarter number (1-4), returns a string like `Q1`.
+
+Syntax: `quarterName([Fiscal Quarter])`.
+
+Example: `quarterName(3)` would return `Q3`.
+
+Related: [dayName](#dayname), [monthName](#monthname).
 
 ### relativeDateTime
 

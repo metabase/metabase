@@ -1,12 +1,4 @@
-import {
-  changeSynchronousBatchUpdateSetting,
-  clearFilterWidget,
-  editDashboard,
-  restore,
-  saveDashboard,
-  sidebar,
-  visitDashboard,
-} from "e2e/support/helpers";
+import { H } from "e2e/support";
 
 const questionDetails = {
   name: "Return input value",
@@ -42,9 +34,8 @@ const dashboardDetails = {
 
 describe("scenarios > dashboard > filters > SQL > simple filter > required ", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
-    changeSynchronousBatchUpdateSetting(true);
 
     cy.createNativeQuestionAndDashboard({
       questionDetails,
@@ -64,12 +55,8 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
 
       cy.editDashboardCard(dashboardCard, mapFilterToCard);
 
-      visitDashboard(dashboard_id);
+      H.visitDashboard(dashboard_id);
     });
-  });
-
-  afterEach(() => {
-    changeSynchronousBatchUpdateSetting(false);
   });
 
   it("should respect default filter precedence while properly updating the url for each step of the flow", () => {
@@ -80,7 +67,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
 
     cy.findByDisplayValue("Bar");
 
-    clearFilterWidget();
+    H.clearFilterWidget();
 
     cy.location("search").should("eq", "?text=");
 
@@ -109,15 +96,15 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     cy.location("search").should("eq", "?text=Bar");
 
     // Finally, when we remove dashboard filter's default value, the url should reflect that by removing the placeholder
-    editDashboard();
+    H.editDashboard();
 
     openFilterOptions("Text");
 
-    sidebar().within(() => {
+    H.sidebar().within(() => {
       removeDefaultFilterValue("Bar");
     });
 
-    saveDashboard();
+    H.saveDashboard();
 
     // The URL query params should include the value from the dashboard filter default
     cy.location("search").should("eq", "?text=");

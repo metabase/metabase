@@ -19,7 +19,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
-   [metabase.search :as search]
+   [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -192,7 +192,7 @@
 (search/define-spec "segment"
   {:model        :model/Segment
    :attrs        {:archived      true
-                  :collection-id :id
+                  :collection-id false
                   :creator-id    false
                   :database-id   :table.db_id
                   ;; Matching legacy behavior, where this cannot be filtered on.

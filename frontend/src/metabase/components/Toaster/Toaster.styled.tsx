@@ -26,7 +26,6 @@ export const ToasterContainer = styled.div<ToasterContainerProps>`
   transition: all 200ms ease-out;
   column-gap: 16px;
   align-items: center;
-  z-index: 100;
 `;
 
 export const ToasterMessage = styled.p`

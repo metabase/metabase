@@ -99,6 +99,7 @@ describe("parameters/utils/mapping-options", () => {
             target: [
               "dimension",
               ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+              { "stage-number": 0 },
             ],
           },
         ]);
@@ -155,6 +156,7 @@ describe("parameters/utils/mapping-options", () => {
             target: [
               "dimension",
               ["field", REVIEWS.CREATED_AT, { "base-type": "type/DateTime" }],
+              { "stage-number": 0 },
             ],
             isForeign: false,
           },
@@ -172,6 +174,7 @@ describe("parameters/utils/mapping-options", () => {
                   "source-field": REVIEWS.PRODUCT_ID,
                 },
               ],
+              { "stage-number": 0 },
             ],
             isForeign: true,
           },
@@ -184,6 +187,7 @@ describe("parameters/utils/mapping-options", () => {
           joins: [
             {
               alias: "Product",
+              ident: "Y_wEKVMtSNd3v5I4vYs05",
               fields: "all",
               "source-table": PRODUCTS_ID,
               condition: [
@@ -211,6 +215,7 @@ describe("parameters/utils/mapping-options", () => {
             target: [
               "dimension",
               ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+              { "stage-number": 0 },
             ],
             isForeign: false,
           },
@@ -225,6 +230,7 @@ describe("parameters/utils/mapping-options", () => {
                 PRODUCTS.CREATED_AT,
                 { "base-type": "type/DateTime", "join-alias": "Product" },
               ],
+              { "stage-number": 0 },
             ],
             isForeign: true,
           },
@@ -242,6 +248,7 @@ describe("parameters/utils/mapping-options", () => {
                   "source-field": ORDERS.USER_ID,
                 },
               ],
+              { "stage-number": 0 },
             ],
             isForeign: true,
           },
@@ -259,6 +266,7 @@ describe("parameters/utils/mapping-options", () => {
                   "source-field": ORDERS.USER_ID,
                 },
               ],
+              { "stage-number": 0 },
             ],
             isForeign: true,
           },
@@ -278,12 +286,24 @@ describe("parameters/utils/mapping-options", () => {
         );
         expect(options).toEqual([
           {
+            sectionName: "Products",
+            name: "Created At",
+            icon: "calendar",
+            target: [
+              "dimension",
+              ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
+              { "stage-number": 0 },
+            ],
+            isForeign: false,
+          },
+          {
             sectionName: "Summaries",
             name: "Created At",
             icon: "calendar",
             target: [
               "dimension",
               ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+              { "stage-number": 1 },
             ],
             isForeign: false,
           },
@@ -338,7 +358,11 @@ describe("parameters/utils/mapping-options", () => {
         {
           name: "Created At",
           icon: "calendar",
-          target: ["dimension", ["template-tag", "created"]],
+          target: [
+            "dimension",
+            ["template-tag", "created"],
+            { "stage-number": 0 },
+          ],
           isForeign: false,
         },
       ]);

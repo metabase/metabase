@@ -1,11 +1,14 @@
 import { Fragment } from "react";
 
+import { Badge } from "metabase/components/Badge";
 import { useToggle } from "metabase/hooks/use-toggle";
+import * as Urls from "metabase/lib/urls";
 import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
 import type {
   Collection,
   CollectionEssentials,
   CollectionId,
+  Dashboard,
 } from "metabase-types/api";
 
 import {
@@ -17,12 +20,14 @@ import { getCollectionList } from "./utils";
 
 export interface CollectionBreadcrumbsProps {
   collection?: Collection;
+  dashboard?: Dashboard;
   onClick?: (collection: CollectionEssentials) => void;
   baseCollectionId: CollectionId | null;
 }
 
 export const CollectionBreadcrumbs = ({
   collection,
+  dashboard,
   onClick,
   baseCollectionId = null,
 }: CollectionBreadcrumbsProps): JSX.Element | null => {
@@ -71,14 +76,29 @@ export const CollectionBreadcrumbs = ({
     );
 
   return (
-    <PathContainer>
-      {content}
-      <CollectionBadge
-        collectionId={collection.id}
-        isSingleLine
-        onClick={onClick ? () => onClick(collection) : undefined}
-      />
-    </PathContainer>
+    <>
+      <PathContainer>
+        {content}
+        <CollectionBadge
+          collectionId={collection.id}
+          isSingleLine
+          onClick={onClick ? () => onClick(collection) : undefined}
+        />
+      </PathContainer>
+      {dashboard && (
+        <>
+          {separator}
+          <Badge
+            icon={{ name: "dashboard" }}
+            inactiveColor="text-light"
+            isSingleLine
+            to={Urls.dashboard(dashboard)}
+          >
+            {dashboard.name}
+          </Badge>
+        </>
+      )}
+    </>
   );
 };
 

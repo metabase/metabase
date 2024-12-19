@@ -48,7 +48,10 @@ export function lexify(expression: string) {
   if (errors && errors.length > 0) {
     errors.forEach(error => {
       const { pos } = error;
-      lexs.push({ type: BAD_TOKEN, text: expression[pos], length: 1, pos });
+
+      if (typeof pos === "number") {
+        lexs.push({ type: BAD_TOKEN, text: expression[pos], length: 1, pos });
+      }
     });
   }
 

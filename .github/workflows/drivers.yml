@@ -738,6 +738,28 @@ jobs:
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - name: Postgres 12.x
+            junit-name: postgres-ee
+            docker-image: postgres:12-alpine
+            env:
+              enable-ssl-tests: 'false'
+          - name: Postgres Latest
+            junit-name: postgres-latest-ee
+            docker-image: postgres:latest
+            env:
+              enable-ssl-tests: 'true'
+        job:
+          - name: Driver Tests
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+          - name: App DB Tests
+            test-args: >-
+              :exclude-tags [:mb/driver-tests]
+    name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
     env:
       CI: 'true'
       DRIVERS: postgres
@@ -747,9 +769,13 @@ jobs:
       MB_DB_DBNAME: mb_test
       MB_DB_USER: mb_test
       MB_POSTGRESQL_TEST_USER: mb_test
+      # SSL tests are only enabled for the postgres-latest job.
+      MB_POSTGRES_SSL_TEST_SSL: ${{ matrix.version.env.enable-ssl-tests }}
+      MB_POSTGRES_SSL_TEST_SSL_MODE: verify-full
+      MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: 'test-resources/certificates/us-east-2-bundle.pem'
     services:
       postgres:
-        image: postgres:12-alpine
+        image: ${{ matrix.version.docker-image }}
         ports:
           - "5432:5432"
         env:
@@ -757,55 +783,24 @@ jobs:
           POSTGRES_DB: mb_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
-    - uses: actions/checkout@v4
-    - name: Test Postgres driver (12)
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-postgres-ee'
-
-  be-tests-postgres-latest-ee:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    env:
-      CI: 'true'
-      DRIVERS: postgres
-      MB_DB_TYPE: postgres
-      MB_DB_PORT: 5432
-      MB_DB_HOST: localhost
-      MB_DB_DBNAME: circle_test
-      MB_DB_USER: circle_test
-      MB_POSTGRESQL_TEST_USER: circle_test
-      MB_POSTGRES_SSL_TEST_SSL: true
-      MB_POSTGRES_SSL_TEST_SSL_MODE: verify-full
-      MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: 'test-resources/certificates/us-east-2-bundle.pem'
-    services:
-      postgres:
-        image: circleci/postgres:latest
-        ports:
-          - "5432:5432"
-        env:
-          POSTGRES_USER: circle_test
-          POSTGRES_DB: circle_test
-          POSTGRES_HOST_AUTH_METHOD: trust
-    steps:
-    - uses: actions/checkout@v4
-    - name: Test Postgres driver (latest)
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-postgres-latest-ee'
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+      - uses: actions/checkout@v4
+      - name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
+        uses: ./.github/actions/test-driver
+        with:
+          junit-name: 'be-tests-${{ matrix.version.junit-name }}'
+          test-args: >-
+            ${{ matrix.job.test-args }}
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-presto-jdbc-ee:
     needs: files-changed
@@ -1121,3 +1116,41 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  # Dummy job generator to spit out fake runs for matrix jobs we skipped. See
+  # https://github.com/orgs/community/discussions/9141 and
+  # https://metaboat.slack.com/archives/C0669P4AF9N/p1732315370301059
+  be-driver-tests-skipped-stub:
+    needs: files-changed
+    if: |
+      !cancelled() &&
+      (github.event.pull_request.draft == true ||
+      needs.files-changed.outputs.backend_all == 'false')
+    strategy:
+      matrix:
+        job:
+          -  "Test Postgres 12.x (App DB Tests)"
+          -  "Test Postgres 12.x (Driver Tests)"
+          -  "Test Postgres Latest (App DB Tests)"
+          -  "Test Postgres Latest (Driver Tests)"
+          -  "be-tests-mariadb-10-2-ee (0)"
+          -  "be-tests-mariadb-10-2-ee (1)"
+          -  "be-tests-mariadb-10-2-ee (2)"
+          -  "be-tests-mariadb-10-2-ee (3)"
+          -  "be-tests-mariadb-latest-ee (0)"
+          -  "be-tests-mariadb-latest-ee (1)"
+          -  "be-tests-mariadb-latest-ee (2)"
+          -  "be-tests-mariadb-latest-ee (3)"
+          -  "be-tests-mysql-8-0-ee (0)"
+          -  "be-tests-mysql-8-0-ee (1)"
+          -  "be-tests-mysql-8-0-ee (2)"
+          -  "be-tests-mysql-8-0-ee (3)"
+          -  "be-tests-mysql-latest-ee (0)"
+          -  "be-tests-mysql-latest-ee (1)"
+          -  "be-tests-mysql-latest-ee (2)"
+          -  "be-tests-mysql-latest-ee (3)"
+    name: ${{ matrix.job }}
+    runs-on: ubuntu-22.04
+    steps:
+      - run: >-
+          echo 'Skipping job due to conditional filtering'

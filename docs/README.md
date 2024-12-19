@@ -132,6 +132,7 @@ Metabase's reference documentation.
 - [Data reference](./exploration-and-organization/data-model-reference.md)
 - [Events and timelines](./exploration-and-organization/events-and-timelines.md)
 - [X-rays](./exploration-and-organization/x-rays.md)
+- [Content verification](./exploration-and-organization/content-verification.md)
 
 ### People
 
@@ -262,7 +263,7 @@ We tweet stuff.
 
 Follow us on GitHub.
 
-### [List of releases](./releases.md)
+### [List of releases](https://github.com/metabase/metabase/releases)
 
 A list of all Metabase releases, including both the Enterprise Edition and the Open Source Edition.
 

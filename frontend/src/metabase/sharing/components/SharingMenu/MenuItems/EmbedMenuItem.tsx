@@ -1,13 +1,10 @@
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
-import Link from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Center, Icon, Menu, Stack, Text, Title } from "metabase/ui";
+import { Icon, Menu } from "metabase/ui";
 
 export function EmbedMenuItem({ onClick }: { onClick: () => void }) {
-  const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
   const isAdmin = useSelector(getUserIsAdmin);
 
   if (!isAdmin) {
@@ -17,27 +14,10 @@ export function EmbedMenuItem({ onClick }: { onClick: () => void }) {
   return (
     <Menu.Item
       data-testid="embed-menu-embed-modal-item"
-      py="sm"
-      icon={
-        <Center mr="xs">
-          <Icon name="embed" />
-        </Center>
-      }
-      onClick={isStaticEmbeddingEnabled ? onClick : undefined}
+      icon={<Icon name="embed" aria-hidden />}
+      onClick={onClick}
     >
-      {isStaticEmbeddingEnabled ? (
-        <Title order={4}>{t`Embed`}</Title>
-      ) : (
-        <Link
-          to="/admin/settings/embedding-in-other-applications"
-          target="_blank"
-        >
-          <Stack spacing="xs">
-            <Title order={4}>{t`Embedding is off`}</Title>
-            <Text size="sm">{t`Enable it in settings`}</Text>
-          </Stack>
-        </Link>
-      )}
+      {t`Embed`}
     </Menu.Item>
   );
 }
