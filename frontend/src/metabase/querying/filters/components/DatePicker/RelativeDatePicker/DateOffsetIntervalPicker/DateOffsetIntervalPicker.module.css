@@ -1,0 +1,7 @@
+.PickerGrid {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+}
