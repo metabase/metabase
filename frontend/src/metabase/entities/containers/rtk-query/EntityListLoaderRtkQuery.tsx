@@ -4,6 +4,7 @@ import { useLatest } from "react-use";
 import { match } from "ts-pattern";
 
 import DefaultLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { useDeepMemo } from "metabase/hooks/use-deep-memo";
 import { capitalize } from "metabase/lib/formatting";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -117,12 +118,13 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
       return entitiesDefinitions[entityType];
     }, [entityType]);
 
-  const entityQuery = useSelector(state =>
+  const entityQueryRaw = useSelector(state =>
     typeof entityQueryProp === "function"
       ? entityQueryProp(state, props)
       : entityQueryProp,
   );
 
+  const entityQuery = useDeepMemo(() => entityQueryRaw, [entityQueryRaw]);
   const list = useSelector(state => {
     return match(selectorName)
       .with("getList", () => {
