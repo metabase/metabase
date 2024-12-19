@@ -13,10 +13,10 @@
    [toucan2.core :as t2]))
 
 (use-fixtures
-  :each
-  (fn [thunk]
-    (binding [notification/*default-options* {:notification/sync? true}]
-      (thunk))))
+ :each
+ (fn [thunk]
+   (binding [notification/*default-options* {:notification/sync? true}]
+     (thunk))))
 
 (defn- construct-email
   [& [data]]
@@ -32,65 +32,108 @@
 
 (def card-name-regex (re-pattern notification.tu/default-card-name))
 
-(deftest basic-card-notification-test
-  (notification.tu/with-notification-testing-setup!
-    (let [card-content "Hello world!!!"]
-      (mt/with-temp [:model/Channel {http-channel-id :id} {:type    :channel/http
-                                                           :details {:url         "https://metabase.com/testhttp"
-                                                                     :auth-method "none"}}]
-        (notification.tu/with-card-notification
-          [notification {:card     {:name notification.tu/default-card-name
-                                    :dataset_query (mt/native-query {:query (format "SELECT '%s' as message" card-content)})}
-                         :handlers [@notification.tu/default-email-handler
-                                    notification.tu/default-slack-handler
-                                    {:channel_type :channel/http
-                                     :channel_id   http-channel-id}]}]
-          (let [card-id (-> notification :payload :card_id)]
-            (notification.tu/test-send-notification!
-             notification
-             {:channel/email
-              (fn [[email]]
-                (is (= (construct-email
-                        {:message [{notification.tu/default-card-name true
-                                    card-content                     true}
-                                  ;; icon
-                                   notification.tu/png-attachment
-                                   notification.tu/csv-attachment]})
-                       (mt/summarize-multipart-single-email
-                        email
-                        card-name-regex
-                        (re-pattern card-content)))))
+(deftest basic-table-notification-test
+  (testing "card notification of a simple table"
+    (notification.tu/with-notification-testing-setup!
+      (let [card-content "Hello world!!!"]
+        (mt/with-temp [:model/Channel {http-channel-id :id} {:type    :channel/http
+                                                             :details {:url         "https://metabase.com/testhttp"
+                                                                       :auth-method "none"}}]
+          (notification.tu/with-card-notification
+            [notification {:card     {:name notification.tu/default-card-name
+                                      :dataset_query (mt/native-query {:query (format "SELECT '%s' as message" card-content)})}
+                           :handlers [@notification.tu/default-email-handler
+                                      notification.tu/default-slack-handler
+                                      {:channel_type :channel/http
+                                       :channel_id   http-channel-id}]}]
+            (let [card-id (-> notification :payload :card_id)]
+              (notification.tu/test-send-notification!
+               notification
+               {:channel/email
+                (fn [[email]]
+                  (is (= (construct-email
+                          {:message [{notification.tu/default-card-name true
+                                      "Manage your subscriptions"       true
+                                      card-content                      true}
+                                     ;; icon
+                                     notification.tu/png-attachment
+                                     notification.tu/csv-attachment]})
+                         (mt/summarize-multipart-single-email
+                          email
+                          card-name-regex
+                          #"Manage your subscriptions"
+                          (re-pattern card-content)))))
 
-              :channel/slack
-              (fn [[message]]
-                (is (=? {:attachments [{:blocks [{:text {:emoji true
-                                                         :text "🔔 Card notification test card"
-                                                         :type "plain_text"}
-                                                  :type "header"}]}
-                                       {:attachment-name "image.png"
-                                        :channel-id "FOO"
-                                        :fallback "Card notification test card",
-                                        :rendered-info {:attachments false
-                                                        :content true
-                                                        :render/text true}
-                                        :title "Card notification test card"}]
-                         :channel-id "#general"}
-                        (notification.tu/slack-message->boolean message))))
+                :channel/slack
+                (fn [[message]]
+                  (is (=? {:attachments [{:blocks [{:text {:emoji true
+                                                           :text "🔔 Card notification test card"
+                                                           :type "plain_text"}
+                                                    :type "header"}]}
+                                         {:attachment-name "image.png"
+                                          :channel-id "FOO"
+                                          :fallback "Card notification test card",
+                                          :rendered-info {:attachments false
+                                                          :content true
+                                                          :render/text true}
+                                          :title "Card notification test card"}]
+                           :channel-id "#general"}
+                          (notification.tu/slack-message->boolean message))))
 
-              :channel/http
-              (fn [[req]]
-                (is (=? {:body {:type               "alert"
-                                :alert_id           (-> notification :payload :id)
-                                :alert_creator_id   (-> notification :creator_id)
-                                :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id notification))
-                                :data               {:type          "question"
-                                                     :question_id   card-id
-                                                     :question_name notification.tu/default-card-name
-                                                     :question_url  (mt/malli=? [:fn #(str/ends-with? % (str card-id))])
-                                                     :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64")])
-                                                     :raw_data      {:cols ["MESSAGE"], :rows [["Hello world!!!"]]}}
-                                :sent_at            (mt/malli=? :any)}}
-                        req)))})))))))
+                :channel/http
+                (fn [[req]]
+                  (is (=? {:body {:type               "alert"
+                                  :alert_id           (-> notification :payload :id)
+                                  :alert_creator_id   (-> notification :creator_id)
+                                  :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id notification))
+                                  :data               {:type          "question"
+                                                       :question_id   card-id
+                                                       :question_name notification.tu/default-card-name
+                                                       :question_url  (mt/malli=? [:fn #(str/ends-with? % (str card-id))])
+                                                       :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64")])
+                                                       :raw_data      {:cols ["MESSAGE"], :rows [["Hello world!!!"]]}}
+                                  :sent_at            (mt/malli=? :any)}}
+                          req)))}))))))))
+
+
+(deftest basic-line-graph-test
+  (testing "card notification of a simple line graph"
+    (notification.tu/with-card-notification
+      [notification {:card     {:dataset_query (mt/mbql-query orders {:aggregation [["count"]]
+                                                                      :breakout    [!day.created_at]})
+                                :display       :line}
+                     :handlers [@notification.tu/default-email-handler
+                                notification.tu/default-slack-handler]}]
+      (notification.tu/test-send-notification!
+       notification
+       {:channel/email
+        (fn [[email]]
+          (is (= (construct-email
+                  {:message [{notification.tu/default-card-name true
+                              "Manage your subscriptions"       true}
+
+                             ;; static viz
+                             notification.tu/png-attachment
+                             ;; icon
+                             notification.tu/png-attachment
+                             notification.tu/csv-attachment]})
+                 (mt/summarize-multipart-single-email
+                  email
+                  card-name-regex
+                  #"Manage your subscriptions"))))
+        :channel/slack
+        (fn [[message]]
+          (is (=? {:attachments [{:blocks [{:text {:emoji true
+                                                   :text "🔔 Card notification test card"
+                                                   :type "plain_text"}
+                                            :type "header"}]}
+                                 {:attachment-name "image.png"
+                                  :channel-id "FOO"
+                                  :fallback "Card notification test card"
+                                  :rendered-info {:attachments false :content true}
+                                  :title "Card notification test card"}]
+                   :channel-id "#general"}
+                  (notification.tu/slack-message->boolean message))))}))))
 
 (deftest ensure-constraints-test
   (testing "Validate card queries are limited by `default-query-constraints`"
@@ -104,8 +147,8 @@
           (fn [[email]]
             ;; this will fail if the query has a limit
             ;; follow up in https://metaboat.slack.com/archives/C064QMXEV9N/p1734522146075659
-             (is (= 11
-                    (some->> email :message (m/find-first #(= "text/csv" (:content-type %))) :content slurp str/split-lines count))))})))))
+            (is (= 11
+                   (some->> email :message (m/find-first #(= "text/csv" (:content-type %))) :content slurp str/split-lines count))))})))))
 
 (deftest multiple-email-recipients-test
   (notification.tu/with-card-notification
@@ -293,16 +336,16 @@
     (notification.tu/test-send-notification!
      notification
      {:channel/email
-      (fn [[emails]]
+      (fn [[email]]
         (is (= (construct-email
                 {:recipients #{"ngoc@metabase.com"}
                  :message [{notification.tu/default-card-name true
-                            "Manage your subscriptions" true
-                            "Unsubscribe" true}
+                            "Manage your subscriptions"       false
+                            "Unsubscribe"                     true}
                            notification.tu/png-attachment
                            notification.tu/csv-attachment]})
                (mt/summarize-multipart-single-email
-                (first emails)
+                email
                 card-name-regex
                 #"Manage your subscriptions"
                 #"Unsubscribe"))))})))
@@ -318,11 +361,11 @@
                         [:payload :card_part :result])))]
       (testing "rasta has no permissions and will get error"
         (let [rasta-result (payload! :rasta)]
-         (is (= 0 (:row_count rasta-result)))
-         (is (re-find #"You do not have permissions to view Card \d+"
-                      (:error rasta-result)))))
+          (is (= 0 (:row_count rasta-result)))
+          (is (re-find #"You do not have permissions to view Card \d+"
+                       (:error rasta-result)))))
       (testing "crowberto can see the card"
-       (is (pos-int? (:row_count (payload! :crowberto))))))))
+        (is (pos-int? (:row_count (payload! :crowberto))))))))
 
 (deftest alerts-do-not-remove-user-metadata
   (testing "Alerts that exist on a Model shouldn't remove metadata (#35091)."
