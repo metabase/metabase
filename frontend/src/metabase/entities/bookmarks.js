@@ -3,7 +3,7 @@ import { assoc, dissoc, getIn, updateIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { bookmarkApi } from "metabase/api";
+import { bookmarkApi, useListBookmarksQuery } from "metabase/api";
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
@@ -20,6 +20,9 @@ const Bookmarks = createEntity({
   nameOne: "bookmark",
   path: "/api/bookmark",
   schema: BookmarkSchema,
+  rtk: {
+    useListQuery: useListBookmarksQuery,
+  },
   api: {
     list: (_, dispatch) => {
       return entityCompatibleQuery(
