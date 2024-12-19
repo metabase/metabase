@@ -100,7 +100,7 @@ describe("issue 32964", () => {
     cy.findByTestId("viz-settings-button").click();
     cy.findByTestId("sidebar-left").within(([sidebar]) => {
       const maxX = sidebar.getBoundingClientRect().right;
-      cy.findByText(`Sum of ${LONG_NAME}`).then(([el]) => {
+      cy.findByDisplayValue(`Sum of ${LONG_NAME}`).then(([el]) => {
         const x = el.getBoundingClientRect().right;
         expect(x).to.be.lessThan(maxX);
       });

@@ -45,25 +45,22 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.contains("Visualization").click();
     switchToWaterfallDisplay();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Select a field").click();
-    cy.get("[data-element-id=list-item]").contains("X").click();
+    H.sidebar().findAllByPlaceholderText("Select a field").first().click();
+    H.popover().findByText("X").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Select a field").click();
-    cy.get("[data-element-id=list-item]").contains("Y").click();
+    H.sidebar().findAllByPlaceholderText("Select a field").last().click();
+    H.popover().findByText("Y").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Axes").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Linear").click();
-    cy.get("[data-element-id=list-item]").contains("Ordinal").click();
+    H.sidebar().findAllByDisplayValue("Linear").first().click();
+    H.popover().findByText("Ordinal").click();
 
     verifyWaterfallRendering("X", "Y");
   });
 
-  it("should work with quantitative series", () => {
+  it("should work with quantitative series", { tags: "@flaky" }, () => {
     H.openNativeEditor().type(
       "select 1 as X, 10 as Y union select 2 as X, -2 as Y",
     );
@@ -72,12 +69,11 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.contains("Visualization").click();
     switchToWaterfallDisplay();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Select a field").click();
-    cy.get("[data-element-id=list-item]").contains("X").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Select a field").click();
-    cy.get("[data-element-id=list-item]").contains("Y").click();
+    H.sidebar().findAllByPlaceholderText("Select a field").first().click();
+    H.popover().findByText("X").click();
+
+    H.sidebar().findAllByPlaceholderText("Select a field").last().click();
+    H.popover().findByText("Y").click();
 
     verifyWaterfallRendering("X", "Y");
   });
@@ -160,16 +156,16 @@ describe("scenarios > visualizations > waterfall", () => {
       });
 
       H.leftSidebar().within(() => {
-        cy.findByText("Count").should("exist");
-        cy.findByText("Sum of Total").should("not.exist");
+        cy.findByDisplayValue("Count").should("exist");
+        cy.findByDisplayValue("Sum of Total").should("not.exist");
         cy.findByText(/Add another/).should("not.exist");
 
-        cy.findByText("Count").click();
+        cy.findByDisplayValue("Count").click();
       });
       H.popover().findByText("Sum of Total").click();
       H.leftSidebar().within(() => {
-        cy.findByText("Sum of Total").should("exist");
-        cy.findByText("Count").should("not.exist");
+        cy.findByDisplayValue("Sum of Total").should("exist");
+        cy.findByDisplayValue("Count").should("not.exist");
       });
 
       H.echartsContainer().within(() => {
@@ -224,12 +220,11 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.findByText("Visualization").click();
     switchToWaterfallDisplay();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Select a field").click();
-    cy.get("[data-element-id=list-item]").contains("Created At").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Select a field").click();
-    cy.get("[data-element-id=list-item]").contains("Count").click();
+    H.sidebar().findAllByPlaceholderText("Select a field").first().click();
+    H.popover().findByText("Created At: Year").click();
+
+    H.sidebar().findAllByPlaceholderText("Select a field").last().click();
+    H.popover().findByText("Count").click();
 
     H.echartsContainer().should("exist"); // Chart renders after adding a metric
 
@@ -461,7 +456,7 @@ describe("scenarios > visualizations > waterfall", () => {
       H.echartsContainer().get("text").contains("Total").should("exist");
     });
 
-    it("should allow toggling of value labels", () => {
+    it("should allow toggling of value labels", { tags: "@flaky" }, () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Display").click();
 

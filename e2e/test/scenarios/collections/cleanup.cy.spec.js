@@ -135,6 +135,7 @@ describe("scenarios > collections > clean up", () => {
 
           cy.log("should be able to navigate to clean up modal");
           H.visitCollection(seedData.collection.id);
+          cleanUpAlert().should("exist");
           selectCleanThingsUpCollectionAction();
           cy.url().should("include", "cleanup");
 
@@ -272,6 +273,12 @@ describe("scenarios > collections > clean up", () => {
           selectAllItems();
           moveToTrash();
 
+          cy.log(
+            "should not longer show alert if user has used the clean up feature",
+          );
+          closeCleanUpModal();
+          cleanUpAlert().should("not.exist");
+
           // Ensure that stale items in Our Analytics are maked with a null collection id
           H.expectGoodSnowplowEvent(
             event =>
@@ -330,7 +337,7 @@ describe("scenarios > collections > clean up", () => {
         H.setTokenFeatures("all");
       });
 
-      it("should show admins clean up alert if there's something to clean up in a collection", () => {
+      it("should show admins a dismissible clean up alert if there's something to clean up in a collection", () => {
         cy.log("should not show alert if there's nothing stale");
         cy.intercept("GET", "/api/ee/stale/*").as("staleItems");
         H.visitCollection(FIRST_COLLECTION_ID);
@@ -368,17 +375,32 @@ describe("scenarios > collections > clean up", () => {
           cy.reload();
           cleanUpAlert()
             .should("exist")
-            .findByText(/Get rid of unused content/)
+            .findByText(/Keep your collections tidy/)
             .click();
           cy.url().should("include", "cleanup");
           closeCleanUpModal();
-        });
 
-        cy.log("should not show alert if user is not admin");
+          cy.log("should be able to dismiss the banner");
+          cleanUpAlert().findByRole("button").click();
+          cleanUpAlert().should("not.exist");
+
+          cy.log("dismissing banner should persist on page refresh");
+          cy.reload();
+          H.collectionTable().within(() => {
+            cy.findByText("Second collection").should("exist");
+          });
+          cleanUpAlert().should("not.exist");
+        });
+      });
+
+      it("should not show non-admins a clean up alert if there's something to clean up in a collection", () => {
         cy.signOut();
         cy.signInAsNormalUser();
-        cy.reload();
-        cy.wait("@staleItems");
+        cy.intercept("GET", "/api/ee/stale/*").as("staleItems");
+        H.visitCollection(FIRST_COLLECTION_ID);
+        H.collectionTable().within(() => {
+          cy.findByText("Second collection").should("exist");
+        });
         cleanUpAlert().should("not.exist");
       });
     });
@@ -534,7 +556,6 @@ function seedMainTestData() {
       notStaleQuestionIds.push(...questions.slice(8).map(({ id }) => id));
       makeItemsStale(veryStaleQuestionIds, "card", "2000-01-01");
       makeItemsStale(staleQuestionIds, "card");
-      cy.log("TESTING");
     });
 
   cy.get("@cleanUpCollection")
