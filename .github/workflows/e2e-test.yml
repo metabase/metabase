@@ -114,7 +114,7 @@ jobs:
         shell: bash
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@slow+-@mongo+-@flaky --@quarantine",grepOmitFiltered=true \
+          --env grepTags="-@slow+-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
           --spec '${{ inputs.specs }}' \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
