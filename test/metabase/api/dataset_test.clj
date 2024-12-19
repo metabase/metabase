@@ -102,24 +102,25 @@
                 :database_id            (mt/id)}
                (format-response result))))
         (testing "\nSaved QueryExecution"
-          (is (= {:hash         true
-                  :row_count    1
-                  :result_rows  1
-                  :context      :ad-hoc
-                  :executor_id  (mt/user->id :crowberto)
-                  :native       false
-                  :pulse_id     nil
-                  :card_id      nil
-                  :is_sandboxed false
-                  :dashboard_id nil
-                  :error        nil
-                  :id           true
-                  :action_id    nil
-                  :cache_hit    false
-                  :cache_hash   false
-                  :database_id  (mt/id)
-                  :started_at   true
-                  :running_time true
+          (is (= {:hash             true
+                  :row_count        1
+                  :result_rows      1
+                  :context          :ad-hoc
+                  :executor_id      (mt/user->id :crowberto)
+                  :native           false
+                  :pulse_id         nil
+                  :card_id          nil
+                  :is_sandboxed     false
+                  :dashboard_id     nil
+                  :error            nil
+                  :id               true
+                  :action_id        nil
+                  :cache_hit        false
+                  :cache_hash       false
+                  :parameterized    false
+                  :database_id      (mt/id)
+                  :started_at       true
+                  :running_time     true
                   :embedding_client nil
                   :embedding_version nil}
                  (format-response (most-recent-query-execution-for-query query)))))))))
