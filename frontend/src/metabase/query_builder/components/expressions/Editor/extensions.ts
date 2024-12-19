@@ -36,7 +36,10 @@ export function useExtensions(options: Options) {
         cursorBlinkRate: 1000,
         drawRangeCursor: false,
       }),
-      EditorView.contentAttributes.of({ tabIndex: "0" }),
+      EditorView.contentAttributes.of({
+        tabIndex: "0",
+        autocorrect: "off",
+      }),
       highlighting(),
       customExpression({
         startRule,
