@@ -10,7 +10,9 @@ export const useRegisterQueryBuilderMetabotContext = () => {
     }
 
     return {
-      dataset_query: question.datasetQuery(),
+      user_is_viewing: question.isSaved()
+        ? [{ type: question.type(), id: question.id() }]
+        : [{ type: "adhoc", query: question.datasetQuery() }],
     };
   }, []);
 };
