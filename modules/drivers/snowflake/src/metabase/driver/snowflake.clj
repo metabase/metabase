@@ -148,7 +148,7 @@
     spec))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
-  [_ {:keys [account additional-options host use-hostname], :as details}]
+  [_ {:keys [account additional-options host use-hostname password use-password], :as details}]
   (when (get "week_start" (sql-jdbc.common/additional-options->map additional-options :url))
     (log/warn (str "You should not set WEEK_START in Snowflake connection options; this might lead to incorrect "
                    "results. Set the Start of Week Setting instead.")))
@@ -182,6 +182,11 @@
                    ;; see https://github.com/metabase/metabase/issues/27856
                    (cond-> (:quote-db-name details)
                      (update :db quote-name))
+                   (cond-> use-password
+                     (dissoc :private-key))
+                   ;; password takes precedence if `use-password` is missing
+                   (cond-> (or (false? use-password) (not password))
+                     (dissoc :password))
                    ;; see https://github.com/metabase/metabase/issues/9511
                    (update :warehouse upcase-not-nil)
                    (m/update-existing :schema upcase-not-nil)
