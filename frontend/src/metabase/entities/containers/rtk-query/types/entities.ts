@@ -93,14 +93,14 @@ export interface EntityDefinition<Entity, EntityWrapper> {
     getCollection: (entity: Entity | EntityWrapper) => Collection | undefined;
   };
   rtk: {
-    getUseGetQuery: (fetchType: FetchType) => {
+    getUseGetQuery?: (fetchType: FetchType) => {
       action?: string;
       transformResponse?: (data: Entity, query: EntityQuery) => unknown;
       useGetQuery: UseQuery<
         QueryDefinition<unknown, BaseQueryFn, TagType, Entity>
       >;
     };
-    useListQuery: UseQuery<
+    useListQuery?: UseQuery<
       QueryDefinition<unknown, BaseQueryFn, TagType, Entity[]>
     >;
   };
