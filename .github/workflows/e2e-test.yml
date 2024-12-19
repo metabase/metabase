@@ -118,7 +118,7 @@ jobs:
           --spec '${{ inputs.specs }}' \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
-      - name: Run EE Cypress tests on ${{ inputs.name }}
+      - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
         if: ${{ inputs.tags }}
         shell: bash
         run: |

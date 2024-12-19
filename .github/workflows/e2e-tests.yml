@@ -113,7 +113,7 @@ jobs:
           name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
   e2e-tests:
-    name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}
+    name: ${{ matrix.name }}-${{ matrix.edition }}
     uses: ./.github/workflows/e2e-test.yml
     needs: [build, e2e-matrix-builder]
     if: |
@@ -127,6 +127,7 @@ jobs:
       name: ${{ matrix.name }}
       edition: ${{ matrix.edition }}
       specs: ${{ matrix.specs }}
+      tags: ${{ matrix.tags }}
       openldap: ${{ startsWith(matrix.name, 'admin') }}
       postgres: ${{ matrix.name != 'mongo'}}
       mysql: ${{ matrix.name != 'mongo'}}
