@@ -2,29 +2,30 @@
 title: Alerts
 redirect_from:
   - /docs/latest/users-guide/15-alerts
+  - /docs/latest/questions/sharing/alerts
 ---
 
 # Alerts
 
 Set up an alert to send the results of questions to people via email or Slack, or to a webhook.
 
-![The wide world of alerts](../images/the-wide-world-of-alerts.png)
+![The wide world of alerts](./images/the-wide-world-of-alerts.png)
 
-Alerts are for questions only. If you instead want to get the results of a dashboard sent to you, check out [dashboard subscriptions](../../dashboards/subscriptions.md).
+Alerts are for questions only. If you instead want to get the results of a dashboard sent to you, check out [dashboard subscriptions](../dashboards/subscriptions.md).
 
 ## Prerequisite for alerts
 
 To start using alerts, an administrator will need to have set up at least one of the following notification channels.
 
-- [Email](../../configuring-metabase/email.md)
-- [Slack](../../configuring-metabase/slack.md)
-- [Webhooks](../../configuring-metabase/webhooks.md)
+- [Email](../configuring-metabase/email.md)
+- [Slack](../configuring-metabase/slack.md)
+- [Webhooks](../configuring-metabase/webhooks.md)
 
 ## Creating an alert
 
 Save your question, click on the sharing icon in the top-right of the screen, and select **Create alert**.
 
-![Get alerts](../images/get-alerts-about-this.png)
+![Get alerts](./images/get-alerts-about-this.png)
 
 ## Types of alerts
 
@@ -50,7 +51,7 @@ You can choose:
 - Whether you want Metabase to alert you every time the time series crosses a goal line, or only the first time it crosses the goal line.
 - How often you want Metabase to check to see if the goal line has been crossed.
 
-![Goal line alert options](../images/goal-line-options.png)
+![Goal line alert options](./images/goal-line-options.png)
 
 Click Done, and your alert will be all set up! You'll get an email confirmation, too. If you need to edit or unsubscribe from the alert you set up, just click that same icon. You'll see the Edit and Unsubscribe buttons. This is also where you'll see alerts about this question that administrators might have added you to.
 
@@ -104,19 +105,19 @@ Alerts will continue to work even if the person who set up the alert no longer h
 
 {% include plans-blockquote.html feature="Usage analytics" %}
 
-Admins can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in the **Usage analytics** collection. See [Usage analytics](../../usage-and-performance-tools/usage-analytics.md#alerts-model).
+Admins can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in the **Usage analytics** collection. See [Usage analytics](../usage-and-performance-tools/usage-analytics.md#alerts-model).
 
 ## How permissions work with alerts
 
-See [Notification permissions](../../permissions/notifications.md).
+See [Notification permissions](../permissions/notifications.md).
 
 ### Sending alerts to private Slack channels
 
-See [Sending alerts and subscriptions to private Slack channels](../../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-slack-channels).
+See [Sending alerts and subscriptions to private Slack channels](../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-slack-channels).
 
 ## Further reading
 
-- [Dashboard subscriptions](../../dashboards/subscriptions.md)
-- [Setting up email](../../configuring-metabase/email.md)
-- [Setting up Slack](../../configuring-metabase/slack.md)
-- [Usage analytics](../../usage-and-performance-tools/usage-analytics.md)
+- [Dashboard subscriptions](../dashboards/subscriptions.md)
+- [Setting up email](../configuring-metabase/email.md)
+- [Setting up Slack](../configuring-metabase/slack.md)
+- [Usage analytics](../usage-and-performance-tools/usage-analytics.md)

@@ -1,23 +1,26 @@
 ---
 title: Sankey charts
+redirect_from:
+  - /docs/latest/questions/sharing/visualizations/sankey
 ---
+
 # Sankey charts
 
 Sankey charts show how data flows through multi-dimensional steps. They're useful for showing which elements, called nodes, contribute to the overall flow.
 
-![Left-aligned sankey chart](../../images/sankey-left-aligned.png)
+![Left-aligned sankey chart](../images/sankey-left-aligned.png)
 
 ## Sankey data shape
 
 To create a Sankey chart, you'll need at least three columns in your results:
 
-- **Source column**: specifies a node in the sankey flow.
+- **Source column**: specifies a node in the Sannkey flow.
 - **Target column**: specifies a receiving node.
 - **Count column**: value that determines the thickness of the target node.
 
 If you had raw page views where each row had a source page (like the title of a referrer page) and a target page (like the title for the current page view), you could summarize by count and group by the source, then the target.
 
-![Sankey summarize count and group by source and target](../../images/sankey-summarize-count-source-target.png)
+![Sankey summarize count and group by source and target](../images/sankey-summarize-count-source-target.png)
 
 Here's the data shape used to create the chart above.
 
@@ -49,7 +52,7 @@ If some of your sources point to targets that point back to the same sources, Me
 
 To select which columns Metabase should use as the source, target, and values for the Sankey chart, click on the **settings** icon in the bottom right to view the **Data** tab.
 
-![Sankey data options](../../images/sankey-data-options.png)
+![Sankey data options](../images/sankey-data-options.png)
 
 Your data can include more than three columns, but each row must include the required three columns: source, target, and a value to scale the size of the target node.
 
@@ -65,7 +68,7 @@ The chart in the section above is left-aligned. The end nodes, `Exit` and `Purch
 
 For right alignment, the end nodes, `Exit` and `Purchase`, move to the chart's right:
 
-![Right-aligned sankey chart](../../images/sankey-right-aligned.png)
+![Right-aligned sankey chart](../images/sankey-right-aligned.png)
 
 In this case, justified alignment looks the same, as the end nodes move to take up the whole chart.
 
@@ -75,7 +78,7 @@ Whether an edge (a.k.a. link or arrow) displays its value. Options for displayin
 
 ### Edge color
 
-![Sankey gray edges](../../images/sankey-gray-edges.png)
+![Sankey gray edges](../images/sankey-gray-edges.png)
 
 Options for edge colors include:
 

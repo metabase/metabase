@@ -134,7 +134,7 @@ See [Notification permissions](../permissions/notifications.md).
 
 ## Further reading
 
-- [Alerts](../questions/sharing/alerts.md)
+- [Alerts](../questions/alerts.md)
 - [Setting up email](../configuring-metabase/email.md)
 - [Setting up Slack](../configuring-metabase/slack.md)
 - [Usage analytics](../usage-and-performance-tools/usage-analytics.md)

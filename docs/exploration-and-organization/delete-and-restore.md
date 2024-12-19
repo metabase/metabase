@@ -133,7 +133,7 @@ You won't see retired Segments in Trash.
 
 ## Deleting subscriptions and alerts
 
-See [Deleting a subscription](../dashboards/subscriptions.md#deleting-a-subscription) and [Deleting alerts](../questions/sharing/alerts.md#editing-and-deleting-alerts).
+See [Deleting a subscription](../dashboards/subscriptions.md#deleting-a-subscription) and [Deleting alerts](../questions/alerts.md#editing-and-deleting-alerts).
 
 ## Deleting databases
 
