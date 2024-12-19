@@ -1,9 +1,6 @@
 import * as Lib from "metabase-lib";
 
-import {
-  BaseBucketPickerPopover,
-  INITIALLY_VISIBLE_ITEMS_COUNT,
-} from "./BaseBucketPickerPopover";
+import { BaseBucketPickerPopover } from "./BaseBucketPickerPopover";
 import { BinningStrategyPickerPopover } from "./BinningStrategyPickerPopover";
 import { TemporalBucketPickerPopover } from "./TemporalBucketPickerPopover";
 import type { CommonBucketPickerProps } from "./types";
@@ -57,8 +54,6 @@ function _BucketPickerPopover({
 
   return null;
 }
-
-export { INITIALLY_VISIBLE_ITEMS_COUNT };
 
 export const BucketPickerPopover = Object.assign(_BucketPickerPopover, {
   displayName: "BucketPickerPopover",
