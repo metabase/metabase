@@ -112,7 +112,8 @@
   (merge
    (-> query-execution
        add-running-time
-       (dissoc :error :hash :executor_id :action_id :is_sandboxed :card_id :dashboard_id :pulse_id :result_rows :native))
+       (dissoc :error :hash :executor_id :action_id :is_sandboxed :card_id :dashboard_id :pulse_id :result_rows :native
+               :parameterized))
    (dissoc result :cache/details)
    {:cached                 (when (:cached cache) (:updated_at cache))
     :status                 :completed
@@ -149,6 +150,7 @@
      :pivot/keys [original-query]} :info
     database-id                    :database
     query-type                     :type
+    parameters                     :parameters
     :as                            query}]
   {:pre [(bytes? query-hash)]}
   (let [json-query (if original-query
@@ -165,6 +167,8 @@
      :pulse_id          pulse-id
      :context           context
      :hash              query-hash
+     :parameterized     (and (boolean (seq parameters))
+                             (every? #(some? (:value %)) parameters))
      :native            (= (keyword query-type) :native)
      :json_query        json-query
      :started_at        (t/zoned-date-time)
