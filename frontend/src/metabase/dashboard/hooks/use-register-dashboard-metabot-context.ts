@@ -10,7 +10,7 @@ export const useRegisterDashboardMetabotContext = () => {
     }
 
     return {
-      dashboard_id: dashboard.id,
+      user_is_viewing: [{ type: "dashboard", id: dashboard.id }],
     };
   }, []);
 };

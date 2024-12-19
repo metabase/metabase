@@ -1,6 +1,13 @@
 import type { CardDisplayType } from "./visualization";
 
-import type { ColumnSettings, DatasetQuery, SeriesSettings } from ".";
+import type {
+  CardId,
+  CardType,
+  ColumnSettings,
+  DashboardId,
+  DatasetQuery,
+  SeriesSettings,
+} from ".";
 
 export type MetabotFeedbackType =
   | "great"
@@ -11,8 +18,9 @@ export type MetabotFeedbackType =
 /* Metabot v3 - Base Types */
 
 export type MetabotChatContext = {
+  user_is_viewing: MetabotEntityInfo[];
   current_time_with_timezone: string;
-} & Record<string, any>;
+};
 
 export type MetabotTool = {
   name: string; // TODO: make strictly typed - currently there's no tools
@@ -136,6 +144,26 @@ export type MetabotReaction =
   | MetabotWriteBackReaction
   | MetabotApiCallReaction
   | MetabotRunQueryReaction;
+
+export type MetabotCardInfo = {
+  type: CardType;
+  id: CardId;
+};
+
+export type MetabotDashboardInfo = {
+  type: "dashboard";
+  id: DashboardId;
+};
+
+export type MetabotAdhocQueryInfo = {
+  type: "adhoc";
+  query: DatasetQuery;
+};
+
+export type MetabotEntityInfo =
+  | MetabotCardInfo
+  | MetabotDashboardInfo
+  | MetabotAdhocQueryInfo;
 
 /* Metabot v3 - API Request Types */
 

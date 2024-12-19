@@ -58,9 +58,7 @@
 (mu/defn create-context
   "Create a tool context."
   [context]
-  (-> context
-      set-user-time
-      (select-keys [:current_user_time])))
+  (set-user-time context))
 
 (mu/defn create-reactions
   "Extracts reactions based on the current context."

@@ -19,7 +19,7 @@
 (defn- request-llm-response [e]
   (let [context (envelope/context e)
         new-response-message (:message (metabot-v3.client/*request*
-                                        context
+                                        (select-keys context [:current_user_time])
                                         (envelope/full-history e)
                                         (envelope/session-id e)
                                         (metabot-v3.tools/applicable-tools (metabot-v3.tools/*tools-metadata*)

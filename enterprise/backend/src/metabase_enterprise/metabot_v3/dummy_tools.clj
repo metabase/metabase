@@ -8,6 +8,7 @@
    [metabase-enterprise.metabot-v3.tools.who-is-your-favorite]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -195,31 +196,31 @@
 (def ^:private detail-getters
   {:dashboard {:id :get-dashboard-details
                :fn get-dashboard-details
-               :arg-fn (fn [ref] {:dashboard-id ref})}
+               :arg-fn (fn [id] {:dashboard-id id})}
    :table {:id :get-table-details
            :fn get-table-details
-           :arg-fn (fn [ref] {:table-id (str ref)})}
+           :arg-fn (fn [id] {:table-id (str id)})}
    :model {:id :get-table-details
            :fn get-table-details
-           :arg-fn (fn [ref] {:table-id (str "card__" ref)})}
+           :arg-fn (fn [id] {:table-id (str "card__" id)})}
    :metric {:id :get-metric-details
             :fn get-metric-details
-            :arg-fn (fn [ref] {:metric-id (str "card__" ref)})}
+            :arg-fn (fn [id] {:metric-id (str "card__" id)})}
    :report {:id :get-report-details
             :fn get-report-details
-            :arg-fn (fn [ref] {:report-id (str "card__" ref)})}})
+            :arg-fn (fn [id] {:report-id (str "card__" id)})}})
 
 (defn- dummy-get-item-details
   [{:keys [context] :as env}]
   (reduce (fn [env viewed]
-            (if-let [{getter-id :id, getter-fn :fn, :keys [arg-fn]} (-> viewed :type detail-getters)]
-              (let [arguments (arg-fn (:ref viewed))
+            (if-let [{getter-id :id, getter-fn :fn, :keys [arg-fn]} (some-> viewed :type keyword detail-getters)]
+              (let [arguments (arg-fn (:id viewed))
                     content (-> (getter-fn getter-id arguments (envelope/context env))
                                 :output)]
                 (reduce envelope/add-dummy-message env (dummy-tool-messages getter-id arguments content)))
               env))
           env
-          (:user-is-viewing context)))
+          (:user_is_viewing context)))
 
 (defn- execute-query
   [query-id legacy-query]
@@ -233,14 +234,14 @@
 
 (defn- dummy-run-query
   [{:keys [context] :as env}]
-  (transduce (filter (comp #{:adhoc} :type))
+  (transduce (filter (comp #{"adhoc"} :type))
              (completing (fn [env {:keys [query]}]
                            (let [query-id (u/generate-nano-id)
                                  arguments {:query-id query-id}
-                                 content (execute-query query-id query)]
+                                 content (execute-query query-id (mbql.normalize/normalize query))]
                              (reduce envelope/add-dummy-message env (dummy-tool-messages :run-query arguments content)))))
              env
-             (:user-is-viewing context)))
+             (:user_is_viewing context)))
 
 (def ^:private dummy-tool-registry
   [dummy-get-current-user
@@ -278,19 +279,19 @@
                     :filter [:> [:field "SUBTOTAL" {:base-type :type/Float}] 50]}})
   (def test-context
     ;; for testing purposes, pretend the user is viewing a bunch of things at once
-    {:user-is-viewing [{:type :dashboard
-                        :ref 10
+    {:user_is_viewing [{:type "dashboard"
+                        :id 10
                         :parameters []
                         :is-embedded false}
-                       {:type :table
-                        :ref 27}
-                       {:type :model
-                        :ref 137}
-                       {:type :metric
-                        :ref 135}
-                       {:type :report
-                        :ref 89}
-                       {:type :adhoc
+                       {:type "table"
+                        :id 27}
+                       {:type "model"
+                        :id 137}
+                       {:type "metric"
+                        :id 135}
+                       {:type "report"
+                        :id 89}
+                       {:type "adhoc"
                         :query test-query}]})
 
   (defn test-envelope []

@@ -323,13 +323,11 @@ describe("metabot", () => {
         whoIsYourFavoriteResponse,
       );
 
-      const TestComponentOne = () => {
-        useRegisterMetabotContextProvider(() => ({ a: 1 }), []);
-        return null;
-      };
-
-      const TestComponentTwo = () => {
-        useRegisterMetabotContextProvider(() => ({ b: 2 }), []);
+      const TestComponent = () => {
+        useRegisterMetabotContextProvider(
+          () => ({ user_is_viewing: [{ type: "question", id: 1 }] }),
+          [],
+        );
         return null;
       };
 
@@ -337,8 +335,7 @@ describe("metabot", () => {
         ui: (
           <>
             <Metabot />
-            <TestComponentOne />
-            <TestComponentTwo />
+            <TestComponent />
           </>
         ),
       });
@@ -347,7 +344,10 @@ describe("metabot", () => {
 
       expect(
         isMatching(
-          { current_time_with_timezone: P.string, a: 1, b: 2 },
+          {
+            current_time_with_timezone: P.string,
+            user_is_viewing: [{ type: "question", id: 1 }],
+          },
           (await lastReqBody())?.context,
         ),
       ).toBe(true);
