@@ -104,9 +104,7 @@ jobs:
   e2e-tests:
     name: ${{ matrix.name }}-${{ matrix.edition }}
     uses: ./.github/workflows/e2e-test.yml
-    needs: [build, e2e-matrix-builder]
-    if: |
-      !cancelled() && needs.build.result == 'success'
+    needs: [ e2e-matrix-builder ]
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
