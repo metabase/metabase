@@ -233,9 +233,11 @@
   (merge
    (next-method query-type model parsed-args honeysql)
    {:select    [:card/collection_id
+                :card/created_at   ; Needed for backfilling :entity_id on demand; see [[metabase.models.card]].
                 :card/database_id
                 :card/dataset_query
                 :card/id
+                :card/entity_id
                 :card/name
                 :card/result_metadata
                 :card/table_id
