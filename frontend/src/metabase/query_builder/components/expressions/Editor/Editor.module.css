@@ -1,8 +1,26 @@
+.wrapper {
+  display: flex;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 8px;
+  min-height: 40px;
+  align-items: center;
+  padding-left: 0.6875rem;
+  padding-right: 0.6875rem;
+}
+
+.prefix {
+  font-weight: bold;
+}
+
 :global {
   :local(.editor) {
     width: 100%;
     height: 100%;
     color: var(--mb-color-text-dark);
+
+    .cm-editor {
+      background: none;
+    }
 
     .cm-focused {
       outline: none;
@@ -11,7 +29,7 @@
     .cm-scroller {
       padding-top: 4px;
       padding-bottom: 4px;
-      background-color: var(--mb-color-bg-light);
+      background-color: none;
     }
 
     .cm-content {
@@ -24,6 +42,7 @@
     }
 
     .cm-gutters {
+      display: none;
       background-color: var(--mb-color-bg-light);
       border: none;
     }
