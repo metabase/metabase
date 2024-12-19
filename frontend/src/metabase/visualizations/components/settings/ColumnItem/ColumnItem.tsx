@@ -50,6 +50,7 @@ export const ColumnItem = ({
     className={cx(
       CS.overflowHidden,
       CS.bordered,
+      CS.rounded,
       ColumnItemS.ColumnItemRoot,
       {
         [cx(ColumnItemS.Draggable, CS.cursorGrab)]: draggable,
