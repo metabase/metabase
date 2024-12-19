@@ -2,11 +2,16 @@ import userEvent from "@testing-library/user-event";
 
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
-import type { VisualizationSettings } from "metabase-types/api";
+import type { Parameter, VisualizationSettings } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockIFrameDashboardCard,
+  createMockParameter,
 } from "metabase-types/api/mocks";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+} from "metabase-types/store/mocks";
 
 import { IFrameViz, type IFrameVizProps } from "./IFrameViz";
 
@@ -24,24 +29,55 @@ const emptyIFrameDashcard = createMockIFrameDashboardCard({
   },
 });
 
-const setup = (options?: Partial<IFrameVizProps>) => {
+const setup = (
+  options?: Partial<IFrameVizProps> & {
+    parameterValues?: Record<string, string>;
+  },
+) => {
   const onUpdateVisualizationSettings = jest.fn();
   const onTogglePreviewing = jest.fn();
 
+  const dashboard = options?.dashboard ?? createMockDashboard();
+  const dashcard = options?.dashcard ?? iframeDashcard;
+
   renderWithProviders(
     <IFrameViz
-      dashcard={iframeDashcard}
-      dashboard={createMockDashboard()}
+      dashcard={dashcard}
+      dashboard={dashboard}
       isEditing={true}
       isPreviewing={false}
       onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-      settings={iframeDashcard.visualization_settings as VisualizationSettings}
+      settings={dashcard.visualization_settings as VisualizationSettings}
       width={800}
       height={600}
       gridSize={{ width: 18, height: 6 }}
       onTogglePreviewing={onTogglePreviewing}
       {...options}
     />,
+    {
+      storeInitialState: {
+        dashboard: createMockDashboardState({
+          dashboardId: dashboard.id,
+          dashboards: {
+            [dashboard.id]: {
+              ...dashboard,
+              dashcards: [dashcard.id],
+            },
+          },
+          dashcards: {
+            [dashcard.id]: dashcard,
+          },
+          parameterValues:
+            dashboard.parameters?.reduce(
+              (acc, param) => ({
+                ...acc,
+                [param.id]: options?.parameterValues?.[param.slug] ?? "",
+              }),
+              {},
+            ) ?? {},
+        }),
+      },
+    },
   );
 
   return { onUpdateVisualizationSettings, onTogglePreviewing };
@@ -218,5 +254,160 @@ describe("IFrameViz", () => {
     expect(
       screen.getByText("There was a problem rendering this content."),
     ).toBeInTheDocument();
+  });
+
+  describe("parameters", () => {
+    const setupParameterTest = ({
+      parameters,
+      iframeContent,
+      parameterValues,
+      allowedHosts = "*",
+    }: {
+      parameters: Parameter[];
+      iframeContent: string;
+      parameterValues?: Record<string, string>;
+      allowedHosts?: string;
+    }) => {
+      const dashboard = createMockDashboard({
+        parameters,
+      });
+
+      const dashcard = createMockIFrameDashboardCard({
+        dashboard_id: dashboard.id,
+        visualization_settings: { iframe: iframeContent },
+        parameter_mappings: parameters.map(param => ({
+          parameter_id: param.id,
+          target: ["text-tag", param.slug],
+        })),
+      });
+
+      renderWithProviders(
+        <IFrameViz
+          dashcard={dashcard}
+          dashboard={dashboard}
+          isEditing={false}
+          isPreviewing={true}
+          onUpdateVisualizationSettings={jest.fn()}
+          settings={{ iframe: iframeContent }}
+          width={800}
+          height={600}
+          gridSize={{ width: 18, height: 6 }}
+          onTogglePreviewing={jest.fn()}
+        />,
+        {
+          storeInitialState: {
+            settings: createMockSettingsState(
+              allowedHosts
+                ? {
+                    "allowed-iframe-hosts": allowedHosts,
+                  }
+                : {},
+            ),
+            dashboard: createMockDashboardState({
+              dashboardId: dashboard.id,
+              dashboards: {
+                [dashboard.id]: {
+                  ...dashboard,
+                  dashcards: [dashcard.id],
+                },
+              },
+              dashcards: {
+                [dashcard.id]: dashcard,
+              },
+              parameterValues:
+                dashboard.parameters?.reduce(
+                  (acc, param) => ({
+                    ...acc,
+                    [param.id]: parameterValues?.[param.slug] ?? "",
+                  }),
+                  {},
+                ) ?? {},
+            }),
+          },
+        },
+      );
+
+      return screen.queryByTestId("iframe-visualization");
+    };
+
+    it("should substitute parameter values", () => {
+      const parameters = [
+        createMockParameter({
+          id: "1",
+          name: "Parameter 1",
+          slug: "param1",
+        }),
+        createMockParameter({
+          id: "2",
+          name: "Parameter 2",
+          slug: "param2",
+        }),
+      ];
+
+      const iframe = setupParameterTest({
+        parameters,
+        iframeContent: "https://example.com/{{param1}}?q={{param2}}",
+        parameterValues: { param1: "foo", param2: "bar" },
+      });
+
+      expect(iframe).toHaveAttribute("src", "https://example.com/foo?q=bar");
+    });
+
+    it("should preserve iframe attributes when substituting parameters", () => {
+      const parameter = createMockParameter({
+        id: "1",
+        name: "Test Parameter",
+        slug: "test_parameter",
+      });
+
+      const iframe = setupParameterTest({
+        parameters: [parameter],
+        iframeContent:
+          '<iframe src="https://example.com/{{test_parameter}}" allow="camera; microphone" allowfullscreen="true"></iframe>',
+        parameterValues: { test_parameter: "123" },
+      });
+
+      expect(iframe).toHaveAttribute("src", "https://example.com/123");
+      expect(iframe).toHaveAttribute("allow", "camera; microphone");
+      expect(iframe).toHaveAttribute("allowfullscreen", "true");
+    });
+
+    it("should render iframe when parameter value points to an allowed domain", () => {
+      const parameter = createMockParameter({
+        id: "1",
+        name: "Test Parameter",
+        slug: "test_parameter",
+      });
+
+      const iframe = setupParameterTest({
+        parameters: [parameter],
+        iframeContent: "https://{{test_parameter}}/page",
+        parameterValues: { test_parameter: "trusted.com" },
+        allowedHosts: "trusted.com",
+      });
+
+      expect(iframe).toBeInTheDocument();
+      expect(iframe).toHaveAttribute("src", "https://trusted.com/page");
+    });
+
+    it("should not render iframe when parameter value points to a forbidden domain", () => {
+      const parameter = createMockParameter({
+        id: "1",
+        name: "Test Parameter",
+        slug: "test_parameter",
+      });
+
+      const iframe = setupParameterTest({
+        parameters: [parameter],
+        iframeContent: "https://{{test_parameter}}/page",
+        parameterValues: { test_parameter: "evil.com" },
+        allowedHosts: "trusted.com",
+      });
+
+      expect(iframe).not.toBeInTheDocument();
+      expect(
+        screen.getByText("There was a problem rendering this content."),
+      ).toBeInTheDocument();
+    });
   });
 });
