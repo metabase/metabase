@@ -139,20 +139,23 @@ export function Editor(props: EditorProps) {
   );
 
   return (
-    <CodeMirror
-      id={textAreaId}
-      data-testid="custom-expression-query-editor"
-      className={S.editor}
-      extensions={extensions}
-      readOnly={readOnly}
-      value={source}
-      onChange={setSource}
-      onBlur={onBlur}
-      height="100%"
-      width="100%"
-      autoFocus
-      data-autofocus
-      indentWithTab={false}
-    />
+    <div className={S.wrapper}>
+      <div className={S.prefix}>=</div>
+      <CodeMirror
+        id={textAreaId}
+        data-testid="custom-expression-query-editor"
+        className={S.editor}
+        extensions={extensions}
+        readOnly={readOnly}
+        value={source}
+        onChange={setSource}
+        onBlur={onBlur}
+        height="100%"
+        width="100%"
+        autoFocus
+        data-autofocus
+        indentWithTab={false}
+      />
+    </div>
   );
 }
