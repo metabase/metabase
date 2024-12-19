@@ -272,11 +272,14 @@
    [:verified                            {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:calculate-available-models?         {:optional true} [:maybe :boolean]]
-   [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]])
+   [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
+
+   [:compatibility {:optional true} :map]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
   [{:keys [archived
+           compatibility
            context
            calculate-available-models?
            created-at
@@ -322,7 +325,8 @@
                         :models                              models
                         :model-ancestors?                    (boolean model-ancestors?)
                         :search-engine                       engine
-                        :search-string                       search-string}
+                        :search-string                       search-string
+                        :compatibility                       compatibility}
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
@@ -410,7 +414,7 @@
   "Builds a search query that includes all the searchable entities, and runs it."
   [search-ctx :- search.config/SearchContext]
   (let [reducible-results (search.engine/results search-ctx)
-        scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
+        scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query :compatibility])
         xf                (comp
                            (take search.config/*db-max-results*)
                            (map normalize-result)
