@@ -5,6 +5,9 @@ import S from "./NavLink.module.css";
 
 export const navLinkOverrides: MantineThemeOverride["components"] = {
   NavLink: NavLink.extend({
+    defaultProps: {
+      role: "link",
+    },
     classNames: {
       root: S.NavLink,
       label: S.NavLinkLabel,
