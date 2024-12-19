@@ -46,6 +46,9 @@ const DateUnitSelector = ({
       input: CS.textBold,
       dropdown: CS.textBold,
     }}
+    comboboxProps={{
+      withinPortal: false,
+    }}
   />
 );
 

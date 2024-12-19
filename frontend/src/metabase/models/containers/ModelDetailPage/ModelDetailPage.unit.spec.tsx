@@ -355,8 +355,11 @@ describe("ModelDetailPage", () => {
 
         await userEvent.click(getIcon("ellipsis"));
         await userEvent.click(await screen.findByText("Move to trash"));
+        //screen.logTestingPlaygroundURL();
 
-        expect(screen.getByRole("dialog")).toBeInTheDocument();
+        expect(
+          screen.getByText(/Move this model to trash/),
+        ).toBeInTheDocument();
         await userEvent.click(
           screen.getByRole("button", { name: "Move to trash" }),
         );
@@ -616,10 +619,10 @@ describe("ModelDetailPage", () => {
         await userEvent.click(within(listItem).getByLabelText("ellipsis icon"));
         await userEvent.click(await screen.findByText("Archive"));
 
-        const modal = screen.getByRole("dialog");
-        await userEvent.click(
-          within(modal).getByRole("button", { name: "Archive" }),
-        );
+        expect(
+          screen.getByRole("heading", { name: /Archive/ }),
+        ).toBeInTheDocument();
+        await userEvent.click(screen.getByRole("button", { name: "Archive" }));
 
         await waitFor(() =>
           expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),

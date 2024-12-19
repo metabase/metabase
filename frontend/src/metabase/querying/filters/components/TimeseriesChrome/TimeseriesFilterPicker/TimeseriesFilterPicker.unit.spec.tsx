@@ -1,6 +1,10 @@
 import _userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  mockScrollIntoView,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 
@@ -40,6 +44,8 @@ interface SetupOpts {
 const userEvent = _userEvent.setup({
   advanceTimers: jest.advanceTimersByTime,
 });
+
+mockScrollIntoView();
 
 function setup({
   query = createQuery(),

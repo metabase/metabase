@@ -106,7 +106,14 @@ function _BaseBucketPickerPopover({
     : items;
 
   return (
-    <Popover opened={isOpened} position="right" onClose={handlePopoverClose}>
+    <Popover
+      opened={isOpened}
+      position="right"
+      onClose={handlePopoverClose}
+      withinPortal={false}
+      onChange={v => !v && handlePopoverClose()}
+      floatingStrategy="fixed"
+    >
       <Popover.Target>
         <TriggerButton
           className={className}

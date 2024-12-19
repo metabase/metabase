@@ -142,7 +142,7 @@ H.describeEE("formatting > whitelabel", () => {
             cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
             cy.log("test error message for file size > 2MB");
-            cy.findByRole("searchbox", {
+            cy.findByRole("textbox", {
               name: "Login and unsubscribe pages",
             }).click();
             H.selectDropdown().findByText("Custom").click();
@@ -164,7 +164,7 @@ H.describeEE("formatting > whitelabel", () => {
               ).should("be.visible");
               cy.findByText("big-file.jpg").should("not.exist");
             });
-            cy.findByRole("searchbox", {
+            cy.findByRole("textbox", {
               name: "Login and unsubscribe pages",
             }).click();
             H.selectDropdown().findByText("Custom").click();
@@ -217,7 +217,7 @@ H.describeEE("formatting > whitelabel", () => {
 
             cy.log("test uploading a valid image file");
             cy.findByTestId("login-page-illustration-setting")
-              .findByRole("searchbox", { name: "Login and unsubscribe pages" })
+              .findByRole("textbox", { name: "Login and unsubscribe pages" })
               .click();
             H.selectDropdown().findByText("Custom").click();
             cy.findByTestId("login-page-illustration-setting").within(() => {
@@ -258,7 +258,7 @@ H.describeEE("formatting > whitelabel", () => {
             cy.signInAsAdmin();
             cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
-            cy.findByRole("searchbox", {
+            cy.findByRole("textbox", {
               name: "Login and unsubscribe pages",
             }).click();
             H.selectDropdown().findByText("No illustration").click();
@@ -279,12 +279,12 @@ H.describeEE("formatting > whitelabel", () => {
         it("should allow display the selected illustration on the landing page", () => {
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
-          cy.findByRole("searchbox", { name: "Landing page" }).should(
+          cy.findByRole("textbox", { name: "Landing page" }).should(
             "have.value",
             "Lighthouse",
           );
 
-          cy.findByRole("searchbox", { name: "Landing page" }).click();
+          cy.findByRole("textbox", { name: "Landing page" }).click();
           H.selectDropdown().findByText("Custom").click();
 
           cy.findByTestId("landing-page-illustration-setting").within(() => {
@@ -326,11 +326,11 @@ H.describeEE("formatting > whitelabel", () => {
         it("should allow display the selected illustration at relevant places", () => {
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
-          cy.findByRole("searchbox", {
+          cy.findByRole("textbox", {
             name: "When calculations return no results",
           }).should("have.value", "Sailboat");
 
-          cy.findByRole("searchbox", {
+          cy.findByRole("textbox", {
             name: "When calculations return no results",
           }).click();
           H.selectDropdown().findByText("Custom").click();
@@ -389,7 +389,7 @@ H.describeEE("formatting > whitelabel", () => {
           cy.log("test no illustration");
 
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
-          cy.findByRole("searchbox", {
+          cy.findByRole("textbox", {
             name: "When calculations return no results",
           }).click();
           H.selectDropdown().findByText("No illustration").click();
@@ -408,11 +408,11 @@ H.describeEE("formatting > whitelabel", () => {
           cy.request("POST", "/api/collection", { name: emptyCollectionName });
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
-          cy.findByRole("searchbox", {
+          cy.findByRole("textbox", {
             name: "When no objects can be found",
           }).should("have.value", "Sailboat");
 
-          cy.findByRole("searchbox", {
+          cy.findByRole("textbox", {
             name: "When no objects can be found",
           }).click();
           H.selectDropdown().findByText("Custom").click();
@@ -459,7 +459,7 @@ H.describeEE("formatting > whitelabel", () => {
           cy.log("test no illustration");
 
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
-          cy.findByRole("searchbox", {
+          cy.findByRole("textbox", {
             name: "When no objects can be found",
           }).click();
           H.selectDropdown().findByText("No illustration").click();

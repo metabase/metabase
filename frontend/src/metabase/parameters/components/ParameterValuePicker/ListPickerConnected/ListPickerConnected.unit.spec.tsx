@@ -1,6 +1,12 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import {
+  act,
+  mockScrollIntoView,
+  render,
+  screen,
+  waitFor,
+} from "__support__/ui";
 import type {
   Parameter,
   ParameterValue,
@@ -137,6 +143,7 @@ function setup({
   fetchValuesMock?: () => Promise<ParameterValues>;
 }) {
   const onChangeMock = jest.fn();
+  mockScrollIntoView();
 
   const { rerender, unmount } = render(
     <ListPickerConnected
@@ -191,7 +198,7 @@ describe("ListPickerConnected", () => {
       });
 
       // there's a hidden input with the same value that you can't click
-      const input = screen.getByRole("searchbox");
+      const input = screen.getByRole("textbox");
       await userEvent.click(input);
       STATIC_VALUES.forEach(value =>
         expect(screen.getByText(value)).toBeVisible(),

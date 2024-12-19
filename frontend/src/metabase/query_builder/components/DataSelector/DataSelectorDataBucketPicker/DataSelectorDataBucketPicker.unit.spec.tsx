@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen } from "__support__/ui";
 
 import type { DataTypeInfoItem } from "../types";
 import { getDataTypes } from "../utils";
