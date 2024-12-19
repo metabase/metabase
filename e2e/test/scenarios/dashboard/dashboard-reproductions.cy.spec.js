@@ -1557,7 +1557,7 @@ describe("issue 47170", () => {
   it("should show legible dark mode colors in fullscreen mode (metabase#51524)", () => {
     cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
 
-    cy.findByLabelText("Move, trash, and more…").click();
+    H.dashboardHeader().findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Enter fullscreen").click();
     H.dashboardHeader().findByLabelText("Nighttime mode").click();
 
