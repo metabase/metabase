@@ -12,6 +12,10 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
+;; we use these in the defsetting getter, so they need to be declared in advance
+(declare gsheets)
+(declare gsheets!)
+
 (defsetting gsheets
   #_"Information about Google Sheets Integration.
 
