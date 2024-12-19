@@ -4,16 +4,16 @@ const appConfig = require("../webpack.config");
 const fs = require("fs");
 const path = require("path");
 
-const mainAppStories = [
-  "../frontend/**/*.stories.mdx",
-  "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
-];
+const {
+  isEmbeddingSdkPackageInstalled,
+  embeddingSdkVersion: EMBEDDING_SDK_VERSION,
+} = resolveEmbeddingSdkPackage();
 
 module.exports = {
   core: {
     builder: "webpack5",
   },
-  stories: mainAppStories,
+  stories: ["../enterprise/frontend/src/embedding-sdk/**/*.stories.tsx"],
   staticDirs: ["../resources/frontend_client"],
   addons: [
     "@storybook/addon-essentials",
@@ -38,7 +38,8 @@ module.exports = {
         Buffer: ["buffer", "Buffer"],
       }),
       new webpack.EnvironmentPlugin({
-        IS_EMBEDDING_SDK: false,
+        EMBEDDING_SDK_VERSION,
+        IS_EMBEDDING_SDK: true,
       }),
     ],
     module: {
@@ -56,6 +57,10 @@ module.exports = {
       ...storybookConfig.resolve,
       alias: {
         ...appConfig.resolve.alias,
+        ...(isEmbeddingSdkPackageInstalled && {
+          // $ means that only exact "embedding-sdk" imports will be rerouted, all nested embedding-sdk/* will still be resolved locally
+          "embedding-sdk$": require.resolve("@metabase/embedding-sdk-react"),
+        }),
       },
       extensions: appConfig.resolve.extensions,
     },
@@ -64,3 +69,28 @@ module.exports = {
 
 const isCSSRule = rule => rule.test.toString() === "/\\.css$/";
 const isSvgRule = rule => rule.test && rule.test?.test(".svg");
+
+function resolveEmbeddingSdkPackage() {
+  let isEmbeddingSdkPackageInstalled = false;
+  let embeddingSdkVersion;
+
+  try {
+    embeddingSdkVersion =
+      require("@metabase/embedding-sdk-react/package.json").version;
+    isEmbeddingSdkPackageInstalled = true;
+  } catch (err) {
+    const sdkPackageTemplateJson = fs.readFileSync(
+      path.resolve(
+        "./enterprise/frontend/src/embedding-sdk/package.template.json",
+      ),
+      "utf-8",
+    );
+    const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
+    embeddingSdkVersion = JSON.stringify(sdkPackageTemplateJsonContent.version);
+  }
+
+  return {
+    isEmbeddingSdkPackageInstalled,
+    embeddingSdkVersion,
+  };
+}
