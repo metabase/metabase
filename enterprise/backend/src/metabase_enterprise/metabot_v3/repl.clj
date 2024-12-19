@@ -120,6 +120,7 @@
     (user-repl-with-context
      {:user-is-viewing [{:type :report :ref 111}]}))
 
+  ;; any outliers?
   ;; breakout by plan
   (mt/with-test-user :crowberto
     (user-repl-with-context

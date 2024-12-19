@@ -96,6 +96,9 @@
 (defn- metric-selection-endpoint-url []
   (str (ai-proxy-base-url) "/v1/select-metric"))
 
+(defn- find-outliers-endpoint-url []
+  (str (ai-proxy-base-url) "/v1/find-outliers"))
+
 (defn- decode-response-body [response-body]
   (mc/decode ::metabot-v3.client.schema/ai-proxy.response
              response-body
@@ -150,6 +153,25 @@
                          :response response}))))
     (catch Throwable e
       (throw (ex-info (format "Error in request to AI Service: %s" (ex-message e))
+                      {}
+                      e)))))
+
+(defn find-outliers-request
+  "Make a request to AI Service to find outliers"
+  [values]
+  (try
+    (let [url (find-outliers-endpoint-url)
+          body {:values values}
+          options (build-request-options body)
+          response (post! url options)]
+      (if (= (:status response) 200)
+        (u/prog1 (decode-response-body (:body response))
+          (log/debugf "Response (decoded):\n%s" (u/pprint-to-str <>)))
+        (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
+                        {:request (assoc options :body body)
+                         :response response}))))
+    (catch Throwable e
+      (throw (ex-info (format "Error in request to AI service: %s" (ex-message e))
                       {}
                       e)))))
 
