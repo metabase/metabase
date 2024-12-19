@@ -1,7 +1,13 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import { collectionApi, useGetCollectionQuery } from "metabase/api";
+import {
+  collectionApi,
+  skipToken,
+  useGetCollectionQuery,
+  useListCollectionsQuery,
+  useListCollectionsTreeQuery,
+} from "metabase/api";
 import {
   canonicalCollectionId,
   isRootTrashCollection,
@@ -71,6 +77,7 @@ const Collections = createEntity({
     getUseGetQuery: () => ({
       useGetQuery: useGetCollectionQuery,
     }),
+    useListQuery,
   },
 
   api: {
@@ -172,6 +179,18 @@ const Collections = createEntity({
     return type && `collection=${type}`;
   },
 });
+
+function useListQuery(params: ListParams) {
+  const { tree, ...entityQuery } = params;
+
+  const collectionsTree = useListCollectionsTreeQuery(
+    tree ? entityQuery : skipToken,
+  );
+
+  const collections = useListCollectionsQuery(tree ? skipToken : entityQuery);
+
+  return tree ? collectionsTree : collections;
+}
 
 export { getExpandedCollectionsById };
 
