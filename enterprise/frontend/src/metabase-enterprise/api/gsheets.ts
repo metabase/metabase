@@ -9,7 +9,7 @@ export const gsheetsApi = EnterpriseApi.injectEndpoints({
       query: body => ({
         method: "POST",
         url: "/api/gsheets/oauth",
-        body: JSON.stringify(body),
+        body: body,
       }),
     }),
 
@@ -27,7 +27,7 @@ export const gsheetsApi = EnterpriseApi.injectEndpoints({
       query: body => ({
         method: "POST",
         url: "/api/gsheets/folder",
-        body: JSON.stringify(body),
+        body: body,
       }),
     }),
   }),

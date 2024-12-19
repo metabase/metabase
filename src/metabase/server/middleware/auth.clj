@@ -91,9 +91,12 @@
   :setter :none
   :getter (fn []
             (and
-             ;; TEMP: check these setting when we are ready
+             ;; TEMP (gsheets): check these features when we are ready
              ;; (premium-features/is-hosted?)
              ;; (premium-features/has-feature? :attached-dwh)
              ;; (premium-features/has-feature? :etl-connections)
-             (some? (static-api-key))
-             (some? (setting/get-value-of-type :string :store-api-url)))))
+
+             ;; Need to know the store-api-url to make requests
+             (some? (setting/get-value-of-type :string :store-api-url))
+             ;; Need API key for Harbormaster Auth
+             (some? (api-key)))))
