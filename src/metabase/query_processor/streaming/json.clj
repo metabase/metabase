@@ -4,6 +4,7 @@
   (:require
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.formatter :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
@@ -35,7 +36,8 @@
         ordered-formatters (volatile! nil)
         ;; if we're processing results from a pivot query, there will be a column 'pivot-grouping' that we don't want to include
         ;; in the final results, so we get the idx into the row in order to remove it
-        pivot-grouping-idx (volatile! nil)]
+        pivot-grouping-idx (volatile! nil)
+        start-time         (System/currentTimeMillis)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows?]
                    :or   {format-rows? true}} :data} viz-settings]
@@ -82,6 +84,8 @@
             (.flush writer))))
 
       (finish! [_ _]
+        (let [duration (- (System/currentTimeMillis) start-time)]
+          (prometheus/observe! :metabase-streaming/export-json-ms duration))
         (.write writer "\n]")
         (.flush writer)
         (.flush os)
