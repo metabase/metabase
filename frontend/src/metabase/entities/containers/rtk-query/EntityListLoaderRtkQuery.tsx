@@ -125,48 +125,44 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   );
 
   const entityQuery = useDeepMemo(() => entityQueryRaw, [entityQueryRaw]);
+
+  const entityOptions = useMemo(() => ({ entityQuery }), [entityQuery]);
+
   const list = useSelector(state => {
     return match(selectorName)
       .with("getList", () => {
-        return entityDefinition.selectors.getList(state, { entityQuery });
+        return entityDefinition.selectors.getList(state, entityOptions);
       })
       .with("getListUnfiltered", () => {
-        return entityDefinition.selectors.getListUnfiltered(state, {
-          entityQuery,
-        });
+        return entityDefinition.selectors.getListUnfiltered(
+          state,
+          entityOptions,
+        );
       })
       .exhaustive();
   });
 
   const fetched = useSelector(state => {
-    const value = entityDefinition.selectors.getFetched(state, {
-      entityQuery,
-    });
+    const value = entityDefinition.selectors.getFetched(state, entityOptions);
     return Boolean(value);
   });
 
   const loaded = useSelector(state => {
-    const value = entityDefinition.selectors.getLoaded(state, {
-      entityQuery,
-    });
+    const value = entityDefinition.selectors.getLoaded(state, entityOptions);
     return Boolean(value);
   });
 
   const loading = useSelector(state => {
-    const value = entityDefinition.selectors.getLoading(state, {
-      entityQuery,
-    });
+    const value = entityDefinition.selectors.getLoading(state, entityOptions);
     return Boolean(value);
   });
 
   const error = useSelector(state => {
-    return entityDefinition.selectors.getError(state, { entityQuery });
+    return entityDefinition.selectors.getError(state, entityOptions);
   });
 
   const metadata = useSelector(state => {
-    return entityDefinition.selectors.getListMetadata(state, {
-      entityQuery,
-    });
+    return entityDefinition.selectors.getListMetadata(state, entityOptions);
   });
 
   const wrappedList = useMemo(() => {
