@@ -124,7 +124,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("City").click();
       H.popover().within(() => {
-        H.multiAutocompleteInput().type("Flagstaff{enter}");
+        H.fieldValuesInput().type("Flagstaff{enter}");
         cy.findByText("Add filter").click();
       });
 
