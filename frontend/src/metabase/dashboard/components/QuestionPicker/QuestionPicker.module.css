@@ -1,0 +1,30 @@
+.questionPickerRoot {
+  padding: 1rem;
+}
+
+.breadcrumbsWrapper {
+  margin-bottom: 0.5rem;
+  padding-left: 0.5rem;
+}
+
+.searchInput {
+  margin-bottom: 1rem;
+}
+
+button.newButton {
+  width: 50%;
+  color: var(--mb-color-text-dark);
+  border-color: var(--mb-base-color-gray-10);
+
+  &:hover {
+    color: var(--mb-color-brand);
+    border-color: var(--mb-color-brand-light);
+    background: var(--mb-color-brand-lighter);
+  }
+
+  &:active {
+    color: var(--mb-color-brand);
+    border-color: var(--mb-color-brand);
+    background: var(--mb-color-brand-light);
+  }
+}
