@@ -17,7 +17,7 @@ describe("QuestionMoreActionsMenu", () => {
   });
 
   it("clicking the sharing button should open the public link popover", async () => {
-    const { onOpenModal } = setup({
+    setup({
       isAdmin: false,
       isPublicSharingEnabled: true,
       hasPublicLink: true,
@@ -28,9 +28,11 @@ describe("QuestionMoreActionsMenu", () => {
 
     await userEvent.click(screen.getByText("Public link"));
 
-    expect(onOpenModal).toHaveBeenCalledTimes(1);
-    expect(onOpenModal).toHaveBeenLastCalledWith(
-      MODAL_TYPES.QUESTION_PUBLIC_LINK,
+    expect(
+      screen.getByTestId("public-link-popover-content"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("public-link-input")).toHaveDisplayValue(
+      "http://localhost:3000/public/question/1337bad801",
     );
   });
 
@@ -130,7 +132,7 @@ describe("QuestionMoreActionsMenu", () => {
       });
 
       it("clicking the sharing button should open the public link popover", async () => {
-        const { onOpenModal } = setup({
+        setup({
           isAdmin: true,
           isPublicSharingEnabled: true,
           hasPublicLink: true,
@@ -138,9 +140,11 @@ describe("QuestionMoreActionsMenu", () => {
         await openMenu();
         await userEvent.click(screen.getByText("Public link"));
 
-        expect(onOpenModal).toHaveBeenCalledTimes(1);
-        expect(onOpenModal).toHaveBeenLastCalledWith(
-          MODAL_TYPES.QUESTION_PUBLIC_LINK,
+        expect(
+          screen.getByTestId("public-link-popover-content"),
+        ).toBeInTheDocument();
+        expect(screen.getByTestId("public-link-input")).toHaveDisplayValue(
+          "http://localhost:3000/public/question/1337bad801",
         );
       });
 
