@@ -88,7 +88,7 @@ export const ChartSettingFieldPicker = ({
     >
       <ChartSettingSelect
         data-testid="chartsettings-field-picker-select"
-        pl="xs"
+        pl="sm"
         pr="xs"
         w="100%"
         isInitiallyOpen={autoOpenWhenUnset && value === undefined}
@@ -97,7 +97,7 @@ export const ChartSettingFieldPicker = ({
         onChange={onChange}
         icon={
           showDragHandle || (showColorPicker && seriesKey) ? (
-            <Group noWrap spacing="xs" p="xs">
+            <Group noWrap spacing="sm" p="xs" ml="sm">
               {showDragHandle && (
                 <GrabberHandle
                   name="grabber"
