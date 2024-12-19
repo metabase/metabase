@@ -249,13 +249,15 @@
    {:scorer fullness-scorer :name "fullness" :weight 1}
    {:scorer prefix-scorer :name "prefix" :weight 1}])
 
-(def ^:private model->sort-position
-  (zipmap (reverse search.config/models-search-order) (range)))
+(def ^:private model-weights
+  {"metric"  15
+   "dataset" 10
+   "card"    5
+   "table"   1})
 
 (defn- model-score
   [{:keys [model]}]
-  (/ (or (model->sort-position model) 0)
-     (count model->sort-position)))
+  (get model-weights model))
 
 (defn- text-scores-with-match
   [result {:keys [search-string search-native-query]}]
@@ -265,30 +267,6 @@
                       (search.util/tokenize (search.util/normalize search-string))
                       result)
     [{:score 0 :weight 0}]))
-
-(defn- pinned-score
-  [{:keys [model collection_position]}]
-  ;; We experimented with favoring lower collection positions, but it wasn't good
-  ;; So instead, just give a bonus for items that are pinned at all
-  (if (and (#{"card" "dashboard"} model)
-           ((fnil pos? 0) collection_position))
-    1
-    0))
-
-(defn- bookmarked-score
-  [{:keys [model bookmark]}]
-  (if (and (#{"card" "collection" "dashboard"} model)
-           bookmark)
-    1
-    0))
-
-(defn- dashboard-count-score
-  [{:keys [model dashboardcard_count]}]
-  (if (= model "card")
-    (min (/ dashboardcard_count
-            search.config/dashboard-count-ceiling)
-         1)
-    0))
 
 (defn- recency-score
   [{:keys [updated_at]}]
@@ -328,6 +306,28 @@
       #_#_scalar?                                     1
       :else                                       0)))
 
+
+;; primary score concerns first:
+
+;; - compatibility, as strongly sorted by:
+;; - official
+;; - pre-aggregated
+;; - pre-aggregated-model > metric > dataset > question
+
+
+"dataset-columns"
+{"base_type" ""
+ "effective_type" "type/Whatever"
+ "semantic_type" "typhe/Whatever"
+ "unit" "month"
+ "source" "breakout or aggregation"}
+
+
+;; should we consider time granularity in the scoring?
+;; order of magnitude matters
+;; also consider the :unit property, series with the same unit are scored higher
+
+
 (defn- timeseries-score
   [{:keys [result_metadata]}]
   (let [result-metadata (json/decode result_metadata keyword)
@@ -345,25 +345,21 @@
                 (scalar-score result)
                 0)
       :name   "scalar-compatibility"}
+
+
+
+
      {:weight 7
       :score  (if (some #(isa? % :type/Temporal) column-types)
                 (timeseries-score result)
                 0)
-      :name   "timeseries-compatibility"}
-     #_{:weight 2 :score (pinned-score result) :name "pinned"}
-     #_{:weight 2 :score (bookmarked-score result) :name "bookmarked"}
-     #_{:weight 3/2 :score (recency-score result) :name "recency"}
-     #_{:weight 1 :score (dashboard-count-score result) :name "dashboard"}
-     #_{:weight 1/2 :score (model-score result) :name "model"}]))
+      :name   "timeseries-compatibility"}]))
 
 (defn weights-and-scores
   "Default weights and scores for a given result."
   [result]
-  [{:weight 2 :score (pinned-score result) :name "pinned"}
-   {:weight 2 :score (bookmarked-score result) :name "bookmarked"}
-   {:weight 3/2 :score (recency-score result) :name "recency"}
-   {:weight 1 :score (dashboard-count-score result) :name "dashboard"}
-   {:weight 1/2 :score (model-score result) :name "model"}])
+  [{:weight 3 :score (recency-score result) :name "recency"}
+   {:weight 1 :score (model-score result) :name "model"}])
 
 (defn score-result
   "Score a result, returning a collection of maps with score and weight. Should not include the text scoring, done
@@ -373,7 +369,9 @@
      :score  number,
      :name   string}"
   [result reqs]
-  (compatibility-weights-and-scores result reqs))
+  (into
+   (weights-and-scores result)
+   (compatibility-weights-and-scores result reqs)))
 
 (defn- sum-weights [weights]
   (reduce
@@ -414,16 +412,13 @@
                                                             :search-native-query search-native-query})
                             (force-weight text-scores-weight))
         has-text-match? (some (comp pos? :score) text-matches)
-        #_#_all-scores  (into (vec (score-result result reqs)) text-matches)
-        all-scores      (into (vec (compatibility-weights-and-scores result search-ctx)) text-matches)
+        all-scores      (into (vec (score-result result search-ctx)) text-matches)
         relevant-scores (remove (comp zero? :score) all-scores)
         total-score     (compute-normalized-score all-scores)]
     ;; Searches with a blank search string mean "show me everything, ranked";
     ;; see https://github.com/metabase/metabase/pull/15604 for archived search.
     ;; If the search string is non-blank, results with no text match have a score of zero.
-    (when (and
-           (> total-score 0)
-           (or has-text-match? (str/blank? search-string)))
+    (when (or has-text-match? (str/blank? search-string))
       {:score  total-score
        :result (assoc result :all-scores all-scores :relevant-scores relevant-scores)})))
 

@@ -50,36 +50,26 @@
 (api/defendpoint POST "/"
   "WIP Searches for data sources"
   [:as {{:keys [search display dataset-columns] :as body} :body}]
-  (cond
-    (every? nil? [search display dataset-columns])
-    (->> (recent-views/get-recents api/*current-user-id*)
-         :recents
-         (take 2))
-
-    ;; TODO: should probably add optional filters that are added when :visualization_settings and :result_metadata keys
-    ;; exist, maybe?
-
-    :else
-    (let [types-set (into #{} (mapcat (fn [col]
-                                        (mapv keyword (vals (select-keys col [:base_type :effective_type :semantic_type]))))
-                                      dataset-columns))]
-      (->> (search/search
-            (search/search-context
-             {:current-user-id       api/*current-user-id*
-              :is-impersonated-user? (premium-features/impersonated-user?)
-              :is-sandboxed-user?    (premium-features/sandboxed-user?)
-              :is-superuser?         api/*is-superuser?*
-              :current-user-perms    @api/*current-user-permissions-set*
-              :models                #{"dataset" "metric" "card"}
-              :offset                (request/offset)
-              :limit                 (request/limit)
-              :search-native-query   true
-              :search-string         search
-              :compatibility         {:display      display
-                                      :column-types types-set
-                                      :column-count (count dataset-columns)}
-              :search-engine         "visualizer"}))
-           :data))))
+  (let [types-set (into #{} (mapcat (fn [col]
+                                      (mapv keyword (vals (select-keys col [:base_type :effective_type :semantic_type]))))
+                                    dataset-columns))]
+    (->> (search/search
+          (search/search-context
+           {:current-user-id       api/*current-user-id*
+            :is-impersonated-user? (premium-features/impersonated-user?)
+            :is-sandboxed-user?    (premium-features/sandboxed-user?)
+            :is-superuser?         api/*is-superuser?*
+            :current-user-perms    @api/*current-user-permissions-set*
+            :models                #{"dataset" "metric" "card"}
+            :offset                (request/offset)
+            :limit                 (request/limit)
+            :search-native-query   true
+            :search-string         search
+            :compatibility         {:display      display
+                                    :column-types types-set
+                                    :column-count (count dataset-columns)}
+            :search-engine         "visualizer"}))
+         :data)))
 
 (defn asdf
   [{:keys [search display dataset-columns] :as body}]
@@ -203,6 +193,6 @@
 ;;  - if the entity matches the above, it's a valid result to pass to the FE
 
 ;; TIME SERIES
-;; anything containing type/DateTime, or some temporal AND
+;; anything containing type/Temporal, or some temporal AND
 ;; at least 1 other column that's aggregated (if it's a question)
 ;; just other columns... we can't totally know if thigns are aggregated or not (in SQL case)
