@@ -346,6 +346,7 @@
     metabase.embed                 #{metabase.embed.settings}
     metabase.events                #{metabase.events}
     metabase.formatter             #{metabase.formatter}
+    metabase.harbormaster          #{metabase.harbormaster.client}
     metabase.integrations          #{metabase.integrations.common
                                      metabase.integrations.google
                                      metabase.integrations.ldap
@@ -442,6 +443,7 @@
     metabase.embed                 :any
     metabase.events                :any
     metabase.formatter             :any
+    metabase.harbormaster          #{metabase.util}
     metabase.integrations          :any
     metabase.legacy-mbql           :any
     metabase.lib                   :any
