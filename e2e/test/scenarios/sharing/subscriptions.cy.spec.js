@@ -773,7 +773,7 @@ function addParametersToDashboard() {
     H.fieldValuesInput().type("Corbin");
   });
 
-  H.selectDropdown().findByText("Corbin Mertz").click();
+  H.popover().findByText("Corbin Mertz").click();
 
   H.popover().contains("Add filter").click({ force: true });
 
