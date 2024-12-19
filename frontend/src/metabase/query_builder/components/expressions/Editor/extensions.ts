@@ -6,10 +6,21 @@ import { useMemo } from "react";
 
 import { isNotNull } from "metabase/lib/types";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
+import type * as Lib from "metabase-lib";
 
 import { customExpression } from "./language";
 
-export function useExtensions() {
+type Options = {
+  startRule: "expression" | "aggregation" | "boolean";
+  query: Lib.Query;
+  stageIndex: number;
+  name?: string | null;
+  expressionIndex: number | undefined;
+};
+
+export function useExtensions(options: Options) {
+  const { startRule, query, stageIndex, name, expressionIndex } = options;
+
   return useMemo(() => {
     return [
       nonce(),
@@ -19,11 +30,17 @@ export function useExtensions() {
         drawRangeCursor: false,
       }),
       highlighting(),
-      customExpression(),
+      customExpression({
+        startRule,
+        query,
+        stageIndex,
+        name,
+        expressionIndex,
+      }),
     ]
       .flat()
       .filter(isNotNull);
-  }, []);
+  }, [startRule, query, stageIndex, name, expressionIndex]);
 }
 
 function nonce() {
