@@ -88,7 +88,7 @@ function QuestionPickerInner({ onSelect, collectionsById, getCollectionIcon }) {
                       ...icon,
                       color: iconColor,
                     }}
-                    rightIcon="chevronright"
+                    rightSection="chevronright"
                     onSelect={collectionId =>
                       setCurrentCollectionId(collectionId)
                     }

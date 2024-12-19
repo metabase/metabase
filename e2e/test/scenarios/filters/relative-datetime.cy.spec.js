@@ -91,7 +91,7 @@ describe("scenarios > question > relative-datetime", () => {
       H.openOrdersTable();
 
       H.tableHeaderClick("Created At");
-      H.popover().within(() => {
+      H.clickActionsPopover().within(() => {
         cy.findByText("Filter by this column").click();
         cy.findByText("Relative dates…").click();
       });
@@ -108,8 +108,8 @@ describe("scenarios > question > relative-datetime", () => {
         "years ago",
       ]);
 
-      setRelativeDatetimeUnit("quarters");
-      H.popover().findByLabelText("Starting from unit").click();
+      setRelativeDatetimeUnit(/quarters/);
+      H.clickActionsPopover().findByLabelText("Starting from unit").click();
 
       assertOptions(["quarters ago", "years ago"]);
     });
@@ -268,7 +268,7 @@ const addStartingFrom = () => {
 
 const setRelativeDatetimeUnit = unit => {
   cy.findByLabelText("Unit").click();
-  cy.findAllByText(unit).last().click();
+  cy.findByRole("option", { name: unit }).click();
 };
 
 const setRelativeDatetimeValue = value => {

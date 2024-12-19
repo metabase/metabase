@@ -7,8 +7,8 @@ import ZIndex from "metabase/css/core/z-index.module.css";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import { PreventEagerPortal } from "metabase/ui";
 
-export type { PopoverBaseProps, PopoverProps } from "@mantine/core";
-export { getPopoverOverrides } from "./Popover.styled";
+export type { PopoverProps } from "@mantine/core";
+export { popoverOverrides } from "./Popover.config";
 
 const MantinePopoverDropdown = MantinePopover.Dropdown;
 
@@ -42,11 +42,12 @@ const PopoverDropdown = function PopoverDropdown(
     </PreventEagerPortal>
   );
 };
+
 PopoverDropdown.displayName = MantinePopoverDropdown.displayName;
+// @ts-expect-error -- our types are better
 MantinePopover.Dropdown = PopoverDropdown;
 
-const Popover: typeof MantinePopover & {
-  Dropdown: typeof PopoverDropdown;
-} = MantinePopover;
+const Popover = MantinePopover;
 
 export { Popover };
+export { DEFAULT_POPOVER_Z_INDEX } from "./Popover.config";

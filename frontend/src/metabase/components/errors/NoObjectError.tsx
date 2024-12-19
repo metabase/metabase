@@ -11,8 +11,8 @@ export function NoObjectError(props: ImageProps) {
   return noObjectIllustration ? (
     <Image
       alt={t`No results`}
-      width={120}
-      height={120}
+      w={120}
+      h={120}
       src={noObjectIllustration}
       {...props}
     />

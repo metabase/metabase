@@ -17,7 +17,7 @@ export const ModalBody = styled(Modal.Body)`
 
 export const GrowFlex = styled(Flex)`
   flex-grow: 1;
-`;
+` as unknown as typeof Flex;
 
 export const SinglePickerView = styled.div`
   border-top: 1px solid var(--mb-color-border);

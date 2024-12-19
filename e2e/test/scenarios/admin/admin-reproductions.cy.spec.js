@@ -173,6 +173,9 @@ describe("(metabase#46714)", () => {
       cy.findByText("Orders").click();
     });
 
+    //TODO: Fix this shame
+    cy.wait(1000);
+
     cy.findByTestId("segment-editor")
       .findByText("Add filters to narrow your answer")
       .click();

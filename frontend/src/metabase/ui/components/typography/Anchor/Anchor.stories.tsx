@@ -38,7 +38,7 @@ const SizeTemplate = (args: AnchorProps) => (
     {argTypes.size.options.map(size => (
       <Fragment key={size}>
         <Grid.Col span={2}>
-          <Text weight="bold">{size}</Text>
+          <Text fw="bold">{size}</Text>
         </Grid.Col>
         <Grid.Col span={10}>
           <Anchor {...args} size={size} href={sampleArgs.href}>

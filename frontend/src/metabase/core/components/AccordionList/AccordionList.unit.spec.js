@@ -1,7 +1,7 @@
 /* eslint-disable jest/expect-expect */
-import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { fireEvent, render, screen } from "__support__/ui";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import AccordionList from "metabase/core/components/AccordionList";
 

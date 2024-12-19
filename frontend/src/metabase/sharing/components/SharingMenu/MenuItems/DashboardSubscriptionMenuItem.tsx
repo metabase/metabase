@@ -34,11 +34,11 @@ export function DashboardSubscriptionMenuItem({
     return (
       <Menu.Item
         data-testid="dashboard-subscription-menu-item"
-        icon={<Icon name="subscription" />}
+        leftSection={<Icon name="subscription" />}
         disabled
       >
-        <Stack spacing="xs">
-          <Title order={4} color="inherit">{t`Can't send subscriptions`}</Title>
+        <Stack gap="xs">
+          <Title order={4} c="inherit">{t`Can't send subscriptions`}</Title>
           <Text
             size="sm"
             color="inherit"
@@ -51,7 +51,7 @@ export function DashboardSubscriptionMenuItem({
   return (
     <Menu.Item
       data-testid="dashboard-subscription-menu-item"
-      icon={<Icon name="subscription" />}
+      leftSection={<Icon name="subscription" />}
       onClick={onClick}
     >
       {t`Subscriptions`}

@@ -632,7 +632,9 @@ export function FieldValuesWidgetInner({
             <MultiAutocomplete
               data-testid="field-values-multi-autocomplete"
               onSearchChange={onInputChange}
-              onChange={values => onChange(values.map(parseFreeformValue))}
+              onChange={values => {
+                onChange(values.map(parseFreeformValue));
+              }}
               value={value
                 .map(value => value?.toString())
                 .filter((v): v is string => v !== null && v !== undefined)}
@@ -640,8 +642,10 @@ export function FieldValuesWidgetInner({
               placeholder={tokenFieldPlaceholder}
               shouldCreate={shouldCreate}
               autoFocus={autoFocus}
-              icon={prefix && <span data-testid="input-prefix">{prefix}</span>}
-              itemComponent={CustomItemComponent}
+              leftSection={
+                prefix && <span data-testid="input-prefix">{prefix}</span>
+              }
+              renderOption={CustomItemComponent as any}
             />
           </Box>
         ) : (
@@ -691,7 +695,7 @@ const LoadingState = () => (
     className={cx(CS.flex, CS.layoutCentered, CS.alignCenter)}
     style={{ minHeight: 82 }}
   >
-    <LoadingSpinner size={32} />
+    <LoadingSpinner size={16} />
   </div>
 );
 
@@ -817,9 +821,9 @@ function renderValue({
 export const ItemWrapper = forwardRef<HTMLDivElement, SelectItemProps>(
   function ItemWrapper({ label, value, ...others }, ref) {
     return (
-      <div ref={ref} {...others}>
+      <Box ref={ref} {...others}>
         {label || value}
-      </div>
+      </Box>
     );
   },
 );

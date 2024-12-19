@@ -1159,7 +1159,7 @@ describe(
         });
 
         H.filterWidget().click();
-        H.popover().within(() => {
+        H.dashboardParametersPopover().within(() => {
           H.multiAutocompleteInput().type("{backspace}10");
         });
         cy.button("Update filter").click();
