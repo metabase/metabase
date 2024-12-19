@@ -230,6 +230,9 @@ H.describeEE("scenarios [EE] > public > question", () => {
       { wrapId: true },
     );
 
+    // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
+    cy.intercept("/app/locales/de.json").as("deLocale");
+
     cy.get("@questionId").then(id => {
       H.visitPublicQuestion(id, {
         params: {
@@ -241,10 +244,7 @@ H.describeEE("scenarios [EE] > public > question", () => {
       });
     });
 
-    // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
-    cy.request("/app/locales/de.json").then(response => {
-      expect(response.status).to.eq(200);
-    });
+    cy.wait("@deLocale");
 
     H.main().findByText("Februar 11, 2025");
 

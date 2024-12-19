@@ -242,6 +242,9 @@ H.describeEE("scenarios [EE] > embedding > questions", () => {
 
     H.openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: false });
 
+    // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
+    cy.intercept("/app/locales/de.json").as("deLocale");
+
     H.visitIframe();
 
     cy.url().then(url => {
@@ -250,10 +253,8 @@ H.describeEE("scenarios [EE] > embedding > questions", () => {
         url: url + "&locale=de-CH",
       });
     });
-    // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
-    cy.request("/app/locales/de.json").then(response => {
-      expect(response.status).to.eq(200);
-    });
+
+    cy.wait("@deLocale");
 
     H.main().findByText("Februar 11, 2025, 9:40 PM");
     H.main().findByText("Zeilen", { exact: false });
