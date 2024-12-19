@@ -50,14 +50,6 @@ export function Editor(props: EditorProps) {
     textAreaId,
   } = props;
 
-  const extensions = useExtensions({
-    startRule,
-    query,
-    stageIndex,
-    name,
-    expressionIndex,
-  });
-
   const expression = useMemo(() => {
     const expressionFromClause = clause
       ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)
@@ -87,7 +79,7 @@ export function Editor(props: EditorProps) {
     );
   }, [expression, startRule, stageIndex, query, name, expressionIndex]);
 
-  const onBlur = useCallback(
+  const commitExpression = useCallback(
     function () {
       if (source.trim() === "") {
         return;
@@ -138,6 +130,15 @@ export function Editor(props: EditorProps) {
     ],
   );
 
+  const extensions = useExtensions({
+    startRule,
+    query,
+    stageIndex,
+    name,
+    expressionIndex,
+    onCommit: commitExpression,
+  });
+
   return (
     <div className={S.wrapper}>
       <div className={S.prefix}>=</div>
@@ -149,7 +150,7 @@ export function Editor(props: EditorProps) {
         readOnly={readOnly}
         value={source}
         onChange={setSource}
-        onBlur={onBlur}
+        onBlur={commitExpression}
         height="100%"
         width="100%"
         autoFocus
