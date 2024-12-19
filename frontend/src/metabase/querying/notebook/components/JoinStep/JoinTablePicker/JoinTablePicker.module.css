@@ -1,0 +1,6 @@
+.ColumnPickerButton {
+  padding: var(--notebook-cell-container-padding);
+  opacity: 0.5;
+  color: var(--mb-color-text-white);
+  height: 100%;
+}

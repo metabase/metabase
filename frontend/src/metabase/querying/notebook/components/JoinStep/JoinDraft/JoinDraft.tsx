@@ -5,13 +5,13 @@ import { t } from "ttag";
 import { Box, Flex, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { NotebookCellItem } from "../../NotebookCell";
+import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
 import { JoinConditionDraft } from "../JoinConditionDraft";
 import { JoinStrategyPicker } from "../JoinStrategyPicker";
 import { JoinTableColumnDraftPicker } from "../JoinTableColumnDraftPicker";
 import { JoinTablePicker } from "../JoinTablePicker";
 
-import { JoinCell, JoinConditionCell } from "./JoinDraft.styled";
+import S from "./JoinDraft.module.css";
 import { getDefaultJoinStrategy, getJoinFields } from "./utils";
 
 interface JoinDraftProps {
@@ -106,7 +106,7 @@ export function JoinDraft({
 
   return (
     <Flex miw="100%" gap="1rem">
-      <JoinCell color={color}>
+      <NotebookCell className={S.JoinCell} color={color}>
         <Flex direction="row" gap={6}>
           <NotebookCellItem color={color} disabled aria-label={t`Left table`}>
             {lhsTableName}
@@ -136,13 +136,17 @@ export function JoinDraft({
             onChange={handleTableChange}
           />
         </Flex>
-      </JoinCell>
+      </NotebookCell>
       {rhsTable && (
         <>
           <Box mt="1.5rem">
             <Text color="brand" weight="bold">{t`on`}</Text>
           </Box>
-          <JoinConditionCell color={color} data-testid="new-join-condition">
+          <NotebookCell
+            className={S.JoinConditionCell}
+            color={color}
+            data-testid="new-join-condition"
+          >
             <JoinConditionDraft
               query={query}
               stageIndex={stageIndex}
@@ -155,7 +159,7 @@ export function JoinDraft({
               onChange={handleConditionChange}
               onLhsColumnChange={setLhsColumn}
             />
-          </JoinConditionCell>
+          </NotebookCell>
         </>
       )}
     </Flex>

@@ -1,0 +1,29 @@
+.RemoveButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  cursor: pointer;
+  border-radius: 0 8px 8px 0;
+  border-left: 1px solid
+    color-mix(in srgb, var(var(--mb-color-bg-white)), transparent 25%);
+  color: var(--mb-color-text-brand);
+
+  &.isConditionComplete {
+    color: var(--mb-color-text-white);
+
+    &:hover,
+    &:focus {
+      background-color: color-mix(in srgb, var(--mb-color-brand), white 10%);
+    }
+  }
+
+  &:hover,
+  &:focus {
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-brand),
+      transparent 20%
+    );
+  }
+}
