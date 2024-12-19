@@ -33,7 +33,7 @@ export const setQuestionDisplayType = (
   return newQuestion;
 };
 
-export const useChartTypeVisualizations = ({
+export const useQuestionVisualizationState = ({
   question,
   onUpdateQuestion,
 }: UseQuestionVisualizationStateProps) => {
@@ -41,9 +41,8 @@ export const useChartTypeVisualizations = ({
 
   const updateQuestionVisualization = useCallback(
     (display: CardDisplayType) => {
-      if (question) {
-        const newQuestion = setQuestionDisplayType(question, display);
-        onUpdateQuestion(newQuestion);
+      if (!question || selectedVisualization === display) {
+        return;
       }
       let newQuestion = question.setDisplay(display).lockDisplay();
       const visualization = visualizations.get(display);
