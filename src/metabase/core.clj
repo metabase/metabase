@@ -13,7 +13,6 @@
    [metabase.driver.mysql]
    [metabase.driver.postgres]
    [metabase.embed.settings :as embed.settings]
-   [metabase.encryption :as encryption]
    [metabase.events :as events]
    [metabase.logger :as logger]
    [metabase.models.cloud-migration :as cloud-migration]
@@ -122,8 +121,6 @@
   ;; This can happen if a cloud migration process dies during h2 dump.
   (when (cloud-migration/read-only-mode)
     (cloud-migration/read-only-mode! false))
-
-  (encryption/setup-encryption)
 
   (init-status/set-progress! 0.4)
   ;; Set up Prometheus

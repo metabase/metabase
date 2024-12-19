@@ -1,7 +1,6 @@
 (ns metabase.cmd.rotate-encryption-key
   (:require
    [metabase.db :as mdb]
-   [metabase.encryption :as encryption]
    [metabase.util.log :as log]))
 
 (defn rotate-encryption-key!
@@ -11,4 +10,4 @@
     (log/warnf "Database not found. Metabase will create a new database at %s and proceed encrypting." "2")
     (mdb/setup-db! :create-sample-content? true))
   (log/infof "Connected to: %s | %s" (mdb/db-type) (mdb/db-file))
-  (encryption/encrypt to-key))
+  (mdb/encrypt-db (mdb/db-type) (mdb/data-source) to-key))
