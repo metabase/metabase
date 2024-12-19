@@ -525,8 +525,8 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.popover().within(() => {
           H.removeFieldValuesValue(0);
           H.fieldValuesInput().type("Sallie");
+          cy.findByText("Sallie Flatley").click();
         });
-        cy.findByRole("option", { name: "Sallie Flatley" }).click();
         H.popover().button("Update filter").click();
 
         cy.button("Save").click();
@@ -550,7 +550,7 @@ describe("scenarios > dashboard > subscriptions", () => {
   H.describeEE("EE email subscriptions", { tags: "@external" }, () => {
     beforeEach(() => {
       H.setTokenFeatures("all");
-      H.setupSMTP();
+      // H.setupSMTP();
       cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
     });
 
@@ -640,8 +640,10 @@ describe("scenarios > dashboard > subscriptions", () => {
           .click();
 
         H.removeFieldValuesValue(0, ":eq(1)");
-        H.popover().within(() => H.fieldValuesInput().type("Sallie"));
-        cy.findByRole("option", { name: "Sallie Flatley" }).click();
+        H.popover().within(() => {
+          H.fieldValuesInput().type("Sallie");
+          cy.findByRole("option", { name: "Sallie Flatley" }).click();
+        });
         H.popover().button("Update filter").click();
         cy.button("Save").click();
 
@@ -667,8 +669,10 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByText("Emailed hourly").click();
 
         cy.findAllByText("Corbin Mertz").last().click();
-        H.popover().within(() => H.fieldValuesInput().type("Bob"));
-        H.selectDropdown().findByText("Bobby Kessler").click();
+        H.popover().within(() => {
+          H.fieldValuesInput().type("Bob");
+          cy.findByText("Bobby Kessler").click();
+        });
         H.popover().contains("Update filter").click();
 
         cy.findAllByText("Text 1").last().click();
