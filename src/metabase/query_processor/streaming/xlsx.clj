@@ -703,25 +703,33 @@
             (vreset! typed-cell-styles (compute-typed-cell-styles workbook data-format)))))
 
       (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
-        (let [ordered-row          (vec (if output-order
-                                          (let [row-v (into [] row)]
-                                            (for [i output-order] (row-v i)))
-                                          row))
-              col-settings         (::mb.viz/column-settings viz-settings)
-              pivot-grouping-key   @pivot-grouping-idx
-              group                (get row pivot-grouping-key)
-              [row' ordered-cols'] (cond->> [ordered-row ordered-cols]
-                                     pivot-grouping-key
+        (try
+          (let [ordered-row          (vec (if output-order
+                                            (let [row-v (into [] row)]
+                                              (for [i output-order] (row-v i)))
+                                            row))
+                col-settings         (::mb.viz/column-settings viz-settings)
+                pivot-grouping-key   @pivot-grouping-idx
+                group                (get row pivot-grouping-key)
+                [row' ordered-cols'] (cond->> [ordered-row ordered-cols]
+                                       pivot-grouping-key
                                      ;; We need to remove the pivot-grouping key if it's there, because we don't show
                                      ;; it in the export. `ordered-cols` is a parallel array, so we must remove the
                                      ;; corresponding col.
-                                     (map #(m/remove-nth pivot-grouping-key %)))
-              {:keys [sheet]}      @workbook-data]
-          (when (or (not group)
-                    (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
-            (add-row! sheet (inc row-num) row' ordered-cols' col-settings @cell-styles @typed-cell-styles)
-            (when (= (inc row-num) *auto-sizing-threshold*)
-              (autosize-columns! sheet)))))
+                                       (map #(m/remove-nth pivot-grouping-key %)))
+                {:keys [sheet]}      @workbook-data]
+            (cond (> row-num 105)
+                  (throw (Exception. "TSP oops this broke")))
+            (when (or (not group)
+                      (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
+              (add-row! sheet (inc row-num) row' ordered-cols' col-settings @cell-styles @typed-cell-styles)
+              (when (= (inc row-num) *auto-sizing-threshold*)
+                (autosize-columns! sheet))))
+          (catch Exception e
+            (prometheus/inc! :metabase-streaming/export-xlsx-error
+                             {:error_type (-> e .getClass .getName)
+                              :row_num (str row-num)})
+            (throw e))))
 
       (finish! [_ {:keys [row_count]}]
         (let [{:keys [workbook sheet]} @workbook-data

@@ -224,6 +224,9 @@
                        {:description "Number of successful search requests."})
    (prometheus/counter :metabase-search/response-error
                        {:description "Number of errors when responding to search requests."})
+   (prometheus/counter :metabase-streaming/export-xlsx-error
+                       {:description "Number of errors when exporting xlsx files"
+                        :labels      [:error_type :row_num]})
    (prometheus/histogram :metabase-streaming/export-xlsx-ms
                          {:description "Duration of xlsx file export in ms."
                           :buckets [100 500 1000 2000 5000 10000]})
