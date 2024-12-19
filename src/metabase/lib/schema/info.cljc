@@ -14,6 +14,7 @@
    {:decode/normalize identity}
    :action
    :ad-hoc
+   :cache-refresh
    :collection
    :map-tiles
    :pulse

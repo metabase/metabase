@@ -159,13 +159,15 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     cy.visit("/admin/settings/localization");
 
     cy.findByTestId("custom-formatting-setting")
-      .findByText("January 31, 2018")
+      .findByDisplayValue("January 31, 2018")
       .click({ force: true });
 
     H.popover().findByText("2018/1/31").click({ force: true });
     cy.wait("@saveFormatting");
 
-    cy.findAllByTestId("select-button-content").should("contain", "2018/1/31");
+    cy.findByTestId("chart-settings-widget-date_style")
+      .findByTestId("chart-setting-select")
+      .should("have.value", "2018/1/31");
 
     cy.findByTestId("custom-formatting-setting")
       .findByText("17:24 (24-hour clock)")
@@ -903,8 +905,7 @@ describe("scenarios > admin > localization", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Unit of currency");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("US Dollar").click();
+    cy.findByDisplayValue("US Dollar").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Euro").click();
     H.undoToast().findByText("Changes saved").should("be.visible");
@@ -942,17 +943,16 @@ describe("scenarios > admin > localization", () => {
 
     cy.findByTestId("custom-formatting-setting").within(() => {
       // update the date style setting to YYYY/MM/DD
-      cy.findByText("January 31, 2018").click();
+      cy.findByDisplayValue("January 31, 2018").click();
     });
 
     H.popover().findByText("2018/1/31").click();
     cy.wait("@updateFormatting");
 
     cy.findByTestId("custom-formatting-setting").within(() => {
-      cy.findAllByTestId("select-button-content").should(
-        "contain",
-        "2018/1/31",
-      );
+      cy.findByTestId("chart-settings-widget-date_style")
+        .findByTestId("chart-setting-select")
+        .should("have.value", "2018/1/31");
 
       // update the time style setting to 24 hour
       cy.findByText("17:24 (24-hour clock)").click();

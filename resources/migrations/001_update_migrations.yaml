@@ -10217,6 +10217,48 @@ databaseChangeLog:
             columnNames: engine, version, status
 
   - changeSet:
+      id: v53.2024-12-02T16:21:15
+      author: noahmoss
+      comment: Add cache_config.refresh_automatically column
+      preConditions:
+        - not:
+            - columnExists:
+                tableName: cache_config
+                columnName: refresh_automatically
+      changes:
+        - addColumn:
+            tableName: cache_config
+            columns:
+              - column:
+                  name: refresh_automatically
+                  type: ${boolean.type}
+                  remarks: Whether or not we should automatically refresh cache results when a cache expires
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v53.2024-12-02T17:21:16
+      author: noahmoss
+      comment: Add query_execution.parameterized column
+      preConditions:
+        - not:
+            - columnExists:
+                tableName: query_execution
+                columnName: parameterized
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: parameterized
+                  type: ${boolean.type}
+                  remarks: Whether or not the query has parameters with non-nil values
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
       id: v53.2024-12-10T10:00:00
       author: qnkhuat
       comment: add notification.internal_id

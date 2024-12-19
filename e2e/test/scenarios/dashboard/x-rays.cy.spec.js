@@ -299,7 +299,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     cy.findByTestId("viz-settings-button").click();
     cy.findAllByTestId("chartsettings-field-picker")
-      .contains("User → Source")
+      .findByDisplayValue("User → Source")
       .should("be.visible");
   });
 
