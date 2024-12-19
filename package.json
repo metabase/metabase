@@ -33,7 +33,7 @@
     "@tippyjs/react": "^4.2.6",
     "@types/react-router": "3.0.27",
     "@types/redux-auth-wrapper": "^2.0.16",
-    "@uiw/react-codemirror": "^4.23.6",
+    "@uiw/react-codemirror": "^4.23.7",
     "@visx/axis": "^3.10.1",
     "@visx/clip-path": "^3.3.0",
     "@visx/grid": "^3.5.0",
