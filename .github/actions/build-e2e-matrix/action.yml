@@ -51,6 +51,7 @@ runs:
             ["question-reproductions", {} ],
             ["search", {}],
             ["sharing", {} ],
+            ["stats", {} ],
             ["visualizations-charts", {} ],
             ["visualizations-tabular", {} ],
             ["oss-subset", { edition: 'oss', context: "special" } ],
