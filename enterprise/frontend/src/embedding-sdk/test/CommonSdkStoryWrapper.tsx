@@ -4,6 +4,8 @@ import * as jose from "jose";
 import { type MetabaseAuthConfig, MetabaseProvider } from "embedding-sdk";
 
 import { USERS } from "../../../../../e2e/support/cypress_data";
+
+import { storybookThemes } from "./storybook-themes";
 const METABASE_INSTANCE_URL =
   (window as any).METABASE_INSTANCE_URL || "http://localhost:3000";
 const METABASE_JWT_SHARED_SECRET =
@@ -42,8 +44,12 @@ export const storybookSdkAuthDefaultConfig: MetabaseAuthConfig = {
   },
 };
 
-export const CommonSdkStoryWrapper = (Story: Story) => (
-  <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
-    <Story />
-  </MetabaseProvider>
-);
+export const CommonSdkStoryWrapper = (Story: Story, context: any) => {
+  const sdkTheme = context.globals.sdkTheme;
+  const theme = sdkTheme ? storybookThemes[sdkTheme] : undefined;
+  return (
+    <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig} theme={theme}>
+      <Story />
+    </MetabaseProvider>
+  );
+};
