@@ -1592,14 +1592,17 @@
 (defn- maybe-encrypt [setting-model]
   ;; In tests, sometimes we need to insert/update settings that don't have definitions in the code and therefore can't
   ;; be resolved. Fall back to maybe-encrypting these.
-  (let [resolved (try (resolve-setting (:key setting-model))
-                      (catch clojure.lang.ExceptionInfo e
-                        (when (not (::unknown-setting-error (ex-data e)))
-                          (throw e))))]
-    (cond-> setting-model
-      (or (nil? resolved)
-          (not (prohibits-encryption? resolved)))
-      (update :value encryption/maybe-encrypt))))
+  ;; Don't do any automatic handling of the "encryption-check" special setting used by mdb.encryption
+  (if (= "encryption-check" (:key setting-model))
+    setting-model
+    (let [resolved (try (resolve-setting (:key setting-model))
+                        (catch clojure.lang.ExceptionInfo e
+                          (when (not (::unknown-setting-error (ex-data e)))
+                            (throw e))))]
+      (cond-> setting-model
+        (or (nil? resolved)
+            (not (prohibits-encryption? resolved)))
+        (update :value encryption/maybe-encrypt)))))
 
 (t2/define-before-update :model/Setting
   [setting]
@@ -1611,4 +1614,7 @@
 
 (t2/define-after-select :model/Setting
   [setting]
-  (update setting :value encryption/maybe-decrypt))
+  ;; Don't do any automatic handling of the "encryption-check" special setting used by mdb.encryption
+  (if (= "encryption-check" (:key setting))
+    setting
+    (update setting :value encryption/maybe-decrypt)))
