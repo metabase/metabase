@@ -1,25 +1,33 @@
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import type { MetabaseTheme } from "embedding-sdk/types/theme";
 
-export { StaticQuestion } from "./StaticQuestion";
-export { InteractiveQuestion } from "./InteractiveQuestion";
+export { StaticQuestion, type StaticQuestionProps } from "./StaticQuestion";
+export {
+  InteractiveQuestion,
+  type InteractiveQuestionProps,
+} from "./InteractiveQuestion";
 export {
   MetabaseProvider,
   type MetabaseProviderProps,
 } from "./MetabaseProvider";
-export { StaticDashboard } from "./StaticDashboard";
-export { CollectionBrowser } from "./CollectionBrowser";
-export { InteractiveDashboard } from "./InteractiveDashboard";
-export { EditableDashboard } from "./InteractiveDashboard";
+export { StaticDashboard, type StaticDashboardProps } from "./StaticDashboard";
+export {
+  CollectionBrowser,
+  type CollectionBrowserProps,
+} from "./CollectionBrowser";
+export {
+  InteractiveDashboard,
+  EditableDashboard,
+  type InteractiveDashboardProps,
+  type EditableDashboardProps,
+} from "./InteractiveDashboard";
 export { ModifyQuestion } from "./ModifyQuestion";
-export { CreateQuestion } from "./CreateQuestion";
+export { CreateQuestion, type CreateQuestionProps } from "./CreateQuestion";
 export {
   CreateDashboardModal,
   useCreateDashboardApi,
-} from "./CreateDashboardModal";
-export type {
-  CreateDashboardModalProps,
-  CreateDashboardValues,
+  type CreateDashboardModalProps,
+  type CreateDashboardValues,
 } from "./CreateDashboardModal";
 export { FlexibleSizeComponent } from "./FlexibleSizeComponent";
 export type { FlexibleSizeProps } from "./FlexibleSizeComponent";

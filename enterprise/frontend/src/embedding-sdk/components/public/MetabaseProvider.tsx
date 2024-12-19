@@ -1,13 +1,12 @@
 import { Global } from "@emotion/react";
 import type { Action, Store } from "@reduxjs/toolkit";
 import { type JSX, type ReactNode, memo, useEffect, useRef } from "react";
-import { Provider } from "react-redux";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import { useInitData } from "embedding-sdk/hooks";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
-import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
+import type { MetabasePluginsConfig } from "embedding-sdk/lib/plugins";
 import { getSdkStore } from "embedding-sdk/store";
 import {
   setErrorComponent,
@@ -22,6 +21,7 @@ import type {
 } from "embedding-sdk/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import type { MetabaseTheme } from "embedding-sdk/types/theme";
+import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -42,7 +42,7 @@ import "metabase/css/vendor.css";
 export interface MetabaseProviderProps {
   children: ReactNode;
   authConfig: MetabaseAuthConfig;
-  pluginsConfig?: SdkPluginsConfig;
+  pluginsConfig?: MetabasePluginsConfig;
   eventHandlers?: SdkEventHandlersConfig;
   theme?: MetabaseTheme;
   className?: string;
@@ -141,8 +141,8 @@ export const MetabaseProvider = memo(function MetabaseProvider(
   }
 
   return (
-    <Provider store={storeRef.current}>
+    <MetabaseReduxProvider store={storeRef.current}>
       <MetabaseProviderInternal store={storeRef.current} {...props} />
-    </Provider>
+    </MetabaseReduxProvider>
   );
 });

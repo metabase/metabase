@@ -1,4 +1,4 @@
-import type { FetchRequestTokenFn } from "embedding-sdk";
+import type { MetabaseFetchRequestTokenFn } from "embedding-sdk";
 
 type BaseMetabaseAuthConfig = {
   metabaseInstanceUrl: string;
@@ -7,7 +7,7 @@ type BaseMetabaseAuthConfig = {
    * Specifies a function to fetch the refresh token.
    * The refresh token should be in the format of { id: string, exp: number }
    */
-  fetchRequestToken?: FetchRequestTokenFn;
+  fetchRequestToken?: MetabaseFetchRequestTokenFn;
 };
 
 export type MetabaseAuthConfigWithProvider = BaseMetabaseAuthConfig & {

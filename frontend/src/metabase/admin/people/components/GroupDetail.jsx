@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Fragment, useEffect, useState } from "react";
-import { connect } from "react-redux";
 import { msgid, ngettext, t } from "ttag";
 
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
@@ -14,6 +13,7 @@ import {
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/lib/groups";
+import { connect } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
 
