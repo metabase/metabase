@@ -2,7 +2,7 @@ import { type Route, type WithRouterProps, withRouter } from "react-router";
 import { t } from "ttag";
 
 import { updateDashboardAndCards } from "metabase/dashboard/actions/save";
-import { useConfirmLeaveModal } from "metabase/hooks/use-confirm-leave-modal";
+import { useConfirmRouteLeaveModal } from "metabase/hooks/use-confirm-route-leave-modal";
 import { useDispatch } from "metabase/lib/redux";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { Button, Flex, Modal, Text } from "metabase/ui";
@@ -24,7 +24,7 @@ export const DashboardLeaveConfirmationModal = withRouter(
   }: DashboardLeaveConfirmationModalProps) => {
     const dispatch = useDispatch();
 
-    const { opened, close, confirm, nextLocation } = useConfirmLeaveModal({
+    const { opened, close, confirm, nextLocation } = useConfirmRouteLeaveModal({
       isEnabled: isEditing && isDirty,
       route,
       router,

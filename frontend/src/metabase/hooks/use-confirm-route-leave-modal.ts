@@ -26,7 +26,14 @@ interface UseConfirmLeaveModalResult {
  */
 export const IS_LOCATION_ALLOWED = (location?: Location) => !location;
 
-export const useConfirmLeaveModal = ({
+// NOTE: there's a similar hook called useConfirmOnRouteLeave that should
+// ported to use this format instead
+
+/**
+ * Provides props for using a Modal that is presented to users
+ * whenever they try to leave a route
+ */
+export const useConfirmRouteLeaveModal = ({
   router,
   route,
   isEnabled,

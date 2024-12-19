@@ -3,7 +3,7 @@ import type { InjectedRouter, Route } from "react-router";
 import { withRouter } from "react-router";
 
 import Modal from "metabase/components/Modal";
-import { useConfirmLeaveModal } from "metabase/hooks/use-confirm-leave-modal";
+import { useConfirmRouteLeaveModal } from "metabase/hooks/use-confirm-route-leave-modal";
 
 import { LeaveConfirmationModalContent } from "./LeaveConfirmationModalContent";
 
@@ -20,7 +20,7 @@ const LeaveConfirmationModalBase = ({
   route,
   router,
 }: Props) => {
-  const { opened, close, confirm } = useConfirmLeaveModal({
+  const { opened, close, confirm } = useConfirmRouteLeaveModal({
     isEnabled,
     isLocationAllowed,
     route,
