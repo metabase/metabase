@@ -19,7 +19,7 @@ export function performAction(
     }
   }
   if (action.url) {
-    // (metabase#51099) disable url click behavior
+    // (metabase#51099) disable url click behavior when in sdk
     if (isEmbeddingSdk) {
       return true;
     }
