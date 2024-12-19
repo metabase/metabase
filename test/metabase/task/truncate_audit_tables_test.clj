@@ -8,8 +8,7 @@
    [metabase.task.truncate-audit-tables :as task.truncate-audit-tables]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -45,7 +44,7 @@
 (deftest truncate-table-test
   (testing "truncate-table accurately truncates a table according to the value of the audit-max-retention-days env var"
     (mt/with-premium-features #{}
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/QueryExecution {qe1-id :id} (merge (query-execution-defaults)
                                                    {:started_at (t/offset-date-time)})
          ;; 31 days ago
@@ -79,3 +78,19 @@
                 (#'task.truncate-audit-tables/truncate-audit-tables!)
                 (is (= #{qe1-id}
                        (t2/select-fn-set :id :model/QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]})))))))))))
+
+(deftest batched-deletion-test
+  (testing "Deletion is batched into multiple queries"
+    (mt/with-temporary-setting-values [audit-table-truncation-batch-size 2]
+      (mt/with-temp
+        [:model/QueryExecution {qe1-id :id} (merge (query-execution-defaults)
+                                                   {:started_at (t/minus (t/offset-date-time) (t/years 4))})
+         :model/QueryExecution {qe2-id :id} (merge (query-execution-defaults)
+                                                   {:started_at (t/minus (t/offset-date-time) (t/years 4))})
+         :model/QueryExecution {qe3-id :id} (merge (query-execution-defaults)
+                                                   {:started_at (t/minus (t/offset-date-time) (t/years 4))})]
+        (t2/with-call-count [call-count]
+          (#'task.truncate-audit-tables/truncate-table! :model/QueryExecution :started_at)
+          ;; Should make deletion queries in two batches (2 rows, then 1 row)
+          (is (= 2 (call-count)))
+          (is (nil? (t2/select-fn-set :id :model/QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]}))))))))
