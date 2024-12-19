@@ -4,12 +4,10 @@ import { t } from "ttag";
 
 import { useGetChannelInfoQuery } from "metabase/api";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
-import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { alertIsValid } from "metabase/lib/alert";
-import MetabaseCookies from "metabase/lib/cookies";
 import {
   getHasConfiguredAnyChannel,
   getHasConfiguredEmailChannel,
@@ -23,20 +21,23 @@ import {
 } from "metabase/query_builder/selectors";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Flex } from "metabase/ui";
-import { getDefaultAlert } from "metabase-lib/v1/Alert";
+import { ALERT_TYPE_ROWS, getDefaultAlert } from "metabase-lib/v1/Alert";
 import type { Alert } from "metabase-types/api";
 
-import { AlertEditForm } from "./AlertEditForm";
-import { AlertEducationalScreen } from "./AlertEducationalScreen";
-import { AlertModalTitle } from "./AlertModalTitle";
-import AlertModalsS from "./AlertModals.module.css";
+import { AlertEditForm } from "../AlertEditForm";
+import { AlertModalTitle } from "../AlertModalTitle";
+import AlertModalsS from "../AlertModals.module.css";
+
+import ChannelSetupModal from "./ChannelSetupModal";
 
 interface CreateAlertModalContentProps {
+  notificationType: "alert" | "subscription";
   onAlertCreated: () => void;
   onCancel: () => void;
 }
 
 export const CreateAlertModalContent = ({
+  notificationType,
   onAlertCreated,
   onCancel,
 }: CreateAlertModalContentProps) => {
@@ -52,12 +53,13 @@ export const CreateAlertModalContent = ({
   const hasConfiguredAnyChannel = getHasConfiguredAnyChannel(channelSpec);
   const hasConfiguredEmailChannel = getHasConfiguredEmailChannel(channelSpec);
 
-  const [alert, setAlert] = useState<any>(
-    getDefaultAlert(question, user, visualizationSettings),
-  );
+  const alertType =
+    (notificationType === "alert" &&
+      question?.alertType(visualizationSettings)) ||
+    ALERT_TYPE_ROWS;
 
-  const [hasSeenEducationalScreen, setHasSeenEducationalScreen] = useState(
-    MetabaseCookies.getHasSeenAlertSplash(),
+  const [alert, setAlert] = useState<any>(
+    getDefaultAlert(question, alertType, user),
   );
 
   useEffect(() => {
@@ -80,11 +82,6 @@ export const CreateAlertModalContent = ({
     onAlertCreated();
   };
 
-  const proceedFromEducationalScreen = () => {
-    MetabaseCookies.setHasSeenAlertSplash(true);
-    setHasSeenEducationalScreen(true);
-  };
-
   const channelRequirementsMet = isAdmin
     ? hasConfiguredAnyChannel
     : hasConfiguredEmailChannel;
@@ -101,15 +98,7 @@ export const CreateAlertModalContent = ({
       />
     );
   }
-  if (!hasSeenEducationalScreen) {
-    return (
-      <ModalContent onClose={onCancel} data-testid="alert-education-screen">
-        <AlertEducationalScreen onProceed={proceedFromEducationalScreen} />
-      </ModalContent>
-    );
-  }
 
-  // TODO: Remove PulseEdit css hack
   return (
     <ModalContent data-testid="alert-create" onClose={onCancel}>
       <div
@@ -118,7 +107,8 @@ export const CreateAlertModalContent = ({
       >
         <AlertModalTitle text={t`Let's set up your alert`} />
         <AlertEditForm
-          alertType={question?.alertType(visualizationSettings)}
+          type={notificationType}
+          alertType={alertType}
           alert={alert}
           onAlertChange={onAlertChange}
         />
