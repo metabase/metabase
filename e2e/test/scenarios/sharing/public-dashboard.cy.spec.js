@@ -328,11 +328,17 @@ H.describeEE("scenarios [EE] > public > dashboard", () => {
     });
   });
 
+  // here
   it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
     cy.get("@dashboardId").then(id => {
       H.visitPublicDashboard(id, {
-        hash: { locale: "de" },
+        hash: { locale: "de-CH" },
       });
+    });
+
+    // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
+    cy.request("/app/locales/de.json").then(response => {
+      expect(response.status).to.eq(200);
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- we don't care where the text is
