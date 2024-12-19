@@ -25,7 +25,7 @@ expression {
 | ColumnReference
 | BinaryExpression
 | ParenExpression
-| FunctionApplication
+| CallExpression
 | UnaryExpression
 }
 
@@ -53,20 +53,22 @@ ParenExpression {
   "(" expression ")"
 }
 
-FunctionApplication {
+CallExpression {
   Identifier "(" ")"
 | Identifier "(" expression ("," expression)* ")"
 }
 
 @skip {} {
-  String {
-    '"' stringContentDouble '"'
-  | "'" stringContentSingle "'"
+  String[isolate] {
+    '"' (stringContentDouble | Escape)* ('"' | "\n")
+  | "'" (stringContentSingle | Escape)* ("'" | "\n")
   }
 }
 
+
 @tokens {
   space { @whitespace+ }
+  hex { $[0-9a-fA-F] }
 
   Number {
     (@digit ("_" | @digit)* ("." ("_" | @digit)*)?
@@ -80,7 +82,7 @@ FunctionApplication {
   stringContentDouble { ![\\\n"]+ }
 
   ColumnReference {
-    "[" $[a-zA-Z0-9 →.]+ "]"
+    "[" $[a-zA-Z0-9 →.]* "]"
   }
 
   Identifier {
@@ -97,4 +99,24 @@ FunctionApplication {
   }
 
   @precedence { Not, Boolean, Identifier }
+
+  Escape {
+    "\\" ("x" hex hex | "u" ("{" hex+ "}" | hex hex hex hex) | ![xu])
+  }
+
+  "("
+  ")"
+  "AND"
+  "OR"
+  "NOT"
+  "+"
+  "-"
+  "*"
+  "/"
+  "="
+  "!="
+  "<"
+  "<="
+  ">"
+  ">="
 }
