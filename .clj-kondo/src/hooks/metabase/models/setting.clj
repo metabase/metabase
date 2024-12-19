@@ -169,7 +169,7 @@
      version-info
      version-info-last-checked})
 
-(defn- defsetting-lint [node setting-name docstring options-list]
+(defn- defsetting* [node setting-name docstring options-list]
   (let [anon-binding (common/with-macro-meta (hooks/token-node '_) node)
         ;; (defn my-setting [] ...)
         getter-node (-> (list
@@ -177,8 +177,7 @@
                          setting-name
                          (hooks/string-node "Docstring.")
                          (hooks/vector-node []))
-                        hooks/list-node
-                        (with-meta (meta node)))
+                        hooks/list-node)
         ;; (defn my-setting! [_x] ...)
         setter-node (-> (list
                          (hooks/token-node 'defn)
@@ -188,7 +187,6 @@
                          (hooks/string-node "Docstring.")
                          (hooks/vector-node [(hooks/token-node '_value-or-nil)]))
                         hooks/list-node
-                        (with-meta (meta node))
                         common/add-lsp-ignore-unused-public-var-metadata)]
 
     (when (nil? (second (drop-while (comp not #{[:k :export?]} first) options-list)))
@@ -197,16 +195,16 @@
                                    :message "Setting definition must provide an explicit value for :export? indicating whether the setting should be exported or not with serialization."
                                    :type :metabase/defsetting-must-specify-export))))
 
-    {:node (-> (list
-                (hooks/token-node 'let)
-                 ;; include description and the options map so they can get validated as well.
-                (hooks/vector-node
-                 [anon-binding docstring
-                  anon-binding (hooks/map-node options-list)])
-                getter-node
-                setter-node)
-               hooks/list-node
-               (with-meta (meta node)))}))
+    (-> (list
+         (hooks/token-node 'let)
+         ;; include description and the options map so they can get validated as well.
+         (hooks/vector-node
+          [anon-binding docstring
+           anon-binding (hooks/map-node options-list)])
+         getter-node
+         setter-node)
+        hooks/list-node
+        (with-meta (meta node)))))
 
 (defn defsetting
   "Rewrite a [[metabase.models.defsetting]] form like
@@ -221,9 +219,11 @@
       (defn my-setting! \"Docstring.\" [_value-or-nil]))
 
   for linting purposes."
-  [{:keys [node]}]
-  (let [[setting-name docstring & options] (rest (:children node))]
-    (defsetting-lint node setting-name docstring options)))
+  [x]
+  (letfn [(update-node [node]
+            (let [[setting-name docstring & options] (rest (:children node))]
+              (defsetting* node setting-name docstring options)))]
+    (update x :node update-node)))
 
 (defn define-multi-setting
   "Rewrite a [[metabase.models.define-multi-setting]] form like
@@ -238,30 +238,8 @@
       (defn my-setting! \"Docstring.\" [_value-or-nil]))
 
   for linting purposes."
-  [{:keys [node]}]
-  (let [[setting-name docstring thunk & options] (rest (:children node))]
-    (defsetting-lint node setting-name docstring (concat options [(hooks/token-node :multi-thunk) thunk]))))
-
-(comment
-  (defn- defsetting* [form]
-    (hooks/sexpr
-     (:node
-      (defsetting
-        {:node
-         (hooks/parse-string
-          (with-out-str
-            #_{:clj-kondo/ignore [:unresolved-namespace]}
-            (clojure.pprint/pprint
-             form)))}))))
-
-  (defn x []
-    (defsetting*
-      '(defsetting active-users-count
-         (deferred-tru "Cached number of active users. Refresh every 5 minutes.")
-         :visibility :admin
-         :type       :integer
-         :default    0
-         :getter     (fn []
-                       (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
-                         0
-                         (cached-active-users-count)))))))
+  [x]
+  (letfn [(update-node [node]
+            (let [[setting-name docstring thunk & options] (rest (:children node))]
+              (defsetting* node setting-name docstring (concat options [(hooks/token-node :multi-thunk) thunk]))))]
+    (update x :node update-node)))
