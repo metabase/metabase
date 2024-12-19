@@ -80,7 +80,7 @@ FunctionApplication {
   stringContentDouble { ![\\\n"]+ }
 
   ColumnReference {
-    "[" $[a-zA-Z →.]+ "]"
+    "[" $[a-zA-Z0-9 →.]+ "]"
   }
 
   Identifier {
