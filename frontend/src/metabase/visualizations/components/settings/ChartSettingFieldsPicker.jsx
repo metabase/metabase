@@ -7,7 +7,7 @@ import { DragDropContext } from "metabase/core/components/DragDropContext";
 import CS from "metabase/css/core/index.css";
 import { moveElement } from "metabase/lib/arrays";
 
-import ChartSettingFieldPicker from "./ChartSettingFieldPicker";
+import { ChartSettingFieldPicker } from "./ChartSettingFieldPicker";
 import { AddAnotherContainer } from "./ChartSettingFieldsPicker.styled";
 
 const ChartSettingFieldsPicker = ({

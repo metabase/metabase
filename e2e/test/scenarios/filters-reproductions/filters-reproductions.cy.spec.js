@@ -1567,7 +1567,7 @@ describe("issue 49642", () => {
   });
 
   function addQuestion(name) {
-    H.openAddQuestionMenu("Existing Question");
+    H.openQuestionsSidebar();
     cy.findByTestId("add-card-sidebar").findByText(name).click();
   }
 
