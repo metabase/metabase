@@ -1,6 +1,7 @@
 import { c } from "ttag";
 
 import { skipToken } from "metabase/api";
+import { useUserSetting } from "metabase/common/hooks";
 import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
@@ -13,23 +14,17 @@ import type { Collection } from "metabase-types/api";
 
 import { getDateFilterValue } from "../CleanupCollectionModal/utils";
 
-const TEXT = {
-  CLEAN_THINGS_UP: c(
-    "This is the heading of a banner that invites the user to clean up a collection.",
-  ).t`Clean things up!`,
-  GET_RID_OF_UNUSED_CONTENT: c(
-    "This is the heading of a banner that invites the user to clean up a collection.",
-  ).t`Get rid of unused content in this collection`,
-};
-
 export const CollectionCleanupAlert = ({
   collection,
 }: {
   collection: Collection;
 }) => {
+  const [dismissed, setDismissed] = useUserSetting(
+    "dismissed-collection-cleanup-banner",
+  );
   const isAdmin = useSelector(getUserIsAdmin);
   const shouldFetchStaleItems =
-    isAdmin && PLUGIN_COLLECTIONS.canCleanUp(collection);
+    isAdmin && !dismissed && PLUGIN_COLLECTIONS.canCleanUp(collection);
 
   const {
     data: staleItems,
@@ -44,10 +39,9 @@ export const CollectionCleanupAlert = ({
         }
       : skipToken,
   );
+  const totalStaleItems = shouldFetchStaleItems ? (staleItems?.total ?? 0) : 0;
 
-  const hasSomethingToCleanUp = !!staleItems?.total;
-
-  if (isLoading || error || !hasSomethingToCleanUp) {
+  if (isLoading || error || totalStaleItems <= 0) {
     return null;
   }
 
@@ -55,6 +49,8 @@ export const CollectionCleanupAlert = ({
     <Alert
       data-testid="cleanup-alert"
       icon={<Icon name="ai" size={16} />}
+      withCloseButton
+      onClose={() => setDismissed(true)}
       styles={{
         root: { padding: 0, marginTop: "-.5rem", marginBottom: "2rem" },
         icon: { marginRight: ".5rem" },
@@ -62,10 +58,15 @@ export const CollectionCleanupAlert = ({
           backgroundColor: color("brand-lighter"),
           padding: "1rem 1.5rem",
         },
+        closeButton: {
+          color: "var(--mb-color-text-dark)",
+        },
       }}
     >
       <Box fz="md" c={"text-dark"}>
-        {TEXT.CLEAN_THINGS_UP}{" "}
+        {c(
+          "This is the heading of a banner that invites the user to clean up a collection.",
+        ).t`Keep your collections tidy!`}{" "}
         <Box
           component={Link}
           ml="2.5rem"
@@ -73,7 +74,9 @@ export const CollectionCleanupAlert = ({
           variant="brand"
           to={`${Urls.collection(collection)}/cleanup`}
         >
-          {TEXT.GET_RID_OF_UNUSED_CONTENT}
+          {c(
+            "This is the heading of a banner that invites the user to clean up a collection.",
+          ).t`View unused items and select which ones to move to the trash.`}
         </Box>
       </Box>
     </Alert>

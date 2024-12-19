@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { skipToken } from "metabase/api";
+import { useUserSetting } from "metabase/common/hooks";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import Search from "metabase/entities/search";
@@ -114,11 +115,18 @@ const _CleanupCollectionModal = ({
     setTotal(total);
   }, [setTotal, total]);
 
+  const [dismissed, setDismissed] = useUserSetting(
+    "dismissed-collection-cleanup-banner",
+  );
   const handleOnArchive = ({
     totalArchivedItems,
   }: {
     totalArchivedItems: number;
   }) => {
+    if (!dismissed) {
+      setDismissed(true);
+    }
+
     // In theory if we should only get numbers or root bad for a collection id
     // if we are dealing with Our Analytics / root, set collection_id to null
     if (typeof collectionId === "number" || collectionId === "root") {
