@@ -111,6 +111,7 @@
   Some of the scorers can be tweaked with configuration in [[metabase.search.config]]."
   (:require
    [cheshire.core :as json]
+   [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.compatibility :as compatibility]
@@ -315,14 +316,6 @@
 ;; - pre-aggregated-model > metric > dataset > question
 
 
-"dataset-columns"
-{"base_type" ""
- "effective_type" "type/Whatever"
- "semantic_type" "typhe/Whatever"
- "unit" "month"
- "source" "breakout or aggregation"}
-
-
 ;; should we consider time granularity in the scoring?
 ;; order of magnitude matters
 ;; also consider the :unit property, series with the same unit are scored higher
@@ -335,6 +328,17 @@
     (cond
       timeseries? 2
       :else       0)))
+
+(defn- column-similarity-score
+  [{:keys [result_metadata]} col-types]
+  (let [result-metadata (json/decode result_metadata keyword)
+        result-types (into #{} (mapcat (fn [col]
+                                         (vals (select-keys col [:base_type :effective_type :semantic_type])))
+                                       result-metadata))
+        overlap     (set/intersection result-types col-types)]
+    (cond
+      overlap (count overlap)
+      :else    0)))
 
 (defn compatibility-weights-and-scores
   "Default weights and scores for a given result."
@@ -353,13 +357,38 @@
       :score  (if (some #(isa? % :type/Temporal) column-types)
                 (timeseries-score result)
                 0)
-      :name   "timeseries-compatibility"}]))
+      :name   "timeseries-compatibility"}
+
+
+     {:weight 1
+      :score  (column-similarity-score result column-types)
+      :name   "column-similarity-compatibility"}]))
+
+
+;; these 2 are enterprise only, so to take this out of prototype land,
+;; they must be only used in enterprise scenarios.
+
+(defn- official-collection-score
+  "A scorer for items in official collections"
+  [{:keys [collection_authority_level]}]
+  (if (contains? #{"official"} collection_authority_level)
+    1
+    0))
+
+(defn- verified-score
+  "A scorer for verified items."
+  [{:keys [moderated_status]}]
+  (if (contains? #{"verified"} moderated_status)
+    1
+    0))
 
 (defn weights-and-scores
   "Default weights and scores for a given result."
   [result]
   [{:weight 3 :score (recency-score result) :name "recency"}
-   {:weight 1 :score (model-score result) :name "model"}])
+   {:weight 1 :score (model-score result) :name "model"}
+   {:weight 1 :score (official-collection-score result) :name "official"}
+   {:weight 10 :score (verified-score result) :name "verified"}])
 
 (defn score-result
   "Score a result, returning a collection of maps with score and weight. Should not include the text scoring, done
