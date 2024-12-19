@@ -16,8 +16,6 @@ import {
   TriggerIcon,
 } from "./BaseBucketPickerPopover.styled";
 
-export const INITIALLY_VISIBLE_ITEMS_COUNT = 7;
-
 type NoBucket = null;
 
 export type BucketListItem = {
@@ -37,6 +35,7 @@ export interface BaseBucketPickerPopoverProps {
   hasArrowIcon?: boolean;
   hasChevronDown?: boolean;
   color?: ColorName;
+  initiallyVisibleItemsCount: number;
   checkBucketIsSelected: (item: BucketListItem) => boolean;
   renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => ReactNode;
   onSelect: (column: Lib.Bucket | NoBucket) => void;
@@ -52,6 +51,7 @@ function _BaseBucketPickerPopover({
   triggerLabel,
   hasArrowIcon = true,
   color = "brand",
+  initiallyVisibleItemsCount,
   checkBucketIsSelected,
   renderTriggerContent,
   onSelect,
@@ -60,7 +60,12 @@ function _BaseBucketPickerPopover({
 }: BaseBucketPickerPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
   const [isExpanded, setIsExpanded] = useState(
-    isInitiallyExpanded(items, selectedBucket, checkBucketIsSelected),
+    isInitiallyExpanded(
+      items,
+      selectedBucket,
+      initiallyVisibleItemsCount,
+      checkBucketIsSelected,
+    ),
   );
 
   const defaultBucket = useMemo(
@@ -77,21 +82,27 @@ function _BaseBucketPickerPopover({
     const nextState = isInitiallyExpanded(
       items,
       selectedBucket,
+      initiallyVisibleItemsCount,
       checkBucketIsSelected,
     );
     setIsExpanded(nextState);
     setIsOpened(false);
-  }, [items, selectedBucket, checkBucketIsSelected]);
+  }, [
+    items,
+    selectedBucket,
+    initiallyVisibleItemsCount,
+    checkBucketIsSelected,
+  ]);
 
   const triggerContentBucket = isEditing ? selectedBucket : defaultBucket;
   const triggerContentBucketDisplayInfo = triggerContentBucket
     ? Lib.displayInfo(query, stageIndex, triggerContentBucket)
     : undefined;
 
-  const canExpand = items.length > INITIALLY_VISIBLE_ITEMS_COUNT;
+  const canExpand = items.length > initiallyVisibleItemsCount;
   const hasMoreButton = canExpand && !isExpanded;
   const visibleItems = hasMoreButton
-    ? items.slice(0, INITIALLY_VISIBLE_ITEMS_COUNT)
+    ? items.slice(0, initiallyVisibleItemsCount)
     : items;
 
   return (
@@ -160,16 +171,17 @@ function _BaseBucketPickerPopover({
 function isInitiallyExpanded(
   items: BucketListItem[],
   selectedBucket: Lib.Bucket | NoBucket,
+  initiallyVisibleItemsCount: number,
   checkBucketIsSelected: (item: BucketListItem) => boolean,
 ) {
-  const canExpand = items.length > INITIALLY_VISIBLE_ITEMS_COUNT;
+  const canExpand = items.length > initiallyVisibleItemsCount;
   if (!canExpand || !selectedBucket) {
     return false;
   }
 
   return (
     items.findIndex(item => checkBucketIsSelected(item)) >=
-    INITIALLY_VISIBLE_ITEMS_COUNT
+    initiallyVisibleItemsCount
   );
 }
 
