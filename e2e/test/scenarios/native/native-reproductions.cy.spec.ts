@@ -51,13 +51,13 @@ describe("issue 16584", () => {
     // - the issue is unrelated to whether or not the parameter is required or if default value is set
     // - the space at the end of the query is not needed to reproduce this issue
     H.openNativeEditor();
-    H.nativeEditorType(
+    H.NativeEditor.type(
       "SELECT COUNTRY FROM ACCOUNTS WHERE COUNTRY = {{ country }} LIMIT 1",
     );
 
     cy.findByPlaceholderText("Country").type("NL", { delay: 0 });
 
-    H.nativeEditorSelectAll();
+    H.NativeEditor.selectAll();
     H.runNativeQuery();
 
     cy.findByTestId("query-visualization-root")
@@ -122,21 +122,21 @@ describe("issue 33327", () => {
     cy.findByTestId("scalar-value").should("have.text", "1");
 
     cy.findByTestId("visibility-toggler").click();
-    H.focusNativeEditor().should("contain", query).realType("{leftarrow}--");
+    H.NativeEditor.get().should("contain", query);
+    H.NativeEditor.type("{leftarrow}--");
 
     cy.intercept("POST", "/api/dataset").as("dataset");
-    H.nativeEditor().should("be.visible").and("contain", "SELECT --1");
+    H.NativeEditor.get().should("be.visible").and("contain", "SELECT --1");
     getRunQueryButton().click();
     cy.wait("@dataset");
 
     cy.findByTestId("visualization-root").icon("warning").should("be.visible");
     cy.findByTestId("scalar-value").should("not.exist");
 
-    H.focusNativeEditor()
-      .should("contain", "SELECT --1")
-      .realType("{leftarrow}{backspace}{backspace}");
+    H.NativeEditor.get().should("contain", "SELECT --1");
+    H.NativeEditor.type("{leftarrow}{backspace}{backspace}");
 
-    H.nativeEditor().should("contain", query);
+    H.NativeEditor.get().should("contain", query);
 
     getRunQueryButton().click();
     cy.wait("@dataset");
@@ -170,11 +170,12 @@ describe("issue 49454", () => {
   });
 
   it("should be possible to use metrics in native queries (metabase#49454)", () => {
-    H.openNativeEditor().realType("select * from {{ #test");
+    H.openNativeEditor();
+    H.NativeEditor.type("select * from {{ #test");
 
-    H.nativeEditorCompletions().within(() => {
-      H.nativeEditorCompletion("-question-49454").should("be.visible");
-      H.nativeEditorCompletion("-metric-49454").should("be.visible");
+    H.NativeEditor.completions().within(() => {
+      H.NativeEditor.completion("-question-49454").should("be.visible");
+      H.NativeEditor.completion("-metric-49454").should("be.visible");
     });
   });
 });

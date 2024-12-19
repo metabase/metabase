@@ -1,5 +1,5 @@
 import { pickEntity } from "./e2e-collection-helpers";
-import { focusNativeEditor } from "./e2e-native-editor-helpers";
+import { NativeEditor } from "./e2e-native-editor-helpers";
 
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.
@@ -43,7 +43,7 @@ export function openNativeEditor({
   // database selector or simply display the previously selected database
   cy.findAllByTestId("loading-indicator").should("not.exist");
 
-  return focusNativeEditor().as(alias);
+  return NativeEditor.focus().get().as(alias);
 }
 
 /**

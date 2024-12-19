@@ -23,10 +23,6 @@ const ORDERS_SCALAR_METRIC = {
   display: "scalar",
 };
 
-// cy.realType does not have an option to not parse special characters
-const LEFT_BRACKET = "{{}";
-const DOUBLE_LEFT_BRACKET = `${LEFT_BRACKET}${LEFT_BRACKET}`;
-
 describe("scenarios > question > native", () => {
   beforeEach(() => {
     cy.intercept("POST", "api/card").as("card");
@@ -38,7 +34,7 @@ describe("scenarios > question > native", () => {
 
   it("lets you create and run a SQL question", () => {
     H.openNativeEditor();
-    cy.realType("select count(*) from orders");
+    H.NativeEditor.type("select count(*) from orders");
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("18,760");
@@ -48,7 +44,7 @@ describe("scenarios > question > native", () => {
     H.visitCollection(THIRD_COLLECTION_ID);
 
     H.openNativeEditor({ fromCurrentPage: true });
-    cy.realType("select count(*) from orders");
+    H.NativeEditor.type("select count(*) from orders");
 
     cy.findByTestId("qb-header").within(() => {
       cy.findByText("Save").click();
@@ -65,7 +61,7 @@ describe("scenarios > question > native", () => {
     cy.log("after visiting a dashboard, it should be the new suggestion");
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.openNativeEditor({ fromCurrentPage: true });
-    cy.realType("select count(*) from orders");
+    H.NativeEditor.type("select count(*) from orders");
 
     cy.findByTestId("qb-header").within(() => {
       cy.findByText("Save").click();
@@ -82,7 +78,7 @@ describe("scenarios > question > native", () => {
 
   it("displays an error", () => {
     H.openNativeEditor();
-    cy.realType("select * from not_a_table");
+    H.NativeEditor.type("select * from not_a_table");
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains('Table "NOT_A_TABLE" not found');
@@ -90,7 +86,7 @@ describe("scenarios > question > native", () => {
 
   it("displays an error when running selected text", () => {
     H.openNativeEditor();
-    cy.realType("select * from orders");
+    H.NativeEditor.type("select * from orders");
     // move left three
     Cypress._.range(3).forEach(() => cy.realPress("ArrowLeft"));
     // highlight back to the front
@@ -102,9 +98,7 @@ describe("scenarios > question > native", () => {
 
   it("should handle template tags", () => {
     H.openNativeEditor();
-    cy.realType(
-      `select * from PRODUCTS where RATING > ${DOUBLE_LEFT_BRACKET}Stars}}`,
-    );
+    H.NativeEditor.type("select * from PRODUCTS where RATING > {{Stars}}");
     cy.get("input[placeholder*='Stars']").type("3");
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -113,9 +107,7 @@ describe("scenarios > question > native", () => {
 
   it("should modify parameters accordingly when tags are modified", () => {
     H.openNativeEditor();
-    cy.realType(
-      `select * from PRODUCTS where CATEGORY = ${DOUBLE_LEFT_BRACKET}cat}}`,
-    );
+    H.NativeEditor.type("select * from PRODUCTS where CATEGORY = {{cat}}");
     cy.findByTestId("sidebar-right")
       .findByText("Always require a value")
       .click();
@@ -143,7 +135,7 @@ describe("scenarios > question > native", () => {
 
   it("can save a question with no rows", () => {
     H.openNativeEditor();
-    cy.realType("select * from people where false");
+    H.NativeEditor.type("select * from people where false");
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("No results!");
@@ -224,7 +216,8 @@ describe("scenarios > question > native", () => {
 
   it("should be able to add new columns after hiding some (metabase#15393)", () => {
     H.openNativeEditor();
-    cy.realType("select 1 as visible, 2 as hidden");
+
+    H.NativeEditor.type("select 1 as visible, 2 as hidden");
     cy.findByTestId("native-query-editor-container")
       .icon("play")
       .as("runQuery")
@@ -243,8 +236,8 @@ describe("scenarios > question > native", () => {
 
   it("should recognize template tags and save them as parameters", () => {
     H.openNativeEditor();
-    cy.realType(
-      `select * from PRODUCTS where CATEGORY=${DOUBLE_LEFT_BRACKET}cat}} and RATING >= ${DOUBLE_LEFT_BRACKET}stars}}`,
+    H.NativeEditor.type(
+      "select * from PRODUCTS where CATEGORY={{cat}} and RATING >= {{stars}}",
     );
     cy.get("input[placeholder*='Cat']").type("Gizmo");
     cy.get("input[placeholder*='Stars']").type("3");
@@ -300,9 +293,7 @@ describe("scenarios > question > native", () => {
 
   it("should allow to preview a fully parameterized query", () => {
     H.openNativeEditor();
-    cy.realType(
-      `select * from PRODUCTS where CATEGORY=${DOUBLE_LEFT_BRACKET}category}}`,
-    );
+    H.NativeEditor.type("select * from PRODUCTS where CATEGORY={{category}}");
     cy.findByPlaceholderText("Category").type("Gadget");
     cy.button("Preview the query").click();
     cy.wait("@datasetNative");
@@ -313,9 +304,7 @@ describe("scenarios > question > native", () => {
 
   it("should show errors when previewing a query", () => {
     H.openNativeEditor();
-    cy.realType(
-      `select * from PRODUCTS where CATEGORY=${DOUBLE_LEFT_BRACKET}category}}`,
-    );
+    H.NativeEditor.type("select * from PRODUCTS where CATEGORY={{category}}");
     cy.button("Preview the query").click();
     cy.wait("@datasetNative");
 
@@ -413,7 +402,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       // Switch to SQL engine which is supported by the formatter
       H.popover().findByText("Sample Database").click();
 
-      H.focusNativeEditor().type("select * from orders", {
+      H.NativeEditor.focus().type("select * from orders", {
         parseSpecialCharSequences: false,
       });
 
@@ -424,7 +413,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
 
       cy.wait("@sqlFormatter");
 
-      H.nativeEditor().should("be.visible").get(".ace_line").as("lines");
+      H.NativeEditor.get().should("be.visible").get(".ace_line").as("lines");
 
       cy.get("@lines").eq(0).should("have.text", "SELECT");
       cy.get("@lines").eq(1).should("have.text", "  *");

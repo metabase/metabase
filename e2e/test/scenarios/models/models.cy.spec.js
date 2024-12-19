@@ -549,7 +549,7 @@ describe("scenarios > models", () => {
     // Check card tags are supported by models
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open editor/i).click();
-    H.focusNativeEditor().type(
+    H.NativeEditor.focus().type(
       "{leftarrow}{leftarrow}{backspace}{backspace}#1-orders",
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -570,7 +570,7 @@ describe("scenarios > models", () => {
     }).then(({ body: { id: modelId } }) => {
       cy.request("PUT", `/api/card/${modelId}`, { type: "model" }).then(() => {
         cy.visit(`/model/${modelId}/query`);
-        H.focusNativeEditor().type("{movetoend}").type(" WHERE {{F", {
+        H.NativeEditor.focus().type("{movetoend}").type(" WHERE {{F", {
           parseSpecialCharSequences: false,
         });
         cy.findByTestId("tag-editor-sidebar").should("not.exist");

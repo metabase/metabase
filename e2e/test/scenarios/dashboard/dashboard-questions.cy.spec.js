@@ -372,8 +372,7 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.visit("/");
       H.newButton("SQL query").click();
 
-      H.focusNativeEditor();
-      cy.realType("SELECT COUNT(*) / 2 as half_count FROM ORDERS");
+      H.NativeEditor.type("SELECT COUNT(*) / 2 as half_count FROM ORDERS");
 
       H.queryBuilderHeader().button("Save").click();
       H.modal().within(() => {

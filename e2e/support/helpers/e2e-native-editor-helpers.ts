@@ -1,9 +1,9 @@
-export function nativeEditor() {
+function nativeEditor() {
   cy.findAllByTestId("loading-indicator").should("not.exist");
   return cy.get("[data-testid=native-query-editor] .cm-content");
 }
 
-export function focusNativeEditor() {
+function focusNativeEditor() {
   nativeEditor().should("be.visible").click();
 
   nativeEditor().get(".cm-editor").should("have.class", "cm-focused");
@@ -11,35 +11,42 @@ export function focusNativeEditor() {
   return nativeEditor();
 }
 
-export function blurNativeEditor() {
+function blurNativeEditor() {
   nativeEditor().get(".cm-editor").blur();
 }
 
-export function nativeEditorCompletions() {
+function nativeEditorCompletions() {
   return cy.get(".cm-tooltip-autocomplete").should("be.visible");
 }
 
-export function nativeEditorCompletion(label: string) {
+function nativeEditorCompletion(label: string) {
   return cy.get(".cm-completionLabel").contains(label).parent();
 }
 
-export function nativeEditorSelectAll() {
+function nativeEditorSelectAll() {
   const isMac = Cypress.platform === "darwin";
   const metaKey = isMac ? "Meta" : "Control";
   focusNativeEditor().realPress([metaKey, "A"]);
   cy.get(".cm-selectionBackground").should("exist");
 }
 
-export function clearNativeEditor() {
+function clearNativeEditor() {
   nativeEditorSelectAll();
   cy.realPress(["Backspace"]);
 }
 
-export function nativeEditorType(
+type TypeOptions = {
+  delay?: number;
+  focus?: boolean;
+};
+
+function nativeEditorType(
   text: string,
-  { delay = 10 }: { delay?: number } = {},
+  { delay = 10, focus = true }: TypeOptions = {},
 ) {
-  focusNativeEditor();
+  if (focus) {
+    focusNativeEditor();
+  }
 
   const parts = text.replaceAll("{{", "{{}{{}").split(/(\{[^}]+\})/);
 
@@ -59,7 +66,7 @@ export function nativeEditorType(
       case "{clear}":
         return clearNativeEditor();
 
-      case "{selectAll}":
+      case "{selectall}":
         return nativeEditorSelectAll();
 
       case "{leftarrow}":
@@ -79,6 +86,9 @@ export function nativeEditorType(
       case "{movetoend}":
         return cy.realPress(["Control", "E"]);
 
+      case "{backspace}":
+        return cy.realPress(["Backspace"]);
+
       case "{{}":
         return cy.realType("{");
     }
@@ -95,3 +105,29 @@ export function nativeEditorType(
 
   return nativeEditor();
 }
+
+export const NativeEditor = {
+  get: nativeEditor,
+  type(text: string, options: TypeOptions) {
+    nativeEditorType(text, options);
+    return NativeEditor;
+  },
+  focus() {
+    focusNativeEditor();
+    return NativeEditor;
+  },
+  blur() {
+    blurNativeEditor();
+    return NativeEditor;
+  },
+  selectAll() {
+    nativeEditorSelectAll();
+    return NativeEditor;
+  },
+  clear() {
+    clearNativeEditor();
+    return NativeEditor;
+  },
+  completions: nativeEditorCompletions,
+  completion: nativeEditorCompletion,
+};
