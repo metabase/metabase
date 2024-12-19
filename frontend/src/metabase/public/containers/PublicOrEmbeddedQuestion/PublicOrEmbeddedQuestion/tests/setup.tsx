@@ -77,7 +77,7 @@ export async function setup(
     uuid,
   }: SetupOpts = { questionName: "", uuid: "" },
 ) {
-  mockSettings({
+  const settings = mockSettings({
     "token-features": tokenFeatures,
   });
 
@@ -111,7 +111,7 @@ export async function setup(
   renderWithProviders(
     <Route path="public/question/:uuid" component={PublicOrEmbeddedQuestion} />,
     {
-      storeInitialState: createMockState(),
+      storeInitialState: createMockState({ settings }),
       withRouter: true,
       initialRoute: `public/question/${uuid}${_.isEmpty(hash) ? "" : `#${new URLSearchParams(hash)}`}`,
     },

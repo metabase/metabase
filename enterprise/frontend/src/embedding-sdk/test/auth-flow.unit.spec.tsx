@@ -187,7 +187,7 @@ describe("SDK auth and init flow", () => {
   });
 
   describe("locale", () => {
-    it("should load the locale from the correct url", () => {
+    it("should load the locale from the correct url", async () => {
       const metabaseInstanceUrl = "http://metabase:3000";
 
       // This can happen if the request is made before api.basename is set
@@ -203,6 +203,8 @@ describe("SDK auth and init flow", () => {
       });
 
       setup({ authConfig, locale: "de" });
+
+      await waitForRequest(() => fetchMock.lastCall(correctPath));
 
       expect(fetchMock.calls(wrongPath)).toHaveLength(0);
       expect(fetchMock.calls(correctPath)).toHaveLength(1);
