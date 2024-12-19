@@ -642,7 +642,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.removeFieldValuesValue(0, ":eq(1)");
         H.popover().within(() => {
           H.fieldValuesInput().type("Sallie");
-          cy.findByRole("option", { name: "Sallie Flatley" }).click();
+          cy.findByText("Sallie Flatley").click();
         });
         H.popover().button("Update filter").click();
         cy.button("Save").click();
