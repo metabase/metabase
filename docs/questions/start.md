@@ -6,9 +6,13 @@ title: Questions overview
 
 Questions are queries plus their visualization. You can ask questions using Metabase's graphical query builder, or create a native/SQL query.
 
+## [Question introduction](./introduction.md)
+
+Questions are the basic building blocks of Metabase.
+
 ## Query builder
 
-### [Asking questions](./query-builder/introduction.md)
+### [The query editor](./query-builder/editor.md)
 
 An introduction to Metabase's graphical query builder.
 
@@ -16,7 +20,7 @@ An introduction to Metabase's graphical query builder.
 
 Custom expressions, like spreadsheet formulas, are tools you can use in the graphical query builder to ask more complicated questions.
 
-### [List of expressions](./query-builder/expressions.md)
+### [List of expressions](./query-builder/expressions-list.md)
 
 A list of the aggregations and functions available in the graphical query builder.
 
@@ -44,26 +48,18 @@ Reuse and share bits of SQL.
 
 There are many different ways to share the results of questions. To share the results of a dashboard, see [Dashboard subscriptions](../dashboards/subscriptions.md).
 
-### [Sharing answers](./sharing/answers.md)
-
-Save questions, download results, and share links.
-
-### [Visualizing results](./sharing/visualizing-results.md)
+### [Visualizing results](./visualizations/visualizing-results.md)
 
 Choose from a variety of visualization types.
 
-### [Alerts](./sharing/alerts.md)
+### [Alerts](./alerts.md)
 
 Get results via email or Slack, either on a schedule, or only when something interesting happens.
 
-### [Public sharing](./sharing/public-links.md)
-
-Create links or embeds for the good people of the internet.
-
-### [Exporting](./sharing/exporting-results.md)
+### [Exporting](./exporting-results.md)
 
 The different ways you can export the results of questions and dashboards.
 
-### [Tooltips](./sharing/tooltips.md)
+### [Tooltips](./visualizations/tooltips.md)
 
 Customize tooltips on bar, line, and area charts.

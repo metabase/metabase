@@ -137,7 +137,7 @@ LIMIT 10000
 
 If the first 10,000 rows aren't representative of the data in a table (for example, if you've got sparse data with a lot of blanks or nulls), you could see issues such as:
 
-- Incorrect [filter types](../questions/query-builder/introduction.md#filter-types), such as a category when you want a calendar.
+- Incorrect [filter types](../questions/query-builder/filters.md#filter-types), such as a category when you want a calendar.
 - Histogram visualizations that don't work (since Metabase needs a min and max value to generate the bins).
 
 Metabase doesn't have a built-in option to trigger manual fingerprinting queries. You can "reset" a field's settings using the steps above to try and force a fingerprinting query, but it's not guaranteed to work on all versions of Metabase.

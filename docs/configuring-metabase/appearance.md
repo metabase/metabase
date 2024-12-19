@@ -62,11 +62,11 @@ You can choose up to 24 hex values. If you choose fewer than 24 colors, Metabase
 
 Custom colors are unavailable for:
 
-- [Number charts](../questions/sharing/visualizing-results.md#numbers)
-- [Trend charts](../questions/sharing/visualizing-results.md#trends)
-- [Funnel charts](../questions/sharing/visualizing-results.md#funnel-charts)
-- Conditional formatting ([tables](../questions/sharing/visualizing-results.md#tables) and [pivot tables](../questions/sharing/visualizing-results.md#pivot-tables))
-- [Maps](../questions/sharing/visualizing-results.md#maps)
+- [Number charts](../questions/visualizations/numbers.md)
+- [Trend charts](../questions/visualizations/trend.md)
+- [Funnel charts](../questions/visualizations/funnel.md)
+- Conditional formatting ([tables](../questions/visualizations/table.md) and [pivot tables](../questions/visualizations/pivot-table.md))
+- [Maps](../questions/visualizations/map.md)
 
 ## Logo
 

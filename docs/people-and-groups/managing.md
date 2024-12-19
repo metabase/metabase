@@ -134,7 +134,7 @@ Metabase includes default user accounts to handle various tasks. We're documenti
 - Last name: User
 - Email: null
 
-Metabase uses this anonymous user account to identify anonymous views, for example views of a [public question or dashboard](../questions/sharing/public-links.md). This account is a virtual user: the account doesn't exist in the application database. You'll see this account show up in [usage analytics](../usage-and-performance-tools/usage-analytics.md).
+Metabase uses this anonymous user account to identify anonymous views, for example views of a [public question or dashboard](../embedding/public-links.md). This account is a virtual user: the account doesn't exist in the application database. You'll see this account show up in [usage analytics](../usage-and-performance-tools/usage-analytics.md).
 
 ### Metabase internal account
 

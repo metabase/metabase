@@ -1,5 +1,7 @@
 ---
 title: Line charts, bar charts, and area charts
+redirect_from:
+  - /docs/latest/questions/visualizations/line-bar-and-area-charts
 ---
 
 # Line charts, bar charts, and area charts
@@ -10,15 +12,15 @@ They're pretty useful.
 
 **Line charts** are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/line-charts) and [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series) tutorials.
 
-![Trend lines](../../images/goal-line.png)
+![Trend lines](../images/goal-line.png)
 
 ## Bar charts
 
-![Bar chart](../../images/bar.png)
+![Bar chart](../images/bar.png)
 
 If you're trying to group a number by a column that has a lot of possible values, like a Vendor or Product Title field, try visualizing it as a **row chart**. Metabase will show you the bars in descending order of size, with a final bar at the bottom for items that didn't fit.
 
-![Row chart](../../images/row.png)
+![Row chart](../images/row.png)
 
 If you have a bar chart like Count of Users by Age, where the x-axis is a number, you'll get a special kind of chart called a **[histogram](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/histograms)**, where each bar represents a range of values (called a "bin"). Note that Metabase will automatically bin your results any time you use a number as a grouping, even if you aren't viewing a bar chart. Questions that use latitude and longitude will also get binned automatically.
 
@@ -28,17 +30,17 @@ See [Combo charts](./combo-chart.md).
 
 ## Histograms
 
-![Histogram](../../images/histogram.png)
+![Histogram](../images/histogram.png)
 
 By default, Metabase will automatically choose a good way to bin your results. But you can change how many bins your result has, or turn the binning off entirely, by clicking on the area to the right of the column you're grouping by:
 
-![Binning options](../../images/histogram-bins.png)
+![Binning options](../images/histogram-bins.png)
 
 ## Area charts
 
 **Area charts** are useful when comparing the proportions of two metrics over time. Both bar and area charts can be stacked.
 
-![Stacked area chart](../../images/area.png)
+![Stacked area chart](../images/area.png)
 
 ## Settings for line, bar, and area charts
 
@@ -60,7 +62,7 @@ For each series on the chart, you can:
 
 ### Line chart and Area chart options
 
-![Line chart options](../../images/line-options.png)
+![Line chart options](../images/line-options.png)
 
 - Line color
 - Line shape
@@ -89,7 +91,7 @@ Here you set things like:
 
 ### Goal lines
 
-![Goal line on chart](../../images/goal-line.png)
+![Goal line on chart](../images/goal-line.png)
 
 Goal lines can be used in conjunction with [alerts](../alerts.md) to send an email or a Slack message when your metric cross this line.
 
@@ -97,17 +99,17 @@ Goal lines can be used in conjunction with [alerts](../alerts.md) to send an ema
 
 **Trend lines** are another useful option for line, area, bar, and scatter charts. If you have a question where you're grouping by a time field, open up the visualization settings and turn the **Show trend line** toggle on to display a trend line. Metabase will choose the best type of line to fit to the trend of your series. Trend lines will even work if you have multiple metrics selected in your summary. But trend lines won't work if you have any groupings beyond the one time field.
 
-![Trend lines](../../images/trend-lines.png)
+![Trend lines](../images/trend-lines.png)
 
 ### Stacked bar chart
 
 If you have multiple series, you can stack them on bar chart.
 
-![Stacked bar chart](../../images/stacked-bar-chart.png)
+![Stacked bar chart](../images/stacked-bar-chart.png)
 
 As well as stack them as a percentage:
 
-![Stacked bar chart 100%](../../images/stacked-100.png)
+![Stacked bar chart 100%](../images/stacked-100.png)
 
 ### Values on data points
 
@@ -139,13 +141,13 @@ Here you'll find additional settings for configuring your x and y axes (as in ax
 - Scale: Linear, power, or log.
 - Show lines and marks
 - Unpin from zero. Allows you to "Zoom in" on charts with values well above zero. Here's an example (note the y-axis starts at 20,000):
-  ![y-axis unpinned from zero](../../images/unpinned-from-zero-y-axis.png)
+  ![y-axis unpinned from zero](../images/unpinned-from-zero-y-axis.png)
 
 ## Chart legend
 
 For charts with multiple series or breakouts, chart legend displays the label and color of each series.
 
-![Legend](../../images/legend.png)
+![Legend](../images/legend.png)
 
 You can change the color and label for each series and reorder them in [data settings](#data-settings).
 

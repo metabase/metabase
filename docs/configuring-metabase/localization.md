@@ -10,7 +10,7 @@ The **Localization** settings allow you to set global defaults for your Metabase
 
 ## Default language
 
-Here you can set the default language (also called the "instance language") across your Metabase UI, system [emails](./email.md), [dashboard subscriptions](../dashboards/subscriptions.md), and [alerts](../questions/sharing/alerts.md). People can pick a different language from their own [account settings](../people-and-groups/account-settings.md).
+Here you can set the default language (also called the "instance language") across your Metabase UI, system [emails](./email.md), [dashboard subscriptions](../dashboards/subscriptions.md), and [alerts](../questions/alerts.md). People can pick a different language from their own [account settings](../people-and-groups/account-settings.md).
 
 ## Supported languages
 
@@ -95,7 +95,7 @@ Report timezone is only supported for the following databases:
 
 ## First day of the week
 
-If you need to, you can change the first day of the week for your instance (the default is Sunday). Setting the first day of the week affects things like grouping by week and filtering in questions built using the [query builder](../questions/query-builder/introduction.md). This setting doesn't affect [SQL queries](../questions/native-editor/writing-sql.md).
+If you need to, you can change the first day of the week for your instance (the default is Sunday). Setting the first day of the week affects things like grouping by week and filtering in questions built using the [query builder](../questions/query-builder/editor.md). This setting doesn't affect [SQL queries](../questions/native-editor/writing-sql.md).
 
 ## Localization options
 

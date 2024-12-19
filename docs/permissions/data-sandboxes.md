@@ -262,7 +262,7 @@ To prevent the Email column from being exposed via a SQL question:
 
 Data sandbox permissions don't apply to public questions or public dashboards. If a non-sandboxed person creates a public link using an original table, the original table will be displayed to anyone who has the public link URL.
 
-To prevent this from happening, you'll have to [disable public sharing](../questions/sharing/public-links.md) for your Metabase instance.
+To prevent this from happening, you'll have to [disable public sharing](../embedding/public-links.md) for your Metabase instance.
 
 Metabase can only create a data sandbox using the group membership or user attributes of people who are logged in. Since public links don’t require logins, Metabase won’t have enough info to create the sandbox.
 
