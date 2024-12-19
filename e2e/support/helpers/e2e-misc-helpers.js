@@ -42,6 +42,16 @@ export function openNativeEditor({
   cy.findAllByTestId("loading-indicator").should("not.exist");
 
   databaseName && cy.findByText(databaseName).click();
+  // At this point we have either manually selected a database or the app has
+  // knowedge about the previously used database so it will pre-select it.
+  // See: `last-used-native-database-id`.
+  //
+  // The source of many native editor flakes in the past was the page re-render
+  // that happens when the UI updates from showing the database selector to
+  // displaying the previously selected database.
+  //
+  // Explicitly waiting for the database selector to be gone should give tests a
+  // better chance at passing (until we get rid of this helper altogether)!
   cy.findByText("Select a database").should("not.exist");
 
   return focusNativeEditor().as(alias);
