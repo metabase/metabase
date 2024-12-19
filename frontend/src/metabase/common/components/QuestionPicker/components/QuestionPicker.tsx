@@ -211,6 +211,7 @@ export const QuestionPicker = ({
       currentCollection,
       userPersonalCollectionId,
       onPathChange,
+      models,
     ],
   );
 

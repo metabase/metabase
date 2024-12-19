@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
-import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -11,6 +10,7 @@ import PasswordReveal from "metabase/components/PasswordReveal";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import Users from "metabase/entities/users";
+import { connect } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 
 import { clearTemporaryPassword } from "../people";

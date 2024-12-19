@@ -5,8 +5,11 @@ import * as Yup from "yup";
 import * as Errors from "metabase/lib/errors";
 import { QUESTION_TITLE_MAX_LENGTH } from "metabase/questions/constants";
 
+import EditableText from "metabase/core/components/EditableText";
+import { Flex } from "metabase/ui";
+
 import { CollectionIcon } from "./CollectionIcon";
-import { HeaderRoot, HeaderTitle } from "./SavedQuestionHeaderButton.styled";
+import SavedQuestionHeaderButtonS from "./SavedQuestionHeaderButton.module.css";
 
 SavedQuestionHeaderButton.propTypes = {
   className: PropTypes.string,
@@ -21,8 +24,9 @@ const TITLE_SCHEMA = Yup.string()
 
 function SavedQuestionHeaderButton({ question, onSave }) {
   return (
-    <HeaderRoot>
-      <HeaderTitle
+    <Flex align="center" gap="0.25rem">
+      <EditableText
+        className={SavedQuestionHeaderButtonS.HeaderTitle}
         isDisabled={!question.canWrite() || question.isArchived()}
         initialValue={question.displayName()}
         placeholder={t`Add title`}
@@ -35,10 +39,8 @@ function SavedQuestionHeaderButton({ question, onSave }) {
         collection={question?._card?.collection}
         question={question}
       />
-    </HeaderRoot>
+    </Flex>
   );
 }
 
-export default Object.assign(SavedQuestionHeaderButton, {
-  Root: HeaderRoot,
-});
+export default SavedQuestionHeaderButton;

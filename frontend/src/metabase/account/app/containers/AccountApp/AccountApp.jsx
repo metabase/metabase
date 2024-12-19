@@ -1,6 +1,6 @@
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
+import { connect } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 
 import AccountLayout from "../../components/AccountLayout";

@@ -1,8 +1,8 @@
-import { connect } from "react-redux";
 import { replace, routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import { connect } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 
 export const createAdminRouteGuard = (routeKey, Component) => {

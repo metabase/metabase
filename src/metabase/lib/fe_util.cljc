@@ -119,6 +119,18 @@
    options  :- [:maybe :map]]
   (lib.options/ensure-uuid (into [operator options] (map lib.common/->op-arg) args)))
 
+(defn- expression-clause-with-in
+  "Like [[expression-clause]], but also auto-converts `:=` and `:!=` to `:in` and `:not-in` when there are more than 2
+  arguments."
+  [operator args options]
+  (let [operator (if (> (count args) 2)
+                   (case operator
+                     :=  :in
+                     :!= :not-in
+                     operator)
+                   operator)]
+    (expression-clause operator args options)))
+
 (defn- ref-clause-with-type?
   [maybe-ref types]
   (and (lib.util/ref-clause? maybe-ref)
@@ -139,10 +151,10 @@
    column   :- ::lib.schema.metadata/column
    values   :- [:maybe [:sequential :string]]
    options  :- [:maybe ::lib.schema.filter/string-filter-options]]
-  (expression-clause operator (into [column] values)
-                     (if (#{:is-empty :not-empty := :!=} operator)
-                       {}
-                       options)))
+  (expression-clause-with-in operator (into [column] values)
+                             (if (#{:is-empty :not-empty := :!=} operator)
+                               {}
+                               options)))
 
 (mu/defn string-filter-parts :- [:maybe StringFilterParts]
   "Destructures a string filter clause created by [[string-filter-clause]]. Returns `nil` if the clause does not match
@@ -158,9 +170,13 @@
       [(op :guard #{:is-empty :not-empty}) _ (col-ref :guard string-col?)]
       {:operator op, :column (ref->col col-ref), :values [], :options {}}
 
-      ;; multiple arguments without options
-      [(op :guard #{:= :!=}) _ (col-ref :guard string-col?) & (args :guard #(every? string? %))]
-      {:operator op, :column (ref->col col-ref), :values args, :options {}}
+      ;; multiple arguments, `:=`
+      [(_ :guard #{:= :in}) _ (col-ref :guard string-col?) & (args :guard #(every? string? %))]
+      {:operator :=, :column (ref->col col-ref), :values args, :options {}}
+
+      ;; multiple arguments, `:!=`
+      [(_ :guard #{:!= :not-in}) _ (col-ref :guard string-col?) & (args :guard #(every? string? %))]
+      {:operator :!=, :column (ref->col col-ref), :values args, :options {}}
 
       ;; multiple arguments with options
       [(op :guard #{:contains :does-not-contain :starts-with :ends-with}) opts (col-ref :guard string-col?) & (args :guard #(every? string? %))]
@@ -182,7 +198,7 @@
   [operator :- ::lib.schema.filter/number-filter-operator
    column   :- ::lib.schema.metadata/column
    values   :- [:maybe [:sequential number?]]]
-  (expression-clause operator (into [column] values) {}))
+  (expression-clause-with-in operator (into [column] values) {}))
 
 (mu/defn number-filter-parts :- [:maybe NumberFilterParts]
   "Destructures a numeric filter clause created by [[number-filter-clause]]. Returns `nil` if the clause does not match
@@ -197,9 +213,13 @@
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard number-col?)]
       {:operator op, :column (ref->col col-ref), :values []}
 
-      ;; multiple arguments
-      [(op :guard #{:= :!=}) _ (col-ref :guard number-col?) & (args :guard #(every? number? %))]
-      {:operator op, :column (ref->col col-ref), :values args}
+      ;; multiple arguments, `:=`
+      [(_ :guard #{:= :in}) _ (col-ref :guard number-col?) & (args :guard #(every? number? %))]
+      {:operator :=, :column (ref->col col-ref), :values args}
+
+      ;; multiple arguments, `:!=`
+      [(_ :guard #{:!= :not-in}) _ (col-ref :guard number-col?) & (args :guard #(every? number? %))]
+      {:operator :!=, :column (ref->col col-ref), :values args}
 
       ;; exactly 1 argument
       [(op :guard #{:> :>= :< :<=}) _ (col-ref :guard number-col?) (arg :guard number?)]
@@ -229,7 +249,7 @@
    values           :- [:maybe [:sequential number?]]]
   (if (= operator :inside)
     (expression-clause operator (into [column longitude-column] values) {})
-    (expression-clause operator (into [column] values) {})))
+    (expression-clause-with-in operator (into [column] values) {})))
 
 (mu/defn coordinate-filter-parts :- [:maybe CoordinateFilterParts]
   "Destructures a coordinate filter clause created by [[coordinate-filter-clause]]. Returns `nil` if the clause does not
@@ -242,9 +262,13 @@
         coordinate-col? #(and (ref-clause-with-type? % [:type/Number])
                               (lib.types.isa/coordinate? (ref->col %)))]
     (lib.util.match/match-one filter-clause
-      ;; multiple arguments
-      [(op :guard #{:= :!=}) _ (col-ref :guard coordinate-col?) & (args :guard #(every? number? %))]
-      {:operator op, :column (ref->col col-ref), :values args}
+      ;; multiple arguments, `:=`
+      [(_ :guard #{:= :in}) _ (col-ref :guard coordinate-col?) & (args :guard #(every? number? %))]
+      {:operator :=, :column (ref->col col-ref), :values args}
+
+      ;; multiple arguments, `:!=`
+      [(_ :guard #{:!= :not-in}) _ (col-ref :guard coordinate-col?) & (args :guard #(every? number? %))]
+      {:operator :!=, :column (ref->col col-ref), :values args}
 
      ;; exactly 1 argument
       [(op :guard #{:> :>= :< :<=}) _ (col-ref :guard coordinate-col?) (arg :guard number?)]
@@ -433,7 +457,7 @@
                    :month-of-year (lib.expression/get-month column)
                    :quarter-of-year (lib.expression/get-quarter column))
                  column)]
-    (expression-clause operator (into [expr] values) {})))
+    (expression-clause-with-in operator (into [expr] values) {})))
 
 (mu/defn exclude-date-filter-parts :- [:maybe ExcludeDateFilterParts]
   "Destructures an exclude date filter clause created by [[exclude-date-filter-clause]]. Returns `nil` if the clause
@@ -450,11 +474,11 @@
       {:operator op, :column (ref->col col-ref), :values []}
 
       ;; without `mode`
-      [:!= _ [(op :guard #{:get-hour :get-month :get-quarter}) _ (col-ref :guard date-col?)] & (args :guard #(every? int? %))]
+      [(_ :guard #{:!= :not-in}) _ [(op :guard #{:get-hour :get-month :get-quarter}) _ (col-ref :guard date-col?)] & (args :guard #(every? int? %))]
       {:operator :!=, :column (ref->col col-ref), :unit (op->unit op), :values args}
 
       ;; with `:mode`
-      [:!= _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard #(every? int? %))]
+      [(_ :guard #{:!= :not-in}) _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard #(every? int? %))]
       {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args}
 
       ;; do not match inner clauses
@@ -556,28 +580,28 @@
                 :get-month :month-of-year
                 :get-quarter :quarter-of-year}]
     (lib.util.match/match-one filter-clause
-      [:= _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
+      [(_ :guard #{:= :in}) _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
       (inflections/plural (u.time/format-unit b :day-of-week-iso))
 
-      [:!= _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
+      [(_ :guard #{:!= :not-in}) _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
       (i18n/tru "Excludes {0}" (inflections/plural (u.time/format-unit b :day-of-week-iso)))
 
-      [:= _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
+      [(_ :guard #{:= :in}) _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
       (u.time/format-unit b (->unit f))
 
-      [:!= _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
+      [(_ :guard #{:!= :not-in}) _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
       (i18n/tru "Excludes {0}" (u.time/format-unit b (->unit f)))
 
-      [:= _ (x :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
+      [(_ :guard #{:= :in}) _ (x :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
       (u.time/format-relative-date-range y 0 (:temporal-unit (second x)) nil nil {:include-current true})
 
       [:during _ (x :guard temporal?) (y :guard string?) unit]
       (u.time/format-relative-date-range y 1 unit -1 unit {})
 
-      [:= _ (x :guard temporal?) (y :guard (some-fn int? string?))]
+      [(_ :guard #{:= :in}) _ (x :guard temporal?) (y :guard (some-fn int? string?))]
       (lib.temporal-bucket/describe-temporal-pair x y)
 
-      [:!= _ (x :guard temporal?) (y :guard (some-fn int? string?))]
+      [(_ :guard #{:!= :not-in}) _ (x :guard temporal?) (y :guard (some-fn int? string?))]
       (i18n/tru "Excludes {0}" (lib.temporal-bucket/describe-temporal-pair x y))
 
       [:< _ (x :guard temporal?) (y :guard string?)]
