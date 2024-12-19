@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [compojure.core :refer [PUT]]
+   [metabase.api.auth :as api.auth]
    [metabase.api.common :as api]
    [metabase.harbormaster.client :as hm.client]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -85,23 +86,6 @@
          true)
      false)))
 
-#_{:clj-kondo/ignore [:unused-private-var]}
-(defn- get-temp-url
-  "Makes the request to get a temp OAuth url from harbormaster.
-   Also sends the redirection url to HM as well."
-  ([] (get-temp-url (public-settings/site-url)))
-  ([redirect-url]
-   ;; TODO get redirect-url from FE
-   (let [[status response] (hm.client/make-request
-                            (->config)
-                            :post
-                            "/api/v2/mb/connections-google-oauth/temp-url"
-                            {:redirect_url redirect-url})]
-     (if (= status :ok)
-       {:temp_url (get-in response [:body :url])}
-       (do (log/error "Error getting temp url")
-           (throw (ex-info "Error getting temp url." {:response (pr-str response)})))))))
-
 (mu/defn- setup-drive-folder-sync :- [:tuple [:enum :ok :error] :map]
   "Start the sync w/ drive folder"
   [drive-folder-url]
@@ -136,6 +120,17 @@
                (trigger-resync* gdrive-conn-id)))
     (throw (ex-info "No gdrive connections found." {}))))
 
+(defn- hm-post-temp-url [redirect-url]
+  (let [[status response] (hm.client/make-request
+                           (->config)
+                           :post
+                           "/api/v2/mb/connections-google-oauth/temp-url"
+                           {:redirect_url (or redirect-url (public-settings/site-url))})]
+    (if (= status :ok)
+      {:oauth_url (get-in response [:body :url])}
+      (do (log/error "Error getting temp url")
+          (throw (ex-info "Error getting temp url." {:response (pr-str response)}))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; FE <-> MB APIs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -144,9 +139,7 @@
   "Checks with HM to see what the temporary, ephemeral oauth-signin url is, and returns it in the response."
   [:as {{redirect-url :redirect_url} :body :as _body}]
   {redirect-url :string}
-  ;; TEMP (gsheets): call HM to get the temp-url with the site's url:
-  #_(get-temp-url (or redirect-url (public-settings/site-url)))
-  {:oauth_url "https://letmegooglethat.com/?q=log+me+into+google+oauth"})
+  (hm-post-temp-url redirect-url))
 
 ;; TEMP (gsheets): shuffle this setting somewhere it is allowed to be accessed from, to appease the linter:
 (require '[metabase.server.middleware.auth])
@@ -155,7 +148,7 @@
   "Checks to see if oauth is setup or not, delegates to HM only if we haven't set it up before."
   [] {}
   (api/check-superuser)
-  (when-not (metabase.server.middleware.auth/show-google-sheets-integration)
+  (when-not (api.auth/show-google-sheets-integration)
     (throw (ex-info "Google Sheets integration is not enabled." {})))
   {:oauth_setup
    ;; TEMP (gsheets): we are pretending that oauth exists, remove this and uncomment below when it works:

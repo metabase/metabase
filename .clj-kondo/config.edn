@@ -320,7 +320,8 @@
                                      metabase.analytics.stats
                                      metabase.analytics.sdk}                                        ; TODO -- consolidate these into a real API namespace.
     metabase.analyze               #{metabase.analyze}
-    metabase.api                   #{metabase.api.common
+    metabase.api                   #{metabase.api.auth
+                                     metabase.api.common
                                      metabase.api.dataset
                                      metabase.api.permission-graph
                                      metabase.api.routes}                                           ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
@@ -550,6 +551,7 @@
     metabase.analyze.fingerprint.schema                           fingerprint.schema
     metabase.api.activity                                         api.activity
     metabase.api.alert                                            api.alert
+    metabase.api.auth                                             api.auth
     metabase.api.automagic-dashboards                             api.magic
     metabase.api.bookmark                                         api.bookmark
     metabase.api.card                                             api.card
