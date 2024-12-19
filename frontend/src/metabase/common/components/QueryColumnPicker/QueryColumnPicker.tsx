@@ -12,6 +12,7 @@ import { DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";
+import S from "./QueryColumnPicker.module.css";
 import { StyledAccordionList } from "./QueryColumnPicker.styled";
 
 export type ColumnListItem = Lib.ColumnDisplayInfo & {
@@ -141,6 +142,10 @@ export function QueryColumnPicker({
     (item: ColumnListItem) =>
       (hasBinning || hasTemporalBucketing) && (
         <BucketPickerPopover
+          classes={{
+            root: S.itemWrapper,
+            chevronDown: S.chevronDown,
+          }}
           query={query}
           stageIndex={stageIndex}
           column={item.column}
@@ -211,7 +216,7 @@ function renderItemName(item: ColumnListItem) {
 }
 
 function renderItemWrapper(content: ReactNode) {
-  return <HoverParent>{content}</HoverParent>;
+  return <HoverParent className={S.itemWrapper}>{content}</HoverParent>;
 }
 
 function omitItemDescription() {
