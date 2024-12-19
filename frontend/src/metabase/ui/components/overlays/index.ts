@@ -1,3 +1,4 @@
+export * from "./BackgroundImage";
 export * from "./HoverCard";
 export * from "./Menu";
 export * from "./Modal";
