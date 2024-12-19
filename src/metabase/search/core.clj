@@ -9,6 +9,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
+   [metabase.search.visualizer.core :as search.visualizer]
    [potemkin :as p]))
 
 (comment
@@ -16,6 +17,7 @@
   search.engine/keep-me
   search.engines.appdb/keep-me
   search.legacy/keep-me
+  search.visualizer/keep-me
 
   search.config/keep-me
   search.impl/keep-me)
