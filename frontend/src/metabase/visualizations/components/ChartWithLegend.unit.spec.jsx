@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen } from "__support__/ui";
 
 import ChartWithLegend, {
   HIDE_HORIZONTAL_LEGEND_THRESHOLD,

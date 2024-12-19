@@ -314,7 +314,7 @@ describe("FieldValuesWidget", () => {
         }),
       });
 
-      const input = screen.getByRole("searchbox");
+      const input = screen.getByRole("combobox");
 
       await userEvent.type(input, "Foo,");
 

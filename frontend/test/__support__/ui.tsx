@@ -386,7 +386,10 @@ export function createMockClipboardData(
 }
 
 export function renderWithTheme(children: React.ReactElement) {
-  return testingLibraryRender(<ThemeProvider>{children}</ThemeProvider>);
+  // return testingLibraryRender(<ThemeProvider>{children}</ThemeProvider>);
+  return testingLibraryRender(children, {
+    wrapper: ThemeProvider,
+  });
 }
 
 // eslint-disable-next-line import/export -- we're intentionally overriding the render function

@@ -20,7 +20,7 @@ function setup(opts: SetupOpts) {
   const onChange = jest.fn();
   render(<TestInput {...opts} onChange={onChange} aria-label="Filter value" />);
 
-  const input = screen.getByRole("searchbox");
+  const input = screen.getByRole("combobox");
   return { onChange, input };
 }
 

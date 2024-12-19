@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
 import _userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
+import { mockScrollIntoView, render, screen } from "__support__/ui";
 import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 import { ORDERS } from "metabase-types/api/mocks/presets";
 
@@ -338,6 +338,7 @@ describe("DatePicker", () => {
         relativeTimeUnits.forEach(unit => {
           it(`can set a relative ${direction} ${unit} filter`, async () => {
             const changeSpy = jest.fn();
+            mockScrollIntoView();
 
             render(
               <DatePickerStateWrapper filter={filter} onChange={changeSpy} />,
