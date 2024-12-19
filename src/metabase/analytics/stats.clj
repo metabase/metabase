@@ -894,7 +894,7 @@
      "grouped_metrics"     grouped-metrics
      "instance_attributes" instance-attributes
      "metrics"             metrics
-     "settings"             []}))
+     "settings"            []}))
 
 (defn- generate-instance-stats!
   "Generate stats for this instance as data"
