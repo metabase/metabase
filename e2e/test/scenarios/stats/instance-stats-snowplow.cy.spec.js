@@ -8,17 +8,17 @@ H.describeWithSnowplow("scenarios > stats > snowplow", () => {
     H.enableTracking();
   });
 
-  describe("instance stats", () => {
+  H.describeWithSnowplow("instance stats", () => {
     it("should send a snowplow event when the stats ping is triggered on OSS", () => {
       cy.request("POST", "api/testing/stats");
       H.expectGoodSnowplowEvents(1);
     });
   });
 
-  H.describeEE("instance stats", () => {
+  H.describeWithSnowplowEE("instance stats", () => {
     it("should send a snowplow event when the stats ping is triggered on EE", () => {
       cy.request("POST", "api/testing/stats");
-      H.expectGoodSnowplowEvent(1);
+      H.expectGoodSnowplowEvents(1);
     });
   });
 

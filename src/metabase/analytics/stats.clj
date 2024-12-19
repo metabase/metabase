@@ -508,13 +508,17 @@
       (log/error e "Sending usage stats FAILED"))))
 
 (defn- in-docker?
-  "Is the current Metabase process running in a Docker container?"
+  "Is the current Metabase process running in a Docker container?
+  (Best-effort check based on a `.dockerenv` file in the root directory, or docker mentioned in `/proc/self/cgroup`)"
   []
   (boolean
    (or (.exists (io/file "/.dockerenv"))
-       #_(when (.exists (io/file "/proc/self/cgroup"))
-           (some #(re-find #"docker" %)
-                 (line-seq (io/reader "/proc/self/cgroup")))))))
+       (when (.exists (io/file "/proc/self/cgroup"))
+         (try
+          (some #(re-find #"docker" %)
+                (line-seq (io/reader "/proc/self/cgroup")))
+          (catch java.io.IOException _
+            false))))))
 
 (defn- deployment-model
   []
