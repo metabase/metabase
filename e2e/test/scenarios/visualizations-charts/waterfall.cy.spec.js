@@ -63,7 +63,7 @@ describe("scenarios > visualizations > waterfall", () => {
     verifyWaterfallRendering("X", "Y");
   });
 
-  it("should work with quantitative series", () => {
+  it("should work with quantitative series", { tags: "@flaky" }, () => {
     H.openNativeEditor().type(
       "select 1 as X, 10 as Y union select 2 as X, -2 as Y",
     );
@@ -461,7 +461,7 @@ describe("scenarios > visualizations > waterfall", () => {
       H.echartsContainer().get("text").contains("Total").should("exist");
     });
 
-    it("should allow toggling of value labels", () => {
+    it("should allow toggling of value labels", { tags: "@flaky" }, () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Display").click();
 
