@@ -1,4 +1,8 @@
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import {
+  HighlightStyle,
+  bracketMatching,
+  syntaxHighlighting,
+} from "@codemirror/language";
 import { EditorView, drawSelection } from "@codemirror/view";
 import { type Tag, tags } from "@lezer/highlight";
 import { getNonce } from "get-nonce";
@@ -25,6 +29,9 @@ export function useExtensions(options: Options) {
     return [
       nonce(),
       fonts(),
+      bracketMatching({
+        brackets: "()",
+      }),
       drawSelection({
         cursorBlinkRate: 1000,
         drawRangeCursor: false,
