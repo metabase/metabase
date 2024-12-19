@@ -89,7 +89,7 @@ export const ClauseStep = <T,>({
   );
 
   return (
-    <NotebookCell c={color} data-testid={props["data-testid"]}>
+    <NotebookCell color={color} data-testid={props["data-testid"]}>
       <ClauseStepDndContext items={items} onReorder={onReorder}>
         {items.map((item, index) => (
           <ClausePopover

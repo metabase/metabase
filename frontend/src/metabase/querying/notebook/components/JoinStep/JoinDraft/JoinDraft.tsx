@@ -106,7 +106,7 @@ export function JoinDraft({
 
   return (
     <Flex miw="100%" gap="1rem">
-      <NotebookCell className={S.JoinCell} c={color}>
+      <NotebookCell className={S.JoinCell} color={color}>
         <Flex direction="row" gap={6}>
           <NotebookCellItem color={color} disabled aria-label={t`Left table`}>
             {lhsTableName}
@@ -144,7 +144,7 @@ export function JoinDraft({
           </Box>
           <NotebookCell
             className={S.JoinConditionCell}
-            c={color}
+            color={color}
             data-testid="new-join-condition"
           >
             <JoinConditionDraft

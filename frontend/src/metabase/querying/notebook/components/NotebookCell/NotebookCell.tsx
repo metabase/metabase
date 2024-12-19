@@ -7,15 +7,16 @@ import { Flex, type FlexProps, Icon, rem } from "metabase/ui";
 import S from "./NotebookCell.module.css";
 import { CONTAINER_PADDING } from "./constants";
 
-const _NotebookCell = ({ className, ...props }: FlexProps) => {
+const _NotebookCell = ({ className, color, ...props }: FlexProps) => {
   return (
     <Flex
       className={cx(S.NotebookCell, className)}
       p={props.p ?? rem("14px")}
+      c={color}
       {...props}
       style={
         {
-          "--notebook-cell-color": props.c,
+          "--notebook-cell-color": color,
         } as CSSProperties
       }
     />

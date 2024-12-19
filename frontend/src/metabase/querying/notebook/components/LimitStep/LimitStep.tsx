@@ -42,7 +42,7 @@ export function LimitStep({
   };
 
   return (
-    <NotebookCell c={color}>
+    <NotebookCell color={color}>
       <LimitInput
         className={CS.mb1}
         type="number"
