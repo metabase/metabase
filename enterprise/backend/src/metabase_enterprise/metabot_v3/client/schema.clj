@@ -1,8 +1,8 @@
 (ns metabase-enterprise.metabot-v3.client.schema
   (:require
-   [cheshire.core :as json]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::request.tools
@@ -21,10 +21,10 @@
    [:arguments [:map-of
                 {:decode/api-response (fn [x]
                                         (cond-> x
-                                          (string? x) (json/parse-string true)))
+                                          (string? x) (json/decode true)))
                  :encode/api-request  (fn [x]
                                         (cond-> x
-                                          (map? x) json/generate-string))}
+                                          (map? x) json/encode))}
                 ::metabot-v3.tools.interface/metadata.parameter.name
                 :any]]])
 

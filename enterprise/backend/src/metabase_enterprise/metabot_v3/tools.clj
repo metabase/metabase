@@ -1,6 +1,5 @@
 (ns metabase-enterprise.metabot-v3.tools
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [malli.core :as mc]
    [malli.transform :as mtx]
@@ -16,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :as i18n]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu])
   (:import
    (java.nio.file Files OpenOption Path)))
@@ -52,7 +52,7 @@
   (try
     (with-open [is (Files/newInputStream path (u/varargs OpenOption))
                 r  (java.io.InputStreamReader. is)]
-      (u/prog1 (decode-tool-metadata (json/parse-stream r true))
+      (u/prog1 (decode-tool-metadata (json/decode r true))
         (let [expected-filename (format "%s.json" (name (:name <>)))
               actual-filename   (str (.getFileName path))]
           (assert (= expected-filename actual-filename)

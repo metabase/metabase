@@ -1,10 +1,10 @@
 (ns metabase-enterprise.metabot-v3.tools.generate-insights
   (:require
    [buddy.core.codecs :as codecs]
-   [cheshire.core :as json]
    [metabase-enterprise.metabot-v3.envelope :as env]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase.public-settings :as public-settings]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -19,7 +19,7 @@
         entity-id (if (= entity-type "adhoc")
                     (-> env
                         (env/find-query id)
-                        json/generate-string
+                        json/encode
                         .getBytes
                         codecs/bytes->b64-str)
                     id)]

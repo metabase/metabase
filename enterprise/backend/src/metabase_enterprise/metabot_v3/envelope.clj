@@ -4,9 +4,9 @@
   The 'envelope' holds the context for our conversation with the LLM. Specifically, it bundles up the history, and the
   context into one convenient location, with a simple API for querying and modifying."
   (:require
-   [cheshire.core :as json]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.json :as json]))
 
 (def ^:constant max-round-trips
   "The maximum number of times we'll make a request to the LLM before responding to the user. Currently we'll just throw
@@ -29,7 +29,7 @@
   [e]
   (map (fn [{:keys [content] :as msg}]
          (assoc msg :content (cond-> content
-                               (map? content) json/generate-string)))
+                               (map? content) json/encode)))
        (into (:dummy-history e)
              (:history e))))
 

@@ -1,6 +1,5 @@
 (ns metabase-enterprise.metabot-v3.client
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.string :as str]
    [malli.core :as mc]
@@ -12,6 +11,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.o11y :refer [with-span]]))
@@ -55,7 +55,7 @@
 (defn- ->json-bytes ^bytes [x]
   (with-open [os (java.io.ByteArrayOutputStream.)
               w  (java.io.OutputStreamWriter. os)]
-    (json/generate-stream x w)
+    (json/encode-to x w nil)
     (.toByteArray os)))
 
 (defn- request-headers
@@ -77,7 +77,7 @@
   [response :- :map]
   (let [json? (some-> (get-in response [:headers "Content-Type"]) (str/starts-with? "application/json"))]
     (cond-> response
-      json? (update :body #(json/parse-string % true)))))
+      json? (update :body #(json/decode % true)))))
 
 (defn- post! [url options]
   (let [response-metadata (promise)

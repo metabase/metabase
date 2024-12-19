@@ -1,10 +1,10 @@
 (ns metabase-enterprise.metabot-v3.context
   (:require
-   [cheshire.core :as json]
    [clojure.java.io :as io]
    [metabase-enterprise.metabot-v3.tools.query :as metabot-v3.tools.query]
    [metabase.config :as config]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
@@ -32,7 +32,7 @@
       (with-open [^java.io.BufferedWriter w (io/writer "llm-payloads" :append true)]
         (io/copy (directions direction (name direction)) w)
         (.newLine w)
-        (let [payload' (json/generate-string payload {:pretty true})]
+        (let [payload' (json/encode payload {:pretty true})]
           (io/copy payload' w))
         (.newLine w)
         (.newLine w)))))
