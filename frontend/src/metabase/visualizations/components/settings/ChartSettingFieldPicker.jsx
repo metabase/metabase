@@ -135,9 +135,7 @@ export const ChartSettingFieldPicker = ({
               <ChartSettingActionIcon
                 icon="ellipsis"
                 data-testid={`settings-${value}`}
-                onClick={e => {
-                  onShowWidget(menuWidgetInfo, e.currentTarget);
-                }}
+                onClick={e => onShowWidget(menuWidgetInfo, e.currentTarget)}
               />
             )}
             {onRemove && (
