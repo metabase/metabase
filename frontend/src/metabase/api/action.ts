@@ -110,6 +110,7 @@ export const actionApi = Api.injectEndpoints({
 
 export const {
   useGetActionQuery,
+  useListActionsQuery,
   useListPublicActionsQuery,
   useDeleteActionPublicLinkMutation,
   endpoints: {
