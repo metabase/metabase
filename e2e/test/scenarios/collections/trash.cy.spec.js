@@ -601,7 +601,7 @@ describe("scenarios > collections > trash", () => {
         cy.findByTestId("notebook-button").should("not.exist");
         cy.icon("bookmark").should("not.exist");
         cy.icon("ellipsis").should("not.exist");
-        H.sharingMenuButton().should("not.exist");
+        cy.icon("alert").should("not.exist");
       });
 
       // should not have disabled action in bottom footer
@@ -615,7 +615,7 @@ describe("scenarios > collections > trash", () => {
 
       cy.findAllByTestId("dashboard-header").within(() => {
         cy.icon("pencil").should("not.exist");
-        H.sharingMenuButton().should("not.exist");
+        cy.icon("alert").should("not.exist");
         cy.icon("clock").should("not.exist");
         cy.icon("bookmark").should("not.exist");
         cy.icon("ellipsis").should("not.exist");

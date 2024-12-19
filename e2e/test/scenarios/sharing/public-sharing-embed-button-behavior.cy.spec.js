@@ -22,11 +22,13 @@ import { H } from "e2e/support";
             visitResource(resource, id);
           });
 
-          H.openSharingMenu();
-          H.sharingMenu()
-            .findByRole("menuitem", { name: "Embed" })
-            .should("be.visible")
-            .and("be.enabled");
+          openResourceActionsMenu(resource);
+
+          H.popover().within(() => {
+            cy.findByRole("menuitem", { name: "Embed" })
+              .should("be.visible")
+              .and("be.enabled");
+          });
         });
       });
 
@@ -38,8 +40,9 @@ import { H } from "e2e/support";
             visitResource(resource, id);
           });
 
-          H.openSharingMenu();
-          H.sharingMenu().findByText(/embed/i).should("not.exist");
+          openResourceActionsMenu(resource);
+
+          H.popover().findByText(/embed/i).should("not.exist");
         });
       });
     });
@@ -57,7 +60,7 @@ import { H } from "e2e/support";
               visitResource(resource, id);
             });
 
-            H.openSharingMenu("Embed");
+            openResourceActionsMenu(resource, "Embed");
             H.modal().findByText("Embed Metabase").should("be.visible");
           });
 
@@ -67,7 +70,7 @@ import { H } from "e2e/support";
               visitResource(resource, id);
             });
 
-            H.openSharingMenu(/public link/i);
+            openResourceActionsMenu(resource, /public link/i);
 
             assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
           });
@@ -81,10 +84,8 @@ import { H } from "e2e/support";
               visitResource(resource, id);
             });
 
-            H.openSharingMenu();
-            H.sharingMenu().findByText(
-              "Ask your admin to create a public link",
-            );
+            openResourceActionsMenu(resource);
+            H.popover().findByText("Ask your admin to create a public link");
           });
 
           it(`should show the public link button if the ${resource} has a public link`, () => {
@@ -93,7 +94,7 @@ import { H } from "e2e/support";
               visitResource(resource, id);
             });
 
-            H.openSharingMenu(/public link/i);
+            openResourceActionsMenu(resource, /public link/i);
 
             assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
 
@@ -103,7 +104,7 @@ import { H } from "e2e/support";
               visitResource(resource, id);
             });
 
-            H.openSharingMenu("Public link");
+            openResourceActionsMenu(resource, "Public link");
 
             assertValidPublicLink({
               resource,
@@ -125,9 +126,9 @@ import { H } from "e2e/support";
               visitResource(resource, id);
             });
 
-            H.openSharingMenu();
+            openResourceActionsMenu(resource);
 
-            H.sharingMenu().within(() => {
+            H.popover().within(() => {
               cy.findByText("Public links are off").should("be.visible");
               cy.findByText("Enable them in settings").should("be.visible");
             });
@@ -152,10 +153,8 @@ import { H } from "e2e/support";
               visitResource(resource, id);
             });
 
-            H.openSharingMenu();
-            H.sharingMenu().findByText(
-              "Ask your admin to create a public link",
-            );
+            openResourceActionsMenu(resource);
+            H.popover().findByText("Ask your admin to create a public link");
           });
         });
       });
@@ -178,7 +177,7 @@ describe("embed modal display", () => {
       H.setTokenFeatures("all");
       H.visitDashboard("@dashboardId");
 
-      H.openSharingMenu("Embed");
+      H.openDashboardMenu("Embed");
 
       H.getEmbedModalSharingPane().within(() => {
         cy.findByText("Static embedding").should("be.visible");
@@ -204,7 +203,7 @@ describe("embed modal display", () => {
     it("should display a link to the product page for embedded analytics", () => {
       cy.signInAsAdmin();
       H.visitDashboard("@dashboardId");
-      H.openSharingMenu("Embed");
+      H.openDashboardMenu("Embed");
 
       H.getEmbedModalSharingPane().within(() => {
         cy.findByText("Static embedding").should("be.visible");
@@ -243,14 +242,15 @@ describe("#39152 sharing an unsaved question", () => {
     });
     H.visualize();
 
-    H.openSharingMenu();
+    H.openQuestionActions();
+    H.popover().findByText("Public link");
 
     H.modal().within(() => {
       cy.findByText("First, save your question").should("be.visible");
       cy.findByText("Save").click();
     });
 
-    H.openSharingMenu("Create a public link");
+    H.openQuestionActions("Create a public link");
 
     assertValidPublicLink({ resource: "question", shouldHaveRemoveLink: true });
   });
@@ -281,7 +281,7 @@ describe("#39152 sharing an unsaved question", () => {
             visitResource(resource, id);
           });
 
-          H.openSharingMenu(/public link/i);
+          openResourceActionsMenu(resource, /public link/i);
           cy.findByTestId("copy-button").realClick();
           if (resource === "dashboard") {
             H.expectGoodSnowplowEvent({
@@ -329,7 +329,7 @@ describe("#39152 sharing an unsaved question", () => {
             visitResource(resource, id);
           });
 
-          H.openSharingMenu(/public link/i);
+          openResourceActionsMenu(resource, /public link/i);
           H.popover().button("Remove public link").click();
           H.expectGoodSnowplowEvent({
             event: "public_link_removed",
@@ -345,7 +345,7 @@ describe("#39152 sharing an unsaved question", () => {
             visitResource(resource, id);
           });
 
-          H.openSharingMenu("Embed");
+          openResourceActionsMenu(resource, "Embed");
 
           H.modal().findByText("Get embedding code").click();
 
@@ -372,7 +372,7 @@ describe("#39152 sharing an unsaved question", () => {
             visitResource(resource, id);
           });
 
-          H.openSharingMenu("Embed");
+          openResourceActionsMenu(resource, "Embed");
           H.modal().findByText("Get embedding code").click();
 
           H.popover().findByText("Remove public link").click();
@@ -855,6 +855,20 @@ function visitResource(resource, id) {
 
   if (resource === "dashboard") {
     H.visitDashboard(id);
+  }
+}
+
+function openResourceActionsMenu(resource, menuItemText) {
+  if (resource === "question") {
+    H.openQuestionActions();
+  }
+
+  if (resource === "dashboard") {
+    H.openDashboardMenu();
+  }
+
+  if (menuItemText) {
+    H.popover().findByText(menuItemText).click();
   }
 }
 

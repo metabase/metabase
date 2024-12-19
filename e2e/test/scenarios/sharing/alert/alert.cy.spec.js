@@ -29,7 +29,7 @@ describe("scenarios > alert", () => {
   describe("with nothing set", () => {
     it("should prompt you to add email/slack credentials", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openSharingMenu("Create alerts");
+      H.openNotificationsMenu("Create alerts");
 
       H.modal().within(() => {
         cy.findByText(
@@ -58,7 +58,7 @@ describe("scenarios > alert", () => {
       cy.signInAsNormalUser();
 
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openSharingMenu("Create alerts");
+      H.openNotificationsMenu("Create alerts");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
@@ -79,7 +79,7 @@ describe("scenarios > alert", () => {
 
         // Open the first alert screen and create an alert
         H.visitQuestion(ORDERS_QUESTION_ID);
-        H.openSharingMenu("Create alerts");
+        H.openNotificationsMenu("Create alerts");
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("The wide world of alerts");
@@ -106,7 +106,7 @@ describe("scenarios > alert", () => {
         H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
         cy.wait("@questionLoaded");
 
-        H.openSharingMenu("Create alerts");
+        H.openNotificationsMenu("Create alerts");
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Let's set up your alert");
@@ -131,7 +131,7 @@ describe("scenarios > alert", () => {
 
     it("should be able to create and delete alerts with webhooks enabled", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openSharingMenu("Create alerts");
+      H.openNotificationsMenu("Create alerts");
 
       //Disable Email
       H.toggleAlertChannel("Email");
@@ -140,7 +140,7 @@ describe("scenarios > alert", () => {
 
       cy.findByRole("button", { name: "Done" }).click();
 
-      H.openSharingMenu("Edit alerts");
+      H.openNotificationsMenu("Edit alerts");
 
       H.popover().within(() => {
         cy.findByText("You set up an alert").should("be.visible");
@@ -172,7 +172,7 @@ describe("scenarios > alert", () => {
       cy.icon("download").should("exist");
     });
 
-    H.sharingMenuButton().should("not.exist");
+    H.notificationsMenuButton().should("not.exist");
   });
 
   it("can set up an alert for a question saved in a dashboard", () => {
@@ -192,11 +192,11 @@ describe("scenarios > alert", () => {
       { visitQuestion: true },
     );
 
-    H.openSharingMenu("Create alerts");
+    H.openNotificationsMenu("Create alerts");
     H.modal().button("Set up an alert").click();
     H.modal().button("Done").click();
 
-    H.openSharingMenu("Edit alerts");
+    H.openNotificationsMenu("Edit alerts");
     H.popover().findByText("You set up an alert").should("be.visible");
   });
 });

@@ -295,7 +295,7 @@ H.describeEE(
     it("should validate approved email domains for a question alert", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
 
-      H.openSharingMenu("Create alerts");
+      H.openNotificationsMenu("Create alerts");
       H.modal().findByText("Set up an alert").click();
 
       H.modal()
@@ -310,7 +310,7 @@ H.describeEE(
 
     it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openSharingMenu("Subscriptions");
+      H.openNotificationsMenu("Subscriptions");
 
       cy.findByRole("heading", { name: "Email it" }).click();
 

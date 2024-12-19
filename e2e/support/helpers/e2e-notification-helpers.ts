@@ -1,6 +1,6 @@
 import type { NotificationChannel } from "../../../frontend/src/metabase-types/api/notifications";
 
-export const getAlertChannel = name =>
+export const getAlertChannel = (name: string) =>
   cy.findByRole("listitem", {
     name,
   });
@@ -24,4 +24,19 @@ export const setupNotificationChannel = (
     },
     ...opts,
   });
+};
+
+export const notificationsMenuButton = () =>
+  cy.findByTestId("notifications-menu-button");
+export const notificationsMenu = () => cy.findByTestId("notifications-menu");
+
+export const openNotificationsMenu = (menuItemText?: string) => {
+  notificationsMenuButton().click();
+  if (menuItemText) {
+    notificationsMenu().findByText(menuItemText).click();
+  }
+};
+
+export const toggleAlertChannel = (channel: string) => {
+  cy.findByText(channel).parent().find("input").click({ force: true });
 };

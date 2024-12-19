@@ -28,7 +28,12 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     cy.visit(`/model/${ORDERS_QUESTION_ID}`);
     cy.wait("@dataset");
 
-    H.sharingMenuButton().should("not.exist");
+    H.openQuestionActions();
+
+    H.popover().within(() => {
+      cy.findByText("Embed").should("not.exist");
+      cy.findByText("Public link").should("not.exist");
+    });
 
     cy.findByTestId("view-footer").within(() => {
       cy.icon("download").should("exist");
@@ -363,11 +368,8 @@ function assertLinkMatchesUrl(text, url) {
 }
 
 function ensureEmbeddingIsDisabled() {
-  H.openSharingMenu();
-  H.sharingMenu()
-    .findByRole("menuitem", { name: "Embed" })
-    .should("be.enabled")
-    .click();
+  H.openDashboardMenu("Embed");
+
   H.modal()
     .findByRole("article", { name: "Static embedding" })
     .within(() => {
