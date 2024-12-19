@@ -42,77 +42,75 @@ export const ColumnItem = ({
   onEnable,
   onColorChange,
   accentColorOptions,
-}: ColumnItemProps) => {
-  return (
-    <Flex
-      w="100%"
-      bg="bg-white"
-      c="text-medium"
-      className={cx(
-        ColumnItemS.ColumnItemRoot,
-        {
-          [ColumnItemS.Draggable]: draggable,
-        },
-        className,
+}: ColumnItemProps) => (
+  <Flex
+    w="100%"
+    bg="bg-white"
+    c="text-medium"
+    className={cx(
+      ColumnItemS.ColumnItemRoot,
+      {
+        [ColumnItemS.Draggable]: draggable,
+      },
+      className,
+    )}
+    role={role}
+    onClick={onClick}
+    aria-label={role ? title : undefined}
+    data-testid={draggable ? `draggable-item-${title}` : null}
+    data-enabled={!!onRemove}
+    px="sm"
+    py="xs"
+    my="sm"
+  >
+    <Group noWrap spacing="xs" p="xs">
+      {draggable && (
+        <Icon className={ColumnItemS.ColumnItemDragHandle} name="grabber" />
       )}
-      role={role}
-      onClick={onClick}
-      aria-label={role ? title : undefined}
-      data-testid={draggable ? `draggable-item-${title}` : null}
-      data-enabled={!!onRemove}
-      px="sm"
-      py="xs"
-      my="sm"
-    >
-      <Group noWrap spacing="xs" p="xs">
-        {draggable && (
-          <Icon className={ColumnItemS.ColumnItemDragHandle} name="grabber" />
-        )}
-        {onColorChange && color && (
-          <ChartSettingColorPicker
-            value={color}
-            onChange={onColorChange}
-            pillSize="small"
-            accentColorOptions={accentColorOptions}
-          />
-        )}
-      </Group>
-      <Group className={CS.flex1} px="xs">
-        {icon && <Icon name={icon} />}
-        <Text lh="normal" fw="bold">
-          {title}
-        </Text>
-      </Group>
-      <Group noWrap spacing="sm" p="xs">
-        {onEdit && (
-          <ChartSettingActionIcon
-            icon="ellipsis"
-            onClick={onEdit}
-            data-testid={`${title}-settings-button`}
-          />
-        )}
-        {onAdd && (
-          <ChartSettingActionIcon
-            icon="add"
-            onClick={onAdd}
-            data-testid={`${title}-add-button`}
-          />
-        )}
-        {onRemove && (
-          <ChartSettingActionIcon
-            icon={removeIcon}
-            onClick={onRemove}
-            data-testid={`${title}-hide-button`}
-          />
-        )}
-        {onEnable && (
-          <ChartSettingActionIcon
-            icon="eye_crossed_out"
-            onClick={onEnable}
-            data-testid={`${title}-show-button`}
-          />
-        )}
-      </Group>
-    </Flex>
-  );
-};
+      {onColorChange && color && (
+        <ChartSettingColorPicker
+          value={color}
+          onChange={onColorChange}
+          pillSize="small"
+          accentColorOptions={accentColorOptions}
+        />
+      )}
+    </Group>
+    <Group className={CS.flex1} px="xs">
+      {icon && <Icon name={icon} />}
+      <Text lh="normal" fw="bold">
+        {title}
+      </Text>
+    </Group>
+    <Group noWrap spacing="sm" p="xs">
+      {onEdit && (
+        <ChartSettingActionIcon
+          icon="ellipsis"
+          onClick={e => onEdit(e.currentTarget)}
+          data-testid={`${title}-settings-button`}
+        />
+      )}
+      {onAdd && (
+        <ChartSettingActionIcon
+          icon="add"
+          onClick={e => onAdd(e.currentTarget)}
+          data-testid={`${title}-add-button`}
+        />
+      )}
+      {onRemove && (
+        <ChartSettingActionIcon
+          icon={removeIcon}
+          onClick={e => onRemove(e.currentTarget)}
+          data-testid={`${title}-hide-button`}
+        />
+      )}
+      {onEnable && (
+        <ChartSettingActionIcon
+          icon="eye_crossed_out"
+          onClick={e => onEnable(e.currentTarget)}
+          data-testid={`${title}-show-button`}
+        />
+      )}
+    </Group>
+  </Flex>
+);
