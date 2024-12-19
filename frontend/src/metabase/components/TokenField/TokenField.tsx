@@ -604,6 +604,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     const optionsList =
       filteredOptions.length === 0 ? null : (
         <ul
+          role="listbox"
           className={cx(
             optionsClassName,
             CS.overflowAuto,
