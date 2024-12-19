@@ -60,16 +60,17 @@
 
 (defn- query-execution-defaults
   [query]
-  {:hash         (qp.util/query-hash query)
-   :cache_hash   (qp.util/query-hash query)
-   :running_time 1
-   :result_rows  1
-   :native       false
-   :is_sandboxed false
-   :executor_id  nil
-   :card_id      nil
-   :context      :ad-hoc
-   :started_at   (t/offset-date-time)})
+  {:hash          (qp.util/query-hash query)
+   :cache_hash    (qp.util/query-hash query)
+   :running_time  1
+   :result_rows   1
+   :native        false
+   :is_sandboxed  false
+   :executor_id   nil
+   :card_id       nil
+   :context       :ad-hoc
+   :parameterized false
+   :started_at    (t/offset-date-time)})
 
 (deftest scheduled-queries-to-rerun-test
   (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}
