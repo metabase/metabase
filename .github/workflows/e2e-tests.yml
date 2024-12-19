@@ -31,7 +31,7 @@ jobs:
   e2e-matrix-builder:
     uses: ./.github/workflows/e2e-matrix-builder.yml
     with:
-      chunks: 40
+      chunks: 50
 
   testing:
     runs-on: ubuntu-22.04
@@ -128,7 +128,7 @@ jobs:
       edition: ${{ matrix.edition }}
       specs: ${{ matrix.specs }}
       tags: ${{ matrix.tags }}
-      openldap: ${{ startsWith(matrix.name, 'admin') }}
+      openldap: ${{ contains(matrix.specs, 'ldap') }}
       postgres: ${{ matrix.name != 'mongo'}}
       mysql: ${{ matrix.name != 'mongo'}}
       mongo: ${{ matrix.name == 'mongo'}}
