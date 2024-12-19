@@ -139,10 +139,9 @@
     (log/debug "Checking encryption configuration")
     (if looks-encrypted
       (if (encryption/default-encryption-enabled?)
-        (let [decoded-value (encryption/maybe-decrypt raw)]
-          (if (string/valid-uuid? decoded-value)
+          (if (string/valid-uuid? (encryption/maybe-decrypt raw))
             (log/debug "Database encrypted and MB_ENCRYPTION_SECRET_KEY correctly configured")
-            (throw (Exception. "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains"))))
+            (throw (Exception. "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains")))
         (throw (Exception. "Database is encrypted but the MB_ENCRYPTION_SECRET_KEY environment variable was NOT set")))
       (if (encryption/default-encryption-enabled?)
         (do
