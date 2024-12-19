@@ -334,11 +334,11 @@
           base-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                          (lib/aggregate (lib/count))
                          (lib/breakout (lib/with-binning (meta/field-metadata :orders :subtotal)
-                                         {:strategy  :num-bins
-                                          :num-bins  8
-                                          :bin-width 2.5
-                                          :min-value 40
-                                          :max-value 60})))]
+                                                         {:strategy  :num-bins
+                                                          :num-bins  8
+                                                          :bin-width 2.5
+                                                          :min-value 40
+                                                          :max-value 60})))]
       (test-drill-application-with-extra-stage
        {:click-type     :cell
         :query-type     :aggregated
