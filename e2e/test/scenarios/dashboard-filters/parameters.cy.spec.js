@@ -719,7 +719,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.filterWidget().click();
 
       H.popover().within(() => {
-        H.multiAutocompleteInput().type("Antwan Fisher");
+        H.fieldValuesInput().type("Antwan Fisher");
         cy.button("Add filter").click();
       });
 
@@ -748,7 +748,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.filterWidget().click();
 
       H.popover().within(() => {
-        H.multiAutocompleteInput().type("Antwan Fisher");
+        H.fieldValuesInput().type("Antwan Fisher");
         cy.button("Add filter").click();
       });
 

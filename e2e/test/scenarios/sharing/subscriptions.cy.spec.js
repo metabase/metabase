@@ -2,7 +2,6 @@ import { H } from "e2e/support";
 import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import { multiAutocompleteInput } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const { admin, normal } = USERS;
@@ -524,12 +523,9 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.get("@subscriptionBar").findByText("Corbin Mertz").click();
 
         H.popover().within(() => {
-          H.removeMultiAutocompleteValue(0);
-          H.multiAutocompleteInput().type("Sallie");
-        });
-        cy.findByRole("option", { name: "Sallie Flatley" }).click();
-        cy.findByTestId("parameter-value-dropdown").within(() => {
-          multiAutocompleteInput().blur();
+          H.removeFieldValuesValue(0);
+          H.fieldValuesInput().type("Sallie");
+          cy.findByText("Sallie Flatley").click();
         });
         H.popover().button("Update filter").click();
 
@@ -642,11 +638,11 @@ describe("scenarios > dashboard > subscriptions", () => {
           .next("aside")
           .findByText("Corbin Mertz")
           .click();
-        H.removeMultiAutocompleteValue(0, ":eq(1)");
-        H.popover().within(() => multiAutocompleteInput().type("Sallie"));
-        cy.findByRole("option", { name: "Sallie Flatley" }).click();
-        cy.findByTestId("parameter-value-dropdown").within(() => {
-          multiAutocompleteInput().blur();
+
+        H.removeFieldValuesValue(0, ":eq(1)");
+        H.popover().within(() => {
+          H.fieldValuesInput().type("Sallie");
+          cy.findByText("Sallie Flatley").click();
         });
         H.popover().button("Update filter").click();
         cy.button("Save").click();
@@ -673,8 +669,10 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByText("Emailed hourly").click();
 
         cy.findAllByText("Corbin Mertz").last().click();
-        H.popover().within(() => multiAutocompleteInput().type("Bob"));
-        H.selectDropdown().findByText("Bobby Kessler").click();
+        H.popover().within(() => {
+          H.fieldValuesInput().type("Bob");
+          cy.findByText("Bobby Kessler").click();
+        });
         H.popover().contains("Update filter").click();
 
         cy.findAllByText("Text 1").last().click();
@@ -776,10 +774,10 @@ function addParametersToDashboard() {
   // add default value to the above filter
   cy.findByText("No default").click();
   H.popover().within(() => {
-    H.multiAutocompleteInput().type("Corbin");
+    H.fieldValuesInput().type("Corbin");
   });
 
-  H.selectDropdown().findByText("Corbin Mertz").click();
+  H.popover().findByText("Corbin Mertz").click();
 
   H.popover().contains("Add filter").click({ force: true });
 
