@@ -5,6 +5,7 @@ export interface EditableTextRootProps {
   isEditing?: boolean;
   isDisabled: boolean;
   isEditingMarkdown?: boolean;
+  error?: boolean;
 }
 
 export const EditableTextRoot = styled.div<EditableTextRootProps>`
@@ -36,6 +37,12 @@ export const EditableTextRoot = styled.div<EditableTextRootProps>`
         white-space: pre-wrap;
         word-wrap: break-word;
       }
+    `}
+  ${props =>
+    props.error &&
+    css`
+      color: #ed6e6e;
+      border-color: #ed6e6e;
     `}
 `;
 
