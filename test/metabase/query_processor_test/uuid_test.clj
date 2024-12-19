@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.test :as mt]))
 
-(deftest ^:parallel simple-uuid-query
+(deftest ^:parallel simple-uuid-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uuid-type)
     (testing "Simple query"
       (mt/dataset uuid-dogs
@@ -15,7 +15,7 @@
                             [:field (mt/id :people :id) {:base-type "type/UUID"}]
                             "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]}))))))))
 
-(deftest ^:parallel joined-uuid-query
+(deftest ^:parallel joined-uuid-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uuid-type)
     (testing "Query with joins"
       (mt/dataset uuid-dogs
