@@ -75,6 +75,7 @@ export const getPageBreaks = (
   sortedCards: DashCardBounds[],
   optimalPageHeight: number,
   totalHeight: number,
+  minPageHeight: number,
   offset = 0,
 ): number[] => {
   if (sortedCards.length === 0) {
@@ -88,7 +89,6 @@ export const getPageBreaks = (
     return [];
   }
 
-  const minPageSize = optimalPageHeight * 0.7;
   const result: number[] = [];
   let currentPageStart = 0;
   let candidateIndex = 0;
@@ -98,7 +98,7 @@ export const getPageBreaks = (
 
     while (
       candidateIndex < pageBreakCandidates.length &&
-      pageBreakCandidates[candidateIndex] <= currentPageStart + minPageSize
+      pageBreakCandidates[candidateIndex] <= currentPageStart + minPageHeight
     ) {
       candidateIndex++;
     }
@@ -189,11 +189,15 @@ export const saveDashboardPdf = async (
 
   const { default: jspdf } = await import("jspdf");
 
+  // Page page height cannot be smaller than page width otherwise the content will be cut off
+  // or the page should have a landscape orientation.
+  const minPageHeight = contentWidth;
   const optimalPageHeight = Math.round(width * TARGET_ASPECT_RATIO);
   const pageBreaks = getPageBreaks(
     cardsBounds,
     optimalPageHeight - PAGE_PADDING * 2,
     contentHeight,
+    minPageHeight,
     headerHeight,
   );
 
