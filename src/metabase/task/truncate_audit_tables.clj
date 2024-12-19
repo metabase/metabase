@@ -6,6 +6,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.config :as config]
+   [metabase.db :as mdb]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.task-history :as task-history]
    [metabase.plugins.classloader :as classloader]
@@ -80,15 +81,25 @@ If set to 0, Metabase will keep all rows.")
 (defn- truncate-table-batched!
   [table-name time-column]
   (t2/query-one
-   {:delete-from (keyword table-name)
-    :where [:in
-            :id
-            {:select [:id]
-             :from (keyword table-name)
-             :where [:<=
-                     (keyword time-column)
-                     (t/minus (t/offset-date-time) (t/days (audit-max-retention-days)))]
-             :limit (audit-table-truncation-batch-size)}]}))
+   (case (mdb/db-type)
+     (:postgres :h2)
+     {:delete-from (keyword table-name)
+      :where [:in
+              :id
+              {:select [:id]
+               :from (keyword table-name)
+               :where [:<=
+                       (keyword time-column)
+                       (t/minus (t/offset-date-time) (t/days (audit-max-retention-days)))]
+               :limit (audit-table-truncation-batch-size)}]}
+
+     (:mysql :mariadb)
+     {:delete-from (keyword table-name)
+      :where [:<=
+              (keyword time-column)
+              (t/minus (t/offset-date-time) (t/days (audit-max-retention-days)))]
+      :limit (audit-table-truncation-batch-size)})))
+
 
 (defn- truncate-table!
   "Given a model, deletes all rows older than the configured threshold"
