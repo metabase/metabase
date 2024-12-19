@@ -56,12 +56,10 @@ Questions saved to a collection can be added to multiple dashboards. Moving a qu
 
 Whether you can move a question in a collection into a dashboard depends on how many other dashboards use that question.
 
-You can move the question from a collection into a dashboard if:
+You can move the question from a collection into a dashboard if either:
 
 - No other dashboards use that question.
-- The other dashboards that use that question live in collections you have curate access to. In this case, Metabase will tell you which other dashboards use that question, and you'll have to decide whether you're okay with removing the question from those dashboards.
-
-If, however, dashboards that use that question are in collections that you _lack_ curate access to, you won't be able to move that question into a dashboard.
+- The other dashboards that use that question live in collections you have [curate access](../permissions/collections.md#curate-access) to. In this case, Metabase will tell you which other dashboards use that question, and you'll have to decide whether you're okay with removing the question from those dashboards.
 
 ## Info about your question
 

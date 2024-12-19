@@ -308,8 +308,7 @@ See [content verification](../exploration-and-organization/content-verification.
 
 ## Deleting a dashboard
 
-You can move a dashboard to Trash or permanently delete a dashboard that you no longer need.
-See [Archiving a dashboard](../exploration-and-organization/delete-and-restore.md).
+See [deleting and restoring](../exploration-and-organization/delete-and-restore.md).
 
 ## Tips on creating helpful dashboards
 
