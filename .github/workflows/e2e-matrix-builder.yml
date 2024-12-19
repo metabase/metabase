@@ -38,7 +38,18 @@ jobs:
 
             const java = 21;
             const defaultRunner = "ubuntu-22.04";
-            const fileNames = "${{ steps.test-files.outputs.filenames }}".split(",").filter(Boolean);
+
+            // these are special and shouldn't be chunked out arbitrarily
+            const blacklist = [
+              "/embedding-sdk/",
+              "/cross-version/"
+            ];
+
+            const fileNames = "${{ steps.test-files.outputs.filenames }}"
+              .split(",")
+              .filter(Boolean)
+              .filter(testPath => !blacklist.some(blacklisted => testPath.includes(blacklisted)));
+
             const fileCount = fileNames.length;
             const chunkSize = Math.ceil( fileCount / Number('${{ inputs.chunks }}')); // number of total test groups
 
