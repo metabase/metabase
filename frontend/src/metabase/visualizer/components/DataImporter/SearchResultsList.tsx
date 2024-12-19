@@ -1,9 +1,18 @@
 import { useMemo } from "react";
 
-import { skipToken, useSearchQuery } from "metabase/api";
+import {
+  type VisualizerSearchParams,
+  useVisualizerSearchQuery,
+} from "metabase/api";
+import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { Loader } from "metabase/ui";
+import {
+  getVisualizationType,
+  getVisualizerDatasetColumns,
+} from "metabase/visualizer/selectors";
 import { createDataSource } from "metabase/visualizer/utils";
+import type { DatasetColumn, VisualizationDisplay } from "metabase-types/api";
 import type { VisualizerDataSourceId } from "metabase-types/store/visualizer";
 
 import { ResultsList, type ResultsListProps } from "./ResultsList";
@@ -19,29 +28,19 @@ export function SearchResultsList({
   onSelect,
   dataSourceIds,
 }: SearchResultsListProps) {
-  const { data: result = { data: [] } } = useSearchQuery(
-    search.length > 0
-      ? {
-          q: search,
-          limit: 10,
-          models: ["card"],
-        }
-      : skipToken,
+  const display = useSelector(getVisualizationType);
+  const columns = useSelector(getVisualizerDatasetColumns);
+
+  const { data: result = [] } = useVisualizerSearchQuery(
+    getSearchQuery(search, display, columns),
     {
       refetchOnMountOrArgChange: true,
     },
   );
 
   const items = useMemo(() => {
-    if (!Array.isArray(result.data)) {
-      return [];
-    }
-    return result.data
-      .map(item =>
-        typeof item.id === "number"
-          ? createDataSource("card", item.id, item.name)
-          : null,
-      )
+    return result
+      .map(item => createDataSource("card", item.id, item.name))
       .filter(isNotNull);
   }, [result]);
 
@@ -56,4 +55,19 @@ export function SearchResultsList({
       dataSourceIds={dataSourceIds}
     />
   );
+}
+
+function getSearchQuery(
+  search: string | undefined,
+  display: VisualizationDisplay | null,
+  columns: DatasetColumn[],
+) {
+  const query: VisualizerSearchParams = {
+    display,
+    "dataset-columns": columns,
+  };
+  if (search && search.length > 0) {
+    query.search = search;
+  }
+  return query;
 }
