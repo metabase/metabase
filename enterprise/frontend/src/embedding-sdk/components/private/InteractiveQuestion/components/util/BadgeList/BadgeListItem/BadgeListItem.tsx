@@ -1,20 +1,22 @@
-import { Badge } from "@mantine/core";
+import { Badge, type BadgeProps } from "@mantine/core";
+import { type HTMLAttributes, type Ref, forwardRef } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { ActionIcon, Icon } from "metabase/ui";
 
-type BadgeListItemProps = {
-  onSelectItem?: () => void;
+type BadgeListItemRootProps = BadgeProps & HTMLAttributes<HTMLDivElement>;
+
+interface BadgeListItemProps extends BadgeListItemRootProps {
   onRemoveItem?: () => void;
   name: string;
-};
+}
 
-export const BadgeListItem = ({
-  name,
-  onRemoveItem,
-  onSelectItem,
-}: BadgeListItemProps) => (
+const _BadgeListItem = (
+  { name, onRemoveItem, ...rest }: BadgeListItemProps,
+  ref: Ref<HTMLDivElement>,
+) => (
   <Badge
+    ref={ref}
     size="lg"
     tt="capitalize"
     variant="light"
@@ -24,7 +26,6 @@ export const BadgeListItem = ({
       root: CS.bgLightHover,
       inner: CS.cursorPointer,
     }}
-    onClick={onSelectItem}
     pr={0}
     pl="sm"
     rightSection={
@@ -41,7 +42,10 @@ export const BadgeListItem = ({
         <Icon name="close" c="var(--mb-color-text-brand)" size={10} />
       </ActionIcon>
     }
+    {...rest}
   >
     {name}
   </Badge>
 );
+
+export const BadgeListItem = forwardRef(_BadgeListItem);

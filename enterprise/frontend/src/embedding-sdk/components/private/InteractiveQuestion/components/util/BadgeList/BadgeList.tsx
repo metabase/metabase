@@ -8,9 +8,9 @@ export type BadgeListProps<T> = {
     name: string;
     item: T;
   }[];
-  onSelectItem?: (item?: T, index?: number) => void;
+  onSelectItem?: (item: T, index: number) => void;
   onAddItem?: (item?: T) => void;
-  onRemoveItem?: (item?: T, index?: number) => void;
+  onRemoveItem?: (item: T, index: number) => void;
   addButtonLabel?: string;
 };
 
@@ -26,7 +26,7 @@ export const BadgeList = <T,>({
       {items.map(({ name, item }, index) => (
         <BadgeListItem
           key={`${name}/${index}`}
-          onSelectItem={() => onSelectItem?.(item, index)}
+          onClick={() => onSelectItem?.(item, index)}
           onRemoveItem={() => onRemoveItem?.(item, index)}
           name={name}
         />

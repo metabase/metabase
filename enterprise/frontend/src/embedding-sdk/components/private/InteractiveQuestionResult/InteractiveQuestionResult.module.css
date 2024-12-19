@@ -18,13 +18,8 @@
 .Main {
   grid-area: Main;
   display: grid;
-  grid-template: subgrid / auto 1fr;
-  grid-template-areas: "ChartTypeSelector Content";
-}
-
-.ChartTypeSelector {
-  grid-area: ChartTypeSelector;
-  overflow: hidden;
+  grid-template: subgrid / 1fr;
+  grid-template-areas: "Content";
 }
 
 .Content {
