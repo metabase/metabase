@@ -1,0 +1,100 @@
+@top Expression { expression }
+
+@skip { space }
+
+@precedence {
+  not @left,
+  sum @left,
+  subtract @left,
+  product @left,
+  quotient @left,
+  and @left,
+  or @left,
+  gt @left,
+  gte @left,
+  lt @left,
+  lte @left,
+  eq @left,
+  neq @left
+}
+
+expression {
+  Number
+| String
+| Boolean
+| ColumnReference
+| BinaryExpression
+| ParenExpression
+| FunctionApplication
+| UnaryExpression
+}
+
+BinaryExpression {
+  expression !sum "+" expression
+| expression !subtract "-" expression
+| expression !product "*" expression
+| expression !quotient "/" expression
+| expression !and "AND" expression
+| expression !or "OR" expression
+| expression !gt ">" expression
+| expression !gte ">=" expression
+| expression !lt "<" expression
+| expression !lte "<=" expression
+| expression !eq "=" expression
+| expression !neq "=" expression
+}
+
+UnaryExpression {
+  !not Not expression
+}
+
+
+ParenExpression {
+  "(" expression ")"
+}
+
+FunctionApplication {
+  Identifier "(" ")"
+| Identifier "(" expression ("," expression)* ")"
+}
+
+@skip {} {
+  String {
+    '"' stringContentDouble '"'
+  | "'" stringContentSingle "'"
+  }
+}
+
+@tokens {
+  space { @whitespace+ }
+
+  Number {
+    (@digit ("_" | @digit)* ("." ("_" | @digit)*)?
+  | "." @digit ("_" | @digit)*) (("e" | "E") ("+" | "-")? ("_" | @digit)+)?
+  | "0x" ($[0-9a-fA-F] | "_")
+  | "0b" $[01_]+ "n"?
+  | "0o" $[0-7_]+ "n"?
+  }
+
+  stringContentSingle { ![\\\n']+ }
+  stringContentDouble { ![\\\n"]+ }
+
+  ColumnReference {
+    "[" $[a-zA-Z →.]+ "]"
+  }
+
+  Identifier {
+    $[a-zA-Z]$[a-zA-Z0-9_]*
+  }
+
+  Boolean {
+    "true"
+  | "false"
+  }
+
+  Not {
+    "NOT"
+  }
+
+  @precedence { Not, Boolean, Identifier }
+}
