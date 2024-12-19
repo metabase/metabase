@@ -1,3 +1,5 @@
+import type { HTMLAttributes } from "react";
+
 import CS from "metabase/css/core/index.css";
 import {
   ActionIcon,
@@ -6,7 +8,8 @@ import {
   type IconName,
 } from "metabase/ui";
 
-interface ChartSettingActionIconProps extends ActionIconProps {
+type ChartActionIconProps = ActionIconProps & HTMLAttributes<HTMLButtonElement>;
+interface ChartSettingActionIconProps extends ChartActionIconProps {
   icon: IconName;
   "data-testid"?: string;
 }
