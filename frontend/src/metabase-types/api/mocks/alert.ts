@@ -7,8 +7,8 @@ import { createMockUserInfo } from "./user";
 export const createMockAlert = (opts?: Partial<Alert>): Alert => ({
   id: 1,
   name: "Alert",
-  alert_above_goal: false,
-  alert_condition: "rows",
+  alert_above_goal: true,
+  alert_condition: "goal",
   alert_first_only: false,
   skip_if_empty: false,
 
@@ -33,6 +33,15 @@ export const createMockAlert = (opts?: Partial<Alert>): Alert => ({
 
   ...opts,
 });
+
+export const createMockSubscription = (opts?: Partial<Alert>): Alert => {
+  return createMockAlert({
+    name: "Subscription",
+    alert_above_goal: false,
+    alert_condition: "rows",
+    ...opts,
+  });
+};
 
 export const createMockChannel = (opts?: Partial<Channel>): Channel => ({
   channel_type: "email",
