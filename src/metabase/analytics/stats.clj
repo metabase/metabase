@@ -515,10 +515,10 @@
    (or (.exists (io/file "/.dockerenv"))
        (when (.exists (io/file "/proc/self/cgroup"))
          (try
-          (some #(re-find #"docker" %)
-                (line-seq (io/reader "/proc/self/cgroup")))
-          (catch java.io.IOException _
-            false))))))
+           (some #(re-find #"docker" %)
+                 (line-seq (io/reader "/proc/self/cgroup")))
+           (catch java.io.IOException _
+             false))))))
 
 (defn- deployment-model
   []
