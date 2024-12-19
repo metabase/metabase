@@ -147,20 +147,24 @@
             (do
               (log/debugf "[Notification %d] Found %d handlers" notification-id (count handlers))
               (doseq [handler handlers]
-                (let [channel-type (:channel_type handler)
-                      messages     (channel/render-notification
-                                    channel-type
-                                    notification-payload
-                                    (:template handler)
-                                    (:recipients handler))]
-                  (log/debugf "[Notification %d] Got %d messages for channel %s with template %d"
-                              notification-id (count messages)
-                              (handler->channel-name handler)
-                              (-> handler :template :id))
-                  (doseq [message messages]
-                    (log/infof "[Notification %d] Sending message to channel %s"
-                               notification-id (:channel_type handler))
-                    (channel-send-retrying! notification-id (:payload_type hydrated-notification) handler message))))
+                (try
+                  (let [channel-type (:channel_type handler)
+                        messages     (channel/render-notification
+                                      channel-type
+                                      notification-payload
+                                      (:template handler)
+                                      (:recipients handler))]
+                    (log/debugf "[Notification %d] Got %d messages for channel %s with template %d"
+                                notification-id (count messages)
+                                (handler->channel-name handler)
+                                (-> handler :template :id))
+                    (doseq [message messages]
+                      (log/infof "[Notification %d] Sending message to channel %s"
+                                 notification-id (:channel_type handler))
+                      (channel-send-retrying! notification-id (:payload_type hydrated-notification) handler message)))
+                  (catch Exception e
+                    (log/warnf e "[Notification %d] Error sending to channel %s"
+                                notification-id (handler->channel-name handler)))))
               (do-after-notification-sent hydrated-notification)
               (log/infof "[Notification %d] Sent successfully" notification-id))
             (log/infof "[Notification %d] Skipping" notification-id)))))

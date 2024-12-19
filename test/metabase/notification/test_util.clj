@@ -128,6 +128,7 @@
   "Macro that sets up a card notification for testing.
     (with-card-notification
       [notification {:card              {:name \"My Card\"}
+                     :notification      {:creator_id 1}
                      :notification-card {:send_condition :rows}
                      :subscriptions     []
                      :handlers          []}]"
@@ -192,6 +193,16 @@
    :details      {:type    :email/handlebars-text
                   :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
                   :body    "Hello {{payload.event_info.object.first_name}}! Welcome to {{context.site_name}}!"}})
+
+(def default-email-handler
+  (delay {:channel_type :channel/email
+          :recipients   [{:type    :notification-recipient/user
+                          :user_id (mt/user->id :rasta)}]}))
+
+(def default-slack-handler
+  {:channel_type :channel/slack
+   :recipients   [{:type    :notification-recipient/raw-value
+                   :details {:value "#general"}}]})
 
 (def png-attachment
   {:type         :inline
