@@ -462,42 +462,48 @@ describe(
     it("should allow you to enable a webhook alert", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       cy.findByTestId("notifications-menu-button").click();
-      H.popover().findByText("Create alerts").click();
-      H.modal().button("Set up an alert").click();
-      H.modal().within(() => {
-        H.toggleAlertChannel("Email");
-        H.toggleAlertChannel(secondWebhookName);
-        cy.button("Done").click();
-      });
+      H.popover().findByText("Create subscriptions").click();
+
+      H.modal()
+        .first()
+        .within(() => {
+          H.toggleAlertChannel("Email");
+          H.toggleAlertChannel(secondWebhookName);
+          cy.button("Done").should("not.be.disabled").click();
+        });
       cy.findByTestId("notifications-menu-button").click();
-      H.popover().findByText("Edit alerts").click();
-      H.popover().within(() => {
+      H.popover().findByText("Edit subscriptions").click();
+      H.modal().within(() => {
         cy.findByText("You set up an alert").should("exist");
         cy.findByText("Edit").click();
       });
 
-      H.modal().within(() => {
-        H.getAlertChannel(secondWebhookName).scrollIntoView();
-        H.getAlertChannel(secondWebhookName)
-          .findByRole("checkbox")
-          .should("be.checked");
-      });
+      H.modal()
+        .first()
+        .within(() => {
+          H.getAlertChannel(secondWebhookName).scrollIntoView();
+          H.getAlertChannel(secondWebhookName)
+            .findByRole("checkbox")
+            .should("be.checked");
+        });
     });
 
     it("should allow you to test a webhook", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       cy.findByTestId("notifications-menu-button").click();
-      H.popover().findByText("Create alerts").click();
-      H.modal().button("Set up an alert").click();
-      H.modal().within(() => {
-        H.getAlertChannel(firstWebhookName).scrollIntoView();
+      H.popover().findByText("Create subscriptions").click();
 
-        H.getAlertChannel(firstWebhookName)
-          .findByRole("checkbox")
-          .click({ force: true });
+      H.modal()
+        .first()
+        .within(() => {
+          H.getAlertChannel(firstWebhookName).scrollIntoView();
 
-        H.getAlertChannel(firstWebhookName).button("Send a test").click();
-      });
+          H.getAlertChannel(firstWebhookName)
+            .findByRole("checkbox")
+            .click({ force: true });
+
+          H.getAlertChannel(firstWebhookName).button("Send a test").click();
+        });
 
       cy.visit(H.WEBHOOK_TEST_DASHBOARD);
 

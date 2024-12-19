@@ -1,9 +1,10 @@
+import cx from "classnames";
 import { assoc, updateIn } from "icepick";
 import { t } from "ttag";
 
 import { useListChannelsQuery } from "metabase/api/channel";
+import CS from "metabase/css/core/index.css";
 import { createChannel } from "metabase/lib/pulse";
-import { Accordion } from "metabase/ui";
 import type {
   Alert,
   Channel,
@@ -106,53 +107,34 @@ export const NotificationChannelsPicker = ({
     DEFAULT_CHANNELS_CONFIG) as ChannelApiResponse["channels"];
 
   return (
-    <Accordion defaultValue={["email", "slack"]} variant="separated" multiple>
-      <Accordion.Item value="email">
-        <Accordion.Control>{t`Email`}</Accordion.Control>
-        <Accordion.Panel>
-          <EmailChannelEdit
-            user={user}
-            users={users}
-            toggleChannel={toggleChannel}
-            onChannelPropertyChange={onChannelPropertyChange}
-            channelSpec={channels.email}
-            alert={pulse}
-            invalidRecipientText={invalidRecipientText}
-          />
-        </Accordion.Panel>
-      </Accordion.Item>
-
+    <ul className={cx(CS.bordered, CS.rounded, CS.bgWhite)}>
+      <EmailChannelEdit
+        user={user}
+        users={users}
+        toggleChannel={toggleChannel}
+        onChannelPropertyChange={onChannelPropertyChange}
+        channelSpec={channels.email}
+        alert={pulse}
+        invalidRecipientText={invalidRecipientText}
+      />
       {channels.slack.configured && (
-        <Accordion.Item value="slack">
-          <Accordion.Control>{t`Slack`}</Accordion.Control>
-          <Accordion.Panel>
-            <SlackChannelEdit
-              user={user}
-              toggleChannel={toggleChannel}
-              onChannelPropertyChange={onChannelPropertyChange}
-              channelSpec={channels.slack}
-              alert={pulse}
-            />
-          </Accordion.Panel>
-        </Accordion.Item>
+        <SlackChannelEdit
+          user={user}
+          toggleChannel={toggleChannel}
+          onChannelPropertyChange={onChannelPropertyChange}
+          channelSpec={channels.slack}
+          alert={pulse}
+        />
       )}
-
       {notificationChannels.map(notification => (
-        <Accordion.Item
+        <WebhookChannelEdit
           key={`webhook-${notification.id}`}
-          value={`webhook-${notification.id}`}
-        >
-          <Accordion.Control>{notification.name}</Accordion.Control>
-          <Accordion.Panel>
-            <WebhookChannelEdit
-              toggleChannel={toggleChannel}
-              channelSpec={channels.http}
-              alert={pulse}
-              notification={notification}
-            />
-          </Accordion.Panel>
-        </Accordion.Item>
+          toggleChannel={toggleChannel}
+          channelSpec={channels.http}
+          alert={pulse}
+          notification={notification}
+        />
       ))}
-    </Accordion>
+    </ul>
   );
 };

@@ -118,11 +118,15 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
     it("should not let you embed the question", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
+
+      H.openQuestionActions("Embed");
       ensureEmbeddingIsDisabled();
     });
 
     it("should not let you embed the dashboard", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
+
+      H.openDashboardMenu("Embed");
       ensureEmbeddingIsDisabled();
     });
   });
@@ -368,8 +372,6 @@ function assertLinkMatchesUrl(text, url) {
 }
 
 function ensureEmbeddingIsDisabled() {
-  H.openDashboardMenu("Embed");
-
   H.modal()
     .findByRole("article", { name: "Static embedding" })
     .within(() => {
