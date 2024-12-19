@@ -54,7 +54,7 @@ describe("issue 16170", { tags: "@mongo" }, () => {
     cy.findByText("Replace missing values with")
       .parent()
       .within(() => {
-        cy.findByTestId("select-button").click();
+        cy.findByTestId("chart-setting-select").click();
       });
 
     H.popover().contains(value).click();
@@ -362,7 +362,7 @@ describe("issue 18063", () => {
     cy.findByText(field)
       .parent()
       .within(() => {
-        cy.findByText("Select a field").click();
+        cy.findByPlaceholderText("Select a field").click();
       });
 
     H.popover().findByText(value).click();
@@ -376,14 +376,21 @@ describe("issue 18063", () => {
 
     // Select a Pin map
     cy.findByTestId("viz-settings-button").click();
-    cy.findAllByTestId("select-button").contains("Region map").click();
-
+    cy.findByTestId("chart-settings-widget-map.type")
+      .findByDisplayValue("Region map")
+      .click();
     H.popover().contains("Pin map").click();
 
-    // Click anywhere to close both popovers that open automatically. Need to click twice to dismiss both popovers
+    // Click on the popovers to close both popovers that open automatically.
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("New question").click().click();
+    ["Latitude field", "Longitude field"].forEach(field =>
+      H.leftSidebar()
+        .findByText(field)
+        .parent()
+        .within(() => {
+          cy.findByPlaceholderText("Select a field").click();
+        }),
+    );
   });
 
   it("should show the correct tooltip details for pin map even when some locations are null (metabase#18063)", () => {
@@ -501,8 +508,7 @@ describe("issue 20548", () => {
     assertOnLegendItemFrequency("Sum of Price", 1);
 
     cy.findByTestId("viz-settings-button").click();
-    // Implicit assertion - it would fail if it finds more than one "Count" in the sidebar
-    H.sidebar().findAllByText("Count").should("have.length", 1);
+    H.sidebar().findByDisplayValue("Count").should("be.visible");
   });
 });
 
@@ -531,7 +537,10 @@ describe("issue 21452", () => {
 
   it("should not fire POST request after every character during display name change (metabase#21452)", () => {
     H.openSeriesSettings("Cumulative sum of Quantity");
-    cy.findByDisplayValue("Cumulative sum of Quantity").clear().type("Foo");
+    H.popover()
+      .findByDisplayValue("Cumulative sum of Quantity")
+      .clear()
+      .type("Foo");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Display type").click();
     // Dismiss the popup and close settings

@@ -6,8 +6,14 @@ export function openSeriesSettings(field, isBreakout = false) {
       .find(".Icon-ellipsis")
       .click();
   } else {
-    cy.findAllByTestId("chartsettings-field-picker")
-      .contains(field)
+    cy.findAllByTestId("chartsettings-field-picker-select")
+      .then($elements => {
+        for (const element of $elements) {
+          if (element.value === field) {
+            return cy.wrap(element);
+          }
+        }
+      })
       .closest("[data-testid=chartsettings-field-picker]")
       .find(".Icon-ellipsis")
       .click();

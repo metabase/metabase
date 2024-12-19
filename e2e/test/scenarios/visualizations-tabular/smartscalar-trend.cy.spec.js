@@ -45,20 +45,23 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     // primary number
     cy.findByTestId("scalar-container").findByText("344");
-    cy.findByTestId("chartsettings-sidebar").findByText("Count").click();
+    cy.findByTestId("chartsettings-sidebar")
+      .findByDisplayValue("Count")
+      .click();
     H.popover().within(() => {
       cy.findAllByRole("option").should("have.length", AGGREGATIONS.length);
 
       // selected should be highlighted
-      cy.findByLabelText("Count").should("have.attr", "aria-selected", "true");
-
-      // should not be highlighted b/c not selected
-      cy.findByLabelText("Sum of Total").should(
+      cy.findByRole("option", { name: "Count" }).should(
         "have.attr",
         "aria-selected",
-        "false",
+        "true",
       );
-      cy.findByText("Sum of Total").click();
+
+      // unselected item should not be highlighted
+      cy.findByRole("option", { name: "Sum of Total" })
+        .should("have.attr", "aria-selected", "false")
+        .click();
     });
 
     // comparisons
@@ -264,7 +267,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     // The "Another column (Mega Count)" comparison should disappear
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findByText("(Mega Count)").should("exist");
-      cy.findByText("Count").click();
+      cy.findByDisplayValue("Count").click();
     });
     H.popover().findByText("Mega Count").click();
 
@@ -286,7 +289,11 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     H.popover().findByText("Count").click();
     H.popover().button("Done").click();
 
-    cy.findByTestId("chartsettings-sidebar").findByText("Mega Count").click();
+    cy.findByTestId("chartsettings-field-picker")
+      .find('input[type="search"]')
+      .should("have.value", "Mega Count")
+      .click();
+
     H.popover().findByText("Count").click();
 
     cy.findByTestId("scalar-value").should("have.text", "344");
@@ -303,7 +310,9 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     H.popover().findByText("Sum of Total").click();
     H.popover().button("Done").click();
 
-    cy.findByTestId("chartsettings-sidebar").findByText("Count").click();
+    cy.findByTestId("chartsettings-sidebar")
+      .findByDisplayValue("Count")
+      .click();
     H.popover().findByText("Mega Count").click();
 
     // Removing the comparison column ("Sum of Total") from the query
@@ -400,7 +409,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     // scalar.compact_primary_number setting
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findByText("Data").click();
-      cy.findByText("Count").click();
+      cy.findByDisplayValue("Count").click();
     });
     H.popover().findByRole("option", { name: "Mega Count" }).click();
     cy.findByTestId("chartsettings-sidebar").findByText("Display").click();

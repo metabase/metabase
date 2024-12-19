@@ -53,13 +53,17 @@ const setup = seriesDisplay => {
 };
 
 describe("ChartSettingFieldPicker", () => {
-  it("should not show ellipsis when a colum has no settings", () => {
+  it("should not show ellipsis when a column has no settings", () => {
     setup();
 
     const fields = screen.getAllByTestId("chartsettings-field-picker");
 
-    expect(fields[0]).toHaveTextContent("FOO");
-    expect(fields[1]).toHaveTextContent("BAR");
+    expect(
+      within(fields[0]).getByTestId("chartsettings-field-picker-select"),
+    ).toHaveDisplayValue("FOO");
+    expect(
+      within(fields[1]).getByTestId("chartsettings-field-picker-select"),
+    ).toHaveDisplayValue("BAR");
 
     expect(
       within(fields[0]).queryByRole("img", { name: /ellipsis/i }),
