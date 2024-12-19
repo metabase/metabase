@@ -3,8 +3,9 @@ import {
   bracketMatching,
   syntaxHighlighting,
 } from "@codemirror/language";
-import { EditorView, drawSelection } from "@codemirror/view";
+import { EditorView, drawSelection, keymap } from "@codemirror/view";
 import { type Tag, tags } from "@lezer/highlight";
+import { Prec } from "@uiw/react-codemirror";
 import { getNonce } from "get-nonce";
 import { useMemo } from "react";
 
@@ -20,10 +21,12 @@ type Options = {
   stageIndex: number;
   name?: string | null;
   expressionIndex: number | undefined;
+  onCommit: () => void;
 };
 
 export function useExtensions(options: Options) {
-  const { startRule, query, stageIndex, name, expressionIndex } = options;
+  const { startRule, query, stageIndex, name, expressionIndex, onCommit } =
+    options;
 
   return useMemo(() => {
     return [
@@ -48,10 +51,21 @@ export function useExtensions(options: Options) {
         name,
         expressionIndex,
       }),
+      Prec.high(
+        keymap.of([
+          {
+            key: "Enter",
+            run() {
+              onCommit();
+              return true;
+            },
+          },
+        ]),
+      ),
     ]
       .flat()
       .filter(isNotNull);
-  }, [startRule, query, stageIndex, name, expressionIndex]);
+  }, [startRule, query, stageIndex, name, expressionIndex, onCommit]);
 }
 
 function nonce() {
