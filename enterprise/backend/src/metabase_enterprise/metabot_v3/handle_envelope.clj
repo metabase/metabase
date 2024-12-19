@@ -5,13 +5,17 @@
    [metabase-enterprise.metabot-v3.envelope :as envelope]
    [metabase-enterprise.metabot-v3.tools :as metabot-v3.tools]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
+   [metabase.util.log :as log]
    [metabase.util.o11y :as o11y]))
 
 (defn- invoke-all-tool-calls! [e]
   (reduce (fn [e {tool-name :name, tool-call-id :id, :keys [arguments]}]
             (let [tool-invocation-result
                   (o11y/with-span :info {:name tool-name}
-                    (metabot-v3.tools.interface/*invoke-tool* tool-name arguments e))]
+                    (try (metabot-v3.tools.interface/*invoke-tool* tool-name arguments e)
+                         (catch Exception e
+                           (log/errorf e "Error invoking tool: %s" tool-name)
+                           {:output (format "An error occurred: %s" (ex-message e))})))]
               (envelope/add-tool-response e tool-call-id tool-invocation-result)))
           e
           (envelope/tool-calls-requiring-invocation e)))

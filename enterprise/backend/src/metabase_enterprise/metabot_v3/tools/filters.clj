@@ -107,7 +107,7 @@
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/query-metric
   [_tool-name arguments _e]
-  {:output (json/encode (query-metric arguments))})
+  {:output (query-metric arguments)})
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})
@@ -170,4 +170,4 @@
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/filter-records
   [_tool-name arguments e]
-  {:output (json/encode (filter-records arguments e))})
+  {:output (filter-records arguments e)})
