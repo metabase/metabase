@@ -45,7 +45,7 @@ jobs:
               "/cross-version/"
             ];
 
-                        const defaultOptions = {
+            const defaultOptions = {
               "java-version": java,
               runner: defaultRunner,
               specs: "./e2e/test/scenarios/**/*.cy.spec.*",

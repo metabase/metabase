@@ -143,11 +143,11 @@ jobs:
     with:
       name: Flaky Tests
       tags: "@flaky"
-      openldap: true
+      mongo: true
       postgres: true
       mysql: true
-      mongo: true
       maildev: true
+      openldap: true
       webhook: true
 
   e2e-tests-result:
