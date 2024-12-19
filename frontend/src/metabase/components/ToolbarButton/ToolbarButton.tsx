@@ -25,7 +25,6 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
     hasBackground = true,
     children,
     disabled,
-    className,
     ...actionIconProps
   }: ToolbarButtonProps,
   ref: Ref<HTMLButtonElement>,
