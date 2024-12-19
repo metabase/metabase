@@ -759,7 +759,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       // add the quanity question to the blue dashboard
       H.editDashboard();
-      H.openAddQuestionMenu("Existing Question");
+      H.openQuestionsSidebar();
 
       H.sidebar().findByText("First collection").click();
       H.sidebar().findByText("Average Quantity by Month Question").click();
@@ -771,7 +771,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       // add the total question to the purple dashboard
       H.editDashboard();
-      H.openAddQuestionMenu("Existing Question");
+      H.openQuestionsSidebar();
 
       H.sidebar().findByText("First collection").click();
       H.sidebar().findByText("Average Order Total by Month Question").click();
@@ -904,7 +904,7 @@ describe("Dashboard > Dashboard Questions", () => {
       });
 
       H.editDashboard();
-      H.openAddQuestionMenu("Existing Question");
+      H.openQuestionsSidebar();
       H.sidebar()
         .findByText(/our analyt/i)
         .click();

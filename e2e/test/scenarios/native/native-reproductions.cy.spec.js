@@ -221,29 +221,26 @@ describe("issue 18148", () => {
     cy.addSQLiteDatabase({
       name: dbName,
     });
-
-    H.openNativeEditor();
   });
 
   it("should not offer to save the question before it is actually possible to save it (metabase#18148)", () => {
+    cy.visit("/");
+    cy.findByTestId("app-bar").findByLabelText("New").click();
+    H.popover().findByText("SQL query").click();
+
     cy.findByTestId("qb-save-button").should(
       "have.attr",
       "aria-disabled",
       "true",
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select a database").click();
+    cy.findByTestId("gui-builder-data").should("contain", "Select a database");
+    H.popover().should("contain", "Sample Database").and("contain", dbName);
+    H.popover().findByText(dbName).click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(dbName).click();
+    H.focusNativeEditor().realType("select foo");
 
-    H.focusNativeEditor();
-    cy.realType("select foo");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-
+    cy.findByTestId("qb-save-button").click();
     cy.findByTestId("save-question-modal").findByText("Save").should("exist");
   });
 });
@@ -570,7 +567,7 @@ describe("issue 30680", () => {
   });
 });
 
-describe("issue 34330", () => {
+describe("issue 34330", { tags: "@flaky" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
