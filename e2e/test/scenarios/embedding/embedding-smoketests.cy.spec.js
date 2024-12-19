@@ -379,13 +379,15 @@ function ensureEmbeddingIsDisabled() {
 function visitAndEnableSharing(object, acceptTerms = true) {
   if (object === "question") {
     H.visitQuestion(ORDERS_QUESTION_ID);
+
+    H.openStaticEmbeddingModal({ context: "question", acceptTerms });
   }
 
   if (object === "dashboard") {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
-  }
 
-  H.openStaticEmbeddingModal({ acceptTerms });
+    H.openStaticEmbeddingModal({ context: "dashboard", acceptTerms });
+  }
 }
 
 function sidebar() {

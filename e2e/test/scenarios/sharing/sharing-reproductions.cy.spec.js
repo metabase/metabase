@@ -665,6 +665,7 @@ H.describeEE("issue 26988", () => {
     });
 
     H.openStaticEmbeddingModal({
+      context: "dashboard",
       activeTab: "lookAndFeel",
       previewMode: "preview",
       acceptTerms: false,

@@ -690,6 +690,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           }
 
           H.openStaticEmbeddingModal({
+            context: test.case,
             activeTab: "parameters",
             confirmSave: test.confirmSave,
           });

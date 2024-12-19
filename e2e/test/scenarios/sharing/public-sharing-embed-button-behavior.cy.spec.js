@@ -390,7 +390,7 @@ describe("#39152 sharing an unsaved question", () => {
           cy.get("@resourceId").then(id => {
             visitResource(resource, id);
           });
-          H.openStaticEmbeddingModal();
+          H.openStaticEmbeddingModal({ context: resource });
 
           cy.log("Assert copying codes in Overview tab");
           cy.findByTestId("embed-backend")
@@ -531,7 +531,10 @@ describe("#39152 sharing an unsaved question", () => {
             cy.get("@resourceId").then(id => {
               visitResource(resource, id);
             });
-            H.openStaticEmbeddingModal({ acceptTerms: false });
+            H.openStaticEmbeddingModal({
+              context: resource,
+              acceptTerms: false,
+            });
 
             cy.log("Assert copying codes in Overview tab");
             cy.findByTestId("embed-backend")
@@ -657,7 +660,10 @@ describe("#39152 sharing an unsaved question", () => {
           });
 
           cy.log("changing parameters, so we could discard changes");
-          H.openStaticEmbeddingModal({ activeTab: "parameters" });
+          H.openStaticEmbeddingModal({
+            context: resource,
+            activeTab: "parameters",
+          });
           H.modal().button("Price").click();
           H.popover().findByText("Editable").click();
 
@@ -678,7 +684,7 @@ describe("#39152 sharing an unsaved question", () => {
           cy.get("@resourceId").then(id => {
             visitResource(resource, id);
           });
-          H.openStaticEmbeddingModal();
+          H.openStaticEmbeddingModal({ context: resource });
 
           cy.findByTestId("embed-modal-content-status-bar")
             .button("Publish")
@@ -743,7 +749,7 @@ describe("#39152 sharing an unsaved question", () => {
             enableEmbeddingForResource({ resource, id });
             visitResource(resource, id);
           });
-          H.openStaticEmbeddingModal();
+          H.openStaticEmbeddingModal({ context: resource });
 
           const HOUR = 60 * 60 * 1000;
           cy.clock(new Date(Date.now() + HOUR));

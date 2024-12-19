@@ -1,7 +1,6 @@
+import { H } from "e2e/support";
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
-
-import { openSharingMenu } from "./e2e-sharing-helpers";
 
 /**
  * @typedef {object} QuestionResource
@@ -193,17 +192,23 @@ export function getEmbedModalSharingPane() {
 /**
  * Open Static Embedding setup modal
  * @param {object} params
+ * @param {("dashboard"|"question")} params.context - context to look for actions menu
  * @param {("overview"|"parameters"|"lookAndFeel")} [params.activeTab] - modal tab to open
  * @param {("code"|"preview")} [params.previewMode] - preview mode type to activate
  * @param {boolean} [params.acceptTerms] - whether we need to go through the legalese step
  */
 export function openStaticEmbeddingModal({
+  context,
   activeTab,
   previewMode,
   acceptTerms = true,
   confirmSave,
 } = {}) {
-  openSharingMenu("Embed");
+  if (context === "dashboard") {
+    H.openDashboardMenu("Embed");
+  } else {
+    H.openQuestionActions("Embed");
+  }
 
   if (confirmSave) {
     cy.findByRole("button", { name: "Save" }).click();
@@ -281,7 +286,11 @@ export function openNewPublicLinkDropdown(resourceType) {
     "sharingEnabled",
   );
 
-  openSharingMenu(/public link/i);
+  if (resourceType === "dashboard") {
+    H.openDashboardMenu(/public link/i);
+  } else {
+    H.openQuestionActions(/public link/i);
+  }
 
   cy.wait("@sharingEnabled").then(
     ({
