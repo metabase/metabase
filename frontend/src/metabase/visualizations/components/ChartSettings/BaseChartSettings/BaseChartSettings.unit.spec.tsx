@@ -28,7 +28,7 @@ function widget(widget: Partial<Widget> = {}): Widget {
     section: "section-" + Math.random(),
     props: {},
     ...widget,
-  };
+  } as Widget;
 }
 
 type SetupOpts = Partial<BaseChartSettingsProps>;

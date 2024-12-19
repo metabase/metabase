@@ -1,6 +1,6 @@
 import type { CacheStrategy, LocalFieldReference } from "metabase-types/api";
 
-import type { Card } from "./card";
+import type { Card, OtherCategoryAggregationFn } from "./card";
 import type { DatabaseId } from "./database";
 import type { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
 import type { Insight } from "./insight";
@@ -20,15 +20,10 @@ export type BinningMetadata = {
 
 export type AggregationType =
   | "count"
-  | "sum"
   | "cum-sum"
   | "cum-count"
   | "distinct"
-  | "min"
-  | "max"
-  | "avg"
-  | "median"
-  | "stddev";
+  | OtherCategoryAggregationFn;
 
 export interface DatasetColumn {
   id?: FieldId;
