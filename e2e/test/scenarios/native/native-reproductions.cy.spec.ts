@@ -103,7 +103,7 @@ describe("issue 38083", () => {
       .contains(QUESTION.native["template-tags"].state["display-name"])
       .parent("fieldset")
       .within(() => {
-        cy.icon("time_history").should("not.exist");
+        cy.icon("revert").should("not.exist");
       });
   });
 });

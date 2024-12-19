@@ -2,12 +2,12 @@
 import { createSelector } from "@reduxjs/toolkit";
 import PropTypes from "prop-types";
 import { Component } from "react";
-import { connect } from "react-redux";
 import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import paginationState from "metabase/hoc/PaginationState";
 import { capitalize } from "metabase/lib/formatting";
+import { connect } from "metabase/lib/redux";
 
 import entityType from "./EntityType";
 

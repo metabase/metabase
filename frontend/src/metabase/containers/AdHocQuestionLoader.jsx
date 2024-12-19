@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import { connect } from "react-redux";
 
 import { deserializeCardFromUrl } from "metabase/lib/card";
+import { connect } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";

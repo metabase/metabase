@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import { connect } from "react-redux";
 
+import { connect } from "metabase/lib/redux";
 import { fetchRemapping } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 

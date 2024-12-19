@@ -145,7 +145,7 @@ H.describeEE("formatting > whitelabel", () => {
             cy.findByRole("searchbox", {
               name: "Login and unsubscribe pages",
             }).click();
-            H.popover().findByText("Custom").click();
+            H.selectDropdown().findByText("Custom").click();
             /**
              * Clicking "Choose File" doesn't actually open the file browser on Cypress,
              * so I need to use `selectFile` with the file input instead.
@@ -167,7 +167,7 @@ H.describeEE("formatting > whitelabel", () => {
             cy.findByRole("searchbox", {
               name: "Login and unsubscribe pages",
             }).click();
-            H.popover().findByText("Custom").click();
+            H.selectDropdown().findByText("Custom").click();
             cy.log("test uploading a corrupted file");
             cy.findByTestId("login-page-illustration-setting").within(() => {
               cy.findByTestId("file-input").selectFile(
@@ -219,7 +219,7 @@ H.describeEE("formatting > whitelabel", () => {
             cy.findByTestId("login-page-illustration-setting")
               .findByRole("searchbox", { name: "Login and unsubscribe pages" })
               .click();
-            H.popover().findByText("Custom").click();
+            H.selectDropdown().findByText("Custom").click();
             cy.findByTestId("login-page-illustration-setting").within(() => {
               cy.findByTestId("file-input").selectFile(
                 {
@@ -261,7 +261,7 @@ H.describeEE("formatting > whitelabel", () => {
             cy.findByRole("searchbox", {
               name: "Login and unsubscribe pages",
             }).click();
-            H.popover().findByText("No illustration").click();
+            H.selectDropdown().findByText("No illustration").click();
 
             cy.signOut();
             cy.visit("/");
@@ -285,7 +285,7 @@ H.describeEE("formatting > whitelabel", () => {
           );
 
           cy.findByRole("searchbox", { name: "Landing page" }).click();
-          H.popover().findByText("Custom").click();
+          H.selectDropdown().findByText("Custom").click();
 
           cy.findByTestId("landing-page-illustration-setting").within(() => {
             cy.findByTestId("file-input").selectFile(
@@ -315,7 +315,7 @@ H.describeEE("formatting > whitelabel", () => {
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
           cy.findByLabelText("Landing page").click();
-          H.popover().findByText("No illustration").click();
+          H.selectDropdown().findByText("No illustration").click();
 
           cy.visit("/");
           cy.findByTestId("landing-page-illustration").should("not.exist");
@@ -333,7 +333,7 @@ H.describeEE("formatting > whitelabel", () => {
           cy.findByRole("searchbox", {
             name: "When calculations return no results",
           }).click();
-          H.popover().findByText("Custom").click();
+          H.selectDropdown().findByText("Custom").click();
 
           cy.findByTestId("no-data-illustration-setting").within(() => {
             cy.findByTestId("file-input").selectFile(
@@ -392,7 +392,7 @@ H.describeEE("formatting > whitelabel", () => {
           cy.findByRole("searchbox", {
             name: "When calculations return no results",
           }).click();
-          H.popover().findByText("No illustration").click();
+          H.selectDropdown().findByText("No illustration").click();
 
           H.visitDashboard("@dashboardId");
           cy.findByAltText("No results").should("not.exist");
@@ -415,7 +415,7 @@ H.describeEE("formatting > whitelabel", () => {
           cy.findByRole("searchbox", {
             name: "When no objects can be found",
           }).click();
-          H.popover().findByText("Custom").click();
+          H.selectDropdown().findByText("Custom").click();
 
           cy.findByTestId("no-object-illustration-setting").within(() => {
             cy.findByTestId("file-input").selectFile(
@@ -462,7 +462,7 @@ H.describeEE("formatting > whitelabel", () => {
           cy.findByRole("searchbox", {
             name: "When no objects can be found",
           }).click();
-          H.popover().findByText("No illustration").click();
+          H.selectDropdown().findByText("No illustration").click();
 
           cy.findByRole("navigation").findByText("Exit admin").click();
           H.appBar().findByText("New").click();

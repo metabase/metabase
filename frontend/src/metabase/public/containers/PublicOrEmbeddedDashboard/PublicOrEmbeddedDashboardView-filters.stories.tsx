@@ -3,12 +3,12 @@ import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryContext, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/testing-library";
 import { type ComponentProps, useEffect } from "react";
-import { Provider } from "react-redux";
 
 import { getStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
+import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { publicReducers } from "metabase/reducers-public";
 import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
@@ -101,9 +101,9 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
 
   const store = getStore(publicReducers, initialState);
   return (
-    <Provider store={store}>
+    <MetabaseReduxProvider store={store}>
       <Story />
-    </Provider>
+    </MetabaseReduxProvider>
   );
 }
 

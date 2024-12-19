@@ -52,7 +52,7 @@ const ColorInput = forwardRef(function ColorInput(
 
   return (
     <TextInput
-      {..._.omit(props, "size")}
+      {..._.omit(props, ["size", "fullWidth"])}
       ref={ref}
       value={isFocused ? inputText : colorText}
       onFocus={handleFocus}

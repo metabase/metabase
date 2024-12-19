@@ -16,11 +16,12 @@ import {
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { Flex } from "metabase/ui";
 import type { Alert } from "metabase-types/api";
 
 import { AlertEditForm } from "./AlertEditForm";
 import { AlertModalTitle } from "./AlertModalTitle";
-import { AlertModalFooter } from "./AlertModals.styled";
+import AlertModalsS from "./AlertModals.module.css";
 import { DeleteAlertSection } from "./DeleteAlertSection";
 
 interface UpdateAlertModalContentProps {
@@ -79,14 +80,14 @@ export const UpdateAlertModalContent = ({
           <DeleteAlertSection alert={alert} onDeleteAlert={onDeleteAlert} />
         )}
 
-        <AlertModalFooter>
+        <Flex className={AlertModalsS.AlertModalsFooter}>
           <Button onClick={onCancel} className={CS.mr2}>{t`Cancel`}</Button>
           <ButtonWithStatus
             titleForState={{ default: t`Save changes` }}
             disabled={!isValid}
             onClickOperation={onUpdateAlert}
           />
-        </AlertModalFooter>
+        </Flex>
       </div>
     </ModalContent>
   );

@@ -4,9 +4,9 @@ import { merge } from "icepick";
 import { useCallback, useMemo, useState } from "react";
 import type * as tippy from "tippy.js";
 
-import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import EventSandbox from "metabase/components/EventSandbox";
-import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
+import { getPortalRootElement } from "metabase/css/core/overlays/utils";
+import ZIndex from "metabase/css/core/z-index.module.css";
 import { isCypressActive } from "metabase/env";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
@@ -28,13 +28,6 @@ export interface ITippyPopoverProps extends TippyProps {
 }
 
 const OFFSET: [number, number] = [0, 5];
-
-function appendTo() {
-  return (
-    document.getElementById(EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID) ||
-    document.body
-  );
-}
 
 function getPopperOptions({
   flip,
@@ -87,7 +80,6 @@ function TippyPopover({
   const isControlled = props.visible != null;
 
   const theme = useMantineTheme();
-  const { zIndex = DEFAULT_Z_INDEX } = theme.other.popover ?? {};
 
   const { setupCloseHandler, removeCloseHandler } =
     useSequencedContentCloseHandler();
@@ -134,14 +126,18 @@ function TippyPopover({
     [flip, sizeToFit, popperOptions],
   );
 
+  const zIndex =
+    theme.other.popover?.zIndex ||
+    ("var(--mb-overlay-z-index)" as unknown as number);
+
   return (
     <TippyComponent
-      className={cx("popover", className)}
+      className={cx("popover", ZIndex.Overlay, className)}
       theme="popover"
       zIndex={zIndex}
       arrow={false}
       offset={OFFSET}
-      appendTo={appendTo}
+      appendTo={getPortalRootElement}
       plugins={plugins}
       {...props}
       popperOptions={computedPopperOptions}

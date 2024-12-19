@@ -580,7 +580,7 @@ describe("issue 33427", () => {
 
     assertColumnHeaders();
 
-    cy.findByLabelText("Move, trash, and more...").click();
+    cy.findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Edit metadata").click();
 
     H.openColumnOptions("CREATED_BY");

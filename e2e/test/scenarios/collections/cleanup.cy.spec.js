@@ -4,11 +4,11 @@ import { P, isMatching } from "ts-pattern";
 
 import { H } from "e2e/support";
 import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
-const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 import {
   FIRST_COLLECTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 
 describe("scenarios > collections > clean up", () => {
   beforeEach(() => {
@@ -410,9 +410,7 @@ const selectCleanThingsUpCollectionAction = () => {
 };
 const setDateFilter = timeSpan => {
   dateFilter().click();
-  H.popover().within(() => {
-    cy.findByText(timeSpan).click();
-  });
+  H.selectDropdown().findByText(timeSpan).click();
 };
 
 const selectAllItems = () => {

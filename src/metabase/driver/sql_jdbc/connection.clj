@@ -280,7 +280,7 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   nil)
 
 (defn db->pooled-connection-spec
-  "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`. These connection pools are cached so we
+  "Return a JDBC connection spec that includes a c3p0 `ComboPooledDataSource`. These connection pools are cached so we
   don't create multiple ones for the same DB."
   [db-or-id-or-spec]
   (cond

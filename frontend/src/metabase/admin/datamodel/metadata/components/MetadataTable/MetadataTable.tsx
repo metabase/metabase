@@ -1,7 +1,6 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,6 +9,7 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
+import { connect } from "metabase/lib/redux";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";

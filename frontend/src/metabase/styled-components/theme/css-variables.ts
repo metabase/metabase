@@ -22,6 +22,7 @@ const CSS_VARIABLES_TO_SDK_THEME_MAP = {
     "collectionBrowser.breadcrumbs.expandButton.hoverTextColor",
   "--mb-color-bg-collection-browser-expand-button-hover":
     "collectionBrowser.breadcrumbs.expandButton.hoverBackgroundColor",
+  "--mb-overlay-z-index": "popover.zIndex",
 } satisfies Record<string, MetabaseComponentThemeKey>;
 
 // https://www.raygesualdo.com/posts/flattening-object-keys-with-typescript-types/

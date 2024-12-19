@@ -13,7 +13,6 @@ import FormTextArea from "metabase/core/components/FormTextArea";
 import CoreStyles from "metabase/css/core/index.css";
 import { Form, FormSubmitButton } from "metabase/forms";
 import { isNullOrUndefined } from "metabase/lib/types";
-import { DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import CS from "./SaveQuestionForm.module.css";
@@ -92,7 +91,6 @@ export const SaveQuestionForm = ({
               collectionIdFieldName="collection_id"
               dashboardIdFieldName="dashboard_id"
               title={t`Where do you want to save this?`}
-              zIndex={DEFAULT_MODAL_Z_INDEX + 1}
               collectionPickerModalProps={{ models }}
             />
           )}

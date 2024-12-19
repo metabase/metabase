@@ -1,10 +1,10 @@
 import type { LocationDescriptor } from "history";
 import { useCallback } from "react";
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";

@@ -1,10 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
 
 import { AggregationPicker } from "metabase/common/components/AggregationPicker";
-import { Popover } from "metabase/ui";
+import { Box, Icon, Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
-import { AggregationName, RemoveIcon, Root } from "./AggregationItem.styled";
+import AggregationItemS from "./AggregationItem.module.css";
 
 interface AggregationItemProps {
   query: Lib.Query;
@@ -32,14 +32,21 @@ export function AggregationItem({
   return (
     <Popover opened={isOpened} onChange={toggle}>
       <Popover.Target>
-        <Root
+        <button
+          className={AggregationItemS.Root}
           aria-label={displayName}
           data-testid="aggregation-item"
           onClick={toggle}
         >
-          <AggregationName>{displayName}</AggregationName>
-          <RemoveIcon name="close" onClick={onAggregationRemove} />
-        </Root>
+          <Box component="span" className={AggregationItemS.AggregationName}>
+            {displayName}
+          </Box>
+          <Icon
+            className={AggregationItemS.RemoveIcon}
+            name="close"
+            onClick={onAggregationRemove}
+          />
+        </button>
       </Popover.Target>
       <Popover.Dropdown>
         <AggregationPicker

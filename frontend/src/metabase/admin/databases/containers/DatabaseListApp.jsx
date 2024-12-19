@@ -1,8 +1,8 @@
-import { connect } from "react-redux";
 import _ from "underscore";
 
 import LoadingAndGenericErrorWrapper from "metabase/components/LoadingAndGenericErrorWrapper";
 import Database from "metabase/entities/databases";
+import { connect } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";

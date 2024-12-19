@@ -461,7 +461,7 @@ function shouldNotHaveBookmark(name: string) {
 function verifyMetric(metric: StructuredQuestionDetailsWithName) {
   metricsTable().findByText(metric.name).should("be.visible").click();
 
-  cy.button("Move, trash, and more...").click();
+  cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Verify this metric").click();
 
   H.openNavigationSidebar();
@@ -474,7 +474,7 @@ function verifyMetric(metric: StructuredQuestionDetailsWithName) {
 function unverifyMetric(metric: StructuredQuestionDetailsWithName) {
   metricsTable().findByText(metric.name).should("be.visible").click();
 
-  cy.button("Move, trash, and more...").click();
+  cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Remove verification").click();
 
   H.openNavigationSidebar();

@@ -1,12 +1,12 @@
-import type {
-  AnyAction,
-  Reducer,
-  Store,
-  ThunkDispatch,
-} from "@reduxjs/toolkit";
+/* eslint-disable no-restricted-imports */
+import type { AnyAction, Reducer, Store } from "@reduxjs/toolkit";
 import { useContext } from "react";
-import { ReactReduxContext, useDispatch, useStore } from "react-redux";
 
+import {
+  MetabaseReduxContext,
+  useDispatch,
+  useStore,
+} from "metabase/lib/redux";
 import { mainReducers } from "metabase/reducers-main";
 import { getStore } from "metabase/store";
 
@@ -29,11 +29,7 @@ export const getSdkStore = () =>
     },
   }) as unknown as Store<SdkStoreState, AnyAction>;
 
-export const useSdkDispatch: () => ThunkDispatch<
-  SdkStoreState,
-  void,
-  AnyAction
-> = () => {
+export const useSdkDispatch = () => {
   useCheckSdkReduxContext();
 
   return useDispatch();
@@ -46,7 +42,7 @@ export const useSdkStore = () => {
 };
 
 const useCheckSdkReduxContext = () => {
-  const context = useContext(ReactReduxContext);
+  const context = useContext(MetabaseReduxContext);
 
   if (!context) {
     console.warn(

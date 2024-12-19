@@ -3,10 +3,11 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { AggregationPicker } from "metabase/common/components/AggregationPicker";
+import Button from "metabase/core/components/Button";
 import { Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { AddAggregationButtonRoot } from "./AddAggregationButton.styled";
+import AddAggregationButtonS from "./AddAggregationButton.module.css";
 
 interface AddAggregationButtonProps {
   query: Lib.Query;
@@ -34,7 +35,8 @@ export function AddAggregationButton({
     <Popover opened={isOpened} onChange={setIsOpened}>
       <Popover.Target>
         {renderTooltip(
-          <AddAggregationButtonRoot
+          <Button
+            className={AddAggregationButtonS.AddAggregationButtonRoot}
             icon="add"
             borderless
             onlyIcon={hasAggregations}
@@ -43,7 +45,7 @@ export function AddAggregationButton({
             data-testid="add-aggregation-button"
           >
             {hasAggregations ? null : t`Add a function or metric`}
-          </AddAggregationButtonRoot>,
+          </Button>,
         )}
       </Popover.Target>
       <Popover.Dropdown>

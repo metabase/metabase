@@ -1,12 +1,7 @@
 import { updateIn } from "icepick";
 import { t } from "ttag";
 
-import {
-  actionApi,
-  createActionPublicLink,
-  deleteActionPublicLink,
-  useGetActionQuery,
-} from "metabase/api";
+import { actionApi, useGetActionQuery } from "metabase/api";
 import {
   createEntity,
   entityCompatibleQuery,
@@ -178,9 +173,11 @@ const Actions = createEntity({
       CREATE_PUBLIC_LINK,
       ({ id }: { id: WritebackActionId }) =>
         async (dispatch: Dispatch) => {
-          const { data } = await (dispatch(
-            createActionPublicLink.initiate({ id }),
-          ) as Promise<{ data: { uuid: string } }>);
+          const data = await entityCompatibleQuery(
+            { id },
+            dispatch,
+            actionApi.endpoints.createActionPublicLink,
+          );
 
           return { id, uuid: data.uuid };
         },
@@ -189,7 +186,11 @@ const Actions = createEntity({
       DELETE_PUBLIC_LINK,
       ({ id }: { id: WritebackActionId }) =>
         async (dispatch: Dispatch) => {
-          await dispatch(deleteActionPublicLink.initiate({ id }));
+          await entityCompatibleQuery(
+            { id },
+            dispatch,
+            actionApi.endpoints.deleteActionPublicLink,
+          );
 
           return { id };
         },

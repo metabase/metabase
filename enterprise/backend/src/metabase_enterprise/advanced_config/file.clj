@@ -219,7 +219,9 @@
       (str/join parts))))
 
 (defn- expand-templates-in-str [s]
-  (str/join (map expand-template-str-part (params.parse/parse s))))
+  (if-let [[_, raw-string] (re-matches #"\{\{\{(.+)\}\}\}" s)]
+    (str/trim raw-string)
+    (str/join (map expand-template-str-part (params.parse/parse s)))))
 
 (defn- expand-templates [m]
   (walk/postwalk

@@ -10,6 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.ident :as lib.ident]
    [metabase.lib.join.util :as lib.join.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -66,6 +67,7 @@
               alias-for-join           (join-alias table-name fk-name)]
           (-> {:source-table source-table
                :alias        alias-for-join
+               :ident        (lib.ident/random-ident)
                :fields       :none
                :strategy     :left-join
                :condition    [:= [:field fk-field-id nil] [:field pk-id {:join-alias alias-for-join}]]

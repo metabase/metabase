@@ -1,4 +1,4 @@
-import { Icon, Tabs } from "metabase/ui";
+import { Flex, Icon, Tabs } from "metabase/ui";
 import type { SearchResultId } from "metabase-types/api";
 
 import type {
@@ -39,22 +39,38 @@ export const TabsView = <
       }}
       data-testid="tabs-view"
     >
-      <Tabs.List px="1rem">
-        {tabs.map(tab => {
-          const { id, icon, displayName } = tab;
+      <Flex
+        justify="space-between"
+        align="center"
+        px="2.5rem"
+        style={{
+          borderBottom: "1px solid var(--mb-color-border)",
+        }}
+        pb="1px" // Keeps the selected tab underline above the border
+      >
+        <Tabs.List
+          h="2.5rem"
+          style={{
+            borderBottom: "none",
+          }}
+        >
+          {tabs.map(tab => {
+            const { id, icon, displayName } = tab;
 
-          return (
-            <Tabs.Tab
-              key={id}
-              value={id}
-              icon={<Icon name={icon} />}
-              onClick={() => onTabChange(id)}
-            >
-              {displayName}
-            </Tabs.Tab>
-          );
-        })}
-      </Tabs.List>
+            return (
+              <Tabs.Tab
+                key={id}
+                value={id}
+                icon={<Icon name={icon} />}
+                onClick={() => onTabChange(id)}
+              >
+                {displayName}
+              </Tabs.Tab>
+            );
+          })}
+        </Tabs.List>
+        {tabs.find(tab => tab.id === selectedTabId)?.extraButtons || null}
+      </Flex>
 
       {tabs.map(tab => {
         const { id } = tab;

@@ -573,6 +573,8 @@
        :name "Created At excludes 3 hour of day selections"}
       {:clause [:!= (lib/get-hour created-at) 0 1 2]
        :name "Created At excludes 3 hour of day selections"}
+      {:clause [:not-in (lib/get-hour created-at) 0 1 2]
+       :name "Created At excludes 3 hour of day selections"}
 
       {:clause [:= (created-at-with :day-of-week) "2023-10-02"]
        :name "Created At: Day of week is Monday"}
@@ -589,6 +591,8 @@
       {:clause [:!= (created-at-with :day-of-week) "2023-10-02" "2023-10-03" "2023-10-04"]
        :name "Created At excludes 3 day of week selections"}
       {:clause [:!= (lib.expression/get-day-of-week created-at :iso) 1 2 3]
+       :name "Created At excludes 3 day of week selections"}
+      {:clause [:not-in (lib.expression/get-day-of-week created-at :iso) 1 2 3]
        :name "Created At excludes 3 day of week selections"}
 
       {:clause [:= (created-at-with :month-of-year) "2023-01-01"]
@@ -607,6 +611,8 @@
        :name "Created At excludes 3 month of year selections"}
       {:clause [:!= (lib/get-month created-at) 1 2 3]
        :name "Created At excludes 3 month of year selections"}
+      {:clause [:not-in (lib/get-month created-at) 1 2 3]
+       :name "Created At excludes 3 month of year selections"}
 
       {:clause [:= (created-at-with :quarter-of-year) "2023-01-03"]
        :name "Created At: Quarter of year is on Q1"}
@@ -623,6 +629,8 @@
       {:clause [:!= (created-at-with :quarter-of-year) "2023-01-03" "2023-04-03" "2023-07-03"]
        :name "Created At excludes 3 quarter of year selections"}
       {:clause [:!= (lib/get-quarter created-at) 1 2 3]
+       :name "Created At excludes 3 quarter of year selections"}
+      {:clause [:not-in (lib/get-quarter created-at) 1 2 3]
        :name "Created At excludes 3 quarter of year selections"}
 
       {:clause [:is-null created-at]

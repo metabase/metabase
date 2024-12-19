@@ -1,8 +1,6 @@
 import { useState } from "react";
 
-import { Button, Flex, Text } from "metabase/ui";
-
-import { Modal, type ModalProps } from "./";
+import { Button, Flex, Modal, type ModalProps, Text } from "metabase/ui";
 
 const args = {
   centered: true,

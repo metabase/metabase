@@ -71,6 +71,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.ident :as lib.ident]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models :refer [Field FieldValues Table]]
    [metabase.models.database :as database]
@@ -361,6 +362,7 @@
                                 [:field lhs-field-id (when-not (= lhs-table-id source-table-id)
                                                        {:join-alias (joined-table-alias lhs-table-id)})]
                                 [:field rhs-field-id {:join-alias (joined-table-alias rhs-table-id)}]]
+                 :ident        (lib.ident/random-ident)
                  :alias        (joined-table-alias rhs-table-id)}]
        (log/tracef "Adding join against %s\n%s"
                    (name-for-logging Table rhs-table-id) (u/pprint-to-str join))
@@ -404,14 +406,9 @@
                  (log/tracef "Generating joins and filters for source %s with joins info\n%s"
                              (name-for-logging Table source-table-id) (pr-str joins)))
                (-> (merge {:source-table source-table-id
-                           ;; original-field-id is used to power Field->Field breakouts. We include both remapped and
-                           ;; original
-                           :breakout     (if original-field-clause
-                                           [original-field-clause [:field field-id nil]]
-                                           [[:field field-id nil]])
                            ;; return the lesser of limit (if set) or max results
                            :limit        ((fnil min Integer/MAX_VALUE) limit max-results)}
-                          (when original-field-clause
+                          (if original-field-clause
                             {;; don't return rows that don't have values for the original Field. e.g. if
                              ;; venues.category_id is remapped to categories.name and we do a search with query 's',
                              ;; we only want to return [category_id name] tuples where [category_id] is not nil
@@ -422,7 +419,13 @@
                              :filter   [:not-null original-field-clause]
                              ;; for Field->Field remapping we want to return pairs of [original-value remapped-value],
                              ;; but sort by [remapped-value]
-                             :order-by [[:asc [:field field-id nil]]]}))
+                             :order-by [[:asc [:field field-id nil]]]
+                             ;; original-field-id is used to power Field->Field breakouts.
+                             ;; We include both remapped and original
+                             :breakout    [original-field-clause [:field field-id nil]]
+                             :breakout-idents (lib.ident/indexed-idents 2)}
+                            {:breakout    [[:field field-id nil]]
+                             :breakout-idents (lib.ident/indexed-idents 1)}))
                    (add-joins source-table-id joins)
                    (add-filters source-table-id joined-table-ids constraints)
                    metadata-queries/add-required-filters-if-needed))

@@ -30,18 +30,6 @@ export const InfoContainer = styled(Container)`
   padding: 1.1em;
 `;
 
-export const Description = styled.div`
-  white-space: pre-line;
-  max-height: 200px;
-  overflow: auto;
-  margin-bottom: 0.5em;
-`;
-
-export const EmptyDescription = styled(Description)`
-  color: var(--mb-color-text-light);
-  font-weight: 700;
-`;
-
 export const LabelContainer = styled.div`
   display: inline-flex;
   align-items: center;

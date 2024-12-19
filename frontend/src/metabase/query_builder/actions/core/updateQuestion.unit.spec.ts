@@ -175,6 +175,7 @@ async function setup({
 
 const REVIEW_JOIN_CLAUSE: Join = {
   alias: "Products",
+  ident: "gxyP-LOf7Zn96z8IWueoH",
   condition: [
     "=",
     ["field", ORDERS.ID, null],

@@ -109,7 +109,14 @@ export const openSidebarCacheStrategyForm = (
   openSidebar(type);
   cy.wait("@getCacheConfig");
   cy.findByLabelText("When to get new results").click();
+  return cacheStrategySidesheet();
 };
+
+export const cacheStrategySidesheet = () =>
+  cy.findByRole("dialog", { name: /Caching settings/ }).should("be.visible");
+
+export const questionSettingsSidesheet = () =>
+  cy.findByRole("dialog", { name: /Question settings/ }).should("be.visible");
 
 export const cancelConfirmationModal = () => {
   modal().within(() => {

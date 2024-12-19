@@ -193,7 +193,8 @@
       (http-fake/with-fake-routes fake-upload-routes
         (tu/with-temporary-setting-values [slack-token "test-token"
                                            slack-app-token nil]
-          (is (= "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
+          (is (= {:url "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
+                  :id "DDDDDDDDD-EEEEEEEEE"}
                  (slack/upload-file! image-bytes filename channel-id)))))
       ;; Slack app token requires joining the `metabase_files` channel before uploading a file
       (http-fake/with-fake-routes
@@ -202,7 +203,8 @@
                (fn [_] (mock-200-response (slurp "./test_resources/slack_conversations_join_response.json"))))
         (tu/with-temporary-setting-values [slack-token nil
                                            slack-app-token "test-token"]
-          (is (= "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
+          (is (= {:url "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
+                  :id "DDDDDDDDD-EEEEEEEEE"}
                  (slack/upload-file! image-bytes filename channel-id))))
         (testing (str "upload-file! will attempt to join channels by internal slack id"
                       " but we can continue to use the channel name for posting")

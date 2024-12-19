@@ -31,7 +31,7 @@ export function QuestionSubscriptionsMenuItem({
 
   return (
     <CommonNotificationsMenuItem
-      title={hasSubscriptions ? t`Edit subscriptions` : t`Create subscription`}
+      title={hasSubscriptions ? t`Edit subscriptions` : t`Create subscriptions`}
       iconName={hasSubscriptions ? "mail_filled" : "mail"}
       onClick={onClick}
     />

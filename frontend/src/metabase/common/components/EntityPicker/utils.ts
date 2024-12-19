@@ -74,7 +74,7 @@ export const computeInitialTabId = <
 
   const initialValueTab =
     initialValue?.model &&
-    tabs.find(tab => tab.models?.includes(initialValue.model as Model));
+    tabs.find(tab => tab.models.includes(initialValue.model as Model));
 
   if (initialValueTab) {
     return initialValueTab.id;
@@ -168,6 +168,10 @@ export const getSearchInputPlaceholder = <
     }
 
     return t`Search this schema or everywhere…`;
+  }
+
+  if (folder?.model === "dashboard") {
+    return t`Search this dashboard or everywhere…`;
   }
 
   return t`Search…`;

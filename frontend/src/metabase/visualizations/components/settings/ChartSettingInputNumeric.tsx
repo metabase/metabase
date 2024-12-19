@@ -1,11 +1,11 @@
-import type * as React from "react";
-import { useState } from "react";
+import { type ChangeEvent, useState } from "react";
 import _ from "underscore";
 
-import { ChartSettingNumericInput } from "./ChartSettingInputNumeric.styled";
+import { TextInput } from "metabase/ui";
+
 import type { ChartSettingWidgetProps } from "./types";
 
-const ALLOWED_CHARS = [
+const ALLOWED_CHARS = new Set([
   "0",
   "1",
   "2",
@@ -19,7 +19,7 @@ const ALLOWED_CHARS = [
   ".",
   "-",
   "e",
-];
+]);
 
 // Note: there are more props than these that are provided by the viz settings
 // code, we just don't have types for them here.
@@ -28,32 +28,36 @@ interface ChartSettingInputProps extends ChartSettingWidgetProps<number> {
     isInteger?: boolean;
     isNonNegative?: boolean;
   };
+  id?: string;
+  placeholder?: string;
+  getDefault?: () => string;
 }
 
 export const ChartSettingInputNumeric = ({
   onChange,
   value,
+  placeholder,
   options,
-  ...props
+  id,
+  getDefault,
 }: ChartSettingInputProps) => {
-  const [internalValue, setInternalValue] = useState(value?.toString() ?? "");
+  const [inputValue, setInputValue] = useState<string>(value?.toString() ?? "");
+  const defaultValueProps = getDefault ? { defaultValue: getDefault() } : {};
 
   return (
-    <ChartSettingNumericInput
+    <TextInput
+      id={id}
+      {...defaultValueProps}
+      placeholder={placeholder}
       type="text"
-      {..._.omit(props, "onChangeSettings")}
-      error={internalValue !== "" && isNaN(Number(internalValue))}
-      value={internalValue}
-      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-        const everyCharValid = e.target.value
-          .split("")
-          .every(char => ALLOWED_CHARS.includes(char));
-
-        if (everyCharValid) {
-          setInternalValue(e.target.value);
+      error={inputValue && isNaN(Number(inputValue))}
+      value={String(inputValue)}
+      onChange={(e: ChangeEvent<HTMLInputElement>) => {
+        if (e.target.value.split("").every(ch => ALLOWED_CHARS.has(ch))) {
+          setInputValue(e.target.value);
         }
       }}
-      onBlur={(e: React.ChangeEvent<HTMLInputElement>) => {
+      onBlur={e => {
         let num = e.target.value !== "" ? Number(e.target.value) : Number.NaN;
         if (options?.isInteger) {
           num = Math.round(num);
@@ -66,7 +70,7 @@ export const ChartSettingInputNumeric = ({
           onChange(undefined);
         } else {
           onChange(num);
-          setInternalValue(String(num));
+          setInputValue(String(num));
         }
       }}
     />

@@ -1,7 +1,6 @@
 import cx from "classnames";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { useCallback } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
@@ -15,6 +14,7 @@ import CS from "metabase/css/core/index.css";
 import PersistedModels from "metabase/entities/persisted-models";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { capitalize } from "metabase/lib/formatting";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Icon } from "metabase/ui";
 import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";

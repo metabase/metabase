@@ -107,7 +107,9 @@ describe("ActionCreator > Query Actions", () => {
       const action = createMockQueryAction();
       await setup({ action });
 
-      expect(screen.getByText(action.name)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText(action.name)).toBeInTheDocument();
+      });
       expect(screen.queryByText(/New action/i)).not.toBeInTheDocument();
       expect(
         screen.getByTestId("mock-native-query-editor"),
@@ -130,7 +132,9 @@ describe("ActionCreator > Query Actions", () => {
         }),
       });
 
-      expect(screen.getAllByText("FooBar")).toHaveLength(2);
+      await waitFor(() => {
+        expect(screen.getAllByText("FooBar")).toHaveLength(2);
+      });
     });
 
     it("blocks editing if the user doesn't have write permissions for the collection", async () => {
@@ -139,7 +143,9 @@ describe("ActionCreator > Query Actions", () => {
       });
       await setup({ action, canWrite: false });
 
-      expect(screen.getByDisplayValue(action.name)).toBeDisabled();
+      await waitFor(() => {
+        expect(screen.getByDisplayValue(action.name)).toBeDisabled();
+      });
       expect(queryIcon("grabber")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
       expect(
@@ -157,7 +163,9 @@ describe("ActionCreator > Query Actions", () => {
       });
       await setup({ action, hasActionsEnabled: false });
 
-      expect(screen.getByDisplayValue(action.name)).toBeDisabled();
+      await waitFor(() => {
+        expect(screen.getByDisplayValue(action.name)).toBeDisabled();
+      });
       expect(queryIcon("grabber")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
       expect(

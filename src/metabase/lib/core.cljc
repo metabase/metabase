@@ -233,6 +233,7 @@
   = !=
   < <=
   > >=
+  in not-in
   between
   inside
   is-null not-null

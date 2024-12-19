@@ -40,7 +40,8 @@
 (defn- parse-key
   "Convert suitable string keys to clojure keywords, ignoring keys with whitespace, etc."
   [{k :key}]
-  (if (re-matches #"^[0-9a-zA-Z_\./\-]+$" k)
+  (if (and (string? k)
+           (re-matches #"^[0-9a-zA-Z_\./\-]+$" k))
     (keyword k)
     k))
 
@@ -95,7 +96,8 @@
           (try
             (ingest-file (second target))
             (catch Exception e
-              (throw (ex-info "Unable to ingest file" {:abs-path abs-path} e))))
+              (throw (ex-info "Unable to ingest file" {:file     (.getName ^File (second target))
+                                                       :abs-path abs-path} e))))
           (throw (ex-info "Cannot find file" {:abs-path abs-path})))))))
 
 (defn ingest-yaml

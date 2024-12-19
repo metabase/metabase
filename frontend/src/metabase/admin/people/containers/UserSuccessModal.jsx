@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
@@ -12,6 +11,7 @@ import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import Users from "metabase/entities/users";
+import { connect } from "metabase/lib/redux";
 import { getSetting, isSsoEnabled } from "metabase/selectors/settings";
 
 import { clearTemporaryPassword } from "../people";

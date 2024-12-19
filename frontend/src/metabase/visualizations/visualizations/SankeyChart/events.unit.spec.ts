@@ -65,6 +65,7 @@ describe("createSankeyClickData", () => {
           [getColumnKey(columns[2])]: 10,
         },
         outputColumnValues: {},
+        outputLinkByTarget: new Map(),
       },
       event: mockEvent,
       value: "A",
@@ -105,6 +106,7 @@ describe("createSankeyClickData", () => {
           [getColumnKey(columns[2])]: 10,
         },
         outputColumnValues: {},
+        outputLinkByTarget: new Map(),
       },
       event: mockEvent,
       value: "B",
@@ -131,6 +133,26 @@ describe("createSankeyClickData", () => {
   });
 
   it("should create click data for edge events", () => {
+    const sourceNode = {
+      rawName: "A",
+      level: 0,
+      hasInputs: false,
+      hasOutputs: true,
+      inputColumnValues: {},
+      outputColumnValues: {},
+      outputLinkByTarget: new Map(),
+    };
+
+    const targetNode = {
+      rawName: "B",
+      level: 1,
+      hasInputs: true,
+      hasOutputs: false,
+      inputColumnValues: {},
+      outputColumnValues: {},
+      outputLinkByTarget: new Map(),
+    };
+
     const edgeEvent = {
       dataType: "edge",
       data: {
@@ -142,6 +164,8 @@ describe("createSankeyClickData", () => {
           [getColumnKey(columns[1])]: "B",
           [getColumnKey(columns[2])]: 10,
         },
+        sourceNode,
+        targetNode,
       },
       event: mockEvent,
       value: 10,

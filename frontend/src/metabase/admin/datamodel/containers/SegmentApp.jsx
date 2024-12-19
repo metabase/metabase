@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import { useCallback, useState } from "react";
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
@@ -8,6 +7,7 @@ import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationMod
 import Segments from "metabase/entities/segments";
 import Tables from "metabase/entities/tables";
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
+import { connect } from "metabase/lib/redux";
 
 import SegmentForm from "../components/SegmentForm";
 import { updatePreviewSummary } from "../datamodel";

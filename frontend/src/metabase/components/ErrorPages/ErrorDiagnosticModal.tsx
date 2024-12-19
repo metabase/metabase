@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
@@ -6,22 +6,21 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { getSlackSettings } from "metabase/admin/settings/slack/selectors";
 import { useSendBugReportMutation } from "metabase/api/bug-report";
 import { useSetting } from "metabase/common/hooks";
-import Alert from "metabase/core/components/Alert";
-import {
-  Form,
-  FormCheckbox,
-  FormProvider,
-  FormSubmitButton,
-} from "metabase/forms";
 import { useToggle } from "metabase/hooks/use-toggle";
-import { capitalize } from "metabase/lib/formatting";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { closeDiagnostics } from "metabase/redux/app";
 import { addUndo } from "metabase/redux/undo";
 import { getIsErrorDiagnosticModalOpen } from "metabase/selectors/app";
 import { getIsEmbedded } from "metabase/selectors/embed";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Button, Flex, Icon, Loader, Modal, Stack, Text } from "metabase/ui";
 
+import { BugReportModal } from "./BugReportModal";
+import { DownloadDiagnosticModal } from "./DownloadDiagnosticModal";
+import {
+  trackErrorDiagnosticModalOpened,
+  trackErrorDiagnosticModalSubmitted,
+} from "./analytics";
 import type { ErrorPayload } from "./types";
 import { useErrorInfo } from "./use-error-info";
 import { downloadObjectAsJson, hasQueryData } from "./utils";
@@ -43,6 +42,8 @@ export const ErrorDiagnosticModal = ({
   const [isSlackSending, setIsSlackSending] = useState(false);
   const [sendBugReport] = useSendBugReportMutation();
   const isBugReportingEnabled = useSetting("bug-reporting-enabled");
+  const [isSubmissionComplete, setIsSubmissionComplete] = useState(false);
+  const applicationName = useSelector(getApplicationName);
 
   const slackSettings = useSelector(getSlackSettings);
   const enableBugReportField = Boolean(
@@ -71,13 +72,18 @@ export const ErrorDiagnosticModal = ({
   const hiddenValues = {
     url: true,
     entityName: true,
+    browserInfo: true,
   };
 
   const handleSubmit = (values: PayloadSelection) => {
+    trackErrorDiagnosticModalSubmitted("download-diagnostics");
     const selectedKeys = Object.keys(values).filter(
       key => values[key as keyof PayloadSelection],
     );
-    const selectedInfo: ErrorPayload = _.pick(errorInfo, ...selectedKeys);
+    const selectedInfo: Partial<ErrorPayload> = _.pick(
+      errorInfo,
+      ...selectedKeys,
+    );
 
     downloadObjectAsJson(
       selectedInfo,
@@ -86,12 +92,19 @@ export const ErrorDiagnosticModal = ({
     onClose();
   };
 
-  const handleSlackSubmit = async (values: PayloadSelection) => {
+  const handleSlackSubmit = async (
+    values: Record<string, boolean | string>,
+  ) => {
     setIsSlackSending(true);
-    const selectedKeys = Object.keys(values).filter(
-      key => values[key as keyof PayloadSelection],
+    const { description, ...diagnosticSelections } = values;
+
+    const selectedKeys = Object.keys(diagnosticSelections).filter(
+      key => diagnosticSelections[key],
     );
-    const selectedInfo: ErrorPayload = _.pick(errorInfo, ...selectedKeys);
+    const selectedInfo = {
+      ..._.pick(errorInfo, ...selectedKeys),
+      description,
+    };
 
     try {
       const response = await sendBugReport({
@@ -99,11 +112,8 @@ export const ErrorDiagnosticModal = ({
       }).unwrap();
 
       if (response.success) {
-        dispatch(
-          addUndo({
-            message: t`Diagnostic information sent to Slack successfully`,
-          }),
-        );
+        trackErrorDiagnosticModalSubmitted("submit-report");
+        setIsSubmissionComplete(true);
       } else {
         dispatch(
           addUndo({
@@ -124,102 +134,52 @@ export const ErrorDiagnosticModal = ({
       );
     } finally {
       setIsSlackSending(false);
-      onClose();
     }
   };
 
-  return (
-    <Modal
-      opened
+  if (isSubmissionComplete) {
+    return (
+      <Modal opened onClose={onClose} size={550}>
+        <Stack spacing="sm" align="center" py="xl">
+          <img
+            src="app/assets/img/metabot-bug-report.svg"
+            alt={c(
+              "Alt text for image shown on successful bug report submission",
+            ).t`Bug report submitted`}
+            style={{ width: 100, height: 100 }}
+          />
+          <Text align="center" size="lg" weight="bold">
+            {t`Thank you for your feedback!`}
+          </Text>
+          <Text align="center" color="text-medium">
+            {t`Bug report submitted successfully.`}
+          </Text>
+          <Button mt="xl" onClick={onClose}>{t`Close`}</Button>
+        </Stack>
+      </Modal>
+    );
+  }
+
+  return enableBugReportField ? (
+    <BugReportModal
+      errorInfo={errorInfo}
       onClose={onClose}
-      title={t`Download diagnostic information`}
-      size="lg"
-    >
-      <FormProvider
-        initialValues={{
-          ...hiddenValues,
-          queryResults: false,
-          entityInfo: true,
-          frontendErrors: true,
-          backendErrors: true,
-          userLogs: true,
-          logs: true,
-          bugReportDetails: true,
-        }}
-        onSubmit={handleSubmit}
-      >
-        {formik => (
-          <Form>
-            <Text>
-              {t`Select the info you want to include in the diagnostic JSON file.`}
-            </Text>
-            <Stack spacing="md" my="lg">
-              {canIncludeQueryData && (
-                <FormCheckbox name="queryResults" label={t`Query results`} />
-              )}
-              {!!errorInfo.localizedEntityName && (
-                <FormCheckbox
-                  name="entityInfo"
-                  label={t`${capitalize(
-                    errorInfo.localizedEntityName,
-                  )} definition`}
-                />
-              )}
-              <FormCheckbox
-                name="frontendErrors"
-                label={t`Browser error messages`}
-              />
-              {!!errorInfo?.logs && (
-                <>
-                  <FormCheckbox
-                    name="backendErrors"
-                    label={t`All server error messages`}
-                  />
-                  <FormCheckbox name="logs" label={t`All server logs`} />
-                  <FormCheckbox
-                    name="userLogs"
-                    label={t`Server logs from the current user only`}
-                  />
-                </>
-              )}
-              <FormCheckbox
-                name="bugReportDetails"
-                // eslint-disable-next-line no-literal-metabase-strings -- we're mucking around in the software here
-                label={t`Metabase instance version information`}
-              />
-            </Stack>
-            <Alert variant="warning">
-              {t`Review the downloaded file before sharing it, as the diagnostic info may contain sensitive data.`}
-            </Alert>
-            <Flex gap="sm" justify="flex-end" mt="lg">
-              <Button onClick={onClose}>{t`Cancel`}</Button>
-              <FormSubmitButton
-                variant="filled"
-                leftIcon={<Icon name="download" />}
-                label={t`Download`}
-                color="brand"
-              />
-              {enableBugReportField && (
-                <Button
-                  variant="filled"
-                  leftIcon={
-                    isSlackSending ? (
-                      <Loader size="xs" />
-                    ) : (
-                      <Icon name="slack" />
-                    )
-                  }
-                  onClick={() => handleSlackSubmit(formik.values)}
-                  disabled={isSlackSending}
-                >
-                  {isSlackSending ? t`Sending...` : t`Send to Slack`}
-                </Button>
-              )}
-            </Flex>
-          </Form>
-        )}
-      </FormProvider>
-    </Modal>
+      onSubmit={handleSubmit}
+      onSlackSubmit={handleSlackSubmit}
+      canIncludeQueryData={canIncludeQueryData}
+      applicationName={applicationName}
+      hiddenValues={hiddenValues}
+      isSlackSending={isSlackSending}
+    />
+  ) : (
+    <DownloadDiagnosticModal
+      errorInfo={errorInfo}
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      canIncludeQueryData={canIncludeQueryData}
+      applicationName={applicationName}
+      hiddenValues={hiddenValues}
+    />
   );
 };
 
@@ -334,6 +294,12 @@ export const ErrorExplanationModal = ({
 export const KeyboardTriggeredErrorModal = () => {
   const dispatch = useDispatch();
   const isShowingDiagnosticModal = useSelector(getIsErrorDiagnosticModalOpen);
+
+  useEffect(() => {
+    if (isShowingDiagnosticModal) {
+      trackErrorDiagnosticModalOpened("command-palette");
+    }
+  }, [isShowingDiagnosticModal]);
 
   const handleCloseModal = () => {
     dispatch(closeDiagnostics());

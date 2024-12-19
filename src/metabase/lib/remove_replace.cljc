@@ -228,7 +228,9 @@
           location (find-location query stage-number target-clause)
           replace? (= :replace remove-or-replace)
           replacement-clause (when replace?
-                               (lib.common/->op-arg replacement))
+                               (cond-> (lib.common/->op-arg replacement)
+                                 (lib.options/ident target-clause) (lib.common/preserve-ident-of target-clause)
+                                 (:ident target-clause)            (assoc :ident (:ident target-clause))))
           remove-replace-fn (if replace?
                               #(lib.util/replace-clause %1 %2 %3 replacement-clause)
                               #(lib.util/remove-clause %1 %2 %3 stage-number))
@@ -291,7 +293,9 @@
                              (-> replacement lib.options/options :name))
         top-level-replacement (-> replacement
                                   (lib.util/top-level-expression-clause replacement-name)
-                                  fresh-ref)
+                                  fresh-ref
+                                  ;; Preserve the `:ident` of the target; the expression's identity is unchanged.
+                                  (lib.common/preserve-ident-of target))
         replaced (update stage :expressions (fn [exprs] (mapv #(if (= % target) top-level-replacement %) exprs)))
         target-name (lib.util/expression-name target)
         replacement-type (-> replacement lib.options/options :effective-type)
@@ -300,10 +304,11 @@
 
 (defn- local-replace
   [stage target replacement]
-  (->> (if (lib.util/expression-name target)
-         (local-replace-expression stage target replacement)
-         (walk/postwalk #(if (= % target) replacement %) stage))
-       (walk/postwalk #(if (= % (lib.options/uuid target)) (lib.options/uuid replacement) %))))
+  (let [replacement (lib.common/preserve-ident-of replacement target)]
+    (->> (if (lib.util/expression-name target)
+           (local-replace-expression stage target replacement)
+           (walk/postwalk #(if (= % target) replacement %) stage))
+         (walk/postwalk #(if (= % (lib.options/uuid target)) (lib.options/uuid replacement) %)))))
 
 (defn- returned-columns-at-stage
   [query stage-number]
@@ -454,7 +459,9 @@
           (if (and (not= new-name (:alias join))
                    (conditions-changed-for-aliases? (:alias join) (:conditions join)
                                                     (:alias old-join) (:conditions old-join)))
-            (rename-join query stage-number join new-name)
+            ;; TODO: This is pretty ugly and specific; this is an example of how hopelessly coupled and intricate
+            ;; this namespace is.
+            (rename-join query stage-number (assoc join :ident (:ident old-join)) new-name)
             query))
         query))))
 
@@ -462,7 +469,16 @@
 
 (mu/defn replace-clause :- :metabase.lib.schema/query
   "Replaces the `target-clause` with `new-clause` in the `query` stage specified by `stage-number`.
-  If `stage-number` is not specified, the last stage is used."
+  If `stage-number` is not specified, the last stage is used.
+
+  This should perhaps be called `update-clause` or `edit-clause` - semantically it is replacing an existing clause
+  with an updated version of itself. For example, changing the name or details of an expression; `SUM(subtotal)`
+  changed to `SUM(total)`.
+
+  Of course you can completely change the clause - `Created At by month` into `User->Latitude by 0.1 degrees`, say -
+  but the *identity* of the clause is retained. That means the `:ident` of the `target-clause` is always retained,
+  even if the `new-clause` has a different one! If you want to drop the old clause and replace it, that's
+  [[remove-clause]] plus adding the new one with [[lib.expression/expression]] and similar."
   ([query :- :metabase.lib.schema/query
     target-clause
     new-clause]
@@ -643,24 +659,26 @@
     new-join]
    (if (nil? new-join)
      (remove-join query stage-number join-spec)
-     (update-joins query stage-number join-spec (fn [joins join-alias]
-                                                  (mapv #(if (= (:alias %) join-alias)
-                                                           (let [should-rename? (or (conditions-changed-for-aliases?
-                                                                                     (:alias new-join)
-                                                                                     (:conditions new-join)
-                                                                                     (:alias %)
-                                                                                     (:conditions %))
-                                                                                    (not= (:source-table new-join)
-                                                                                          (:source-table %))
-                                                                                    (not= (:source-card new-join)
-                                                                                          (:source-card %)))]
-                                                             (cond-> new-join
-                                                               should-rename?
-                                                               ;; We need to remove so the default alias is used
-                                                               ;; when changing the join
-                                                               (dissoc :alias)))
-                                                           %)
-                                                        joins))))))
+     (update-joins query stage-number join-spec
+                   (fn [joins join-alias]
+                     (mapv #(if (= (:alias %) join-alias)
+                              (let [should-rename? (or (conditions-changed-for-aliases?
+                                                        (:alias new-join)
+                                                        (:conditions new-join)
+                                                        (:alias %)
+                                                        (:conditions %))
+                                                       (not= (:source-table new-join)
+                                                             (:source-table %))
+                                                       (not= (:source-card new-join)
+                                                             (:source-card %)))]
+                                (cond-> new-join
+                                  ;; We need to remove so the default alias is used when changing the join.
+                                  should-rename? (dissoc :alias)
+                                  ;; TODO: Maybe join idents *should* change under the same conditions as aliases?
+                                  ;; All the column idents are going to change anyway, so it doesn't matter that much.
+                                  (:ident %)     (assoc :ident (:ident %))))
+                              %)
+                           joins))))))
 
 (defn- specifies-default-fields? [query stage-number]
   (let [fields (:fields (lib.util/query-stage query stage-number))]

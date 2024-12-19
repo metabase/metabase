@@ -1,5 +1,4 @@
 import { useCallback, useEffect } from "react";
-import { connect } from "react-redux";
 import type { Route } from "react-router";
 import _ from "underscore";
 
@@ -7,6 +6,7 @@ import { ApplicationPermissionsHelp } from "metabase/admin/permissions/component
 import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
 import PermissionsPageLayout from "metabase/admin/permissions/components/PermissionsPageLayout";
 import Groups from "metabase/entities/groups";
+import { connect } from "metabase/lib/redux";
 import {
   initializeApplicationPermissions,
   saveApplicationPermissions,

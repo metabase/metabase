@@ -8,7 +8,8 @@
   (let [slack-uploader (fn [storage]
                          (fn [_bytes attachment-name _channel-id]
                            (swap! storage conj attachment-name)
-                           (str "http://uploaded/" attachment-name)))]
+                           {:url (str "http://uploaded/" attachment-name)
+                            :id (str "ID_" attachment-name)}))]
     (testing "Uploads files"
       (let [titles         (atom [])
             attachments    [{:title           "a"

@@ -13,7 +13,7 @@ import {
   SingleDatePicker,
   type SingleDatePickerValue,
 } from "./SingleDatePicker";
-import { TabList } from "./SpecificDatePicker.styled";
+import S from "./SpecificDatePicker.modules.css";
 import {
   canSetTime,
   coerceValue,
@@ -73,13 +73,13 @@ export function SpecificDatePicker({
     <Tabs value={value.operator} onTabChange={handleTabChange}>
       <Flex>
         <PopoverBackButton p="sm" onClick={onBack} />
-        <TabList>
+        <Tabs.List className={S.TabList}>
           {tabs.map(tab => (
             <Tabs.Tab key={tab.operator} value={tab.operator}>
               {tab.label}
             </Tabs.Tab>
           ))}
-        </TabList>
+        </Tabs.List>
       </Flex>
       <Divider />
       {tabs.map(tab => (

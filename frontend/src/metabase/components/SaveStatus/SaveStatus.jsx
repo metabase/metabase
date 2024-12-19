@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { connect } from "metabase/lib/redux";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 
 class SaveStatus extends Component {

@@ -1,8 +1,8 @@
-import { connect } from "react-redux";
 import _ from "underscore";
 
 import Alerts from "metabase/entities/alerts";
 import Pulses from "metabase/entities/pulses";
+import { connect } from "metabase/lib/redux";
 import {
   canManageSubscriptions,
   getUser,

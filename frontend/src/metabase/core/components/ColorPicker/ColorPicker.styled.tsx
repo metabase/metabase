@@ -56,7 +56,7 @@ export const HueContainer = styled.div`
   overflow: hidden;
 `;
 
-export const ControlsPointer = styled.div`
+const ControlsPointer = styled.div`
   border: 2px solid var(--mb-color-bg-white);
   border-radius: 50%;
   pointer-events: none;

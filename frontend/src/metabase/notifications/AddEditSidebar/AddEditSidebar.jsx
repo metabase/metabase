@@ -1,6 +1,5 @@
-import { connect } from "react-redux";
-
 import { getParameters } from "metabase/dashboard/selectors";
+import { connect } from "metabase/lib/redux";
 
 import _AddEditEmailSidebar from "./AddEditEmailSidebar";
 import _AddEditSlackSidebar from "./AddEditSlackSidebar";

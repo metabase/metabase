@@ -9,7 +9,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { connect } from "react-redux";
 import { useMount, usePrevious, useThrottle, useUnmount } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
@@ -26,7 +25,7 @@ import Fields from "metabase/entities/fields";
 import { formatValue } from "metabase/lib/formatting";
 import { parseNumberValue } from "metabase/lib/number";
 import { defer } from "metabase/lib/promise";
-import { useDispatch } from "metabase/lib/redux";
+import { connect, useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import {
   fetchCardParameterValues,

@@ -75,7 +75,7 @@ const LeaveConfirmationModalBase = ({
   };
 
   return (
-    <Modal isOpen={isConfirmationVisible} zIndex={5}>
+    <Modal isOpen={isConfirmationVisible}>
       {children ? (
         children({
           nextLocation,

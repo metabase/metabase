@@ -1,0 +1,100 @@
+.TitleContainer {
+  flex-grow: 1;
+}
+
+.Title {
+  margin: 0 0.5rem;
+  word-break: break-word;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.AddButton {
+  width: 34px;
+  margin-left: 0.5rem;
+  color: var(--mb-color-text-white);
+  transition: none;
+}
+
+.RemoveButton {
+  color: var(--mb-color-text-white);
+  background-color: transparent;
+  opacity: 0.6;
+  transition: all 100ms;
+
+  &:hover {
+    color: var(--mb-color-text-white);
+    background-color: transparent;
+    opacity: 1;
+  }
+}
+
+.Content {
+  display: flex;
+  flex: auto;
+  align-items: center;
+  border-radius: 6px;
+
+  .BucketTriggerButton {
+    height: 100%;
+  }
+}
+
+.Root {
+  display: flex;
+  align-items: stretch;
+  cursor: pointer;
+  margin: 0.25rem 0;
+  min-height: 34px;
+  position: relative;
+
+  &.isSelected {
+    .Content,
+    .ColumnTypeIcon {
+      background-color: var(--mb-color-summarize);
+      color: var(--mb-color-text-white);
+    }
+
+    .BucketTriggerButton {
+      opacity: 1;
+      color: color-mix(in srgb, var(--mb-color-text-white), transparent 35%);
+
+      &:hover {
+        color: var(--mb-color-text-white);
+        opacity: 1;
+      }
+    }
+  }
+
+  &.isNotSelected {
+    .ColumnTypeIcon {
+      color: var(--mb-color-text-light);
+    }
+
+    &:hover {
+      .AddButton,
+      .Content,
+      .ColumnTypeIcon {
+        color: var(--mb-color-summarize);
+        background-color: var(--mb-color-bg-light);
+      }
+
+      .AddButton:hover {
+        background-color: var(--mb-color-bg-medium);
+      }
+
+      .BucketTriggerButton {
+        opacity: 1;
+        color: var(--mb-color-text-light);
+
+        &:hover {
+          color: var(--mb-color-text-medium);
+        }
+      }
+    }
+  }
+}
+
+.ColumnTypeIcon {
+  color: var(--mb-color-text-medium);
+}

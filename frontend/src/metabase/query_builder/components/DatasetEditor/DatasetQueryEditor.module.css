@@ -1,0 +1,7 @@
+.QueryEditorContainer {
+  visibility: visible;
+
+  &.isHidden {
+    visibility: hidden;
+  }
+}

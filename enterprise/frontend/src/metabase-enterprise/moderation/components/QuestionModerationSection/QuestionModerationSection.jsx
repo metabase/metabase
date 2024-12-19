@@ -1,8 +1,8 @@
 import PropTypes from "prop-types";
 import { Fragment } from "react";
-import { connect } from "react-redux";
 
 import { useEditItemVerificationMutation } from "metabase/api";
+import { connect } from "metabase/lib/redux";
 import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 import { getLatestModerationReview } from "metabase-enterprise/moderation/service";
 

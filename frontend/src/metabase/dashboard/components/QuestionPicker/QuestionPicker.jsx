@@ -1,6 +1,5 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,12 +8,10 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import SelectList from "metabase/components/SelectList";
 import { getDashboard } from "metabase/dashboard/selectors";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
-import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
-import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { getCrumbs } from "metabase/lib/collections";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { useSelector } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/lib/redux";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Icon } from "metabase/ui";
 
@@ -115,12 +112,12 @@ function QuestionPickerInner({ onSelect, collectionsById, getCollectionIcon }) {
 }
 
 export const QuestionPicker = _.compose(
-  entityObjectLoader({
+  Collections.load({
     id: () => "root",
     entityType: "collections",
     loadingAndErrorWrapper: false,
   }),
-  entityListLoader({
+  Collections.loadList({
     entityType: "collections",
     loadingAndErrorWrapper: false,
   }),

@@ -1,11 +1,14 @@
 import type { PopoverDropdownProps } from "@mantine/core";
 import { Popover as MantinePopover } from "@mantine/core";
+import cx from "classnames";
 import { useEffect } from "react";
+
+import ZIndex from "metabase/css/core/z-index.module.css";
+import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
+import { PreventEagerPortal } from "metabase/ui";
 
 export type { PopoverBaseProps, PopoverProps } from "@mantine/core";
 export { getPopoverOverrides } from "./Popover.styled";
-
-import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 
 const MantinePopoverDropdown = MantinePopover.Dropdown;
 
@@ -30,7 +33,13 @@ const PopoverDropdown = function PopoverDropdown(
   }, [setupCloseHandler, removeCloseHandler, props.setupSequencedCloseHandler]);
 
   return (
-    <MantinePopoverDropdown {...props} data-element-id="mantine-popover" />
+    <PreventEagerPortal {...props}>
+      <MantinePopoverDropdown
+        {...props}
+        className={cx(props.className, ZIndex.Overlay)}
+        data-element-id="mantine-popover"
+      />
+    </PreventEagerPortal>
   );
 };
 PopoverDropdown.displayName = MantinePopoverDropdown.displayName;
@@ -41,4 +50,3 @@ const Popover: typeof MantinePopover & {
 } = MantinePopover;
 
 export { Popover };
-export { DEFAULT_POPOVER_Z_INDEX } from "./Popover.styled";

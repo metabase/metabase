@@ -9,7 +9,6 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import { FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
 
 import type { SearchItem } from "../../types";
-import { ENTITY_PICKER_Z_INDEX } from "../EntityPickerModal";
 
 import { ChunkyListItem } from "./ResultItem.styled";
 
@@ -53,12 +52,7 @@ export const ResultItem = ({
           size={14}
         />
         {item.description && (
-          <Tooltip
-            maw="20rem"
-            multiline
-            label={item.description}
-            zIndex={ENTITY_PICKER_Z_INDEX}
-          >
+          <Tooltip maw="20rem" multiline label={item.description}>
             <FixedSizeIcon color="brand" name="info" />
           </Tooltip>
         )}
@@ -103,6 +97,13 @@ function getParentInfo(item: SearchItem) {
   if (item.model === "collection" && item?.collection?.id === item?.id) {
     // some APIs return collection items with themselves populated as their own parent 🥴
     return null;
+  }
+
+  if (item.dashboard) {
+    return {
+      icon: getIcon({ model: "dashboard", ...item.dashboard }).name,
+      name: getName(item.dashboard),
+    };
   }
 
   if (!item.collection) {

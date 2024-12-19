@@ -3,7 +3,6 @@ import cx from "classnames";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import PropTypes from "prop-types";
 import { Component } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 
 import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
@@ -12,6 +11,7 @@ import S from "metabase/components/List/List.module.css";
 import ListItem from "metabase/components/ListItem";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import * as metadataActions from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";

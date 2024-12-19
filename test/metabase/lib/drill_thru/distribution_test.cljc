@@ -39,6 +39,44 @@
       (is (some? count-col))
       (is (nil? (lib.drill-thru.distribution/distribution-drill query -1 context))))))
 
+(deftest ^:parallel distribution-not-returned-for-aggregate-or-breakout-cols-test
+  (doseq [column-name ["PRODUCT_ID" "CREATED_AT" "count" "sum" "max"]]
+    (testing (str "distribution drill not returned for ORDERS." column-name)
+      (lib.drill-thru.tu/test-drill-not-returned
+       {:drill-type  :drill-thru/distribution
+        :click-type  :header
+        :query-kinds [:mbql]
+        :query-type  :aggregated
+        :query-table "ORDERS"
+        :column-name column-name}))))
+
+(deftest ^:parallel distribution-not-returned-for-aggregate-or-breakout-cols-for-multi-stage-queries-test
+  (doseq [column-name ["PRODUCT_ID" "CREATED_AT" "count" "sum" "max"]]
+    (testing (str "distribution drill not returned for ORDERS." column-name)
+      (lib.drill-thru.tu/test-drill-not-returned
+       {:drill-type  :drill-thru/distribution
+        :click-type  :header
+        :query-kinds [:mbql]
+        :query-type  :aggregated
+        :custom-query (let [base-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                           (lib/aggregate (lib/count))
+                                           (lib/aggregate (lib/sum (meta/field-metadata :orders :tax)))
+                                           (lib/aggregate (lib/max (meta/field-metadata :orders :discount)))
+                                           (lib/breakout (meta/field-metadata :orders :product-id))
+                                           (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                                             (lib/with-temporal-bucket :month)))
+                                           lib/append-stage)
+                            count-col  (m/find-first #(= (:name %) "count")
+                                                     (lib/returned-columns base-query))
+                            _          (is (some? count-col))]
+                        (lib/filter base-query (lib/> count-col 0)))
+        :custom-row   {"PRODUCT_ID" 3
+                       "CREATED_AT" "2023-12-01"
+                       "count"      77
+                       "sum"        1
+                       "max"        nil}
+        :column-name column-name}))))
+
 (deftest ^:parallel returns-distribution-test-1
   (lib.drill-thru.tu/test-returns-drill
    {:drill-type  :drill-thru/distribution

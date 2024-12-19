@@ -5,6 +5,7 @@ on:
     branches:
       - "master"
       - metabot-v3-second-try
+      - feature-visualizer
     paths-ignore:
       # config files
       - ".**"

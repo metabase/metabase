@@ -1,8 +1,8 @@
-import { connect } from "react-redux";
 import { t } from "ttag";
 
 import AuthCard from "metabase/admin/settings/auth/components/AuthCard";
 import { updateSettings } from "metabase/admin/settings/settings";
+import { connect } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import type { Dispatch, State } from "metabase-types/store";
 

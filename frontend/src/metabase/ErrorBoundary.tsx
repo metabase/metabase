@@ -42,7 +42,12 @@ export default class ErrorBoundary extends Component<
       const ErrorComponent = this.props.errorComponent
         ? this.props.errorComponent
         : SmallGenericError;
-      return <ErrorComponent message={this.props.message} />;
+      return (
+        <ErrorComponent
+          message={this.props.message}
+          data-testid="error-boundary"
+        />
+      );
     }
 
     return this.props.children;

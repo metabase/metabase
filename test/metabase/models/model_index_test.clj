@@ -192,22 +192,19 @@
                                   (qp.compile/compile
                                    (mt/mbql-query products {:fields [$id $title]})))]
                        (when (driver.u/supports? (:engine (mt/db)) :left-join (mt/db))
-                         [:join (mt/$ids
-                                  {:type     :query,
-                                   :query    {:source-table $$people,
-                                              :joins        [{:fields       :all,
-                                                              :source-table $$orders,
-                                                              :condition    [:=
-                                                                             $people.id
-                                                                             &Orders.orders.user_id],
-                                                              :alias        "Orders"}
-                                                             {:fields       :all,
-                                                              :source-table $$products,
-                                                              :condition    [:=
-                                                                             &Orders.orders.product_id
-                                                                             &Products.products.id],
-                                                              :alias        "Products"}]},
-                                   :database (mt/id)})
+                         [:join (mt/mbql-query people
+                                  {:joins [{:fields       :all,
+                                            :source-table $$orders,
+                                            :condition    [:=
+                                                           $people.id
+                                                           &Orders.orders.user_id],
+                                            :alias        "Orders"}
+                                           {:fields       :all,
+                                            :source-table $$products,
+                                            :condition    [:=
+                                                           &Orders.orders.product_id
+                                                           &Products.products.id],
+                                            :alias        "Products"}]})
                           [(mt/$ids [&Products.products.id &Products.products.title])]])])]
         (t2.with-temp/with-temp [Card model (mt/card-with-source-metadata-for-query
                                              query)]
@@ -266,22 +263,19 @@
 (deftest model-index-test-2
   (mt/dataset test-data
     (testing "With joins"
-      (test-index! {:query      (mt/$ids
-                                  {:type     :query,
-                                   :query    {:source-table $$people,
-                                              :joins        [{:fields       :all,
-                                                              :source-table $$orders,
-                                                              :condition    [:=
-                                                                             [:field $people.id nil]
-                                                                             [:field $orders.user_id {:join-alias "Orders"}]],
-                                                              :alias        "Orders"}
-                                                             {:fields       :all,
-                                                              :source-table $$products,
-                                                              :condition    [:=
-                                                                             [:field $orders.product_id {:join-alias "Orders"}]
-                                                                             [:field $products.id {:join-alias "Products"}]],
-                                                              :alias        "Products"}]},
-                                   :database (mt/id)})
+      (test-index! {:query      (mt/mbql-query people
+                                  {:joins [{:fields       :all,
+                                            :source-table $$orders,
+                                            :condition    [:=
+                                                           [:field $people.id nil]
+                                                           [:field $orders.user_id {:join-alias "Orders"}]],
+                                            :alias        "Orders"}
+                                           {:fields       :all,
+                                            :source-table $$products,
+                                            :condition    [:=
+                                                           [:field $orders.product_id {:join-alias "Orders"}]
+                                                           [:field $products.id {:join-alias "Products"}]],
+                                            :alias        "Products"}]})
                     :pk-name    "Products → ID"
                     :value-name "Products → Title"
                     :quantity   200

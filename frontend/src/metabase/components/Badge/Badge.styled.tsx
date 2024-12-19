@@ -2,6 +2,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
 
+import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 import type { LinkProps } from "metabase/core/components/Link";
 import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
@@ -43,9 +44,10 @@ export const MaybeLink = styled(RawMaybeLink)`
   }
 `;
 
-export const BadgeIcon = styled(Icon, {
-  shouldForwardProp: propName => propName !== "hasMargin",
-})<{ hasMargin: boolean }>`
+export const BadgeIcon = styled(
+  Icon,
+  doNotForwardProps("hasMargin", "targetOffsetX"),
+)<{ hasMargin: boolean }>`
   margin-right: ${props => (props.hasMargin ? "5px" : 0)};
 `;
 

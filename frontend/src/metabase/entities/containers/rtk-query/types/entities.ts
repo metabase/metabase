@@ -1,6 +1,8 @@
 import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
 
 import type { TagType } from "metabase/api/tags";
+import type { IconName } from "metabase/ui";
+import type { Collection } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
 import type { UseQuery } from "./rtk";
@@ -18,31 +20,77 @@ export type EntityIdSelector = (
   props: unknown,
 ) => EntityId | undefined;
 
-export type EntityQuery = any;
+export type EntityQuery = unknown;
 
 export type EntityQuerySelector = (state: State, props: unknown) => EntityQuery;
 
-// TODO: add more entity types
-// https://github.com/metabase/metabase/issues/50323
-export type EntityType = "database" | "table" | string;
+export type ReloadInterval = number;
+
+export type ReloadIntervalSelector<Entity> = (
+  state: State,
+  props: unknown,
+  list: Entity[] | undefined,
+) => ReloadInterval | undefined;
+
+/**
+ * Corresponds to the "name" parameter passed to "createEntity" function.
+ * There should be an entry here for every "createEntity" function call.
+ */
+export type EntityType =
+  | "actions"
+  | "alerts"
+  | "bookmarks"
+  | "collections"
+  | "dashboards"
+  | "databases"
+  | "fields"
+  | "groups"
+  | "indexedEntities"
+  | "persistedModels"
+  | "pulses"
+  | "questions"
+  | "revisions"
+  | "schemas"
+  | "search"
+  | "segments"
+  | "snippetCollections"
+  | "snippets"
+  | "tables"
+  | "timelineEvents"
+  | "timelines"
+  | "users";
 
 export type EntityTypeSelector = (state: State, props: unknown) => EntityType;
 
-export interface EntityOptions {
+export type EntityObjectOptions = {
   entityId: EntityId | undefined;
   requestType: RequestType;
-}
+};
+
+export type EntityListOptions = {
+  entityQuery: EntityQuery;
+};
+
+export type EntityOptions = EntityObjectOptions | EntityListOptions;
 
 export interface EntityDefinition<Entity, EntityWrapper> {
   actions: {
     [actionName: string]: (...args: unknown[]) => unknown;
   };
   actionTypes: Record<string, string>;
-  getQueryKey: (entityQuery: EntityQuery) => string;
+  getListStatePath: (entityQuery: EntityQuery) => string;
   getObjectStatePath: (entityId: EntityId) => string;
+  getQueryKey: (entityQuery: EntityQuery) => string;
+  name: string;
+  nameMany: string;
   nameOne: string;
-  normalize: (object: unknown) => {
-    object: unknown;
+  normalize: (object: unknown) => { object: unknown };
+  normalizeList: (list: unknown) => { list: unknown };
+  objectSelectors: {
+    getName: (entity: Entity | EntityWrapper) => string;
+    getIcon: (entity: Entity | EntityWrapper) => { name: IconName };
+    getColor: (entity: Entity | EntityWrapper) => string | undefined;
+    getCollection: (entity: Entity | EntityWrapper) => Collection | undefined;
   };
   rtk: {
     getUseGetQuery: (fetchType: FetchType) => {
@@ -52,13 +100,24 @@ export interface EntityDefinition<Entity, EntityWrapper> {
         QueryDefinition<unknown, BaseQueryFn, TagType, Entity>
       >;
     };
+    useListQuery: UseQuery<
+      QueryDefinition<unknown, BaseQueryFn, TagType, Entity[]>
+    >;
   };
   selectors: {
-    getFetched: Selector<boolean | undefined>;
-    getLoading: Selector<boolean | undefined>;
     getError: Selector<unknown | null | undefined>;
-  } & {
-    [selectorName: string]: Selector<Entity | undefined>;
+    getFetched: Selector<boolean | undefined>;
+    getList: Selector<Entity[] | undefined>;
+    getListMetadata: Selector<ListMetadata | undefined>;
+    getListUnfiltered: Selector<Entity[] | undefined>;
+    getLoaded: Selector<boolean | undefined>;
+    getLoading: Selector<boolean | undefined>;
+    getObject: Selector<Entity | undefined>;
+    getObjectUnfiltered: Selector<Entity | undefined>;
   };
   wrapEntity: (object: Entity, dispatch: Dispatch) => EntityWrapper;
+}
+
+export interface ListMetadata {
+  total?: number;
 }

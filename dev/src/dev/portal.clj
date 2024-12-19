@@ -79,11 +79,26 @@
   (loop [x x, forms forms]
     (if forms
       (let [form     (first forms)
-            threaded `(let [before# ~x
-                            after#  (-> before# ~form)]
-                        (tap> [~(list `quote form)
-                               ^{:portal.viewer/default :portal.viewer/diff}
-                               [before# after#]])
-                        after#)]
+            threaded (let [args       (when (and (list? form)
+                                                 (next form))
+                                        (for [arg-form (rest form)]
+                                          [(gensym "arg") arg-form]))
+                           before-sym (gensym "before")
+                           after-sym  (gensym "after")]
+                       `(let [~before-sym ~x
+                              ~@(when (seq args)
+                                  (mapcat identity args))
+                              ~after-sym ~(if (seq args)
+                                             ;; Has args: a list with their new symbols!
+                                             `(-> ~before-sym ~(list* (first form) (map first args)))
+                                             ;; No args: just inline the form.
+                                             `(-> ~before-sym ~form))]
+                          (tap> [~(list `quote form)
+                                 ~@(when (seq args)
+                                     `[(into {} [~@(for [[sym form] args]
+                                                     [(list `quote form) sym])])])
+                                 ^{:portal.viewer/default :portal.viewer/diff}
+                                 [~before-sym ~after-sym]])
+                          ~after-sym))]
         (recur threaded (next forms)))
       x)))

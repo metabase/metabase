@@ -413,6 +413,12 @@
 
 (defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)
 
+(defmethod driver/database-supports? [:mongo :window-functions/cumulative]
+  [_driver _feat db]
+  (-> ((some-fn :dbms-version :dbms_version) db)
+      :semantic-version
+      (driver.u/semantic-version-gte [5])))
+
 (defmethod driver/database-supports? [:mongo :expressions]
   [_driver _feature db]
   (-> ((some-fn :dbms-version :dbms_version) db)

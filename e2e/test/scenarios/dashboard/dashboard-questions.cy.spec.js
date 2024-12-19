@@ -18,6 +18,7 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.visit(`/dashboard/${S.ORDERS_DASHBOARD_ID}`);
 
       H.newButton("Question").click();
+      H.entityPickerModalTab("Collections").click();
       H.entityPickerModal().findByText("Orders Model").click();
       H.getNotebookStep("filter")
         .findByText("Add filters to narrow your answer")
@@ -63,6 +64,16 @@ describe("Dashboard > Dashboard Questions", () => {
     });
 
     it("can move an existing question between a dashboard and a collection", () => {
+      H.createQuestion({
+        name: "Total Orders that should stay",
+        dashboard_id: S.ORDERS_DASHBOARD_ID,
+        query: {
+          "source-table": SAMPLE_DATABASE.ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+      });
+
       H.createQuestion(
         {
           name: "Total Orders",
@@ -83,11 +94,12 @@ describe("Dashboard > Dashboard Questions", () => {
       H.entityPickerModal().button("Move").click();
       H.undoToast().findByText("Orders in a dashboard");
       cy.findByTestId("edit-bar").button("Save").click();
+
       H.dashboardCards().findByText("Total Orders").click();
       H.openQuestionActions();
       H.popover().findByText("Turn into a model").should("not.exist");
       H.popover().findByText("Add to dashboard").should("not.exist");
-      cy.findByRole("banner", { name: "Navigation bar" }).should(
+      cy.findByLabelText("Navigation bar").should(
         "contain.text",
         "Orders in a dashboard",
       );
@@ -115,6 +127,31 @@ describe("Dashboard > Dashboard Questions", () => {
       H.undoToast().findByText("Second collection");
       H.visitDashboard(S.ORDERS_DASHBOARD_ID);
       H.dashboardCards().findByText("Total Orders").should("not.exist");
+
+      cy.log("test moving a question while keeping the dashcard");
+      H.dashboardCards().findByText("Total Orders that should stay").click();
+
+      H.openQuestionActions();
+      H.popover().findByText("Move").click();
+      H.entityPickerModalTab("Browse").click();
+      H.entityPickerModal().findByText("First collection").click();
+      H.entityPickerModal().findByText("Second collection").click();
+      H.entityPickerModal().button("Move").click();
+      H.modal().within(() => {
+        cy.findByText(/do you still want this question to appear/i).should(
+          "exist",
+        );
+        cy.findByRole("radio", {
+          name: /Yes, it should still appear there/i,
+        }).should("be.checked");
+        cy.button("Done").click();
+      });
+
+      H.undoToast().findByText("Second collection");
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      H.dashboardCards()
+        .findByText("Total Orders that should stay")
+        .should("exist");
     });
 
     it("can move a dashboard question between dashboards", () => {
@@ -200,6 +237,73 @@ describe("Dashboard > Dashboard Questions", () => {
       new Array(20).fill("slowbro").forEach((_, i) => {
         H.dashboardCards().findByText(`Question ${i + 1}`);
       });
+
+      // add coverage for a previous bug where moving 2 or more questions where at least one was not used by any
+      // dashboard and another was would cause a runtime error and show an error boundary around collection items
+      cy.log(
+        "can bulk move in items where some already exist in the dashboard",
+      );
+      H.visitCollection("root");
+      H.collectionTable().within(() => {
+        selectCollectionItem("Orders");
+        selectCollectionItem("Orders, Count");
+      });
+      cy.findByTestId("toast-card").button("Move").click();
+      H.entityPickerModal().findByText(/Move 2 items/);
+      H.entityPickerModal().findByText("Orders in a dashboard").click();
+      H.entityPickerModal().button("Move").click();
+
+      cy.wait(["@updateCard", "@updateCard"]);
+      cy.findByTestId("error-boundary").should("not.exist");
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      H.dashboardCards().findByText("Orders");
+      H.dashboardCards().findByText("Orders, Count");
+    });
+
+    it("should tell users which dashboards will be affected when doing bulk question moves", () => {
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "Sample Question",
+          collection_id: S.THIRD_COLLECTION_ID,
+          query: {
+            "source-table": SAMPLE_DATABASE.PRODUCTS_ID,
+            limit: 1,
+          },
+          display: "scalar",
+        },
+        dashboardDetails: {
+          collection_id: S.THIRD_COLLECTION_ID,
+          name: "Test Dashboard",
+        },
+      });
+
+      H.visitCollection(S.THIRD_COLLECTION_ID);
+      selectCollectionItem("Sample Question");
+
+      cy.findByTestId("toast-card").button("Move").click();
+
+      H.entityPickerModal().within(() => {
+        cy.findByRole("button", { name: /Orders in a dashboard/ }).click();
+        cy.button("Move").click();
+      });
+
+      cy.findByRole("dialog", { name: /Move this question/ }).should("exist");
+
+      H.modal().within(() => {
+        cy.findByText("Sample Question").should("exist");
+        cy.findByText("Test Dashboard").should("exist");
+
+        cy.button("Move it").should("exist").click();
+      });
+
+      H.collectionTable().findByText("Test Dashboard").click();
+
+      cy.findByTestId("dashboard-empty-state")
+        .findByText("This dashboard is looking empty.")
+        .should("exist");
+
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      H.dashboardCards().findByText("Sample Question").should("exist");
     });
 
     it("can edit a dashboard question", () => {
@@ -294,7 +398,7 @@ describe("Dashboard > Dashboard Questions", () => {
       });
 
       H.startNewQuestion();
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       H.entityPickerModal().findByText("Orders in a dashboard").click();
       H.entityPickerModal()
         .findByText("Total Orders Dashboard Question")
@@ -502,7 +606,7 @@ describe("Dashboard > Dashboard Questions", () => {
         H.visitDashboard(dashboardId);
         H.openDashboardMenu("Move to trash");
         H.modal().button("Move to trash").click();
-        cy.findByText("Dashboard with a title").should("not.exist");
+
         cy.findByText(/gone wrong/, { timeout: 0 }).should("not.exist");
 
         cy.findByTestId("archive-banner").findByText(/is in the trash/);
@@ -691,11 +795,34 @@ describe("Dashboard > Dashboard Questions", () => {
       H.entityPickerModal().findByText("Orders in a dashboard").click();
       H.entityPickerModal().button("Move").click();
 
+      let shouldError = true;
+
+      // Simulate an error to ensure that it's passed back and shown in the modal.
+      cy.get("@avgQuanityQuestionId").then(questionId => {
+        cy.intercept("PUT", `**/api/card/${questionId}**`, req => {
+          if (shouldError === true) {
+            shouldError = false;
+            req.reply({
+              statusCode: 400,
+              body: {
+                message: "Ryan said no",
+              },
+            });
+          } else {
+            req.continue();
+          }
+        });
+      });
+
       // should warn about removing from 2 dashboards
       H.modal().within(() => {
         cy.findByText(/will be removed from/i);
         cy.findByText(/purple dashboard/i);
         cy.findByText(/blue dashboard/i);
+        cy.button("Move it").click();
+        cy.findByText("Ryan said no");
+
+        //Continue with the expected behavior
         cy.button("Move it").click();
       });
 
@@ -703,9 +830,13 @@ describe("Dashboard > Dashboard Questions", () => {
         H.visitDashboard(purpleDashboardId);
       });
 
-      H.dashboardCards()
-        .findByText("Average Quantity by Month Question")
-        .should("not.exist");
+      //Wait for dashcard to load
+      H.dashboardCards().findByText("Created At: Month").should("exist");
+
+      H.dashboardCards().should(
+        "not.contain.text",
+        "Average Quantity by Month Question",
+      );
     });
   });
 
@@ -807,3 +938,12 @@ describe("Dashboard > Dashboard Questions", () => {
     });
   });
 });
+
+function selectCollectionItem(name) {
+  cy.findAllByTestId("collection-entry-name")
+    .contains(name)
+    .parent()
+    .parent()
+    .findByRole("checkbox")
+    .click();
+}

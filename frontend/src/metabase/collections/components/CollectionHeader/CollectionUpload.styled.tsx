@@ -1,13 +1,5 @@
 import styled from "@emotion/styled";
 
-export const LoadingStateContainer = styled.div`
-  display: flex;
-  transform: translateY(10px);
-  align-items: center;
-  height: 16px;
-  color: var(--mb-color-brand);
-`;
-
 export const InfoModalTitle = styled.h2`
   text-align: center;
   font-size: 1.375rem; /* 22px 🤦‍♀️ */

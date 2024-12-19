@@ -419,14 +419,12 @@
               (ffirst
                (mt/rows
                 (mt/process-query
-                 {:database   (mt/id)
-                  :type       :query
-                  :query      {:source-table (mt/id :venues)
-                               :aggregation  [[:count]]}
-                  :parameters [(merge
-                                {:type   :category
-                                 :target [:dimension [:field (mt/id :venues :price) nil]]}
-                                param)]}))))]
+                 (merge (mt/mbql-query venues
+                          {:aggregation [[:count]]})
+                        {:parameters [(merge
+                                       {:type   :category
+                                        :target [:dimension [:field (mt/id :venues :price) nil]]}
+                                       param)]})))))]
       (doseq [[price expected] {1 22
                                 2 59}]
         (testing (format ":value = %d" price)
@@ -445,15 +443,13 @@
                      [:field
                       (mt/id :orders :created_at)
                       {:base-type :type/DateTimeWithLocalTZ, :temporal-unit unit}])
-          query    {:database (mt/id)
-                    :type     :query
-                    :query    {:source-table (mt/id :orders)
-                               :aggregation  [[:count]]
-                               :breakout     [(by-unit :day)
-                                              (by-unit :month)]
-                               :order-by     [[:asc (by-unit :month)]]}
-                    :parameters [{:type   :temporal-unit
-                                  :target [:dimension (by-unit :month)]
-                                  :value  :week}]}]
+          query    (merge (mt/mbql-query orders
+                            {:aggregation  [[:count]]
+                             :breakout     [(by-unit :day)
+                                            (by-unit :month)]
+                             :order-by     [[:asc (by-unit :month)]]})
+                          {:parameters [{:type   :temporal-unit
+                                         :target [:dimension (by-unit :month)]
+                                         :value  :week}]})]
       (is (= ["2016-04-30T00:00:00Z" "2016-04-24T00:00:00Z" 1]
              (first (mt/rows (mt/process-query query))))))))

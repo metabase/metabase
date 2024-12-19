@@ -1,5 +1,6 @@
 .ModalContainer {
-  z-index: 4;
+  position: absolute;
+  z-index: var(--mb-overlay-z-index);
 }
 
 .Modal {
@@ -45,7 +46,6 @@
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 3;
 }
 
 .ModalBackdrop {

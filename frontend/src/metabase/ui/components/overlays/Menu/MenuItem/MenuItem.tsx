@@ -1,13 +1,15 @@
-import type { MenuItemProps as MantineMenuItemProps } from "@mantine/core";
+import type { MenuItemProps } from "@mantine/core";
 import { Menu } from "@mantine/core";
-import type { ButtonHTMLAttributes, MouseEvent, TouchEvent } from "react";
-
-type MenuItemProps = MantineMenuItemProps &
-  ButtonHTMLAttributes<HTMLButtonElement>;
+import type { PolymorphicComponentProps } from "@mantine/utils";
+import type { MouseEvent, TouchEvent } from "react";
 
 // hack to prevent parent Popover from closing when selecting a Menu.Item
 // check useClickOutside hook in mantine
-export function MenuItem(props: MenuItemProps) {
+export const MenuItem = <C = "button",>(
+  props: PolymorphicComponentProps<C, MenuItemProps>,
+) => {
+  const typeCastedProps = props as MenuItemProps;
+
   const handleMouseDownCapture = (event: MouseEvent) => {
     event.nativeEvent.stopImmediatePropagation();
   };
@@ -17,9 +19,9 @@ export function MenuItem(props: MenuItemProps) {
 
   return (
     <Menu.Item
-      {...props}
+      {...typeCastedProps}
       onMouseDownCapture={handleMouseDownCapture}
       onTouchStartCapture={handleTouchStartCapture}
     />
   );
-}
+};

@@ -1,3 +1,5 @@
+import type { HTMLAttributes } from "react";
+
 import type { RegularClickAction } from "metabase/visualizations/types";
 
 import { ClickActionControl } from "./ClickActionControl";
@@ -19,13 +21,14 @@ export const ClickActionsView = ({
   clickActions,
   close,
   onClick,
-}: Props): JSX.Element => {
+  ...divProps
+}: Props & Omit<HTMLAttributes<HTMLDivElement>, "onClick">): JSX.Element => {
   const sections = getGroupedAndSortedActions(clickActions);
 
   const hasOnlyOneSection = sections.length === 1;
 
   return (
-    <Container data-testid="click-actions-view">
+    <Container data-testid="click-actions-view" {...divProps}>
       {sections.map(([sectionKey, actions]) => {
         const sectionTitle = getSectionTitle(sectionKey, actions);
         const contentDirection = getSectionContentDirection(

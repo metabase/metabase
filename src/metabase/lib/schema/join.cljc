@@ -63,6 +63,7 @@
    [:stages      [:ref :metabase.lib.schema/stages]]
    [:conditions  ::conditions]
    [:alias       ::alias]
+   [:ident    {:optional true} ::common/non-blank-string]
    [:fields   {:optional true} ::fields]
    [:strategy {:optional true} ::strategy]])
 

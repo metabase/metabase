@@ -3,12 +3,14 @@ import type React from "react";
 import { useEffect, useMemo } from "react";
 import _ from "underscore";
 
+import { getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
 import TooltipStyles from "metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { ClickObject } from "metabase-lib";
 
 import type { BaseCartesianChartModel } from "../cartesian/model/types";
+import type { SankeyChartModel } from "../graph/sankey/model/types";
 import type { PieChartModel, SliceTreeNode } from "../pie/model/types";
 import { getArrayFromMapValues } from "../pie/util";
 
@@ -147,6 +149,14 @@ export const useCartesianChartSeriesColorsClasses = (
 
     return [...seriesColors, ...settingColors];
   }, [chartModel, settings]);
+
+  return useInjectSeriesColorsClasses(hexColors);
+};
+
+export const useSankeyChartColorsClasses = (chartModel: SankeyChartModel) => {
+  const hexColors = useMemo(() => {
+    return getObjectValues(chartModel.nodeColors).filter(isNotNull);
+  }, [chartModel]);
 
   return useInjectSeriesColorsClasses(hexColors);
 };

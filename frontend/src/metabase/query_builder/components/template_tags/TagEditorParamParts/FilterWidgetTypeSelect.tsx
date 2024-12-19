@@ -7,11 +7,7 @@ import CS from "metabase/css/core/index.css";
 import { Select } from "metabase/ui";
 import type { TemplateTag } from "metabase-types/api";
 
-import {
-  ContainerLabel,
-  ErrorSpan,
-  InputContainer,
-} from "./TagEditorParam.styled";
+import { ContainerLabel, ErrorSpan, InputContainer } from "./TagEditorParam";
 
 export function FilterWidgetTypeSelect({
   tag,

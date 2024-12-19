@@ -1,16 +1,24 @@
-import styled from "@emotion/styled";
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { memo, useMemo, useState } from "react";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { DatasetNotebook } from "./DatasetNotebook";
+import S from "./DatasetQueryEditor.module.css";
 
-const QueryEditorContainer = styled.div`
-  visibility: ${props => (props.isActive ? "visible" : "hidden")};
-`;
+// eslint-disable-next-line react/prop-types
+const QueryEditorContainer = ({ isActive, ...props }) => {
+  return (
+    <Box
+      className={cx(S.QueryEditorContainer, { [S.isHidden]: !isActive })}
+      {...props}
+    />
+  );
+};
 
 const SMOOTH_RESIZE_STYLE = { transition: "height 0.25s" };
 

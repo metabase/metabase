@@ -1,0 +1,10 @@
+.Root {
+  .FooterButtonGroup {
+    display: inline-flex;
+    align-items: stretch;
+
+    .Button {
+      border: 1px solid var(--mb-color-bg-white);
+    }
+  }
+}

@@ -28,18 +28,18 @@
 
 (deftest ^:parallel fields-none-test
   (testing "Can we resolve some joins w/ fields = none?"
-    (is (= (mt/mbql-query venues
-             {:joins
-              [{:source-table $$categories
-                :alias        "c"
-                :strategy     :left-join
-                :condition    [:= $category_id &c.categories.id]}]})
-           (resolve-joins
-            (mt/mbql-query venues
-              {:joins [{:source-table $$categories
-                        :alias        "c"
-                        :condition    [:= $category_id &c.categories.id]
-                        :fields       :none}]}))))))
+    (is (=? (mt/mbql-query venues
+              {:joins
+               [{:source-table $$categories
+                 :alias        "c"
+                 :strategy     :left-join
+                 :condition    [:= $category_id &c.categories.id]}]})
+            (resolve-joins
+             (mt/mbql-query venues
+               {:joins [{:source-table $$categories
+                         :alias        "c"
+                         :condition    [:= $category_id &c.categories.id]
+                         :fields       :none}]}))))))
 
 (deftest ^:parallel fields-all-test
   (testing "Can we resolve some joins w/ fields = all ???"
@@ -85,22 +85,22 @@
 
 (deftest ^:parallel join-table-without-alias-test
   (testing "Does joining a table an explicit alias add a default alias?"
-    (is (= (mt/mbql-query venues
-             {:joins        [{:source-table $$categories
-                              :alias        "__join"
-                              :strategy     :left-join
-                              :condition    [:= $category_id 1]}
-                             {:source-table $$categories
-                              :alias        "__join"
-                              :strategy     :left-join
-                              :condition    [:= $category_id 2]}]
-              :source-table (mt/id :venues)})
-           (resolve-joins
-            (mt/mbql-query venues
-              {:joins [{:source-table $$categories
-                        :condition    [:= $category_id 1]}
-                       {:source-table $$categories
-                        :condition    [:= $category_id 2]}]}))))))
+    (is (=? (mt/mbql-query venues
+              {:joins        [{:source-table $$categories
+                               :alias        "__join"
+                               :strategy     :left-join
+                               :condition    [:= $category_id 1]}
+                              {:source-table $$categories
+                               :alias        "__join"
+                               :strategy     :left-join
+                               :condition    [:= $category_id 2]}]
+               :source-table (mt/id :venues)})
+            (resolve-joins
+             (mt/mbql-query venues
+               {:joins [{:source-table $$categories
+                         :condition    [:= $category_id 1]}
+                        {:source-table $$categories
+                         :condition    [:= $category_id 2]}]}))))))
 
 (deftest ^:parallel disallow-joins-against-table-on-different-db-test
   (testing "Test that joining against a table in a different DB throws an Exception"
@@ -118,24 +118,7 @@
 
 (deftest ^:parallel resolve-explicit-joins-when-implicit-joins-are-present-test
   (testing "test that resolving explicit joins still works if implict joins are present"
-    (is (= (mt/mbql-query checkins
-             {:source-table $$checkins
-              :aggregation  [[:sum &USERS__via__USER_ID.users.id]]
-              :breakout     [$id]
-              :joins        [{:source-table $$users
-                              :alias        "USERS__via__USER_ID"
-                              :strategy     :left-join
-                              :condition    [:= $user_id &USERS__via__USER_ID.users.id]
-                              :fk-field-id  (mt/id :checkins :user_id)}
-                             {:alias        "u"
-                              :source-table $$users
-                              :strategy     :left-join
-                              :condition    [:=
-                                             [:field "ID" {:base-type :type/BigInteger}]
-                                             &u.users.id]}]
-              :limit        10})
-           (resolve-joins
-            (mt/mbql-query checkins
+    (is (=? (mt/mbql-query checkins
               {:source-table $$checkins
                :aggregation  [[:sum &USERS__via__USER_ID.users.id]]
                :breakout     [$id]
@@ -143,35 +126,52 @@
                                :alias        "USERS__via__USER_ID"
                                :strategy     :left-join
                                :condition    [:= $user_id &USERS__via__USER_ID.users.id]
-                               :fk-field-id  (mt/id :checkins :user_id)
-                               :fields       :none}
+                               :fk-field-id  (mt/id :checkins :user_id)}
                               {:alias        "u"
                                :source-table $$users
+                               :strategy     :left-join
                                :condition    [:=
                                               [:field "ID" {:base-type :type/BigInteger}]
-                                              [:field %users.id {:join-alias "u"}]]}]
-               :limit        10}))))))
+                                              &u.users.id]}]
+               :limit        10})
+            (resolve-joins
+             (mt/mbql-query checkins
+               {:source-table $$checkins
+                :aggregation  [[:sum &USERS__via__USER_ID.users.id]]
+                :breakout     [$id]
+                :joins        [{:source-table $$users
+                                :alias        "USERS__via__USER_ID"
+                                :strategy     :left-join
+                                :condition    [:= $user_id &USERS__via__USER_ID.users.id]
+                                :fk-field-id  (mt/id :checkins :user_id)
+                                :fields       :none}
+                               {:alias        "u"
+                                :source-table $$users
+                                :condition    [:=
+                                               [:field "ID" {:base-type :type/BigInteger}]
+                                               [:field %users.id {:join-alias "u"}]]}]
+                :limit        10}))))))
 
 (deftest ^:parallel join-with-source-query-test
   (testing "Does a join using a source query get its Tables resolved?"
-    (is (= (mt/mbql-query venues
-             {:joins    [{:alias        "cat"
-                          :source-query {:source-table $$categories}
-                          :strategy     :left-join
-                          :condition    [:=
-                                         $category_id
-                                         [:field "ID" {:base-type :type/BigInteger, :join-alias "cat"}]]}]
-              :order-by [[:asc $name]]
-              :limit    3})
-           (resolve-joins
-            (mt/mbql-query venues
+    (is (=? (mt/mbql-query venues
               {:joins    [{:alias        "cat"
                            :source-query {:source-table $$categories}
+                           :strategy     :left-join
                            :condition    [:=
                                           $category_id
                                           [:field "ID" {:base-type :type/BigInteger, :join-alias "cat"}]]}]
                :order-by [[:asc $name]]
-               :limit    3}))))))
+               :limit    3})
+            (resolve-joins
+             (mt/mbql-query venues
+               {:joins    [{:alias        "cat"
+                            :source-query {:source-table $$categories}
+                            :condition    [:=
+                                           $category_id
+                                           [:field "ID" {:base-type :type/BigInteger, :join-alias "cat"}]]}]
+                :order-by [[:asc $name]]
+                :limit    3}))))))
 
 (deftest ^:parallel resolve-source-query-with-fields-all-test
   (testing "Can we resolve joins using a `:source-query` and `:fields` `:all`?"

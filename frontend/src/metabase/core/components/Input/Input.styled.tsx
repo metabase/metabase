@@ -118,7 +118,7 @@ type InputButtonProps = {
   size: InputSize;
 };
 
-export const InputButton = styled(IconButtonWrapper)<InputButtonProps>`
+const InputButton = styled(IconButtonWrapper)<InputButtonProps>`
   position: absolute;
   color: ${props => color(props.onClick != null ? "text-dark" : "text-light")};
   padding: ${props => (props.size === "small" ? "0.5rem" : "0.75rem")};

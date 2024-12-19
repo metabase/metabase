@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { connect } from "react-redux";
 
 import CS from "metabase/css/core/index.css";
+import { connect } from "metabase/lib/redux";
 import {
   getQuestion,
   getVisualizationSettings,

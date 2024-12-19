@@ -44,6 +44,7 @@ const CARD_IN_DASHBOARD = createMockCard({
   id: 3,
   collection_id: 3,
   dashboard_id: 4,
+  dashboard: BAR_DASHBOARD,
 });
 
 describe("AppBar", () => {

@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 
+import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { FilterPanelRoot } from "./FilterPanel.styled";
+import S from "./FilterPanel.module.css";
 import { FilterPanelPopover } from "./FilterPanelPopover";
 import { getFilterItems } from "./utils";
 
@@ -23,7 +24,8 @@ export function FilterPanel({ query, onChange }: FilterPanelProps) {
   }
 
   return (
-    <FilterPanelRoot
+    <Flex
+      className={S.FilterPanelRoot}
       align="center"
       wrap="wrap"
       gap="sm"
@@ -40,6 +42,6 @@ export function FilterPanel({ query, onChange }: FilterPanelProps) {
           onChange={handleChange}
         />
       ))}
-    </FilterPanelRoot>
+    </Flex>
   );
 }

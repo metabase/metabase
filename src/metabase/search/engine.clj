@@ -37,7 +37,7 @@
 
 (defmulti reindex!
   "Perform a full refresh of the given engine's index."
-  (fn [engine] engine))
+  (fn [engine _opts] engine))
 
 (defmulti reset-tracking!
   "Stop tracking the current indexes. Used when resetting the appdb."

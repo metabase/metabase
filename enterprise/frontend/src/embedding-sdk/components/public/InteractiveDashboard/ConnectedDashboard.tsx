@@ -1,6 +1,6 @@
 import type { Query } from "history";
 import type { ComponentType, FC } from "react";
-import { type ConnectedProps, connect } from "react-redux";
+import type { ConnectedProps } from "react-redux";
 import _ from "underscore";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
@@ -39,6 +39,7 @@ import type {
   DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
+import { connect } from "metabase/lib/redux";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { closeNavbar, setErrorPage } from "metabase/redux/app";

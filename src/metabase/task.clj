@@ -132,7 +132,7 @@
 
 (defn- set-jdbc-backend-properties!
   "Set the appropriate system properties needed so Quartz can connect to the JDBC backend. (Since we don't know our DB
-  connection properties ahead of time, we'll need to set these at runtime rather than Setting them in the
+  connection properties ahead of time, we'll need to set these at runtime rather than setting them in the
   `quartz.properties` file.)"
   []
   (when (= (mdb/db-type) :postgres)

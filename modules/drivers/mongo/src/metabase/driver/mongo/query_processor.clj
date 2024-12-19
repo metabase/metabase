@@ -7,13 +7,15 @@
    [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.mongo.operators :refer [$add $addFields $addToSet $and $avg $concat $cond
                                             $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
                                             $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min
                                             $minute $mod $month $multiply $ne $not $or $project $regexMatch $second
-                                            $size $skip $sort $strcasecmp $subtract $sum $toLower $unwind $year]]
+                                            $size $skip $sort $strcasecmp $subtract $sum $toLower $unwind $year
+                                            $setWindowFields]]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -28,6 +30,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -46,21 +49,22 @@
 ;; this is just a very limited schema to make sure we're generating valid queries. We should expand it more in the
 ;; future
 
-(def ^:private $ProjectStage   [:map-of [:= $project]   [:map-of ::lib.schema.common/non-blank-string :any]])
-(def ^:private $SortStage      [:map-of [:= $sort]      [:map-of ::lib.schema.common/non-blank-string [:enum -1 1]]])
-(def ^:private $MatchStage     [:map-of [:= $match]     [:map-of
-                                                         [:and
-                                                          [:or ::lib.schema.common/non-blank-string :keyword]
-                                                          [:fn
-                                                           {:error/message "not a $not condition"}
-                                                           (complement #{:$not "$not"})]]
-                                                         :any]])
-(def ^:private $GroupStage     [:map-of [:= $group]     [:map-of ::lib.schema.common/non-blank-string :any]])
-(def ^:private $AddFieldsStage [:map-of [:= $addFields] [:map-of ::lib.schema.common/non-blank-string :any]])
-(def ^:private $LookupStage    [:map-of [:= $lookup]    [:map-of [:or :keyword :string] :any]])
-(def ^:private $UnwindStage    [:map-of [:= $unwind]    [:map-of [:or :keyword :string] :any]])
-(def ^:private $LimitStage     [:map-of [:= $limit]     pos-int?])
-(def ^:private $SkipStage      [:map-of [:= $skip]      pos-int?])
+(def ^:private $ProjectStage         [:map-of [:= $project]   [:map-of ::lib.schema.common/non-blank-string :any]])
+(def ^:private $SortStage            [:map-of [:= $sort]      [:map-of ::lib.schema.common/non-blank-string [:enum -1 1]]])
+(def ^:private $MatchStage           [:map-of [:= $match]     [:map-of
+                                                               [:and
+                                                                [:or ::lib.schema.common/non-blank-string :keyword]
+                                                                [:fn
+                                                                 {:error/message "not a $not condition"}
+                                                                 (complement #{:$not "$not"})]]
+                                                               :any]])
+(def ^:private $GroupStage           [:map-of [:= $group]     [:map-of ::lib.schema.common/non-blank-string :any]])
+(def ^:private $AddFieldsStage       [:map-of [:= $addFields] [:map-of ::lib.schema.common/non-blank-string :any]])
+(def ^:private $LookupStage          [:map-of [:= $lookup]    [:map-of [:or :keyword :string] :any]])
+(def ^:private $UnwindStage          [:map-of [:= $unwind]    [:map-of [:or :keyword :string] :any]])
+(def ^:private $LimitStage           [:map-of [:= $limit]     pos-int?])
+(def ^:private $SkipStage            [:map-of [:= $skip]      pos-int?])
+(def ^:private $SetWindowFieldsStage [:map-of [:= $setWindowFields] [:map-of ::lib.schema.common/non-blank-string :any]])
 
 (def ^:private Stage
   [:and
@@ -71,15 +75,16 @@
    [:multi
     {:dispatch (fn [m]
                  (first (keys m)))}
-    [$project   $ProjectStage]
-    [$sort      $SortStage]
-    [$group     $GroupStage]
-    [$addFields $AddFieldsStage]
-    [$lookup    $LookupStage]
-    [$unwind    $UnwindStage]
-    [$match     $MatchStage]
-    [$limit     $LimitStage]
-    [$skip      $SkipStage]]])
+    [$project         $ProjectStage]
+    [$sort            $SortStage]
+    [$group           $GroupStage]
+    [$addFields       $AddFieldsStage]
+    [$lookup          $LookupStage]
+    [$unwind          $UnwindStage]
+    [$match           $MatchStage]
+    [$limit           $LimitStage]
+    [$skip            $SkipStage]
+    [$setWindowFields $SetWindowFieldsStage]]])
 
 (def ^:private Pipeline [:sequential Stage])
 
@@ -953,7 +958,7 @@
 
 (def ^:private aggregation-op
   "The set of operators handled by [[aggregation->rvalue]] and [[expand-aggregation]]."
-  #{:avg :count :count-where :distinct :max :min :share :stddev :sum :sum-where :var})
+  #{:avg :count :count-where :distinct :max :min :share :stddev :sum :sum-where :var :cum-sum :cum-count})
 
 (defmethod ->rvalue :case [[_ cases options]]
   {:$switch {:branches (vec (for [[pred expr] cases]
@@ -1051,6 +1056,19 @@
         stddev-expr (name (gensym "$stddev-"))]
     {:group {(subs stddev-expr 1) (aggregation->rvalue [:stddev expr])}
      :post  [{(annotate/aggregation-name (:query *query*) ag) {:$pow [stddev-expr 2]}}]}))
+
+(defmethod expand-aggregation :cum-sum
+  [ag]
+  (let [[_ expr] (unwrap-named-ag ag)
+        sum-expr (name (gensym "$sum-"))]
+    {:group {(subs sum-expr 1) (aggregation->rvalue [:sum expr])}
+     :window {(annotate/aggregation-name (:query *query*) ag) sum-expr}}))
+
+(defmethod expand-aggregation :cum-count
+  [ag]
+  (let [count-expr (name (gensym "$count-"))]
+    {:group {(subs count-expr 1) (aggregation->rvalue [:count])}
+     :window {(annotate/aggregation-name (:query *query*) ag) count-expr}}))
 
 (defmethod expand-aggregation :default
   [ag]
@@ -1166,7 +1184,8 @@
                        aggregations-seen)]
     {:group (into {} (map :group) expandeds)
      :post (cond-> [(into {} (mapcat :post) expandeds)]
-             (not= raggr-expr (str \$ aggr-name)) (conj {aggr-name raggr-expr}))}))
+             (not= raggr-expr (str \$ aggr-name)) (conj {aggr-name raggr-expr}))
+     :window (into {} (map :window) expandeds)}))
 
 (defn- order-postprocessing
   "Takes a sequence of post processing vectors (see [[expand-aggregations]]) and
@@ -1180,6 +1199,86 @@
     (for [i (range (apply max (map count posts)))]
       (into {} (map #(get % i)) posts))))
 
+(mu/defn- order-by->$sort :- [:map-of ::lib.schema.common/non-blank-string [:enum -1 1]]
+  [order-by :- [:sequential ::mbql.s/OrderBy]]
+  (into
+   (ordered-map/ordered-map)
+   (for [[direction field] order-by]
+     [(->lvalue field) (case direction
+                         :asc   1
+                         :desc -1)])))
+
+(defn- window-output-clause
+  "Takes a pair of [output-name input-name] and generates an output clause suitable for
+  including in a `$setWindowFields` output block."
+  [input-name]
+  {$sum input-name
+   "window" {"documents" ["unbounded" "current"]}})
+
+(defn- sort-lookup
+  "Generates a lookup string for a particular field"
+  [id name]
+  (if (id name)
+    (str "_id." name)
+    name))
+
+(defn- window-sort
+  "Converts a `$sort` body to something that can be used in a `sortBy` clause in a
+  `$setWindowFields` stage."
+  [id pairs]
+  (when-let [pair-seq (seq pairs)]
+    (into (ordered-map/ordered-map)
+          (map (fn [[name dir]] [(sort-lookup id name) dir]))
+          pair-seq)))
+
+(defn- window-sort-and-partitions
+  "Calculates the appropriate sort and partition fields for a `$setWindowFields` stage."
+  [id breakouts order-by]
+  (let [finest-temporal-index
+        (qp.util.transformations.nest-breakouts/finest-temporal-breakout-index breakouts 2)
+
+        sort-index (or finest-temporal-index
+                       (dec (count breakouts)))
+        sort-name (first (nth (seq id) sort-index))
+        default-sort {(sort-lookup id sort-name) 1}
+        user-sort (when order-by
+                    (binding [*field-mappings*
+                              (merge *field-mappings*
+                                     (into {} (map (juxt identity field-alias)) breakouts))]
+                      (order-by->$sort order-by)))
+        sort-expr (or
+                   ;; if there is only one breakout, always use the user's sort order
+                   (when (= (count id) 1)
+                     (window-sort id user-sort))
+
+                   ;; if we don't have a temporal breakout, sort by the last breakout, but
+                   ;; use the user's sort direction if specified
+                   (when-not finest-temporal-index
+                     (->> user-sort
+                          (filter #(= sort-name (first %)))
+                          (window-sort id)))
+
+                   default-sort)
+
+        partition-expr (into {}
+                             (map (fn [[name]] [name (str "$_id." name)]))
+                             (m/remove-nth sort-index id))]
+    {:sort-expr sort-expr
+     :partition-expr partition-expr}))
+
+(defn- window-accumulators
+  "Takes a map of {output-name input-name ...} and generates a `$setWindowFields` stage that
+  produces a cumulative sum of those fields."
+  [window-vals id breakouts order-by]
+  ;; if id is empty, we don't have any breakouts and so don't need to fiddle around with $setWindowFields
+  (if (empty? id)
+    [{$addFields window-vals}]
+    (let [{:keys [sort-expr partition-expr]} (window-sort-and-partitions id breakouts order-by)]
+      [{$setWindowFields
+        (cond-> {"sortBy" sort-expr
+                 "output" (update-vals window-vals window-output-clause)}
+          (seq partition-expr) (assoc "partitionBy" partition-expr))}])))
+
 (defn- group-and-post-aggregations
   "Mongo is picky about which top-level aggregations it allows with groups. Eg. even
    though [:/ [:count-if ...] [:count]] is a perfectly fine reduction, it's not allowed. Therefore
@@ -1188,14 +1287,20 @@
    The groups are assumed to be independent an collapsed into a single stage, but separate
    `$addFields` stages are created for post processing so that stages can refer to the results
    of preceding stages.
-   The intermittent results accrued in `$group` stage are discarded in the final `$project` stage."
-  [id aggregations]
+   The intermittent results accrued in `$group` stage are discarded in the final `$project` stage.
+   Meanwhile, cumulative aggregations cannot be done in either a `$group` or a `$addFields` stage
+   and instead need their own `$setWindowFields` stage."
+  [id breakouts aggregations order-by]
   (let [expanded-ags (map expand-aggregations aggregations)
         group-ags    (mapcat :group expanded-ags)
-        post-ags     (order-postprocessing (map :post expanded-ags))]
+        post-ags     (order-postprocessing (map :post expanded-ags))
+        window-values   (into {} (map :window) expanded-ags)]
     (into [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}]
-          (keep (fn [p] (when (seq p) {$addFields p})))
-          post-ags)))
+          cat
+          [(when (seq window-values)
+             (window-accumulators window-values id breakouts order-by))
+           (keep (fn [p] (when (seq p) {$addFields p}))
+                 post-ags)])))
 
 (defn- projection-group-map [fields]
   (reduce
@@ -1217,14 +1322,16 @@
 
 (defn- breakouts-and-ags->pipeline-stages
   "Return a sequeunce of aggregation pipeline stages needed to implement MBQL breakouts and aggregations."
-  [projected-fields breakout-fields aggregations]
+  [projected-fields breakout-fields aggregations order-by]
   (mapcat
    (partial remove nil?)
    [;; create the $group clause
     (group-and-post-aggregations
      (when (seq breakout-fields)
        (projection-group-map breakout-fields))
-     aggregations)
+     breakout-fields
+     aggregations
+     order-by)
     [;; Sort by _id (group)
      {$sort {"_id" 1}}
      ;; now project back to the fields we expect
@@ -1235,13 +1342,13 @@
 (defn- handle-breakout+aggregation
   "Add projections, groupings, sortings, and other things needed to the Query pipeline context (`pipeline-ctx`) for
   MBQL `aggregations` and `breakout-fields`."
-  [{breakout-fields :breakout, aggregations :aggregation} pipeline-ctx]
+  [{breakout-fields :breakout, aggregations :aggregation, :keys [order-by]} pipeline-ctx]
   (if-not (or (seq aggregations) (seq breakout-fields))
     ;; if both aggregations and breakouts are empty, there's nothing to do...
     pipeline-ctx
     ;; determine the projections we'll need. projected-fields is like [[projected-field-name source]]`
     (let [projected-fields (breakouts-and-ags->projected-fields breakout-fields aggregations)
-          pipeline-stages  (breakouts-and-ags->pipeline-stages projected-fields breakout-fields aggregations)]
+          pipeline-stages  (breakouts-and-ags->pipeline-stages projected-fields breakout-fields aggregations order-by)]
       (-> pipeline-ctx
           ;; add :projections key which is just a sequence of the names of projections from above
           (assoc :projections (vec (for [[field] projected-fields]
@@ -1250,17 +1357,6 @@
           (update :query into pipeline-stages)))))
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
-
-(mu/defn- order-by->$sort :- $SortStage
-  [order-by :- [:sequential ::mbql.s/OrderBy]]
-  {$sort (into
-          (ordered-map/ordered-map)
-          (for [[direction field] order-by]
-            [(->lvalue field) (case direction
-                                :asc   1
-                                :desc -1)]))})
-
-;;; ----------------------------------------------------- fields -----------------------------------------------------
 
 (defn- remove-parent-fields
   "Removes any and all entries in `fields` that are parents of another field in `fields`. This is necessary because as
@@ -1284,7 +1380,7 @@
               (and (integer? field-id) (contains? parent->child-id field-id)))
             fields)))
 
-(defn- handle-order-by [{:keys [order-by breakout]} pipeline-ctx]
+(defn- handle-order-by [{:keys [order-by breakout aggregation]} pipeline-ctx]
   (let [breakout-fields (set breakout)
         sort-fields (for [field (remove-parent-fields (map second order-by))
                           ;; We only care about expressions and bucketing not added as breakout
@@ -1301,15 +1397,35 @@
         breakout-field-mappings (into {} (map (juxt identity field-alias)) breakout)
         ;; We have already sorted ascending by the breakout fields so we don't have to repeat the
         ;; same sort.
-        explicit-order-by (and (seq order-by)
-                               (not= order-by (map (fn [field] [:asc field]) breakout)))]
-    (binding [*field-mappings* (merge *field-mappings* breakout-field-mappings)]
-      (cond-> pipeline-ctx
-        (seq sort-fields) (update :query conj
-                                  ;; We $addFields before sorting, otherwise expressions will not be available for the sort
-                                  {$addFields (into (ordered-map/ordered-map) sort-fields)})
-        explicit-order-by (update :query conj
-                                  (order-by->$sort order-by))))))
+        explicit-order-by
+        (when (and (seq order-by)
+                   (not= order-by (map (fn [field] [:asc field]) breakout)))
+          (binding [*field-mappings* (merge *field-mappings* breakout-field-mappings)]
+            (order-by->$sort order-by)))
+
+        cumulative-order-by
+        (when-let [finest-temporal-index
+                   (and (seq (filter (fn [[_ [agg-type]]] (#{:cum-sum :cum-count} agg-type)) aggregation))
+                        (qp.util.transformations.nest-breakouts/finest-temporal-breakout-index breakout 2))]
+          (let [id (projection-group-map breakout)]
+            (as-> (keys id) lst
+              (m/remove-nth finest-temporal-index lst)
+              (concat lst [(nth (keys id) finest-temporal-index)])
+              (filter (fn [key] (not (and explicit-order-by
+                                          (explicit-order-by key)))) lst)
+              (map (fn [name] [name 1]) lst))))
+
+        combined-order-by
+        (when (or explicit-order-by cumulative-order-by)
+          {$sort (into (ordered-map/ordered-map)
+                       (concat explicit-order-by cumulative-order-by))})]
+    (cond-> pipeline-ctx
+      (seq sort-fields) (update :query conj
+                                ;; We $addFields before sorting, otherwise expressions will not be available for the sort
+                                {$addFields (into (ordered-map/ordered-map) sort-fields)})
+      combined-order-by (update :query #(conj % combined-order-by)))))
+
+;;; ----------------------------------------------------- fields -----------------------------------------------------
 
 (defn- handle-fields [{:keys [fields]} pipeline-ctx]
   (if-not (seq fields)

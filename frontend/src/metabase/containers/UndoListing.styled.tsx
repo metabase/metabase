@@ -15,7 +15,6 @@ export const UndoList = styled.ul`
   left: 0;
   bottom: 0;
   margin: ${LIST_H_MARGINS};
-  z-index: 999;
   display: flex;
   flex-direction: column;
   align-items: flex-start;

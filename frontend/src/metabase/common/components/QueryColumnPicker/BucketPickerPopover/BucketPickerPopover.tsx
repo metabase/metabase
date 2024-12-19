@@ -12,6 +12,7 @@ interface BucketPickerPopoverProps
   extends Omit<CommonBucketPickerProps, "buckets"> {
   hasBinning?: boolean;
   hasTemporalBucketing?: boolean;
+  className?: string;
 }
 
 function _BucketPickerPopover({

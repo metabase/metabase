@@ -381,6 +381,16 @@
     (t/is (= [:case [[[:< [:field 1 nil] 1] 2]] {:default 3}]
              (mbql.u/desugar-filter-clause [:if [[[:< [:field 1 nil] 1] 2]] {:default 3}])))))
 
+(t/deftest ^:parallel desugar-in-test
+  (t/testing "Desugaring in and not-in produces expected [:= ..] and [:!= ..] expressions"
+    (t/are [expected clause] (= expected (mbql.u/desugar-filter-clause clause))
+      [:= [:field 1 nil] 2]                                [:in [:field 1 nil] 2]
+      [:= [:field 1 nil] [:field 2 nil]]                   [:in [:field 1 nil] [:field 2 nil]]
+      [:or [:= [:field 1 nil] 2] [:= [:field 1 nil] 3]]    [:in [:field 1 nil] 2 3]
+      [:!= [:field 1 nil] 2]                               [:not-in [:field 1 nil] 2]
+      [:!= [:field 1 nil] [:field 2 nil]]                  [:not-in [:field 1 nil] [:field 2 nil]]
+      [:and [:!= [:field 1 nil] 2] [:!= [:field 1 nil] 3]] [:not-in [:field 1 nil] 2 3])))
+
 (t/deftest ^:parallel desugar-relative-time-interval-positive-test
   (t/testing "Desugaring relative-date-time produces expected [:and [:>=..] [:<..]] expression"
     (let [value           10

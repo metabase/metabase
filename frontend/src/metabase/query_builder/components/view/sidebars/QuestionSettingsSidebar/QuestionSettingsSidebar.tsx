@@ -44,43 +44,43 @@ export const QuestionSettingsSidebar = ({
 
   const title = useMemo(() => getTitle(question), [question]);
 
-  if (page === "caching") {
-    return (
-      <PLUGIN_CACHING.SidebarCacheForm
-        item={question}
-        model="question"
-        onBack={() => setPage("default")}
-        onClose={handleClose}
-        pt="md"
-      />
-    );
-  }
-
   return (
-    <Sidesheet
-      title={title}
-      onClose={handleClose}
-      isOpen={isOpen}
-      data-testid="question-settings-sidebar"
-    >
-      {question.type() === "model" && (
-        <SidesheetCard title={t`Caching`}>
-          <ModelCacheManagementSection model={question} />
-        </SidesheetCard>
-      )}
+    <>
+      <Sidesheet
+        title={title}
+        onClose={handleClose}
+        isOpen={isOpen}
+        data-testid="question-settings-sidebar"
+      >
+        {question.type() === "model" && (
+          <SidesheetCard title={t`Caching`}>
+            <ModelCacheManagementSection model={question} />
+          </SidesheetCard>
+        )}
 
-      {hasCacheSection && (
-        <SidesheetCard title={t`Caching`}>
-          <Stack spacing="0.5rem">
-            <PLUGIN_CACHING.SidebarCacheSection
-              model="question"
-              item={question}
-              setPage={setPage}
-            />
-          </Stack>
-        </SidesheetCard>
+        {hasCacheSection && (
+          <SidesheetCard title={t`Caching`}>
+            <Stack spacing="0.5rem">
+              <PLUGIN_CACHING.SidebarCacheSection
+                model="question"
+                item={question}
+                setPage={setPage}
+                key={page}
+              />
+            </Stack>
+          </SidesheetCard>
+        )}
+      </Sidesheet>
+      {page === "caching" && (
+        <PLUGIN_CACHING.SidebarCacheForm
+          item={question}
+          model="question"
+          onBack={() => setPage("default")}
+          onClose={handleClose}
+          pt="md"
+        />
       )}
-    </Sidesheet>
+    </>
   );
 };
 

@@ -414,12 +414,17 @@
                                      ORDERS.PRODUCT_ID                  AS PRODUCT_ID
                                      ORDERS.CREATED_AT                  AS CREATED_AT
                                      ABS (0)                            AS pivot-grouping
-                                     ;; TODO -- I'm not sure if the order here is deterministic
+                                     ;; TODO: The order here is not deterministic!
+                                     ;; It's coming from qp.util/nest-source, which walks the query looking for refs
+                                     ;; in an arbitrary order, and returns `m/distinct-by` over that random order.
+                                     ;; Changing the map keys on the inner query can perturb this order; if you cause
+                                     ;; this test to fail based on shuffling the order of these joined fields, just
+                                     ;; edit the expectation to match the new order.
                                      ;; Tech debt issue: #39396
-                                     PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
-                                     PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE
                                      PRODUCTS__via__PRODUCT_ID.ID       AS PRODUCTS__via__PRODUCT_ID__ID
-                                     PEOPLE__via__USER_ID.ID            AS PEOPLE__via__USER_ID__ID]
+                                     PEOPLE__via__USER_ID.ID            AS PEOPLE__via__USER_ID__ID
+                                     PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE
+                                     PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY]
                          :from      [ORDERS]
                          :left-join [PRODUCTS AS PRODUCTS__via__PRODUCT_ID
                                      ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID

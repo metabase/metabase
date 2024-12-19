@@ -1,21 +1,19 @@
+import cx from "classnames";
+import type { HTMLAttributes } from "react";
+
+import Animation from "metabase/css/core/animation.module.css";
 import { useSelector } from "metabase/lib/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { Flex, Text, Transition } from "metabase/ui";
+import { Box, type BoxProps, Flex, Portal, Text } from "metabase/ui";
 
 import { BulkActionsToast, ToastCard } from "./BulkActionBar.styled";
-
-const slideIn = {
-  in: { opacity: 1, transform: "translate(-50%, 0)" },
-  out: { opacity: 0, transform: "translate(-50%, 100px)" },
-  common: { transformOrigin: "top" },
-  transitionProperty: "transform, opacity",
-};
 
 type BulkActionsProps = {
   opened: boolean;
   message: string;
   children: React.ReactNode | React.ReactNode[];
   className?: string;
+  isNavbarOpen?: boolean;
 };
 
 /**
@@ -28,35 +26,35 @@ type BulkActionsProps = {
  * @param {any} children    - The children to display in the notification, meant to be used with BulkActionButton components.
  * @returns
  */
-export const BulkActionBar = ({
+export const BulkActionBar = (props: BulkActionsProps) => {
+  const isNavbarOpen = useSelector(getIsNavbarOpen);
+  return <BulkActionBarPortal {...props} isNavbarOpen={isNavbarOpen} />;
+};
+
+export const BulkActionBarPortal = ({
   opened,
   message,
   children,
   className,
-}: BulkActionsProps) => {
-  const isNavbarOpen = useSelector(getIsNavbarOpen);
-
+  isNavbarOpen = true,
+  ...props
+}: BulkActionsProps & BoxProps & HTMLAttributes<HTMLDivElement>) => {
+  if (!opened) {
+    return null;
+  }
   return (
-    <Transition
-      mounted={opened}
-      transition={slideIn}
-      duration={400}
-      timingFunction="ease"
-    >
-      {styles => (
-        <BulkActionsToast
-          style={styles}
-          isNavbarOpen={isNavbarOpen}
-          className={className}
-        >
-          <ToastCard dark data-testid="toast-card">
-            {message && <Text color="text-white">{message}</Text>}
-            <Flex gap="sm" align="center">
-              {children}
-            </Flex>
-          </ToastCard>
-        </BulkActionsToast>
-      )}
-    </Transition>
+    <Portal>
+      <BulkActionsToast
+        isNavbarOpen={isNavbarOpen}
+        className={cx(className, Animation.popToast)}
+      >
+        <Box component={ToastCard} dark data-testid="toast-card" {...props}>
+          {message && <Text color="text-white">{message}</Text>}
+          <Flex gap="sm" align="center">
+            {children}
+          </Flex>
+        </Box>
+      </BulkActionsToast>
+    </Portal>
   );
 };

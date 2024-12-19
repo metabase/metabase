@@ -34,7 +34,7 @@ If the functionality you're looking for simply doesn't exist (i.e., it hasn't su
 
 2. Click on the **Label** dropdown and select `Type: New Feature`.
 
-3. Choose least one value in the **Label** dropdown that matches the feature you're looking for.
+3. Choose at least one value in the **Label** dropdown that matches the feature you're looking for.
 
    > Add additional keywords to the search bar above the list of results. Hit Enter/Return to run the search.
 

@@ -64,7 +64,6 @@ export const CollectionPickerInner = (
     });
   }, [options.namespace, models]);
   const path = pathProp ?? defaultPath;
-
   const {
     currentCollection,
     currentDashboard,

@@ -54,9 +54,3 @@ export const AlertIcon = styled(Icon)<AlertIconProps>`
   padding: 0.5rem 1rem 0.5rem 0.5rem;
   color: ${props => colorsByVariant.icon[props.variant]};
 `;
-
-export const AlertLink = styled.a`
-  color: var(--mb-color-brand);
-  cursor: pointer;
-  font-weight: bold;
-`;

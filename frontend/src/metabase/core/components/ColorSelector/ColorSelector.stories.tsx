@@ -3,7 +3,7 @@ import type { StoryFn } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
 
-import ColorSelector, { type ColorSelectorProps } from "./ColorSelector";
+import { ColorSelector, type ColorSelectorProps } from "./ColorSelector";
 
 export default {
   title: "Core/ColorSelector",

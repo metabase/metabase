@@ -79,6 +79,7 @@
     :model/QueryTable
     :model/RecentViews
     :model/Revision
+    :model/SearchIndexMetadata
     :model/Secret
     :model/Session
     :model/TablePrivileges

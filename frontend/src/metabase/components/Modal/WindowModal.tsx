@@ -3,7 +3,6 @@ import type { CSSProperties } from "react";
 import { Component } from "react";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 
-import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnClickOutsideWrapper";
 import type {
   BaseModalProps,
@@ -13,6 +12,8 @@ import { getModalContent, modalSizes } from "metabase/components/Modal/utils";
 import SandboxedPortal from "metabase/components/SandboxedPortal";
 import ModalS from "metabase/css/components/modal.module.css";
 import CS from "metabase/css/core/index.css";
+import { getPortalRootElement } from "metabase/css/core/overlays/utils";
+import ZIndex from "metabase/css/core/z-index.module.css";
 import { FocusTrap } from "metabase/ui";
 
 export type WindowModalProps = BaseModalProps & {
@@ -22,6 +23,7 @@ export type WindowModalProps = BaseModalProps & {
   formModal?: boolean;
   style?: CSSProperties;
   "data-testid"?: string;
+  "aria-labelledby"?: string;
   zIndex?: number;
   trapFocus?: boolean;
 } & {
@@ -55,12 +57,15 @@ export class WindowModal extends Component<WindowModalProps> {
       this._modalElement.style.zIndex = String(props.zIndex);
     }
 
-    const modalContainer =
-      window.document.querySelector(
-        `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
-      ) || document.body;
+    if (props.isOpen) {
+      getPortalRootElement().appendChild(this._modalElement);
+    }
+  }
 
-    modalContainer.appendChild(this._modalElement);
+  componentDidUpdate(prevProps: WindowModalProps) {
+    if (!prevProps.isOpen && this.props.isOpen) {
+      getPortalRootElement().appendChild(this._modalElement);
+    }
   }
 
   componentWillUnmount() {
@@ -96,9 +101,11 @@ export class WindowModal extends Component<WindowModalProps> {
               CS.bgWhite,
               CS.rounded,
               CS.textDark,
+              ZIndex.Overlay,
             )}
             role="dialog"
             data-testid="modal"
+            aria-labelledby={this.props["aria-labelledby"]}
           >
             {getModalContent({
               ...this.props,
@@ -162,7 +169,11 @@ export class WindowModal extends Component<WindowModalProps> {
               }}
             >
               <div
-                className={cx(ModalS.ModalBackdrop, backdropClassnames)}
+                className={cx(
+                  ModalS.ModalBackdrop,
+                  backdropClassnames,
+                  ZIndex.Overlay,
+                )}
                 style={style}
                 data-testid={dataTestId}
               >

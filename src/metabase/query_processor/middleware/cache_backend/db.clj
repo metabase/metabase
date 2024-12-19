@@ -104,10 +104,10 @@
   [^bytes query-hash ^bytes results]
   (log/debugf "Caching results for query with hash %s." (pr-str (i/short-hex-hash query-hash)))
   (try
-    (or (pos? (t2/update! QueryCache {:query_hash query-hash}
+    (or (pos? (t2/update! :model/QueryCache {:query_hash query-hash}
                           {:updated_at (t/offset-date-time)
                            :results    results}))
-        (first (t2/insert-returning-instances! QueryCache
+        (first (t2/insert-returning-instances! :model/QueryCache
                                                :updated_at (t/offset-date-time)
                                                :query_hash query-hash
                                                :results    results)))

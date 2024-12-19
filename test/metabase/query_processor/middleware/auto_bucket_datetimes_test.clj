@@ -38,10 +38,12 @@
   (testing "does a :type/DateTime Field get auto-bucketed when present in a breakout clause?"
     (qp.store/with-metadata-provider meta/metadata-provider
       (is (= {:source-table 1
-              :breakout     [[:field (meta/id :checkins :date) {:temporal-unit :day}]]}
+              :breakout     [[:field (meta/id :checkins :date) {:temporal-unit :day}]]
+              :breakout-idents {0 "pR-HwNxCrz36MUayZ_qqL"}}
              (auto-bucket-mbql
               {:source-table 1
-               :breakout     [[:field (meta/id :checkins :date) nil]]}))))))
+               :breakout     [[:field (meta/id :checkins :date) nil]]
+               :breakout-idents {0 "pR-HwNxCrz36MUayZ_qqL"}}))))))
 
 (deftest ^:parallel auto-bucket-in-filter-test
   (testing "does the Field get bucketed if present in the `:filter` clause? (#8932)"
@@ -156,21 +158,25 @@
   (testing "if a Field occurs more than once we should only rewrite the instances that should be rebucketed"
     (qp.store/with-metadata-provider meta/metadata-provider
       ;; filter doesn't get auto-bucketed here because it's being compared to something with > date resolution
-      (is (= {:source-table 1
-              :breakout     [[:field (meta/id :checkins :date) {:temporal-unit :day}]]
-              :filter       [:= [:field (meta/id :checkins :date) nil] "2018-11-20T14:20:00.000Z"]}
+      (is (= {:source-table    1
+              :breakout        [[:field (meta/id :checkins :date) {:temporal-unit :day}]]
+              :breakout-idents {0 "pxIqrSvblq4zbHU3ZBT8j"}
+              :filter          [:= [:field (meta/id :checkins :date) nil] "2018-11-20T14:20:00.000Z"]}
              (auto-bucket-mbql
-              {:source-table 1
-               :breakout     [[:field (meta/id :checkins :date) nil]]
-               :filter       [:= [:field (meta/id :checkins :date) nil] "2018-11-20T14:20:00.000Z"]})))
+              {:source-table    1
+               :breakout        [[:field (meta/id :checkins :date) nil]]
+               :breakout-idents {0 "pxIqrSvblq4zbHU3ZBT8j"}
+               :filter          [:= [:field (meta/id :checkins :date) nil] "2018-11-20T14:20:00.000Z"]})))
 
-      (is (= {:source-table 1
-              :breakout     [[:field (meta/id :checkins :date) {:temporal-unit :month}]]
-              :filter       [:= [:field (meta/id :checkins :date) {:temporal-unit :day}] "2018-11-20"]}
+      (is (= {:source-table    1
+              :breakout        [[:field (meta/id :checkins :date) {:temporal-unit :month}]]
+              :breakout-idents {0 "pxIqrSvblq4zbHU3ZBT8j"}
+              :filter          [:= [:field (meta/id :checkins :date) {:temporal-unit :day}] "2018-11-20"]}
              (auto-bucket-mbql
-              {:source-table 1
-               :breakout     [[:field (meta/id :checkins :date) {:temporal-unit :month}]]
-               :filter       [:= [:field (meta/id :checkins :date) nil] "2018-11-20"]}))))))
+              {:source-table    1
+               :breakout        [[:field (meta/id :checkins :date) {:temporal-unit :month}]]
+               :breakout-idents {0 "pxIqrSvblq4zbHU3ZBT8j"}
+               :filter          [:= [:field (meta/id :checkins :date) nil] "2018-11-20"]}))))))
 
 (deftest ^:parallel do-not-auto-bucket-inside-time-interval-test
   (testing "We should not try to bucket Fields inside a `time-interval` clause as that would be invalid"
@@ -200,10 +206,12 @@
                                                         :base-type      :type/Time
                                                         :effective-type :type/Time})]})
       (is (= {:source-table 1
-              :breakout     [[:field 1 nil]]}
+              :breakout     [[:field 1 nil]]
+              :breakout-idents {0 "jSxIBJq7I2d6vofSs3o2U"}}
              (auto-bucket-mbql
               {:source-table 1
-               :breakout     [[:field 1 nil]]}))))))
+               :breakout     [[:field 1 nil]]
+               :breakout-idents {0 "jSxIBJq7I2d6vofSs3o2U"}}))))))
 
 (def ^:private unix-timestamp-metadata-provider
   (lib.tu/mock-metadata-provider
@@ -218,10 +226,12 @@
   (testing "UNIX timestamps should be considered to be :type/DateTime based on effective type"
     (qp.store/with-metadata-provider unix-timestamp-metadata-provider
       (is (= {:source-table 1
-              :breakout     [[:field 1 {:temporal-unit :day}]]}
+              :breakout     [[:field 1 {:temporal-unit :day}]]
+              :breakout-idents {0 "5mjpe6u4u52FDmAuSBx-0"}}
              (auto-bucket-mbql
               {:source-table 1
-               :breakout     [[:field 1 nil]]}))))))
+               :breakout     [[:field 1 nil]]
+               :breakout-idents {0 "5mjpe6u4u52FDmAuSBx-0"}}))))))
 
 (deftest ^:parallel ignore-native-queries-test
   (testing "do native queries pass thru unchanged?"
@@ -239,28 +249,34 @@
   (testing "does a breakout Field that isn't temporal pass thru unchnaged?"
     (qp.store/with-metadata-provider meta/metadata-provider
       (is (= {:source-table 1
-              :breakout     [[:field (meta/id :venues :id) nil]]}
+              :breakout     [[:field (meta/id :venues :id) nil]]
+              :breakout-idents {0 "78lWYYo7W2wz6rHWEYUEf"}}
              (auto-bucket-mbql
               {:source-table 1
-               :breakout     [[:field (meta/id :venues :id) nil]]}))))))
+               :breakout     [[:field (meta/id :venues :id) nil]]
+               :breakout-idents {0 "78lWYYo7W2wz6rHWEYUEf"}}))))))
 
 (deftest ^:parallel do-not-auto-bucket-already-bucketed-test
   (testing "does a :type/DateTime breakout Field that is already bucketed pass thru unchanged?"
     (qp.store/with-metadata-provider meta/metadata-provider
       (is (= {:source-table 1
-              :breakout     [[:field (meta/id :checkins :date) {:temporal-unit :month}]]}
+              :breakout     [[:field (meta/id :checkins :date) {:temporal-unit :month}]]
+              :breakout-idents {0 "78lWYYo7W2wz6rHWEYUEf"}}
              (auto-bucket-mbql
               {:source-table 1
-               :breakout     [[:field (meta/id :checkins :date) {:temporal-unit :month}]]}))))))
+               :breakout     [[:field (meta/id :checkins :date) {:temporal-unit :month}]]
+               :breakout-idents {0 "78lWYYo7W2wz6rHWEYUEf"}}))))))
 
 (deftest ^:parallel do-not-fail-on-invalid-field-test
   (testing "does the middleware avoid barfing if for some reason the Field could not be resolved in the DB?"
     ;; (That is the job of the resolve middleware to worry about that stuff.)
     (is (= {:source-table 1
-            :breakout     [[:field Integer/MAX_VALUE nil]]}
+            :breakout     [[:field Integer/MAX_VALUE nil]]
+            :breakout-idents {0 "ZT7n35j6KY0m_NPIEa7Ut"}}
            (auto-bucket-mbql
             {:source-table 1
-             :breakout     [[:field Integer/MAX_VALUE nil]]})))))
+             :breakout     [[:field Integer/MAX_VALUE nil]]
+             :breakout-idents {0 "ZT7n35j6KY0m_NPIEa7Ut"}})))))
 
 (deftest ^:parallel do-not-auto-bucket-relative-time-interval-test
   (testing "does a :type/DateTime breakout Field that is already bucketed pass thru unchanged?"
@@ -276,10 +292,12 @@
     (qp.store/with-metadata-provider unix-timestamp-metadata-provider
       (lib.tu.macros/$ids checkins
         (is (= {:source-table $$checkins
-                :breakout     [!day.date]}
+                :breakout     [!day.date]
+                :breakout-idents {0 "4_PWIOL_uBef9J_gtnP2e"}}
                (auto-bucket-mbql
                 {:source-table $$checkins
-                 :breakout     [$date]})))))))
+                 :breakout     [$date]
+                 :breakout-idents {0 "4_PWIOL_uBef9J_gtnP2e"}})))))))
 
 (deftest ^:parallel relative-datetime-test
   (testing "Fields being compared against `:relative-datetime`s should be subject to auto-bucketing. (#9014)"
@@ -351,10 +369,12 @@
   (testing "Datetime fields inside nested MBQL queries should get auto-bucketed the same way as at the top-level (#15352)"
     (let [q1 (lib.tu.macros/mbql-query orders
                {:aggregation [[:count]]
+                :aggregation-idents {0 "m6q6vzmpTEhcvDLJCs7bq"}
                 :filter      [:between $created-at "2020-02-01" "2020-02-29"]})]
       (testing "original query"
         (is (= (lib.tu.macros/mbql-query orders
                  {:aggregation [[:count]]
+                  :aggregation-idents {0 "m6q6vzmpTEhcvDLJCs7bq"}
                   :filter      [:between !day.created-at "2020-02-01" "2020-02-29"]})
                (auto-bucket q1))))
       (testing "nested query"
@@ -363,5 +383,6 @@
           (is (= (lib.tu.macros/mbql-query orders
                    {:source-query {:source-table $$orders
                                    :aggregation  [[:count]]
+                                   :aggregation-idents {0 "m6q6vzmpTEhcvDLJCs7bq"}
                                    :filter       [:between !day.created-at "2020-02-01" "2020-02-29"]}})
                  (auto-bucket q2))))))))

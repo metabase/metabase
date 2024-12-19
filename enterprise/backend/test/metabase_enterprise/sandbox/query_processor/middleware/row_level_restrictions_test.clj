@@ -404,10 +404,9 @@
                   "card) to see if row level permissions apply. This was broken when it wasn't expecting a card and "
                   "only expecting resolved source-tables")
       (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues)}]
-        (let [query {:database (mt/id)
-                     :type     :query
-                     :query    {:source-table (format "card__%s" (u/the-id card))
-                                :aggregation  [["count"]]}}]
+        (let [query (mt/mbql-query nil
+                      {:source-table (format "card__%s" (u/the-id card))
+                       :aggregation  [["count"]]})]
           (mt/with-test-user :rasta
             (mt/with-native-query-testing-context query
               (is (= [[100]]
@@ -1111,11 +1110,11 @@
               (is (= "persisted" (:state persisted-info))
                   "Model failed to persist")
               (is (string? (:table_name persisted-info)))
-              (let [query         {:type     :query
-                                   ;; just generate a select count(*) from card__<id>
-                                   :query    {:aggregation  [:count]
-                                              :source-table (str "card__" (:id model))}
-                                   :database (mt/id)}
+
+              (let [query         (mt/mbql-query nil
+                                    ;; just generate a select count(*) from card__<id>
+                                    {:aggregation  [:count]
+                                     :source-table (str "card__" (:id model))})
                     regular-result (mt/with-test-user :crowberto
                                      (qp/process-query query))
                     sandboxed-result (met/with-user-attributes! :rasta {"category" "Gizmo"}

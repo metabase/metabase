@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
-import { connect } from "react-redux";
 
+import { connect } from "metabase/lib/redux";
 import type { State } from "metabase-types/store";
 
 import SlackSetup from "../../components/SlackSetup";

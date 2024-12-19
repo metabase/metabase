@@ -2,7 +2,6 @@ import cx from "classnames";
 import type { ComponentType } from "react";
 import { Component } from "react";
 import type { ConnectedProps } from "react-redux";
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -30,6 +29,7 @@ import {
   GRID_WIDTH,
   MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
+import { connect } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { addUndo } from "metabase/redux/undo";
 import { getVisualizationRaw } from "metabase/visualizations";

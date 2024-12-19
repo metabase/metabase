@@ -1,13 +1,13 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button/Button";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";

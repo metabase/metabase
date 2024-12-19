@@ -6,4 +6,14 @@
 
 .MainFormContainer {
   padding: 1.5rem 1.5rem 0;
+
+  .SelectButton {
+    color: var(--mb-color-text-dark);
+    transition: border 0.3s;
+    outline: none;
+
+    &:focus {
+      border-color: var(--mb-color-brand);
+    }
+  }
 }

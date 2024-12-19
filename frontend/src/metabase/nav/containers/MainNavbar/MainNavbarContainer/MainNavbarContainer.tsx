@@ -1,6 +1,5 @@
 import type { LocationDescriptor } from "history";
 import { memo, useCallback, useMemo, useState } from "react";
-import { connect } from "react-redux";
 import _ from "underscore";
 
 import {
@@ -22,6 +21,7 @@ import Collections, {
   getCollectionIcon,
 } from "metabase/entities/collections";
 import Databases from "metabase/entities/databases";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getHasDataAccess } from "metabase/selectors/data";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";

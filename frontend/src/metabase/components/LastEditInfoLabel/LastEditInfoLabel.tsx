@@ -1,10 +1,10 @@
 import dayjs from "dayjs";
 import type { MouseEventHandler } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 
 import { TextButton } from "metabase/components/Button.styled";
 import DateTime from "metabase/components/DateTime";
+import { connect } from "metabase/lib/redux";
 import type { NamedUser } from "metabase/lib/user";
 import { getFullName } from "metabase/lib/user";
 import { getUser } from "metabase/selectors/user";
