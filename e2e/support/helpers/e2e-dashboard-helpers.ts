@@ -385,7 +385,7 @@ export function getTextCardDetails({
       },
       text,
     },
-  };
+  } as const;
 }
 
 export function getHeadingCardDetails({
