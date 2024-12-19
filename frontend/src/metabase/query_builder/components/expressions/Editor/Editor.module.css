@@ -6,6 +6,11 @@
   align-items: center;
   padding-left: 0.6875rem;
   padding-right: 0.6875rem;
+  transition: border-color 100ms ease;
+
+  &:focus-within {
+    border-color: var(--mb-color-brand);
+  }
 }
 
 .prefix {
