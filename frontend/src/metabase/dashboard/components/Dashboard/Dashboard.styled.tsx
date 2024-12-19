@@ -165,22 +165,6 @@ export const ParametersAndCardsContainer = styled.div<{
   /* Makes sure it doesn't use all the height, so the actual content height could be used in embedding #37437 */
   align-self: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
     !shouldMakeDashboardHeaderStickyAfterScrolling && "flex-start"};
-
-  &.${SAVING_DOM_IMAGE_CLASS} {
-    ${ParametersWidgetContainer} {
-      background-color: transparent;
-      border-bottom: none;
-      margin-top: 1rem;
-
-      legend {
-        top: -12px;
-      }
-    }
-
-    ${CardsContainer} {
-      padding-bottom: 20px;
-    }
-  }
 `;
 
 export const FIXED_WIDTH = "1048px";
@@ -195,6 +179,12 @@ export const FixedWidthContainer = styled.div<{
       margin: 0 auto;
       max-width: ${FIXED_WIDTH};
     `}
+
+  .${SAVING_DOM_IMAGE_CLASS} & {
+    legend {
+      top: -9px;
+    }
+  }
 `;
 
 export const ParametersFixedWidthContainer = styled(FixedWidthContainer)`

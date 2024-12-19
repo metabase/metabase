@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import type { Dashboard } from "metabase-types/api";
 
 import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
@@ -141,7 +142,8 @@ const createHeaderElement = (dashboardName: string, marginBottom: number) => {
   return header;
 };
 
-const HEADER_MARGIN_BOTTOM = 8;
+const HEADER_MARGIN_BOTTOM = 12;
+const PARAMETERS_MARGIN_BOTTOM = 12;
 const PAGE_PADDING = 16;
 
 export const saveDashboardPdf = async (
@@ -149,25 +151,37 @@ export const saveDashboardPdf = async (
   dashboardName: string,
 ) => {
   const fileName = `${dashboardName}.pdf`;
-  const node = document
-    .querySelector(selector)
-    ?.querySelector(".react-grid-layout");
+  const dashboardRoot = document.querySelector(selector);
+  const gridNode = dashboardRoot?.querySelector(".react-grid-layout");
 
-  if (!node || !(node instanceof HTMLElement)) {
+  if (!gridNode || !(gridNode instanceof HTMLElement)) {
     console.warn("No dashboard content found", selector);
     return;
   }
-  const cardsBounds = getSortedDashCardBounds(node);
+  const cardsBounds = getSortedDashCardBounds(gridNode);
 
   const pdfHeader = createHeaderElement(dashboardName, HEADER_MARGIN_BOTTOM);
+  const parametersNode = dashboardRoot
+    ?.querySelector(`#${DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}`)
+    ?.cloneNode(true);
 
-  node.appendChild(pdfHeader);
+  let parametersHeight = 0;
+  if (parametersNode instanceof HTMLElement) {
+    gridNode.append(parametersNode);
+    parametersNode.style.cssText = `margin-bottom: ${PARAMETERS_MARGIN_BOTTOM}px`;
+    parametersHeight =
+      parametersNode.getBoundingClientRect().height + PARAMETERS_MARGIN_BOTTOM;
+    gridNode.removeChild(parametersNode);
+  }
+
+  gridNode.appendChild(pdfHeader);
   const headerHeight =
     pdfHeader.getBoundingClientRect().height + HEADER_MARGIN_BOTTOM;
-  node.removeChild(pdfHeader);
+  gridNode.removeChild(pdfHeader);
 
-  const contentWidth = node.offsetWidth;
-  const contentHeight = node.offsetHeight + headerHeight;
+  const verticalOffset = headerHeight + parametersHeight;
+  const contentWidth = gridNode.offsetWidth;
+  const contentHeight = gridNode.offsetHeight + verticalOffset;
   const width = contentWidth + PAGE_PADDING * 2;
 
   const backgroundColor = getComputedStyle(document.documentElement)
@@ -175,7 +189,7 @@ export const saveDashboardPdf = async (
     .trim();
 
   const { default: html2canvas } = await import("html2canvas-pro");
-  const image = await html2canvas(node, {
+  const image = await html2canvas(gridNode, {
     height: contentHeight,
     width: contentWidth,
     useCORS: true,
@@ -183,6 +197,9 @@ export const saveDashboardPdf = async (
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.style.height = `${contentHeight}px`;
       node.style.backgroundColor = backgroundColor;
+      if (parametersNode instanceof HTMLElement) {
+        node.insertBefore(parametersNode, node.firstChild);
+      }
       node.insertBefore(pdfHeader, node.firstChild);
     },
   });
@@ -198,7 +215,7 @@ export const saveDashboardPdf = async (
     optimalPageHeight - PAGE_PADDING * 2,
     contentHeight,
     minPageHeight,
-    headerHeight,
+    verticalOffset,
   );
 
   const pdf = new jspdf({
