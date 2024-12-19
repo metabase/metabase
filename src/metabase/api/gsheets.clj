@@ -21,13 +21,13 @@
   Google Sheets Integration is not enabled.
   This is gated by the [[show-google-sheets-integration]] setting.
 
-  2) {:status :no-auth}
+  2) {:status \"no-auth\"}
   Google Sheets Integration is enabled, but not authenticated.
 
-  3) {:status :auth-complete}
+  3) {:status \"auth-complete\"}
   Google Sheets Integration is enabled and oauth is authenticated.
 
-  4) {:status :folder-saved
+  4) {:status \"folder-saved\"
       :folder_url \"https://drive.google.com/drive/abc\"}
   Google Sheets Integration is enabled, authenticated, and a folder has been setup to sync."
   (deferred-tru "Information about Google Sheets Integration")
@@ -35,29 +35,9 @@
   :export? true
   :visibility :public
   :type :json
-  :getter (fn []
-            ;; TEMP: check the setting when we are ready
-            ;; (when
-            ;;   (setting/get-value-of-type :boolean :show-google-sheets-integration)
-            ;;
-            ;; )
-            (or (setting/get-value-of-type :json :gsheets)
-                {:status :no-auth})))
-
-(comment
-
-  (gsheets)
-
-  (->config)
-
-  )
-
-(defn- check-validate-drive-link-format
-  "Checks if the given link is a valid Google Drive link. If not, throws an exception."
-  [drive-link]
-  (when-not (re-matches #".*docs\.google\.com\/spreadsheet.*" drive-link)
-    (throw (ex-info "Invalid Google Drive link." {:drive-link drive-link})))
-  drive-link)
+  :getter (fn [] (or (setting/get-value-of-type :json :gsheets)
+                     (do (gsheets! {:status "no-auth"})
+                         (gsheets)))))
 
 (defn- ->config
   "This config is needed to call [[hm.client/make-request]].
@@ -74,10 +54,7 @@
             (log/error "Missing api-key. Cannot create hm client config.")
             (throw (ex-info "Missing api-key." {:api-key api-key})))]
     {:store-api-url store-api-url
-     ;; FIXME: TEMP:
-     ;; :api-key "mb_api_key_bfbd521277757d009445242aa34bd2f91c8f575c25f8f5fdc9a2c8ee8470c769"
-     :api-key api-key
-     }))
+     :api-key api-key}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; MB <-> HM APIs
@@ -97,21 +74,12 @@
   ;; When google drive oauth exists, set the gsheets setting to be auth-complete.
   (or
    ;; It's already set it up, no need to ask HM or update the status:
-   (contains? #{:auth-complete :folder-saved} gsheets-status)
-
-   ;; Ask HM what the oauth status is:
+   (contains? #{"auth-complete" "folder-saved"} gsheets-status)
    (if (hm-oauth-setup?)
-     ;; When harbormaster acks that oauth exists,
-     ;; set the gsheets status to `auth-complete`:
-     (do (gsheets! {:status :auth-complete})
+     ;; When harbormaster says oauth exists, set the gsheets status to `auth-complete`:
+     (do (gsheets! {:status "auth-complete"})
          true)
      false)))
-
-(comment
-
-  (oauth-setup? (:status (gsheets)))
-
-  )
 
 #_{:clj-kondo/ignore [:unused-private-var]}
 (defn- get-temp-url
@@ -133,9 +101,6 @@
 (mu/defn- setup-drive-folder-sync :- [:tuple [:enum :ok :error] :map]
   "Start the sync w/ drive folder"
   [drive-folder-url]
-  (check-validate-drive-link-format drive-folder-url)
-  (def drive-folder-url
-    "https://docs.google.com/spreadsheets/d/1YzUq24D2txbcQ8vlOrCeBtxC-K6jmwTQXHf5N2S3nqA/edit?gid=116303473#gid=116303473")
   (hm.client/make-request
    (->config)
    :post
@@ -173,13 +138,13 @@
 
 (api/defendpoint POST "/oauth"
   "Checks with HM to see what the temporary, ephemeral oauth-signin url is, and returns it in the response."
-  [:as {{redirect-url :redirect_url} :body :as body}]
+  [:as {{redirect-url :redirect_url} :body :as _body}]
   {redirect-url :string}
-  ;; TEMP: call HM to get the temp-url with the site's url:
+  ;; TEMP (gsheets): call HM to get the temp-url with the site's url:
   #_(get-temp-url (or redirect-url (public-settings/site-url)))
-  {:oauth_url "https://letmegooglethat.com/?q=how+do+I+setup+oauth"})
+  {:oauth_url "https://letmegooglethat.com/?q=log+me+into+google+oauth"})
 
-;; TODO shuffle this setting somewhere it is allowed to be accessed from:
+;; TEMP (gsheets): shuffle this setting somewhere it is allowed to be accessed from, to appease the linter:
 (require '[metabase.server.middleware.auth])
 
 (api/defendpoint GET "/oauth"
@@ -189,11 +154,10 @@
   (when-not (metabase.server.middleware.auth/show-google-sheets-integration)
     (throw (ex-info "Google Sheets integration is not enabled." {})))
   {:oauth_setup
-   ;; TEMP: we are pretending that oauth exists, remove this and uncomment below when it works:
+   ;; TEMP (gsheets): we are pretending that oauth exists, remove this and uncomment below when it works:
    ;; We are not using a setting for this because we may need to make a request to HM to get the status,
    ;; and we don't want to do that on every system/properties request.
-   true
-   #_(oauth-setup? (:status (gsheets)))})
+   (oauth-setup? (:status (gsheets)))})
 
 (api/defendpoint POST "/folder"
   "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase."
