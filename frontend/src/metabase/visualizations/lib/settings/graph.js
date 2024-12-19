@@ -289,7 +289,6 @@ export const TOOLTIP_SETTINGS = {
   },
   "graph.tooltip_columns": {
     section: t`Display`,
-
     title: t`Additional tooltip metrics`,
     placeholder: t`Enter metric names`,
     widget: "multiselect",
