@@ -26,29 +26,27 @@ You can make as many dashboards as you want. Go nuts.
 
 In the top right of the screen, click the **+ New** > **Dashboard**. Give your new dashboard a name and a description, choose which [collections](../exploration-and-organization/collections.md) the dashboard should go in, then click **Create**, and Metabase will take you to your shiny new dashboard.
 
-## Adding questions to a dashboard
+## Adding or saving questions to a dashboard
 
-There are different ways to add questions to a dashboard:
-
-### Saving questions to a dashboard
-
-When you save a question, you can [save the question directly to a dashboard](../questions/introduction.md#saving-questions-to-dashboards). Only that dashboard will be able to include that question.
-
-### Adding a question in a collection
-
-Visit a collection and click on the question. Click on the three-dot menu (**...**) at the top right of a question and select **Add to dashboard**.
+You can add questions that are saved to collections, or save questions directly to a dashboard.
 
 ### From a dashboard
 
-When viewing a dashboard, click on the **pencil** icon to **edit the dashboard**. Then click the **+** icon in the top right of the dashboard editing interface (not the **+** in the main navigation bar).
+When editing a dashboard, you can add a question by clicking the **+** icon in the top right. You can add a chart from a new question, SQL/native query, or an existing question.
 
-Keep in mind, you can't add questions that are saved to other dashboards. If you want to use a question in more than one dashboard, you should saved it to a collection. You could also duplicate a question, and save that duplicate to your dashboard.
+You can't add questions that are saved to other dashboards. If you want to add a question to multiple dashboards, you should save that question to a collection. Alternatively, if the questions don't need to stay in sync, you could duplicate a question, and save that duplicate to your dashboard. Just keep in mind that changes to one question won't affect the duplicate question.
 
-> If your question is saved to your personal collection, you'll only be able to add that question to dashboards in your personal collection. If you want to add the question to a dashboard in a public collection, you'll need to move your question to that collection (or any other public collection).
+### From a question
 
-Once you add a question to your dashboard, it’ll look something like this:
+When creating or editing a question, you can [save the question directly to a dashboard](../questions/introduction.md#saving-questions-to-dashboards). That question can only be used by that dashboard.
 
-![First Dashboard](images/first.png)
+### Adding a question saved to a collection
+
+To add a question saved to a collection to a dashboard, visit the question and click on the three-dot menu (**...**) at the top right and select **Add to dashboard**. You can also [browse questions from dashboard edit mode](#from-a-dashboard).
+
+Adding a question to a dashboard does not save the question to the dashboard.
+
+If a question is saved to your personal collection, you'll only be able to add that question to dashboards _in_ your personal collection. If you want to add the question to a dashboard in a public collection, you'll need to move your question out of your personal collection.
 
 ## Adding headings or descriptions with text cards
 
