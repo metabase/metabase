@@ -195,9 +195,9 @@ jobs:
           fail-on-error: false
 
   be-tests-stub:
-    needs: [be-tests]
+    needs: [files-changed, static-viz-files-changed, be-tests]
     if: |
-      !cancelled() &&
+      always() &&
       github.event.pull_request.draft == false && needs.be-tests.result == 'skipped'
     runs-on: ubuntu-22.04
     name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
