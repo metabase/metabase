@@ -5,7 +5,11 @@ import {
   CREATE_MEMBERSHIP,
   DELETE_MEMBERSHIP,
 } from "metabase/admin/people/events";
-import { permissionApi, useGetPermissionsGroupQuery } from "metabase/api";
+import {
+  permissionApi,
+  useGetPermissionsGroupQuery,
+  useListPermissionsGroupsQuery,
+} from "metabase/api";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 
 /**
@@ -19,6 +23,7 @@ const Groups = createEntity({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
+    useListQuery: useListPermissionsGroupsQuery,
   },
 
   api: {
