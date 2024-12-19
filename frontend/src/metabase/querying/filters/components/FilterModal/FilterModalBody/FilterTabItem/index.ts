@@ -1,1 +1,1 @@
-export * from "./FilterTabItem.styled";
+export * from "./FilterTabItem";

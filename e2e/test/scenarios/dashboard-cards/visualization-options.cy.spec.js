@@ -42,18 +42,15 @@ describe("scenarios > dashboard cards > visualization options", () => {
       H.moveDnDKitElement(H.getDraggableElements().contains("ID"), {
         vertical: 100,
       });
-
-      /**
-       * When this issue gets fixed, it should be safe to uncomment the following assertion.
-       * It currently doesn't work in UI at all, but Cypress somehow manages to move the "ID" column.
-       * However, it leaves an empty column in its place (thus, making it impossible to use this assertion).
-       */
-      cy.findAllByTestId(/draggable-item/)
-        .as("sidebarColumns") // Out of all the columns in the sidebar...
-        .first() // ...pick the fist one and make sure it's not "ID" anymore
-        .should("contain", "User ID");
+      const idButton = cy
+        .get('[data-testid="draggable-item-ID"]')
+        .closest("[role=button]");
+      const userIdButton = cy
+        .get('[data-testid="draggable-item-User ID"]')
+        .closest("[role=button]");
+      // The ID column should be below the User ID column.
+      expect(idButton.prev()[0]).to.equal(userIdButton[0]);
     });
-
     // The table preview should get updated immediately, reflecting the changes in columns ordering.
     H.modal().findAllByTestId("column-header").first().contains("User ID");
   });

@@ -1,8 +1,9 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import { connect } from "react-redux";
 import { goBack, push } from "react-router-redux";
 import _ from "underscore";
+
+import { connect } from "metabase/lib/redux";
 
 // namespace under _routeless_
 const mapStateToProps = (state, props) => ({
