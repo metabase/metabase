@@ -17,7 +17,7 @@ import {
 import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";
 
-import { ClearIcon } from "./DateFilterEditor.styled";
+import S from "./DateFilterEditor.module.css";
 import { SECONDARY_SHORTCUTS } from "./constants";
 import { getFilterName, getSelectedOption, getVisibleOptions } from "./utils";
 
@@ -139,7 +139,7 @@ function DateFilterPopover({
             variant="outline"
             rightIcon={
               <IconButtonWrapper aria-label={t`Clear`} onClick={handleClear}>
-                <ClearIcon name="close" size={12} />
+                <Icon className={S.ClearIcon} name="close" size={12} />
               </IconButtonWrapper>
             }
             onClick={handleOpen}

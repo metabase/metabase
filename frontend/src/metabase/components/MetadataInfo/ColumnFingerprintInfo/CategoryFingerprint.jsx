@@ -1,9 +1,9 @@
 import PropTypes from "prop-types";
-import { connect } from "react-redux";
 import { msgid, ngettext, t } from "ttag";
 
 import { useGetFieldValuesQuery } from "metabase/api";
 import { formatNumber } from "metabase/lib/formatting";
+import { connect } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import {

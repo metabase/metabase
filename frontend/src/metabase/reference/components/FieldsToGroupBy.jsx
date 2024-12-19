@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
-import { connect } from "react-redux";
 
 import L from "metabase/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
+import { connect } from "metabase/lib/redux";
 import { fetchTableMetadata } from "metabase/redux/metadata";
 import D from "metabase/reference/components/Detail.module.css";
 import FieldToGroupBy from "metabase/reference/components/FieldToGroupBy";

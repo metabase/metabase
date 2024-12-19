@@ -1,6 +1,6 @@
-import { connect } from "react-redux";
 import _ from "underscore";
 
+import { connect } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 import type { State } from "metabase-types/store";
 

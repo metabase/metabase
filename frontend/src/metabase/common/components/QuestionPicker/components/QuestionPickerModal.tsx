@@ -155,7 +155,7 @@ export const QuestionPickerModal = ({
   ];
 
   const filteredTabs = tabs.filter(tab =>
-    models.some(model => tab.models?.includes(model)),
+    tab.models.every(m => models.includes(m as QuestionPickerModel)),
   );
 
   return (

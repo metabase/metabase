@@ -245,4 +245,16 @@ describe("command palette", () => {
       cy.findByText("Report an issue").should("be.visible");
     });
   });
+
+  it("The data picker does not cover the command palette (metabase#45469)", () => {
+    cy.visit("/");
+    cy.log("Click on the New button in the navigation bar and select Question");
+    H.newButton("Question").click();
+    cy.findByRole("dialog", { name: "Pick your starting data" });
+    cy.log("Open the command palette with a shortcut key");
+    cy.get("body").type("{ctrl+k}{cmd+k}");
+    H.commandPalette().within(() => {
+      H.commandPaletteInput().should("be.visible");
+    });
+  });
 });
