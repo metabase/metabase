@@ -26,9 +26,9 @@
   (when (and custom-query-with-extra-stage expected-query-with-extra-stage)
     (testing "base query with extra stage"
       (lib.drill-thru.tu/test-drill-application
-       (-> test-drill-context
-           (assoc :custom-query custom-query-with-extra-stage)
-           (assoc :expected-query expected-query-with-extra-stage))))))
+       (assoc test-drill-context
+              :custom-query   custom-query-with-extra-stage
+              :expected-query expected-query-with-extra-stage)))))
 
 (deftest ^:parallel zoom-in-bins-available-test
   (testing "zoom-in for bins is available for cells, pivots and legends on numeric columns which have binning set"
