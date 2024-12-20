@@ -18,9 +18,9 @@
     :refer [Card Collection Database Field FieldValues Segment Table]]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.database :refer [protected-password]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.secret :as secret]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.sync :as sync]
@@ -1973,14 +1973,14 @@
                                                                   :access-token                  "access-token"
                                                                   :refresh-token                 "refresh-token"}
                                                     :id          (mt/id)}
-                                                   {:service-account-json          protected-password
+                                                   {:service-account-json          secret/protected-password
                                                     :password                      "new-password"
-                                                    :pass                          protected-password
-                                                    :tunnel-pass                   protected-password
-                                                    :tunnel-private-key            protected-password
-                                                    :tunnel-private-key-passphrase protected-password
-                                                    :access-token                  protected-password
-                                                    :refresh-token                 protected-password})))))
+                                                    :pass                          secret/protected-password
+                                                    :tunnel-pass                   secret/protected-password
+                                                    :tunnel-private-key            secret/protected-password
+                                                    :tunnel-private-key-passphrase secret/protected-password
+                                                    :access-token                  secret/protected-password
+                                                    :refresh-token                 secret/protected-password})))))
 
 (deftest ^:parallel upsert-sensitive-fields-no-fields-replaced-test
   (testing "no fields are replaced"
@@ -2009,14 +2009,14 @@
                                                                   :access-token                  "access-token"
                                                                   :refresh-token                 "refresh-token"}
                                                     :id          (mt/id)}
-                                                   {:service-account-json          protected-password
-                                                    :password                      protected-password
-                                                    :pass                          protected-password
-                                                    :tunnel-pass                   protected-password
-                                                    :tunnel-private-key            protected-password
-                                                    :tunnel-private-key-passphrase protected-password
-                                                    :access-token                  protected-password
-                                                    :refresh-token                 protected-password})))))
+                                                   {:service-account-json          secret/protected-password
+                                                    :password                      secret/protected-password
+                                                    :pass                          secret/protected-password
+                                                    :tunnel-pass                   secret/protected-password
+                                                    :tunnel-private-key            secret/protected-password
+                                                    :tunnel-private-key-passphrase secret/protected-password
+                                                    :access-token                  secret/protected-password
+                                                    :refresh-token                 secret/protected-password})))))
 
 (deftest ^:parallel secret-file-paths-returned-by-api-test
   (mt/with-driver :secret-test-driver

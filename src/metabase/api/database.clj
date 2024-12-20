@@ -20,7 +20,7 @@
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.database :as database :refer [Database protected-password]]
+   [metabase.models.database :as database :refer [Database]]
    [metabase.models.field :refer [Field readable-fields-only]]
    [metabase.models.interface :as mi]
    [metabase.models.persisted-info :as persisted-info]
@@ -359,7 +359,6 @@
       true                         add-can-upload
       include-editable-data-model? check-db-data-model-perms
       (mi/can-write? database)     (->
-                                    secret/expand-db-details-inferred-secret-values
                                     (assoc :can-manage true)))))
 
 (api/defendpoint GET "/:id"
@@ -861,7 +860,7 @@
     (merge (:details database)
            (reduce
             (fn [details k]
-              (if (= protected-password (get details k))
+              (if (= secret/protected-password (get details k))
                 (m/update-existing details k (constantly (get-in database [:details k])))
                 details))
             details
@@ -924,8 +923,8 @@
    settings           [:maybe ms/Map]}
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (let [existing-database (api/write-check (t2/select-one Database :id id))
+        incoming-details  details
         details           (some->> details
-                                   (driver.u/db-details-client->server (or engine (:engine existing-database)))
                                    (upsert-sensitive-fields existing-database))
         ;; verify that we can connect to the database if `:details` OR `:engine` have changed.
         details-changed?  (some-> details (not= (:details existing-database)))
@@ -976,8 +975,11 @@
           (events/publish-event! :event/database-update {:object db
                                                          :user-id api/*current-user-id*
                                                          :previous-object existing-database})
-         ;; return the DB with the expanded schedules back in place
-          (add-expanded-schedules db))))))
+          (-> db
+              ;; return the DB with the expanded schedules back in place
+              add-expanded-schedules
+              ;; return the DB with the passed in details in place
+              (m/update-existing :details merge incoming-details)))))))
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
