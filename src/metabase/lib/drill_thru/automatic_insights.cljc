@@ -28,7 +28,7 @@
              (lib.metadata/setting query :enable-xrays)
              (not-empty dimensions)
              ;; TODO fix this drill to work with underlying aggregations and remove this check (metabase#46932).
-             (not (lib.drill-thru.common/strictly-underyling-aggregation? query column)))
+             (not (lib.drill-thru.common/strictly-underlying-aggregation? query column)))
     {:lib/type   :metabase.lib.drill-thru/drill-thru
      :type       :drill-thru/automatic-insights
      :column-ref column-ref

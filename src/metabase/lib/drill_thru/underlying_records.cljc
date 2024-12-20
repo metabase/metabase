@@ -68,7 +68,7 @@
   ;; Clicking on a single-row aggregation, there's no dimensions, but we should support underlying records.
 
   ;; Clicking on a table cell for an aggregated column when there are additional query stages (e.g. filters) after the
-  ;; underyling breakouts/aggregations stage results in a context like:
+  ;; underlying breakouts/aggregations stage results in a context like:
   ;; - (:lib/source column) is NOT :source/aggregations
   ;; - (:lib/source (lib.underlying/top-level-column query column) IS :source/aggregations
   ;; - column-ref is similarly NOT an :aggregation ref
@@ -105,7 +105,7 @@
      ;; If the underlying column comes from an aggregation, then the column-ref needs to be updated as well to the
      ;; corresponding aggregation ref so that [[drill-underlying-records]] knows to extract the filter implied by
      ;; aggregations like sum-where.
-     :column-ref (if (lib.drill-thru.common/strictly-underyling-aggregation? query column)
+     :column-ref (if (lib.drill-thru.common/strictly-underlying-aggregation? query column)
                    (lib.aggregation/column-metadata->aggregation-ref (lib.underlying/top-level-column query column))
                    column-ref)}))
 
