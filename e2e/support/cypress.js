@@ -114,6 +114,11 @@ Cypress.on("window:load", window => {
   };
 });
 
+// FIXME: move to a CI only block
+afterEach(() => {
+  cy.task("reportCIFailure", { spec: Cypress.spec, test: Cypress.currentTest });
+});
+
 // cypress-terminal-report
 if (isCI) {
   afterEach(() => {
