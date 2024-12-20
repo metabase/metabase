@@ -22,7 +22,7 @@ const MONTHS = [
 
 function serializeDate(date: Date, hasTime: boolean) {
   return hasTime
-    ? dayjs(date).format("YYYY-MM-DD'T'HH:mm:SS")
+    ? dayjs(date).format("YYYY-MM-DDTHH:mm:ss")
     : dayjs(date).format("YYYY-MM-DD");
 }
 
@@ -125,15 +125,7 @@ const SERIALIZERS: Serializer[] = [
   // `today`
   {
     regex: /^today$/,
-    serialize: value => {
-      if (
-        value.type === "relative" &&
-        value.value === "current" &&
-        value.unit === "day"
-      ) {
-        return "today";
-      }
-    },
+    serialize: () => undefined,
     deserialize: () => {
       return {
         type: "relative",
@@ -145,15 +137,7 @@ const SERIALIZERS: Serializer[] = [
   // `yesterday`
   {
     regex: /^yesterday$/,
-    serialize: value => {
-      if (
-        value.type === "relative" &&
-        value.value === -1 &&
-        value.unit === "day"
-      ) {
-        return "yesterday";
-      }
-    },
+    serialize: () => undefined,
     deserialize: () => {
       return {
         type: "relative",
@@ -184,16 +168,7 @@ const SERIALIZERS: Serializer[] = [
   // `lastmonth`, `lastyear`
   {
     regex: /^last(\w+)$/,
-    serialize: value => {
-      if (
-        value.type === "relative" &&
-        value.value === -1 &&
-        value.offsetValue == null &&
-        value.offsetUnit == null
-      ) {
-        return `last${value.unit}`;
-      }
-    },
+    serialize: () => undefined,
     deserialize: match => {
       const unit = match[1];
       if (isDatePickerTruncationUnit(unit)) {
@@ -246,7 +221,7 @@ const SERIALIZERS: Serializer[] = [
         value.offsetUnit == null
       ) {
         const suffix = value.options?.includeCurrent ? "~" : "";
-        return `past${value.value}${value.unit}s${suffix}`;
+        return `next${value.value}${value.unit}s${suffix}`;
       }
     },
     deserialize: match => {
