@@ -146,8 +146,6 @@ export function Editor(props: EditorProps) {
         onBlur={commitExpression}
         height="100%"
         width="100%"
-        autoFocus
-        data-autofocus
         indentWithTab={false}
       />
     </div>
