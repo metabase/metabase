@@ -13,26 +13,18 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
-;; we use these in the defsetting getter, so they need to be declared in advance
-(declare gsheets)
-(declare gsheets!)
-
 (defsetting gsheets
   #_"Information about Google Sheets Integration.
 
   This value can have 4 states:
 
-  1) nil
-  Google Sheets Integration is not enabled.
-  This is gated by the [[show-google-sheets-integration]] setting.
-
-  2) {:status \"no-auth\"}
+  1) {:status \"no-auth\"}
   Google Sheets Integration is enabled, but not authenticated.
 
-  3) {:status \"auth-complete\"}
+  2) {:status \"auth-complete\"}
   Google Sheets Integration is enabled and oauth is authenticated.
 
-  4) {:status \"folder-saved\"
+  3) {:status \"folder-saved\"
       :folder_url \"https://drive.google.com/drive/abc\"}
   Google Sheets Integration is enabled, authenticated, and a folder has been setup to sync."
   (deferred-tru "Information about Google Sheets Integration")
@@ -41,8 +33,8 @@
   :visibility :public
   :type :json
   :getter (fn [] (or (setting/get-value-of-type :json :gsheets)
-                     (do (gsheets! {:status "no-auth"})
-                         (gsheets)))))
+                     (do (setting/set-value-of-type! :json :gsheets {:status "no-auth"})
+                         {:status "no-auth"}))))
 
 (defn- ->config
   "This config is needed to call [[hm.client/make-request]].
