@@ -314,6 +314,9 @@ const visualizerSlice = createSlice({
     toggleVizSettingsSidebar: state => {
       state.isVizSettingsSidebarOpen = !state.isVizSettingsSidebarOpen;
     },
+    closeVizSettingsSidebar: state => {
+      state.isVizSettingsSidebarOpen = false;
+    },
     undo: state => {
       const canUndo = state.past.length > 0;
       if (canUndo) {
@@ -525,6 +528,7 @@ export const {
   setDraggedItem,
   toggleDataSourceExpanded,
   toggleVizSettingsSidebar,
+  closeVizSettingsSidebar,
   undo,
   redo,
   resetVisualizer,

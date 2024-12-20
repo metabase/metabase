@@ -6,9 +6,9 @@ import {
   PointerSensor,
   useSensor,
 } from "@dnd-kit/core";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import type { WithRouterProps } from "react-router";
-import { useKeyPressEvent, useUnmount } from "react-use";
+import { useKeyPressEvent, usePrevious, useUnmount } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex } from "metabase/ui";
@@ -17,11 +17,13 @@ import { useVisualizerUrlSync } from "metabase/visualizer/hooks/use-visualizer-u
 import {
   getDatasets,
   getDraggedItem,
+  getIsDirty,
   getIsVizSettingsSidebarOpen,
   getVisualizationType,
 } from "metabase/visualizer/selectors";
 import { isValidDraggedItem } from "metabase/visualizer/utils";
 import {
+  closeVizSettingsSidebar,
   handleDrop,
   resetVisualizer,
   setDisplay,
@@ -45,6 +47,9 @@ export const VisualizerPage = ({ location, router }: WithRouterProps) => {
   const datasets = useSelector(getDatasets);
   const isVizSettingsSidebarOpen = useSelector(getIsVizSettingsSidebarOpen);
 
+  const isDirty = useSelector(getIsDirty);
+  const wasDirty = usePrevious(isDirty);
+
   const dispatch = useDispatch();
 
   const hasDatasets = Object.values(datasets).length > 0;
@@ -54,6 +59,12 @@ export const VisualizerPage = ({ location, router }: WithRouterProps) => {
   });
 
   useVisualizerUrlSync(location, router);
+
+  useEffect(() => {
+    if (wasDirty && !isDirty) {
+      dispatch(closeVizSettingsSidebar());
+    }
+  }, [isDirty, wasDirty, dispatch]);
 
   useUnmount(() => {
     dispatch(resetVisualizer({ full: true }));
