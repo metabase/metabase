@@ -281,31 +281,25 @@
      (max (- stale-time days-ago) 0)
      stale-time)))
 
-(defn- col-is-scalar?
-  [{:keys [fingerprint base_type effective_type semantic_type]}]
-  (and (= (-> fingerprint :global :distinct-count) 1)
-       (some #(isa? (keyword %) :type/Number) [base_type effective_type semantic_type])))
-
 (defn- col-is-temporal?
-  [{:keys [fingerprint base_type effective_type semantic_type]}]
+  [{:keys [base_type effective_type semantic_type]}]
   (some #(isa? (keyword %) :type/Temporal) [base_type effective_type semantic_type]))
 
-(defn- result-metadata->compatible-types
-  "Given result-metadata, return a vector of compatible viz keys."
-  [result-metadata]
-  (let [scalar? (some col-is-scalar? result-metadata)]
-    {:visualizer/scalar scalar?}))
+(defn- single-column-scalar-score
+  [{:keys [fingerprint base_type effective_type semantic_type]}]
+  (cond-> 0
+    (= (-> fingerprint :global :distinct-count) 1)                                   inc
+    (some #(isa? (keyword %) :type/Number) [base_type effective_type semantic_type]) inc))
 
 (defn- scalar-score
   [{:keys [result_metadata]}]
   (let [result-metadata (json/decode result_metadata keyword)
-        scalar?         (some col-is-scalar? result-metadata)]
-    (cond
-      (and scalar? (= (count result-metadata) 1)) 2
-      ;; if we want to accept data sources that contain scalar columns, but more than 1 column.
-      ;; so, for example, questions with just 1 row
-      #_#_scalar?                                     1
-      :else                                       0)))
+        col-scores      (mapv  single-column-scalar-score result-metadata)
+        max-col-score   (apply max col-scores)]
+    (if (and (> max-col-score 0)
+             (= (count result-metadata) 1))
+      (inc max-col-score)
+      max-col-score)))
 
 
 ;; primary score concerns first:
@@ -437,19 +431,24 @@
 (defn score-and-result
   "Returns a map with the normalized, combined score from relevant-scores as `:score` and `:result`."
   [result {:keys [search-string search-native-query] :as search-ctx}]
-  (let [text-matches    (-> (text-scores-with-match result {:search-string       search-string
-                                                            :search-native-query search-native-query})
-                            (force-weight text-scores-weight))
-        has-text-match? (some (comp pos? :score) text-matches)
-        all-scores      (into (vec (score-result result search-ctx)) text-matches)
-        relevant-scores (remove (comp zero? :score) all-scores)
-        total-score     (compute-normalized-score all-scores)]
+  (let [text-matches         (-> (text-scores-with-match result {:search-string       search-string
+                                                                 :search-native-query search-native-query})
+                                 (force-weight text-scores-weight))
+        has-text-match?      (some (comp pos? :score) text-matches)
+        compatibility-scores (compatibility-weights-and-scores result search-ctx)
+        all-scores           (into (into (vec (weights-and-scores result)) compatibility-scores) text-matches)
+        relevant-scores      (remove (comp zero? :score) all-scores)
+        total-score          (compute-normalized-score all-scores)]
     ;; Searches with a blank search string mean "show me everything, ranked";
     ;; see https://github.com/metabase/metabase/pull/15604 for archived search.
     ;; If the search string is non-blank, results with no text match have a score of zero.
     (when (or has-text-match? (str/blank? search-string))
       {:score  total-score
-       :result (assoc result :all-scores all-scores :relevant-scores relevant-scores)})))
+       :result (assoc result
+                      :compatible (some #(> (:score %) 0) compatibility-scores)
+                      :the-scores relevant-scores
+                      :all-scores all-scores
+                      :relevant-scores relevant-scores)})))
 
 (defn compare-score
   "Compare maps of scores and results. Must return -1, 0, or 1. The score is assumed to be a vector, and will be

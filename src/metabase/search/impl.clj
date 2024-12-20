@@ -183,6 +183,8 @@
                                   (when collection_effective_ancestors
                                     {:effective_ancestors collection_effective_ancestors})))
          :scores          (remove-thunks all-scores))
+        (update :result_metadata json/decode)
+        (update :visualization_settings json/decode)
         (update :dataset_query (fn [dataset-query]
                                  (when-let [query (some-> dataset-query json/decode)]
                                    (if (get query "type")
@@ -191,11 +193,11 @@
         (dissoc
          :all-scores
          :relevant-scores
-         :collection_effective_ancestors
-         :collection_id
-         :collection_location
-         :collection_name
-         :collection_type
+         #_:collection_effective_ancestors
+         #_:collection_id
+         #_:collection_location
+         #_:collection_name
+         #_:collection_type
          :archived_directly
          :display_name
          :effective_parent))))
