@@ -347,8 +347,15 @@ describe("Dashboard > Dashboard Questions", () => {
       );
 
       cy.get("@dashboardId").then(dashboardId => {
-        H.visitDashboard(dashboardId);
+        //Simulate having picked the dashboard in the entity picker previously
+        cy.request("POST", "/api/activity/recents", {
+          context: "selection",
+          model: "dashboard",
+          model_id: dashboardId,
+        });
       });
+
+      cy.visit("/");
 
       cy.findByLabelText("Navigation bar").findByText("New").click();
       H.popover().findByText("Question").click();
