@@ -15,7 +15,7 @@
    [metabase.api.channel :as api.channel]
    [metabase.api.cloud-migration :as api.cloud-migration]
    [metabase.api.collection :as api.collection]
-   [metabase.api.common :as api :refer [defroutes context]]
+   [metabase.api.common :as api :refer [context defroutes]]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.database :as api.database]
    [metabase.api.dataset :as api.dataset]
@@ -24,6 +24,7 @@
    [metabase.api.field :as api.field]
    [metabase.api.geojson :as api.geojson]
    [metabase.api.google :as api.google]
+   [metabase.api.gsheets :as api.gsheets]
    [metabase.api.ldap :as api.ldap]
    [metabase.api.login-history :as api.login-history]
    [metabase.api.metabot :as api.metabot]
@@ -122,6 +123,7 @@
   (context "/field"                [] (+auth api.field/routes))
   (context "/geojson"              [] api.geojson/routes)
   (context "/google"               [] (+auth api.google/routes))
+  (context "/gsheets"              [] (+auth api.gsheets/routes))
   (context "/ldap"                 [] (+auth api.ldap/routes))
   (context "/login-history"        [] (+auth api.login-history/routes))
   (context "/metabot"              [] (+auth api.metabot/routes))
