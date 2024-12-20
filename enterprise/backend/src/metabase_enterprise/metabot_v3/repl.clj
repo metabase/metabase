@@ -118,4 +118,9 @@
   ;; breakout by plan
   (mt/with-test-user :crowberto
     (user-repl-with-context
-     {:user_is_viewing [{:type :metric :id 122}]})))
+     {:user_is_viewing [{:type :metric :id 122}]}))
+
+  (mt/with-test-user :crowberto
+    (user-repl-with-context
+     {:user_is_viewing [{:type :adhoc
+                         :query {:database 1, :type "query", :query {:source-table 5}}}]})))

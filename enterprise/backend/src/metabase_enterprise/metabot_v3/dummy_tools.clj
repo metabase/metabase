@@ -175,52 +175,15 @@
       (get-table-details :get-table-details {:table-id id} {})))
   -)
 
-(defn- dummy-tool-messages
-  [tool-id arguments content]
-  (let [call-id (str "call_" (u/generate-nano-id))]
-    [{:content    nil
-      :role       :assistant
-      :tool-calls [{:id        call-id
-                    :name      tool-id
-                    :arguments arguments}]}
+(defn- dummy-tool-request [tool-call-id tool-id arguments]
+  {:content    nil
+   :role       :assistant
+   :tool-calls [{:id        tool-call-id
+                 :name      tool-id
+                 :arguments arguments}]})
 
-     {:content      content
-      :role         :tool
-      :tool-call-id call-id}]))
-
-(defn- dummy-get-current-user
-  [env]
-  (let [content (:output (get-current-user :get-current-user {} env))]
-    (reduce envelope/add-dummy-message env (dummy-tool-messages :get-current-user {} content))))
-
-(def ^:private detail-getters
-  {:dashboard {:id :get-dashboard-details
-               :fn get-dashboard-details
-               :arg-fn (fn [id] {:dashboard-id id})}
-   :table {:id :get-table-details
-           :fn get-table-details
-           :arg-fn (fn [id] {:table-id (str id)})}
-   :model {:id :get-table-details
-           :fn get-table-details
-           :arg-fn (fn [id] {:table-id (str "card__" id)})}
-   :metric {:id :get-metric-details
-            :fn get-metric-details
-            :arg-fn (fn [id] {:metric-id (str "card__" id)})}
-   :report {:id :get-report-details
-            :fn get-report-details
-            :arg-fn (fn [id] {:report-id (str "card__" id)})}})
-
-(defn- dummy-get-item-details
-  [{:keys [context] :as env}]
-  (reduce (fn [env viewed]
-            (if-let [{getter-id :id, getter-fn :fn, :keys [arg-fn]} (some-> viewed :type keyword detail-getters)]
-              (let [arguments (arg-fn (:id viewed))
-                    content (-> (getter-fn getter-id arguments (envelope/context env))
-                                :output)]
-                (reduce envelope/add-dummy-message env (dummy-tool-messages getter-id arguments content)))
-              env))
-          env
-          (:user_is_viewing context)))
+(defn- new-tool-call-id []
+  (str "call_" (u/generate-nano-id)))
 
 (defn- execute-query
   [query-id legacy-query]
@@ -232,29 +195,72 @@
      :query legacy-query
      :result-columns (mapv #(metabot-v3.tools.u/->result-column % field-id-prefix) (lib/returned-columns query))}))
 
-(defn- dummy-run-query
-  [{:keys [context] :as env}]
-  (transduce (filter (comp #{"adhoc"} :type))
-             (completing (fn [env {:keys [query]}]
-                           (let [query-id (u/generate-nano-id)
-                                 arguments {:query-id query-id}
-                                 content (execute-query query-id (mbql.normalize/normalize query))]
-                             (reduce envelope/add-dummy-message env (dummy-tool-messages :run-query arguments content)))))
-             env
-             (:user_is_viewing context)))
+(defn- is-viewing [context type]
+  (->> context :user_is_viewing (filter #(= (name type) (name (:type %)))) seq))
+
+(defn- run-query
+  [_tool-name {:keys [query-id]} {:keys [context] :as _env}]
+  (let [query (->> (is-viewing context :adhoc)
+                   first
+                   :query)
+        result (execute-query query-id (mbql.normalize/normalize query))]
+   {:output (select-keys result [:type :query-id :result-columns])
+    :queries [result]}))
+
+(defn- viewing-id [context type]
+  (first (map :id (is-viewing context type))))
 
 (def ^:private dummy-tool-registry
-  [dummy-get-current-user
-   dummy-get-item-details
-   dummy-run-query])
+  "The registry items have four properties:
+  - the tool name, to be used in the dummy tool calls
+  - `applicable?`, a function of `context` that returns a truthy value if the dummy tool call should be executed
+  - `arguments`, a function of `context` that returns the arguments to this tool call
+  - `fn`, the actual function to invoke, with the same signature as a regular tool call"
+  [{:name :run-query
+    :applicable? #(is-viewing % :adhoc)
+    :arguments (fn [_ctx] {:query-id (u/generate-nano-id)})
+    :fn run-query}
+   {:name :get-current-user
+    :applicable? (constantly true)
+    :arguments (constantly {})
+    :fn get-current-user}
+   {:name :get-dashboard-details
+    :applicable? #(is-viewing % :dashboard)
+    :arguments (fn [ctx] {:dashboard-id (viewing-id ctx :dashboard)})
+    :fn get-dashboard-details}
+   {:name :get-table-details
+    :applicable? #(is-viewing % :table)
+    :arguments (fn [ctx] {:table-id (str (viewing-id ctx :table))})
+    :fn get-table-details}
+   {:name :get-model-details
+    :applicable? #(is-viewing % :model)
+    :arguments (fn [ctx] {:table-id (str "card__" (viewing-id ctx :model))})
+    :fn get-table-details}
+   {:name :get-metric-details
+    :applicable? #(is-viewing % :metric)
+    :arguments (fn [ctx] {:metric-id (str "card__" (viewing-id ctx :metric))})
+    :fn get-metric-details}
+   {:name :get-report-details
+    :applicable? #(is-viewing % :report)
+    :arguments (fn [ctx] {:report-id (str "card__" (viewing-id ctx :report))})
+    :fn get-report-details}])
+
+(defn- invoke-tool
+  "Given the env and a dummy tool from the registry, invokes it if it's applicable."
+  [e {f :fn :keys [name applicable? arguments]}]
+  (let [tool-call-id (new-tool-call-id)
+        args (arguments (envelope/context e))
+        req-msg (dummy-tool-request tool-call-id name args)
+        result #(f name args e)]
+    (cond-> e
+      (applicable? (envelope/context e))
+      (-> (envelope/add-dummy-message req-msg)
+          (envelope/add-dummy-tool-response tool-call-id (result))))))
 
 (defn invoke-dummy-tools
   "Invoke `tool` with `context` if applicable and return the resulting context."
   [env]
-  (reduce (fn [env tool]
-            (tool env))
-          env
-          dummy-tool-registry))
+  (reduce invoke-tool env dummy-tool-registry))
 
 (comment
   (def test-query {:database 5
