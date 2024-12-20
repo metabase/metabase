@@ -64,6 +64,7 @@ export type VisualizerCommonState = {
   expandedDataSources: Record<VisualizerDataSourceId, boolean>;
   loadingDataSources: Record<VisualizerDataSourceId, boolean>;
   loadingDatasets: Record<VisualizerDataSourceId, boolean>;
+  isFullscreen: boolean;
   isVizSettingsSidebarOpen: boolean;
   error: string | null;
   draggedItem: DraggedItem | null;

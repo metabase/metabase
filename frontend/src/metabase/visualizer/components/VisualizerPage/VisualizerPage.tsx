@@ -18,6 +18,7 @@ import {
   getDatasets,
   getDraggedItem,
   getIsDirty,
+  getIsFullscreenModeEnabled,
   getIsVizSettingsSidebarOpen,
   getVisualizationType,
 } from "metabase/visualizer/selectors";
@@ -28,6 +29,7 @@ import {
   resetVisualizer,
   setDisplay,
   setDraggedItem,
+  turnOffFullscreenMode,
 } from "metabase/visualizer/visualizer.slice";
 import type { VisualizationDisplay } from "metabase-types/api";
 
@@ -45,6 +47,7 @@ export const VisualizerPage = ({ location, router }: WithRouterProps) => {
   const display = useSelector(getVisualizationType);
   const draggedItem = useSelector(getDraggedItem);
   const datasets = useSelector(getDatasets);
+  const isFullscreen = useSelector(getIsFullscreenModeEnabled);
   const isVizSettingsSidebarOpen = useSelector(getIsVizSettingsSidebarOpen);
 
   const isDirty = useSelector(getIsDirty);
@@ -63,6 +66,7 @@ export const VisualizerPage = ({ location, router }: WithRouterProps) => {
   useEffect(() => {
     if (wasDirty && !isDirty) {
       dispatch(closeVizSettingsSidebar());
+      dispatch(turnOffFullscreenMode());
     }
   }, [isDirty, wasDirty, dispatch]);
 
@@ -122,14 +126,16 @@ export const VisualizerPage = ({ location, router }: WithRouterProps) => {
       <Flex direction="column" w="100%" h="100%">
         <Header />
         <Flex style={{ overflow: "hidden", flexGrow: 1 }}>
-          <Flex direction="column" miw={320}>
-            <Box h="50%" p={10} pr={0} style={{ overflowY: "hidden" }}>
-              <DataImporter />
-            </Box>
-            <Box h="50%" pl={10} pb={10} style={{ overflowY: "auto" }}>
-              <DataManager />
-            </Box>
-          </Flex>
+          {!isFullscreen && (
+            <Flex direction="column" miw={320}>
+              <Box h="50%" p={10} pr={0} style={{ overflowY: "hidden" }}>
+                <DataImporter />
+              </Box>
+              <Box h="50%" pl={10} pb={10} style={{ overflowY: "auto" }}>
+                <DataManager />
+              </Box>
+            </Flex>
+          )}
           <Box
             component="main"
             w="100%"
@@ -156,7 +162,7 @@ export const VisualizerPage = ({ location, router }: WithRouterProps) => {
               <VisualizationCanvas />
             </Box>
           </Box>
-          {isVizSettingsSidebarOpen && (
+          {!isFullscreen && isVizSettingsSidebarOpen && (
             <Flex direction="column" miw={320}>
               <VizSettingsSidebar />
             </Flex>

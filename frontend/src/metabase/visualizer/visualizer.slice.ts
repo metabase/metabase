@@ -63,6 +63,7 @@ const initialCommonState: VisualizerCommonState = {
   loadingDataSources: {},
   loadingDatasets: {},
   expandedDataSources: {},
+  isFullscreen: false,
   isVizSettingsSidebarOpen: false,
   error: null,
   draggedItem: null,
@@ -311,6 +312,16 @@ const visualizerSlice = createSlice({
       state.expandedDataSources[action.payload] =
         !state.expandedDataSources[action.payload];
     },
+    toggleFullscreenMode: state => {
+      state.isFullscreen = !state.isFullscreen;
+      if (!state.isFullscreen) {
+        state.isVizSettingsSidebarOpen = false;
+      }
+    },
+    turnOffFullscreenMode: state => {
+      state.isFullscreen = false;
+      state.isVizSettingsSidebarOpen = false;
+    },
     toggleVizSettingsSidebar: state => {
       state.isVizSettingsSidebarOpen = !state.isVizSettingsSidebarOpen;
     },
@@ -527,6 +538,8 @@ export const { setDisplay, updateSettings, removeColumn } =
 export const {
   setDraggedItem,
   toggleDataSourceExpanded,
+  toggleFullscreenMode,
+  turnOffFullscreenMode,
   toggleVizSettingsSidebar,
   closeVizSettingsSidebar,
   undo,

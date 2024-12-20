@@ -75,6 +75,9 @@ export const getIsLoading = createSelector(
 
 export const getDraggedItem = (state: State) => state.visualizer.draggedItem;
 
+export const getIsFullscreenModeEnabled = (state: State) =>
+  state.visualizer.isFullscreen;
+
 export const getIsVizSettingsSidebarOpen = (state: State) =>
   state.visualizer.isVizSettingsSidebarOpen;
 
