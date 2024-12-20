@@ -22,17 +22,12 @@ type EditorProps = {
   expressionIndex?: number;
   reportTimezone?: string;
   readOnly?: boolean;
-  textAreaId?: string;
 
   onChange: (
     expression: Expression | null,
     expressionClause: Lib.ExpressionClause | null,
   ) => void;
   onError: (error: ErrorWithMessage | string | null) => void;
-  onCommit: (
-    expression: Expression | null,
-    expressionClause: Lib.ExpressionClause | null,
-  ) => void;
 };
 
 export function Editor(props: EditorProps) {
@@ -47,7 +42,6 @@ export function Editor(props: EditorProps) {
     onChange,
     onError,
     readOnly,
-    textAreaId,
   } = props;
 
   const expression = useMemo(() => {
@@ -143,7 +137,6 @@ export function Editor(props: EditorProps) {
     <div className={S.wrapper}>
       <div className={S.prefix}>=</div>
       <CodeMirror
-        id={textAreaId}
         data-testid="custom-expression-query-editor"
         className={S.editor}
         extensions={extensions}
