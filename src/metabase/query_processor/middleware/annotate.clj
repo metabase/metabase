@@ -260,7 +260,9 @@
                                                     opts))]
     ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
     ;; level, and one for referring to the Field from the PARENT level.
-    (cond-> {:field_ref (mbql.u/remove-namespaced-options clause)}
+    (cond-> {:field_ref (-> clause
+                            mbql.u/remove-namespaced-options
+                            (mbql.u/update-field-options dissoc :ident))}
       (:base-type opts)
       (assoc :base_type (:base-type opts))
 

@@ -660,6 +660,7 @@
                   :schema            "Everything else"
                   :db_id             (:database_id card)
                   :id                card-virtual-table-id
+                  :entity_id         (:entity_id card)
                   :type              "question"
                   :moderated_status  nil
                   :metrics           nil
@@ -742,6 +743,7 @@
                     :schema            "Everything else"
                     :db_id             (:database_id card)
                     :id                card-virtual-table-id
+                    :entity_id         (:entity_id card)
                     :type              "question"
                     :description       nil
                     :moderated_status  nil
