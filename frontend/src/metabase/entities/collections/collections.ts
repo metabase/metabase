@@ -180,14 +180,23 @@ const Collections = createEntity({
   },
 });
 
-function useListQuery(params: ListParams) {
+function useListQuery(
+  params: ListParams,
+  options:
+    | Parameters<typeof useListCollectionsTreeQuery>[1]
+    | Parameters<typeof useListCollectionsQuery>[1],
+) {
   const { tree, ...entityQuery } = params;
 
   const collectionsTree = useListCollectionsTreeQuery(
     tree ? entityQuery : skipToken,
+    options,
   );
 
-  const collections = useListCollectionsQuery(tree ? skipToken : entityQuery);
+  const collections = useListCollectionsQuery(
+    tree ? skipToken : entityQuery,
+    options,
+  );
 
   return tree ? collectionsTree : collections;
 }
