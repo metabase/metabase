@@ -34,8 +34,8 @@ BinaryExpression {
 | expression !subtract "-" expression
 | expression !product "*" expression
 | expression !quotient "/" expression
-| expression !and "AND" expression
-| expression !or "OR" expression
+| expression !and And expression
+| expression !or Or expression
 | expression !gt ">" expression
 | expression !gte ">=" expression
 | expression !lt "<" expression
@@ -96,6 +96,20 @@ CallExpression {
 
   Not {
     "NOT"
+  | "Not"
+  | "not"
+  }
+
+  And {
+    "AND"
+  | "And"
+  | "and"
+  }
+
+  Or {
+    "OR"
+  | "Or"
+  | "or"
   }
 
   @precedence { Not, Boolean, Identifier }
@@ -106,9 +120,6 @@ CallExpression {
 
   "("
   ")"
-  "AND"
-  "OR"
-  "NOT"
   "+"
   "-"
   "*"
