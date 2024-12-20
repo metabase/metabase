@@ -1,3 +1,18 @@
+## [0.52.6](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.5-nightly...embedding-sdk-0.52.6) (2024-12-20)
+
+
+### Bug Fixes
+
+* **sdk:** migrate to custom redux context to allow using the sdk on host apps that use redux ([#51414](https://github.com/metabase/metabase/issues/51414)) ([f229c49](https://github.com/metabase/metabase/commit/f229c492e01ac1c7bce1216089f1ef248fad5066))
+* **sdk:** update define function names in Next.js compat ([#51071](https://github.com/metabase/metabase/issues/51071)) ([#51453](https://github.com/metabase/metabase/issues/51453)) ([d0220ff](https://github.com/metabase/metabase/commit/d0220ff31b64abb1d2b6594ffbb38d3e0f05968f))
+
+
+### Features
+
+* **sdk:** use metabase type prefix and re-export types ([#51072](https://github.com/metabase/metabase/issues/51072)) ([ab954c5](https://github.com/metabase/metabase/commit/ab954c5a4785d7154ba354eb3405cecb3daaf7ed))
+
+
+
 ## [0.52.5-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.2-nightly...embedding-sdk-0.52.5-nightly) (2024-12-17)
 
 
