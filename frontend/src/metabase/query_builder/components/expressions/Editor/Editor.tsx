@@ -27,7 +27,7 @@ type EditorProps = {
     expression: Expression | null,
     expressionClause: Lib.ExpressionClause | null,
   ) => void;
-  onError: (error: ErrorWithMessage | string | null) => void;
+  onError: (error: ErrorWithMessage | null) => void;
 };
 
 export function Editor(props: EditorProps) {
