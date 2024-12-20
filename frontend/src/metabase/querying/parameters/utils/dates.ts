@@ -409,7 +409,7 @@ export function serializeDateFilter(value: DatePickerValue): string {
     }
   }
 
-  throw new TypeError();
+  throw new TypeError("Date filter cannot be serialized");
 }
 
 export function deserializeDateFilter(s: string): DatePickerValue | undefined {
