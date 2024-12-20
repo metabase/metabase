@@ -1,5 +1,4 @@
 import type { FormEvent } from "react";
-import { t } from "ttag";
 
 import { Box, Button, Divider, Group } from "metabase/ui";
 
@@ -11,7 +10,7 @@ import type { SingleDatePickerValue } from "./types";
 
 interface SingleDatePickerProps {
   value: SingleDatePickerValue;
-  isNew: boolean;
+  submitButtonLabel: string;
   hasTimeToggle: boolean;
   onChange: (value: SingleDatePickerValue) => void;
   onSubmit: () => void;
@@ -19,7 +18,7 @@ interface SingleDatePickerProps {
 
 export function SingleDatePicker({
   value: { date, hasTime },
-  isNew,
+  submitButtonLabel,
   hasTimeToggle,
   onChange,
   onSubmit,
@@ -52,7 +51,7 @@ export function SingleDatePicker({
           <TimeToggle hasTime={hasTime} onClick={handleTimeToggle} />
         )}
         <Button variant="filled" type="submit">
-          {isNew ? t`Add filter` : t`Update filter`}
+          {submitButtonLabel}
         </Button>
       </Group>
     </form>

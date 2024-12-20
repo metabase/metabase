@@ -13,12 +13,14 @@ import {
 type DateAllOptionsWidgetProps = {
   value: string | undefined;
   availableOperators?: DatePickerOperator[];
+  submitButtonLabel?: string;
   onChange: (value: string) => void;
 };
 
 export function DateAllOptionsWidget({
   value,
   availableOperators,
+  submitButtonLabel,
   onChange,
 }: DateAllOptionsWidgetProps) {
   const filter = useMemo(
@@ -34,6 +36,7 @@ export function DateAllOptionsWidget({
     <DatePicker
       value={filter}
       availableOperators={availableOperators}
+      submitButtonLabel={submitButtonLabel}
       onChange={handleChange}
     />
   );

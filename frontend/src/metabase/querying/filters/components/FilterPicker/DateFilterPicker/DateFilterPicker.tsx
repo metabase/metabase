@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import { useDateFilter } from "metabase/querying/filters/hooks/use-date-filter";
 import type { DatePickerValue } from "metabase/querying/filters/types";
@@ -39,6 +40,7 @@ export function DateFilterPicker({
         value={value}
         availableOperators={availableOperators}
         availableUnits={availableUnits}
+        submitButtonLabel={isNew ? t`Add filter` : t`Update filter`}
         backButton={
           onBack && (
             <PopoverBackButton p="sm" onClick={onBack}>
@@ -46,7 +48,6 @@ export function DateFilterPicker({
             </PopoverBackButton>
           )
         }
-        isNew={isNew}
         onChange={handleChange}
       />
     </div>
