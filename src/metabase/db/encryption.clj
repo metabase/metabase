@@ -23,7 +23,7 @@
     (t2/with-transaction [_conn {:datasource data-source}]
       (doseq [[id details] (t2/select-pk->fn :details :model/Database)]
         (when (encryption/possibly-encrypted-string? details)
-          (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYP˚TION_SECRET_KEY") {:database-id id})))
+          (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY") {:database-id id})))
         (t2/update! :conn _conn :metabase_database
                     {:id id}
                     {:details (encrypt-str-fn (json/encode details))}))
