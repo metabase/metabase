@@ -1,6 +1,7 @@
 import dayjs from "dayjs";
 
 import type { DatePickerValue } from "metabase/querying/filters/types";
+import { isDatePickerTruncationUnit } from "metabase/querying/filters/utils";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -157,6 +158,47 @@ const SERIALIZERS: Serializer[] = [
         value: -1,
         unit: "day",
       };
+    },
+  },
+  {
+    regex: /^this(\w+)$/,
+    serialize: value => {
+      if (value.type === "relative" && value.value === "current") {
+        return `this${value.unit}`;
+      }
+    },
+    deserialize: match => {
+      const unit = match[1];
+      if (isDatePickerTruncationUnit(unit)) {
+        return {
+          type: "relative",
+          value: "current",
+          unit,
+        };
+      }
+    },
+  },
+  {
+    regex: /^last(\w+)$/,
+    serialize: value => {
+      if (
+        value.type === "relative" &&
+        value.value === -1 &&
+        value.offsetValue == null &&
+        value.offsetUnit == null
+      ) {
+        return `last${value.unit}`;
+      }
+    },
+    deserialize: match => {
+      const unit = match[1];
+      if (isDatePickerTruncationUnit(unit)) {
+        return {
+          type: "relative",
+          value: -1,
+          unit,
+        };
+      }
     },
   },
   {
