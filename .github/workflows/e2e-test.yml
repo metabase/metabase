@@ -109,7 +109,7 @@ jobs:
         if: ${{ !inputs.tags }}
         shell: bash
         run: |
-          yarn test-cypres-run \
+          yarn test-cypress-run \
           --env grepTags="-@slow+-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
           --spec '${{ inputs.specs }}' \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
