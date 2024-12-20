@@ -133,20 +133,13 @@
   {redirect-url :string}
   (hm-post-temp-url redirect-url))
 
-;; TEMP (gsheets): shuffle this setting somewhere it is allowed to be accessed from, to appease the linter:
-(require '[metabase.server.middleware.auth])
-
 (api/defendpoint GET "/oauth"
   "Checks to see if oauth is setup or not, delegates to HM only if we haven't set it up before."
   [] {}
   (api/check-superuser)
   (when-not (api.auth/show-google-sheets-integration)
     (throw (ex-info "Google Sheets integration is not enabled." {})))
-  {:oauth_setup
-   ;; TEMP (gsheets): we are pretending that oauth exists, remove this and uncomment below when it works:
-   ;; We are not using a setting for this because we may need to make a request to HM to get the status,
-   ;; and we don't want to do that on every system/properties request.
-   (oauth-setup? (:status (gsheets)))})
+  {:oauth_setup (oauth-setup? (:status (gsheets)))})
 
 (api/defendpoint POST "/folder"
   "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase."
