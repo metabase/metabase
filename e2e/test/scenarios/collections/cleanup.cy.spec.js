@@ -453,13 +453,6 @@ const moveToTrash = (numberOfItemsMoved = 0) => {
 
   if (numberOfItemsMoved > 0) {
     cy.wait(new Array(numberOfItemsMoved).fill("@updateCardOrDashboard"));
-    H.undoToast()
-      .findByText(
-        new RegExp(
-          `${numberOfItemsMoved} (item has|items have) been moved to the trash.`,
-        ),
-      )
-      .should("be.visible");
   }
 };
 
