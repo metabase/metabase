@@ -15,6 +15,7 @@ describe("scenarios > binning > correctness > longitude", () => {
     ([bucketSize, { selected, representativeValues }]) => {
       it(`should return correct values for ${bucketSize}`, () => {
         H.popover().within(() => {
+          cy.findByText("More…").click();
           cy.findByText(bucketSize).click();
         });
 
@@ -36,6 +37,7 @@ describe("scenarios > binning > correctness > longitude", () => {
 
   it("Don't bin", () => {
     H.popover().within(() => {
+      cy.findByText("More…").click();
       cy.findByText("Don't bin").click();
     });
 

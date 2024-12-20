@@ -1,4 +1,8 @@
-import { segmentApi, useGetSegmentQuery } from "metabase/api";
+import {
+  segmentApi,
+  useGetSegmentQuery,
+  useListSegmentsQuery,
+} from "metabase/api";
 import { color } from "metabase/lib/colors";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
@@ -18,6 +22,7 @@ const Segments = createEntity({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
+    useListQuery: useListSegmentsQuery,
   },
 
   api: {

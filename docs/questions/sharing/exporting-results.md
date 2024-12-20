@@ -53,7 +53,7 @@ You can export the results of a dashboard and its cards in different ways.
 
 ### Export dashboard as PDF
 
-You can export a dashboard as a PDF. Click on the three dot menu (**...**) and select **Export as PDF**.
+You can export a dashboard as a PDF. Click on the **Sharing** button, then select **Export as PDF**.
 
 ![Exporting a dashboard as a PDF](../images/export-dashboard-as-pdf.png)
 
