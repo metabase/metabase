@@ -38,22 +38,22 @@
 
 (defn- test-context
   []
-  (let [test-query {:dataset_query {:database 1, :type "query", :query {:source-table 5}},
+  (let [test-query {:dataset_query {:database 1, :type "query", :query {:source-table 27}},
                     :display "table",
                     :visualization_settings {},
                     :type "question"}]
-    {:user-is-viewing [{:type :dashboard
-                        :ref 10
+    {:user_is_viewing [{:type :dashboard
+                        :id 5
                         :parameters []
                         :is-embedded false}
                        {:type :table
-                        :ref 7}
+                        :id 27}
                        {:type :model
-                        :ref 2}
+                        :id 18}
                        {:type :metric
-                        :ref 120}
+                        :id 135}
                        {:type :report
-                        :ref 12}
+                        :id 43}
                        {:type :adhoc
                         :query test-query}]}))
 
@@ -93,3 +93,11 @@
   (println "Starting MetaBot REPL... 🤖")
   (user-repl)
   (System/exit 0))
+
+(comment
+  (require 'metabase.api.common)
+  (binding [metabase.api.common/*current-user-permissions-set* (delay #{"/"})
+            metabase.api.common/*current-user-id* 2
+            metabase.api.common/*is-superuser?* true]
+    (user-repl))
+  -)
