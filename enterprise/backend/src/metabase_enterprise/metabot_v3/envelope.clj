@@ -23,8 +23,7 @@
    :context context
    :max-round-trips max-round-trips
    :round-trips-remaining max-round-trips
-   :dummy-history []
-   :query-id->query {}})
+   :dummy-history []})
 
 (defn full-history
   "History including the dummy tool invocations"
@@ -40,6 +39,34 @@
                                    (json/encode structured-content)))))))
         (concat (:dummy-history e)
                 (:history e)))))
+
+(defn is-tool-call-response?
+  "Is this message a response to a tool call?"
+  [{:keys [role tool-call-id]}]
+  (and (= role :tool)
+       tool-call-id))
+
+(defn- is-query? [content]
+  (and (map? content)
+       (contains? #{:query "query"} (:type content))))
+
+(defn- llm-message
+  "Formats a message for the LLM. Removes things we don't want the LLM to see (e.g. `query`) and stringifies structured
+  content."
+  [{:as msg :keys [structured-content content]}]
+  (cond-> msg
+    (and
+     (is-tool-call-response? msg)
+     (is-query? structured-content)) (update :structured-content dissoc :query)
+    structured-content (as-> msg*
+                             (assoc msg* :content (or content
+                                                      (json/encode (:structured-content msg*)))))
+    true (dissoc :structured-content)))
+
+(defn llm-history
+  "History shaped for the LLM"
+  [e]
+  (mapv llm-message (full-history e)))
 
 (defn session-id
   "Get the session ID from the envelope"
@@ -129,21 +156,15 @@
   [{:keys [tool-calls]}]
   (boolean (seq tool-calls)))
 
-(defn is-tool-call-response?
-  "Is this message a response to a tool call?"
-  [{:keys [role tool-call-id]}]
-  (and (= role :tool)
-       tool-call-id))
-
 (defn find-query
   "Given an envelope and a query-id, find the query in the history."
   [e query-id]
-  (->> (full-history e {:stringify-content? false})
-       (filter is-tool-call-response?)
+  (->> e
+       full-history
+       (filter #(and (is-tool-call-response? %)
+                     (is-query? %)))
        (keep :structured-content)
-       (filter #(contains? #{:query "query"} (:type %)))
-       (filter #(or (= (:query-id %) query-id)
-                    (= (:query_id %) query-id)))
+       (filter #(= (:query-id %) query-id))
        first
        :query))
 
