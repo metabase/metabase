@@ -14,7 +14,7 @@ type SuggestOptions = Omit<
 export function suggestions(options: SuggestOptions) {
   return autocompletion({
     activateOnTyping: true,
-    activateOnTypingDelay: 200,
+    activateOnTypingDelay: 0,
     override: [wip(options)],
   });
 }
