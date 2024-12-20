@@ -6,6 +6,7 @@
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-metric]
+   [metabase-enterprise.metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase-enterprise.metabot-v3.tools.invite-user]
