@@ -6,6 +6,8 @@ const { printBold } = require("./cypress-runner-utils");
 
 const e2eHost = process.env["E2E_HOST"];
 
+const args = process.argv.slice(2);
+
 const server = CypressBackend.createServer();
 const baseUrl = e2eHost || server.host;
 
@@ -17,6 +19,11 @@ const init = async () => {
     printBold("Starting backend");
     await CypressBackend.start(server);
 
+    printBold("Generating snapshots");
+    await generateSnapshots(baseUrl, cleanup);
+  }
+
+  if (args.includes("--with-snapshots")) {
     printBold("Generating snapshots");
     await generateSnapshots(baseUrl, cleanup);
   }

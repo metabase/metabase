@@ -108,7 +108,7 @@ jobs:
         if: ${{ !inputs.tags }}
         shell: bash
         run: |
-          yarn run test-cypress-run \
+          yarn run test-cypress-run --with-snapshots\
           --env grepTags="-@slow+-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
           --spec '${{ inputs.specs }}' \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
@@ -117,7 +117,7 @@ jobs:
         if: ${{ inputs.tags }}
         shell: bash
         run: |
-          yarn run test-cypress-run \
+          yarn run test-cypress-run --with-snapshots\
           --env grepTags="${{inputs.tags}} --@quarantine",grepOmitFiltered=true \
           --spec '${{ inputs.specs }}' \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
