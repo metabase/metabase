@@ -204,12 +204,12 @@ describe("serializeDateFilter", () => {
       },
     },
     {
-      text: "exclude-days-Mon-Sun",
+      text: "exclude-days-Mon-Tue-Wed-Thu-Fri-Sat-Sun",
       value: {
         type: "exclude",
         operator: "!=",
         unit: "day-of-week",
-        values: [1, 7],
+        values: [1, 2, 3, 4, 5, 6, 7],
       },
     },
     {
@@ -222,12 +222,12 @@ describe("serializeDateFilter", () => {
       },
     },
     {
-      text: "exclude-months-Jan-Dec",
+      text: "exclude-months-Jan-Feb-Mar-Apr-May-Jun-Jul-Aug-Sep-Oct-Nov-Dec",
       value: {
         type: "exclude",
         operator: "!=",
         unit: "month-of-year",
-        values: [1, 12],
+        values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
       },
     },
     {
