@@ -6,7 +6,7 @@ import { jt, t } from "ttag";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 
-import AlertModalsS from "./AlertModals.module.css";
+import AlertModalsS from "../AlertModals.module.css";
 
 export class AlertEducationalScreen extends Component {
   render() {

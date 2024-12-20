@@ -18,7 +18,7 @@ type AlertListPopoverContentProps = {
   onClose: () => void;
 };
 
-export const AlertListPopoverContent = ({
+export const AlertListModalContent = ({
   questionAlerts,
   onCreate,
   onEdit,
