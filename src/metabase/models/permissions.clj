@@ -413,7 +413,7 @@
                              [:= :group_id (u/the-id group-or-id)]
                              (into [:or
                                     [:like path (h2x/concat :object (h2x/literal "%"))]]
-                                   (map (fn [path-form] [:like :object (str path-form "%")])
+                                   (map (fn [path-form] [:or [:= :object path-form][:like :object (str path-form "%")]])
                                         paths))
                              other-conditions)}]
     (when-let [revoked (t2/select-fn-set :object Permissions where)]

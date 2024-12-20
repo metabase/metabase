@@ -396,12 +396,16 @@
        (some #{(mi/current-user-id)})
        boolean))
 
+(defn- current-user-is-creator?
+  [notification]
+  (= (:creator_id notification) (mi/current-user-id)))
+
 (defmethod mi/can-read? :model/Notification
   ([notification]
    ;; users can view a notification if they can view the payload or if they are the creator
    (or
     (mi/superuser?)
-    (= (:creator_id notification) (mi/current-user-id))
+    (current-user-is-creator? notification)
     (current-user-is-recipient? notification)))
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Notification pk))))
@@ -415,6 +419,19 @@
    (and
     (premium-features/has-feature? :advanced-permissions)
     (perms/current-user-has-application-permissions? :subscription))))
+
+(defmethod mi/can-update? :model/Notification
+  [instance _changes]
+  (or
+   (mi/superuser?)
+   (and
+    (current-user-is-creator? instance)
+    ;; if advanced-permissions is enabled, we require users to have subscription permissions
+    ;; and is the owner of the notification and can read the payload
+    (or
+     (not (premium-features/has-feature? :advanced-permissions))
+     (perms/current-user-has-application-permissions? :subscription))
+    (current-user-can-read-payload? instance))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Public APIs                                             ;;
