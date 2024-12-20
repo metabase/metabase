@@ -10239,6 +10239,9 @@ databaseChangeLog:
 
   - changeSet:
       id: v53.2024-12-02T17:21:16
+      validCheckSum:
+        - 9:209a494b250a08f022114249697cbc1b
+        - 9:8adcf08936200cc74153d0c306452e0c
       author: noahmoss
       comment: Add query_execution.parameterized column
       preConditions:
@@ -10254,9 +10257,8 @@ databaseChangeLog:
                   name: parameterized
                   type: ${boolean.type}
                   remarks: Whether or not the query has parameters with non-nil values
-                  defaultValueBoolean: false
                   constraints:
-                    nullable: false
+                    nullable: true
 
   - changeSet:
       id: v53.2024-12-10T10:00:00
