@@ -18,16 +18,17 @@
                :data-source} _env]
   (when (or query_id report_id result_field_id)
     (throw (ex-info "Not implemented" {})))
-  (let [{:keys [dataset_query]} (api/read-check (t2/select-one :model/Card metric_id))
+  (let [{:keys [dataset_query]} (api/read-check (t2/select-one [:model/Card :collection_id :dataset_query] metric_id))
         {:keys [data status]} (qp/process-query dataset_query)]
     (when-not (= :completed status)
-      (throw (ex-info "Unexpected error running query" {})))
+      (throw (ex-info "Unexpected error running query" {:status status})))
     (let [dimension-col-idx (->> data
                                  :cols
                                  (map-indexed vector)
                                  (m/find-first (fn [[_i col]]
                                                  (lib.types.isa/temporal? (u/normalize-map col))))
                                  first)
+          _ (or dimension-col-idx (throw (ex-info "No temporal dimension found. Outliers can only be detected when a temporal dimension is available." {})))
           value-col-idx (->> data
                              :cols
                              (map-indexed vector)

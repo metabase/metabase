@@ -107,21 +107,21 @@
   ;; Discounted orders only
   (mt/with-test-user :crowberto
     (user-repl-with-context
-     {:user-is-viewing [{:type :table :ref 5}]}))
+     {:user_is_viewing [{:type :table :ref 5}]}))
 
   ;; subscribe me to this dashboard every week on monday
   (mt/with-test-user :crowberto
     (user-repl-with-context
-     {:user-is-viewing [{:type :dashboard :ref 11}]}))
+     {:user_is_viewing [{:type :dashboard :ref 11}]}))
 
   ;; filter on the last 6 months
   ;; actually, only filter for current year
   (mt/with-test-user :crowberto
     (user-repl-with-context
-     {:user-is-viewing [{:type :report :ref 111}]}))
+     {:user_is_viewing [{:type :report :ref 111}]}))
 
   ;; any outliers?
   ;; breakout by plan
   (mt/with-test-user :crowberto
     (user-repl-with-context
-     {:user-is-viewing [{:type :metric :ref 122}]})))
+     {:user_is_viewing [{:type :metric :id 122}]})))
