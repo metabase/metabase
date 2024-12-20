@@ -19,6 +19,12 @@ const MONTHS = [
   "Dec",
 ];
 
+function serializeDate(date: Date, hasTime: boolean) {
+  return hasTime
+    ? dayjs(date).format("YYYY-MMM-DD'T'HH:mm:SS")
+    : dayjs(date).format("YYYY-MMM-DD");
+}
+
 function hasTimePart(s: string) {
   return s.includes("T");
 }
@@ -30,9 +36,15 @@ type Serializer = {
 };
 
 const SERIALIZERS: Serializer[] = [
+  // single day
   {
     regex: /^([\d-T:]+)$/,
-    serialize: () => undefined,
+    serialize: value => {
+      if (value.type === "specific" && value.operator === "=") {
+        const [date] = value.values;
+        return serializeDate(date, value.hasTime);
+      }
+    },
     deserialize: match => {
       const date = dayjs(match[1]);
       if (date.isValid()) {
@@ -40,7 +52,71 @@ const SERIALIZERS: Serializer[] = [
           type: "specific",
           operator: "=",
           values: [date.toDate()],
-          hasTime: hasTimePart(match[1]),
+          hasTime: hasTimePart(match[0]),
+        };
+      }
+    },
+  },
+  // before day
+  {
+    regex: /^~([\d-T:]+)$/,
+    serialize: value => {
+      if (value.type === "specific" && value.operator === "<") {
+        const [date] = value.values;
+        return `~${serializeDate(date, value.hasTime)}`;
+      }
+    },
+    deserialize: match => {
+      const date = dayjs(match[1]);
+      if (date.isValid()) {
+        return {
+          type: "specific",
+          operator: "<",
+          values: [date.toDate()],
+          hasTime: hasTimePart(match[0]),
+        };
+      }
+    },
+  },
+  // after day
+  {
+    regex: /^([\d-T:]+)~$/,
+    serialize: value => {
+      if (value.type === "specific" && value.operator === ">") {
+        const [date] = value.values;
+        return `${serializeDate(date, value.hasTime)}~`;
+      }
+    },
+    deserialize: match => {
+      const date = dayjs(match[1]);
+      if (date.isValid()) {
+        return {
+          type: "specific",
+          operator: ">",
+          values: [date.toDate()],
+          hasTime: hasTimePart(match[0]),
+        };
+      }
+    },
+  },
+  // day range
+  {
+    regex: /^([\d-T:]+)~([\d-T:]+)$/,
+    serialize: value => {
+      if (value.type === "specific" && value.operator === "between") {
+        const [date1, date2] = value.values;
+        return `${serializeDate(date1, value.hasTime)}~${serializeDate(date2, value.hasTime)}`;
+      }
+    },
+    deserialize: match => {
+      const date1 = dayjs(match[1]);
+      const date2 = dayjs(match[2]);
+      if (date1.isValid() && date2.isValid()) {
+        return {
+          type: "specific",
+          operator: "between",
+          values: [date1.toDate(), date2.toDate()],
+          hasTime: hasTimePart(match[0]),
         };
       }
     },
