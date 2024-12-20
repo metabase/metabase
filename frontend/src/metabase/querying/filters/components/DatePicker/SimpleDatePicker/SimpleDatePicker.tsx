@@ -2,6 +2,12 @@ import type { FormEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { DATE_PICKER_OPERATORS } from "metabase/querying/filters/constants";
+import type {
+  DatePickerOperator,
+  DatePickerUnit,
+  DatePickerValue,
+} from "metabase/querying/filters/types";
 import { Button, Stack } from "metabase/ui";
 
 import { DateOperatorPicker } from "../DateOperatorPicker";
@@ -10,17 +16,11 @@ import { SimpleDateIntervalPicker } from "../RelativeDatePicker/DateIntervalPick
 import { isIntervalValue, isRelativeValue } from "../RelativeDatePicker/utils";
 import { SimpleSpecificDatePicker } from "../SpecificDatePicker/SimpleSpecificDatePicker";
 import { isSpecificValue } from "../SpecificDatePicker/utils";
-import { DATE_PICKER_OPERATORS } from "../constants";
-import type {
-  DatePickerOperator,
-  DatePickerUnit,
-  DatePickerValue,
-} from "../types";
 
 interface SimpleDatePickerProps {
   value?: DatePickerValue;
-  availableOperators?: ReadonlyArray<DatePickerOperator>;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
+  availableOperators?: DatePickerOperator[];
+  availableUnits: DatePickerUnit[];
   onChange: (value: DatePickerValue | undefined) => void;
 }
 
