@@ -1,6 +1,13 @@
 import { assocIn } from "icepick";
 
-import { sessionApi, useGetUserQuery, userApi } from "metabase/api";
+import {
+  sessionApi,
+  skipToken,
+  useGetUserQuery,
+  useListUserRecipientsQuery,
+  useListUsersQuery,
+  userApi,
+} from "metabase/api";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { generatePassword } from "metabase/lib/security";
 import MetabaseSettings from "metabase/lib/settings";
@@ -37,6 +44,7 @@ const Users = createEntity({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
+    useListQuery,
   },
 
   api: {
@@ -169,5 +177,16 @@ const Users = createEntity({
 const useGetQuery = ({ id }) => {
   return useGetUserQuery(id);
 };
+
+function useListQuery({ recipients = false, ...args } = {}, options) {
+  const usersList = useListUsersQuery(recipients ? skipToken : args, options);
+
+  const recipientsList = useListUserRecipientsQuery(
+    recipients ? args : skipToken,
+    options,
+  );
+
+  return recipients ? recipientsList : usersList;
+}
 
 export default Users;
