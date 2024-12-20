@@ -45,7 +45,6 @@ export function DateFilterPicker({
             </PopoverBackButton>
           )
         }
-        canUseRelativeOffsets
         isNew={isNew}
         onChange={handleChange}
       />

@@ -19,7 +19,6 @@ import {
 interface RelativeDatePickerProps {
   value: RelativeDatePickerValue | undefined;
   availableUnits: ReadonlyArray<DatePickerUnit>;
-  canUseRelativeOffsets: boolean;
   isNew: boolean;
   onChange: (value: RelativeDatePickerValue) => void;
   onBack: () => void;
@@ -28,7 +27,6 @@ interface RelativeDatePickerProps {
 export function RelativeDatePicker({
   value: initialValue,
   availableUnits,
-  canUseRelativeOffsets,
   isNew,
   onChange,
   onBack,
@@ -79,7 +77,6 @@ export function RelativeDatePicker({
               value={value}
               availableUnits={availableUnits}
               isNew={isNew}
-              canUseRelativeOffsets={canUseRelativeOffsets}
               onChange={setValue}
               onSubmit={handleSubmit}
             />

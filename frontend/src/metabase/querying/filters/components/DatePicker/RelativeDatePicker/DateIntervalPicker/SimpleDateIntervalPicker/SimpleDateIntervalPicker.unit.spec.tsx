@@ -22,7 +22,6 @@ interface SetupOpts {
   value: DateIntervalValue;
   availableUnits?: ReadonlyArray<DatePickerUnit>;
   isNew?: boolean;
-  canUseRelativeOffsets?: boolean;
 }
 
 function setup({ value, availableUnits = DATE_PICKER_UNITS }: SetupOpts) {

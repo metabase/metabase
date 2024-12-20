@@ -160,7 +160,6 @@ function DateFilterPopover({
           availableOperators={availableOperators}
           availableShortcuts={isExpanded ? undefined : SECONDARY_SHORTCUTS}
           availableUnits={availableUnits}
-          canUseRelativeOffsets
           onChange={handleChange}
         />
       </Popover.Dropdown>
