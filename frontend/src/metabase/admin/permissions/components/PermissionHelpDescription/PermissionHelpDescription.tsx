@@ -49,7 +49,7 @@ export const PermissionHelpDescription = ({
       {hasUpgradeNotice ? (
         <>
           <Text mt="1rem">{getLimitedPermissionAvailabilityMessage()}</Text>{" "}
-          <Text weight="bold">
+          <Text fw="bold">
             <ExternalLink href={upgradeUrl}>{t`Upgrade to Pro`}</ExternalLink>
           </Text>
         </>

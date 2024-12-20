@@ -243,30 +243,30 @@ describe("DashboardPicker", () => {
     await setupPicker();
 
     expect(
-      await screen.findByRole("button", { name: /Our Analytics/ }),
+      await screen.findByRole("link", { name: /Our Analytics/ }),
     ).toHaveAttribute("data-active", "true");
 
     expect(
-      await screen.findByRole("button", { name: /Collection 4/ }),
+      await screen.findByRole("link", { name: /Collection 4/ }),
     ).toBeInTheDocument();
 
     expect(
-      await screen.findByRole("button", { name: /Collection 2/ }),
+      await screen.findByRole("link", { name: /Collection 2/ }),
     ).toBeInTheDocument();
   });
 
   it("should render the path to the collection provided", async () => {
     await setupPicker({ initialValue: { id: 3, model: "collection" } });
     expect(
-      await screen.findByRole("button", { name: /Our Analytics/ }),
+      await screen.findByRole("link", { name: /Our Analytics/ }),
     ).toHaveAttribute("data-active", "true");
 
     expect(
-      await screen.findByRole("button", { name: /Collection 4/ }),
+      await screen.findByRole("link", { name: /Collection 4/ }),
     ).toHaveAttribute("data-active", "true");
 
     expect(
-      await screen.findByRole("button", { name: /Collection 3/ }),
+      await screen.findByRole("link", { name: /Collection 3/ }),
     ).toHaveAttribute("data-active", "true");
   });
 
@@ -274,24 +274,24 @@ describe("DashboardPicker", () => {
     await setupPicker({ initialValue: { id: 100, model: "dashboard" } });
 
     expect(
-      await screen.findByRole("button", { name: /Our Analytics/ }),
+      await screen.findByRole("link", { name: /Our Analytics/ }),
     ).toHaveAttribute("data-active", "true");
 
     expect(
-      await screen.findByRole("button", { name: /Collection 4/ }),
+      await screen.findByRole("link", { name: /Collection 4/ }),
     ).toHaveAttribute("data-active", "true");
 
     expect(
-      await screen.findByRole("button", { name: /Collection 3/ }),
+      await screen.findByRole("link", { name: /Collection 3/ }),
     ).toHaveAttribute("data-active", "true");
 
     // dashboard itself should start selected
     expect(
-      await screen.findByRole("button", { name: /My Dashboard 1/ }),
+      await screen.findByRole("link", { name: /My Dashboard 1/ }),
     ).toHaveAttribute("data-active", "true");
 
     expect(
-      await screen.findByRole("button", { name: /My Dashboard 2/ }),
+      await screen.findByRole("link", { name: /My Dashboard 2/ }),
     ).not.toHaveAttribute("data-active", "true");
   });
 });
@@ -306,7 +306,7 @@ describe("DashboardPickerModal", () => {
 
     expect(await screen.findByText(/choose a dashboard/i)).toBeInTheDocument();
     expect(
-      await screen.findByRole("button", { name: /Our Analytics/ }),
+      await screen.findByRole("link", { name: /Our Analytics/ }),
     ).toBeInTheDocument();
 
     expect(screen.getByRole("button", { name: /Select/ })).toBeInTheDocument();
@@ -319,7 +319,7 @@ describe("DashboardPickerModal", () => {
 
     expect(await screen.findByText(/choose a dashboard/i)).toBeInTheDocument();
     expect(
-      await screen.findByRole("button", { name: /Our Analytics/ }),
+      await screen.findByRole("link", { name: /Our Analytics/ }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /Select/ }),

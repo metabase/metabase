@@ -1,12 +1,13 @@
-import type { MultiSelectProps, SelectItem } from "@mantine/core";
-import { MultiSelect, Tooltip } from "@mantine/core";
+import { Tooltip } from "@mantine/core";
 import { useUncontrolled } from "@mantine/hooks";
 import type { ClipboardEvent, FocusEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
+import { Icon, type SelectOption } from "metabase/ui";
+
+import { MultiSelect, type MultiSelectProps } from "../MultiSelect";
 
 import { parseValues, unique } from "./utils";
 
@@ -47,7 +48,7 @@ export function MultiAutocomplete({
   const visibleValues = isFocused ? lastSelectedValues : [...selectedValues];
 
   const items = useMemo(
-    () => getAvailableSelectItems(data, lastSelectedValues),
+    () => getAvailableSelectItems(data as SelectOption[], lastSelectedValues),
     [data, lastSelectedValues],
   );
 
@@ -125,9 +126,6 @@ export function MultiAutocomplete({
         }
       }
     }
-    if (newSearchValue === "") {
-      setSelectedValues(unique([...lastSelectedValues]));
-    }
 
     const quotes = Array.from(newSearchValue).filter(ch => ch === '"').length;
 
@@ -170,36 +168,34 @@ export function MultiAutocomplete({
   return (
     <MultiSelect
       {...props}
+      role="combobox"
       data={items}
       value={visibleValues}
       searchValue={searchValue}
       placeholder={placeholder}
       searchable
+      hidePickedOptions
       autoFocus={autoFocus}
       onChange={handleChange}
       onFocus={handleFocus}
       onBlur={handleBlur}
       onSearchChange={handleSearchChange}
-      onPaste={handlePaste}
+      onPasteCapture={handlePaste}
       rightSection={rightSection ?? (showInfoIcon ? infoIcon : null)}
     />
   );
 }
 
-function getSelectItem(item: string | SelectItem): SelectItem {
+function getSelectItem(item: string | SelectOption): SelectOption {
   if (typeof item === "string") {
     return { value: item, label: item };
-  }
-
-  if (!item.label) {
-    return { value: item.value, label: item.value?.toString() ?? "" };
   }
 
   return item;
 }
 
 function getAvailableSelectItems(
-  data: ReadonlyArray<string | SelectItem>,
+  data: SelectOption[],
   selectedValues: string[],
 ) {
   const all = [...data, ...selectedValues].map(getSelectItem);
@@ -207,10 +203,11 @@ function getAvailableSelectItems(
 
   // Deduplicate items based on value
   return all.filter(function (option) {
-    if (seen.has(option.value)) {
+    const value = typeof option === "string" ? option : option.value;
+    if (seen.has(value)) {
       return false;
     }
-    seen.add(option.value);
+    seen.add(value);
     return true;
   });
 }

@@ -150,7 +150,7 @@ describe("issue 8030 + 32444", () => {
             cy.wait("@getCardQuery2");
 
             cy.findByText(filterDetails.name).click();
-            H.popover().within(() => {
+            H.dashboardParametersPopover().within(() => {
               // the filter is connected only to the first card
               H.multiAutocompleteInput().type("1{enter}");
               cy.button("Add filter").click();
@@ -1241,8 +1241,8 @@ describe("issue 22788", () => {
 
   function addFilterAndAssert() {
     H.filterWidget().click();
-    H.popover().within(() => {
-      cy.findByRole("searchbox").type("Gizmo");
+    H.dashboardParametersPopover().within(() => {
+      H.multiAutocompleteInput().type("Gizmo");
       cy.button("Add filter").click();
     });
 
@@ -1473,7 +1473,7 @@ describe("issues 15279 and 24500", () => {
     cy.log("Make sure the list filter works");
     H.filterWidget().contains("List").click();
 
-    H.popover().within(() => {
+    H.dashboardParametersPopover().within(() => {
       cy.findByTextEnsureVisible("Organic").click();
       cy.findByTestId("Organic-filter-value").should("be.checked");
       cy.button("Add filter").click();
@@ -1485,7 +1485,7 @@ describe("issues 15279 and 24500", () => {
 
     cy.log("Make sure the search filter works");
     H.filterWidget().contains("Search").click();
-    H.popover().within(() => {
+    H.dashboardParametersPopover().within(() => {
       cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
       cy.button("Add filter").click();
     });
@@ -1518,7 +1518,9 @@ describe("issues 15279 and 24500", () => {
 
     cy.log("Make sure the list filter still works");
     H.filterWidget().contains("Organic").click();
-    H.popover().findByTestId("Organic-filter-value").should("be.checked");
+    H.dashboardParametersPopover()
+      .findByTestId("Organic-filter-value")
+      .should("be.checked");
 
     cy.log("Make sure the search filter still works");
     // reset filter value
@@ -1528,7 +1530,7 @@ describe("issues 15279 and 24500", () => {
       .and("contain", "Dagmar Fay");
 
     H.filterWidget().contains("Search").click();
-    H.popover().within(() => {
+    H.dashboardParametersPopover().within(() => {
       cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
       cy.button("Add filter").click();
     });
@@ -2165,8 +2167,8 @@ describe("issue 27768", () => {
     H.saveDashboard();
 
     H.filterWidget().click();
-    H.popover().within(() => {
-      cy.findByRole("searchbox").type("Gizmo");
+    H.dashboardParametersPopover().within(() => {
+      H.multiAutocompleteInput().type("Gizmo");
       cy.button("Add filter").click();
     });
 

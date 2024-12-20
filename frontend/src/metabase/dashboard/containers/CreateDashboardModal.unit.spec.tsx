@@ -207,7 +207,7 @@ describe("CreateDashboardModal", () => {
       await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
       //Select Parent Collection
       await userEvent.click(
-        await screen.findByRole("button", {
+        await screen.findByRole("link", {
           name: new RegExp(COLLECTION.PARENT.name),
         }),
       );

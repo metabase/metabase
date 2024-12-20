@@ -829,7 +829,7 @@ describe("SaveQuestionModal", () => {
         await userEvent.click(collDropdown());
         await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
         await userEvent.click(
-          await screen.findByRole("button", {
+          await screen.findByRole("link", {
             name: new RegExp(BOBBY_TEST_COLLECTION.name),
           }),
         );

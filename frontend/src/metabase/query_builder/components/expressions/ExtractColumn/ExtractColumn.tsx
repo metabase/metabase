@@ -155,7 +155,7 @@ function ExtractionPicker({
         onBack={onCancel}
       />
       <Box p="sm">
-        <Stack spacing={0}>
+        <Stack gap={0}>
           {extractions.map(extraction => (
             <ExtractColumnButton
               key={extraction.info.tag}
@@ -181,9 +181,10 @@ function ExtractColumnButton({
 }) {
   return (
     <Button
-      variant="unstyled"
+      variant="subtle"
       type="button"
       p="sm"
+      mb="xs"
       className={styles.button}
       classNames={{
         inner: styles.inner,
@@ -192,7 +193,7 @@ function ExtractColumnButton({
       onClick={onClick}
     >
       <Flex align="center" justify="space-between" gap="1rem">
-        <Text color="text-dark" className={styles.content} weight="bold" p={0}>
+        <Text color="text-dark" className={styles.content} fw="bold" p={0}>
           {title}
         </Text>
         <Text color="text-light" size="sm" className={styles.example}>

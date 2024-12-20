@@ -1,2 +1,2 @@
 export { Progress } from "@mantine/core";
-export * from "./Progress.styled";
+export * from "./Progress.config";

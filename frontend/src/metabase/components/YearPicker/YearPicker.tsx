@@ -22,6 +22,10 @@ const YearPicker = ({ value, onChange, ...selectProps }: YearPickerProps) => (
       dropdown: CS.ParameterDropdownWidth,
     }}
     data-testid="select-year-picker"
+    comboboxProps={{
+      withinPortal: false,
+      floatingStrategy: "fixed",
+    }}
   />
 );
 

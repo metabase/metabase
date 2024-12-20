@@ -27,7 +27,7 @@ export function FilterTabContent({
   onTabChange,
 }: FilterTabContentProps) {
   return (
-    <Tabs value={tab} onTabChange={onTabChange} orientation="vertical" h="100%">
+    <Tabs value={tab} onChange={onTabChange} orientation="vertical" h="100%">
       <Flex direction="row" w="100%">
         {groupItems.length > 1 && <FilterTabList groupItems={groupItems} />}
         {groupItems.map(groupItem => (

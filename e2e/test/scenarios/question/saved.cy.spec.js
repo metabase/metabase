@@ -504,7 +504,7 @@ describe(
       H.modal().within(() => {
         H.getAlertChannel(secondWebhookName).scrollIntoView();
         H.getAlertChannel(secondWebhookName)
-          .findByRole("checkbox")
+          .findByRole("switch")
           .should("be.checked");
       });
     });
@@ -518,7 +518,7 @@ describe(
         H.getAlertChannel(firstWebhookName).scrollIntoView();
 
         H.getAlertChannel(firstWebhookName)
-          .findByRole("checkbox")
+          .findByRole("switch")
           .click({ force: true });
 
         H.getAlertChannel(firstWebhookName).button("Send a test").click();

@@ -82,7 +82,7 @@ export const ChartTypeSidebar = ({
         sensibleVisualizations={sensibleVisualizations}
         nonSensibleVisualizations={nonSensibleVisualizations}
         onOpenSettings={onOpenVizSettings}
-        spacing={0}
+        gap={0}
         w="100%"
         p="lg"
       />
