@@ -3,11 +3,13 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
-(deftest get-notication-card-test
+(deftest get-notification-card-test
   (mt/with-temp [:model/Channel {chn-id :id} notification.tu/default-can-connect-channel
                  :model/ChannelTemplate {tmpl-id :id} notification.tu/channel-template-email-with-handlebars-body]
     (notification.tu/with-card-notification
@@ -62,6 +64,7 @@
   (testing "404 on unknown notification"
     (is (= "Not found."
            (mt/user-http-request :crowberto :get (format "notification/%d" Integer/MAX_VALUE))))))
+
 
 (deftest create-simple-card-notification-test
   (mt/with-model-cleanup [:model/Notification]
@@ -249,3 +252,64 @@
                    :channel/http  [{:body (mt/malli=? some?)}]}
                   (notification.tu/with-captured-channel-send!
                     (mt/user-http-request :crowberto :post 204 "notification/send" (strip-keys notification [:id :created_at :updated_at]))))))))))
+
+;; Permission tests
+
+(deftest get-notification-permissions-test
+  (mt/with-temp
+    [:model/User {third-user-id :id} {:is_superuser false}]
+    (notification.tu/with-card-notification
+      [notification {:notification {:creator_id (mt/user->id :rasta)}
+                     :handlers     [{:channel_type "channel/email"
+                                     :recipients   [{:type    :notification-recipient/user
+                                                     :user_id (mt/user->id :lucky)}]}]}]
+      (let [get-notification (fn [user-or-id expected-status]
+                               (mt/user-http-request user-or-id :get expected-status (format "notification/%d" (:id notification))))]
+        (testing "admin can view"
+          (get-notification :crowberto 200))
+        (testing "creator can view"
+          (get-notification :rasta 200))
+        (testing "recipient can view"
+          (get-notification :lucky 200))
+        (testing "other than that no one can view"
+          (get-notification third-user-id 403))))))
+
+(deftest get-system-event-permissions-test
+  (notification.tu/with-system-event-notification!
+    [notification {:event :mb-test/permissions
+                   :notification {:creator_id (mt/user->id :rasta)}}]
+    (let [get-notification (fn [user-or-id expected-status]
+                             (mt/user-http-request user-or-id :get expected-status (format "notification/%d" (:id notification))))]
+      (testing "admin can view"
+        (get-notification :crowberto 200))
+      (testing "creator can view"
+        (get-notification :rasta 200))
+      (testing "other than that no one can view"
+        (get-notification :lucky 403)))))
+
+(deftest create-card-notification-permissions-test
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-user-in-groups [group {:name "test notification perm"}
+                             user  [group]]
+      (mt/with-temp
+        [:model/Card {card-id :id} {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))}]
+        (let [notification* (fn [user-or-id expected-status]
+                              (mt/user-http-request user-or-id :post expected-status "notification"
+                                                    {:payload_type "notification/card"
+                                                     :creator_id   (mt/user->id :rasta)
+                                                     :payload      {:card_id card-id}}))]
+          (mt/with-premium-features #{}
+            (testing "admin can create"
+              (notification* :crowberto 200))
+            (testing "users who can view the card can create"
+              (notification* :rasta 200))
+            (testing "normal users can't create"
+              (notification* (:id user) 403))
+            (mt/when-ee-evailable
+             (perms/grant-application-permissions! group :subscription)
+             (testing "users with advanced subscription permissions"
+               (testing "still can't create if advanced-permissions is disabled"
+                 (notification* (:id user) 403))
+               (testing "can create if advanced-permissions is enabled"
+                 (mt/with-premium-features #{:advanced-permissions}
+                   (notification* (:id user) 200)))))))))))

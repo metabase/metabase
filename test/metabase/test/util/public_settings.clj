@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.config :as config]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.test.util.thread-local :as tu.thread-local]))
 
@@ -65,3 +66,9 @@
      :message (str feature-name " is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"),
      :status  "error-premium-feature-not-available"}
     request)))
+
+(defmacro when-ee-evailable
+  "Execute `body` only if the current instance has EE features enabled."
+  [& body]
+  (when config/ee-available?
+    `(do ~@body)))
