@@ -19,7 +19,7 @@
   (when (or query_id report_id result_field_id)
     (throw (ex-info "Not implemented" {})))
   (let [{:keys [dataset_query]} (api/read-check (t2/select-one [:model/Card :collection_id :dataset_query] metric_id))
-        {:keys [data status]} (qp/process-query dataset_query)]
+        {:keys [data status]} (qp/process-query (qp/userland-query dataset_query))]
     (when-not (= :completed status)
       (throw (ex-info "Unexpected error running query" {:status status})))
     (let [dimension-col-idx (->> data
