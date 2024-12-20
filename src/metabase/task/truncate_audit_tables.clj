@@ -107,16 +107,14 @@ If set to 0, Metabase will keep all rows.")
     (let [table-name (name (t2/table-name model))]
       (try
         (log/infof "Cleaning up %s table" table-name)
-        (let [total-rows-deleted (volatile! 0)]
-          (loop []
-            (let [batch-rows-deleted (truncate-table-batched! table-name time-column)]
-              (vswap! total-rows-deleted (partial + batch-rows-deleted))
-              ;; Only try to delete another batch if the last batch was full
-              (if (= batch-rows-deleted (audit-table-truncation-batch-size))
-                (recur)
-                (if (not= @total-rows-deleted 0)
-                  (log/infof "%s cleanup successful, %d rows were deleted" table-name @total-rows-deleted)
-                  (log/infof "%s cleanup successful, no rows were deleted" table-name))))))
+        (loop [total-rows-deleted 0]
+          (let [batch-rows-deleted (truncate-table-batched! table-name time-column)]
+            ;; Only try to delete another batch if the last batch was full
+            (if (= batch-rows-deleted (audit-table-truncation-batch-size))
+              (recur (+ total-rows-deleted (long batch-rows-deleted)))
+              (if (not= total-rows-deleted 0)
+                (log/infof "%s cleanup successful, %d rows were deleted" table-name total-rows-deleted)
+                (log/infof "%s cleanup successful, no rows were deleted" table-name)))))
         (catch Throwable e
           (log/errorf e "%s cleanup failed" table-name))))))
 
