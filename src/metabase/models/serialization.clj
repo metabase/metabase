@@ -1510,8 +1510,9 @@
   (let [{:keys [linkType targetId type]} (:click_behavior settings)
         model (when linkType (link-card-model->toucan-model linkType))]
     (case type
-      "link" #{[{:model (name model)
-                 :id    targetId}]}
+      "link" (when model
+               #{[{:model (name model)
+                   :id    targetId}]})
       ;; TODO: We might need to handle the click behavior that updates dashboard filters? I can't figure out how get
       ;; that to actually attach to a filter to check what it looks like.
       nil)))
@@ -1540,9 +1541,9 @@
   (let [{:keys [linkType targetId type]} click_behavior
         model (when linkType (link-card-model->toucan-model linkType))]
     (case type
-      "link" (do (assert model (str "Unknown linkType: " linkType))
-                 (when (fk-elide (*export-fk* targetId model))
-                   {[(name model) targetId] src}))
+      "link" (when (and model
+                        (fk-elide (*export-fk* targetId model)))
+               {[(name model) targetId] src})
       ;; TODO: We might need to handle the click behavior that updates dashboard filters? I can't figure out how get
       ;; that to actually attach to a filter to check what it looks like.
       nil)))
