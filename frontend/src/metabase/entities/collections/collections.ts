@@ -182,9 +182,9 @@ const Collections = createEntity({
 
 function useListQuery(
   params: ListParams,
-  options:
-    | Parameters<typeof useListCollectionsTreeQuery>[1]
-    | Parameters<typeof useListCollectionsQuery>[1],
+  options: Parameters<
+    typeof useListCollectionsTreeQuery | typeof useListCollectionsQuery
+  >[1],
 ) {
   const { tree, ...entityQuery } = params;
 
