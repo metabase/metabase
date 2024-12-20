@@ -82,7 +82,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
   const [clause, setClause] = useState<Clause | Lib.ExpressionClause | null>(
     initialClause ?? null,
   );
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorWithMessage | null>(null);
   const [isCombiningColumns, setIsCombiningColumns] = useState(false);
 
   const [isExtractingColumn, setIsExtractingColumn] = useState(false);
@@ -117,10 +117,8 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     }
   };
 
-  const handleError = (error: ErrorWithMessage | string | null) => {
-    if (error) {
-      setError(typeof error === "string" ? error : error.message);
-    }
+  const handleError = (error: ErrorWithMessage | null) => {
+    setError(error);
   };
 
   const handleExpressionChange = (
@@ -221,6 +219,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
           textAreaId="expression-content"
           onChange={handleExpressionChange}
           onCommit={handleCommit}
+          error={error}
           onError={handleError}
           shortcuts={[
             !startRule &&

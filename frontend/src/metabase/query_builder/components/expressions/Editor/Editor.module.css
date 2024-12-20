@@ -17,6 +17,12 @@
   font-weight: bold;
 }
 
+.error {
+  color: var(--mb-color-error);
+  margin: 0.5rem 0;
+  white-space: pre-wrap;
+}
+
 :global {
   :local(.editor) {
     width: 100%;

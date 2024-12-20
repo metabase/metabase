@@ -2,6 +2,7 @@ import CodeMirror from "@uiw/react-codemirror";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
 import { format } from "metabase-lib/v1/expressions/format";
@@ -15,6 +16,7 @@ import { useExtensions } from "./extensions";
 type EditorProps = {
   expression: Expression | undefined | null;
   clause: Lib.ExpressionClause | undefined | null;
+  error: ErrorWithMessage | null;
   name: string;
   query: Lib.Query;
   stageIndex: number;
@@ -33,36 +35,69 @@ type EditorProps = {
 export function Editor(props: EditorProps) {
   const {
     name,
-    expression: legacyExpression = null,
-    clause,
     startRule = "expression",
     stageIndex,
     query,
     expressionIndex,
-    onChange,
-    onError,
     readOnly,
+    error,
   } = props;
 
+  const { source, onSourceChange, commitExpression, hasChanges } =
+    useExpression(props);
+
+  const extensions = useExtensions({
+    startRule,
+    query,
+    stageIndex,
+    name,
+    expressionIndex,
+    onCommit: commitExpression,
+  });
+
+  return (
+    <>
+      <div className={S.wrapper}>
+        <div className={S.prefix}>=</div>
+        <CodeMirror
+          data-testid="custom-expression-query-editor"
+          className={S.editor}
+          extensions={extensions}
+          readOnly={readOnly}
+          value={source}
+          onChange={onSourceChange}
+          onBlur={commitExpression}
+          height="100%"
+          width="100%"
+          indentWithTab={false}
+        />
+      </div>
+      {error && hasChanges && <Box className={S.error}>{error.message}</Box>}
+    </>
+  );
+}
+
+function useExpression({
+  name,
+  expression: legacyExpression = null,
+  clause,
+  startRule = "expression",
+  stageIndex,
+  query,
+  expressionIndex,
+  onChange,
+  onError,
+}: EditorProps) {
   const expression = useMemo(() => {
-    const expressionFromClause = clause
-      ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)
-      : undefined;
+    const expressionFromClause =
+      clause &&
+      Lib.legacyExpressionForExpressionClause(query, stageIndex, clause);
+
     return expressionFromClause ?? legacyExpression;
   }, [legacyExpression, clause, query, stageIndex]);
 
-  const [source, setSource] = useState(
-    format(expression, {
-      startRule,
-      stageIndex,
-      query,
-      name,
-      expressionIndex,
-    }),
-  );
-
-  useEffect(() => {
-    setSource(
+  const formatExpression = useCallback(
+    (expression: Expression | null) =>
       format(expression, {
         startRule,
         stageIndex,
@@ -70,12 +105,27 @@ export function Editor(props: EditorProps) {
         name,
         expressionIndex,
       }),
-    );
-  }, [expression, startRule, stageIndex, query, name, expressionIndex]);
+    [startRule, stageIndex, query, name, expressionIndex],
+  );
+
+  const [source, setSource] = useState(formatExpression(expression));
+  const [hasChanges, setHasChanges] = useState(false);
+
+  const handleSourceChange = useCallback((source: string) => {
+    setSource(source);
+    setHasChanges(true);
+  }, []);
+
+  useEffect(() => {
+    // When the epxression changes externally, update the source
+    // accordingly.
+    setSource(formatExpression(expression));
+  }, [expression, formatExpression]);
 
   const commitExpression = useCallback(
     function () {
       if (source.trim() === "") {
+        onError({ message: t`Invalid expression` });
         return;
       }
 
@@ -110,6 +160,7 @@ export function Editor(props: EditorProps) {
       }
 
       const { expression, expressionClause } = compiledExpression;
+      onError(null);
       onChange(expression, expressionClause);
     },
     [
@@ -124,30 +175,11 @@ export function Editor(props: EditorProps) {
     ],
   );
 
-  const extensions = useExtensions({
-    startRule,
-    query,
-    stageIndex,
-    name,
-    expressionIndex,
-    onCommit: commitExpression,
-  });
-
-  return (
-    <div className={S.wrapper}>
-      <div className={S.prefix}>=</div>
-      <CodeMirror
-        data-testid="custom-expression-query-editor"
-        className={S.editor}
-        extensions={extensions}
-        readOnly={readOnly}
-        value={source}
-        onChange={setSource}
-        onBlur={commitExpression}
-        height="100%"
-        width="100%"
-        indentWithTab={false}
-      />
-    </div>
-  );
+  return {
+    expression,
+    commitExpression,
+    source,
+    onSourceChange: handleSourceChange,
+    hasChanges,
+  };
 }
