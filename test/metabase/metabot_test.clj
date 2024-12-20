@@ -9,8 +9,7 @@
    [metabase.models :refer [Card]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (def test-prompt-templates
   {:infer_sql        {:latest {:prompt_template "infer_sql",
@@ -55,7 +54,7 @@
   (testing "Test the 'plumbing' of the infer-sql function. The actual invocation of the remote bot is dynamically rebound."
     (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
       (mt/dataset test-data
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [Card model {:dataset_query
                        {:database (mt/id)
                         :type     :query
@@ -81,7 +80,7 @@
   (testing "Test the 'plumbing' of the infer-model function. The actual invocation of the remote bot is dynamically rebound."
     (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
       (mt/dataset test-data
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [Card orders-model {:name    "Orders Model"
                               :dataset_query
                               {:database (mt/id)

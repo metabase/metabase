@@ -10,13 +10,12 @@
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (deftest list-collections-instance-analytics-test
   (mt/with-premium-features #{:audit-app}
     (audit-test/with-audit-db-restoration
-      (t2.with-temp/with-temp [Collection _ {:name "Zippy"}]
+      (mt/with-temp [Collection _ {:name "Zippy"}]
         (testing "Instance Analytics Collection should be the last collection."
           (testing "GET /api/collection"
             (is (= "instance-analytics"
@@ -30,7 +29,7 @@
                         :type))))))))
   (mt/with-premium-features #{}
     (audit-test/with-audit-db-restoration
-      (t2.with-temp/with-temp [Collection _ {:name "Zippy"}]
+      (mt/with-temp [Collection _ {:name "Zippy"}]
         (testing "Instance Analytics Collection should not show up when audit-app isn't enabled."
           (testing "GET /api/collection"
             (is (nil?
@@ -75,13 +74,13 @@
         (audit-test/with-audit-db-restoration
           (let [admin-user-id  (u/the-id (test.users/fetch-user :crowberto))
                 crowberto-root (t2/select-one Collection :personal_owner_id admin-user-id)]
-            (t2.with-temp/with-temp [Collection collection          {}
-                                     Collection {collection-id :id} {:name "Collection with Items"}
-                                     Collection _                   {:name            "subcollection"
-                                                                     :location        (format "/%d/" collection-id)
-                                                                     :authority_level "official"}
-                                     Collection _                   {:name     "Crowberto's Child Collection"
-                                                                     :location (collection/location-path crowberto-root)}]
+            (mt/with-temp [Collection collection          {}
+                           Collection {collection-id :id} {:name "Collection with Items"}
+                           Collection _                   {:name            "subcollection"
+                                                           :location        (format "/%d/" collection-id)
+                                                           :authority_level "official"}
+                           Collection _                   {:name     "Crowberto's Child Collection"
+                                                           :location (collection/location-path crowberto-root)}]
               (let [public-collection-names  #{"Our analytics"
                                                (:name collection)
                                                "Collection with Items"

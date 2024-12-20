@@ -13,8 +13,7 @@
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel normalize-name-test
   (testing "Testing basic examples of how normalize-name should work"
@@ -184,7 +183,7 @@
   (testing "Ensure that a dataset-based query contains expected AS aliases"
     (mt/dataset test-data
       (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 0]
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [Card orders-model {:name    "Orders Model"
                               :dataset_query
                               {:database (mt/id)
@@ -213,7 +212,7 @@
     (mt/dataset test-data
       (let [q               (mt/native-query {:query "SELECT * FROM ORDERS;"})
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [Card orders-model {:name            "Orders Model"
                               :dataset_query   q
                               :result_metadata result-metadata
@@ -242,7 +241,7 @@
     (mt/dataset test-data
       (let [q               (mt/native-query {:query "SELECT TOTAL, QUANTITY, TAX, CREATED_AT FROM ORDERS;"})
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [Card orders-model {:name            "Orders Model"
                               :dataset_query   q
                               :result_metadata result-metadata
@@ -266,7 +265,7 @@
     (mt/dataset test-data
       (let [q               (mt/native-query {:query "SELECT TOTAL AS X, QUANTITY AS X FROM ORDERS;"})
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [Card orders-model {:name            "Orders Model"
                               :dataset_query   q
                               :result_metadata result-metadata
@@ -285,7 +284,7 @@
 (deftest ^:parallel inner-query-with-joins-test
   (testing "Models with joins work"
     (mt/dataset test-data
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [Card joined-model {:type        :model
                             :database_id (mt/id)
                             :query_type  :query
@@ -310,7 +309,7 @@
 (deftest ^:parallel inner-query-with-joins-test-2
   (testing "A model with joins on the same table will produce distinct aliases"
     (mt/dataset test-data
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [Card joined-model {:type        :model
                             :database_id (mt/id)
                             :query_type  :query
@@ -337,7 +336,7 @@
 (deftest ^:parallel inner-query-with-aggregations-test
   (testing "A model with aggregations will produce column names only (no AS aliases)"
     (mt/dataset test-data
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [Card aggregated-model {:type        :model
                                 :database_id (mt/id)
                                 :query_type  :query
@@ -358,7 +357,7 @@
   (testing "When column names collide, each conflict is disambiguated with an _X postfix"
     (mt/dataset test-data
       (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 0]
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [Card orders-model {:name    "Orders Model"
                               :dataset_query
                               {:database (mt/id)
@@ -377,7 +376,7 @@
   (testing "Models with name collisions across joins are also correctly disambiguated"
     (mt/dataset test-data
       (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 10]
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [Card model {:type        :model
                        :database_id (mt/id)
                        :query_type  :query

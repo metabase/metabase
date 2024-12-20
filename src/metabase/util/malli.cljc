@@ -11,7 +11,8 @@
    [malli.destructure]
    [malli.error :as me]
    [malli.util :as mut]
-   [metabase.util.i18n :as i18n])
+   [metabase.util.i18n :as i18n]
+   [metabase.util.malli.registry :as mr])
   #?(:cljs (:require-macros [metabase.util.malli])))
 
 #?(:clj
@@ -28,7 +29,7 @@
 (core/defn explain
   "Explains a schema failure, and returns the offending value."
   [schema value]
-  (-> (mc/explain schema value)
+  (-> (mr/explain schema value)
       (me/humanize {:wrap humanize-include-value})))
 
 (def ^:private Schema
@@ -120,7 +121,7 @@
      (let [is-validator? (fn? schema-or-validator)]
        (if-not ((if is-validator?
                   schema-or-validator
-                  (mc/validator schema-or-validator))
+                  (mr/validator schema-or-validator))
                 value)
          (throw (ex-info "Value does not match schema" (when-not is-validator?
                                                          {:error (explain schema-or-validator value)})))

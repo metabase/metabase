@@ -12,8 +12,7 @@
    [metabase.pulse.send-test :as pulse.send-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (defmacro ^:private with-subscription-disabled-for-all-users
   "Temporarily remove `subscription` permission for group `All Users`, execute `body` then re-grant it.
@@ -96,10 +95,10 @@
                                                                      :pulse         {:creator_id (u/the-id user)}
                                                                      :pulse-channel :email}]
                       ;; manually add another user as recipient
-                      (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id (:id user)
-                                                                        :pulse_channel_id
-                                                                        (t2/select-one-pk
-                                                                         PulseChannel :channel_type "email" :pulse_id (:id the-pulse))}]
+                      (mt/with-temp [PulseChannelRecipient _ {:user_id (:id user)
+                                                              :pulse_channel_id
+                                                              (t2/select-one-pk
+                                                               PulseChannel :channel_type "email" :pulse_id (:id the-pulse))}]
                         (let [the-pulse   (models.pulse/retrieve-pulse (:id the-pulse))
                               channel     (api.alert/email-channel the-pulse)
                               new-channel (update channel :recipients rest)
@@ -188,7 +187,7 @@
       (mt/with-user-in-groups
         [group {:name "New Group"}
          user  [group]]
-        (t2.with-temp/with-temp [Card _]
+        (mt/with-temp [Card _]
           (letfn [(add-alert-recipient [req-user status]
                     (mt/with-temp [Pulse                 alert (alert-test/basic-alert)
                                    Card                  card  {}

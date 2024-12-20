@@ -12,8 +12,7 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   TESTS FOR WHICH FIELDS NEED FINGERPRINTING                                   |
@@ -154,8 +153,8 @@
                                                     [_query rff]
                                                     (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
                     sync.fingerprint/save-fingerprint! (fn [& _] (reset! fingerprinted? true))]
-        (t2.with-temp/with-temp [Table table {}
-                                 Field _     (assoc field-properties :table_id (u/the-id table))]
+        (mt/with-temp [Table table {}
+                       Field _     (assoc field-properties :table_id (u/the-id table))]
           [(sync.fingerprint/fingerprint-fields! table)
            @fingerprinted?])))))
 
@@ -262,11 +261,11 @@
 
 (deftest fingerprint-table!-test
   (testing "the `fingerprint!` function is correctly updating the correct columns of Field"
-    (t2.with-temp/with-temp [Field field {:base_type           :type/Integer
-                                          :table_id            (data/id :venues)
-                                          :fingerprint         nil
-                                          :fingerprint_version 1
-                                          :last_analyzed       #t "2017-08-09T00:00:00"}]
+    (mt/with-temp [Field field {:base_type           :type/Integer
+                                :table_id            (data/id :venues)
+                                :fingerprint         nil
+                                :fingerprint_version 1
+                                :last_analyzed       #t "2017-08-09T00:00:00"}]
       (binding [i/*latest-fingerprint-version* 3]
         (with-redefs [qp/process-query             (fn [_query rff]
                                                      (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))

@@ -1,10 +1,10 @@
 (ns metabase.api.routes
-  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [compojure.core :refer [GET]]
    [compojure.route :as route]
    [metabase.api.action :as api.action]
    [metabase.api.activity :as api.activity]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.api.alert :as api.alert]
    [metabase.api.api-key :as api.api-key]
    [metabase.api.automagic-dashboards :as api.magic]
@@ -35,6 +35,7 @@
    [metabase.api.premium-features :as api.premium-features]
    [metabase.api.preview-embed :as api.preview-embed]
    [metabase.api.public :as api.public]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.api.pulse :as api.pulse]
    [metabase.api.pulse.unsubscribe :as api.pulse.unsubscribe]
    [metabase.api.revision :as api.revision]

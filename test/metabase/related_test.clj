@@ -10,8 +10,7 @@
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel collect-context-bearing-forms-test
   (is (= #{[:field 1 nil] [:metric 1] [:field 2 nil] [:segment 1]}
@@ -151,16 +150,16 @@
                (count-related-fields)))))))
 
 (deftest recommended-dashboards-test
-  (t2.with-temp/with-temp [Card          card-1        {}
-                           Card          card-2        {}
-                           Card          card-3        {}
-                           Dashboard     {dash-id :id} {}
-                           Revision      _             {:model    "Dashboard"
-                                                        :model_id dash-id
-                                                        :user_id  (mt/user->id :rasta)
-                                                        :object   {}}
-                           DashboardCard _             {:card_id (:id card-1), :dashboard_id dash-id}
-                           DashboardCard _             {:card_id (:id card-2), :dashboard_id dash-id}]
+  (mt/with-temp [Card          card-1        {}
+                 Card          card-2        {}
+                 Card          card-3        {}
+                 Dashboard     {dash-id :id} {}
+                 Revision      _             {:model    "Dashboard"
+                                              :model_id dash-id
+                                              :user_id  (mt/user->id :rasta)
+                                              :object   {}}
+                 DashboardCard _             {:card_id (:id card-1), :dashboard_id dash-id}
+                 DashboardCard _             {:card_id (:id card-2), :dashboard_id dash-id}]
     (binding [api/*current-user-id*              (mt/user->id :rasta)
               api/*current-user-permissions-set* (atom #{"/"})]
       (is (=? [{:id dash-id}]

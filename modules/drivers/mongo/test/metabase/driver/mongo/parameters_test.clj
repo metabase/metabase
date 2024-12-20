@@ -9,8 +9,7 @@
    [metabase.models :refer [NativeQuerySnippet]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util.json :as json]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -417,8 +416,8 @@
 
 (deftest e2e-snippet-test
   (mt/test-driver :mongo
-    (t2.with-temp/with-temp [NativeQuerySnippet snippet {:name    "first 3 checkins"
-                                                         :content (to-bson {:_id {:$in [1 2 3]}})}]
+    (mt/with-temp [NativeQuerySnippet snippet {:name    "first 3 checkins"
+                                               :content (to-bson {:_id {:$in [1 2 3]}})}]
       (is (= [[1 "African"]
               [2 "American"]
               [3 "Artisan"]]

@@ -9,7 +9,6 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
-   [malli.core :as mc]
    [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.driver.h2 :as h2]
@@ -150,7 +149,7 @@
    :job-class          SyncAndAnalyzeDatabase
    :name               "Sync and Analyze"})
 
-(assert (mc/validate TaskInfo sync-analyze-task-info))
+(assert (mr/validate TaskInfo sync-analyze-task-info))
 
 (def ^:private field-values-task-info
   {:key                :update-field-values
@@ -158,7 +157,7 @@
    :job-class          UpdateFieldValues
    :name               "Scan Field Values"})
 
-(assert (mc/validate TaskInfo field-values-task-info))
+(assert (mr/validate TaskInfo field-values-task-info))
 
 (def ^:private all-tasks
   [sync-analyze-task-info field-values-task-info])

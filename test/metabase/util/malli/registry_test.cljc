@@ -12,7 +12,7 @@
 
 (deftest ^:parallel explainer-test
   (is (= ["should be an integer"]
-         (me/humanize (mc/explain ::int "1"))
+         (me/humanize (mr/explain ::int "1"))
          (me/humanize ((mr/explainer ::int) "1"))))
   (testing "cache explainers"
     (is (identical? (mr/explainer ::int)

@@ -19,8 +19,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -50,7 +49,7 @@
 (deftest ^:parallel new-users-test
   (testing "newly created users should get added to the appropriate magic groups"
     (testing "regular user"
-      (t2.with-temp/with-temp [User {user-id :id}]
+      (mt/with-temp [User {user-id :id}]
         (testing "Should be added to All Users group"
           (is (t2/exists? PermissionsGroupMembership
                           :user_id  user-id
@@ -63,7 +62,7 @@
 (deftest ^:parallel new-users-test-2
   (testing "newly created users should get added to the appropriate magic groups"
     (testing "superuser"
-      (t2.with-temp/with-temp [User {user-id :id} {:is_superuser true}]
+      (mt/with-temp [User {user-id :id} {:is_superuser true}]
         (testing "Should be added to All Users group"
           (is (t2/exists? PermissionsGroupMembership
                           :user_id  user-id
@@ -89,7 +88,7 @@
 
 (deftest newly-created-databases-test
   (testing "magic groups should have permissions for newly created databases\n"
-    (t2.with-temp/with-temp [Database {database-id :id}]
+    (mt/with-temp [Database {database-id :id}]
       (doseq [group [(perms-group/all-users)]]
         (testing (format "Group = %s" (pr-str (:name group)))
           (is (group-has-full-access? (u/the-id group) database-id)))))))
@@ -97,34 +96,34 @@
 (deftest add-remove-from-admin-group-test
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "adding user to Admin should set is_superuser -> true"
-      (t2.with-temp/with-temp [User {user-id :id}]
+      (mt/with-temp [User {user-id :id}]
         (t2/insert! PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))
         (is (true? (t2/select-one-fn :is_superuser User, :id user-id)))))))
 
 (deftest add-remove-from-admin-group-test-2
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "removing user from Admin should set is_superuser -> false"
-      (t2.with-temp/with-temp [User {user-id :id} {:is_superuser true}]
+      (mt/with-temp [User {user-id :id} {:is_superuser true}]
         (t2/delete! PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))
         (is (false? (t2/select-one-fn :is_superuser User, :id user-id)))))))
 
 (deftest add-remove-from-admin-group-test-3
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "setting is_superuser -> true should add user to Admin"
-      (t2.with-temp/with-temp [User {user-id :id}]
+      (mt/with-temp [User {user-id :id}]
         (t2/update! User user-id {:is_superuser true})
         (is (true? (t2/exists? PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))))
 
 (deftest add-remove-from-admin-group-test-4
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "setting is_superuser -> false should remove user from Admin"
-      (t2.with-temp/with-temp [User {user-id :id} {:is_superuser true}]
+      (mt/with-temp [User {user-id :id} {:is_superuser true}]
         (t2/update! User user-id {:is_superuser false})
         (is (false? (t2/exists? PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))))
 
 (deftest data-graph-for-group-check-all-groups-test
-  (t2.with-temp/with-temp [:model/PermissionsGroup {} {}
-                           :model/Database         {} {}]
+  (mt/with-temp [:model/PermissionsGroup {} {}
+                 :model/Database         {} {}]
     (doseq [group-id (t2/select-fn-set :id :model/PermissionsGroup)]
       (testing (str "testing data-graph-for-group with group-id: [" group-id "].")
         (let [graph (data-perms.graph/api-graph {:group-id group-id})]

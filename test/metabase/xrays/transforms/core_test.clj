@@ -15,8 +15,7 @@
    [metabase.xrays.test-util.transforms :refer [test-transform-spec with-test-transform-specs!]]
    [metabase.xrays.transforms.core :as tf]
    [metabase.xrays.transforms.specs :as tf.specs]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [thunk]
                       (mt/with-model-cleanup [Card Collection]
@@ -55,7 +54,7 @@
              (#'tf/->source-table-reference (t2/select-one Table :id (mt/id :venues))))))
 
     (testing "for a Card"
-      (t2.with-temp/with-temp [Card {card-id :id}]
+      (mt/with-temp [Card {card-id :id}]
         (is (= (str "card__" card-id)
                (#'tf/->source-table-reference (t2/select-one Card :id card-id))))))))
 

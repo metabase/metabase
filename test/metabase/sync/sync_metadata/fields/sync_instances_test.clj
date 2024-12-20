@@ -9,8 +9,7 @@
    [metabase.test :as mt]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (def ^:private toucannery-transactions-expected-fields-hierarchy
   {"ts"     nil
@@ -30,8 +29,8 @@
     (format-fields (get parent-id->children nil))))
 
 (deftest sync-fields-test
-  (t2.with-temp/with-temp [Database db    {:engine ::toucanery/toucanery}
-                           Table    table {:name "transactions", :db_id (u/the-id db)}]
+  (mt/with-temp [Database db    {:engine ::toucanery/toucanery}
+                 Table    table {:name "transactions", :db_id (u/the-id db)}]
     ;; do the initial sync
     (sync-fields/sync-fields-for-table! table)
     (let [transactions-table-id (u/the-id (t2/select-one-pk Table :db_id (u/the-id db), :name "transactions"))]
@@ -41,8 +40,8 @@
 (deftest delete-nested-field-test
   (testing (str "If you delete a nested Field, and re-sync a Table, it should recreate the Field as it was before! It "
                 "should not create any duplicate Fields (#8950)")
-    (t2.with-temp/with-temp [Database db    {:engine ::toucanery/toucanery}
-                             Table    table {:name "transactions", :db_id (u/the-id db)}]
+    (mt/with-temp [Database db    {:engine ::toucanery/toucanery}
+                   Table    table {:name "transactions", :db_id (u/the-id db)}]
       ;; do the initial sync
       (sync-fields/sync-fields-for-table! table)
       (let [transactions-table-id (u/the-id (t2/select-one-pk Table :db_id (u/the-id db), :name "transactions"))]
@@ -61,7 +60,7 @@
 
 (deftest resync-nested-fields-test
   (testing "Make sure nested fields get resynced correctly if their parent field didnt' change"
-    (t2.with-temp/with-temp [Database db {:engine ::toucanery/toucanery}]
+    (mt/with-temp [Database db {:engine ::toucanery/toucanery}]
       ;; do the initial sync
       (sync-metadata/sync-db-metadata! db)
       ;; delete our entry for the `transactions.toucan.details.age` field
@@ -111,7 +110,7 @@
 
 (deftest mark-nested-field-inactive-test
   (testing "Nested fields can be marked inactive"
-    (t2.with-temp/with-temp [Database db {:engine ::toucanery/toucanery}]
+    (mt/with-temp [Database db {:engine ::toucanery/toucanery}]
       ;; do the initial sync
       (sync-metadata/sync-db-metadata! db)
       ;; Add an entry for a `transactions.toucan.details.gender` field
@@ -133,7 +132,7 @@
 
 (deftest mark-nested-field-children-inactive-test
   (testing "When a nested field is marked inactive so are its children"
-    (t2.with-temp/with-temp [Database db {:engine ::toucanery/toucanery}]
+    (mt/with-temp [Database db {:engine ::toucanery/toucanery}]
       ;; do the initial sync
       (sync-metadata/sync-db-metadata! db)
       ;; Add an entry for a `transactions.toucan.details.gender` field

@@ -8,8 +8,7 @@
    [metabase.task.truncate-audit-tables :as task.truncate-audit-tables]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -45,7 +44,7 @@
 (deftest truncate-table-test
   (testing "truncate-table accurately truncates a table according to the value of the audit-max-retention-days env var"
     (mt/with-premium-features #{}
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/QueryExecution {qe1-id :id} (merge (query-execution-defaults)
                                                    {:started_at (t/offset-date-time)})
          ;; 31 days ago

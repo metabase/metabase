@@ -45,7 +45,7 @@
    [metabase.util.random :as u.random]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -80,7 +80,7 @@
   schema-migrations-test.impl/keep-me
   sql-jdbc.tu/keep-me
   sql.qp-test-util/keep-me
-  t2.with-temp/keepme
+  toucan2.tools.with-temp/keep-me
   test-runner.assert-exprs/keep-me
   test.persistence/keep-me
   test.redefs/keep-me
@@ -97,7 +97,7 @@
   u.random/keep-me)
 
 ;; Add more stuff here as needed
-#_{:clj-kondo/ignore [:discouraged-var :deprecated-var]}
+#_{:clj-kondo/ignore [:discouraged-var]}
 (p/import-vars
  [actions.test-util
   with-actions
@@ -235,7 +235,7 @@
   with-group-for-user
   with-test-user]
 
- [t2.with-temp
+ [toucan2.tools.with-temp
   with-temp
   with-temp-defaults]
 

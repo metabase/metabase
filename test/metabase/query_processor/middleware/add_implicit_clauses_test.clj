@@ -13,8 +13,7 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]))
 
 (deftest ^:parallel ordering-test
   (testing "check we fetch Fields in the right order"
@@ -311,8 +310,8 @@
   (mt/test-drivers
     (mt/normal-drivers)
     (testing "Query with sort, breakout and _model as a source_ works correctly (#44653)."
-      (t2.with-temp/with-temp [:model/Card {card-id :id} {:type :model
-                                                          :dataset_query (mt/mbql-query orders)}]
+      (mt/with-temp [:model/Card {card-id :id} {:type :model
+                                                :dataset_query (mt/mbql-query orders)}]
         (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
               field-id (mt/id :products :created_at)
               {:keys [base-type name]} (lib.metadata/field mp field-id)]
