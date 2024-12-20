@@ -130,7 +130,7 @@
   NOTE: the encryption-check setting is not managed like most settings with 'defsetting' so we can manage checking the raw values in the database"
   [db-type :- :keyword
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
-  (when (liquibase/table-exists? "SETTING" (.getConnection data-source))
+  (when (liquibase/table-exists? "SETTING" (.getConnection ^javax.sql.DataSource data-source))
     (try
       (t2/insert! :conn data-source :setting {:key "encryption-check" :value "unencrypted"})
       (catch Exception e (log/debug "encryption-check already exists" (.getMessage e))))
