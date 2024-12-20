@@ -109,13 +109,13 @@
            (when (lib.metadata/editable? query)
              (let [{:keys [query stage-number]} (lib.query/wrap-native-query-with-mbql
                                                  query stage-number (:card-id context))
-                   context'                     (context-with-dimensions-or-row-dimensions query context)
-                   dim-contexts                 (dimension-contexts context')]
+                   context                      (context-with-dimensions-or-row-dimensions query context)
+                   dim-contexts                 (dimension-contexts context)]
                (for [{:keys [f return-drills-for-dimensions?]} available-drill-thru-fns
-                     context''                                 (if (and return-drills-for-dimensions? dim-contexts)
+                     context                                   (if (and return-drills-for-dimensions? dim-contexts)
                                                                  dim-contexts
-                                                                 [context'])
-                     :let                                      [drill (f query stage-number context'')]
+                                                                 [context])
+                     :let                                      [drill (f query stage-number context)]
                      :when                                     drill]
                  drill))))
      (catch #?(:clj Throwable :cljs :default) e
