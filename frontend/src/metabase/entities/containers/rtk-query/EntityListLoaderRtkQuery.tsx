@@ -1,3 +1,4 @@
+import { bindActionCreators } from "@reduxjs/toolkit";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 import { useLatest } from "react-use";
@@ -269,8 +270,13 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   const allLoading = loading || (allLoadingProp ?? false);
   const finalListName = listName || entityDefinition.nameMany;
 
+  const actionCreators = useMemo(() => {
+    return bindActionCreators(entityDefinition.actions, dispatch);
+  }, [entityDefinition.actions, dispatch]);
+
   const children = (
     <ComposedComponent
+      {...actionCreators}
       {...props}
       {...{
         [finalListName]: wrappedList,
