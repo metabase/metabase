@@ -94,7 +94,7 @@ describe("save-dashboard-pdf", () => {
         },
       ];
 
-      const breaks = getPageBreaks(cards, 300, 200);
+      const breaks = getPageBreaks(cards, 300, 200, 100);
       expect(breaks).toEqual([]);
     });
 
@@ -111,7 +111,7 @@ describe("save-dashboard-pdf", () => {
       ];
 
       const optimalPageHeight = 270;
-      const breaks = getPageBreaks(cards, optimalPageHeight, 500);
+      const breaks = getPageBreaks(cards, optimalPageHeight, 500, 100);
       expect(breaks).toEqual([250]); // The page break at 250 is the closest to the optimal page height of 270
     });
 
@@ -132,11 +132,11 @@ describe("save-dashboard-pdf", () => {
         },
       ];
 
-      const breaks = getPageBreaks(cards, 200, 600);
+      const breaks = getPageBreaks(cards, 200, 600, 100);
       expect(breaks).toEqual([200, 400]);
     });
 
-    it("should respect minimum page size constraint", () => {
+    it("should allow breaks that respect minimum page size", () => {
       const cards = [
         { top: 0, bottom: 100, height: 100, allowedBreaks: new Set<number>() },
         {
@@ -148,8 +148,25 @@ describe("save-dashboard-pdf", () => {
         { top: 250, bottom: 300, height: 50, allowedBreaks: new Set<number>() },
       ];
 
-      const breaks = getPageBreaks(cards, 200, 300);
+      const breaks = getPageBreaks(cards, 200, 300, 100);
       expect(breaks).toEqual([250]);
+    });
+
+    it("should not break if it would create pages smaller than minimum size", () => {
+      const cards = [
+        { top: 0, bottom: 150, height: 150, allowedBreaks: new Set<number>() },
+        {
+          top: 150,
+          bottom: 400,
+          height: 250,
+          allowedBreaks: new Set<number>(),
+        },
+      ];
+
+      // With minPageHeight of 200, breaking at 150 would create a first page
+      // of only 150px height, which is less than minimum, so no breaks should occur
+      const breaks = getPageBreaks(cards, 250, 400, 200);
+      expect(breaks).toEqual([]);
     });
   });
 });

@@ -90,10 +90,10 @@ describe("issue 11249", () => {
 
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByText("Data").click();
-      cy.findByText("Count").should("not.exist");
+      cy.findByDisplayValue("Count").should("not.exist");
 
       cy.findByText("Add another series").click();
-      cy.findByText("Count").should("be.visible");
+      cy.findByDisplayValue("Count").should("be.visible");
       cy.findByText("Add another series").should("not.exist");
     });
   });
