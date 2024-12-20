@@ -57,6 +57,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.modal().button("Done").click();
       H.undoToast().findByText("First collection");
       H.appBar().findByText("First collection"); // breadcrumb should change
+      H.appBar().findByText("Orders in a dashboard").should("not.exist"); // dashboard name should no longer be visible
 
       // card should still be visible in dashboard
       cy.visit(`/dashboard/${S.ORDERS_DASHBOARD_ID}`);
