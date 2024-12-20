@@ -432,17 +432,19 @@ function getTableForeignKeyFieldIds(table) {
     .value();
 }
 
-function useListQuery({ dbId, schemaName, ...params } = {}) {
+function useListQuery({ dbId, schemaName, ...params } = {}, options) {
   const endpoint = getUseListQueryEndpoint(dbId, schemaName);
 
   const databaseSchemaTables = useListDatabaseSchemaTablesQuery(
     endpoint === "listDatabaseSchemaTables"
       ? { id: dbId, schema: schemaName, ...params }
       : skipToken,
+    options,
   );
 
   const databaseMetadataQuery = useGetDatabaseMetadataQuery(
     endpoint === "getDatabaseMetadata" ? { id: dbId, ...params } : skipToken,
+    options,
   );
   const databaseMetadata = useMemo(
     () => ({
@@ -454,6 +456,7 @@ function useListQuery({ dbId, schemaName, ...params } = {}) {
 
   const tables = useListTablesQuery(
     endpoint === "listTables" ? params : skipToken,
+    options,
   );
 
   return match(endpoint)
