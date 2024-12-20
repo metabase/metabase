@@ -268,14 +268,15 @@
 
 (def ^:private keyword-or-non-blank-str-malli
   (mc/schema
-   [:or :keyword NonBlankString]))
+   [:or {:json-schema {:type "string" :minLength 1}} :keyword NonBlankString]))
 
 (def BooleanValue
   "Schema for a valid representation of a boolean
   (one of `\"true\"` or `true` or `\"false\"` or `false`.).
   Used by [[metabase.api.common/defendpoint]] to coerce the value for this schema to a boolean.
    Garanteed to evaluate to `true` or `false` when passed through a json decoder."
-  (-> [:enum {:decode/json (fn [b] (contains? #{"true" true} b))}
+  (-> [:enum {:decode/json (fn [b] (contains? #{"true" true} b))
+              :json-schema {:type "boolean"}}
        "true" "false" true false]
       (mu/with-api-error-message
        (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))))
@@ -283,7 +284,8 @@
 (def MaybeBooleanValue
   "Same as above, but allows distinguishing between `nil` (the user did not specify a value)
   and `false` (the user specified `false`)."
-  (-> [:enum {:decode/json (fn [b] (some->> b (contains? #{"true" true})))}
+  (-> [:enum {:decode/json (fn [b] (some->> b (contains? #{"true" true})))
+              :json-schema {:type "boolean" :optional true}}
        "true" "false" true false nil]
       (mu/with-api-error-message
        (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))))

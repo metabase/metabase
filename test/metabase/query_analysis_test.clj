@@ -14,6 +14,8 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
+(set! *warn-on-reflection* true)
+
 (deftest native-query-enabled-test
   (mt/discard-setting-changes [sql-parsing-enabled]
     (testing "sql parsing enabled"
