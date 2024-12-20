@@ -12,6 +12,9 @@ const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 
 describe("scenarios > collections > clean up", () => {
   beforeEach(() => {
+    cy.intercept("PUT", /\/api\/(card|dashboard)\/*/).as(
+      "updateCardOrDashboard",
+    );
     H.restore();
   });
 
@@ -208,7 +211,7 @@ describe("scenarios > collections > clean up", () => {
           assertStaleItemCount(seedData.totalStaleItemCount);
 
           selectAllItems();
-          moveToTrash();
+          moveToTrash(10);
           assertNoPagination();
 
           H.expectGoodSnowplowEvent(
@@ -243,11 +246,11 @@ describe("scenarios > collections > clean up", () => {
           assertStaleItemCount(seedData.totalStaleItemCount);
 
           selectAllItems();
-          moveToTrash();
+          moveToTrash(10);
           assertNoPagination();
 
           selectAllItems();
-          moveToTrash();
+          moveToTrash(10);
 
           closeCleanUpModal();
           cy.url().should("not.include", "cleanup");
@@ -271,10 +274,10 @@ describe("scenarios > collections > clean up", () => {
           cy.url().should("include", "cleanup");
 
           selectAllItems();
-          moveToTrash();
+          moveToTrash(1);
 
           cy.log(
-            "should not longer show alert if user has used the clean up feature",
+            "should no longer show alert if user has used the clean up feature",
           );
           closeCleanUpModal();
           cleanUpAlert().should("not.exist");
@@ -441,12 +444,23 @@ const selectAllItems = () => {
   });
 };
 
-const moveToTrash = () => {
+const moveToTrash = (numberOfItemsMoved = 0) => {
   cy.findByTestId("toast-card")
     .should("be.visible")
     .within(() => {
       cy.findByText("Move to trash").should("exist").click();
     });
+
+  if (numberOfItemsMoved > 0) {
+    cy.wait(new Array(numberOfItemsMoved).fill("@updateCardOrDashboard"));
+    H.undoToast()
+      .findByText(
+        new RegExp(
+          `${numberOfItemsMoved} (item has|items have) been moved to the trash.`,
+        ),
+      )
+      .should("be.visible");
+  }
 };
 
 // assertions
