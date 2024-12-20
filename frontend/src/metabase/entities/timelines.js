@@ -154,12 +154,16 @@ const Timelines = createEntity({
   },
 });
 
-function useListQuery({ collectionId, ...params } = {}) {
+function useListQuery({ collectionId, ...params } = {}, options) {
   const collectionTimelines = useListCollectionTimelinesQuery(
     collectionId ? { id: collectionId, ...params } : skipToken,
+    options,
   );
 
-  const timelines = useListTimelinesQuery(collectionId ? skipToken : params);
+  const timelines = useListTimelinesQuery(
+    collectionId ? skipToken : params,
+    options,
+  );
 
   return collectionId ? collectionTimelines : timelines;
 }
