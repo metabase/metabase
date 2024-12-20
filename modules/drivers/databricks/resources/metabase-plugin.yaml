@@ -21,8 +21,8 @@ driver:
         helper-text: Found in SQL Warehouses > Connection details
         required: true
         placeholder: /sql/1.0/endpoints/abcdef1234567890
-      - name: use-token
-        display-name: Use Personal Access Token
+      - name: use-m2m
+        display-name: Use Machine to Machine (M2M) authentication
         type: boolean
         default: false
         helper-text: Use Personal Access Token for authentication.
@@ -34,14 +34,14 @@ driver:
           helper-text: Personal Access Token for authentication. Not required if using OAuth M2M.
           placeholder: dapiXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
           visible-if:
-            use-token: true
+            use-m2m: false
       - name: client-id
         display-name: Service Principal Client ID
         placeholder: e26ce240-0a12-454f-934f-4c646603cb61
         helper-text: For M2M OAuth authentication, corresponds to the service principal's Client ID.
         required: true
         visible-if:
-          use-token: false
+          use-m2m: true
       - merge:
         - password
         - name: oauth-secret
@@ -50,7 +50,7 @@ driver:
           helper-text: OAuth Secret for M2M OAuth authentication.
           required: true
           visible-if:
-            use-token: false
+            use-m2m: true
       - name: catalog
         display-name: Catalog
         default: default
