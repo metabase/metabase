@@ -2,7 +2,6 @@ import { H } from "e2e/support";
 import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import { multiAutocompleteInput } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const { admin, normal } = USERS;
@@ -38,12 +37,13 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.button("Save").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("You're editing this dashboard.").should("not.exist");
-    H.openNotificationsMenu();
+
     // Dashboard subscriptions are not shown because
     // getting notifications with static text-only cards doesn't make a lot of sense
-    H.notificationsMenu().findByText("subscriptions").should("not.exist");
+    H.notificationsMenuButton().should("not.exist");
 
-    H.notificationsMenu().within(() => {
+    H.openDashboardMenu();
+    H.popover().within(() => {
       cy.findByText("Create a public link").should("be.visible");
       cy.findByText("Embed").should("be.visible");
     });
@@ -529,7 +529,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         });
         cy.findByRole("option", { name: "Sallie Flatley" }).click();
         cy.findByTestId("parameter-value-dropdown").within(() => {
-          multiAutocompleteInput().blur();
+          H.multiAutocompleteInput().blur();
         });
         H.popover().button("Update filter").click();
 
@@ -643,10 +643,12 @@ describe("scenarios > dashboard > subscriptions", () => {
           .findByText("Corbin Mertz")
           .click();
         H.removeMultiAutocompleteValue(0, ":eq(1)");
-        H.popover().within(() => multiAutocompleteInput().type("Sallie"));
+        H.popover().within(() => {
+          H.multiAutocompleteInput().type("Sallie");
+        });
         cy.findByRole("option", { name: "Sallie Flatley" }).click();
         cy.findByTestId("parameter-value-dropdown").within(() => {
-          multiAutocompleteInput().blur();
+          H.multiAutocompleteInput().blur();
         });
         H.popover().button("Update filter").click();
         cy.button("Save").click();
@@ -673,7 +675,9 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByText("Emailed hourly").click();
 
         cy.findAllByText("Corbin Mertz").last().click();
-        H.popover().within(() => multiAutocompleteInput().type("Bob"));
+        H.popover().within(() => {
+          H.multiAutocompleteInput().type("Bob");
+        });
         H.selectDropdown().findByText("Bobby Kessler").click();
         H.popover().contains("Update filter").click();
 

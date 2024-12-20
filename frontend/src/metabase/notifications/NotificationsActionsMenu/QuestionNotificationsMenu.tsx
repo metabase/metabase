@@ -2,12 +2,13 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { QuestionAlertsMenuItem } from "metabase/notifications/NotificationsActionsMenu/QuestionAlertsMenuItem";
+import { QuestionSubscriptionsMenuItem } from "metabase/notifications/NotificationsActionsMenu/QuestionSubscriptionsMenuItem";
 import type { QuestionNotificationsModalType } from "metabase/notifications/NotificationsActionsMenu/types";
-import { QuestionAlertsMenuItem } from "metabase/notifications/QuestionAlertsMenuItem";
-import { QuestionSubscriptionsMenuItem } from "metabase/notifications/QuestionSubscriptionsMenuItem";
 import { setUIControls } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
@@ -29,8 +30,11 @@ export function QuestionNotificationsMenu({
   const isArchived = question.isArchived();
   const collection = question.collection();
   const isAnalytics = collection && isInstanceAnalyticsCollection(collection);
+  const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
-  if (isModel || isArchived || isAnalytics) {
+  const canShowAlerts = question.canRun() && canManageSubscriptions;
+
+  if (isModel || isArchived || isAnalytics || !canShowAlerts) {
     return null;
   }
 
@@ -43,7 +47,7 @@ export function QuestionNotificationsMenu({
 
     return (
       <NotificationsMenuTriggerButton
-        tooltip={t`You must save this question before sharing`}
+        tooltip={t`You must save this question before creating an alert`}
         onClick={openSaveQuestionModal}
       />
     );

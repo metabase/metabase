@@ -46,7 +46,6 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
   it("should respect email alerts toggled off (metabase#12349)", () => {
     H.updateSetting("report-timezone", "America/New_York");
-    H.mockSlackConfigured();
 
     //For this test, we need to pretend that slack is set up
     H.mockSlackConfigured();
@@ -92,8 +91,8 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     cy.log(
       "ensure that when the alert is deleted, the delete modal is correct metabase#48402",
     );
-    H.openNotificationsMenu("Edit alerts");
-    H.popover().within(() => {
+    H.openNotificationsMenu("Edit subscriptions");
+    H.modal().within(() => {
       cy.findByText("You set up an alert").should("be.visible");
       cy.findByText("Edit").click();
     });
@@ -134,9 +133,9 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       .findByText("Your alert is all set up.")
       .should("be.visible");
 
-    H.openNotificationsMenu("Edit alerts");
+    H.openNotificationsMenu("Edit subscriptions");
 
-    H.popover().within(() => {
+    H.modal().within(() => {
       cy.findByText("You set up an alert").should("be.visible");
       cy.findByText("Edit").click();
     });
@@ -164,7 +163,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
 function openAlertForQuestion(id) {
   H.visitQuestion(id);
-  H.openNotificationsMenu("Create alerts");
+  H.openNotificationsMenu("Create subscriptions");
 }
 
 function saveAlert() {
@@ -176,6 +175,6 @@ function saveAlert() {
   });
   cy.wait("@saveCard");
 
-  H.openNotificationsMenu("Create alerts");
+  H.openNotificationsMenu("Create subscriptions");
   H.modal().button("Done").click();
 }

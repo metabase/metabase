@@ -945,8 +945,8 @@ describe("issue 17547", () => {
   });
 
   it("editing an alert should not delete it (metabase#17547)", () => {
-    H.openNotificationsMenu("Edit alerts");
-    H.popover().within(() => {
+    H.openNotificationsMenu("Edit subscriptions");
+    H.modal().within(() => {
       cy.findByText("Daily, 12:00 PM");
       cy.findByText("Edit").click();
     });
@@ -957,8 +957,8 @@ describe("issue 17547", () => {
 
     cy.wait("@alertQuery");
 
-    H.openNotificationsMenu("Edit alerts");
-    H.popover().within(() => {
+    H.openNotificationsMenu("Edit subscriptions");
+    H.modal().within(() => {
       cy.findByText("Daily, 12:00 AM");
     });
   });

@@ -3,8 +3,9 @@ import { useState } from "react";
 import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
 import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { DashboardSubscriptionMenuItem } from "metabase/notifications/DashboardSubscriptionMenuItem";
+import { DashboardSubscriptionMenuItem } from "metabase/notifications/NotificationsActionsMenu/DashboardSubscriptionMenuItem";
 import type { DashboardNotificationsModalType } from "metabase/notifications/NotificationsActionsMenu/types";
+import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Flex } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
@@ -31,17 +32,21 @@ export function DashboardNotificationsMenu({
 
   const isArchived = dashboard.archived;
 
-  if (isArchived) {
+  const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
+
+  // dashcardData only contains question cards, text ones don't appear here
+  const hasDataCards = dashboard?.dashcards?.some(
+    dashCard => !["text", "heading"].includes(dashCard.card.display),
+  );
+
+  if (!canManageSubscriptions || !hasDataCards || isArchived) {
     return null;
   }
 
   return (
     <Flex>
       <NotificationsMenu>
-        <DashboardSubscriptionMenuItem
-          onClick={toggleSubscriptionSidebar}
-          dashboard={dashboard}
-        />
+        <DashboardSubscriptionMenuItem onClick={toggleSubscriptionSidebar} />
       </NotificationsMenu>
       <NotificationsModals
         modalType={modalType}

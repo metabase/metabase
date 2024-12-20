@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useMount } from "react-use";
 
 import { useListCardAlertsQuery } from "metabase/api";
 import Modal from "metabase/components/Modal";
@@ -22,8 +21,6 @@ export const AlertListModal = ({
   question: Question;
   onClose: () => void;
 }) => {
-  const [showingElement, setShowingElement] =
-    useState<AlertModalMode>("list-modal");
   const [editingAlert, setEditingAlert] = useState<Alert | null>(null);
 
   const { data: questionNotifications } = useListCardAlertsQuery({
@@ -34,15 +31,11 @@ export const AlertListModal = ({
     notificationType === "alert" ? isAlert : isSubscription,
   );
 
-  useMount(() => {
-    // if there are no alerts when the component mounts, show the create modal
-    if (
-      filteredByTypeNotifications &&
-      filteredByTypeNotifications.length === 0
-    ) {
-      setShowingElement("create-modal");
-    }
-  });
+  const [showingElement, setShowingElement] = useState<AlertModalMode>(
+    filteredByTypeNotifications && filteredByTypeNotifications.length === 0
+      ? "create-modal"
+      : "list-modal",
+  );
 
   if (!question.isSaved()) {
     return null;

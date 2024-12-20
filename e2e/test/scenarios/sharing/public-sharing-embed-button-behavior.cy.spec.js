@@ -227,35 +227,6 @@ describe("embed modal display", () => {
   });
 });
 
-describe("#39152 sharing an unsaved question", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.updateSetting("enable-public-sharing", true);
-  });
-
-  it("should ask the user to save the question before creating a public link", () => {
-    H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-      cy.findByText("People").click();
-    });
-    H.visualize();
-
-    H.openQuestionActions();
-    H.popover().findByText("Public link");
-
-    H.modal().within(() => {
-      cy.findByText("First, save your question").should("be.visible");
-      cy.findByText("Save").click();
-    });
-
-    H.openQuestionActions("Create a public link");
-
-    assertValidPublicLink({ resource: "question", shouldHaveRemoveLink: true });
-  });
-});
-
 ["dashboard", "question"].forEach(resource => {
   H.describeWithSnowplow(`public ${resource} sharing snowplow events`, () => {
     beforeEach(() => {

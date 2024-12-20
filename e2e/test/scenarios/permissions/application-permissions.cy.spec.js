@@ -86,8 +86,8 @@ H.describeEE("scenarios > admin > permissions > application", () => {
 
         cy.log("Create a question alert");
         H.visitQuestion(ORDERS_QUESTION_ID);
-        H.openNotificationsMenu(/alert/i);
-        H.modal().findByText("The wide world of alerts").should("be.visible");
+        H.openNotificationsMenu(/subscriptions/i);
+        H.modal().findByText("Let's set up your alert").should("be.visible");
       });
     });
   });
