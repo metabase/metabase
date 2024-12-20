@@ -667,12 +667,10 @@
                (-> card :dataset_query not-empty)
                (-> card :database_id))
     card
-    (or (when-some [suggested-name (some-> (lib.metadata.jvm/application-database-metadata-provider
-                                            (:database_id card))
-                                           (lib/query (:dataset_query card))
-                                           lib/suggested-name)]
-          (assoc card :query_description suggested-name))
-        card)))
+    (m/assoc-some card :query_description (some-> (lib.metadata.jvm/application-database-metadata-provider
+                                                   (:database_id card))
+                                                  (lib/query (:dataset_query card))
+                                                  lib/suggested-name))))
 
 (t2/define-after-select :model/Card
   [card]
