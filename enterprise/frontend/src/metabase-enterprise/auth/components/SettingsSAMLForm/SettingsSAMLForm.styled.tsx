@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-export interface SAMLFormSectionProps {
+interface SAMLFormSectionProps {
   isSSLSection?: boolean;
   wide?: boolean;
 }

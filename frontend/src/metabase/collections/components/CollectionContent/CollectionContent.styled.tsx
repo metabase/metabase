@@ -13,7 +13,7 @@ export const CollectionMain = styled.div`
   padding: 1rem 5%;
 `;
 
-export interface CollectionTableProps {
+interface CollectionTableProps {
   hasPinnedItems?: boolean;
 }
 
