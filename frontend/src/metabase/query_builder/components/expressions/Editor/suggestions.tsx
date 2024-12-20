@@ -30,7 +30,7 @@ function wip(options: SuggestOptions) {
       getColumnIcon,
     });
 
-    const isInsideReference = source.charAt(context.pos + 1) === "]";
+    const isInsideReference = source.charAt(context.pos) === "]";
 
     return {
       from: context.pos - prefix.length,
