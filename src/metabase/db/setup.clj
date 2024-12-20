@@ -130,25 +130,26 @@
   NOTE: the encryption-check setting is not managed like most settings with 'defsetting' so we can manage checking the raw values in the database"
   [db-type :- :keyword
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
-  (try
-    (t2/insert! :conn data-source :setting {:key "encryption-check" :value "unencrypted"})
-    (catch Exception e (log/debug "encryption-check already exists" (.getMessage e))))
-  (let [raw (-> (t2/select-one :conn data-source :setting :key "encryption-check")
-                :value)
-        looks-encrypted (not= raw "unencrypted")]
-    (log/debug "Checking encryption configuration")
-    (if looks-encrypted
-      (if (encryption/default-encryption-enabled?)
-        (if (string/valid-uuid? (encryption/maybe-decrypt raw))
-          (log/debug "Database encrypted and MB_ENCRYPTION_SECRET_KEY correctly configured")
-          (throw (Exception. "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains")))
-        (throw (Exception. "Database is encrypted but the MB_ENCRYPTION_SECRET_KEY environment variable was NOT set")))
-      (if (encryption/default-encryption-enabled?)
-        (do
-          (log/info "New MB_ENCRYPTION_SECRET_KEY environment variable set. Encrypting database...")
-          (mdb.encryption/encrypt-db db-type data-source nil)
-          (log/info "Database encrypted..." (u/emoji "✅")))
-        (log/debug "Database not encrypted and MB_ENCRYPTION_SECRET_KEY env variable not set.")))))
+  (when (liquibase/table-exists? "SETTING" (.getConnection data-source))
+    (try
+      (t2/insert! :conn data-source :setting {:key "encryption-check" :value "unencrypted"})
+      (catch Exception e (log/debug "encryption-check already exists" (.getMessage e))))
+    (let [raw (-> (t2/select-one :conn data-source :setting :key "encryption-check")
+                  :value)
+          looks-encrypted (not= raw "unencrypted")]
+      (log/debug "Checking encryption configuration")
+      (if looks-encrypted
+        (if (encryption/default-encryption-enabled?)
+          (if (string/valid-uuid? (encryption/maybe-decrypt raw))
+            (log/debug "Database encrypted and MB_ENCRYPTION_SECRET_KEY correctly configured")
+            (throw (Exception. "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains")))
+          (throw (Exception. "Database is encrypted but the MB_ENCRYPTION_SECRET_KEY environment variable was NOT set")))
+        (if (encryption/default-encryption-enabled?)
+          (do
+            (log/info "New MB_ENCRYPTION_SECRET_KEY environment variable set. Encrypting database...")
+            (mdb.encryption/encrypt-db db-type data-source nil)
+            (log/info "Database encrypted..." (u/emoji "✅")))
+          (log/debug "Database not encrypted and MB_ENCRYPTION_SECRET_KEY env variable not set."))))))
 
 (mu/defn- error-if-downgrade-required!
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
