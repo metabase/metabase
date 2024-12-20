@@ -19,9 +19,9 @@ import type {
 
 interface DatePickerProps {
   value?: DatePickerValue;
-  availableOperators?: ReadonlyArray<DatePickerOperator>;
-  availableShortcuts?: ReadonlyArray<DatePickerShortcut>;
-  availableUnits?: ReadonlyArray<DatePickerUnit>;
+  availableOperators?: DatePickerOperator[];
+  availableShortcuts?: DatePickerShortcut[];
+  availableUnits?: DatePickerUnit[];
   backButton?: ReactNode;
   isNew?: boolean;
   onChange: (value: DatePickerValue) => void;

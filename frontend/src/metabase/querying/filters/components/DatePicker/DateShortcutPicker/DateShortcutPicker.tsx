@@ -14,8 +14,8 @@ import type {
 import { getShortcutOptionGroups, getTypeOptions } from "./utils";
 
 interface DateShortcutPickerProps {
-  availableOperators: ReadonlyArray<DatePickerOperator>;
-  availableShortcuts: ReadonlyArray<DatePickerShortcut>;
+  availableOperators: DatePickerOperator[];
+  availableShortcuts: DatePickerShortcut[];
   backButton?: ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onSelectType: (type: DatePickerValueType) => void;

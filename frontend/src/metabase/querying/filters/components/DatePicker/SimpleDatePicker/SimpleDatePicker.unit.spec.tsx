@@ -13,8 +13,8 @@ import { SimpleDatePicker } from "./SimpleDatePicker";
 
 interface SetupOpts {
   value?: DatePickerValue;
-  availableOperators?: ReadonlyArray<DatePickerOperator>;
-  availableUnits?: ReadonlyArray<DatePickerUnit>;
+  availableOperators?: DatePickerOperator[];
+  availableUnits?: DatePickerUnit[];
 }
 
 function setup({

@@ -8,13 +8,13 @@ import { SHORTCUT_OPTION_GROUPS, TYPE_OPTIONS } from "./constants";
 import type { TypeOption } from "./types";
 
 export function getShortcutOptions(
-  availableShortcuts: ReadonlyArray<DatePickerShortcut>,
+  availableShortcuts: DatePickerShortcut[],
 ): ShortcutOption[] {
   return getShortcutOptionGroups(availableShortcuts).flat();
 }
 
 export function getShortcutOptionGroups(
-  availableShortcuts: ReadonlyArray<DatePickerShortcut>,
+  availableShortcuts: DatePickerShortcut[],
 ): ShortcutOption[][] {
   return SHORTCUT_OPTION_GROUPS.map(options =>
     options.filter(option => availableShortcuts.includes(option.shortcut)),
@@ -22,7 +22,7 @@ export function getShortcutOptionGroups(
 }
 
 export function getTypeOptions(
-  availableOperators: ReadonlyArray<DatePickerOperator>,
+  availableOperators: DatePickerOperator[],
 ): TypeOption[] {
   return TYPE_OPTIONS.filter(
     option =>

@@ -11,8 +11,8 @@ import type { DatePickerExtractionUnit, DatePickerOperator } from "../types";
 import { ExcludeDatePicker } from "./ExcludeDatePicker";
 
 interface SetupOpts {
-  availableOperators?: ReadonlyArray<DatePickerOperator>;
-  availableUnits?: ReadonlyArray<DatePickerExtractionUnit>;
+  availableOperators?: DatePickerOperator[];
+  availableUnits?: DatePickerExtractionUnit[];
   isNew?: boolean;
 }
 

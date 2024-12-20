@@ -18,7 +18,7 @@ import {
 
 interface RelativeDatePickerProps {
   value: RelativeDatePickerValue | undefined;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
+  availableUnits: DatePickerUnit[];
   isNew: boolean;
   onChange: (value: RelativeDatePickerValue) => void;
   onBack: () => void;

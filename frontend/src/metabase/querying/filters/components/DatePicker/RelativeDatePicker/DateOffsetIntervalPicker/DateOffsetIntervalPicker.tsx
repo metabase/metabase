@@ -34,7 +34,7 @@ import {
 
 interface DateOffsetIntervalPickerProps {
   value: DateOffsetIntervalValue;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
+  availableUnits: DatePickerUnit[];
   isNew: boolean;
   onChange: (value: DateIntervalValue) => void;
   onSubmit: () => void;

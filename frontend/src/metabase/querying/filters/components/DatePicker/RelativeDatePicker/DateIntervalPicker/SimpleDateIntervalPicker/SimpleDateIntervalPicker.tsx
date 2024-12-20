@@ -10,7 +10,7 @@ import { setUnit } from "../utils";
 
 interface SimpleDateIntervalPickerProps {
   value: DateIntervalValue;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
+  availableUnits: DatePickerUnit[];
   onChange: (value: DateIntervalValue) => void;
 }
 

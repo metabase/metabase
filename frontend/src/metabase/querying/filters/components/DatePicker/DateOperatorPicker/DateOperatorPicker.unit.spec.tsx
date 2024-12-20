@@ -9,7 +9,7 @@ import { DateOperatorPicker } from "./DateOperatorPicker";
 
 interface SetupOpts {
   value?: DatePickerValue;
-  availableOperators?: ReadonlyArray<DatePickerOperator>;
+  availableOperators?: DatePickerOperator[];
 }
 
 function setup({

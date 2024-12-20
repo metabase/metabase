@@ -14,7 +14,7 @@ import { getCurrentValue, getUnitGroups } from "./utils";
 
 interface CurrentDatePickerProps {
   value: RelativeDatePickerValue | undefined;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
+  availableUnits: DatePickerUnit[];
   onChange: (value: RelativeDatePickerValue) => void;
 }
 

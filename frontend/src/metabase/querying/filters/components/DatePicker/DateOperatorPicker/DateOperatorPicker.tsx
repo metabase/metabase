@@ -8,7 +8,7 @@ import { getAvailableOptions, getOptionType, setOptionType } from "./utils";
 
 interface DateOperatorPickerProps {
   value?: DatePickerValue;
-  availableOperators: ReadonlyArray<DatePickerOperator>;
+  availableOperators: DatePickerOperator[];
   onChange: (value: DatePickerValue | undefined) => void;
 }
 

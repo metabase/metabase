@@ -26,7 +26,7 @@ const userEvent = _userEvent.setup({
 
 interface SetupOpts {
   value: DateOffsetIntervalValue;
-  availableUnits?: ReadonlyArray<DatePickerUnit>;
+  availableUnits?: DatePickerUnit[];
   isNew?: boolean;
 }
 

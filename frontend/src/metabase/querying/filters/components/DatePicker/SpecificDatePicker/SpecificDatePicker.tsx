@@ -28,8 +28,8 @@ import {
 
 interface SpecificDatePickerProps {
   value?: SpecificDatePickerValue;
-  availableOperators: ReadonlyArray<DatePickerOperator>;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
+  availableOperators: DatePickerOperator[];
+  availableUnits: DatePickerUnit[];
   isNew: boolean;
   onChange: (value: SpecificDatePickerValue) => void;
   onBack: () => void;

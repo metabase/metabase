@@ -13,7 +13,7 @@ import { OPERATOR_OPTIONS } from "./constants";
 import type { OperatorOption, OptionType } from "./types";
 
 export function getAvailableOptions(
-  availableOperators: ReadonlyArray<DatePickerOperator>,
+  availableOperators: DatePickerOperator[],
 ): OperatorOption[] {
   return OPERATOR_OPTIONS.filter(
     option =>

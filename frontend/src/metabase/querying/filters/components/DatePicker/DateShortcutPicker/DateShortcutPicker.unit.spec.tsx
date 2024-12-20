@@ -8,8 +8,8 @@ import type { DatePickerOperator, DatePickerShortcut } from "../types";
 import { DateShortcutPicker } from "./DateShortcutPicker";
 
 interface SetupOpts {
-  availableOperators?: ReadonlyArray<DatePickerOperator>;
-  availableShortcuts?: ReadonlyArray<DatePickerShortcut>;
+  availableOperators?: DatePickerOperator[];
+  availableShortcuts?: DatePickerShortcut[];
 }
 
 function setup({

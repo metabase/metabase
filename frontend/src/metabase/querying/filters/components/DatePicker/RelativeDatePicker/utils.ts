@@ -107,9 +107,7 @@ export function setInterval(
   };
 }
 
-export function getAvailableTruncationUnits(
-  availableUnits: ReadonlyArray<DatePickerUnit>,
-) {
+export function getAvailableTruncationUnits(availableUnits: DatePickerUnit[]) {
   return DATE_PICKER_TRUNCATION_UNITS.filter(unit =>
     availableUnits.includes(unit),
   );
@@ -117,7 +115,7 @@ export function getAvailableTruncationUnits(
 
 export function getUnitOptions(
   value: DateIntervalValue,
-  availableUnits: ReadonlyArray<DatePickerUnit>,
+  availableUnits: DatePickerUnit[],
 ) {
   const truncationUnits = getAvailableTruncationUnits(availableUnits);
   const interval = getInterval(value);

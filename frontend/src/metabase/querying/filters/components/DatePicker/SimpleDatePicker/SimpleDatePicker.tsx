@@ -19,8 +19,8 @@ import type {
 
 interface SimpleDatePickerProps {
   value?: DatePickerValue;
-  availableOperators?: ReadonlyArray<DatePickerOperator>;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
+  availableOperators?: DatePickerOperator[];
+  availableUnits: DatePickerUnit[];
   onChange: (value: DatePickerValue | undefined) => void;
 }
 

@@ -13,8 +13,8 @@ import { SpecificDatePicker } from "./SpecificDatePicker";
 
 interface SetupOpts {
   value?: SpecificDatePickerValue;
-  availableOperators?: ReadonlyArray<DatePickerOperator>;
-  availableUnits?: ReadonlyArray<DatePickerUnit>;
+  availableOperators?: DatePickerOperator[];
+  availableUnits?: DatePickerUnit[];
   isNew?: boolean;
 }
 

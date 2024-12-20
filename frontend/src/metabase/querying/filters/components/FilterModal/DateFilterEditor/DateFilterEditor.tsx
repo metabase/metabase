@@ -102,8 +102,8 @@ export function DateFilterEditor({
 interface DateFilterPopoverProps {
   title: string | undefined;
   value: DatePickerValue | undefined;
-  availableOperators: ReadonlyArray<DatePickerOperator>;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
+  availableOperators: DatePickerOperator[];
+  availableUnits: DatePickerUnit[];
   isExpanded: boolean;
   onChange: (value: DatePickerValue | undefined) => void;
 }

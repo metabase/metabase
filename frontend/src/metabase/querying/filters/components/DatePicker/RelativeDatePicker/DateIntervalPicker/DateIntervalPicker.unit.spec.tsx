@@ -20,7 +20,7 @@ function getDefaultValue(
 
 interface SetupOpts {
   value: DateIntervalValue;
-  availableUnits?: ReadonlyArray<DatePickerUnit>;
+  availableUnits?: DatePickerUnit[];
   isNew?: boolean;
 }
 

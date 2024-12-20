@@ -15,7 +15,7 @@ const DEFAULT_VALUE: RelativeDatePickerValue = {
 
 interface SetupOpts {
   value?: RelativeDatePickerValue;
-  availableUnits?: ReadonlyArray<DatePickerUnit>;
+  availableUnits?: DatePickerUnit[];
 }
 
 const userEvent = _userEvent.setup({

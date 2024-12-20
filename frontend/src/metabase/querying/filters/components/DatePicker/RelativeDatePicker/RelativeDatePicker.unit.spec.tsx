@@ -12,7 +12,7 @@ const TAB_CASES = TABS.flatMap(fromTab => TABS.map(toTab => [fromTab, toTab]));
 
 interface SetupOpts {
   value?: RelativeDatePickerValue;
-  availableUnits?: ReadonlyArray<DatePickerUnit>;
+  availableUnits?: DatePickerUnit[];
   isNew?: boolean;
 }
 

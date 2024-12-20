@@ -53,7 +53,7 @@ export function removeOffset(
 
 export function getOffsetUnitOptions(
   value: DateOffsetIntervalValue,
-  availableUnits: ReadonlyArray<DatePickerUnit>,
+  availableUnits: DatePickerUnit[],
 ) {
   const truncationUnits = getAvailableTruncationUnits(availableUnits);
   const direction = getDirection(value);
