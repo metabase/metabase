@@ -41,15 +41,10 @@
   (user-key-value/retrieve api/*current-user-id* namespace key))
 
 (api/defendpoint GET "/namespace/:namespace"
-  "Get the value for multiple keys in a namespace"
-  [:as {{:strs [keyyy]}
-        :query-params :as prms}
-   namespace]
-  {keyyy [:maybe (ms/QueryVectorOf ms/PositiveInt)]
-   namespace ms/NonBlankString}
-  (into {}
-        (for [k key]
-          [k (user-key-value/retrieve api/*current-user-id* namespace key)])))
+  "Returns the values for all keys in a given namespace for the current user."
+  [namespace]
+  {namespace ms/NonBlankString}
+  (user-key-value/retrieve-all api/*current-user-id* namespace))
 
 (api/defendpoint DELETE "/namespace/:namespace/key/:key"
   "Deletes a KV-pair for the user"

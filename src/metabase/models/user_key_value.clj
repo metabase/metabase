@@ -100,3 +100,22 @@
                        (mtx/transformer
                         (mtx/default-value-transformer)
                         {:name :database})))))
+
+(mu/defn retrieve-all
+  "Retrieves all KV-pairs in a namespace"
+  [user-id :- :int
+   namespace :- :string]
+  (when-let [kvs (seq (t2/select :model/UserKeyValue
+                                 {:where
+                                  [:and
+                                   [:= :user_id user-id]
+                                   [:= :namespace namespace]
+                                   [:or
+                                    [:>= :expires_at :%now]
+                                    [:= :expires_at nil]]]}))]
+    (let [parsed-kvs (mc/decode [:sequential ::types/user-key-value]
+                                kvs
+                                (mtx/transformer
+                                 (mtx/default-value-transformer)
+                                 {:name :database}))]
+      (into {} (map (juxt :key :value) parsed-kvs)))))
