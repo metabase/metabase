@@ -321,10 +321,10 @@ describe("scenarios > visualizations > pie chart", () => {
     cy.findAllByTestId("chartsettings-field-picker")
       .last()
       .within(() => {
-        cy.icon("chevrondown").click();
+        cy.icon("chevrondown").realClick();
       });
 
-    cy.get("[data-element-id=list-section]").last().click();
+    H.popover().findByText("Product → Category").click();
 
     ensurePieChartRendered(
       ["2022", "2023", "2024", "2025", "2026"],
@@ -334,8 +334,7 @@ describe("scenarios > visualizations > pie chart", () => {
     H.leftSidebar().within(() => {
       cy.findByText("Add Ring").click();
     });
-
-    cy.get("[data-element-id=list-section]").last().click();
+    H.popover().findByText("User → Source").click();
 
     ensurePieChartRendered(
       ["2022", "2023", "2024", "2025", "2026"],

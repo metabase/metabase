@@ -6,6 +6,7 @@ import {
   skipToken,
   useGetPersistedInfoByCardQuery,
   useGetPersistedInfoQuery,
+  useListPersistedInfoQuery,
 } from "metabase/api";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { PersistedModelSchema } from "metabase/schema";
@@ -31,6 +32,7 @@ const PersistedModels = createEntity({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
+    useListQuery: useListPersistedInfoQuery,
   },
 
   api: {

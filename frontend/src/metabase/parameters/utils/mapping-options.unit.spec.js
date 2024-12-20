@@ -2,6 +2,7 @@ import { createMockMetadata } from "__support__/metadata";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
+  createMockDashboardCard,
   createMockNativeDatasetQuery,
   createMockParameter,
   createMockTable,
@@ -366,6 +367,65 @@ describe("parameters/utils/mapping-options", () => {
           isForeign: false,
         },
       ]);
+    });
+  });
+
+  describe("iframe dashcard", () => {
+    const createIframeDashcard = iframeContent =>
+      createMockDashboardCard({
+        visualization_settings: {
+          virtual_card: {
+            display: "iframe",
+          },
+          iframe: iframeContent,
+        },
+      });
+
+    const getIframeOptions = iframeContent =>
+      getParameterMappingOptions(
+        undefined,
+        null,
+        { display: "iframe" },
+        createIframeDashcard(iframeContent),
+      );
+
+    const expectedTagOptions = tags =>
+      tags.map(tag => ({
+        name: tag,
+        icon: "string",
+        isForeign: false,
+        target: ["text-tag", tag],
+      }));
+
+    it("should return tag options from iframe src URL", () => {
+      const options = getIframeOptions(
+        "https://example.com/embed/{{foo}}/{{bar}}",
+      );
+      expect(options).toEqual(expectedTagOptions(["foo", "bar"]));
+    });
+
+    it("should return tag options from iframe HTML", () => {
+      const options = getIframeOptions(
+        '<iframe src="https://example.com/embed/{{foo}}/{{bar}}"></iframe>',
+      );
+      expect(options).toEqual(expectedTagOptions(["foo", "bar"]));
+    });
+
+    it("should return empty array for iframe without template tags", () => {
+      const options = getIframeOptions("https://example.com/embed");
+      expect(options).toEqual([]);
+    });
+
+    it("should return empty array if iframe src is invalid", () => {
+      const options = getIframeOptions("not-a-valid-url");
+      expect(options).toEqual([]);
+    });
+
+    it("should ignore template tags in non-src attributes", () => {
+      const options = getIframeOptions(
+        '<iframe src="https://example.com/embed/{{foo}}" allow="{{bar}}" allowfullscreen="{{baz}}"></iframe>',
+      );
+      expect(options).toEqual(expectedTagOptions(["foo"]));
     });
   });
 });
