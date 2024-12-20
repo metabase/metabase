@@ -178,7 +178,7 @@ const useGetQuery = ({ id }) => {
   return useGetUserQuery(id);
 };
 
-function useListQuery({ recipients = false, ...args }, options) {
+function useListQuery({ recipients = false, ...args } = {}, options) {
   const usersList = useListUsersQuery(recipients ? skipToken : args, options);
 
   const recipientsList = useListUserRecipientsQuery(
