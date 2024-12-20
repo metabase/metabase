@@ -37,7 +37,7 @@ type Serializer = {
 };
 
 const SERIALIZERS: Serializer[] = [
-  // single day
+  // single day, `2020-01-02` or `2020-01-02T:10:20:00`
   {
     regex: /^([\d-T:]+)$/,
     serialize: value => {
@@ -58,7 +58,7 @@ const SERIALIZERS: Serializer[] = [
       }
     },
   },
-  // before day
+  // before day, `~2020-01-02` or `~2020-01-02T:10:20:00`
   {
     regex: /^~([\d-T:]+)$/,
     serialize: value => {
@@ -79,7 +79,7 @@ const SERIALIZERS: Serializer[] = [
       }
     },
   },
-  // after day
+  // after day, `2020-01-02~` or `2020-01-02T:10:20:00~`
   {
     regex: /^([\d-T:]+)~$/,
     serialize: value => {
@@ -100,7 +100,7 @@ const SERIALIZERS: Serializer[] = [
       }
     },
   },
-  // day range
+  // day range, `2020-01-02~2020-05-10` or `2020-01-02T05:08:00~2020-05-10T10:21:00`
   {
     regex: /^([\d-T:]+)~([\d-T:]+)$/,
     serialize: value => {
@@ -122,6 +122,7 @@ const SERIALIZERS: Serializer[] = [
       }
     },
   },
+  // `today`
   {
     regex: /^today$/,
     serialize: value => {
@@ -141,6 +142,7 @@ const SERIALIZERS: Serializer[] = [
       };
     },
   },
+  // `yesterday`
   {
     regex: /^yesterday$/,
     serialize: value => {
@@ -160,6 +162,7 @@ const SERIALIZERS: Serializer[] = [
       };
     },
   },
+  // `thismonth`, `thisyear`
   {
     regex: /^this(\w+)$/,
     serialize: value => {
@@ -178,6 +181,7 @@ const SERIALIZERS: Serializer[] = [
       }
     },
   },
+  // `lastmonth`, `lastyear`
   {
     regex: /^last(\w+)$/,
     serialize: value => {
@@ -201,6 +205,137 @@ const SERIALIZERS: Serializer[] = [
       }
     },
   },
+  // `past30days`, `past30days~`. `~` means `includeCurrent`
+  {
+    regex: /^past(\d+)(\w+)s(~)?$/,
+    serialize: value => {
+      if (
+        value.type === "relative" &&
+        value.value !== "current" &&
+        value.value < 0 &&
+        value.offsetValue == null &&
+        value.offsetUnit == null
+      ) {
+        const suffix = value.options?.includeCurrent ? "~" : "";
+        return `past${-value.value}${value.unit}s${suffix}`;
+      }
+    },
+    deserialize: match => {
+      const value = parseInt(match[1]);
+      const unit = match[2];
+      const suffix = match[3];
+      if (isFinite(value) && isDatePickerTruncationUnit(unit)) {
+        return {
+          type: "relative",
+          value: -value,
+          unit,
+          options: suffix ? { includeCurrent: true } : undefined,
+        };
+      }
+    },
+  },
+  // `next30days`, `next30days~`. `~` means `includeCurrent`
+  {
+    regex: /^next(\d+)(\w+)s(~)?$/,
+    serialize: value => {
+      if (
+        value.type === "relative" &&
+        value.value !== "current" &&
+        value.value > 0 &&
+        value.offsetValue == null &&
+        value.offsetUnit == null
+      ) {
+        const suffix = value.options?.includeCurrent ? "~" : "";
+        return `past${value.value}${value.unit}s${suffix}`;
+      }
+    },
+    deserialize: match => {
+      const value = parseInt(match[1]);
+      const unit = match[2];
+      const suffix = match[3];
+      if (isFinite(value) && isDatePickerTruncationUnit(unit)) {
+        return {
+          type: "relative",
+          value,
+          unit,
+          options: suffix ? { includeCurrent: true } : undefined,
+        };
+      }
+    },
+  },
+  // `past30days-from-2years`
+  {
+    regex: /^past(\d+)(\w+)s-from-(\d+)(\w+)s$/,
+    serialize: value => {
+      if (
+        value.type === "relative" &&
+        value.value !== "current" &&
+        value.value < 0 &&
+        value.offsetValue != null &&
+        value.offsetValue < 0 &&
+        value.offsetUnit != null
+      ) {
+        return `past${-value.value}${value.unit}s-from-${-value.offsetValue}${value.offsetUnit}s`;
+      }
+    },
+    deserialize: match => {
+      const value = parseInt(match[1]);
+      const unit = match[2];
+      const offsetValue = parseInt(match[3]);
+      const offsetUnit = match[4];
+      if (
+        isFinite(value) &&
+        isDatePickerTruncationUnit(unit) &&
+        isFinite(offsetValue) &&
+        isDatePickerTruncationUnit(offsetUnit)
+      ) {
+        return {
+          type: "relative",
+          value: -value,
+          unit,
+          offsetValue: -offsetValue,
+          offsetUnit,
+        };
+      }
+    },
+  },
+  // `next30days-from-2years`
+  {
+    regex: /^next(\d+)(\w+)s-from-(\d+)(\w+)s$/,
+    serialize: value => {
+      if (
+        value.type === "relative" &&
+        value.value !== "current" &&
+        value.value > 0 &&
+        value.offsetValue != null &&
+        value.offsetValue > 0 &&
+        value.offsetUnit != null
+      ) {
+        return `next${value.value}${value.unit}s-from-${value.offsetValue}${value.offsetUnit}s`;
+      }
+    },
+    deserialize: match => {
+      const value = parseInt(match[1]);
+      const unit = match[2];
+      const offsetValue = parseInt(match[3]);
+      const offsetUnit = match[4];
+      if (
+        isFinite(value) &&
+        isDatePickerTruncationUnit(unit) &&
+        isFinite(offsetValue) &&
+        isDatePickerTruncationUnit(offsetUnit)
+      ) {
+        return {
+          type: "relative",
+          value,
+          unit,
+          offsetValue,
+          offsetUnit,
+        };
+      }
+    },
+  },
+  // `exclude-hours-1-23`
   {
     regex: /^exclude-hours-([-\d]+)$/,
     serialize: value => {
@@ -220,6 +355,7 @@ const SERIALIZERS: Serializer[] = [
       }
     },
   },
+  // `exclude-days-1-3-7`
   {
     regex: /^exclude-days-([-\w]+)$/,
     serialize: value => {
@@ -242,6 +378,7 @@ const SERIALIZERS: Serializer[] = [
       }
     },
   },
+  // `exclude-months-1-12`
   {
     regex: /^exclude-months-([-\w]+)$/,
     serialize: value => {
@@ -264,6 +401,7 @@ const SERIALIZERS: Serializer[] = [
       }
     },
   },
+  // `exclude-quarters-1-4`
   {
     regex: /^exclude-quarters-([-\d]+)$/,
     serialize: value => {
