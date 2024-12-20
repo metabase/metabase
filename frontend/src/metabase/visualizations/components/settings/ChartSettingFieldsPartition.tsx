@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { splice } from "icepick";
 import { useMemo } from "react";
 import {
@@ -11,7 +10,7 @@ import _ from "underscore";
 
 import { DragDropContext } from "metabase/core/components/DragDropContext";
 import CS from "metabase/css/core/index.css";
-import { Box, Text, useMantineTheme } from "metabase/ui";
+import { Box, Text } from "metabase/ui";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import type { Partition } from "metabase/visualizations/visualizations/PivotTable/partitions";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
@@ -54,8 +53,6 @@ export const ChartSettingFieldsPartition = ({
   columns: RemappingHydratedDatasetColumn[];
   partitions: Partition[];
 }) => {
-  const theme = useMantineTheme();
-
   const handleEditFormatting = (
     column: RemappingHydratedDatasetColumn,
     targetElement: HTMLElement,
@@ -143,7 +140,8 @@ export const ChartSettingFieldsPartition = ({
         const partitionType = getPartitionType(partitionName);
         return (
           <Box
-            className={cx(CS.py2, { [CS.borderTop]: index > 0 })}
+            py="md"
+            className={index > 0 && CS.borderTop}
             key={partitionName}
           >
             <Text c="text-medium">{title}</Text>
@@ -156,7 +154,7 @@ export const ChartSettingFieldsPartition = ({
                   mih="2.5rem"
                   pos="relative"
                   mt={updatedColumns.length === 0 ? "sm" : undefined}
-                  style={{ borderRadius: theme.radius.md }}
+                  className={CS.rounded}
                 >
                   {updatedColumns.length === 0 ? (
                     <Box
@@ -165,7 +163,7 @@ export const ChartSettingFieldsPartition = ({
                       p="0.75rem"
                       bg="bg-light"
                       c="text-medium"
-                      style={{ borderRadius: theme.radius.md }}
+                      className={CS.rounded}
                     >{t`Drag fields here`}</Box>
                   ) : (
                     updatedColumns.map((col, index) => (
