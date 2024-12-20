@@ -403,18 +403,20 @@ const SERIALIZERS: Serializer[] = [
 
 export function serializeDateFilter(value: DatePickerValue): string {
   for (const serializer of SERIALIZERS) {
-    const s = serializer.serialize(value);
-    if (s != null) {
-      return s;
+    const text = serializer.serialize(value);
+    if (text != null) {
+      return text;
     }
   }
 
   throw new TypeError("Date filter cannot be serialized");
 }
 
-export function deserializeDateFilter(s: string): DatePickerValue | undefined {
+export function deserializeDateFilter(
+  text: string,
+): DatePickerValue | undefined {
   for (const serializer of SERIALIZERS) {
-    const match = s.match(serializer.regex);
+    const match = text.match(serializer.regex);
     if (match != null) {
       const value = serializer.deserialize(match);
       if (value != null) {

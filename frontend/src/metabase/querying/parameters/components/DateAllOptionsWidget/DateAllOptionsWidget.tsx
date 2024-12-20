@@ -18,23 +18,23 @@ type DateAllOptionsWidgetProps = {
 };
 
 export function DateAllOptionsWidget({
-  value,
+  value: text,
   availableOperators,
   submitButtonLabel,
   onChange,
 }: DateAllOptionsWidgetProps) {
-  const filter = useMemo(
-    () => (value != null ? deserializeDateFilter(value) : undefined),
-    [value],
+  const value = useMemo(
+    () => (text != null ? deserializeDateFilter(text) : undefined),
+    [text],
   );
 
-  const handleChange = (filter: DatePickerValue) => {
-    onChange(serializeDateFilter(filter));
+  const handleChange = (value: DatePickerValue) => {
+    onChange(serializeDateFilter(value));
   };
 
   return (
     <DatePicker
-      value={filter}
+      value={value}
       availableOperators={availableOperators}
       submitButtonLabel={submitButtonLabel}
       onChange={handleChange}
