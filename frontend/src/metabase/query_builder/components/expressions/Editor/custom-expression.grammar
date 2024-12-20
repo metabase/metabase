@@ -90,8 +90,8 @@ CallExpression {
   }
 
   Boolean {
-    "true"
-  | "false"
+    "True"
+  | "False"
   }
 
   Not {
