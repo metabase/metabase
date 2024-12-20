@@ -45,6 +45,7 @@ jobs:
       CYPRESS_CI: true
       CYPRESS_QA_DB_MONGO: ${{ inputs.name == 'mongo' }}
       CYPRESS_IS_EMBEDDING_SDK: ${{ inputs.name == 'embedding-sdk' }}
+      WITH_SNAPSHOTS: 1
       mongo: ${{ inputs.name == 'mongo' }}
       postgres: ${{ inputs.name != 'mongo' }}
       mysql: ${{ inputs.name != 'mongo' }}
@@ -108,7 +109,7 @@ jobs:
         if: ${{ !inputs.tags }}
         shell: bash
         run: |
-          node ./e2e/runner/run_cypress_tests.js --with-snapshots \
+          yarn test-cypres-run \
           --env grepTags="-@slow+-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
           --spec '${{ inputs.specs }}' \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
@@ -117,7 +118,7 @@ jobs:
         if: ${{ inputs.tags }}
         shell: bash
         run: |
-          node ./e2e/runner/run_cypress_tests.js --with-snapshots \
+          yarn test-cypress-run \
           --env grepTags="${{inputs.tags}} --@quarantine",grepOmitFiltered=true \
           --spec '${{ inputs.specs }}' \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
