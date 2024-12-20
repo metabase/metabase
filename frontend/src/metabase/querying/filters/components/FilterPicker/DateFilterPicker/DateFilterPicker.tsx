@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 
 import { useDateFilter } from "metabase/querying/filters/hooks/use-date-filter";
+import type { DatePickerValue } from "metabase/querying/filters/types";
 import { PopoverBackButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { DatePicker, type DatePickerValue } from "../../DatePicker";
+import { DatePicker } from "../../DatePicker";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function DateFilterPicker({
@@ -45,7 +46,6 @@ export function DateFilterPicker({
             </PopoverBackButton>
           )
         }
-        canUseRelativeOffsets
         isNew={isNew}
         onChange={handleChange}
       />
