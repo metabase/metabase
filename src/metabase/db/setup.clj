@@ -135,13 +135,13 @@
     (catch Exception e (log/debug "encryption-check already exists" (.getMessage e))))
   (let [raw (-> (t2/select-one :conn data-source :setting :key "encryption-check")
                 :value)
-        looks-encrypted (not (= raw "unencrypted"))]
+        looks-encrypted (not= raw "unencrypted")]
     (log/debug "Checking encryption configuration")
     (if looks-encrypted
       (if (encryption/default-encryption-enabled?)
-          (if (string/valid-uuid? (encryption/maybe-decrypt raw))
-            (log/debug "Database encrypted and MB_ENCRYPTION_SECRET_KEY correctly configured")
-            (throw (Exception. "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains")))
+        (if (string/valid-uuid? (encryption/maybe-decrypt raw))
+          (log/debug "Database encrypted and MB_ENCRYPTION_SECRET_KEY correctly configured")
+          (throw (Exception. "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains")))
         (throw (Exception. "Database is encrypted but the MB_ENCRYPTION_SECRET_KEY environment variable was NOT set")))
       (if (encryption/default-encryption-enabled?)
         (do
