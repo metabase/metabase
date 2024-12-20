@@ -383,7 +383,7 @@ const SERIALIZERS: Serializer[] = [
   {
     regex: /^exclude-quarters-([-\d]+)$/,
     serialize: value => {
-      if (value.type === "exclude" && value.unit === "hour-of-day") {
+      if (value.type === "exclude" && value.unit === "quarter-of-year") {
         return `exclude-quarters-${value.values.join("-")}`;
       }
     },

@@ -72,6 +72,182 @@ describe("serializeDateFilter", () => {
         hasTime: true,
       },
     },
+    {
+      text: "2020-01-01~2021-12-31",
+      value: {
+        type: "specific",
+        operator: "between",
+        values: [new Date(2020, 0, 1), new Date(2021, 11, 31)],
+        hasTime: false,
+      },
+    },
+    {
+      text: "2020-01-01T05:08:00~2021-12-31T10:20:00",
+      value: {
+        type: "specific",
+        operator: "between",
+        values: [new Date(2020, 0, 1, 5, 8), new Date(2021, 11, 31, 10, 20)],
+        hasTime: true,
+      },
+    },
+    {
+      text: "thisday",
+      value: {
+        type: "relative",
+        value: "current",
+        unit: "day",
+      },
+    },
+    {
+      text: "thisyear",
+      value: {
+        type: "relative",
+        value: "current",
+        unit: "year",
+      },
+    },
+    {
+      text: "past1days",
+      value: {
+        type: "relative",
+        value: -1,
+        unit: "day",
+      },
+    },
+    {
+      text: "past10months",
+      value: {
+        type: "relative",
+        value: -10,
+        unit: "month",
+      },
+    },
+    {
+      text: "past2years~",
+      value: {
+        type: "relative",
+        value: -2,
+        unit: "year",
+        options: { includeCurrent: true },
+      },
+    },
+    {
+      text: "next1hours",
+      value: {
+        type: "relative",
+        value: 1,
+        unit: "hour",
+      },
+    },
+    {
+      text: "next10quarters",
+      value: {
+        type: "relative",
+        value: 10,
+        unit: "quarter",
+      },
+    },
+    {
+      text: "next2years~",
+      value: {
+        type: "relative",
+        value: 2,
+        unit: "year",
+        options: { includeCurrent: true },
+      },
+    },
+    {
+      text: "past10days-from-2months",
+      value: {
+        type: "relative",
+        value: -10,
+        unit: "day",
+        offsetValue: -2,
+        offsetUnit: "month",
+      },
+    },
+    {
+      text: "next3months-from-4quarters",
+      value: {
+        type: "relative",
+        value: 3,
+        unit: "month",
+        offsetValue: 4,
+        offsetUnit: "quarter",
+      },
+    },
+    {
+      text: "exclude-hours-0",
+      value: {
+        type: "exclude",
+        operator: "!=",
+        unit: "hour-of-day",
+        values: [0],
+      },
+    },
+    {
+      text: "exclude-hours-1-2-23",
+      value: {
+        type: "exclude",
+        operator: "!=",
+        unit: "hour-of-day",
+        values: [1, 2, 23],
+      },
+    },
+    {
+      text: "exclude-days-Wed",
+      value: {
+        type: "exclude",
+        operator: "!=",
+        unit: "day-of-week",
+        values: [3],
+      },
+    },
+    {
+      text: "exclude-days-Mon-Sun",
+      value: {
+        type: "exclude",
+        operator: "!=",
+        unit: "day-of-week",
+        values: [1, 7],
+      },
+    },
+    {
+      text: "exclude-months-Mar",
+      value: {
+        type: "exclude",
+        operator: "!=",
+        unit: "month-of-year",
+        values: [3],
+      },
+    },
+    {
+      text: "exclude-months-Jan-Dec",
+      value: {
+        type: "exclude",
+        operator: "!=",
+        unit: "month-of-year",
+        values: [1, 12],
+      },
+    },
+    {
+      text: "exclude-quarters-1",
+      value: {
+        type: "exclude",
+        operator: "!=",
+        unit: "quarter-of-year",
+        values: [1],
+      },
+    },
+    {
+      text: "exclude-quarters-1-2-3-4",
+      value: {
+        type: "exclude",
+        operator: "!=",
+        unit: "quarter-of-year",
+        values: [1, 2, 3, 4],
+      },
+    },
   ])("should serialize and deserialize $text", ({ text, value }) => {
     expect(serializeDateFilter(value)).toEqual(text);
     expect(deserializeDateFilter(text)).toEqual(value);
