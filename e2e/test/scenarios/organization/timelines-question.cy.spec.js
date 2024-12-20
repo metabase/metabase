@@ -555,6 +555,7 @@ function timelineEventCard(eventName) {
 function toggleEventVisibility(eventName) {
   timelineEventVisibility(eventName).click();
 }
+
 function timelineEventVisibility(eventName) {
   return timelineEventCard(eventName).findByRole("checkbox");
 }

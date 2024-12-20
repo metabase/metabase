@@ -5,6 +5,8 @@ import {
   databaseApi,
   skipToken,
   useListDatabaseSchemaTablesQuery,
+  useListDatabaseSchemasQuery,
+  useListSyncableDatabaseSchemasQuery,
   useListVirtualDatabaseTablesQuery,
 } from "metabase/api";
 import Questions from "metabase/entities/questions";
@@ -35,6 +37,7 @@ export default createEntity({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
+    useListQuery,
   },
 
   api: {
@@ -234,3 +237,30 @@ const useGetQuery = query => {
 
   return result;
 };
+
+function useListQuery({ dbId, getAll = false, ...args }, options) {
+  const syncableDatabaseSchemas = useListSyncableDatabaseSchemasQuery(
+    getAll ? dbId : skipToken,
+    options,
+  );
+
+  const databaseSchemas = useListDatabaseSchemasQuery(
+    getAll ? skipToken : { id: dbId, ...args },
+    options,
+  );
+
+  const schemas = getAll ? syncableDatabaseSchemas : databaseSchemas;
+
+  const data = useMemo(() => {
+    return schemas.data?.map(schemaName => ({
+      // NOTE: needs unique IDs for entities to work correctly
+      id: generateSchemaId(dbId, schemaName),
+      name: schemaName,
+      database: { id: dbId },
+    }));
+  }, [dbId, schemas]);
+
+  const result = useMemo(() => ({ ...schemas, data }), [data, schemas]);
+
+  return result;
+}
