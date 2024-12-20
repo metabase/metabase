@@ -122,6 +122,44 @@ const SERIALIZERS: Serializer[] = [
     },
   },
   {
+    regex: /^today$/,
+    serialize: value => {
+      if (
+        value.type === "relative" &&
+        value.value === "current" &&
+        value.unit === "day"
+      ) {
+        return "today";
+      }
+    },
+    deserialize: () => {
+      return {
+        type: "relative",
+        value: "current",
+        unit: "day",
+      };
+    },
+  },
+  {
+    regex: /^yesterday$/,
+    serialize: value => {
+      if (
+        value.type === "relative" &&
+        value.value === -1 &&
+        value.unit === "day"
+      ) {
+        return "yesterday";
+      }
+    },
+    deserialize: () => {
+      return {
+        type: "relative",
+        value: -1,
+        unit: "day",
+      };
+    },
+  },
+  {
     regex: /^exclude-hours-([-\d]+)$/,
     serialize: value => {
       if (value.type === "exclude" && value.unit === "hour-of-day") {
