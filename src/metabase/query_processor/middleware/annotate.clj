@@ -74,7 +74,7 @@
       (when-not (= expected-count actual-count)
         (throw (ex-info (str (tru "Query processor error: number of columns returned by driver does not match results.")
                              "\n"
-                             (tru "Expected {0} columns, but first row of resuls has {1} columns."
+                             (tru "Expected {0} columns, but first row of results has {1} columns."
                                   expected-count actual-count))
                         {:expected-columns (map :name cols)
                          :first-row        (first rows)
@@ -194,14 +194,14 @@
 
     (datetime-arithmetics? expression)
     ;; make sure converted_timezone survived if we do nested datetime operations
-    ;; FIXME: this does not preverse converted_timezone for cases nested expressions
+    ;; FIXME: this does not preserve converted_timezone for cases nested expressions
     ;; i.e:
     ;; {"expression" {"converted-exp" [:convert-timezone "created-at" "Asia/Ho_Chi_Minh"]
     ;;                "date-add-exp"  [:datetime-add [:expression "converted-exp"] 2 :month]}}
     ;; The converted_timezone metadata added for "converted-exp" will not be brought over
     ;; to ["date-add-exp"].
     ;; maybe this `infer-expression-type` should takes an `inner-query` and look up the
-    ;; source expresison as well?
+    ;; source expression as well?
     (merge (select-keys (infer-expression-type (second expression)) [:converted_timezone])
            {:base_type :type/DateTime})
 
@@ -639,7 +639,7 @@
   (fn add-column-info-rff* [metadata]
     (qp.debug/debug> (list `add-column-info query metadata))
     (if (and (= query-type :query)
-             ;; we should have type metadata eiter in the query fields
+             ;; we should have type metadata either in the query fields
              ;; or in the result metadata for the following code to work
              (or (->> query :query keys (some #{:aggregation :breakout :fields}))
                  (every? :base_type (:cols metadata))))

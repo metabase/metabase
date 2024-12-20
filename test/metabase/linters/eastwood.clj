@@ -4,7 +4,7 @@
    [metabase.linters.common :as common]))
 
 (defn eastwood
-  "Entrypoint for running Eastwood from the CLI. Adds some programatically-determined config options. See comments in
+  "Entrypoint for running Eastwood from the CLI. Adds some programmatically-determined config options. See comments in
   `deps.edn` for usage instructions."
   [options]
   (eastwood/eastwood-from-cmdline

@@ -241,7 +241,7 @@
   Will exit early if migration has been cancelled in any cluster instance.
   Should run in a separate thread since it can take a long time to complete."
   [{:keys [id external_id] :as migration} & {:keys [retry?]}]
-  ;; dump-to-h2 starts behaving oddly if you try to dump repeatly to the same file
+  ;; dump-to-h2 starts behaving oddly if you try to dump repeatedly to the same file
   ;; in the same process, so use a random name.
   ;; The docker image process runs in non-root, so write to a dir it can access.
   (let [dump-file (io/file (System/getProperty "java.io.tmpdir")
@@ -277,7 +277,7 @@
       (catch Exception e
         ;; See set-progress for when :terminal is set.
         (if (-> e ex-data :terminal)
-          (log/info "Migration interruped due to terminal state")
+          (log/info "Migration interrupted due to terminal state")
           (do
             (t2/update! :model/CloudMigration id {:state :error})
             (log/info "Migration failed")

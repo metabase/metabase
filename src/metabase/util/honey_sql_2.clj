@@ -162,7 +162,7 @@
           (u/qualified-name component)))])
 
 (mu/defn identifier->components :- [:sequential string?]
-  "Given an identifer return its components
+  "Given an identifier return its components
   (identifier->components (identifier :field :metabase :user :email))
   => (\"metabase\" \"user\" \"email\"))"
   [identifier :- [:fn identifier?]]

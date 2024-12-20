@@ -241,7 +241,7 @@
 
 (defn ^:export as-returned
   "When a query has aggregations in stage `N`, there's an important difference between adding an expression to stage `N`
-  (with access to the colums before aggregation) or adding it to stage `N+1` (with access to the aggregations and
+  (with access to the columns before aggregation) or adding it to stage `N+1` (with access to the aggregations and
   breakouts).
 
   Given `a-query` and `stage-number`, this returns a **JS object** with `query` and `stageIndex` keys, for working with
@@ -1390,7 +1390,7 @@
 ;; `:source/fields` and `lib.ref/ref` would generate field id-based refs; while for [[visible-columns]] `:lib/source`
 ;; would be `:source/card` and `lib.ref/ref` would generate `:lib/desired-column-alias`-based refs. As the card can
 ;; contain multiple columns with the same ID (e.g. multiple breakouts of the same column, model metadata overrides) we
-;; could get exact dupliates with `lib.ref/ref` for [[returned-columns]].
+;; could get exact duplicates with `lib.ref/ref` for [[returned-columns]].
 ;; `(lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns)` cannot be used here because it
 ;; would compute the refs for `ret-columns` and we want to do it the other way around.
 (defn- visible-columns*
@@ -2044,7 +2044,7 @@
   (lib.core/database-id a-query))
 
 (defn ^:export join-condition-update-temporal-bucketing
-  "Updates the provided `join-condition` so both the LHS and RHS columns have the provied temporal bucketing option.
+  "Updates the provided `join-condition` so both the LHS and RHS columns have the provided temporal bucketing option.
 
   `join-condition` must be a *standard join condition*, meaning it's in the form constructed by the query builder UI,
   where the LHS is a column in the outer query and RHS is a column from the joinable.

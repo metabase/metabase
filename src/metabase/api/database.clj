@@ -364,7 +364,7 @@
 
 (api/defendpoint GET "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
-   belonging to this database, or the Tables and Fields, respectively.  If the requestor has write permissions for the DB
+   belonging to this database, or the Tables and Fields, respectively. If the requester has write permissions for the DB
    (i.e. is an admin or has data model permissions), then certain inferred secret values will also be included in the
    returned details (see [[metabase.models.secret/expand-db-details-inferred-secret-values]] for full details).
 
@@ -800,7 +800,7 @@
   (let [details-or-error (test-connection-details engine details)
         valid?           (not= (:valid details-or-error) false)]
     (if valid?
-      ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
+      ;; no error, proceed with creation. If record is inserted successfully, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
       (u/prog1 (api/check-500 (first (t2/insert-returning-instances!
                                       Database
@@ -855,7 +855,7 @@
 ;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
 (defn- upsert-sensitive-fields
-  "Replace any sensitive values not overriden in the PUT with the original values"
+  "Replace any sensitive values not overridden in the PUT with the original values"
   [database details]
   (when details
     (merge (:details database)

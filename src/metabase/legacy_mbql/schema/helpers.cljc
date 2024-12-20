@@ -73,7 +73,7 @@
     (first a-clause)))
 
 (defn one-of*
-  "Interal impl of `one-of` macro."
+  "Internal impl of `one-of` macro."
   [& tags+schemas]
   (into
    [:multi {:dispatch      clause-tag

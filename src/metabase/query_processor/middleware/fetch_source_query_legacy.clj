@@ -75,7 +75,7 @@
      ;; log the query at this point, it's useful for some purposes
      (log/debugf "Fetched source query from Card %s:\n%s" card-id (u/pprint-to-str 'yellow source-query))
      (cond-> {:source-query    (cond-> source-query
-                                 ;; This will be applied, if still appropriate, by the peristence middleware
+                                 ;; This will be applied, if still appropriate, by the persistence middleware
                                  persisted?
                                  (assoc :persisted-info/native
                                         (qp.persisted/persisted-info-native-query

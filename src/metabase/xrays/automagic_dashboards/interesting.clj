@@ -490,7 +490,7 @@
    :visualization_settings {}})
 
 (defn make-layout
-  "Assign `:row` and `:col` values to the provied seq of dashcards."
+  "Assign `:row` and `:col` values to the provided seq of dashcards."
   [dashcards]
   (loop [[{:keys [size_x size_y] :as dashcard} & dashcards] dashcards
          [xmin ymin xmax ymax] [0 0 0 0]

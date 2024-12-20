@@ -18,7 +18,7 @@
                    :cljs
                    (meta args)
 
-                   ;; make sure we resolve classnames e.g. `java.sql.Connection` intstead of `Connection`, otherwise the
+                   ;; make sure we resolve classnames e.g. `java.sql.Connection` instead of `Connection`, otherwise the
                    ;; tags won't work if you use them in another namespace that doesn't import that class. (Clj only)
                    :clj
                    (let [args-meta    (meta args)

@@ -205,7 +205,7 @@
         (qp/process-query (qp/userland-query-with-default-constraints query) rff)))
 
   Handles either async or sync QP results, but you should prefer returning sync results so we can handle query
-  cancelations properly."
+  cancellations properly."
   {:style/indent 1}
   [[map-binding export-format filename-prefix] & body]
   `(-streaming-response ~export-format ~filename-prefix (^:once fn* [~map-binding] ~@body)))

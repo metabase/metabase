@@ -36,7 +36,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn assert-valid-parameters
-  "Receive a Paremeterized Object and check if its parameters is valid."
+  "Receive a Parameterized Object and check if its parameters is valid."
   [{:keys [parameters]}]
   (let [schema [:maybe [:sequential ms/Parameter]]]
     (when-not (mc/validate schema parameters)
@@ -45,7 +45,7 @@
                        :errors     (:errors (mc/explain schema parameters))})))))
 
 (defn assert-valid-parameter-mappings
-  "Receive a Paremeterized Object and check if its parameters is valid."
+  "Receive a Parameterized Object and check if its parameters is valid."
   [{:keys [parameter_mappings]}]
   (let [schema [:maybe [:sequential ms/ParameterMapping]]]
     (when-not (mc/validate schema parameter_mappings)
@@ -243,9 +243,9 @@
       ctx)))
 
 (def ^:dynamic *field-id-context*
-  "Conext for effective computation of field ids for parameters. Bound in
+  "Context for effective computation of field ids for parameters. Bound in
   the [[metabase.api.dashboard/hydrate-dashboard-details]]. Meant to be used in the [[field-id-into-context-rf]], to
-  re-use values of previous `filterable-columns` computations (during the reduction itself and hydration
+  reuse values of previous `filterable-columns` computations (during the reduction itself and hydration
   of `:param_fields` and `:param_values` at the time of writing)."
   nil)
 
@@ -259,11 +259,11 @@
   and returns new _context_ (`ctx`) with the _field id_ added.
 
   When used in `transduce`:
-    - 0-arity ensures re-use of existing [[*field-id-context*]] if available,
+    - 0-arity ensures reuse of existing [[*field-id-context*]] if available,
     - 1-arity is used to return set of _field ids_ accumulated by transucing process instead of a _context_.
 
   Then, 2-arity gets the _field id_ either from (1) target, (2) card's `:results_metadata`, or (3) filterable columns.
-  If computed, filterable columns are added to the context for re-use either in next reduction steps, or in next call
+  If computed, filterable columns are added to the context for reuse either in next reduction steps, or in next call
   to this function by means of [[*field-id-context*]]."
   ([]
    (or
@@ -318,7 +318,7 @@
    (cards->card-param-field-ids (map :card dashcards))))
 
 (defn get-linked-field-ids
-  "Retrieve a map relating paramater ids to field ids."
+  "Retrieve a map relating parameter ids to field ids."
   [dashcards]
   (letfn [(targets [params card]
             (into {}

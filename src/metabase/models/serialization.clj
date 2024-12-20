@@ -565,7 +565,7 @@
 ;;;
 ;;; - `(ingest-one serdes-path opts)` is called to read the value into memory, then
 ;;; - `(dependencies ingested)` gets a list of other `:serdes/meta` paths need to be loaded first.
-;;;     - See below on depenencies.
+;;;     - See below on dependencies.
 ;;; - Dependencies are loaded recursively in postorder; that is an entity is loaded after all its deps.
 ;;;     - Circular dependencies will make the load process throw.
 ;;; - Once an entity's deps are all loaded, we check for an existing one:
@@ -1096,7 +1096,7 @@
                                             (if (= db-id lib.schema.id/saved-questions-virtual-database-id)
                                               "database/__virtual"
                                               (t2/select-one-fn :name 'Database :id db-id))))
-      (m/update-existing entity :card_id #(*export-fk* % 'Card)) ; attibutes that refer to db fields use _
+      (m/update-existing entity :card_id #(*export-fk* % 'Card)) ; attributes that refer to db fields use _
       (m/update-existing entity :card-id #(*export-fk* % 'Card)) ; template-tags use dash
       (m/update-existing entity :source-table export-source-table)
       (m/update-existing entity :source_table export-source-table)
@@ -1331,7 +1331,7 @@
 
 (defn- json-mbql-fully-qualified-names->ids
   "Converts fully qualified names to IDs in MBQL embedded inside a JSON string.
-  Returns a new JSON string with teh IDs converted inside."
+  Returns a new JSON string with the IDs converted inside."
   [json-str]
   (-> json-str
       json/decode+kw

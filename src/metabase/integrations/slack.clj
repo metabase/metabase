@@ -245,7 +245,7 @@
         (throw e)))))
 
 (defn user-transform
-  "Tranformation from slack api user to our own internal representation."
+  "Transformation from slack api user to our own internal representation."
   [member]
   {:display-name (str \@ (:name member))
    :type         "user"

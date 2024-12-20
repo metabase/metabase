@@ -101,7 +101,7 @@
   :doc        false)
 
 (defsetting upgrade-threshold
-  (deferred-tru "Threshold (value in 0-100) indicating at which treshold it should offer an upgrade to the latest major version.")
+  (deferred-tru "Threshold (value in 0-100) indicating at which threshold it should offer an upgrade to the latest major version.")
   :visibility :internal
   :export?    false
   :type       :integer
@@ -406,7 +406,7 @@ x.com")
 
 (def ^:private ^:const global-max-caching-kb
   "Although depending on the database, we can support much larger cached values (1GB for PG, 2GB for H2 and 4GB for
-  MySQL) we are not curretly setup to deal with data of that size. The datatypes we are using will hold this data in
+  MySQL) we are not currently setup to deal with data of that size. The datatypes we are using will hold this data in
   memory and will not truly be streaming. This is a global max in order to prevent our users from setting the caching
   value so high it becomes a performance issue. The value below represents 200MB"
   (* 200 1024))
@@ -733,7 +733,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :feature    :disable-password-login
   :audit      :raw-value
   :getter     (fn []
-                ;; if `:enable-password-login` has an *explict* (non-default) value, and SSO is configured, use that;
+                ;; if `:enable-password-login` has an *explicit* (non-default) value, and SSO is configured, use that;
                 ;; otherwise this always returns true.
                 (let [v (setting/get-value-of-type :boolean :enable-password-login)]
                   (if (and (some? v)

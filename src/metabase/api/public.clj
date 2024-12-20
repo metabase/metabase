@@ -72,7 +72,7 @@
                                              id->template-tags-parameter)))))
 
 (defn- remove-card-non-public-columns
-  "Remove everyting from public `card` that shouldn't be visible to the general public."
+  "Remove everything from public `card` that shouldn't be visible to the general public."
   [card]
   ;; We need to check this to resolve params - we set `request/as-admin` there
   (if qp.perms/*param-values-query*
@@ -377,7 +377,7 @@
             (actions/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
 
 (api/defendpoint GET "/oembed"
-  "oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL."
+  "oEmbed endpoint used to retrieve embed code and metadata for a (public) Metabase URL."
   [url format maxheight maxwidth]
   ;; the format param is not used by the API, but is required as part of the oEmbed spec: http://oembed.com/#section2
   ;; just return an error if `format` is specified and it's anything other than `json`.

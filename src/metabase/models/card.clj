@@ -187,7 +187,7 @@
     (not-empty (filter pos-int? (lib.util/collect-source-tables query)))))
 
 (defn- prefetch-tables-for-cards!
-  "Collect tables from `dataset-cards` and prefetch metadata. Should be used only with metdata provider caching
+  "Collect tables from `dataset-cards` and prefetch metadata. Should be used only with metadata provider caching
   enabled, as per https://github.com/metabase/metabase/pull/45050. Returns `nil`."
   [dataset-cards]
   (let [db-id->table-ids (-> (group-by :database_id dataset-cards)
@@ -562,7 +562,7 @@
                                        (let [param-id->parameter (m/index-by :id parameters)]
                                          (->> param-cards
                                               (filter (fn [param-card]
-                                                       ;; if cant find the value-field in result_metadata, then we should
+                                                       ;; if can't find the value-field in result_metadata, then we should
                                                        ;; remove it
                                                         (nil? (qp.util/field->field-info
                                                                (get-in (param-id->parameter (:parameter_id param-card)) [:values_source_config :value_field])
@@ -644,7 +644,7 @@
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
       (update-parameters-using-card-as-values-source changes)
-      ;; TODO: this would ideally be done only once the query changes have been commited to the database, to avoid
+      ;; TODO: this would ideally be done only once the query changes have been committed to the database, to avoid
       ;;       race conditions leading to stale analysis triggering the "last one wins" analysis update.
       (when (contains? changes :dataset_query)
         (query-analysis/analyze! changes))
@@ -1007,13 +1007,13 @@
          not-empty)))
 
 (defn eligible-mapping?
-  "Decide whether parameter mapping has strucuture so it can be updated presumably using [[update-mapping]]."
+  "Decide whether parameter mapping has structure so it can be updated presumably using [[update-mapping]]."
   [{[dim [ref-kind]] :target :as _mapping}]
   (and (= dim :dimension)
        (#{:field :expression} ref-kind)))
 
 (defn- update-mapping
-  "Return modifed mapping according to action."
+  "Return modified mapping according to action."
   [identifier->action {[_dim ref] :target :as mapping}]
   (let [identifier (subvec ref 0 2)
         [action arg] (get identifier->action identifier)]

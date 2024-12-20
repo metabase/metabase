@@ -105,7 +105,7 @@
   (revision/revisions+details Segment id))
 
 (api/defendpoint POST "/:id/revert"
-  "Revert a `Segement` to a prior `Revision`."
+  "Revert a `Segment` to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
   {id          ms/PositiveInt
    revision_id ms/PositiveInt}

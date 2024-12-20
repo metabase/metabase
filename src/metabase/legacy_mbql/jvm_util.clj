@@ -1,5 +1,5 @@
 (ns metabase.legacy-mbql.jvm-util
-  "This namespace contains functionality that is not compatible with js, hence can not be stored in correspoding
+  "This namespace contains functionality that is not compatible with js, hence can not be stored in corresponding
   cljc ns, ie. [[metabase.legacy-mbql.util]]."
   (:require
    [metabase.lib.util.match :as lib.util.match]))

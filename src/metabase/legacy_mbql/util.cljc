@@ -1,5 +1,5 @@
 (ns metabase.legacy-mbql.util
-  "Utilitiy functions for working with MBQL queries."
+  "Utility functions for working with MBQL queries."
   (:refer-clojure :exclude [replace])
   (:require
    #?@(:clj
@@ -738,7 +738,7 @@
            [:aggregation-options [:sum [:field 1 nil]] {:name \"Sum-41\"}]]
 
   Most often, `aggregation->name-fn` will be something like `annotate/aggregation-name`, but for purposes of keeping
-  the `metabase.legacy-mbql` module seperate from the `metabase.query-processor` code we'll let you pass that in yourself."
+  the `metabase.legacy-mbql` module separate from the `metabase.query-processor` code we'll let you pass that in yourself."
   [aggregation->name-fn :- fn?
    aggregations         :- [:sequential ::mbql.s/Aggregation]]
   (lib.util.match/replace aggregations

@@ -180,7 +180,7 @@
       (if-let [channel (get-channel transport)]
         (let [buf        (ByteBuffer/allocate 1)
               status     (.read channel buf)]
-          (log/tracef "Check cancelation status: .read returned %d" status)
+          (log/tracef "Check cancellation status: .read returned %d" status)
           (neg? status))
         (do
           (log-unexpected-transport! transport)
@@ -192,7 +192,7 @@
       false)))
 
 (def ^:private async-cancellation-poll-timeout-ms
-  "How long to wait for the cancelation check to complete (it should usually complete immediately -- see above -- but if
+  "How long to wait for the cancellation check to complete (it should usually complete immediately -- see above -- but if
   it doesn't, we don't want to block forever)."
   1000)
 
@@ -204,7 +204,7 @@
     (let [poll-timeout-chan (a/timeout async-cancellation-poll-interval-ms)
           [_ port]          (a/alts! [poll-timeout-chan finished-chan])]
       (when (= port poll-timeout-chan)
-        (log/tracef "Checking cancelation status after waiting %s" (u/format-milliseconds async-cancellation-poll-interval-ms))
+        (log/tracef "Checking cancellation status after waiting %s" (u/format-milliseconds async-cancellation-poll-interval-ms))
         (let [canceled-status-chan (async.u/cancelable-thread (canceled? request))
               status-timeout-chan  (a/timeout async-cancellation-poll-timeout-ms)
               [canceled? port]     (a/alts! [finished-chan canceled-status-chan status-timeout-chan])]
@@ -212,7 +212,7 @@
           ;; was completed) then close `canceled-status-chan` which will kill the underlying thread
           (a/close! canceled-status-chan)
           (when (= port status-timeout-chan)
-            (log/debugf "Check cancelation status timed out after %s"
+            (log/debugf "Check cancellation status timed out after %s"
                         (u/format-milliseconds async-cancellation-poll-timeout-ms)))
           (when (not= port finished-chan)
             (if canceled?

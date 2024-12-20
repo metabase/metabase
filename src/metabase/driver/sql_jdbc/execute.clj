@@ -686,7 +686,7 @@
 
 ;  Combines the original SQL query with query remarks. Most databases using sql-jdbc based drivers support prepending the
 ;  remark to the SQL statement, so we have it as a default. However, some drivers do not support it, so we allow it to
-;  be overriden.
+;  be overridden.
 (defmethod inject-remark :default
   [_ sql remark]
   (str "-- " remark "\n" sql))
@@ -723,13 +723,13 @@
         (let [rsmeta           (.getMetaData rs)
               results-metadata {:cols (column-metadata driver rsmeta)}]
           (try (respond results-metadata (reducible-rows driver rs rsmeta qp.pipeline/*canceled-chan*))
-               ;; Following cancels the statment on the dbms side.
+               ;; Following cancels the statement on the dbms side.
                ;; It avoids blocking `.close` call, in case we reduced the results subset eg. by means of
-               ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statment is still
+               ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statement is still
                ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
                ;; It also handles situation where query is canceled through [[qp.pipeline/*canceled-chan*]] (#41448).
                (finally
-                 ;; TODO: Following `when` is in place just to find out if vertica is flaking because of cancelations.
+                 ;; TODO: Following `when` is in place just to find out if vertica is flaking because of cancellations.
                  ;;       It should be removed afterwards!
                  (when-not (= :vertica driver)
                    (try (.cancel stmt)
@@ -737,7 +737,7 @@
                           (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
                                      (name driver)))
                         (catch Throwable _
-                          (log/warn "Statement cancelation failed."))))))))))))
+                          (log/warn "Statement cancellation failed."))))))))))))
 
 (defn reducible-query
   "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the

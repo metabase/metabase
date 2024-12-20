@@ -47,7 +47,7 @@
 
 (defn- expand-mbql-params [outer-query {:keys [parameters], :as m}]
   ;; HACK `qp.mbql/expand` assumes it's operating on an outer query so wrap `m` to look like an outer query. TODO
-  ;; - fix `qp.mbql` to operate on abitrary maps instead of only on top-level queries.
+  ;; - fix `qp.mbql` to operate on arbitrary maps instead of only on top-level queries.
   (let [wrapped           (assoc outer-query :query m)
         {expanded :query} (qp.mbql/expand (dissoc wrapped :parameters) parameters)]
     (cond-> expanded
@@ -124,8 +124,8 @@
   (u/update-in-if-exists query [:native :template-tags] (partial assoc-db-in-snippet-tag (:database query))))
 
 (defn substitute-parameters
-  "Substitute Dashboard or Card-supplied parameters in a query, replacing the param placeholers with appropriate values
-  and/or modifiying the query as appropriate. This looks for maps that have the key `:parameters` and/or
+  "Substitute Dashboard or Card-supplied parameters in a query, replacing the param placeholders with appropriate values
+  and/or modifying the query as appropriate. This looks for maps that have the key `:parameters` and/or
   `:template-tags` and removes those keys, splicing appropriate conditions into the queries they affect.
 
   A SQL query with a param like `{{param}}` will have that part of the query replaced with an appropriate snippet as

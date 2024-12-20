@@ -16,7 +16,7 @@
   #### WHOLE-QUERY TRANSFORMATIONS
 
   Transformations and cleanup of the query structure as a whole to fix inconsistencies. Whereas the canonicalization
-  phase operates on a lower-level, transforming invidual clauses, this phase focuses on transformations that affect
+  phase operates on a lower-level, transforming individual clauses, this phase focuses on transformations that affect
   multiple clauses, such as removing duplicate references to Fields if they are specified in both the `:breakout` and
   `:fields` clauses.
 
@@ -603,7 +603,7 @@
                 (mbql.u/is-clause? :field field) (mbql.u/update-field-options dissoc :temporal-unit))]
     (into [:time-interval field] args)))
 
-;; all the other filter types have an implict field ID for the first arg
+;; all the other filter types have an implicit field ID for the first arg
 ;; (e.g. [:= 10 20] gets canonicalized to [:= [:field-id 10] 20]
 (defn- canonicalize-simple-filter-clause
   [[filter-name first-arg & other-args]]
@@ -629,7 +629,7 @@
 
 ;;; aggregations/expression subclauses
 
-;; Remove `:rows` type aggregation (long-since deprecated; simpliy means no aggregation) if present
+;; Remove `:rows` type aggregation (long-since deprecated; simplify means no aggregation) if present
 (defmethod canonicalize-mbql-clause :rows
   [_]
   nil)

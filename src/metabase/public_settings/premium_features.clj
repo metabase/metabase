@@ -183,7 +183,7 @@
 (declare decode-airgap-token)
 
 (mu/defn max-users-allowed :- [:maybe pos-int?]
-  "Returns the max users value from an airgapped key, or nil indicating there is no limt."
+  "Returns the max users value from an airgapped key, or nil indicating there is no limit."
   []
   (when-let [token (premium-embedding-token)]
     (when (str/starts-with? token "airgap_")

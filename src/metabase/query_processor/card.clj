@@ -111,7 +111,7 @@
                       filter-stage-added?))
                 nest-query)
         query (-> query
-                  ;; don't want default constraints overridding anything that's already there
+                  ;; don't want default constraints overriding anything that's already there
                   (m/dissoc-in [:middleware :add-default-userland-constraints?])
                   (assoc :constraints constraints
                          :parameters  (cond-> parameters

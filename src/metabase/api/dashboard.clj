@@ -975,7 +975,7 @@
   {id           ms/PositiveInt
    cards        (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)
    ;; tabs should be required in production, making it optional because lots of
-   ;; e2e tests curerntly doesn't include it
+   ;; e2e tests currently don't include it
    tabs [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
   (log/warn
    "DELETE /api/dashboard/:id/cards is deprecated. Use PUT /api/dashboard/:id instead.")
