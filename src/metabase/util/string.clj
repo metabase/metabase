@@ -4,6 +4,8 @@
    [clojure.string :as str]
    [metabase.util.i18n :refer [deferred-tru]]))
 
+(set! *warn-on-reflection* true)
+
 (defn build-sentence
   "Join parts of a sentence together to build a compound one.
 
