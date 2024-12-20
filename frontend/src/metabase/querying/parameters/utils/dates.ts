@@ -22,8 +22,8 @@ const MONTHS = [
 
 function serializeDate(date: Date, hasTime: boolean) {
   return hasTime
-    ? dayjs(date).format("YYYY-MMM-DD'T'HH:mm:SS")
-    : dayjs(date).format("YYYY-MMM-DD");
+    ? dayjs(date).format("YYYY-MM-DD'T'HH:mm:SS")
+    : dayjs(date).format("YYYY-MM-DD");
 }
 
 function hasTimePart(s: string) {
