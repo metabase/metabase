@@ -1,10 +1,12 @@
 (ns metabase.models.card-test
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.audit :as audit]
    [metabase.config :as config]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -1173,3 +1175,154 @@
       (t2/update! :model/Card :id [:in [card-1-id card-2-id]]
                   {:name "Flippy"})
       (is (= "Petey" (t2/select-one-fn :name :model/Card :id card-3-id))))))
+
+(defn- bare-query []
+  (mt/$ids orders
+    {:database 1
+     :type     :query
+     :query    {:source-query {:source-table $$orders
+                               :aggregation  [[:count] [:sum $subtotal]]
+                               :breakout     [$subtotal [:expression "yo"]]
+                               :expressions  {"yo" [:+ $subtotal 7]}}
+                :joins        [{:alias        "a_join"
+                                :condition    [:= $product_id &a_join.products.id]
+                                :source-table $$products}
+                               {:alias        "another_join"
+                                :condition    [:= $user_id &another_join.people.id]
+                                :source-table $$people}]}}))
+
+(defn- bare-query-exp [eid]
+  (mt/$ids orders
+    {:source-query {:source-table       $$orders
+                    :aggregation        [[:count] [:sum $subtotal]]
+                    :aggregation-idents {0 (str "aggregation_" eid "@0__0")
+                                         1 (str "aggregation_" eid "@0__1")}
+                    :breakout           [$subtotal [:expression "yo"]]
+                    :breakout-idents    {0 (str "breakout_" eid "@0__0")
+                                         1 (str "breakout_" eid "@0__1")}
+                    :expressions        {"yo" [:+ $subtotal 7]}
+                    :expression-idents  {"yo" (str "expression_" eid "@0__yo")}}
+     :joins        [{:alias "a_join"
+                     :ident (str "join_" eid "@1__a_join")}
+                    {:alias "another_join"
+                     :ident (str "join_" eid "@1__another_join")}]}))
+
+(deftest ^:sequential idents-populated-on-insert
+  (mt/with-temp [:model/Card {eid   :entity_id
+                              query :dataset_query} {:name          "A card"
+                                                     :dataset_query (bare-query)}]
+    (testing "on insert, a :dataset_query with missing idents gets them filled in"
+      (is (string? eid))
+      (is (=? {:source-query {:aggregation-idents {0 string?}
+                              :breakout-idents    {0 string?}
+                              :expression-idents  {"yo" string?}}
+               :joins        [{:alias "a_join"
+                               :ident string?}
+                              {:alias "another_join"
+                               :ident string?}]}
+              (:query query))))))
+
+(deftest ^:sequential entity-id-used-for-idents-if-missing-test
+  (mt/with-temp [:model/Card {id :id} {:name          "A card"
+                                       :dataset_query (bare-query)}]
+    ;; :idents are populated on initial insert; update to remove them. (Update does not populate them like insert.)
+    (t2/update! :model/Card id {:dataset_query (bare-query)})
+    ;; Can't use the one from `with-temp` since it came before the above edit.
+    (let [{eid   :entity_id
+           query :dataset_query} (t2/select-one :model/Card :id id)]
+      (testing "on read, a :dataset_query with missing idents gets them filled in based on entity_id"
+        ;; These idents are: kind_EID@stage__index, eg. "aggregation_4QsLuEnriHKkXCWqbPMQ8@0__0"
+        (is (string? eid))
+        (is (=? (bare-query-exp eid)
+                (:query query)))))))
+
+(deftest ^:sequential fall-back-to-hashing-entity-id-test
+  (mt/with-temp [:model/Card {id :id} {:name          "A card"
+                                       :dataset_query (bare-query)}]
+    ;; :idents are populated on initial insert; update to remove them. (Update does not populate them like insert.)
+    ;; Also remove the generated :entity_id.
+    (t2/update! :model/Card id {:dataset_query (bare-query)
+                                :entity_id     nil})
+    ;; Can't use the one from `with-temp` since it came before the above edit.
+    (let [{eid   :entity_id
+           query :dataset_query} (t2/select-one :model/Card :id id)]
+      (testing "on read, a :dataset_query with missing idents AND :entity_id gets a hashed entity_id and idents"
+        ;; These idents are: kind_EID@stage__index, eg. "aggregation_4QsLuEnriHKkXCWqbPMQ8@0__0"
+        ;; The entity_id is hashed based on created_at, so it's still always different!
+        (is (string? eid))
+        (is (=? (bare-query-exp eid)
+                (:query query)))))))
+
+(deftest ^:sequential e2e-entity-id-and-idents-test
+  (mt/with-temp [:model/Card {id :id} {:name          "A card"
+                                       :dataset_query (bare-query)}]
+    ;; :idents are populated on initial insert; update to remove them. (Update does not populate them like insert.)
+    ;; Also remove the generated :entity_id.
+    (t2/update! :model/Card id {:dataset_query (bare-query)
+                                :entity_id     nil})
+    ;; Can't use the one from `with-temp` since it came before the above edit.
+    (let [{eid   :entity_id
+           query :dataset_query} (t2/select-one :model/Card :id id)]
+      (testing "idents should be populated on read"
+        ;; These idents are: kind_EID@stage__index, eg. "aggregation_4QsLuEnriHKkXCWqbPMQ8@0__0"
+        ;; The entity_id is hashed based on created_at, so it's still always different!
+        (is (string? eid))
+        (is (=? (bare-query-exp eid)
+                (:query query)))
+
+        (testing "but not written back to appdb"
+          (let [{raw-query :dataset_query} (t2/select-one "report_card" :id id)]
+            (is (string? raw-query))
+            (is (nil? (str/index-of raw-query "-idents")))))
+
+        (testing "converted to pMBQL"
+          (let [converted   (lib/query (lib.metadata.jvm/application-database-metadata-provider 1) query)
+                agg-idents  (-> query :query :source-query :aggregation-idents)
+                brk-idents  (-> query :query :source-query :breakout-idents)
+                expr-idents (-> query :query :source-query :expression-idents)
+                join-idents (->> query :query :joins (map :ident))
+                expected    {:stages [{:aggregation [[:count {:ident (get agg-idents 0)}]
+                                                     [:sum   {:ident (get agg-idents 1)} some?]]
+                                       :breakout    [[:field      {:ident (get brk-idents 0)} some?]
+                                                     [:expression {:ident (get brk-idents 1)} some?]]
+                                       :expressions [[:+ {:lib/expression-name "yo"
+                                                          :ident               (get expr-idents "yo")}
+                                                      vector? 7]]}
+                                      {:joins [{:alias "a_join"
+                                                :ident (nth join-idents 0)}
+                                               {:alias "another_join"
+                                                :ident (nth join-idents 1)}]}]}
+                exp-legacy  {:query {:source-query {:aggregation-idents agg-idents
+                                                    :breakout-idents    brk-idents
+                                                    :expression-idents  expr-idents}
+                                     :joins [{:alias "a_join"
+                                              :ident (nth join-idents 0)}
+                                             {:alias "another_join"
+                                              :ident (nth join-idents 1)}]}}]
+            (is (=? expected converted))
+
+            (testing "and converted back to legacy"
+              (is (=? exp-legacy (lib.convert/->legacy-MBQL converted))))
+
+            (testing "edited without changing the idents"
+              (let [[expr] (lib/expressions converted 0)
+                    edited (lib/replace-clause converted 0 expr (lib/with-expression-name expr "new name"))]
+                (is (=? (assoc-in expected [:stages 0 :expressions 0 1 :lib/expression-name] "new name")
+                        edited))
+
+                (testing "converted back to legacy"
+                  (let [round-trip (lib.convert/->legacy-MBQL edited)
+                        exp-edited (update-in exp-legacy [:query :source-query :expression-idents]
+                                              update-keys (constantly "new name"))]
+                    (is (=? exp-edited round-trip))
+
+                    (testing "saved to appdb, preserving the idents"
+                      (t2/update! :model/Card id {:dataset_query round-trip})
+                      (let [{raw    :dataset_query} (t2/select-one "report_card" :id id)
+                            {cooked :dataset_query} (t2/select-one :model/Card   :id id)]
+                        (doseq [ident (concat (vals agg-idents)
+                                              (vals brk-idents)
+                                              (vals expr-idents)
+                                              join-idents)]
+                          (is (number? (str/index-of raw ident))))
+                        (is (=? exp-edited cooked))))))))))))))
