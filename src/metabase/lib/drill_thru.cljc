@@ -87,7 +87,7 @@
   ;; cannot determine that the clicked table cell was from an "underlying" aggregation-sourced column. See, e.g. the
   ;; comment in getTableCellClickedObject in table.js.
   (let [row-dimensions (lib.drill-thru.common/dimensions-from-breakout-columns query column row)]
-    (if (and (empty? dimensions) (not-empty row-dimensions))
+    (if (and (empty? dimensions) (seq row-dimensions))
       (assoc context :dimensions row-dimensions)
       context)))
 
