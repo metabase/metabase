@@ -125,7 +125,7 @@ const SERIALIZERS: Serializer[] = [
   // `today`
   {
     regex: /^today$/,
-    // TODO serialize properly when `getFilterTitle` is removed
+    // TODO serialize properly when legacy `getFilterTitle` is removed
     serialize: () => undefined,
     deserialize: () => {
       return {
@@ -138,7 +138,7 @@ const SERIALIZERS: Serializer[] = [
   // `yesterday`
   {
     regex: /^yesterday$/,
-    // TODO serialize properly when `getFilterTitle` is removed
+    // TODO serialize properly when legacy `getFilterTitle` is removed
     serialize: () => undefined,
     deserialize: () => {
       return {
@@ -170,7 +170,7 @@ const SERIALIZERS: Serializer[] = [
   // `lastmonth`, `lastyear`
   {
     regex: /^last(\w+)$/,
-    // TODO serialize properly when `getFilterTitle` is removed
+    // TODO serialize properly when legacy `getFilterTitle` is removed
     serialize: () => undefined,
     deserialize: match => {
       const unit = match[1];
