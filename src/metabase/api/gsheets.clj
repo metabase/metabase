@@ -16,7 +16,7 @@
 (defsetting gsheets
   #_"Information about Google Sheets Integration.
 
-  This value can have 4 states:
+  This value can have 3 states:
 
   1) {:status \"no-auth\"}
   Google Sheets Integration is enabled, but not authenticated.
@@ -25,6 +25,7 @@
   Google Sheets Integration is enabled and oauth is authenticated.
 
   3) {:status \"folder-saved\"
+      :folder_owner 8 ;; <-- user-id of whoever owns the folder
       :folder_url \"https://drive.google.com/drive/abc\"}
   Google Sheets Integration is enabled, authenticated, and a folder has been setup to sync."
   (deferred-tru "Information about Google Sheets Integration")
@@ -147,7 +148,9 @@
   {url :string}
   (let [[status _resp] (setup-drive-folder-sync url)]
     (if (= status :ok)
-      (u/prog1 {:status :folder-saved :folder_url url}
+      (u/prog1 {:status :folder-saved
+                :folder_owner api/*current-user-id*
+                :folder_url url}
         (gsheets! <>))
       (throw (ex-info "Unable to setup drive folder sync" {})))))
 
