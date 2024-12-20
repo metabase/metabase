@@ -5,7 +5,7 @@ export const visitApiKeySettings = () => {
   return cy.wait("@getKeys");
 };
 
-export const tryToCreateApiKeyViaModal = ({
+export const trytocreateapikeyviamodal = ({
   name,
   group,
 }: {
@@ -25,6 +25,9 @@ export const tryToCreateApiKeyViaModal = ({
   H.selectDropdown()
     .findByRole("option", {
       name: group,
+      // Workaround for Mantine bug where the dropdown is hidden while the
+      // modal is open
+      hidden: true,
     })
     .click();
 
