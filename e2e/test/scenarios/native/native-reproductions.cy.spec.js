@@ -132,9 +132,12 @@ describe("issue 16914", () => {
 
     cy.findByTestId("viz-settings-button").click();
     cy.findByTestId("sidebar-left")
-      .contains(/hidden/i)
-      .siblings("[data-testid$=hide-button]")
-      .click();
+      .as("sidebar")
+      .within(() => {
+        cy.findByTestId("draggable-item-HIDDEN")
+          .findByLabelText("eye_outline icon")
+          .click({ force: true });
+      });
     cy.button("Done").click();
 
     H.focusNativeEditor();
