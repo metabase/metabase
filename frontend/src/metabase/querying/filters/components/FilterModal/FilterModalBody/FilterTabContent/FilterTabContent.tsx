@@ -1,4 +1,4 @@
-import type { GroupItem } from "metabase/querying/filters/types";
+import type { GroupItem } from "metabase/querying/filters/hooks/use-filter-modal";
 import { Flex, Tabs } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 

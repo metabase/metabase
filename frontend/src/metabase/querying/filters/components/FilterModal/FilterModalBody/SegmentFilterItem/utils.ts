@@ -1,4 +1,4 @@
-import type { SegmentItem } from "metabase/querying/filters/types";
+import type { SegmentItem } from "metabase/querying/filters/hooks/use-filter-modal";
 import * as Lib from "metabase-lib";
 
 export function addSegmentFilters(

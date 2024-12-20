@@ -1,4 +1,4 @@
-import type { GroupItem } from "metabase/querying/filters/types";
+import type { GroupItem } from "metabase/querying/filters/hooks/use-filter-modal";
 import { Icon, Tabs } from "metabase/ui";
 
 import S from "./FilterTabList.module.css";

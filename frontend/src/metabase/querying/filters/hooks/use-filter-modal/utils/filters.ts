@@ -1,16 +1,8 @@
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
+import { getGroupName } from "metabase/querying/filters/utils/column-groups";
 import * as Lib from "metabase-lib";
 
 import type { GroupItem } from "../types";
-
-export function getGroupName(
-  groupInfo: Lib.ColumnGroupDisplayInfo,
-  stageIndex: number,
-) {
-  return groupInfo.isMainGroup && stageIndex > 1
-    ? `${groupInfo.displayName} (${stageIndex})`
-    : groupInfo.displayName;
-}
 
 export function getGroupItems(query: Lib.Query): GroupItem[] {
   const stageIndexes = Lib.stageIndexes(query);
