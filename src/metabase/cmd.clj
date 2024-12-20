@@ -264,12 +264,12 @@
   "Decrypts data in the metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to
   the current key"
   []
-  (classloader/require 'metabase.cmd.rotate-encryption-key)
+  (classloader/require 'metabase.cmd.remove-encryption)
   (when-not (encryption/default-encryption-enabled?)
     (log/error "MB_ENCRYPTION_SECRET_KEY environment variable has not been set")
     (system-exit! 1))
   (try
-    ((resolve 'metabase.cmd.rotate-encryption-key/rotate-encryption-key!) "")
+    ((resolve 'metabase.cmd.remove-encryption/remove-encryption!))
     (log/info "Encryption removed OK.")
     (system-exit! 0)
     (catch Throwable e
