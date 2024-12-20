@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import type { ColumnItem } from "metabase/querying/filters/hooks/use-filter-modal";
+import type { ColumnItem } from "metabase/querying/filters/types";
 import { DelayGroup } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 

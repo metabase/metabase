@@ -1,6 +1,7 @@
 import type { FormEvent } from "react";
 import { t } from "ttag";
 
+import type { DatePickerUnit } from "metabase/querying/filters/types";
 import {
   Box,
   Button,
@@ -12,7 +13,6 @@ import {
   Text,
 } from "metabase/ui";
 
-import type { DatePickerUnit } from "../../types";
 import type { DateIntervalValue, DateOffsetIntervalValue } from "../types";
 import {
   formatDateRange,

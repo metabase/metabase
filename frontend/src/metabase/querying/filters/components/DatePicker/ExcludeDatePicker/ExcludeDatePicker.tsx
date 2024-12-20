@@ -1,6 +1,13 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type {
+  DatePickerExtractionUnit,
+  DatePickerOperator,
+  DatePickerUnit,
+  ExcludeDatePickerOperator,
+  ExcludeDatePickerValue,
+} from "metabase/querying/filters/types";
 import type { PopoverBackButtonProps } from "metabase/ui";
 import {
   Box,
@@ -13,13 +20,6 @@ import {
 } from "metabase/ui";
 
 import { MIN_WIDTH } from "../constants";
-import type {
-  DatePickerExtractionUnit,
-  DatePickerOperator,
-  DatePickerUnit,
-  ExcludeDatePickerOperator,
-  ExcludeDatePickerValue,
-} from "../types";
 
 import type { ExcludeValueOption } from "./types";
 import {

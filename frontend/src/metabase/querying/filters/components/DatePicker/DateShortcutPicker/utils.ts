@@ -2,7 +2,7 @@ import type {
   DatePickerOperator,
   DatePickerShortcut,
   ShortcutOption,
-} from "../types";
+} from "metabase/querying/filters/types";
 
 import { SHORTCUT_OPTION_GROUPS, TYPE_OPTIONS } from "./constants";
 import type { TypeOption } from "./types";

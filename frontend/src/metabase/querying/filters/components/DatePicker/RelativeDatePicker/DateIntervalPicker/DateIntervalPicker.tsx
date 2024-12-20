@@ -1,6 +1,7 @@
 import type { FormEvent } from "react";
 import { t } from "ttag";
 
+import type { DatePickerUnit } from "metabase/querying/filters/types";
 import {
   Button,
   Divider,
@@ -13,7 +14,6 @@ import {
   Tooltip,
 } from "metabase/ui";
 
-import type { DatePickerUnit } from "../../types";
 import { IncludeCurrentSwitch } from "../IncludeCurrentSwitch";
 import type { DateIntervalValue } from "../types";
 import {

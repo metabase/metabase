@@ -1,4 +1,4 @@
-import type { ColumnItem } from "metabase/querying/filters/hooks/use-filter-modal";
+import type { ColumnItem } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 
 function isCreationDateOrTimestamp(column: Lib.ColumnMetadata) {

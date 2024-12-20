@@ -1,8 +1,10 @@
 import { useState } from "react";
 
+import type {
+  DatePickerUnit,
+  RelativeDatePickerValue,
+} from "metabase/querying/filters/types";
 import { Box, Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
-
-import type { DatePickerUnit, RelativeDatePickerValue } from "../types";
 
 import { CurrentDatePicker } from "./CurrentDatePicker";
 import { DateIntervalPicker } from "./DateIntervalPicker";

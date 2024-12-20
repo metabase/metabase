@@ -8,7 +8,7 @@ import type {
   DatePickerUnit,
   ExcludeDatePickerOperator,
   ExcludeDatePickerValue,
-} from "../types";
+} from "metabase/querying/filters/types";
 
 import { EXCLUDE_OPERATOR_OPTIONS, EXCLUDE_UNIT_OPTIONS } from "./constants";
 import type {
