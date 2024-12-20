@@ -71,7 +71,9 @@ const ChartSettingsWidget = ({
           className={cx({ [FormS.FormLabel]: isFormField })}
           htmlFor={extraWidgetProps.id}
         >
-          <Text>{title}</Text>
+          <Text fw="bold" lh="inherit">
+            {title}
+          </Text>
           {hint && (
             <InfoIconContainer>
               <InfoIcon
