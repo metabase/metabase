@@ -244,7 +244,7 @@ describe("scenarios > question > native", () => {
         .as("sidebar")
         .within(() => {
           cy.findByTestId("draggable-item-HIDDEN")
-            .findByLabelText("eye_outline icon")
+            .icon("eye_outline")
             .click({ force: true });
         });
       cy.get("@editor").type("{movetoend}, 3 as added");

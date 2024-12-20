@@ -1008,7 +1008,7 @@ H.describeEE("formatting > sandboxes", () => {
         .within(() => {
           // Remove the "Subtotal" column from within sidebar
           cy.findByTestId("draggable-item-Subtotal")
-            .findByLabelText("eye_outline icon")
+            .icon("eye_outline")
             .click({ force: true });
         });
 

@@ -135,7 +135,7 @@ describe("issue 16914", () => {
       .as("sidebar")
       .within(() => {
         cy.findByTestId("draggable-item-HIDDEN")
-          .findByLabelText("eye_outline icon")
+          .icon("eye_outline")
           .click({ force: true });
       });
     cy.button("Done").click();
