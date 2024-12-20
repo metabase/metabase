@@ -1,12 +1,15 @@
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { ActionIcon, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
+import { getIsDirty } from "metabase/visualizer/selectors";
 import { toggleVizSettingsSidebar } from "metabase/visualizer/visualizer.slice";
 
 export function Header() {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
+
+  const isDirty = useSelector(getIsDirty);
   const dispatch = useDispatch();
 
   return (
@@ -26,7 +29,10 @@ export function Header() {
 
       <Flex align="center" gap="sm">
         <Tooltip label={t`Settings`}>
-          <ActionIcon onClick={() => dispatch(toggleVizSettingsSidebar())}>
+          <ActionIcon
+            disabled={!isDirty}
+            onClick={() => dispatch(toggleVizSettingsSidebar())}
+          >
             <Icon name="gear" />
           </ActionIcon>
         </Tooltip>

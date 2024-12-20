@@ -226,6 +226,10 @@ export const getTabularPreviewSeries = createSelector(
   },
 );
 
+export const getIsDirty = createSelector([getCurrentHistoryItem], state =>
+  checkIfStateDirty(state),
+);
+
 export const getVisualizerUrlHash = createSelector(
   [getCurrentHistoryItem],
   state => getStateHash(state),
@@ -242,10 +246,14 @@ export const getFutureVisualizerUrlHashes = createSelector(
 );
 
 function getStateHash(state: VisualizerHistoryItem) {
-  const isDirty =
+  return checkIfStateDirty(state) ? utf8_to_b64(JSON.stringify(state)) : "";
+}
+
+function checkIfStateDirty(state: VisualizerHistoryItem) {
+  return (
     !!state.display ||
     state.columns.length > 0 ||
     Object.keys(state.settings).length > 0 ||
-    Object.keys(state.columnValuesMapping).length > 0;
-  return isDirty ? utf8_to_b64(JSON.stringify(state)) : "";
+    Object.keys(state.columnValuesMapping).length > 0
+  );
 }
