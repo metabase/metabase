@@ -8,7 +8,7 @@ export const gsheetsApi = EnterpriseApi.injectEndpoints({
     >({
       query: body => ({
         method: "POST",
-        url: "/api/gsheets/oauth",
+        url: "/api/ee/gsheets/oauth",
         body: body,
       }),
     }),
@@ -16,7 +16,7 @@ export const gsheetsApi = EnterpriseApi.injectEndpoints({
     getGsheetsOauthStatus: builder.query<{ oauth_setup: boolean }, void>({
       query: () => ({
         method: "GET",
-        url: "/api/gsheets/oauth",
+        url: "/api/ee/gsheets/oauth",
       }),
     }),
 
@@ -26,7 +26,7 @@ export const gsheetsApi = EnterpriseApi.injectEndpoints({
     >({
       query: body => ({
         method: "POST",
-        url: "/api/gsheets/folder",
+        url: "/api/ee/gsheets/folder",
         body: body,
       }),
     }),

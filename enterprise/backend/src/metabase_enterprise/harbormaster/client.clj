@@ -1,4 +1,4 @@
-(ns metabase.harbormaster.client
+(ns metabase-enterprise.harbormaster.client
   "API client for interfacing with Harbormaster on store-api-url."
   (:require
    [clj-http.client :as http]
@@ -24,14 +24,14 @@
     :move    http/move
     :patch   http/patch))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; PUBLIC API:
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (mu/defn- get-safe-status
   [response]
   (when (number? (:status response))
     (http/success? response)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; PUBLIC API:
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (mu/defn make-request :- [:tuple [:enum :ok :error] :map]
   "Makes a request to the store-api-url with the given method, path, and body.

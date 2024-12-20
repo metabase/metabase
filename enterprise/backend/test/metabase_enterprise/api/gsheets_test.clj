@@ -1,4 +1,4 @@
-(ns metabase.api.gsheets-test
+(ns metabase-enterprise.api.gsheets-test
   (:require [clojure.test :refer [deftest is testing]]
             [metabase.api.gsheets :as gsheets]
             [metabase.test.util :as tu]))

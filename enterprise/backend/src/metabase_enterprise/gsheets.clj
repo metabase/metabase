@@ -1,4 +1,4 @@
-(ns metabase.api.gsheets
+(ns metabase-enterprise.gsheets
   "/api/gsheets endpoints"
   (:require
    [clojure.string :as str]
@@ -71,7 +71,7 @@
 (defn- oauth-setup? [gsheets-status]
   ;; When google drive oauth exists, set the gsheets setting to be auth-complete.
   (or
-   ;; It's already set it up, no need to ask HM or update the status:
+   ;; It's already set up! no need to ask HM or update the status:
    (contains? #{"auth-complete" "folder-saved"} gsheets-status)
    (if (hm-oauth-setup?)
      ;; When harbormaster says oauth exists, set the gsheets status to `auth-complete`:
