@@ -41,7 +41,7 @@ export interface BaseBucketPickerPopoverProps {
   renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => ReactNode;
   onSelect: (column: Lib.Bucket | NoBucket) => void;
   className?: string;
-  classes?: {
+  classNames?: {
     root?: string;
     chevronDown?: string;
   };
@@ -62,7 +62,7 @@ function _BaseBucketPickerPopover({
   onSelect,
   hasChevronDown,
   className,
-  classes = {},
+  classNames = {},
 }: BaseBucketPickerPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
   const [isExpanded, setIsExpanded] = useState(
@@ -115,7 +115,7 @@ function _BaseBucketPickerPopover({
     <Popover opened={isOpened} position="right" onClose={handlePopoverClose}>
       <Popover.Target>
         <TriggerButton
-          className={cx(classes.root, className)}
+          className={cx(classNames.root, className)}
           aria-label={triggerLabel}
           data-testid="dimension-list-item-binning"
           onClick={event => {
@@ -136,14 +136,9 @@ function _BaseBucketPickerPopover({
           {hasArrowIcon && !hasChevronDown && (
             <TriggerIcon name="chevronright" />
           )}
-          {/*
-            isEditing controls "selected" state of the item, so if a row is selected, we want to show icon
-            otherwise we show chevron down icon only when we hover over a row, to control this behavior
-            we pass or not pass chevronDown class, which hides this icon by default
-          */}
           {hasChevronDown && (
             <ChevronDown
-              className={isEditing ? undefined : classes.chevronDown}
+              className={classNames.chevronDown}
               name="chevrondown"
             />
           )}

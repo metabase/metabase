@@ -1,10 +1,6 @@
-.itemWrapper {
-  justify-content: space-between;
-
-  &:hover {
-    .chevronDown {
-      visibility: visible;
-    }
+.itemWrapper:hover {
+  .chevronDown {
+    visibility: visible;
   }
 }
 

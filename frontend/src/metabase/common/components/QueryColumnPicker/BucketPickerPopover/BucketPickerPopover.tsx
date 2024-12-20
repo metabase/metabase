@@ -10,7 +10,7 @@ interface BucketPickerPopoverProps
   hasBinning?: boolean;
   hasTemporalBucketing?: boolean;
   className?: string;
-  classes?: {
+  classNames?: {
     root?: string;
     chevronDown?: string;
   };
