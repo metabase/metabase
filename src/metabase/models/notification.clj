@@ -8,7 +8,9 @@
    [medley.core :as m]
    [metabase.models.channel :as models.channel]
    [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
    [metabase.models.util.spec-update :as models.u.spec-update]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -368,6 +370,68 @@
   (merge {:send_condition :has_result
           :send_once      false}
          instance))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                         Permissions                                             ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(defn- current-user-can-read-payload?
+  [notification]
+  (case (:payload_type notification)
+    :notification/card
+    (mi/can-read? :model/Card (-> notification :payload :card_id))
+
+    :notification/system-event
+    (mi/superuser?)
+
+    :notification/testing
+    true))
+
+(defn- current-user-is-recipient?
+  [notification]
+  (->> (:handlers (t2/hydrate notification [:handlers :recipients]))
+       (mapcat :recipients)
+       (map :user_id)
+       set
+       (some #{(mi/current-user-id)})
+       boolean))
+
+(defn- current-user-is-creator?
+  [notification]
+  (= (:creator_id notification) (mi/current-user-id)))
+
+(defmethod mi/can-read? :model/Notification
+  ([notification]
+   ;; users can view a notification if they can view the payload or if they are the creator
+   (or
+    (mi/superuser?)
+    (current-user-is-creator? notification)
+    (current-user-is-recipient? notification)))
+  ([_ pk]
+   (mi/can-read? (t2/select-one :model/Notification pk))))
+
+(defmethod mi/can-create? :model/Notification
+  [_ notification]
+  (or
+   (mi/superuser?)
+   (current-user-can-read-payload? notification)
+   ;; if ee is enabled, prevent users without subscription permissions from creating notifications
+   (and
+    (premium-features/has-feature? :advanced-permissions)
+    (perms/current-user-has-application-permissions? :subscription))))
+
+(defmethod mi/can-update? :model/Notification
+  [instance _changes]
+  (or
+   (mi/superuser?)
+   (and
+    (current-user-is-creator? instance)
+    ;; if advanced-permissions is enabled, we require users to have subscription permissions
+    ;; and is the owner of the notification and can read the payload
+    (or
+     (not (premium-features/has-feature? :advanced-permissions))
+     (perms/current-user-has-application-permissions? :subscription))
+    (current-user-can-read-payload? instance))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Public APIs                                             ;;

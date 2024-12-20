@@ -2,12 +2,15 @@
   (:require
    [clojure.test :refer :all]
    [clojure.walk :as walk]
+   [java-time.api :as t]
    [medley.core :as m]
+   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
-(deftest get-notication-card-test
+(deftest get-notification-card-test
   (mt/with-temp [:model/Channel {chn-id :id} notification.tu/default-can-connect-channel
                  :model/ChannelTemplate {tmpl-id :id} notification.tu/channel-template-email-with-handlebars-body]
     (notification.tu/with-card-notification
@@ -62,6 +65,7 @@
   (testing "404 on unknown notification"
     (is (= "Not found."
            (mt/user-http-request :crowberto :get (format "notification/%d" Integer/MAX_VALUE))))))
+
 
 (deftest create-simple-card-notification-test
   (mt/with-model-cleanup [:model/Notification]
@@ -249,3 +253,122 @@
                    :channel/http  [{:body (mt/malli=? some?)}]}
                   (notification.tu/with-captured-channel-send!
                     (mt/user-http-request :crowberto :post 204 "notification/send" (strip-keys notification [:id :created_at :updated_at]))))))))))
+
+;; Permission tests
+
+(deftest get-notification-permissions-test
+  (mt/with-temp
+    [:model/User {third-user-id :id} {:is_superuser false}]
+    (notification.tu/with-card-notification
+      [notification {:notification {:creator_id (mt/user->id :rasta)}
+                     :handlers     [{:channel_type "channel/email"
+                                     :recipients   [{:type    :notification-recipient/user
+                                                     :user_id (mt/user->id :lucky)}]}]}]
+      (let [get-notification (fn [user-or-id expected-status]
+                               (mt/user-http-request user-or-id :get expected-status (format "notification/%d" (:id notification))))]
+        (testing "admin can view"
+          (get-notification :crowberto 200))
+        (testing "creator can view"
+          (get-notification :rasta 200))
+        (testing "recipient can view"
+          (get-notification :lucky 200))
+        (testing "other than that no one can view"
+          (get-notification third-user-id 403))))))
+
+(deftest get-system-event-permissions-test
+  (notification.tu/with-system-event-notification!
+    [notification {:event :mb-test/permissions
+                   :notification {:creator_id (mt/user->id :rasta)}}]
+    (let [get-notification (fn [user-or-id expected-status]
+                             (mt/user-http-request user-or-id :get expected-status (format "notification/%d" (:id notification))))]
+      (testing "admin can view"
+        (get-notification :crowberto 200))
+      (testing "creator can view"
+        (get-notification :rasta 200))
+      (testing "other than that no one can view"
+        (get-notification :lucky 403)))))
+
+(deftest create-card-notification-permissions-test
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-user-in-groups [group {:name "test notification perm"}
+                             user  [group]]
+      (mt/with-temp
+        [:model/Card {card-id :id} {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))}]
+        (let [create-notification! (fn [user-or-id expected-status]
+                                     (mt/user-http-request user-or-id :post expected-status "notification"
+                                                           {:payload_type "notification/card"
+                                                            :creator_id   (mt/user->id :rasta)
+                                                            :payload      {:card_id card-id}}))]
+          (mt/with-premium-features #{}
+            (testing "admin can create"
+              (create-notification! :crowberto 200))
+            (testing "users who can view the card can create"
+              (create-notification! :rasta 200))
+            (testing "normal users can't create"
+              (create-notification! (:id user) 403))
+            (mt/when-ee-evailable
+             (perms/grant-application-permissions! group :subscription)
+             (testing "users with advanced subscription permissions"
+               (testing "still can't create if advanced-permissions is disabled"
+                 (create-notification! (:id user) 403))
+               (testing "can create if advanced-permissions is enabled"
+                 (mt/with-premium-features #{:advanced-permissions}
+                   (create-notification! (:id user) 200)))))))))))
+
+(deftest update-card-notification-permissions-test
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-user-in-groups [group {:name "test notification perm"}
+                             user  [group]]
+      (notification.tu/with-card-notification
+        [notification {:card         {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))}
+                       :notification {:creator_id (mt/user->id :rasta)}}]
+        (let [update!                     (fn [user-or-id expected-status]
+                                            (mt/user-http-request user-or-id :put expected-status (format "notification/%d" (:id notification))
+                                                                  (assoc notification :updated_at (t/offset-date-time))))
+              change-notification-creator (fn [user-id]
+                                            (t2/update! :model/Notification (:id notification) {:creator_id user-id}))
+              move-card-collection        (fn [user-id]
+                                            (t2/update! :model/Card (-> notification :payload :card_id)
+                                                        {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id user-id)}))]
+          (mt/with-premium-features #{}
+            (testing "admin can update"
+              (update! :crowberto 200))
+            (testing "owner can update"
+              (update! :rasta 200))
+            (testing "owner can't no longer update if they can't view the card"
+              (try
+                ;; card is moved to crowberto's collection
+                (move-card-collection (mt/user->id :crowberto))
+                (update! :rasta 403)
+                (finally
+                  ;; move it back
+                  (move-card-collection (mt/user->id :rasta)))))
+            (testing "other than that noone can update"
+              (update! :lucky 403))
+
+            (mt/when-ee-evailable
+             ;; change notification's creator to user for easy of testing
+             (try
+               (change-notification-creator (:id user))
+               (move-card-collection (:id user))
+               (mt/with-premium-features #{:advanced-permissions}
+                 (testing "owners won't be able to update without subscription permissions"
+                   (perms/revoke-application-permissions! (perms-group/all-users) :subscription)
+                   (perms/revoke-application-permissions! group :subscription)
+                   (update! (:id user) 403))
+                 (testing "owners can update with subscription permissions"
+                   (perms/grant-application-permissions! group :subscription)
+                   (update! (:id user) 200)
+                   (testing "but no longer able to update of they can't view the card"
+                     (try
+                       ;; card is moved to crowberto's collection
+                       (move-card-collection (mt/user->id :crowberto))
+                       (update! :rasta 403)
+                       (finally
+                         ;; move it back
+                         (move-card-collection (mt/user->id :rasta)))))))
+
+               (finally
+                 (perms/grant-application-permissions! (perms-group/all-users) :subscription)
+                 (change-notification-creator (mt/user->id :rasta))
+                 (move-card-collection (mt/user->id :rasta)))))))))))
