@@ -1,4 +1,5 @@
 import { H } from "e2e/support";
+
 export const visitApiKeySettings = () => {
   cy.visit("/admin/settings/authentication/api-keys");
   return cy.wait("@getKeys");
@@ -22,7 +23,9 @@ export const tryToCreateApiKeyViaModal = ({
     });
 
   H.selectDropdown()
-    .findByRole("option", { name: group, hidden: true })
+    .findByRole("option", {
+      name: group,
+    })
     .click();
 
   cy.get("@modal").button("Create").click();
