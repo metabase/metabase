@@ -53,8 +53,8 @@ export const baseStyle = css`
     text-align: left;
   }
 
+  /* reset button element */
   button {
-    /* reset button element */
     font-size: 100%;
     -webkit-appearance: none;
     border: 0;
