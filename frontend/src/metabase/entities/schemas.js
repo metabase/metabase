@@ -238,13 +238,15 @@ const useGetQuery = query => {
   return result;
 };
 
-function useListQuery({ dbId, getAll = false, ...args }) {
+function useListQuery({ dbId, getAll = false, ...args }, options) {
   const syncableDatabaseSchemas = useListSyncableDatabaseSchemasQuery(
     getAll ? dbId : skipToken,
+    options,
   );
 
   const databaseSchemas = useListDatabaseSchemasQuery(
     getAll ? skipToken : { id: dbId, ...args },
+    options,
   );
 
   const schemas = getAll ? syncableDatabaseSchemas : databaseSchemas;
