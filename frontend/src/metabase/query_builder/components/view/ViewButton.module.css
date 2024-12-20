@@ -1,0 +1,37 @@
+.ViewButton {
+  background-color: color-mix(
+    in srgb,
+    var(--view-button-color) 20%,
+    transparent
+  );
+  color: var(--view-button-color);
+  border: none;
+  transition:
+    background 300ms linear,
+    border 300ms linear;
+
+  &:hover {
+    background-color: color-mix(
+      in srgb,
+      var(--view-button-color) 35%,
+      transparent
+    );
+  }
+
+  &.active {
+    background-color: var(--view-button-color);
+    color: var(--mb-color-text-white);
+
+    &:hover {
+      background-color: color-mix(
+        in srgb,
+        var(--view-button-color) 80%,
+        transparent
+      );
+    }
+  }
+
+  > :global(.Icon) {
+    opacity: 0.6;
+  }
+}

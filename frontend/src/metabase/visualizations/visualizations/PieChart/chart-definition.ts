@@ -131,14 +131,13 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
             String(formatValue(value, options)),
           );
         },
-        ([{ json_query, started_at }], settings) =>
+        ([{ data }], settings) =>
           JSON.stringify({
-            json_query,
-            started_at,
+            cols: data.cols,
+            rows: data.rows,
             settings: _.pick(
               settings,
               ...pieRowsReadDeps,
-              "column",
               "pie.rows",
               "pie.sort_rows_dimension",
             ),

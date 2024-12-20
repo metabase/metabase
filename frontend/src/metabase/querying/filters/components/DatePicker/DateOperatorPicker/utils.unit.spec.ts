@@ -1,4 +1,4 @@
-import { DATE_PICKER_OPERATORS } from "../constants";
+import { DATE_PICKER_OPERATORS } from "metabase/querying/filters/constants";
 import type {
   DatePickerTruncationUnit,
   DatePickerValue,
@@ -6,7 +6,7 @@ import type {
   RelativeDatePickerValue,
   SpecificDatePickerOperator,
   SpecificDatePickerValue,
-} from "../types";
+} from "metabase/querying/filters/types";
 
 import { OPERATOR_OPTIONS } from "./constants";
 import type { OptionType } from "./types";

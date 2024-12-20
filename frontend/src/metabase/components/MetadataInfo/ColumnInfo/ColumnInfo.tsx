@@ -8,7 +8,7 @@ import {
   QueryColumnFingerprintInfo,
   TableColumnFingerprintInfo,
 } from "../ColumnFingerprintInfo";
-import { Description, EmptyDescription } from "../MetadataInfo.styled";
+import { Description, EmptyDescription } from "../MetadataInfo";
 import { SemanticTypeLabel } from "../SemanticTypeLabel";
 
 import { InfoContainer, Small } from "./ColumnInfo.styled";

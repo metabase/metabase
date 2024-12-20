@@ -15,6 +15,7 @@
    [metabase.lib.database.methods :as lib.database.methods]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.ident :as lib.ident]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -95,7 +96,7 @@
       (lib.options/update-options (fn [opts]
                                     (-> opts
                                         (assoc :lib/expression-name a-name
-                                               :ident (u/generate-nano-id))
+                                               :ident (lib.ident/random-ident))
                                         (dissoc :name :display-name))))))
 
 (defmulti custom-name-method
@@ -123,8 +124,10 @@
   [stage location target-clause new-clause]
   {:pre [((some-fn clause? #(= (:lib/type %) :mbql/join)) target-clause)]}
   (let [new-clause (if (= :expressions (first location))
-                     (top-level-expression-clause new-clause (or (custom-name new-clause)
-                                                                 (expression-name target-clause)))
+                     (-> new-clause
+                         (top-level-expression-clause (or (custom-name new-clause)
+                                                          (expression-name target-clause)))
+                         (lib.common/preserve-ident-of target-clause))
                      new-clause)]
     (m/update-existing-in
      stage

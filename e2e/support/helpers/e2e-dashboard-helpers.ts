@@ -113,7 +113,7 @@ export function setFilter(type: string, subType?: string, name?: string) {
 
   if (subType) {
     sidebar().findByText("Filter operator").next().click();
-    popover().findByText(subType).click();
+    cy.findByRole("listbox").findByText(subType).click();
   }
 
   if (name) {
@@ -210,20 +210,8 @@ export function addHeadingWhileEditing(
   cy.findByPlaceholderText("Heading").type(string, options);
 }
 
-export function openAddQuestionMenu(
-  option?: "Existing Question" | "New Question" | "New SQL query",
-) {
-  dashboardHeader().findByLabelText("Add questions").click();
-  if (option) {
-    popover().findByText(option).click();
-  }
-}
-
 export function openQuestionsSidebar() {
-  openAddQuestionMenu();
-  menu().within(() => {
-    cy.findByText(/Existing Question/).click();
-  });
+  dashboardHeader().findByLabelText("Add questions").click();
 }
 
 export function createNewTab() {
@@ -385,7 +373,7 @@ export function getTextCardDetails({
       },
       text,
     },
-  };
+  } as const;
 }
 
 export function getHeadingCardDetails({

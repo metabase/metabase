@@ -493,8 +493,7 @@
                                 (into {}))]
     (when (and (:dashboard_id changes) (seq dashboard-id->name))
       (throw (ex-info
-              (tru "Cannot convert to dashboard question: appears in other dashboards ({0})"
-                   (str/join "," (vals dashboard-id->name)))
+              (tru "Can't move question into dashboard. Questions saved in dashboards can't appear in other dashboards.")
               {:status-code 400
                :other-dashboards dashboard-id->name}))))
   (when-let [reason (invalid-dashboard-internal-card-update-reason? card changes)]
@@ -655,12 +654,31 @@
       (pre-update-check-sandbox-constraints changes)
       (assert-valid-type (merge old-card-info changes)))))
 
+(defn- add-query-description-to-metric-card
+  "Add `:query_description` key to returned card.
+
+  Some users were missing description that was present in v1 metric API responses. This new key compensates for that.
+
+  This function is used in `t2/define-after-select :model/Card`. Metadata provider caching should be considered when
+  fetching multiple metric cards having common database, as done in eg. dashboard API context."
+  [card]
+  (if-not (and (map? card)
+               (= :metric (:type card))
+               (-> card :dataset_query not-empty)
+               (-> card :database_id))
+    card
+    (m/assoc-some card :query_description (some-> (lib.metadata.jvm/application-database-metadata-provider
+                                                   (:database_id card))
+                                                  (lib/query (:dataset_query card))
+                                                  lib/suggested-name))))
+
 (t2/define-after-select :model/Card
   [card]
   (-> card
       (dissoc :dataset_query_metrics_v2_migration_backup)
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
-      public-settings/remove-public-uuid-if-public-sharing-is-disabled))
+      public-settings/remove-public-uuid-if-public-sharing-is-disabled
+      add-query-description-to-metric-card))
 
 (t2/define-before-insert :model/Card
   [card]
@@ -733,14 +751,19 @@
         {:keys [dashcards tabs]} dashboard
         already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))]
     (when-not already-on-dashboard?
-      (let [cards-on-first-tab (or (:cards (first tabs))
+      (let [first-tab (first tabs)
+            cards-on-first-tab (or (:cards first-tab)
                                    dashcards)
             new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab (:display card))]
         (t2/insert! :model/DashboardCard (assoc new-spot
+                                                :dashboard_tab_id (some-> first-tab :id)
                                                 :card_id (:id card)
                                                 :dashboard_id dashboard-id))
-        (events/publish-event! :event/dashboard-update {:object dashboard
-                                                        :user-id api/*current-user-id*})))))
+        ;; the handler for `:event/dashboard-update` will hydrate `:dashcards` iff it's missing - make sure it is, so
+        ;; we don't store a revision for the *unmodified* dashcards.
+        (events/publish-event! :event/dashboard-update
+                               {:object (dissoc dashboard :dashcards :tabs)
+                                :user-id api/*current-user-id*})))))
 
 (defn- autoremove-dashcard-for-card!
   [card-id dashboard-id]

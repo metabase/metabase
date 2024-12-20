@@ -130,7 +130,7 @@ describe("issue 9027", () => {
 
     H.startNewQuestion();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("Orders").should("exist");
       cy.button("Close").click();
     });
@@ -160,7 +160,7 @@ describe("issue 9027", () => {
 function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
   H.startNewQuestion();
   H.entityPickerModal().within(() => {
-    H.entityPickerModalTab("Saved questions").click();
+    H.entityPickerModalTab("Collections").click();
     cy.findByText(questionName).should(exists ? "exist" : "not.exist");
     cy.button("Close").click();
   });
@@ -836,15 +836,16 @@ describe("issues 11914, 18978, 18977, 23857", () => {
       "Make sure we don't offer to duplicate question with a query for which the user has no permission to run (metabase#23857)",
     );
     H.visitQuestion(ORDERS_QUESTION_ID);
-    cy.findByLabelText("Move, trash, and more...").click();
+    cy.findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Duplicate").should("not.exist");
 
     cy.log(
       "Make sure we don't offer to duplicate question based on a question with a query for which the user has no permission to run (metabase#23857)",
     );
+    cy.findByLabelText("Move, trash, and more…").click(); // close actions menu, without this "Search" button is treated as hidden by cypress
     H.commandPaletteSearch("Repro", false);
     H.commandPalette().findByText("Repro").click();
-    cy.findByLabelText("Move, trash, and more...").click();
+    cy.findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Duplicate").should("not.exist");
 
     cy.log(

@@ -29,7 +29,7 @@ describe("scenarios > question > bookmarks", () => {
 
     cy.log("Turn the question into a model");
     H.openQuestionActions();
-    cy.findByRole("dialog").contains("Turn into a model").click();
+    cy.findByRole("menu").contains("Turn into a model").click();
     cy.findByRole("dialog").contains("Turn this into a model").click();
     cy.findByRole("status")
       .should("contain", "This is a model now.")
@@ -47,7 +47,7 @@ describe("scenarios > question > bookmarks", () => {
 
     cy.log("Turn the model back into a question");
     H.openQuestionActions();
-    cy.findByRole("dialog").contains("Turn back to saved question").click();
+    cy.findByRole("menu").contains("Turn back to saved question").click();
     cy.findByRole("status").should("contain", "This is a question now.");
 
     H.openNavigationSidebar();

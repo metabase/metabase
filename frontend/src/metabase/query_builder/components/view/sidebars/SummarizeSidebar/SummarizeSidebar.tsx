@@ -1,7 +1,9 @@
+import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type { UpdateQueryHookProps } from "metabase/query_builder/hooks/types";
 import { useDefaultQueryAggregation } from "metabase/query_builder/hooks/use-default-query-aggregation";
 import { Divider } from "metabase/ui";
@@ -10,7 +12,7 @@ import {
   SummarizeAggregationItemList,
   SummarizeBreakoutColumnList,
 } from "./SummarizeContent";
-import { SidebarView } from "./SummarizeSidebar.styled";
+import SummarizeSidebarS from "./SummarizeSidebar.module.css";
 
 type SummarizeSidebarProps = {
   className?: string;
@@ -41,8 +43,8 @@ export function SummarizeSidebar({
   }, [query, onQueryChange, onClose]);
 
   return (
-    <SidebarView
-      className={className}
+    <SidebarContent
+      className={cx(SummarizeSidebarS.SidebarView, className)}
       title={t`Summarize by`}
       color={color("summarize")}
       onDone={handleDoneClick}
@@ -62,6 +64,6 @@ export function SummarizeSidebar({
           stageIndex={stageIndex}
         />
       )}
-    </SidebarView>
+    </SidebarContent>
   );
 }

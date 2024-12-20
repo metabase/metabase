@@ -4,6 +4,7 @@ import {
   entityPickerModal,
   entityPickerModalTab,
   popover,
+  shouldDisplayTabs,
 } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import type { NotebookStepType } from "metabase/querying/notebook/types";
 import type { IconName } from "metabase/ui";
@@ -201,9 +202,8 @@ export function selectSavedQuestionsToJoin(
 ) {
   cy.intercept("GET", "/api/table/*/query_metadata").as("joinedTableMetadata");
   entityPickerModal().within(() => {
-    entityPickerModalTab("Models").should("exist");
-    entityPickerModalTab("Tables").should("exist");
-    entityPickerModalTab("Saved questions").click();
+    shouldDisplayTabs(["Tables", "Collections"]);
+    entityPickerModalTab("Collections").click();
     cy.findByText(firstQuestionName).click();
   });
 
@@ -213,9 +213,8 @@ export function selectSavedQuestionsToJoin(
   cy.icon("join_left_outer").click();
 
   entityPickerModal().within(() => {
-    entityPickerModalTab("Models").should("exist");
-    entityPickerModalTab("Tables").should("exist");
-    entityPickerModalTab("Saved questions").click();
+    shouldDisplayTabs(["Tables", "Collections"]);
+    entityPickerModalTab("Collections").click();
     cy.findByText(secondQuestionName).click();
   });
 }

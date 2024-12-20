@@ -83,6 +83,7 @@
    "QueryTable"
    "RecentViews"
    "Revision"
+   "SearchIndexMetadata"
    "Secret"
    "Session"
    "TablePrivileges"

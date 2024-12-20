@@ -16,6 +16,7 @@ import MappedFieldPickerS from "./MappedFieldPicker.module.css";
 
 type MappedFieldPickerProps = {
   name: string;
+  className?: string;
   databaseId: number | null;
   tabIndex?: number;
   label: string;
@@ -23,6 +24,7 @@ type MappedFieldPickerProps = {
 };
 
 function MappedFieldPicker({
+  className,
   databaseId = null,
   onChange,
   name,
@@ -64,9 +66,13 @@ function MappedFieldPicker({
 
     return (
       <SelectButton
-        className={cx(MappedFieldPickerS.StyledSelectButton, {
-          [MappedFieldPickerS.hasValue]: fieldObject,
-        })}
+        className={cx(
+          MappedFieldPickerS.StyledSelectButton,
+          {
+            [MappedFieldPickerS.hasValue]: fieldObject,
+          },
+          className,
+        )}
         hasValue={!!fieldObject}
         tabIndex={tabIndex}
         ref={selectButtonRef as any}
@@ -77,7 +83,7 @@ function MappedFieldPicker({
         </span>
       </SelectButton>
     );
-  }, [fieldObject, onChange, tabIndex]);
+  }, [className, fieldObject, onChange, tabIndex]);
 
   // DataSelector doesn't handle selectedTableId change prop nicely.
   // During the initial load, fieldObject might have `table_id` set to `card__$ID` (retrieved from metadata)

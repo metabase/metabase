@@ -7,6 +7,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
@@ -57,6 +58,9 @@
                                   nil))
       (lib/with-binning nil)))
 
+(defn- copy-ident [to from]
+  (lib.options/update-options to m/assoc-some :ident (lib.options/ident from)))
+
 (mu/defn- update-second-stage-refs :- ::lib.schema/stage
   [stage            :- ::lib.schema/stage
    first-stage-cols :- [:sequential ::lib.schema.metadata/column]]
@@ -66,7 +70,8 @@
                    (lib.equality/find-matching-column &match first-stage-cols))]
       (-> col
           update-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage
-          lib/ref)
+          lib/ref
+          (cond-> (some #{:breakout} &parents) (copy-ident &match)))
       (lib.util/fresh-uuids &match))))
 
 (def ^:private granularity
@@ -136,10 +141,10 @@
                                    [(nth breakouts finest-temp-breakout)])
                            breakouts)
           explicit-order-bys (vec (:order-by stage))
-          remove-uuid #(lib.options/update-options % dissoc :lib/uuid)
-          explicit-order-by-exprs (into #{} (map #(remove-uuid (get % 2))) explicit-order-bys)
+          explicit-order-by-exprs (set (for [[_dir _opts col-ref] explicit-order-bys]
+                                         (lib.schema.util/remove-randomized-idents col-ref)))
           order-bys (into explicit-order-bys
-                          (comp (map remove-uuid)
+                          (comp (map lib.schema.util/remove-randomized-idents)
                                 (remove explicit-order-by-exprs)
                                 (map (fn [expr]
                                        (lib.options/ensure-uuid [:asc (lib.options/ensure-uuid expr)]))))

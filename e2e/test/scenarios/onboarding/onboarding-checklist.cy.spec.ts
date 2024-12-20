@@ -64,7 +64,9 @@ describe("Onboarding checklist page", () => {
 
     cy.log("The link should now live in the main settings menu");
     cy.findByLabelText("Settings menu").click();
-    H.popover().should("contain", "How to use Metabase").click();
+    cy.findAllByTestId("entity-menu-link")
+      .contains("How to use Metabase")
+      .click();
     cy.location("pathname").should("eq", "/getting-started");
   });
 });

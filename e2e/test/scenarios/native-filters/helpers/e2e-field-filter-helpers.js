@@ -1,4 +1,4 @@
-import { filterWidget, popover } from "e2e/support/helpers";
+import { filterWidget, popover, selectDropdown } from "e2e/support/helpers";
 
 // FILTER WIDGET TYPE
 
@@ -13,7 +13,7 @@ export function setWidgetType(type) {
     .findByTestId("filter-widget-type-select")
     .click();
 
-  popover().findByText(type).click();
+  selectDropdown().findByText(type).click();
 }
 
 // FIELD FILTER STRING FILTERS

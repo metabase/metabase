@@ -4873,11 +4873,9 @@
                                        (-> (qp/process-query query)
                                            :data :results_metadata :columns))})
 
-     :model/Card          c2 (let [query {:database (mt/id)
-                                          :type :query
-                                          :query {:source-table (str "card__" (:id c1))
-                                                  :aggregation
-                                                  [[:distinct [:field "STATE" {:base-type :type/Text}]]]}}]
+     :model/Card          c2 (let [query (mt/mbql-query nil
+                                           {:source-table (str "card__" (:id c1))
+                                            :aggregation [[:distinct [:field "STATE" {:base-type :type/Text}]]]})]
                                {:name "C2"
                                 :database_id (mt/id)
                                 :dataset_query query

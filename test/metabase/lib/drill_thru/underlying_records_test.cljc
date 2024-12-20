@@ -88,7 +88,7 @@
       :column-name "max"
       :expected    #(->> % (map :type) (filter #{:drill-thru/underlying-records}) count (= 1))})))
 
-(deftest ^:parallel returns-underlying-records-for-multi-stage-queries
+(deftest ^:parallel returns-underlying-records-for-multi-stage-queries-test
   (lib.drill-thru.tu/test-returns-drill
    {:drill-type   :drill-thru/underlying-records
     :click-type   :cell

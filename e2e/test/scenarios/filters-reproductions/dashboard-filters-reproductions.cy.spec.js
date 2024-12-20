@@ -1872,7 +1872,7 @@ describe("issue 25374", () => {
       "There was a problem displaying this chart.",
     );
 
-    cy.button("Move, trash, and more…").click();
+    cy.findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Reset all filters").should("be.visible").click();
     cy.wait("@dashcardQuery");
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");

@@ -8,7 +8,7 @@ import type {
   DatePickerUnit,
   ExcludeDatePickerOperator,
   ExcludeDatePickerValue,
-} from "../types";
+} from "metabase/querying/filters/types";
 
 import { EXCLUDE_OPERATOR_OPTIONS, EXCLUDE_UNIT_OPTIONS } from "./constants";
 import type {
@@ -18,8 +18,8 @@ import type {
 } from "./types";
 
 export function getExcludeUnitOptions(
-  availableOperators: ReadonlyArray<DatePickerOperator>,
-  availableUnits: ReadonlyArray<DatePickerUnit>,
+  availableOperators: DatePickerOperator[],
+  availableUnits: DatePickerUnit[],
 ): ExcludeUnitOption[] {
   if (!availableOperators.includes("!=")) {
     return [];
@@ -31,7 +31,7 @@ export function getExcludeUnitOptions(
 }
 
 export function getExcludeOperatorOptions(
-  availableOperators: ReadonlyArray<DatePickerOperator>,
+  availableOperators: DatePickerOperator[],
 ): ExcludeOperatorOption[] {
   return EXCLUDE_OPERATOR_OPTIONS.filter(option =>
     availableOperators.includes(option.operator),

@@ -1553,4 +1553,30 @@ describe("issue 47170", () => {
       cy.findByText("Dashboard A").should("be.visible");
     });
   });
+
+  it("should show legible dark mode colors in fullscreen mode (metabase#51524)", () => {
+    cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
+
+    H.dashboardHeader().findByLabelText("Move, trash, and more…").click();
+    H.popover().findByText("Enter fullscreen").click();
+    H.dashboardHeader().findByLabelText("Nighttime mode").click();
+
+    const primaryTextColor = "color(srgb 1 1 1 / 0.9)";
+
+    cy.findByTestId("dashboard-name-heading").should(
+      "have.css",
+      "color",
+      primaryTextColor,
+    );
+
+    H.getDashboardCard(0)
+      .findByText("37.65")
+      .should("have.css", "color", primaryTextColor);
+
+    cy.findByTestId("sharing-menu-button").should(
+      "have.css",
+      "color",
+      primaryTextColor,
+    );
+  });
 });

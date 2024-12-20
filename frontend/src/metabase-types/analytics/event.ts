@@ -71,6 +71,16 @@ export type MoveToTrashEvent = ValidateEvent<{
     | "snippet";
 }>;
 
+export type ErrorDiagnosticModalOpenedEvent = ValidateEvent<{
+  event: "error_diagnostic_modal_opened";
+  triggered_from: "profile-menu" | "command-palette";
+}>;
+
+export type ErrorDiagnosticModalSubmittedEvent = ValidateEvent<{
+  event: "error_diagnostic_modal_submitted";
+  event_detail: "download-diagnostics" | "submit-report";
+}>;
+
 export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
@@ -79,4 +89,6 @@ export type SimpleEvent =
   | OnboardingChecklistOpenedEvent
   | OnboardingChecklistItemExpandedEvent
   | OnboardingChecklistItemCTAClickedEvent
-  | MoveToTrashEvent;
+  | MoveToTrashEvent
+  | ErrorDiagnosticModalOpenedEvent
+  | ErrorDiagnosticModalSubmittedEvent;

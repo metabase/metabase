@@ -401,10 +401,8 @@
   (mt/test-driver :postgres
     (testing "Make sure that ID params correctly get converted to numbers as needed (Postgres-specific)..."
       (embed-test/with-embedding-enabled-and-new-secret-key!
-        (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
-                                                            :type     :query
-                                                            :query    {:source-table (mt/id :venues)
-                                                                       :aggregation  [:count]}}}]
+        (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues
+                                                             {:aggregation [:count]})}]
           (embed-test/with-temp-dashcard [dashcard {:dash     {:parameters [{:name "Venue ID"
                                                                              :slug "venue_id"
                                                                              :id   "_VENUE_ID_"
