@@ -20,7 +20,11 @@ You can get a license by signing up for a free trial of the [Pro or Enterprise e
 
 ## How to activate your token when self-hosting
 
-If you chose to host Metabase yourself, you'll get an email containing a unique license token. But to use it, you'll need to install the right JAR file.
+If you want to host Metabase yourself, you'll get an email containing a unique license token. But to use it, you'll need to install the Enterprise Edition of Metabase.
+
+The upgrade to an Enterprise Edition will keep all of your questions, dashboards, people, settings---everything in your existing Metabase.
+
+And don't stress. You won't lose any of your work, and if you get stuck, we're [here to help](https://www.metabase.com/help/premium).
 
 You can either:
 
