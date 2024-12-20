@@ -14,8 +14,9 @@ redirect_from:
 
 A dashboard comprises a set of cards arranged on a grid. These cards can be:
 
-- Questions, such as [tables, charts, or maps](../questions/visualizations/visualizing-results.md)
+- [Questions](../questions/introduction.md). You can add questions from collections, or saved questions directly to a dashboard.
 - [Text and header cards](#adding-headings-or-descriptions-with-text-cards)
+- [Iframe cards](#iframe-cards)
 - [Link cards](#link-cards)
 
 You can add [filter widgets to dashboards](./filters.md) that filter data identically across multiple questions, and [customize what happens when people click on a chart or a table](./interactive.md).
