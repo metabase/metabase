@@ -333,7 +333,7 @@ const SERIALIZERS: Serializer[] = [
       }
     },
   },
-  // `exclude-days-1-3-7`
+  // `exclude-days-Mon-San`
   {
     regex: /^exclude-days-([-\w]+)$/,
     serialize: value => {
@@ -356,7 +356,7 @@ const SERIALIZERS: Serializer[] = [
       }
     },
   },
-  // `exclude-months-1-12`
+  // `exclude-months-Jan-Dec`
   {
     regex: /^exclude-months-([-\w]+)$/,
     serialize: value => {
