@@ -127,7 +127,7 @@ jobs:
       !cancelled() && needs.build.result == 'success'
     secrets: inherit
     with:
-      name: Flaky Tests
+      name: Flaky
       tags: "@flaky"
 
   e2e-tests-result:
