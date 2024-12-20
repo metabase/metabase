@@ -82,7 +82,7 @@ export const SaveQuestionProvider = ({
     }
   }, [isLoading]);
 
-  const lastUsedDashboard = useMemo(() => {
+  const defaultDashboard = useMemo(() => {
     if (!recentItems || recentItems.length === 0) {
       return undefined;
     }
@@ -106,13 +106,13 @@ export const SaveQuestionProvider = ({
   const initialDashboardId =
     question.type() === "question" &&
     !isAnalytics &&
-    lastUsedDashboard?.can_write
-      ? lastUsedDashboard?.id
+    defaultDashboard?.can_write
+      ? defaultDashboard?.id
       : undefined;
 
   const initialCollectionId = isAnalytics
     ? defaultCollectionId
-    : (lastUsedDashboard?.parent_collection.id ?? defaultCollectionId);
+    : (defaultDashboard?.parent_collection.id ?? defaultCollectionId);
 
   const initialValues: FormValues = useMemo(
     () =>
