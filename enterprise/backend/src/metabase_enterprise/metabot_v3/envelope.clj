@@ -21,17 +21,35 @@
    :context context
    :max-round-trips max-round-trips
    :round-trips-remaining max-round-trips
-   :dummy-history []
-   :query-id->query {}})
+   :dummy-history []})
 
 (defn full-history
   "History including the dummy tool invocations"
   [e]
-  (map (fn [{:keys [content] :as msg}]
-         (assoc msg :content (cond-> content
-                               (map? content) json/encode)))
-       (into (:dummy-history e)
-             (:history e))))
+  (into (:dummy-history e)
+        (:history e)))
+
+(defn is-tool-call-response?
+  "Is this message a response to a tool call?"
+  [{:keys [role tool-call-id]}]
+  (and (= role :tool)
+       tool-call-id))
+
+(defn- is-query? [content]
+  (and (map? content)
+       (contains? #{:query "query"} (:type content))))
+
+(defn llm-history
+  "History shaped for the LLM"
+  [e]
+  (->> (full-history e)
+       (mapv (fn [{:as msg :keys [content]}]
+               (cond-> msg
+                 (and (is-tool-call-response? msg)
+                      (is-query? content)) (update :content dissoc :query))))
+       (mapv (fn [{:keys [content] :as msg}]
+               (assoc msg :content (cond-> content
+                                     (map? content) json/encode))))))
 
 (defn session-id
   "Get the session ID from the envelope"
@@ -95,13 +113,9 @@
   [e msg]
   (update e :dummy-history conj msg))
 
-(defn- update-queries
-  [e queries]
-  (update e :query-id->query (fnil into {}) (map (fn [query] [(:query-id query) query]) queries)))
-
 (defn add-dummy-tool-response
   "Adds the dummy messages to the dummy history, updates context, and the query store, if necessary."
-  [e tool-call-id {:keys [output context reactions queries] :as res}]
+  [e tool-call-id {:keys [output context reactions] :as res}]
   (when (or
          (some? context)
          (some? reactions))
@@ -109,8 +123,7 @@
   (-> e
       (add-dummy-message {:role :tool
                           :tool-call-id tool-call-id
-                          :content output})
-      (update-queries queries)))
+                          :content output})))
 
 (defn update-context
   "Given a new context, set it in the envelope."
@@ -125,30 +138,30 @@
 
 (defn add-tool-response
   "Given an output string and new context, adds them to the envelope."
-  [e tool-call-id {:keys [output context reactions queries]}]
+  [e tool-call-id {:keys [output context reactions]}]
   (-> e
       (add-message {:role :tool
                     :tool-call-id tool-call-id
                     :content output})
       (update-context context)
-      (update-reactions reactions)
-      (update-queries queries)))
+      (update-reactions reactions)))
 
 (defn is-tool-call?
   "Is this message a tool call?"
   [{:keys [tool-calls]}]
   (boolean (seq tool-calls)))
 
-(defn is-tool-call-response?
-  "Is this message a response to a tool call?"
-  [{:keys [role tool-call-id]}]
-  (and (= role :tool)
-       tool-call-id))
-
 (defn find-query
   "Given an envelope and a query-id, find the query in the history."
   [e query-id]
-  (:query (get (:query-id->query e) query-id)))
+  (->> e
+       full-history
+       (filter is-tool-call-response?)
+       (keep :content)
+       (filter #(contains? #{:query "query"} (:type %)))
+       (filter #(= (:query-id %) query-id))
+       first
+       :query))
 
 (defn requires-tool-invocation?
   "Does this envelope require tool call invocation?"

@@ -204,8 +204,7 @@
                    first
                    :query)
         result (execute-query query-id (mbql.normalize/normalize query))]
-   {:output (select-keys result [:type :query-id :result-columns])
-    :queries [result]}))
+   {:output result}))
 
 (defn- viewing-id [context type]
   (first (map :id (is-viewing context type))))
