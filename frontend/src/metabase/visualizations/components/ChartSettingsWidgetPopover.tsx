@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
-import { Box, Popover, Stack, Tabs } from "metabase/ui";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { Tabs } from "metabase/ui";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
+import { PopoverRoot } from "./ChartSettingsWidgetPopover.styled";
+
 interface Widget {
   id: string;
   section: string;
@@ -11,7 +14,7 @@ interface Widget {
 }
 
 interface ChartSettingsWidgetPopoverProps {
-  anchor?: HTMLElement;
+  anchor: HTMLElement;
   handleEndShowWidget: () => void;
   widgets: Widget[];
 }
@@ -44,29 +47,17 @@ const ChartSettingsWidgetPopover = ({
     handleEndShowWidget();
   };
 
-  const rect = anchor?.getBoundingClientRect();
-
   return (
-    <Popover opened={!!anchor} onClose={onClose} position="right">
-      <Popover.Target>
-        <Box
-          pos="fixed"
-          left={rect?.left}
-          top={rect?.top}
-          w={anchor?.offsetWidth}
-          h={anchor?.offsetHeight}
-          style={{
-            pointerEvents: "none",
-          }}
-        />
-      </Popover.Target>
-      <Popover.Dropdown miw="20rem">
-        {widgets.length > 0 ? (
-          <Stack p="sm">
+    <TippyPopover
+      reference={anchor}
+      content={
+        widgets.length > 0 ? (
+          <PopoverRoot noTopPadding={hasMultipleSections} ref={contentRef}>
             {hasMultipleSections && (
               <Tabs
                 value={currentSection}
                 onTabChange={section => setCurrentSection(String(section))}
+                mb="md"
               >
                 <Tabs.List grow>
                   {sections.current.map(sectionName => (
@@ -77,7 +68,6 @@ const ChartSettingsWidgetPopover = ({
                 </Tabs.List>
               </Tabs>
             )}
-
             {widgets
               .filter(widget => widget.section === currentSection)
               ?.map(widget => (
@@ -87,10 +77,24 @@ const ChartSettingsWidgetPopover = ({
                   hidden={false}
                 />
               ))}
-          </Stack>
-        ) : null}
-      </Popover.Dropdown>
-    </Popover>
+          </PopoverRoot>
+        ) : null
+      }
+      visible={!!anchor}
+      onClose={onClose}
+      placement="right"
+      offset={[10, 10]}
+      popperOptions={{
+        modifiers: [
+          {
+            name: "preventOverflow",
+            options: {
+              padding: 16,
+            },
+          },
+        ],
+      }}
+    />
   );
 };
 

@@ -3,6 +3,7 @@ import type * as React from "react";
 
 import PopoverS from "metabase/components/Popover/Popover.module.css";
 import FormS from "metabase/css/components/form.module.css";
+import { Text } from "metabase/ui";
 
 import {
   Description,
@@ -70,7 +71,7 @@ const ChartSettingsWidget = ({
           className={cx({ [FormS.FormLabel]: isFormField })}
           htmlFor={extraWidgetProps.id}
         >
-          {title}
+          <Text>{title}</Text>
           {hint && (
             <InfoIconContainer>
               <InfoIcon
