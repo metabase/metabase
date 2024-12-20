@@ -1193,3 +1193,12 @@
                             ba)))]
               (gen))
       :cljs (throw (ex-info "Seeded NanoIDs are not supported in CLJS" {:seed-str seed-str})))))
+
+(defn update-some
+  "Update a value by key in the `m`, if it's `some?`. If `nil` is returned, dissoc it instead"
+  [m k f & args]
+  (let [v (get m k)
+        res (when v (apply f v args))]
+    (if res
+      (assoc m k res)
+      (dissoc m k))))
