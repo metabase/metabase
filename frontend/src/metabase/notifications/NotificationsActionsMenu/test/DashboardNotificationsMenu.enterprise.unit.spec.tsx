@@ -21,7 +21,9 @@ describe("DashboardNotificationsMenu > Enterprise", () => {
       isEnterprise: true,
       isAdmin: false,
     });
-    await openMenu();
-    expect(screen.queryByText("Subscriptions")).not.toBeInTheDocument();
+
+    expect(
+      screen.queryByTestId("notifications-menu-button"),
+    ).not.toBeInTheDocument();
   });
 });

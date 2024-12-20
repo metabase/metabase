@@ -22,8 +22,10 @@ describe("QuestionNotificationsMenu > Enterprise", () => {
         isEmailSetup: true,
         isEnterprise: true,
       });
-      await openMenu();
-      expect(screen.queryByText("Create alerts")).not.toBeInTheDocument();
+
+      expect(
+        screen.queryByTestId("notifications-menu-button"),
+      ).not.toBeInTheDocument();
     });
   });
 });

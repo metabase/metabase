@@ -44,7 +44,7 @@ describe("QuestionSharingMenu", () => {
 
     expect(screen.getByTestId("notifications-menu-button")).toHaveAttribute(
       "aria-label",
-      "You must save this question before sharing",
+      "You must save this question before creating an alert",
     );
   });
 

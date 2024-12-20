@@ -72,8 +72,10 @@ describe("DashboardNotificationsMenu", () => {
             ],
           },
         });
-        await openMenu();
-        expect(screen.queryByText("Subscriptions")).not.toBeInTheDocument();
+
+        expect(
+          screen.queryByTestId("notifications-menu-button"),
+        ).not.toBeInTheDocument();
       });
     });
 
@@ -111,8 +113,10 @@ describe("DashboardNotificationsMenu", () => {
             ],
           },
         });
-        await openMenu();
-        expect(screen.queryByText("Subscriptions")).not.toBeInTheDocument();
+
+        expect(
+          screen.queryByTestId("notifications-menu-button"),
+        ).not.toBeInTheDocument();
       });
     });
   });

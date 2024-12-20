@@ -1,7 +1,6 @@
 import type { JSX } from "react";
 import { t } from "ttag";
 
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import {
   MODAL_TYPES,
   type QueryModalType,
@@ -26,15 +25,6 @@ export const EmbeddingQuestionActions = ({
   onOpenModal,
   setShowPublicLinkPopover,
 }: EmbeddingQuestionActionsProps): JSX.Element | null => {
-  const isModel = question.type() === "model";
-  const isArchived = question.isArchived();
-  const collection = question.collection();
-  const isAnalytics = collection && isInstanceAnalyticsCollection(collection);
-
-  if (isModel || isArchived || isAnalytics) {
-    return null;
-  }
-
   const hasPublicLink = !!question?.publicUUID?.();
   const isUnsaved = !question.isSaved();
 

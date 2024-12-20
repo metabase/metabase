@@ -2,6 +2,7 @@ import { Fragment, type JSX, type Ref, forwardRef, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { useSetting } from "metabase/common/hooks";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -66,6 +67,10 @@ export const QuestionMoreActionsMenu = ({
   const isMetric = question.type() === "metric";
   const isModelOrMetric = isModel || isMetric;
 
+  const isArchived = question.isArchived();
+  const collection = question.collection();
+  const isAnalytics = collection && isInstanceAnalyticsCollection(collection);
+
   const isDashboardQuestion = isQuestion && _.isNumber(question.dashboardId());
   const isStandaloneQuestion =
     isQuestion && !_.isNumber(question.dashboardId());
@@ -76,6 +81,8 @@ export const QuestionMoreActionsMenu = ({
   const { isEditable: hasDataPermissions } = Lib.queryDisplayInfo(
     question.query(),
   );
+
+  const canUseEmbeddingActions = !isModel && !isArchived && !isAnalytics;
 
   const reload = () => dispatch(softReloadCard());
 
@@ -170,14 +177,16 @@ export const QuestionMoreActionsMenu = ({
         {t`Edit settings`}
       </Menu.Item>
     ),
-    <EmbeddingQuestionActions
-      key="embeddingActions"
-      question={question}
-      isAdmin={isAdmin}
-      isPublicSharingEnabled={isPublicSharingEnabled}
-      onOpenModal={onOpenModal}
-      setShowPublicLinkPopover={setShowPublicLinkPopover}
-    />,
+    canUseEmbeddingActions && (
+      <EmbeddingQuestionActions
+        key="embeddingActions"
+        question={question}
+        isAdmin={isAdmin}
+        isPublicSharingEnabled={isPublicSharingEnabled}
+        onOpenModal={onOpenModal}
+        setShowPublicLinkPopover={setShowPublicLinkPopover}
+      />
+    ),
     hasCollectionPermissions && (
       <Fragment key="move-block">
         <Menu.Divider />
