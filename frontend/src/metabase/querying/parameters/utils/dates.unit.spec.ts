@@ -252,4 +252,27 @@ describe("serializeDateFilter", () => {
     expect(serializeDateFilter(value)).toEqual(text);
     expect(deserializeDateFilter(text)).toEqual(value);
   });
+
+  it.each<string>([
+    "",
+    "aaa",
+    "2020-12-aa",
+    "2020-12-aa~",
+    "~2020-12-aa",
+    "2020-12-10~2020-12-aa",
+    "2020-12-aa~2020-12-20",
+    "past10abcs",
+    "next10abcs",
+    "past2days-from-10abcs",
+    "next2days-from-10abcs",
+    "exclude-seconds-20",
+    "exclude-hours-24",
+    "exclude-hours-abc",
+    "exclude-days-abc",
+    "exclude-months-abc",
+    "exclude-quarters-5",
+    "exclude-quarters-abc",
+  ])("should ignore invalid input %s", text => {
+    expect(deserializeDateFilter(text)).toBeUndefined();
+  });
 });
