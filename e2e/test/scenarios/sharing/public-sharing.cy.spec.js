@@ -295,7 +295,7 @@ H.describeEE(
     it("should validate approved email domains for a question alert", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
 
-      H.openSharingMenu("Create alert");
+      H.openSharingMenu("Create alerts");
       H.modal().findByText("Set up an alert").click();
 
       H.modal()

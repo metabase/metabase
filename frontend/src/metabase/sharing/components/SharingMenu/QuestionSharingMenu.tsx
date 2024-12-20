@@ -5,6 +5,7 @@ import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { QuestionAlertsMenuItem } from "metabase/notifications/QuestionAlertsMenuItem";
+import { QuestionSubscriptionsMenuItem } from "metabase/notifications/QuestionSubscriptionsMenuItem";
 import { setUIControls } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
@@ -89,7 +90,10 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
           question={question}
           onClick={() => setModalType("question-alert")}
         />
-
+        <QuestionSubscriptionsMenuItem
+          question={question}
+          onClick={() => setModalType("question-subscription")}
+        />
         <Menu.Divider />
         <PublicLinkMenuItem
           hasPublicLink={hasPublicLink}

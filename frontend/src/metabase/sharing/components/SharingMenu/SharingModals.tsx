@@ -1,7 +1,7 @@
 import { type Ref, forwardRef } from "react";
 
 import { DashboardSharingEmbeddingModal } from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
-import { AlertPopover } from "metabase/notifications/AlertListPopoverContent/AlertPopover";
+import { AlertListModal } from "metabase/notifications/modals/AlertListModal";
 import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -55,9 +55,19 @@ export const SharingModals = ({
 }: SharingModalProps) => {
   if (modalType === "question-alert") {
     return (
-      <AlertPopover
+      <AlertListModal
+        notificationType="alert"
         question={question}
-        target={<MenuTarget />}
+        onClose={onClose}
+      />
+    );
+  }
+
+  if (modalType === "question-subscription") {
+    return (
+      <AlertListModal
+        notificationType="subscription"
+        question={question}
         onClose={onClose}
       />
     );
