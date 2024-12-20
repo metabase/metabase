@@ -219,7 +219,7 @@ describe("binning related reproductions", () => {
         .findByText("Created At: Month")
         .should("be.visible");
       cy.findByTestId("draggable-item-Created At: Month")
-        .findByLabelText("eye_outline icon")
+        .icon("eye_outline")
         .click({ force: true });
       cy.button("Done").click();
     });
