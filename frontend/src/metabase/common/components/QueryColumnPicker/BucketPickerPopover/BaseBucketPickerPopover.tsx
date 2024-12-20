@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
@@ -40,6 +41,10 @@ export interface BaseBucketPickerPopoverProps {
   renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => ReactNode;
   onSelect: (column: Lib.Bucket | NoBucket) => void;
   className?: string;
+  classNames?: {
+    root?: string;
+    chevronDown?: string;
+  };
 }
 
 function _BaseBucketPickerPopover({
@@ -57,6 +62,7 @@ function _BaseBucketPickerPopover({
   onSelect,
   hasChevronDown,
   className,
+  classNames = {},
 }: BaseBucketPickerPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
   const [isExpanded, setIsExpanded] = useState(
@@ -109,7 +115,7 @@ function _BaseBucketPickerPopover({
     <Popover opened={isOpened} position="right" onClose={handlePopoverClose}>
       <Popover.Target>
         <TriggerButton
-          className={className}
+          className={cx(classNames.root, className)}
           aria-label={triggerLabel}
           data-testid="dimension-list-item-binning"
           onClick={event => {
@@ -130,7 +136,12 @@ function _BaseBucketPickerPopover({
           {hasArrowIcon && !hasChevronDown && (
             <TriggerIcon name="chevronright" />
           )}
-          {hasChevronDown && <ChevronDown name="chevrondown" />}
+          {hasChevronDown && (
+            <ChevronDown
+              className={classNames.chevronDown}
+              name="chevrondown"
+            />
+          )}
         </TriggerButton>
       </Popover.Target>
       <Popover.Dropdown>
