@@ -38,14 +38,15 @@ export function formatUrl(value: string, options: OptionsType = {}) {
 
   const url = getLinkUrl(value, options);
 
-  // (metabase#51099) prevent url from being rendered as a link when in sdk
-  if (isEmbeddingSdk) {
-    return url;
-  }
-
   if (jsx && rich && url) {
     const text = getLinkText(value, options);
     const className = cx(CS.link, CS.linkWrappable);
+
+    // (metabase#51099) prevent url from being rendered as a link when in sdk
+    if (isEmbeddingSdk) {
+      return url;
+    }
+
     if (isSameOrSiteUrlOrigin(url)) {
       return (
         <Link className={className} to={url}>
