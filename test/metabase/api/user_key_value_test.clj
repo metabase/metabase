@@ -34,6 +34,11 @@
       (is (= {:key1 "foo" :key2 123} (mt/user-http-request :rasta :put 200 "/user-key-value/namespace/meow/key/meow" {:value {:key1 "foo" :key2 123}})))
       (is (= {:key1 "foo" :key2 123} (mt/user-http-request :rasta :get 200 "/user-key-value/namespace/meow/key/meow"))))
 
+    (testing "Malli schema can specify default values"
+      ;; See https://github.com/metosin/malli#default-values for more details on default values
+      (is (= {:key1 "default" :key2 123} (mt/user-http-request :rasta :put 200 "/user-key-value/namespace/meow/key/meow" {:value {:key2 123}})))
+      (is (= {:key1 "default" :key2 123} (mt/user-http-request :rasta :get 200 "/user-key-value/namespace/meow/key/meow"))))
+
     (testing "Deletion works"
       (mt/user-http-request :rasta :put 200 "/user-key-value/namespace/other/key/other" {:value "true"})
       (is (= true (mt/user-http-request :rasta :get 200 "/user-key-value/namespace/other/key/other")))

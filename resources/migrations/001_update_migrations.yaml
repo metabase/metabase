@@ -10337,8 +10337,8 @@ databaseChangeLog:
       preConditions:
         - onFail: MARK_RAN
         - not:
-          - tableExists:
-              tableName: user_key_value
+            - tableExists:
+                tableName: user_key_value
       changes:
         - createTable:
             tableName: user_key_value
@@ -10364,6 +10364,8 @@ databaseChangeLog:
                   name: namespace
                   type: varchar(254)
                   remarks: 'The namespace for this KV, e.g. "dashboard-filters" or "nobody-knows"'
+                  constraints:
+                    nullable: false
               - column:
                   name: key
                   remarks: 'The key'

@@ -36,7 +36,7 @@
    :keyword])
 
 (mr/def ::expires-at
-  "When the thing expires"
+  "When the key-value pair expires"
   :time/instant)
 
 (mu/defn defnamespace

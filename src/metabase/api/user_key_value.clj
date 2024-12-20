@@ -41,7 +41,7 @@
   (user-key-value/retrieve api/*current-user-id* namespace key))
 
 (api/defendpoint GET "/namespace/:namespace"
-  "Returns the values for all keys in a given namespace for the current user."
+  "Returns all KV pairs in a given namespace for the current user"
   [namespace]
   {namespace ms/NonBlankString}
   (user-key-value/retrieve-all api/*current-user-id* namespace))
