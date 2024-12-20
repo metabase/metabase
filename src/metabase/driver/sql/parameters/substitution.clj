@@ -36,7 +36,7 @@
 (defmulti ->prepared-substitution
   "Returns a `PreparedStatementSubstitution` (see schema below) for `x` and the given driver. This allows driver
   specific parameters and SQL replacement text (usually just ?). The param value is already prepared and ready for
-  inlcusion in the query, such as what's needed for SQLite and timestamps."
+  inclcusion in the query, such as what's needed for SQLite and timestamps."
   {:added "0.34.0" :arglists '([driver x])}
   (fn [driver x] [(driver/dispatch-on-initialized-driver driver) (class x)])
   :hierarchy #'driver/hierarchy)
@@ -281,7 +281,7 @@
     ::compiling-field-filter? true}])
 
 (mu/defn- field->identifier :- ::lib.schema.common/non-blank-string
-  "Return an approprate snippet to represent this `field` in SQL given its param type.
+  "Return an appropriate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
   [driver field param-type value]

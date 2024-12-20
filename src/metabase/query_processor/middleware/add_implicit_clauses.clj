@@ -1,5 +1,5 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses
-  "Middlware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
+  "Middleware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
   (:require
    [clojure.walk :as walk]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -95,7 +95,7 @@
   [{:keys        [fields source-table source-query source-metadata]
     breakouts    :breakout
     aggregations :aggregation} :- mbql.s/MBQLQuery]
-  ;; if someone is trying to include an explicit `source-query` but isn't specifiying `source-metadata` warn that
+  ;; if someone is trying to include an explicit `source-query` but isn't specifying `source-metadata` warn that
   ;; there's nothing we can do to help them
   (when (and source-query
              (empty? source-metadata)
@@ -112,7 +112,7 @@
 
 (mu/defn- add-implicit-fields
   "For MBQL queries with no aggregation, add a `:fields` key containing all Fields in the source Table as well as any
-  expressions definied in the query."
+  expressions defined in the query."
   [{source-table-id :source-table, :keys [expressions source-metadata], :as inner-query}]
   (if-not (should-add-implicit-fields? inner-query)
     inner-query

@@ -81,7 +81,7 @@
 
 (defn remove-permissions-key
   "Pre-processing middleware. Removes the `::perms` key from the query. This is where we store important permissions
-  information like perms coming from sandboxing (GTAPs). This is programatically added by middleware when appropriate,
+  information like perms coming from sandboxing (GTAPs). This is programmatically added by middleware when appropriate,
   but we definitely don't want users passing it in themselves. So remove it if it's present."
   [query]
   (dissoc query ::query-perms/perms))
@@ -109,7 +109,7 @@
           required-perms  (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
           source-card-ids (set/difference (:card-ids required-perms) (:card-ids gtap-perms))]
       ;; On EE, check block permissions up front for all queries. If block perms are in place, reject all native queries
-      ;; (unless overriden by `gtap-perms`) and any queries that touch blocked tables/DBs
+      ;; (unless overridden by `gtap-perms`) and any queries that touch blocked tables/DBs
       (check-block-permissions outer-query)
       (cond
         card-id

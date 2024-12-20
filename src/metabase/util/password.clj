@@ -46,11 +46,11 @@
   [char-type->min password]
   {:pre [(map? char-type->min)
          (string? password)]}
-  (let [occurences (count-occurrences password)]
+  (let [occurrences (count-occurrences password)]
     (boolean (loop [[[char-type min-count] & more] (seq char-type->min)]
                (if-not char-type
                  true
-                 (when (>= (occurences char-type) min-count)
+                 (when (>= (occurrences char-type) min-count)
                    (recur more)))))))
 
 (defn active-password-complexity

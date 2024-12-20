@@ -16,7 +16,7 @@
    :status (mi/transform-validator mi/transform-keyword (partial mi/assert-enum #{:pending :active :retired}))})
 
 (defn indexes
-  "The current 'pending' and 'active' indexes for the given co-ordinates, where they exist."
+  "The current 'pending' and 'active' indexes for the given coordinates, where they exist."
   [engine version]
   (t2/select-fn->fn :status :index_name :model/SearchIndexMetadata
                     :engine engine

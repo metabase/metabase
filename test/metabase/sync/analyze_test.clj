@@ -220,7 +220,7 @@
                     (sync!)
                     (sync!)))))]
       (tests api-sync!)
-      (testing "\nsame test but with sync triggered programatically rather than via the API"
+      (testing "\nsame test but with sync triggered programmatically rather than via the API"
         (tests analyze-table!)))))
 
 (deftest analyze-db!-return-value-test

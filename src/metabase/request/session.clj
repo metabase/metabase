@@ -57,7 +57,7 @@
                    :id current-user-id)))
 
 (defmacro as-admin
-  "Execude code in body as an admin user."
+  "Execute code in body as an admin user."
   {:style/indent 0}
   [& body]
   `(do-with-current-user

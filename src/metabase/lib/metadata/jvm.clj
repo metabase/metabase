@@ -403,7 +403,7 @@
   [[application-database-metadata-provider]] will use it for caching the `MetadataProvider` for each `database-id`
   over the lifespan of this binding.
 
-  This is useful for an API request, or group fo API requests like a dashboard load, to reduce appdb traffic."
+  This is useful for an API request, or group for API requests like a dashboard load, to reduce appdb traffic."
   nil)
 
 (mu/defn application-database-metadata-provider :- ::lib.schema.metadata/metadata-provider

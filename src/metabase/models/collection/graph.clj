@@ -184,7 +184,7 @@
 
   If there are no changes, returns nil.
   If there are changes, returns the future that is used to call `fill-revision-details!`.
-  To run this syncronously deref the non-nil return value."
+  To run this synchronously deref the non-nil return value."
   ([new-graph]
    (update-graph! nil new-graph false))
 

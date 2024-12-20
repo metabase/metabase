@@ -123,7 +123,7 @@
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
 
 (defn- cached-results-rff
-  "Reducing function for cached results. Merges the final object in the cached results, the `final-metdata` map, with
+  "Reducing function for cached results. Merges the final object in the cached results, the `final-metadata` map, with
   the reduced value assuming it is a normal metadata map."
   [rff query-hash]
   (fn [{:keys [last-ran], :as metadata}]

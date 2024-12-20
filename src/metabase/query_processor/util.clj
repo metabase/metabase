@@ -109,7 +109,7 @@
   ^bytes [query :- [:maybe :map]]
   ;; convert to pMBQL first if this is a legacy query.
   (let [query (try
-                ;; Expression type check supression is necessary because coerced fields in `query` may not have
+                ;; Expression type check suppression is necessary because coerced fields in `query` may not have
                 ;; `:effective-type` populated. That's the case during call to this function in
                 ;; `process-userland-query-middleware` that occurs before normalization.
                 (binding [lib.schema.expression/*suppress-expression-type-check?* true]

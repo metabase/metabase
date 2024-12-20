@@ -1,5 +1,5 @@
 (ns metabase.query-processor.middleware.cumulative-aggregations
-  "Middlware for handling cumulative count and cumulative sum aggregations in Clojure-land. In 0.50.0+, this middleware
+  "Middleware for handling cumulative count and cumulative sum aggregations in Clojure-land. In 0.50.0+, this middleware
   is only used for drivers that do not have native implementations of `:window-functions/cumulative`; see the driver
   changelog for 0.50.0 for more information.
 
@@ -28,7 +28,7 @@
 ;;;; Pre-processing
 
 (defn- diff-indexes
-  "Given two sequential collections, return indecies that are different between the two."
+  "Given two sequential collections, return indices that are different between the two."
   [coll-1 coll-2]
   (into #{}
         (keep-indexed (fn [i transformed?]
@@ -40,14 +40,14 @@
   "Replace `cum-count` and `cum-sum` aggregations in `query` with `count` and `sum` aggregations, respectively."
   [query]
   (lib.util.match/replace-in query [:query :aggregation]
-    ;; cumulative count doesn't neccesarily have a field-id arg
+    ;; cumulative count doesn't necessarily have a field-id arg
     [:cum-count]       [:count]
     [:cum-count field] [:count field]
     [:cum-sum field]   [:sum field]))
 
 (defn rewrite-cumulative-aggregations
   "Pre-processing middleware. Rewrite `:cum-count` and `:cum-sum` aggregations as `:count` and `:sum` respectively. Add
-  information about the indecies of the replaced aggregations under the `::replaced-indexes` key."
+  information about the indices of the replaced aggregations under the `::replaced-indexes` key."
   [{{breakouts :breakout, aggregations :aggregation} :query, :as query}]
   (cond
     ;; no need to rewrite `:cum-sum` and `:cum-count` functions, this driver supports native window function versions

@@ -148,7 +148,7 @@
   [:set string?])
 
 (def semantic-affinity-set
-  "A set of sematic types that belong together. This is the basic unity of semantic affinity."
+  "A set of semantic types that belong together. This is the basic unity of semantic affinity."
   [:set :keyword])
 
 (def affinity

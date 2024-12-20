@@ -949,7 +949,7 @@
                                                :group-by [:table_id]
                                                :having   [:= :%count.* 1]}))
                            (into #{} (map :table_id)))
-          ;; Table comprised entierly of join keys
+          ;; Table comprised entirely of join keys
           link-table? (when (seq field-count)
                         (->> (mdb.query/query {:select   [:table_id [:%count.* "count"]]
                                                :from     [:metabase_field]
@@ -973,7 +973,7 @@
 (defn candidate-tables
   "Return a list of tables in database with ID `database-id` for which it makes sense
    to generate an automagic dashboard. Results are grouped by schema and ranked
-   acording to interestingness (both schemas and tables within each schema). Each
+   according to interestingness (both schemas and tables within each schema). Each
    schema contains up to `max-candidate-tables` tables.
 
    Tables are ranked based on how specific dashboard template has been used, and

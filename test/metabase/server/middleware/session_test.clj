@@ -219,7 +219,7 @@
         (t2/delete! Session :id (str test-uuid))))))
 
 (deftest current-user-info-for-session-test-4
-  (testing "full-app-embed sessions shouldn't come back if we don't explicitly specifiy the anti-csrf token"
+  (testing "full-app-embed sessions shouldn't come back if we don't explicitly specify the anti-csrf token"
     (try
       (t2/insert! Session {:id              (str test-uuid)
                            :user_id         (mt/user->id :lucky)
@@ -229,7 +229,7 @@
       (finally
         (t2/delete! Session :id (str test-uuid))))
 
-    (testing "...but if we do specifiy the token, they should come back"
+    (testing "...but if we do specify the token, they should come back"
       (try
         (t2/insert! Session {:id              (str test-uuid)
                              :user_id         (mt/user->id :lucky)

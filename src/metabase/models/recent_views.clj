@@ -529,7 +529,7 @@
 
   Returns: [:map [:recents [:sequential Item]]]
 
-  [[do-query]] can return nils, and we remove them here becuase there can be recent views for deleted entities, and we
+  [[do-query]] can return nils, and we remove them here because there can be recent views for deleted entities, and we
   don't want to show those in the recent views.
 
   Returns a sequence of [[Item]]s. The reason this isn't a `mu/defn`, is that error-avoider validates each Item in the

@@ -68,7 +68,7 @@
   (with-open [stmt (sql-jdbc.sync.common/prepare-statement driver conn sql params)]
     (log/tracef "[%s] %s" (name driver) sql)
     ;; attempting to execute the SQL statement will throw an Exception if we don't have permissions; otherwise it will
-    ;; truthy wheter or not it returns a ResultSet, but we can ignore that since we have enough info to proceed at
+    ;; truthy whether or not it returns a ResultSet, but we can ignore that since we have enough info to proceed at
     ;; this point.
     (.execute stmt)))
 

@@ -124,7 +124,7 @@
                 (let [elapsed-ms (- (System/currentTimeMillis) start-time-ms)]
                   (is (< elapsed-ms 500)))))))))))
 
-(deftest cancelation-test
+(deftest cancellation-test
   (testing "Make sure canceling a HTTP request ultimately causes the query to be canceled"
     (mt/test-helpers-set-global-values!
       (with-redefs [streaming-response/async-cancellation-poll-interval-ms 50]

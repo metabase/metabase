@@ -160,7 +160,7 @@
   query results, and remove the `:fields` entry for all joins.
 
   If the parent-level query has breakouts and/or aggregations, this function won't append the joins fields to the
-  parent level, because we should only be returning the ones from the ags and breakouts in the final results."
+  parent level, because we should only be returning the ones from the aggregations and breakouts in the final results."
   [{:keys [joins], :as inner-query} :- UnresolvedMBQLQuery]
   (let [join-fields (when (should-add-join-fields? inner-query)
                       (joins->fields joins))

@@ -102,7 +102,7 @@
       (finally
         (.. lock writeLock unlock)
         ;; don't know why this happens but when I try to test things locally with `yarn-test-cypress-open-no-backend`
-        ;; and a backend server started with `dev/start!` the snapshots are always missing columms added by DB
+        ;; and a backend server started with `dev/start!` the snapshots are always missing columns added by DB
         ;; migrations. So let's just check and make sure it's fully up to date in this scenario. Not doing this outside
         ;; of dev because it seems to work fine for whatever reason normally and we don't want tests taking 5 million
         ;; years to run because we're wasting a bunch of time initializing Liquibase and checking for unrun migrations
@@ -122,7 +122,7 @@
   nil)
 
 (api/defendpoint POST "/echo"
-  "Simple echo hander. Fails when you POST {\"fail\": true}."
+  "Simple echo handler. Fails when you POST {\"fail\": true}."
   [fail :as {:keys [body]}]
   {fail ms/BooleanValue}
   (if fail
@@ -147,7 +147,7 @@
      :time   (t/instant)}))
 
 (api/defendpoint GET "/echo"
-  "Simple echo hander. Fails when you GET {\"fail\": true}."
+  "Simple echo handler. Fails when you GET {\"fail\": true}."
   [fail body]
   {fail ms/BooleanValue
    body ms/JSONString}

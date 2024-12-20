@@ -96,7 +96,7 @@
                     {::original-effective-type original-effective-type})
                   (when-let [original-temporal-unit (::original-temporal-unit opts)]
                     {::original-temporal-unit original-temporal-unit})
-                  ;; `:inherited-temporal-unit` is transfered from `:temoral-unit` ref option only when
+                  ;; `:inherited-temporal-unit` is transferred from `:temoral-unit` ref option only when
                   ;; the [[lib.metadata.calculation/*propagate-binning-and-bucketing*]] is thruthy, ie. bound. Intent
                   ;; is to pass it from ref to column only during [[returned-columns]] call. Otherwise eg.
                   ;; [[orderable-columns]] would contain that too. That could be problematic, because original ref that
@@ -715,7 +715,7 @@
                                                         {:query  query
                                                          :stage  stage-number
                                                          :source source}))
-          ;; Default case: do nothing and return the query unchaged.
+          ;; Default case: do nothing and return the query unchanged.
           ;; Generate a warning - we should aim to capture every `:source/*` value above.
           (do
             (log/warnf "Cannot remove-field with unknown source %s" (pr-str source))

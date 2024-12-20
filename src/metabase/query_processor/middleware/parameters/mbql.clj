@@ -68,7 +68,7 @@
   (cond
     (params.ops/operator? param-type)
     (params.ops/to-clause param)
-    ;; multipe values. Recursively handle them all and glue them all together with an OR clause
+    ;; multiple values. Recursively handle them all and glue them all together with an OR clause
     (sequential? param-value)
     (mbql.u/simplify-compound-filter
      (vec (cons :or (for [value param-value]

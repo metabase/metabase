@@ -15,7 +15,7 @@
   "Protocol for determining how QP results of various classes are serialized. Drivers can add implementations to support
   custom driver types as needed."
   (format-value [v ^ZoneId timezone-id]
-    "Serialize a value in the QP results. You can add impementations for driver-specific types as needed."))
+    "Serialize a value in the QP results. You can add implementations for driver-specific types as needed."))
 
 (extend-protocol FormatValue
   nil

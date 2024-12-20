@@ -148,7 +148,7 @@
   "Schema for an `:absolute-datetime` clause."
   [:ref ::absolute-datetime])
 
-;; almost exactly the same as `absolute-datetime`, but generated in some sitations where the literal in question was
+;; almost exactly the same as `absolute-datetime`, but generated in some situations where the literal in question was
 ;; clearly a time (e.g. "08:00:00.000") and/or the Field derived from `:type/Time` and/or the unit was a
 ;; time-bucketing unit
 (defclause ^:internal time
@@ -1413,7 +1413,7 @@
       :description "Mostly used only internally. When a join is implicitly generated via a `:field` clause with
   `:source-field`, the ID of the foreign key field in the source Table will be recorded here. This information is used
   to add `fk_field_id` information to the `:cols` in the query results, and also for drill-thru. When generating
-  explicit joins by hand you can usually omit this information, altho it doesn't hurt to include it if you know it.
+  explicit joins by hand you can usually omit this information, although it doesn't hurt to include it if you know it.
 
   Don't set this information yourself. It will have no effect."}
      [:maybe ::lib.schema.id/field]]

@@ -75,7 +75,7 @@
   (str (apply str (take n (repeat "#"))) " `" s "`"))
 
 (defn- format-description
-  "Helper function to specify description format for enviromnent variable docs."
+  "Helper function to specify description format for environment variable docs."
   [env-var]
   (->> ((:description env-var))
        u/add-period
@@ -161,7 +161,7 @@
   (not= :none (:setter env-var)))
 
 (defn active?
-  "Used to filter our deprecated enviroment variables."
+  "Used to filter our deprecated environment variables."
   [env-var]
   (nil? (:deprecated env-var)))
 
