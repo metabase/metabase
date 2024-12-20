@@ -5,10 +5,7 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  ORDERS_DASHBOARD_ID,
-  THIRD_COLLECTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -58,12 +55,21 @@ describe("scenarios > question > native", () => {
         "have.text",
         "Third collection",
       );
-
-      cy.button("Cancel").click();
+      cy.log("after selecting a dashboard, it should be the new suggestion");
+      cy.findByLabelText(/Where do you want to save this/).click();
     });
 
-    cy.log("after visiting a dashboard, it should be the new suggestion");
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.entityPickerModal().within(() => {
+      cy.findByText("Orders in a dashboard").click();
+      cy.button("Select this dashboard").click();
+    });
+
+    cy.findByTestId("save-question-modal")
+      .findByLabelText(/Where do you want to save this/)
+      .should("have.text", "Orders in a dashboard");
+
+    cy.visit("/");
+
     H.openNativeEditor({ fromCurrentPage: true });
     cy.realType("select count(*) from orders");
 
