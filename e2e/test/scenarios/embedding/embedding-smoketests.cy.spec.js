@@ -28,7 +28,12 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     cy.visit(`/model/${ORDERS_QUESTION_ID}`);
     cy.wait("@dataset");
 
-    H.sharingMenuButton().should("not.exist");
+    H.openQuestionActions();
+
+    H.popover().within(() => {
+      cy.findByText("Embed").should("not.exist");
+      cy.findByText("Public link").should("not.exist");
+    });
 
     cy.findByTestId("view-footer").within(() => {
       cy.icon("download").should("exist");
@@ -113,11 +118,15 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
     it("should not let you embed the question", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
+
+      H.openQuestionActions("Embed");
       ensureEmbeddingIsDisabled();
     });
 
     it("should not let you embed the dashboard", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
+
+      H.openDashboardMenu("Embed");
       ensureEmbeddingIsDisabled();
     });
   });
@@ -363,11 +372,6 @@ function assertLinkMatchesUrl(text, url) {
 }
 
 function ensureEmbeddingIsDisabled() {
-  H.openSharingMenu();
-  H.sharingMenu()
-    .findByRole("menuitem", { name: "Embed" })
-    .should("be.enabled")
-    .click();
   H.modal()
     .findByRole("article", { name: "Static embedding" })
     .within(() => {
@@ -379,13 +383,15 @@ function ensureEmbeddingIsDisabled() {
 function visitAndEnableSharing(object, acceptTerms = true) {
   if (object === "question") {
     H.visitQuestion(ORDERS_QUESTION_ID);
+
+    H.openStaticEmbeddingModal({ context: "question", acceptTerms });
   }
 
   if (object === "dashboard") {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
-  }
 
-  H.openStaticEmbeddingModal({ acceptTerms });
+    H.openStaticEmbeddingModal({ context: "dashboard", acceptTerms });
+  }
 }
 
 function sidebar() {

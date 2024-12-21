@@ -730,7 +730,7 @@ describe("issue 17019", () => {
   });
 
   it("question filters should work for embedding/public sharing scenario (metabase#17019)", () => {
-    H.openSharingMenu(/public link/i);
+    H.openQuestionActions(/public link/i);
 
     cy.findByTestId("public-link-popover-content")
       .findByTestId("public-link-input")
