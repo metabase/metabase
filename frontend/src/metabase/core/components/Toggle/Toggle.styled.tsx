@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { focusOutlineStyle } from "metabase/core/style/input";
 import { color } from "metabase/lib/colors";
 
-export interface ToggleRootProps {
+interface ToggleRootProps {
   checked?: boolean;
   small?: boolean;
   currentColor?: string;

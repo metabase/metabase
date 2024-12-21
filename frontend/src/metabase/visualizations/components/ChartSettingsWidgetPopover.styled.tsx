@@ -35,9 +35,3 @@ export const PopoverTabs = styled(Radio)`
     flex: none;
   }
 `;
-
-export const PopoverTitle = styled.h3`
-  margin-left: 2rem;
-  margin-right: 2rem;
-  margin-bottom: 1.5rem;
-`;

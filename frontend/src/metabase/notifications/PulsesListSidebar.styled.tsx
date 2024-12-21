@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 
 import Card from "metabase/components/Card";
 
-export interface PulesCardProps {
+interface PulesCardProps {
   canEdit: boolean;
 }
 

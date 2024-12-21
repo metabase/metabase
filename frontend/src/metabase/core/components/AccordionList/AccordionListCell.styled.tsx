@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 
 import { alpha } from "metabase/lib/colors";
 
-export interface ListCellItemProps {
+interface ListCellItemProps {
   isClickable: boolean;
 }
 

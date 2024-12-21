@@ -13,7 +13,7 @@ export const SkeletonCaptionRoot = styled.div`
   width: 100%;
 `;
 
-export interface SkeletonTitleProps {
+interface SkeletonTitleProps {
   size: SkeletonCaptionSize;
 }
 
@@ -37,9 +37,4 @@ export const SkeletonCaptionDescription = styled(Icon)`
   color: var(--mb-color-text-medium);
   margin-left: 0.5rem;
   visibility: hidden;
-`;
-
-export const SkeletonCaptionHeaderRight = styled.div`
-  display: flex;
-  align-items: center;
 `;

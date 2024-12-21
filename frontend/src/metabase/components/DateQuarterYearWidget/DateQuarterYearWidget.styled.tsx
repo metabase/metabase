@@ -1,7 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-export interface QuarterRootProps {
+interface QuarterRootProps {
   isSelected: boolean;
 }
 

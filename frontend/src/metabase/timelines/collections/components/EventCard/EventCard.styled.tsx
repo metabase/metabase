@@ -44,7 +44,7 @@ export const CardBody = styled.div`
   min-width: 0;
 `;
 
-export interface CardTitleProps {
+interface CardTitleProps {
   to?: string;
 }
 

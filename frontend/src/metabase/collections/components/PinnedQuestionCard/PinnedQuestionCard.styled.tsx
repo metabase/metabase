@@ -23,7 +23,7 @@ export const CardPreviewSkeleton = styled(ChartSkeleton)`
   padding: 0.5rem 1rem;
 `;
 
-export interface CardRootProps {
+interface CardRootProps {
   isPreview?: boolean;
 }
 

@@ -68,7 +68,7 @@ NodeRoot.defaultProps = {
   hasDefaultIconStyle: true,
 };
 
-export const collectionDragAndDropHoverStyle = css`
+const collectionDragAndDropHoverStyle = css`
   color: var(--mb-color-text-white);
   background-color: var(--mb-color-brand);
 `;

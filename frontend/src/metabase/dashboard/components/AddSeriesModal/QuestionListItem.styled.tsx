@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { Icon } from "metabase/ui";
-
 export const QuestionListItemRoot = styled.li`
   align-items: center;
   display: flex;
@@ -24,17 +22,3 @@ export const CheckboxContainer = styled.div`
   max-width: 100%;
   width: 100%;
 `;
-
-export const WarningIcon = styled(Icon)`
-  color: var(--mb-color-text-light);
-  cursor: pointer;
-  margin-left: auto;
-  max-width: 36px;
-  padding: 0 0.5rem;
-
-  &:hover {
-    color: var(--mb-color-text-medium);
-  }
-`;
-
-WarningIcon.defaultProps = { size: 20, name: "warning" };

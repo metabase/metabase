@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
 
-export interface TabLinkProps {
+interface TabLinkProps {
   isSelected?: boolean;
 }
 
