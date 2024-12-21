@@ -133,13 +133,16 @@ export function getParameterMappingOptions(
   if (dashcard && isVirtualDashCard(dashcard)) {
     if (["heading", "text"].includes(card.display)) {
       const tagNames = tag_names(dashcard.visualization_settings.text || "");
-      return tagNames ? tagNames.map(buildTextTagOption) : [];
+      return tagNames?.map(buildTextTagOption) ?? [];
     } else if (card.display === "iframe") {
       const iframeAttributes = getAllowedIframeAttributes(
         dashcard.visualization_settings.iframe,
       );
       const tagNames = tag_names(iframeAttributes?.src || "");
-      return tagNames ? tagNames.map(buildTextTagOption) : [];
+      return tagNames?.map(buildTextTagOption) ?? [];
+    } else if (card.display === "link") {
+      const tagNames = tag_names(dashcard.visualization_settings.link?.url);
+      return tagNames?.map(buildTextTagOption) ?? [];
     }
   }
 
