@@ -1,4 +1,4 @@
-import { getParameterDependencyKey } from "embedding-sdk/hooks/private/use-load-question";
+import { getParameterDependencyKey } from "embedding-sdk/lib/load-question-utils";
 
 describe("getParameterDependencyKey", () => {
   it("generates an order-independent parameter dependency key", () => {
