@@ -95,7 +95,7 @@ describe("scenarios > admin > settings > API keys", () => {
     H.visitApiKeySettings();
     H.tryToCreateApiKeyViaModal({ name, group });
     H.modal()
-      .findByRole("button", { name: /done\|success/i })
+      .findByRole("button", { name: /done|success/i })
       .click();
     H.tryToCreateApiKeyViaModal({ name, group }).then(({ response }) => {
       expect(response?.statusCode).to.equal(400);
