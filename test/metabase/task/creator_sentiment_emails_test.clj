@@ -9,8 +9,7 @@
    [metabase.task.creator-sentiment-emails :as creator-sentiment-emails]
    [metabase.test :as mt]
    [metabase.util.json :as json]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util.malli.schema :as ms]))
 
 (deftest send-creator-sentiment-emails!-test
   (mt/with-fake-inbox
@@ -82,19 +81,19 @@
 (deftest fetch-creators-test
   (let [creator-id 33
         creator-email "creator@metabase.com"]
-    (t2.with-temp/with-temp [:model/User _ {:email creator-email :id creator-id}
-                             :model/User _ {:email "noncreator@metabase.com"}
-                             :model/Dashboard _ {:creator_id creator-id}
-                             :model/Card _ {:creator_id creator-id :query_type "native"}
-                             :model/Card _ {:creator_id creator-id :query_type "native"}
-                             :model/Card _ {:creator_id creator-id}
-                             :model/Card _ {:creator_id creator-id}
-                             :model/Card _ {:creator_id creator-id}
-                             :model/Card _ {:creator_id creator-id}
-                             :model/Card _ {:creator_id creator-id}
-                             :model/Card _ {:creator_id creator-id}
-                             :model/Card _ {:creator_id creator-id}
-                             :model/Card _ {:creator_id creator-id}]
+    (mt/with-temp [:model/User _ {:email creator-email :id creator-id}
+                   :model/User _ {:email "noncreator@metabase.com"}
+                   :model/Dashboard _ {:creator_id creator-id}
+                   :model/Card _ {:creator_id creator-id :query_type "native"}
+                   :model/Card _ {:creator_id creator-id :query_type "native"}
+                   :model/Card _ {:creator_id creator-id}
+                   :model/Card _ {:creator_id creator-id}
+                   :model/Card _ {:creator_id creator-id}
+                   :model/Card _ {:creator_id creator-id}
+                   :model/Card _ {:creator_id creator-id}
+                   :model/Card _ {:creator_id creator-id}
+                   :model/Card _ {:creator_id creator-id}
+                   :model/Card _ {:creator_id creator-id}]
       (testing "Test we only fetch creators with the correct number of questions and dashboards."
         (let [creators (#'creator-sentiment-emails/fetch-creators false)]
           (is (= 1 (count creators)))

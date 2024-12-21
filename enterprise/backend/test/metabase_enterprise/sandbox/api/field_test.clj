@@ -7,8 +7,7 @@
    [metabase.models :refer [Field FieldValues User]]
    [metabase.models.field-values :as field-values]
    [metabase.test :as mt]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (deftest fetch-field-test
   (testing "GET /api/field/:id"
@@ -86,7 +85,7 @@
                            (fetch-values :rasta :name))))
                   (testing "A User with a *different* sandbox should see their own values"
                     (let [password (mt/random-name)]
-                      (t2.with-temp/with-temp [User another-user {:password password}]
+                      (mt/with-temp [User another-user {:password password}]
                         (met/with-gtaps-for-user! another-user {:gtaps      {:venues
                                                                              {:remappings
                                                                               {:cat
@@ -157,7 +156,7 @@
 
       (testing "Do different users has different sandbox FieldValues"
         (let [password (mt/random-name)]
-          (t2.with-temp/with-temp [User another-user {:password password}]
+          (mt/with-temp [User another-user {:password password}]
             (met/with-gtaps-for-user! another-user {:gtaps      {:venues
                                                                  {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
                                                                   :query      (mt.tu/restricted-column-query (mt/id))}}

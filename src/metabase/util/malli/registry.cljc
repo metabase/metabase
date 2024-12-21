@@ -26,7 +26,7 @@
   "Fetch a cached [[mc/validator]] for `schema`, creating one if needed. The cache is flushed whenever the registry
   changes."
   [schema]
-  (cached :validator schema #(mc/validator schema)))
+  (cached :validator schema #_{:clj-kondo/ignore [:discouraged-var]} #(mc/validator schema)))
 
 (defn validate
   "[[mc/validate]], but uses a cached validator from [[validator]]."

@@ -9,8 +9,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -135,7 +134,7 @@
   (mt/with-model-cleanup [User]
     (with-no-sso-google-token!
       (testing "test that an existing user can log in with Google auth even if the auto-create accounts domain is different from"
-        (t2.with-temp/with-temp [User _ {:email "cam@sf-toucannery.com"}]
+        (mt/with-temp [User _ {:email "cam@sf-toucannery.com"}]
           (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
             (testing "their account should return a UserInstance"
               (is (mi/instance-of? User

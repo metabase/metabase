@@ -7,8 +7,7 @@
    [metabase.models.permissions :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (use-fixtures
   :once
@@ -17,7 +16,7 @@
 (defn do-with-dashtab-in-personal-collection [f]
   (let [owner-id (mt/user->id :rasta)
         coll     (t2/select-one Collection :personal_owner_id owner-id)]
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [Card            card     {}
        Dashboard       dash     {:collection_id (:id coll)}
        :model/DashboardTab dashtab  {:dashboard_id (:id dash)}
@@ -77,7 +76,7 @@
 
 (deftest hydration-test
   (testing "hydrate a dashboard will return all of its tabs"
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [Card            card      {}
        Dashboard       dashboard {}
        :model/DashboardTab dashtab-1 {:dashboard_id (:id dashboard) :position 0}
@@ -89,7 +88,7 @@
               (t2/hydrate dashboard :tabs))))))
 
 (deftest hydrate-tabs-card-test
-  (t2.with-temp/with-temp
+  (mt/with-temp
     [:model/Dashboard    {dashboard-id :id}    {}
      :model/DashboardTab {tab-2-id :id}        {:name         "Tab 2"
                                                 :dashboard_id dashboard-id

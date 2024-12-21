@@ -3,8 +3,7 @@
    [clojure.test :refer :all]
    [metabase.test :as mt]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (deftest create-official-collection-test
   (testing "POST /api/collection/:id"
@@ -51,21 +50,21 @@
     (testing "update authority_level when has :official-collections feature"
       (mt/with-premium-features #{:official-collections}
         (testing "requires admin"
-          (t2.with-temp/with-temp
+          (mt/with-temp
             [:model/Collection {id :id} {:authority_level nil}]
             (is (= "official"
                    (:authority_level (mt/user-http-request :crowberto :put 200 (format "collection/%d" id) {:authority_level "official"}))))
             (is (= :official (t2/select-one-fn :authority_level :model/Collection id)))))
 
         (testing "Non-admins can patch without the :authority_level"
-          (t2.with-temp/with-temp [:model/Collection collection {:name "whatever" :authority_level "official"}]
+          (mt/with-temp [:model/Collection collection {:name "whatever" :authority_level "official"}]
             (is (= "official"
                    (-> (mt/user-http-request :rasta :put 200 (str "collection/" (:id collection))
                                              {:name "foo"})
                        :authority_level)))))
 
         (testing "non-admins get 403"
-          (t2.with-temp/with-temp
+          (mt/with-temp
             [:model/Collection {id :id} {:authority_level nil}]
             (is (= "official"
                    (:authority_level (mt/user-http-request :crowberto :put 200 (format "collection/%d" id) {:authority_level "official"}))))
@@ -73,7 +72,7 @@
 
     (testing "fails to update if doesn't have any premium features"
       (mt/with-premium-features #{}
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/Collection {id :id} {:authority_level nil}]
           (mt/assert-has-premium-feature-error "Official Collections" (mt/user-http-request :crowberto :put 402 (format "collection/%d" id) {:authority_level "official"})))))))
 
@@ -82,19 +81,19 @@
   (testing "backwards-compatible check when doesn't have :official-collections feature\n"
     (mt/with-premium-features #{}
       (testing "authority_level already set and update payload contains the key but does not change"
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/Collection {id :id} {:authority_level "official"}]
           (mt/user-http-request :crowberto :put 200 (format "collection/%d" id) {:authority_level "official" :name "New name"})
           (is (= "New name" (t2/select-one-fn :name :model/Collection id)))))
 
       (testing "authority_level is not set and update payload contains the key but does not change"
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/Collection {id :id} {}]
           (mt/user-http-request :crowberto :put 200 (format "collection/%d" id) {:authority_level nil :name "New name"})
           (is (= "New name" (t2/select-one-fn :name :model/Collection id))))))))
 
 (deftest moderation-review-test
-  (t2.with-temp/with-temp
+  (mt/with-temp
     [:model/Card {card-id :id} {:name "A question"}
      :model/Card {model-id :id} {:name "A question" :type :model}]
     (testing "can't use verified questions/models if has :official-collections feature"

@@ -19,8 +19,7 @@
    [ring.util.codec :as codec]
    [saml20-clj.core :as saml]
    [saml20-clj.encode-decode :as encode-decode]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (java.net URL)
    (java.nio.charset StandardCharsets)
@@ -571,7 +570,7 @@
       (with-saml-default-setup!
         (do-with-some-validators-disabled!
          (fn []
-           (t2.with-temp/with-temp [PermissionsGroup group-1 {:name (str ::group-1)}]
+           (mt/with-temp [PermissionsGroup group-1 {:name (str ::group-1)}]
              (mt/with-temporary-setting-values [saml-group-sync      true
                                                 saml-group-mappings  {"group_1" [(u/the-id group-1)]}
                                                 saml-attribute-group "GroupMembership"]

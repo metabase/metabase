@@ -5,8 +5,7 @@
    [metabase.api.table-test :as oss-test]
    [metabase.test :as mt]
    [metabase.upload :as upload]
-   [metabase.upload-test :as upload-test]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.upload-test :as upload-test]))
 
 (def list-url "ee/upload-management/tables")
 
@@ -15,9 +14,9 @@
     (testing "These should come back in alphabetical order and include relevant metadata"
       (mt/with-premium-features #{:upload-management}
         (oss-test/with-tables-as-uploads [:categories :reviews]
-          (t2.with-temp/with-temp [:model/Card {} {:table_id (mt/id :categories)}
-                                   :model/Card {} {:table_id (mt/id :reviews)}
-                                   :model/Card {} {:table_id (mt/id :reviews)}]
+          (mt/with-temp [:model/Card {} {:table_id (mt/id :categories)}
+                         :model/Card {} {:table_id (mt/id :reviews)}
+                         :model/Card {} {:table_id (mt/id :reviews)}]
             (let [result (mt/user-http-request :rasta :get 200 list-url)]
               ;; =? doesn't currently know how to treat sets as literals, only as predicates, so we can't use it.
               ;; See https://github.com/metabase/hawk/issues/23

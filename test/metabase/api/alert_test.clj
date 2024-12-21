@@ -18,8 +18,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :notifications))
 
@@ -116,7 +115,7 @@
   Cards that are. Alerts do not go in Collections; their perms are derived from their Cards.)"
   [grant-collection-perms-fn! alerts-or-ids f]
   (mt/with-non-admin-groups-no-root-collection-perms
-    (t2.with-temp/with-temp [Collection collection]
+    (mt/with-temp [Collection collection]
       (grant-collection-perms-fn! (perms-group/all-users) collection)
       ;; Go ahead and put all the Cards for all of the Alerts in the temp Collection
       (when (seq alerts-or-ids)
@@ -318,7 +317,7 @@
                 (update-in [:channels 0] merge {:schedule_hour 12, :schedule_type "daily", :recipients []}))
             (new-alert-email :rasta {"has any results" true})]
            (mt/with-non-admin-groups-no-root-collection-perms
-             (t2.with-temp/with-temp [Collection collection]
+             (mt/with-temp [Collection collection]
                (t2/update! Card (u/the-id card) {:collection_id (u/the-id collection)})
                (with-alert-setup!
                  (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
@@ -685,10 +684,10 @@
 (deftest alert-event-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-non-admin-groups-no-root-collection-perms
-      (t2.with-temp/with-temp [Collection collection {}
-                               Card       card {:name          "My question"
-                                                :display       "bar"
-                                                :collection_id (u/the-id collection)}]
+      (mt/with-temp [Collection collection {}
+                     Card       card {:name          "My question"
+                                      :display       "bar"
+                                      :collection_id (u/the-id collection)}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (with-alert-setup!
           (et/with-expected-messages 1

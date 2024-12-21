@@ -19,8 +19,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -91,7 +90,7 @@
 (deftest user-list-for-group-managers-test
   (testing "Group Managers"
     (mt/with-premium-features #{:advanced-permissions}
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/PermissionsGroup           {group-id1 :id} {:name "Cool Friends"}
          :model/PermissionsGroup           {group-id2 :id} {:name "Rad Pals"}
          :model/PermissionsGroup           {group-id3 :id} {:name "Good Folks"}
@@ -218,7 +217,7 @@
 
           (testing "Returns users in the group when user-visibility is same group"
             (mt/with-temporary-setting-values [user-visibility :group]
-              (t2.with-temp/with-temp
+              (mt/with-temp
                 [:model/PermissionsGroup           {group-id1 :id} {:name "Test recipient group1"}
                  :model/PermissionsGroup           {group-id2 :id} {:name "Test recipient group2"}
                  :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1}
@@ -735,10 +734,10 @@
 (deftest update-login-attributes-test
   (testing "PUT /api/user/:id"
     (testing "Test that we can update login attributes after a user has been created"
-      (t2.with-temp/with-temp [User {user-id :id} {:first_name   "Test"
-                                                   :last_name    "User"
-                                                   :email        "testuser@metabase.com"
-                                                   :is_superuser true}]
+      (mt/with-temp [User {user-id :id} {:first_name   "Test"
+                                         :last_name    "User"
+                                         :email        "testuser@metabase.com"
+                                         :is_superuser true}]
         (is (= (merge
                 @user-defaults
                 {:is_superuser           true
@@ -784,10 +783,10 @@
 (deftest update-first-name-last-name-test
   (testing "PUT /api/user/:id"
     (testing "Test that we can update a user's first and last names"
-      (t2.with-temp/with-temp [User {user-id :id} {:first_name   "Blue Ape"
-                                                   :last_name    "Ron"
-                                                   :email        "blueronny@metabase.com"
-                                                   :is_superuser true}]
+      (mt/with-temp [User {user-id :id} {:first_name   "Blue Ape"
+                                         :last_name    "Ron"
+                                         :email        "blueronny@metabase.com"
+                                         :is_superuser true}]
         (letfn [(change-user-via-api! [m]
                   (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id) m)
                       (t2/hydrate :personal_collection_id ::personal-collection-name)
@@ -839,11 +838,11 @@
 (deftest update-sso-user-test
   (testing "PUT /api/user/:id"
     (testing "Test that we do not update a user's first and last names if they are an SSO user."
-      (t2.with-temp/with-temp [User {user-id :id} {:first_name   "SSO"
-                                                   :last_name    "User"
-                                                   :email        "sso-user@metabase.com"
-                                                   :sso_source   :jwt
-                                                   :is_superuser true}]
+      (mt/with-temp [User {user-id :id} {:first_name   "SSO"
+                                         :last_name    "User"
+                                         :email        "sso-user@metabase.com"
+                                         :sso_source   :jwt
+                                         :is_superuser true}]
         (letfn [(change-user-via-api! [expected-status m]
                   (mt/user-http-request :crowberto :put expected-status (str "user/" user-id) m))]
           (testing "`:first_name` changes are rejected"
@@ -899,9 +898,9 @@
                                    {:email "toucan@metabase.com"}))))
 
     (testing "Google auth users shouldn't be able to change their own password as we get that from Google"
-      (t2.with-temp/with-temp [User user {:email       "anemail@metabase.com"
-                                          :password    "def123"
-                                          :sso_source  "google"}]
+      (mt/with-temp [User user {:email       "anemail@metabase.com"
+                                :password    "def123"
+                                :sso_source  "google"}]
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -910,9 +909,9 @@
 
     (testing (str "Similar to Google auth accounts, we should not allow LDAP users to change their own email address "
                   "as we get that from the LDAP server")
-      (t2.with-temp/with-temp [User user {:email     "anemail@metabase.com"
-                                          :password  "def123"
-                                          :sso_source "ldap"}]
+      (mt/with-temp [User user {:email     "anemail@metabase.com"
+                                :password  "def123"
+                                :sso_source "ldap"}]
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -945,7 +944,7 @@
       (mt/with-temp-vals-in-db User (mt/user->id :rasta) {:first_name "Rasta"}
         (mt/test-helpers-set-global-values!
           (with-preserved-rasta-personal-collection-name!
-            (t2.with-temp/with-temp [PermissionsGroup group {:name "Blue Man Group"}]
+            (mt/with-temp [PermissionsGroup group {:name "Blue Man Group"}]
               (mt/user-http-request :rasta :put 403 (str "user/" (mt/user->id :rasta))
                                     {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) group])
                                      :first_name             "Reggae"}))))
@@ -971,7 +970,7 @@
 
     (testing (str "We should be able to put someone in the Admin group when we update them them (is_superuser = TRUE "
                   "and user_group_memberships including admin group ID)")
-      (t2.with-temp/with-temp [User {:keys [email id]}]
+      (mt/with-temp [User {:keys [email id]}]
         (mt/user-http-request :crowberto :put 200 (str "user/" id)
                               {:is_superuser           true
                                :user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) (perms-group/admin)])})
@@ -1001,14 +1000,14 @@
                  (superuser-and-admin-pgm-info email))))))
 
     (testing "if we PUT a user with is_superuser TRUE but don't specify user_group_memberships, we should be ok"
-      (t2.with-temp/with-temp [User {:keys [email id]}]
+      (mt/with-temp [User {:keys [email id]}]
         (mt/user-http-request :crowberto :put 200 (str "user/" id)
                               {:is_superuser true})
         (is (= {:is-superuser? true, :pgm-exists? true}
                (superuser-and-admin-pgm-info email)))))
 
     (testing "if we include Admin in user_group_memberships but don't specify is_superuser we should be ok"
-      (t2.with-temp/with-temp [User {:keys [email id]}]
+      (mt/with-temp [User {:keys [email id]}]
         (mt/user-http-request :crowberto :put 200 (str "user/" id)
                               {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) (perms-group/admin)])})
         (is (= {:is-superuser? true, :pgm-exists? true}
@@ -1023,7 +1022,7 @@
 
 (deftest update-locale-test
   (testing "PUT /api/user/:id\n"
-    (t2.with-temp/with-temp [User {user-id :id, email :email} {:password "p@ssw0rd"}]
+    (mt/with-temp [User {user-id :id, email :email} {:password "p@ssw0rd"}]
       (letfn [(set-locale! [expected-status-code new-locale]
                 (mt/client {:username email, :password "p@ssw0rd"}
                            :put expected-status-code (str "user/" user-id)
@@ -1081,7 +1080,7 @@
 (deftest reactivate-user-test
   (testing "PUT /api/user/:id/reactivate"
     (testing "Test that reactivating a disabled account works"
-      (t2.with-temp/with-temp [User user {:is_active false}]
+      (mt/with-temp [User user {:is_active false}]
         ;; now try creating the same user again, should re-activiate the original
         (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user))
                               {:first_name (:first_name user)
@@ -1104,7 +1103,7 @@
                   "Google Auth (#3323)")
       (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
                                          google-auth-enabled    true]
-        (t2.with-temp/with-temp [User user {:sso_source :google}]
+        (mt/with-temp [User user {:sso_source :google}]
           (t2/update! User (u/the-id user)
                       {:is_active false})
           (mt/with-temporary-setting-values [google-auth-enabled false]
@@ -1117,7 +1116,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- user-can-reset-password? [superuser?]
-  (t2.with-temp/with-temp [User user {:password "def", :is_superuser (boolean superuser?)}]
+  (mt/with-temp [User user {:password "def", :is_superuser (boolean superuser?)}]
     (let [creds           {:username (:email user), :password "def"}
           hashed-password (t2/select-one-fn :password User, :%lower.email (u/lower-case-en (:email user)))]
       ;; use API to reset the users password
@@ -1159,7 +1158,7 @@
 (deftest reset-password-session-test
   (testing "PUT /api/user/:id/password"
     (testing "Test that we return a session if we are changing our own password"
-      (t2.with-temp/with-temp [User user {:password "def", :is_superuser false}]
+      (mt/with-temp [User user {:password "def", :is_superuser false}]
         (let [creds {:username (:email user), :password "def"}]
           (is (=? {:session_id mt/is-uuid-string?
                    :success    true}
@@ -1167,7 +1166,7 @@
                                                                                     :old_password "def"}))))))
 
     (testing "Test that we don't return a session if we are changing our someone else's password as a superuser"
-      (t2.with-temp/with-temp [User user {:password "def", :is_superuser false}]
+      (mt/with-temp [User user {:password "def", :is_superuser false}]
         (is (nil? (mt/user-http-request :crowberto :put 204 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
                                                                                                     :old_password "def"})))))))
 
@@ -1177,7 +1176,7 @@
 
 (deftest deactivate-user-test
   (testing "DELETE /api/user/:id"
-    (t2.with-temp/with-temp [User user]
+    (mt/with-temp [User user]
       (is (= {:success true}
              (mt/user-http-request :crowberto :delete 200 (format "user/%d" (:id user)) {})))
 
@@ -1192,8 +1191,8 @@
 
     (testing "Check that the last non-archived superuser cannot deactivate themselves"
       (mt/with-single-admin-user [{id :id}]
-        (t2.with-temp/with-temp [User _ {:is_active    false
-                                         :is_superuser true}]
+        (mt/with-temp [User _ {:is_active    false
+                               :is_superuser true}]
           (is (= "You cannot remove the last member of the 'Admin' group!"
                  (mt/user-http-request id :delete 400 (format "user/%d" id)))))))
 
@@ -1210,10 +1209,10 @@
                                ["datasetnewb" :is_datasetnewb]]]
     (testing (str "PUT /api/user/:id/modal/" endpoint)
       (testing "Test that we can set the QB newb status of ourselves"
-        (t2.with-temp/with-temp [User {:keys [id]} {:first_name (mt/random-name)
-                                                    :last_name  (mt/random-name)
-                                                    :email      "def@metabase.com"
-                                                    :password   "def123"}]
+        (mt/with-temp [User {:keys [id]} {:first_name (mt/random-name)
+                                          :last_name  (mt/random-name)
+                                          :email      "def@metabase.com"
+                                          :password   "def123"}]
           (let [creds {:username "def@metabase.com"
                        :password "def123"}]
             (testing "defaults to true"
@@ -1234,8 +1233,8 @@
 (deftest user-activate-deactivate-event-test
   (testing "User Deactivate/Reactivate events via the API are recorded in the audit log"
     (mt/with-premium-features #{:audit-app}
-      (t2.with-temp/with-temp [User {:keys [id]} {:first_name "John"
-                                                  :last_name  "Cena"}]
+      (mt/with-temp [User {:keys [id]} {:first_name "John"
+                                        :last_name  "Cena"}]
         (testing "DELETE /api/user/:id and PUT /api/user/:id/reactivate"
           (mt/user-http-request :crowberto :delete 200 (format "user/%s" id))
           (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" id))
@@ -1254,8 +1253,8 @@
 
 (deftest user-update-event-test
   (testing "User Updates via the API are recorded in the audit log"
-    (t2.with-temp/with-temp [User {:keys [id]} {:first_name "John"
-                                                :last_name  "Cena"}]
+    (mt/with-temp [User {:keys [id]} {:first_name "John"
+                                      :last_name  "Cena"}]
       (mt/with-premium-features #{:audit-app}
         (testing "PUT /api/user/:id"
           (mt/user-http-request :crowberto :put 200 (format "user/%s" id)

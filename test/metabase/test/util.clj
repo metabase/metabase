@@ -52,7 +52,7 @@
    [toucan2.model :as t2.model]
    [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.transformed :as t2.transformed]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.tools.with-temp])
   (:import
    (java.io File FileInputStream)
    (java.net ServerSocket)
@@ -312,7 +312,7 @@
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
-    (methodical/defmethod t2.with-temp/with-temp-defaults model
+    (methodical/defmethod toucan2.tools.with-temp/with-temp-defaults model
       [model]
       (defaults-fn model))))
 
@@ -816,7 +816,8 @@
 
 (deftest with-model-cleanup-test
   (testing "Make sure the with-model-cleanup macro actually works as expected"
-    (t2.with-temp/with-temp [Card other-card]
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (toucan2.tools.with-temp/with-temp [Card other-card]
       (let [card-count-before (t2/count Card)
             card-name         (u.random/random-name)]
         (with-model-cleanup [Card]
@@ -853,7 +854,8 @@
   `(do-with-verified-cards! ~card-or-ids (fn [] ~@body)))
 
 (deftest with-verified-cards-test
-  (t2.with-temp/with-temp
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (toucan2.tools.with-temp/with-temp
     [:model/Card {card-id :id} {}]
     (with-verified-cards! [card-id]
       (is (=? #{{:moderated_item_id   card-id
@@ -981,7 +983,8 @@
     `(do-with-discard-model-updates! ~models (fn [] ~@body))))
 
 (deftest with-discard-model-changes-test
-  (t2.with-temp/with-temp
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (toucan2.tools.with-temp/with-temp
     [:model/Card      {card-id :id :as card} {:name "A Card"}
      :model/Dashboard {dash-id :id :as dash} {:name "A Dashboard"}]
     (let [count-aux-method-before (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))]
@@ -1065,8 +1068,9 @@
 
   For most use cases see the macro [[with-all-users-permission]]."
   [permission-path f]
-  (t2.with-temp/with-temp [Permissions _ {:group_id (:id (perms-group/all-users))
-                                          :object permission-path}]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (toucan2.tools.with-temp/with-temp [Permissions _ {:group_id (:id (perms-group/all-users))
+                                                     :object permission-path}]
     (f)))
 
 (defn do-with-all-user-data-perms-graph!
@@ -1142,10 +1146,11 @@
           ;; remap is integer => fk remap
           (let [remapped (t2/select-one Field :id (u/the-id remap))]
             (fn []
-              (t2.with-temp/with-temp [Dimension _ {:field_id                (:id original)
-                                                    :name                    (format "%s [external remap]" (:display_name original))
-                                                    :type                    :external
-                                                    :human_readable_field_id (:id remapped)}]
+              #_{:clj-kondo/ignore [:discouraged-var]}
+              (toucan2.tools.with-temp/with-temp [Dimension _ {:field_id                (:id original)
+                                                               :name                    (format "%s [external remap]" (:display_name original))
+                                                               :type                    :external
+                                                               :human_readable_field_id (:id remapped)}]
                 (testing (format "With FK remapping %s -> %s\n" (describe-field original) (describe-field remapped))
                   (thunk)))))
           ;; remap is sequential or map => HRV remap
@@ -1161,16 +1166,18 @@
                                     (testing (format "With human readable values remapping %s -> %s\n"
                                                      (describe-field original) (pr-str values-map))
                                       (thunk)))]
-                (t2.with-temp/with-temp [Dimension _ {:field_id (:id original)
-                                                      :name     (format "%s [internal remap]" (:display_name original))
-                                                      :type     :internal}]
+                #_{:clj-kondo/ignore [:discouraged-var]}
+                (toucan2.tools.with-temp/with-temp [Dimension _ {:field_id (:id original)
+                                                                 :name     (format "%s [internal remap]" (:display_name original))
+                                                                 :type     :internal}]
                   (if preexisting-id
                     (with-temp-vals-in-db FieldValues preexisting-id {:values (keys values-map)
                                                                       :human_readable_values (vals values-map)}
                       (testing-thunk))
-                    (t2.with-temp/with-temp [FieldValues _ {:field_id              (:id original)
-                                                            :values                (keys values-map)
-                                                            :human_readable_values (vals values-map)}]
+                    #_{:clj-kondo/ignore [:discouraged-var]}
+                    (toucan2.tools.with-temp/with-temp [FieldValues _ {:field_id              (:id original)
+                                                                       :values                (keys values-map)
+                                                                       :human_readable_values (vals values-map)}]
                       (testing-thunk)))))))))))
    orig->remapped))
 
@@ -1367,11 +1374,13 @@
 
 (defn do-with-user-in-groups
   ([f groups-or-ids]
-   (t2.with-temp/with-temp [User user]
+   #_{:clj-kondo/ignore [:discouraged-var]}
+   (toucan2.tools.with-temp/with-temp [User user]
      (do-with-user-in-groups f user groups-or-ids)))
   ([f user [group-or-id & more]]
    (if group-or-id
-     (t2.with-temp/with-temp [PermissionsGroupMembership _ {:group_id (u/the-id group-or-id), :user_id (u/the-id user)}]
+     #_{:clj-kondo/ignore [:discouraged-var]}
+     (toucan2.tools.with-temp/with-temp [PermissionsGroupMembership _ {:group_id (u/the-id group-or-id), :user_id (u/the-id user)}]
        (do-with-user-in-groups f user more))
      (f user))))
 
@@ -1390,7 +1399,7 @@
   [[& bindings] & body]
   (if (> (count bindings) 2)
     (let [[group-binding group-definition & more] bindings]
-      `(t2.with-temp/with-temp [PermissionsGroup ~group-binding ~group-definition]
+      `(mt/with-temp [PermissionsGroup ~group-binding ~group-definition]
          (with-user-in-groups ~more ~@body)))
     (let [[user-binding groups-or-ids-to-put-user-in] bindings]
       `(do-with-user-in-groups (fn [~user-binding] ~@body) ~groups-or-ids-to-put-user-in))))

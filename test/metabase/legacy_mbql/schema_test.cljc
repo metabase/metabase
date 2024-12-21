@@ -2,10 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
-   [malli.core :as mc]
    [malli.error :as me]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.util.malli.humanize :as mu.humanize]))
+   [metabase.util.malli.humanize :as mu.humanize]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel temporal-literal-test
   (testing "Make sure our schema validates temporal literal clauses correctly"
@@ -39,7 +39,7 @@
             [expected clause] cases]
       (testing (pr-str schema-var clause)
         (is (= expected
-               (mc/validate schema-var clause)))))))
+               (mr/validate schema-var clause)))))))
 
 (deftest ^:parallel field-clause-test
   (testing "Make sure our schema validates `:field` clauses correctly"
@@ -64,7 +64,7 @@
                                [:field 1 {:binning {:strategy :fake}}]                                 false}]
       (testing (pr-str clause)
         (is (= expected
-               (mc/validate mbql.s/field clause)))))))
+               (mr/validate mbql.s/field clause)))))))
 
 (deftest ^:parallel validate-template-tag-names-test
   (testing "template tags with mismatched keys/`:names` in definition should be disallowed\n"
@@ -77,26 +77,26 @@
                                                            :type         :text}}}}
           bad-query     (assoc-in correct-query [:native :template-tags "foo" :name] "filter")]
       (testing (str "correct-query " (pr-str correct-query))
-        (is (not (me/humanize (mc/explain mbql.s/Query correct-query))))
+        (is (not (me/humanize (mr/explain mbql.s/Query correct-query))))
         (is (= correct-query
                (mbql.s/validate-query correct-query))))
       (testing (str "bad-query " (pr-str bad-query))
-        (is (me/humanize (mc/explain mbql.s/Query bad-query)))
+        (is (me/humanize (mr/explain mbql.s/Query bad-query)))
         (is (thrown-with-msg?
              #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
              #"keys in template tag map must match the :name of their values"
              (mbql.s/validate-query bad-query)))))))
 
 (deftest ^:parallel aggregation-reference-test
-  (are [schema] (nil? (me/humanize (mc/explain schema [:aggregation 0])))
+  (are [schema] (nil? (me/humanize (mr/explain schema [:aggregation 0])))
     mbql.s/aggregation
     mbql.s/Reference))
 
 (deftest ^:parallel native-query-test
   (let [parameter-dimension    [:dimension [:template-tag "date_range"]]
         template-tag-dimension [:field 2 nil]]
-    (is (nil? (me/humanize (mc/explain mbql.s/dimension parameter-dimension))))
-    (is (nil? (me/humanize (mc/explain mbql.s/field template-tag-dimension))))
+    (is (nil? (me/humanize (mr/explain mbql.s/dimension parameter-dimension))))
+    (is (nil? (me/humanize (mr/explain mbql.s/field template-tag-dimension))))
     (let [parameter    {:type   :date/range
                         :name   "created_at"
                         :target parameter-dimension
@@ -106,8 +106,8 @@
                         :type         :dimension
                         :widget-type  :date/all-options
                         :dimension    template-tag-dimension}]
-      (is (nil? (me/humanize (mc/explain mbql.s/Parameter parameter))))
-      (is (nil? (me/humanize (mc/explain mbql.s/TemplateTag template-tag))))
+      (is (nil? (me/humanize (mr/explain mbql.s/Parameter parameter))))
+      (is (nil? (me/humanize (mr/explain mbql.s/TemplateTag template-tag))))
       (let [query {:database 1
                    :type     :native
                    :native   {:query         (str/join \newline  ["SELECT dayname(\"TIMESTAMP\") as \"day\""
@@ -117,7 +117,7 @@
                                                                   " LIMIT 1"])
                               :template-tags {"date_range" template-tag}
                               :parameters    [parameter]}}]
-        (is (nil? (me/humanize (mc/explain mbql.s/Query query))))))))
+        (is (nil? (me/humanize (mr/explain mbql.s/Query query))))))))
 
 (deftest ^:parallel value-test
   (let [value [:value
@@ -128,14 +128,14 @@
                 :semantic_type     :type/IPAddress
                 :database_type     "inet"
                 :name              "ip"}]]
-    (are [schema] (not (me/humanize (mc/explain schema value)))
+    (are [schema] (not (me/humanize (mr/explain schema value)))
       mbql.s/value
       @#'mbql.s/EqualityComparable
       [:or mbql.s/absolute-datetime mbql.s/value])))
 
 (deftest ^:parallel or-test
   (are [schema expected] (= expected
-                            (mu.humanize/humanize (mc/explain schema [:value "192.168.1.1" {:base_type :type/FK}])))
+                            (mu.humanize/humanize (mr/explain schema [:value "192.168.1.1" {:base_type :type/FK}])))
     mbql.s/absolute-datetime
     "not an :absolute-datetime clause"
 
@@ -154,7 +154,7 @@
      [nil nil {:base_type "Not a valid base type: :type/FK"}]]))
 
 (deftest ^:parallel relative-datetime-temporal-arithmetic-test
-  (are [schema x] (not (me/humanize (mc/explain schema x)))
+  (are [schema x] (not (me/humanize (mr/explain schema x)))
     ::mbql.s/Addable [:relative-datetime -1 :month]
     ::mbql.s/Addable [:interval -2 :month]
     ::mbql.s/+       [:+ [:relative-datetime -1 :month] [:interval -2 :month]]))

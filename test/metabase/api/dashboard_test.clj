@@ -60,8 +60,7 @@
    [metabase.util.json :as json]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
-   [toucan2.protocols :as t2.protocols]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.protocols :as t2.protocols]))
 
 (set! *warn-on-reflection* true)
 
@@ -125,7 +124,7 @@
 
 (defn- do-with-dashboards-in-a-collection! [grant-collection-perms-fn! dashboards-or-ids f]
   (mt/with-non-admin-groups-no-root-collection-perms
-    (t2.with-temp/with-temp [Collection collection]
+    (mt/with-temp [Collection collection]
       (grant-collection-perms-fn! (perms-group/all-users) collection)
       (doseq [dashboard-or-id dashboards-or-ids]
         (t2/update! Dashboard (u/the-id dashboard-or-id) {:collection_id (u/the-id collection)}))
@@ -139,7 +138,7 @@
 
 (defn do-with-simple-dashboard-with-tabs
   [f]
-  (t2.with-temp/with-temp
+  (mt/with-temp
     [Dashboard           {dashboard-id :id} {}
 
      Card                {card-id-1 :id}    {}
@@ -202,7 +201,7 @@
 (deftest create-dashboard-test
   (testing "POST /api/dashboard"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (t2.with-temp/with-temp [Collection collection]
+      (mt/with-temp [Collection collection]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (let [test-dashboard-name "Test Create Dashboard"]
           (mt/with-model-cleanup [:model/Dashboard]
@@ -229,7 +228,7 @@
   (testing "POST /api/dashboard"
     (testing "Make sure we can create a Dashboard with a Collection position"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (t2.with-temp/with-temp [Collection collection]
+        (mt/with-temp [Collection collection]
           (mt/with-model-cleanup [:model/Dashboard]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (let [dashboard-name (mt/random-name)]
@@ -241,7 +240,7 @@
                               (update :collection_id (partial = (u/the-id collection))))))))
 
           (testing "..but not if we don't have permissions for the Collection"
-            (t2.with-temp/with-temp [Collection collection]
+            (mt/with-temp [Collection collection]
               (let [dashboard-name (mt/random-name)]
                 (mt/user-http-request :rasta :post 403 "dashboard" {:name                dashboard-name
                                                                     :collection_id       (u/the-id collection)
@@ -324,7 +323,7 @@
   (mt/dataset test-data
     (mt/with-column-remappings [orders.user_id people.name]
       (mt/with-test-user :crowberto
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [Dashboard {dashboard-id :id} {:name             "Test Dashboard"
                                          :creator_id       (mt/user->id :crowberto)
                                          :embedding_params {:id "enabled", :name "enabled", :source "enabled", :user_id "enabled"}
@@ -397,7 +396,7 @@
       (mt/dataset test-data
         (mt/with-column-remappings [orders.user_id people.name]
           (mt/as-admin
-            (t2.with-temp/with-temp
+            (mt/with-temp
               [Dashboard {dashboard-a-id :id} {:name       "Test Dashboard"
                                                :creator_id (mt/user->id :crowberto)
                                                :parameters [{:name    "Name", :slug "name", :id "a" :type :string/contains
@@ -509,7 +508,7 @@
                    (map (fn [dashcard] (or (get-in dashcard [:visualization_settings :link :entity])
                                            ;; get for link card
                                            (get-in dashcard [:visualization_settings :link]))))))]
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [Dashboard dashboard {:name "Test Dashboard"}]
           (dashboard-subscription-test/with-link-card-fixture-for-dashboard dashboard [{:keys [collection-id
                                                                                                database-id
@@ -692,7 +691,7 @@
 
 (deftest param-values-not-fetched-on-load-test
   (testing "Param values are not needed on initial dashboard load and should not be fetched. #38826"
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Dashboard {dashboard-id :id} {:name       "Test Dashboard"
                                             :parameters [{:name      "FOO"
                                                           :id        "foo"
@@ -724,7 +723,7 @@
   (testing "PUT /api/dashboard/:id"
     (mt/test-helpers-set-global-values!
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
-        (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:name "Test Dashboard"}]
+        (mt/with-temp [Dashboard {dashboard-id :id} {:name "Test Dashboard"}]
           (with-dashboards-in-writeable-collection! [dashboard-id]
             (testing "GET before update"
               (is (=? {:name          "Test Dashboard"
@@ -767,8 +766,8 @@
                       (dashboard-response (t2/select-one Dashboard :id dashboard-id)))))
 
             (testing "No-op PUT: Do not return 500"
-              (t2.with-temp/with-temp [Card {card-id :id} {}
-                                       DashboardCard dashcard {:card_id card-id, :dashboard_id dashboard-id}]
+              (mt/with-temp [Card {card-id :id} {}
+                             DashboardCard dashcard {:card_id card-id, :dashboard_id dashboard-id}]
                 ;; so, you can't actually set `:cards` with THIS endpoint (you have to use PUT /api/dashboard/:id/cards)
                 ;; but the e2e tests are trying to do it. With Toucan 1, it would silently do nothing and return truthy for
                 ;; whatever reason (I'm guessing it was a bug?) if you did something like (update! Dashboard 1 {}). Toucan 2
@@ -780,8 +779,8 @@
                                               {:cards [(select-keys dashcard [:id :card_id :row_col :size_x :size_y])]})))))))
         (testing "auto_apply_filters test"
           (doseq [enabled? [true false]]
-            (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:name               "Test Dashboard"
-                                                                   :auto_apply_filters enabled?}]
+            (mt/with-temp [Dashboard {dashboard-id :id} {:name               "Test Dashboard"
+                                                         :auto_apply_filters enabled?}]
               (testing "Can set it"
                 (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
                                       {:auto_apply_filters (not enabled?)})
@@ -796,7 +795,7 @@
 (deftest update-dashboard-guide-columns-test
   (testing "PUT /api/dashboard/:id"
     (testing "allow `:caveats` and `:points_of_interest` to be empty strings, and `:show_in_getting_started` should be a boolean"
-      (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:name "Test Dashboard"}]
+      (mt/with-temp [Dashboard {dashboard-id :id} {:name "Test Dashboard"}]
         (with-dashboards-in-writeable-collection! [dashboard-id]
           (is (=? {:name                    "Test Dashboard"
                    :creator_id              (mt/user->id :rasta)
@@ -820,7 +819,7 @@
 (deftest update-dashboard-clear-description-test
   (testing "PUT /api/dashboard/:id"
     (testing "Can we clear the description of a Dashboard? (#4738)"
-      (t2.with-temp/with-temp [Dashboard dashboard {:description "What a nice Dashboard"}]
+      (mt/with-temp [Dashboard dashboard {:description "What a nice Dashboard"}]
         (with-dashboards-in-writeable-collection! [dashboard]
           (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:description nil})
           (is (= nil
@@ -835,7 +834,7 @@
   (testing "PUT /api/dashboard/:id"
     (testing "Can we change the Collection a Dashboard is in (assuming we have the permissions to do so)?"
       (dashboard-test/with-dash-in-collection! [_db collection dash]
-        (t2.with-temp/with-temp [Collection new-collection]
+        (mt/with-temp [Collection new-collection]
           ;; grant Permissions for both new and old collections
           (doseq [coll [collection new-collection]]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll))
@@ -848,7 +847,7 @@
     (testing "if we don't have the Permissions for the old collection, we should get an Exception"
       (mt/with-non-admin-groups-no-root-collection-perms
         (dashboard-test/with-dash-in-collection! [_db _collection dash]
-          (t2.with-temp/with-temp [Collection new-collection]
+          (mt/with-temp [Collection new-collection]
             ;; grant Permissions for only the *new* collection
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) new-collection)
             ;; now make an API call to move collections. Should fail
@@ -859,7 +858,7 @@
     (testing "if we don't have the Permissions for the new collection, we should get an Exception"
       (mt/with-non-admin-groups-no-root-collection-perms
         (dashboard-test/with-dash-in-collection! [_db collection dash]
-          (t2.with-temp/with-temp [Collection new-collection]
+          (mt/with-temp [Collection new-collection]
             ;; grant Permissions for only the *old* collection
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             ;; now make an API call to move collections. Should fail
@@ -870,7 +869,7 @@
 (deftest update-dashboard-width-setting-test
   (testing "PUT /api/dashboard/:id"
     (testing "We can change the dashboard's width between 'fixed' and 'full' settings."
-      (t2.with-temp/with-temp [Dashboard dashboard {}]
+      (mt/with-temp [Dashboard dashboard {}]
         (with-dashboards-in-writeable-collection! [dashboard]
           (testing "the default dashboard width value is 'fixed'."
             (is (= "fixed"
@@ -892,7 +891,7 @@
 (deftest update-dashboard-add-time-granularity-param
   (testing "PUT /api/dashboard/:id"
     (testing "We can add a time granularity parameter to a dashboard"
-      (t2.with-temp/with-temp [Dashboard dashboard {}]
+      (mt/with-temp [Dashboard dashboard {}]
         (with-dashboards-in-writeable-collection! [dashboard]
           (testing "the dashboard starts with no parameters."
             (is (= []
@@ -999,7 +998,7 @@
 
 (deftest update-dashboard-position-test
   (mt/with-non-admin-groups-no-root-collection-perms
-    (t2.with-temp/with-temp [Collection collection]
+    (mt/with-temp [Collection collection]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
       (letfn [(move-dashboard! [dashboard new-position]
                 (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard))
@@ -1088,7 +1087,7 @@
   (testing "POST /api/dashboard"
     (testing "Check that adding a new Dashboard at Collection position 3 will increment position of the existing item at position 3"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (t2.with-temp/with-temp [Collection collection]
+        (mt/with-temp [Collection collection]
           (mt/with-model-cleanup [:model/Dashboard]
             (api.card-test/with-ordered-items collection [Card  a
                                                           Pulse b
@@ -1111,7 +1110,7 @@
   (testing "POST /api/dashboard"
     (testing "Check that adding a new Dashboard without a position, leaves the existing positions unchanged"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (t2.with-temp/with-temp [Collection collection]
+        (mt/with-temp [Collection collection]
           (api.card-test/with-ordered-items collection [Dashboard a
                                                         Card      b
                                                         Pulse     d]
@@ -1134,7 +1133,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest delete-test
-  (t2.with-temp/with-temp [Dashboard {dashboard-id :id}]
+  (mt/with-temp [Dashboard {dashboard-id :id}]
     (with-dashboards-in-writeable-collection! [dashboard-id]
       (is (= nil
              (mt/user-http-request :rasta :delete 204 (format "dashboard/%d" dashboard-id))))
@@ -1149,9 +1148,9 @@
   (mt/with-model-cleanup [:model/Dashboard]
     (testing "POST /api/dashboard/:id/copy"
       (testing "A plain copy with nothing special"
-        (t2.with-temp/with-temp [Dashboard dashboard {:name        "Test Dashboard"
-                                                      :description "A description"
-                                                      :creator_id  (mt/user->id :rasta)}]
+        (mt/with-temp [Dashboard dashboard {:name        "Test Dashboard"
+                                            :description "A description"
+                                            :creator_id  (mt/user->id :rasta)}]
           (let [response (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" (:id dashboard)))]
             (is (=? {:name          "Test Dashboard"
                      :description   "A description"
@@ -1182,8 +1181,8 @@
   (mt/with-model-cleanup [:model/Dashboard]
     (testing "POST /api/dashboard/:id/copy"
       (testing "Ensure name / description / user set when copying"
-        (t2.with-temp/with-temp [Dashboard dashboard  {:name        "Test Dashboard"
-                                                       :description "An old description"}]
+        (mt/with-temp [Dashboard dashboard  {:name        "Test Dashboard"
+                                             :description "An old description"}]
           (let [response (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/copy" (:id dashboard))
                                                {:name        "Test Dashboard - Duplicate"
                                                 :description "A new description"})]
@@ -1640,7 +1639,7 @@
   (testing "POST /api/dashboard/:id/copy"
     (testing "Ensure the correct collection is set when copying"
       (dashboard-test/with-dash-in-collection! [_db collection dash]
-        (t2.with-temp/with-temp [Collection new-collection]
+        (mt/with-temp [Collection new-collection]
           ;; grant Permissions for both new and old collections
           (doseq [coll [collection new-collection]]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll))
@@ -1707,9 +1706,9 @@
 (defn do-with-update-cards-parameter-mapping-permissions-fixtures! [f]
   (do-with-add-card-parameter-mapping-permissions-fixtures!
    (fn [{:keys [dashboard-id card-id mappings]}]
-     (t2.with-temp/with-temp [DashboardCard dashboard-card {:dashboard_id       dashboard-id
-                                                            :card_id            card-id
-                                                            :parameter_mappings mappings}]
+     (mt/with-temp [DashboardCard dashboard-card {:dashboard_id       dashboard-id
+                                                  :card_id            card-id
+                                                  :parameter_mappings mappings}]
        (let [dashcard-info     (select-keys dashboard-card [:id :size_x :size_y :row :col :parameter_mappings])
              new-mappings      [{:parameter_id "_CATEGORY_ID_"
                                  :target       [:dimension [:field (mt/id :venues :price) nil]]}]
@@ -1734,7 +1733,7 @@
 (deftest e2e-update-dashboard-cards-and-tabs-test
   (testing "PUT /api/dashboard/:id with updating dashboard and create/update/delete of dashcards and tabs in a single req"
     (mt/test-helpers-set-global-values!
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [Dashboard               {dashboard-id :id}  {}
          Card                    {card-id-1 :id}     {}
          Card                    {card-id-2 :id}     {}
@@ -1927,7 +1926,7 @@
 (deftest upgrade-from-non-tab-dashboard-to-has-tabs
   (testing "we introduced tabs in 47 but there are dashboards without tabs before this
            this test check the flow to upgrade a dashboard pre-47 to have tabs"
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [Dashboard     {dashboard-id :id}  {}
        Card          {card-id-1 :id}     {}
        Card          {card-id-2 :id}     {}
@@ -2001,7 +2000,7 @@
                                       :tabs      (tabs dashboard-id)})))))))
 
 (deftest update-tabs-track-snowplow-test
-  (t2.with-temp/with-temp
+  (mt/with-temp
     [Dashboard               {dashboard-id :id}  {}
      :model/DashboardTab     {dashtab-id-1 :id}  {:name "Tab 1" :dashboard_id dashboard-id :position 0}
      :model/DashboardTab     {dashtab-id-2 :id}  {:name "Tab 2" :dashboard_id dashboard-id :position 1}
@@ -2224,7 +2223,7 @@
                    (dashcards)))))))))
 
 (deftest adding-archived-cards-to-dashboard-is-not-allowed
-  (t2.with-temp/with-temp
+  (mt/with-temp
     [Dashboard {dashboard-id :id} {}
      Card      {card-id :id}      {:archived true}]
     (is (= "The object has been archived."
@@ -2596,7 +2595,7 @@
 (deftest share-dashboard-test
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (testing "Test that we can share a Dashboard"
-      (t2.with-temp/with-temp [Dashboard dashboard]
+      (mt/with-temp [Dashboard dashboard]
         (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200
                                                  (format "dashboard/%d/public_link" (u/the-id dashboard)))]
           (is (t2/exists? Dashboard :id (u/the-id dashboard), :public_uuid uuid))
@@ -2605,7 +2604,7 @@
                    (:uuid (mt/user-http-request :crowberto :post 200
                                                 (format "dashboard/%d/public_link" (u/the-id dashboard))))))))))
 
-    (t2.with-temp/with-temp [Dashboard dashboard]
+    (mt/with-temp [Dashboard dashboard]
       (testing "Test that we *cannot* share a Dashboard if we aren't admins"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 (format "dashboard/%d/public_link" (u/the-id dashboard))))))
@@ -2623,18 +2622,18 @@
   (testing "DELETE /api/dashboard/:id/public_link"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (testing "Test that we can unshare a Dashboard"
-        (t2.with-temp/with-temp [Dashboard dashboard (shared-dashboard)]
+        (mt/with-temp [Dashboard dashboard (shared-dashboard)]
           (mt/user-http-request :crowberto :delete 204 (format "dashboard/%d/public_link" (u/the-id dashboard)))
           (is (= false
                  (t2/exists? Dashboard :id (u/the-id dashboard), :public_uuid (:public_uuid dashboard))))))
 
       (testing "Test that we *cannot* unshare a Dashboard if we are not admins"
-        (t2.with-temp/with-temp [Dashboard dashboard (shared-dashboard)]
+        (mt/with-temp [Dashboard dashboard (shared-dashboard)]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :delete 403 (format "dashboard/%d/public_link" (u/the-id dashboard)))))))
 
       (testing "Test that we get a 404 if Dashboard isn't shared"
-        (t2.with-temp/with-temp [Dashboard dashboard]
+        (mt/with-temp [Dashboard dashboard]
           (is (= "Not found."
                  (mt/user-http-request :crowberto :delete 404 (format "dashboard/%d/public_link" (u/the-id dashboard)))))))
 
@@ -2646,7 +2645,7 @@
 (deftest fetch-public-dashboards-test
   (testing "GET /api/dashboard/public"
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (t2.with-temp/with-temp [Dashboard _dashboard (shared-dashboard)]
+      (mt/with-temp [Dashboard _dashboard (shared-dashboard)]
         (testing "Test that it requires superuser"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "dashboard/public"))))
@@ -2659,7 +2658,7 @@
   (testing "GET /api/dashboard/embeddable"
     (testing "Test that we can fetch a list of embeddable-accessible dashboards"
       (mt/with-temporary-setting-values [enable-embedding-static true]
-        (t2.with-temp/with-temp [Dashboard _ {:enable_embedding true}]
+        (mt/with-temp [Dashboard _ {:enable_embedding true}]
           (is (= [{:name true, :id true}]
                  (for [dash (mt/user-http-request :crowberto :get 200 "dashboard/embeddable")]
                    (m/map-vals boolean (select-keys dash [:name :id]))))))))))
@@ -2740,7 +2739,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest related-and-recommended-entities-test
-  (t2.with-temp/with-temp [Dashboard {dashboard-id :id}]
+  (mt/with-temp [Dashboard {dashboard-id :id}]
     (is (= #{:cards}
            (-> (mt/user-http-request :crowberto :get 200 (format "dashboard/%s/related" dashboard-id)) keys set)))))
 
@@ -2947,7 +2946,7 @@
                                                                               (keyword (:price param-keys)) 4))))))))
       (testing "Should require perms for the Dashboard"
         (mt/with-non-admin-groups-no-root-collection-perms
-          (t2.with-temp/with-temp [Collection collection]
+          (mt/with-temp [Collection collection]
             (with-chain-filter-fixtures [{:keys [dashboard param-keys]} {:collection_id (:id collection)}]
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :get 403 (chain-filter-values-url
@@ -3191,7 +3190,7 @@
 
     (testing "Should require perms for the Dashboard"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (t2.with-temp/with-temp [Collection collection]
+        (mt/with-temp [Collection collection]
           (with-chain-filter-fixtures [{:keys [dashboard param-keys]} {:collection_id (:id collection)}]
             (let [url (chain-filter-search-url dashboard (:category-name param-keys) "s")]
               (testing (str "\n url")
@@ -3199,7 +3198,7 @@
                        (mt/user-http-request :rasta :get 403 url)))))))))))
 
 (deftest chain-filter-not-found-test
-  (t2.with-temp/with-temp [Dashboard {dashboard-id :id}]
+  (mt/with-temp [Dashboard {dashboard-id :id}]
     (testing "GET /api/dashboard/:id/params/:param-key/values returns 400 if param not found"
       (mt/user-http-request :rasta :get 400 (format "dashboard/%d/params/non-existing-param/values" dashboard-id)))
 
@@ -3497,7 +3496,7 @@
               parameters         (concat
                                   (fields->parameter mbql-card-fields mbql-card-id)
                                   (fields->parameter native-card-fields native-card-id))]
-          (t2.with-temp/with-temp [Dashboard {dash-id :id} {:parameters parameters}]
+          (mt/with-temp [Dashboard {dash-id :id} {:parameters parameters}]
             (doseq [param parameters]
               (mt/let-url [url (chain-filter-values-url dash-id (:id param))]
                 (is (some? (mt/user-http-request :rasta :get 200 url))))))))))
@@ -3579,7 +3578,7 @@
                        (mt/user-http-request :rasta :post 404 (url :card-id Integer/MAX_VALUE))))))
 
             (testing "perms"
-              (t2.with-temp/with-temp [Collection {collection-id :id}]
+              (mt/with-temp [Collection {collection-id :id}]
                 (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
                 (testing "Should return error if current User doesn't have read perms for the Dashboard"
                   (mt/with-temp-vals-in-db Dashboard dashboard-id {:collection_id collection-id}
@@ -3972,9 +3971,9 @@
                                             (last rows))))))
                   (mt/with-actions [{card-id :id} {:type :model :dataset_query (mt/mbql-query types)}
                                     {:keys [action-id]} (custom-action-for-field field-name)]
-                    (t2.with-temp/with-temp [DashboardCard {custom-dashcard-id :id} {:dashboard_id dashboard-id
-                                                                                     :action_id action-id
-                                                                                     :card_id card-id}]
+                    (mt/with-temp [DashboardCard {custom-dashcard-id :id} {:dashboard_id dashboard-id
+                                                                           :action_id action-id
+                                                                           :card_id card-id}]
                       (testing (str "Attempting to custom insert " field-name)
                         (mt/user-http-request :crowberto :post 200
                                               (format "dashboard/%s/dashcard/%s/execute" dashboard-id custom-dashcard-id)
@@ -3994,9 +3993,9 @@
                                                {:parameters {field-name value}}))))
                   (mt/with-actions [{card-id :id} {:type :model :dataset_query (mt/mbql-query types)}
                                     {action-id :action-id} (custom-action-for-field field-name)]
-                    (t2.with-temp/with-temp [DashboardCard {custom-dashcard-id :id} {:dashboard_id dashboard-id
-                                                                                     :action_id action-id
-                                                                                     :card_id card-id}]
+                    (mt/with-temp [DashboardCard {custom-dashcard-id :id} {:dashboard_id dashboard-id
+                                                                           :action_id action-id
+                                                                           :card_id card-id}]
                       (testing (str "Attempting to custom insert bad " field-name)
                         (is (has-valid-action-execution-error-message?
                              (mt/user-http-request :crowberto :post 500
@@ -4532,10 +4531,10 @@
                          :native   {:query "SELECT 2000 AS number, '2024-03-26'::DATE AS date;"}}
           output-helper {:csv  (fn [output] (->> output csv/read-csv last))
                          :json (fn [output] (->> output (map (juxt :NUMBER :DATE)) last))}]
-      (t2.with-temp/with-temp [Card {card-id :id} {:display :table :dataset_query q}
-                               Dashboard {dashboard-id :id} {}
-                               DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
-                                                                :card_id      card-id}]
+      (mt/with-temp [Card {card-id :id} {:display :table :dataset_query q}
+                     Dashboard {dashboard-id :id} {}
+                     DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
+                                                      :card_id      card-id}]
         (doseq [[export-format apply-formatting? expected] [[:csv true ["2,000" "March 26, 2024"]]
                                                             [:csv false ["2000" "2024-03-26"]]
                                                             [:json true ["2,000" "March 26, 2024"]]
@@ -4552,22 +4551,22 @@
                        (:can_restore (mt/user-http-request user :get 200 (str "dashboard/" dash-id))))]
     (testing "I can restore a simply trashed dashboard"
 
-      (t2.with-temp/with-temp [:model/Collection {coll-id :id} {:name "A"}
-                               :model/Dashboard {dash-id :id} {:name          "My Dashboard"
-                                                               :collection_id coll-id}]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "A"}
+                     :model/Dashboard {dash-id :id} {:name          "My Dashboard"
+                                                     :collection_id coll-id}]
         (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived true})
         (is (true? (can-restore? dash-id :rasta)))))
     (testing "I can't restore a trashed dashboard if the coll it was from was trashed"
-      (t2.with-temp/with-temp [:model/Collection {coll-id :id} {:name "A"}
-                               :model/Dashboard {dash-id :id} {:name          "My Dashboard"
-                                                               :collection_id coll-id}]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "A"}
+                     :model/Dashboard {dash-id :id} {:name          "My Dashboard"
+                                                     :collection_id coll-id}]
         (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived true})
         (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived true})
         (is (false? (can-restore? dash-id :rasta)))))
     (testing "I can't restore a trashed dashboard if it isn't archived in the first place"
-      (t2.with-temp/with-temp [:model/Collection {coll-id :id} {:name "A"}
-                               :model/Dashboard {dash-id :id} {:name          "My Dashboard"
-                                                               :collection_id coll-id}]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "A"}
+                     :model/Dashboard {dash-id :id} {:name          "My Dashboard"
+                                                     :collection_id coll-id}]
         (is (false? (can-restore? dash-id :crowberto)))))))
 
 (deftest dependent-metadata-test
@@ -4770,7 +4769,7 @@
             (is (= {} @provider-counts))))))))
 
 (deftest ^:synchronized dashboard-table-prefetch-test
-  (t2.with-temp/with-temp
+  (mt/with-temp
     [:model/Dashboard     d   {:name "D"}
      :model/Card          c1  {:name "C1"
                                :dataset_query {:database (mt/id)

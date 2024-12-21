@@ -9,16 +9,15 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.users :as test.users]
-   [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util :as u]))
 
 (defn- do-with-conn-impersonation-defs
   [group [{:keys [db-id attribute] :as impersonation-def} & more] f]
   (if-not impersonation-def
     (f)
-    (t2.with-temp/with-temp [:model/ConnectionImpersonation _ {:db_id db-id
-                                                               :group_id (u/the-id group)
-                                                               :attribute attribute}]
+    (mt/with-temp [:model/ConnectionImpersonation _ {:db_id db-id
+                                                     :group_id (u/the-id group)
+                                                     :attribute attribute}]
       (do-with-conn-impersonation-defs group more f))))
 
 (defn do-with-impersonations-for-user!

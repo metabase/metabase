@@ -1,10 +1,10 @@
 (ns metabase.lib.schema.ref-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.schema.expression :as expression]
-   [metabase.lib.schema.ref]))
+   [metabase.lib.schema.ref]
+   [metabase.util.malli.registry :as mr]))
 
 (comment metabase.lib.schema.ref/keep-me)
 
@@ -13,14 +13,14 @@
     (is (= ::expression/type.unknown
            (expression/type-of expr)))
     (is (expression/type-of? expr :type/Boolean))
-    (are [schema] (mc/validate schema expr)
+    (are [schema] (mr/validate schema expr)
       ::expression/boolean
       ::expression/expression)))
 
 (deftest ^:parallel field-test
   (testing "Something that is not a :field should return a meaningful error\n"
     (are [arg error] (= error
-                        (me/humanize (mc/explain :mbql.clause/field arg)))
+                        (me/humanize (mr/explain :mbql.clause/field arg)))
       {:lib/type :mbql/join}
       ["invalid type" "Invalid :field clause ID or name: must be a string or integer"]
 

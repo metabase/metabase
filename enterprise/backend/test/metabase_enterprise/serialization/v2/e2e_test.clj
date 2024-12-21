@@ -23,8 +23,7 @@
    [metabase.test.generate :as test-gen]
    [metabase.util.yaml :as yaml]
    [reifyhealth.specmonstah.core :as rs]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (java.io File)
    (java.nio.file Path)))
@@ -479,7 +478,7 @@
                                                                :model model}}})
               dashboard->link-cards (fn [dashboard]
                                       (map #(get-in % [:visualization_settings :link :entity]) (:dashcards dashboard)))]
-          (t2.with-temp/with-temp
+          (mt/with-temp
             [Collection    {coll-id   :id
                             coll-name :name
                             coll-eid  :entity_id}    {:name        "Link collection"
@@ -639,7 +638,7 @@
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
           ;; preparation
-          (t2.with-temp/with-temp
+          (mt/with-temp
             [Dashboard           {dashboard-id :id
                                   dashboard-eid :entity_id} {:name "Dashboard with tab"}
              Card                {card-id-1 :id
@@ -759,7 +758,7 @@
         (ts/with-dbs [source-db dest-db]
           (ts/with-db source-db
             ;; preparation
-            (t2.with-temp/with-temp [Dashboard _ {:name "some dashboard"}]
+            (mt/with-temp [Dashboard _ {:name "some dashboard"}]
               (testing "export (v2-dump) command"
                 (is (thrown-with-msg? Exception #"Please upgrade"
                                       (cmd/v2-dump! dump-dir {}))
@@ -784,7 +783,7 @@
               ;; ensuring field ids are stable by loading dataset in db first
               (mt/db)
               (mt/$ids nil
-                (t2.with-temp/with-temp
+                (mt/with-temp
                   [Collection {coll-id :id}  {:name "Pivot Collection"}
                    Card       card           {:name          "Pivot Card"
                                               :collection_id coll-id
@@ -887,7 +886,7 @@
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (ts/with-dbs [source-db dest-db]
       (ts/with-db source-db
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [Collection {coll-id :id}   {:name "Collection"}
            Card       {metric-id :id} {:name "Metric Card"
                                        :collection_id coll-id

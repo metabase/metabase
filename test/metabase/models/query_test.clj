@@ -7,13 +7,12 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.models :refer [Card]]
    [metabase.models.query :as query]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]))
 
 (deftest ^:parallel query->database-and-table-ids-test
-  (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
-                                                      :type     :query
-                                                      :query    {:source-table (mt/id :venues)}}}]
+  (mt/with-temp [Card card {:dataset_query {:database (mt/id)
+                                            :type     :query
+                                            :query    {:source-table (mt/id :venues)}}}]
     (doseq [[message {:keys [expected query]}]
             {"A basic query"
              {:expected {:database-id 1, :table-id 1}

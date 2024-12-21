@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace])
   (:require
    [clojure.string :as str]
-   [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
@@ -416,7 +415,7 @@
         lib.ref/ref)))
 
 (def ^:private expression-validator
-  (mc/validator ::lib.schema.expression/expression))
+  (mr/validator ::lib.schema.expression/expression))
 
 (defn expression-clause?
   "Returns true if `expression-clause` is indeed an expression clause, false otherwise."

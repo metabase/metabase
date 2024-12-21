@@ -3,7 +3,6 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is]]
-   [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
@@ -21,6 +20,7 @@
    [metabase.lib.test-util.metadata-providers.with-cards-for-queries :as providers.cards-for-queries]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.namespaces :as shared.ns]))
 
 (comment providers.cards-for-queries/keep-me
@@ -43,7 +43,7 @@
 
 (defn venues-query-with-last-stage [m]
   (let [query (update-in venues-query [:stages 0] merge m)]
-    (is (mc/validate ::lib.schema/query query))
+    (is (mr/validate ::lib.schema/query query))
     query))
 
 (defn field-clause

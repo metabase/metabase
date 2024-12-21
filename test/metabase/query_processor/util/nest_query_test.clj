@@ -14,8 +14,7 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.nest-query :as nest-query]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util :as u]))
 
 ;; TODO -- this is duplicated with [[metabase.query-processor.util.add-alias-info-test/remove-source-metadata]]
 (defn- remove-source-metadata [x]
@@ -233,13 +232,13 @@
 (deftest ^:parallel nest-expressions-ignore-source-queries-from-joins-test-e2e-test
   (testing "Ignores source-query from joins (#20809)"
     (mt/dataset test-data
-      (t2.with-temp/with-temp [:model/Card base {:dataset_query
-                                                 (mt/mbql-query
-                                                   reviews
-                                                   {:breakout [$product_id]
-                                                    :aggregation [[:count]]
+      (mt/with-temp [:model/Card base {:dataset_query
+                                       (mt/mbql-query
+                                         reviews
+                                         {:breakout [$product_id]
+                                          :aggregation [[:count]]
                                                     ;; filter on an implicit join
-                                                    :filter [:= $product_id->products.category "Doohickey"]})}]
+                                          :filter [:= $product_id->products.category "Doohickey"]})}]
         ;; the result returned is not important, just important that the query is valid and completes
         (is (vector?
              (mt/rows

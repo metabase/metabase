@@ -3,11 +3,11 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [malli.core :as mc]
    [malli.error :as me]
    [metabase.config :as config]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]
    [toucan2.tools.transformed :as t2.transformed]))
 
@@ -260,7 +260,7 @@
 (defn validate-spec!
   "Check whether a given specification is valid"
   [spec]
-  (when-let [info (mc/explain Specification spec)]
+  (when-let [info (mr/explain Specification spec)]
     (throw (ex-info (str "Invalid search specification for " (:name spec) ": " (me/humanize info)) info)))
   (doseq [table (keys (find-fields spec))
           :when (not= :this table)]

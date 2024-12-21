@@ -8,7 +8,6 @@
    [diehard.circuit-breaker :as dh.cb]
    [diehard.core :as dh]
    [environ.core :refer [env]]
-   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -18,6 +17,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.string :as u.str]
    [toucan2.connection :as t2.conn]
@@ -203,7 +203,7 @@
   ;; NB that we fetch any settings from this thread, not inside on of the futures in the inner fetch calls.  We
   ;; will have taken a lock to call through to here, and could create a deadlock with the future's thread.  See
   ;; https://github.com/metabase/metabase/pull/38029/
-  (cond (mc/validate [:re RemoteCheckedToken] token)
+  (cond (mr/validate [:re RemoteCheckedToken] token)
     ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
     ;; reasonable amount of time throw a timeout exception
         (let [site-uuid (setting/get :site-uuid-for-premium-features-token-checks)]
@@ -225,7 +225,7 @@
                             :status        (tru "Unable to validate token")
                             :error-details (.getMessage e1)})))))))
 
-        (mc/validate [:re AirgapToken] token)
+        (mr/validate [:re AirgapToken] token)
         (do
           (log/infof "Checking airgapped token '%s'..." (u.str/mask token))
           (decode-airgap-token token))
@@ -255,7 +255,7 @@
       (throw (ex-info status
                       {:status-code 400,
                        :error-details error-details})))
-    (when (and (mc/validate [:re AirgapToken] token)
+    (when (and (mr/validate [:re AirgapToken] token)
                (not (token-valid-now? token-status)))
       (throw (ex-info status
                       {:status-code 400
@@ -284,10 +284,10 @@
     ;; validate the new value if we're not unsetting it
     (try
       (when (seq new-value)
-        (when (mc/validate [:re AirgapToken] new-value)
+        (when (mr/validate [:re AirgapToken] new-value)
           (airgap-check-user-count))
-        (when-not (or (mc/validate [:re RemoteCheckedToken] new-value)
-                      (mc/validate [:re AirgapToken] new-value))
+        (when-not (or (mr/validate [:re RemoteCheckedToken] new-value)
+                      (mr/validate [:re AirgapToken] new-value))
           (throw (ex-info (tru "Token format is invalid.")
                           {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
         (valid-token->features new-value)
@@ -306,7 +306,7 @@
   :setter     :none
   :audit      :never
   :export?    false
-  :getter     (fn [] (mc/validate AirgapToken (premium-embedding-token))))
+  :getter     (fn [] (mr/validate AirgapToken (premium-embedding-token))))
 
 (let [cached-logger (memoize/ttl
                      ^{::memoize/args-fn (fn [[token _e]] [token])}

@@ -11,7 +11,6 @@
   - custom-values: see [metabase.models.params.custom-values]"
   (:require
    [clojure.set :as set]
-   [malli.core :as mc]
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -28,6 +27,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -39,19 +39,19 @@
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameters]}]
   (let [schema [:maybe [:sequential ms/Parameter]]]
-    (when-not (mc/validate schema parameters)
+    (when-not (mr/validate schema parameters)
       (throw (ex-info ":parameters must be a sequence of maps with :id and :type keys"
                       {:parameters parameters
-                       :errors     (:errors (mc/explain schema parameters))})))))
+                       :errors     (:errors (mr/explain schema parameters))})))))
 
 (defn assert-valid-parameter-mappings
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameter_mappings]}]
   (let [schema [:maybe [:sequential ms/ParameterMapping]]]
-    (when-not (mc/validate schema parameter_mappings)
+    (when-not (mr/validate schema parameter_mappings)
       (throw (ex-info ":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
                       {:parameter_mappings parameter_mappings
-                       :errors             (:errors (mc/explain schema parameter_mappings))})))))
+                       :errors             (:errors (mr/explain schema parameter_mappings))})))))
 
 (def ^:dynamic *ignore-current-user-perms-and-return-all-field-values*
   "Whether to ignore permissions for the current User and return *all* FieldValues for the Fields being parameterized by

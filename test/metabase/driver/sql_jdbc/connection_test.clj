@@ -26,8 +26,7 @@
    [metabase.util.ssh :as ssh]
    [metabase.util.ssh-test :as ssh-test]
    [next.jdbc :as next.jdbc]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (org.h2.tools Server)))
 
@@ -71,7 +70,7 @@
            (fn [conn]
              (next.jdbc/execute! conn ["CREATE TABLE birds (name varchar)"])
              (next.jdbc/execute! conn ["INSERT INTO birds values ('rasta'),('lucky')"])
-             (t2.with-temp/with-temp [Database database {:engine :h2, :details connection-details}]
+             (mt/with-temp [Database database {:engine :h2, :details connection-details}]
                (testing "database id is not in our connection map initially"
                  ;; deref'ing a var to get the atom. looks weird
                  (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
@@ -303,7 +302,7 @@
                                              (swap! connection-creations inc)
                                              {:access_token (:password db-details)
                                               :expires_in @expires-in})]
-            (t2.with-temp/with-temp [Database oauth-db {:engine (tx/driver), :details oauth-db-details}]
+            (mt/with-temp [Database oauth-db {:engine (tx/driver), :details oauth-db-details}]
               (mt/with-db oauth-db
                 (try
                                 ;; since Metabase is running and using the pool of this DB, the sync might fail
@@ -347,7 +346,7 @@
                                      :tunnel-port ssh-test/ssh-mock-server-with-password-port
                                      :tunnel-user ssh-test/ssh-username
                                      :tunnel-pass ssh-test/ssh-password)]
-        (t2.with-temp/with-temp [Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
+        (mt/with-temp [Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
           (mt/with-db tunneled-db
             (sync/sync-database! (mt/db))
             (is (= [["Polo Lounge"]]
@@ -363,7 +362,7 @@
                                      :tunnel-port ssh-test/ssh-mock-server-with-password-port
                                      :tunnel-user ssh-test/ssh-username
                                      :tunnel-pass ssh-test/ssh-password)]
-        (t2.with-temp/with-temp [Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
+        (mt/with-temp [Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
           (mt/with-db tunneled-db
             (sync/sync-database! (mt/db))
             (letfn [(check-row []
@@ -397,7 +396,7 @@
                        :tunnel-user        ssh-test/ssh-username
                        :tunnel-pass        ssh-test/ssh-password}]
           (try
-            (t2.with-temp/with-temp [Database db {:engine :h2, :details h2-db}]
+            (mt/with-temp [Database db {:engine :h2, :details h2-db}]
               (mt/with-db db
                 (sync/sync-database! db)
                 (is (=? {:cols [{:base_type    :type/Text
@@ -442,7 +441,7 @@
                        :tunnel-user        ssh-test/ssh-username
                        :tunnel-pass        ssh-test/ssh-password}]
           (try
-            (t2.with-temp/with-temp [Database db {:engine :h2, :details h2-db}]
+            (mt/with-temp [Database db {:engine :h2, :details h2-db}]
               (mt/with-db db
                 (sync/sync-database! db)
                 (letfn [(check-data [] (is (=? {:cols [{:base_type    :type/Text

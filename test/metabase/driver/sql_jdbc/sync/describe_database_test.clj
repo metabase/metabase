@@ -17,8 +17,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (java.sql ResultSet)))
 
@@ -146,7 +145,7 @@
              (describe-database-with-open-resultset-count! driver/*driver* (mt/db)))))))
 
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
-  (t2.with-temp/with-temp [Database db-filtered database]
+  (mt/with-temp [Database db-filtered database]
     (sync/sync-database! db-filtered {:scan :schema})
     (let [tables (t2/select Table :db_id (u/the-id db-filtered))]
       (doseq [table tables]

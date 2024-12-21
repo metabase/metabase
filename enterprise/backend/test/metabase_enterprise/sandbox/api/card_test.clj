@@ -7,8 +7,7 @@
    [metabase.models.permissions :as perms]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util :as u]))
 
 (deftest users-with-sandboxed-perms-test
   (testing "Users with sandboxed permissions should be able to save cards"
@@ -212,8 +211,8 @@
 (deftest is-sandboxed-test
   (testing "Adding a GTAP to the all users group to a table makes it such that is_sandboxed returns true."
     (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
-      (t2.with-temp/with-temp [:model/Card card {:database_id   (mt/id)
-                                                 :table_id      (mt/id :categories)
-                                                 :dataset_query (mt/mbql-query categories)}]
+      (mt/with-temp [:model/Card card {:database_id   (mt/id)
+                                       :table_id      (mt/id :categories)
+                                       :dataset_query (mt/mbql-query categories)}]
         (is (=? {:data {:is_sandboxed true}}
                 (qp/process-query (qp/userland-query (:dataset_query card)))))))))

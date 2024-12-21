@@ -1,16 +1,16 @@
 (ns metabase.lib.schema.aggregation-test
   (:require
    [clojure.test :refer [are deftest testing]]
-   [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.schema]
-   [metabase.lib.schema.expression :as lib.schema.expression]))
+   [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.util.malli.registry :as mr]))
 
 (comment metabase.lib.schema/keep-me)
 
 (deftest ^:parallel percentile-test
   (testing "valid"
-    (are [clause] (not (me/humanize (mc/explain :mbql.clause/percentile clause)))
+    (are [clause] (not (me/humanize (mr/explain :mbql.clause/percentile clause)))
       [:percentile
        {:lib/uuid "00000000-0000-0000-0000-000000000000"}
        2.0
@@ -32,7 +32,7 @@
        0.1]))
   (testing "invalid"
     (binding [lib.schema.expression/*suppress-expression-type-check?* false]
-      (are [clause] (me/humanize (mc/explain :mbql.clause/percentile clause))
+      (are [clause] (me/humanize (mr/explain :mbql.clause/percentile clause))
         ;; p > 1
         [:percentile
          {:lib/uuid "00000000-0000-0000-0000-000000000000"}
@@ -53,7 +53,7 @@
 
 (deftest ^:parallel arithmetic-expression-test
   (testing "valid"
-    (are [clause] (not (me/humanize (mc/explain :metabase.lib.schema.aggregation/aggregation clause)))
+    (are [clause] (not (me/humanize (mr/explain :metabase.lib.schema.aggregation/aggregation clause)))
       ;; DIY average
       [:/ {:lib/uuid "00000000-0000-0000-0000-000000000000"}
        [:sum {:lib/uuid "00000000-0000-0000-0000-000000000000"}
@@ -81,7 +81,7 @@
          [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]]
         -1]]))
   (testing "invalid - no aggregation inside"
-    (are [clause] (me/humanize (mc/explain :metabase.lib.schema.aggregation/aggregation clause))
+    (are [clause] (me/humanize (mr/explain :metabase.lib.schema.aggregation/aggregation clause))
       [:get-day {:lib/uuid "00000000-0000-0000-0000-000000000000"}
        [:now {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]
       [:+ {:lib/uuid "00000000-0000-0000-0000-000000000000"} 7 8]
@@ -108,7 +108,7 @@
                    [offset sum]]
             :let  [ag [:/ {:lib/uuid "00000000-0000-0000-0000-000000000000"} x y]]]
       (testing (pr-str ag)
-        (are [schema x] (not (me/humanize (mc/explain schema x)))
+        (are [schema x] (not (me/humanize (mr/explain schema x)))
           :metabase.lib.schema.expression/number        ag
           :metabase.lib.schema.aggregation/aggregation  ag
           :metabase.lib.schema.aggregation/aggregations [ag])))))

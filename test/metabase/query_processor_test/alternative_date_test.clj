@@ -10,8 +10,7 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [metabase.util :as u])
   (:import
    (java.time OffsetDateTime)))
 
@@ -41,9 +40,9 @@
   (testing "Ensure that coerced values only get coerced once. #33861"
     (mt/dataset
       toucan-ms-incidents
-      (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
-                                                                          :type     :query
-                                                                          :query    {:source-table (mt/id :incidents)}}}]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                                :type     :query
+                                                                :query    {:source-table (mt/id :incidents)}}}]
         (is (= [[1 4 "2015-06-06T10:40:00Z"]
                 [2 0 "2015-06-10T19:51:00Z"]]
                (mt/rows (qp/process-query {:database (mt/id)

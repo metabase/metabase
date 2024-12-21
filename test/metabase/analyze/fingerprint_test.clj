@@ -2,9 +2,9 @@
   "Basic tests to make sure the fingerprint generatation code is doing something that makes sense."
   (:require
    [clojure.test :refer :all]
-   [malli.core :as mc]
    [malli.error :as me]
-   [metabase.analyze.fingerprint.schema :as fingerprint.schema]))
+   [metabase.analyze.fingerprint.schema :as fingerprint.schema]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel fingerprint-schema-test
   (testing "allows for extra keywords"
@@ -18,6 +18,6 @@
                     [:top-level]
                     []]]
         (is (not (me/humanize
-                  (mc/explain
+                  (mr/explain
                    fingerprint.schema/Fingerprint
                    (assoc-in base (conj path :extra-key) (rand-nth [3 :extra-value 4.0 {:stuff :stuff}]))))))))))

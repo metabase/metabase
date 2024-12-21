@@ -14,6 +14,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.describe :as umd]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [potemkin.types :as p.types])
   (:import
@@ -343,13 +344,13 @@
 (defn validate-param
   "Validate a parameter against its respective malli schema, or throw an Exception."
   [field-name value schema]
-  (when-not (mc/validate schema value)
+  (when-not (mr/validate schema value)
     (throw (ex-info (tru "Invalid m field: {0}" field-name)
                     {:status-code 400
                      :errors      {(keyword field-name) (umd/describe schema)}
                      :specific-errors {(keyword field-name)
                                        (-> schema
-                                           (mc/explain value)
+                                           (mr/explain value)
                                            me/with-spell-checking
                                            (me/humanize {:wrap mu/humanize-include-value}))}}))))
 

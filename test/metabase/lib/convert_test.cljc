@@ -2,7 +2,6 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
-   [malli.core :as mc]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -10,7 +9,8 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -113,7 +113,7 @@
           converted (lib.convert/->pMBQL original)]
       (is (=? {:stages [{:template-tags {"NAME" {:dimension [:field {:lib/uuid string?} 866]}}}]}
               converted))
-      (is (mc/validate :metabase.lib.schema/query converted)))))
+      (is (mr/validate :metabase.lib.schema/query converted)))))
 
 (deftest ^:parallel ->pMBQL-joins-default-alias-test
   (let [original {:database (meta/id)
@@ -1045,7 +1045,7 @@
         (testing "pass the pMBQL schema after conversion"
           (is (nil? (->> query
                          lib.convert/->pMBQL
-                         (mc/explain ::lib.schema/query)))))
+                         (mr/explain ::lib.schema/query)))))
         (testing "round trip to pMBQL and back with small changes"
           (is (= query
                  (lib.convert/->legacy-MBQL (lib.convert/->pMBQL query)))))))
@@ -1056,7 +1056,7 @@
         (testing "pass the pMBQL schema after conversion"
           (is (nil? (->> query
                          lib.convert/->pMBQL
-                         (mc/explain ::lib.schema/query)))))
+                         (mr/explain ::lib.schema/query)))))
         (testing "round trip to pMBQL and back with small changes"
           (is (= query
                  (lib.convert/->legacy-MBQL (lib.convert/->pMBQL query)))))))))

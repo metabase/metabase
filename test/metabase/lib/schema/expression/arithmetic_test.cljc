@@ -1,39 +1,39 @@
 (ns metabase.lib.schema.expression.arithmetic-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.schema]
    [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.expression :as expression]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   [metabase.util.malli.registry :as mr]))
 
 (comment metabase.lib.schema/keep-me)
 
 (deftest ^:parallel times-test
   (let [venues-price [:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} (meta/id :venues :price)]]
     (testing "A `:field` clause with an integer base type in its options should be considered to be an integer expression"
-      (is (mc/validate
+      (is (mr/validate
            ::expression/integer
            venues-price)))
     (testing "integer literals are integer expressions"
-      (is (mc/validate
+      (is (mr/validate
            ::expression/integer
            2)))
     (testing "Multiplication with all integer args should be considered to be an integer expression"
       (let [expr [:* {:lib/uuid (str (random-uuid))} venues-price 2]]
         (is (= :type/Integer
                (expression/type-of expr)))
-        (is (mc/validate :mbql.clause/* expr))
-        (is (mc/validate ::expression/integer expr))))
+        (is (mr/validate :mbql.clause/* expr))
+        (is (mr/validate ::expression/integer expr))))
     (testing "Multiplication with one or more non-integer args should NOT be considered to be an integer expression."
       (binding [expression/*suppress-expression-type-check?* false]
         (let [expr [:* {:lib/uuid (str (random-uuid))} venues-price 2.1]]
           (is (= :type/Float
                  (expression/type-of expr)))
-          (is (mc/validate :mbql.clause/* expr))
-          (is (not (mc/validate ::expression/integer expr)))
-          (is (mc/validate ::expression/number expr)))))))
+          (is (mr/validate :mbql.clause/* expr))
+          (is (not (mr/validate ::expression/integer expr)))
+          (is (mr/validate ::expression/number expr)))))))
 
 (deftest ^:parallel power-type-of-test
   (testing "Make sure we can calculate type of a `:power` clause (#29944)"
@@ -122,7 +122,7 @@
 (deftest ^:parallel temporal-arithmetic-schema-test-1
   (testing "Should allow multiple intervals; interval should be allowed as first arg"
     (is (not (me/humanize
-              (mc/explain
+              (mr/explain
                :mbql.clause/+
                [:+
                 {:lib/uuid "00000000-0000-0000-0000-000000000000"}
@@ -134,7 +134,7 @@
   (testing "Should error if there are no non-interval clauses"
     (is (= ["Invalid :+ or :- clause: Temporal arithmetic expression must contain exactly one non-interval value"]
            (me/humanize
-            (mc/explain
+            (mr/explain
              :mbql.clause/+
              [:+
               {:lib/uuid "00000000-0000-0000-0000-000000000000"}
@@ -145,7 +145,7 @@
   (testing "Should error if there are no intervals"
     (is (= [nil nil nil ["end of input"]]
            (me/humanize
-            (mc/explain
+            (mr/explain
              :mbql.clause/+
              [:+
               {:lib/uuid "00000000-0000-0000-0000-000000000000"}
@@ -155,7 +155,7 @@
   (testing "Should error if there is more than one non-interval clause"
     (is (= [nil nil nil nil ["Valid :interval clause" "input remaining"]]
            (me/humanize
-            (mc/explain
+            (mr/explain
              :mbql.clause/+
              [:+
               {:lib/uuid "00000000-0000-0000-0000-000000000000"}
@@ -167,7 +167,7 @@
   (testing "Should error if :interval has a unit that doesn't make sense"
     (is (= ["Invalid :+ or :- clause: Cannot add a :minute interval to a :type/Date expression"]
            (me/humanize
-            (mc/explain
+            (mr/explain
              :mbql.clause/+
              [:+
               {:lib/uuid "00000000-0000-0000-0000-000000000000"}
@@ -177,7 +177,7 @@
 (deftest ^:parallel temporal-arithmetic-schema-test-6
   (testing "subtracting two dates should yield an interval (#37263)"
     (is (not (me/humanize
-              (mc/explain
+              (mr/explain
                :mbql.clause/-
                [:-
                 {:lib/uuid "00000000-0000-0000-0000-000000000000"}
@@ -187,7 +187,7 @@
 (deftest ^:parallel temporal-arithmetic-schema-test-7
   (testing "subtracting two datetimes should yield an interval (#37263)"
     (is (not (me/humanize
-              (mc/explain
+              (mr/explain
                :mbql.clause/-
                [:-
                 {:lib/uuid "00000000-0000-0000-0000-000000000000"}
@@ -195,7 +195,7 @@
                 [:field {:base-type :type/DateTime, :lib/uuid "00000000-0000-0000-0000-000000000001"} 2]]))))))
 
 (deftest ^:parallel metric-test
-  (are [schema] (not (me/humanize (mc/explain schema
+  (are [schema] (not (me/humanize (mr/explain schema
                                               [:+
                                                {:lib/uuid "00000000-0000-0000-0000-000000000000"}
                                                [:metric {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]

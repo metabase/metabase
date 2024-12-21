@@ -2,14 +2,14 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
-   [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.util.malli.registry :as mr]))
 
 #?(:cljs
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -35,7 +35,7 @@
                                  :fields       [(lib.tu/field-clause :venues :price)]}]
                  :database     (meta/id)
                  :lib/metadata meta/metadata-provider}]
-      (is (mc/validate ::lib.schema/query query))
+      (is (mr/validate ::lib.schema/query query))
       (is (=? [(merge (meta/field-metadata :venues :price)
                       {:lib/source :source/fields})]
               (lib/returned-columns query))))))

@@ -8,8 +8,7 @@
    [metabase.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]))
 
 (def ^:private root-collection (assoc collection/root-collection :name "Root Collection", :namespace "snippets"))
 
@@ -52,9 +51,9 @@
 
 (defn- test-with-root-collection-and-collection! [f]
   (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
-    (t2.with-temp/with-temp [Collection collection {:name "Parent Collection", :namespace "snippets"}]
+    (mt/with-temp [Collection collection {:name "Parent Collection", :namespace "snippets"}]
       (doseq [coll [root-collection collection]]
-        (t2.with-temp/with-temp [NativeQuerySnippet snippet {:collection_id (:id coll)}]
+        (mt/with-temp [NativeQuerySnippet snippet {:collection_id (:id coll)}]
           (testing (format "in %s\n" (:name coll))
             (f coll snippet)))))))
 

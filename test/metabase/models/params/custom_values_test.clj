@@ -4,8 +4,7 @@
    [metabase.models :refer [Card Collection]]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.test :as mt]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 ;;; --------------------------------------------- source=card ----------------------------------------------
 
@@ -233,7 +232,7 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (testing "call to default-case-fn if "
       (testing "souce card is archived"
-        (t2.with-temp/with-temp [Card card {:archived true}]
+        (mt/with-temp [Card card {:archived true}]
           (let [mock-default-result {:has_more_values false
                                      :values [["archived"]]}]
             (is (= mock-default-result
@@ -253,7 +252,7 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (testing "call to default-case-fn if "
       (testing "value-field not found in card's result_metadata"
-        (t2.with-temp/with-temp [Card card {}]
+        (mt/with-temp [Card card {}]
           (let [mock-default-result {:has_more_values false
                                      :values [["field-not-found"]]}]
             (is (= mock-default-result

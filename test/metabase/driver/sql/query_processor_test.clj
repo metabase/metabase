@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [malli.core :as mc]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -22,7 +21,8 @@
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli.registry :as mr]))
 
 (comment metabase.driver.sql.query-processor.deprecated/keep-me)
 
@@ -1021,7 +1021,7 @@
                                vec
                                (update 0 #(str/split-lines (driver/prettify-native-form driver/*driver* %))))]
               (testing "this query should not have any parameters"
-                (is (mc/validate [:cat [:sequential :string]] sql-args))))))))))
+                (is (mr/validate [:cat [:sequential :string]] sql-args))))))))))
 
 (deftest ^:parallel binning-optimize-math-expressions-test
   (testing "Don't include nonsense like `+ 0.0` and `- 0.0` when generating expressions for binning"

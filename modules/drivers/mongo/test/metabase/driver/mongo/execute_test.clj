@@ -8,8 +8,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache.impl :as middleware.cache.impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [metabase.test :as mt])
   (:import
    #_(com.mongodb BasicDBObject)
    (java.util NoSuchElementException)))
@@ -98,7 +97,7 @@
   (testing "Question based on native model is cacheable (#43901)"
     (mt/test-drivers
       #{:mongo}
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/Card c {:type :model
                         :dataset_query {:database (mt/id)
                                         :type     :native

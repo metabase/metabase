@@ -4,14 +4,13 @@
    [clojure.test :refer :all]
    [metabase.models :refer [TaskHistory]]
    [metabase.models.permissions :as perms]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]))
 
 (deftest task-test
   (testing "/api/task/*"
     (mt/with-user-in-groups [group {:name "New Group"}
                              user  [group]]
-      (t2.with-temp/with-temp [TaskHistory task]
+      (mt/with-temp [TaskHistory task]
         (letfn [(get-tasks [user status]
                   (testing (format "get task with %s user" (mt/user-descriptor user))
                     (mt/user-http-request user :get status "task")))

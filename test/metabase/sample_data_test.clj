@@ -16,8 +16,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------------- Tooling -----------------------------------------------------
 
@@ -35,7 +34,7 @@
   "Execute `body` with a temporary Sample Database DB bound to `db-binding`."
   {:style/indent 1}
   [[db-binding] & body]
-  `(t2.with-temp/with-temp [Database db# (sample-database-db false)]
+  `(mt/with-temp [Database db# (sample-database-db false)]
      (sync/sync-database! db#)
      (let [~db-binding db#]
        ~@body)))
@@ -109,7 +108,7 @@
 
 (deftest write-rows-sample-database-test
   (testing "should be able to execute INSERT, UPDATE, and DELETE statements on the Sample Database"
-    (t2.with-temp/with-temp [Database db (sample-database-db true)]
+    (mt/with-temp [Database db (sample-database-db true)]
       (sync/sync-database! db)
       (mt/with-db db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
@@ -152,7 +151,7 @@
 
 (deftest ddl-sample-database-test
   (testing "should be able to execute DDL statements on the Sample Database"
-    (t2.with-temp/with-temp [Database db (sample-database-db true)]
+    (mt/with-temp [Database db (sample-database-db true)]
       (sync/sync-database! db)
       (mt/with-db db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))

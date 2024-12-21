@@ -10,7 +10,7 @@
    [metabase.test.initialize :as initialize]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -42,7 +42,7 @@
         existing-admin-ids         (t2/select-pks-set User :is_superuser true)
         _                          (when (seq existing-admin-ids)
                                      (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser false}))
-        temp-admin                 (first (t2/insert-returning-instances! User (merge (t2.with-temp/with-temp-defaults User)
+        temp-admin                 (first (t2/insert-returning-instances! User (merge (toucan2.tools.with-temp/with-temp-defaults User)
                                                                                       attributes
                                                                                       {:is_superuser true})))]
     (try
@@ -73,7 +73,7 @@
   application DB. Example usage:
 
     (deftest update-user-first-name-test
-      (t2.with-temp/with-temp [User user]
+      (mt/with-temp [User user]
         (update-user-first-name! user \"Cam\")
         (is (= (merge (mt/object-defaults User)
                       (select-keys user [:id :last_name :created_at :updated_at])
@@ -82,8 +82,9 @@
   (comp
    (memoize
     (fn [toucan-model]
-      (t2.with-temp/with-temp [toucan-model x {}
-                               toucan-model y {}]
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (toucan2.tools.with-temp/with-temp [toucan-model x {}
+                                          toucan-model y {}]
         (let [[_ _ things-in-both] (data/diff x y)]
           ;; don't include created_at/updated_at even if they're the exactly the same, as might be the case with MySQL
           ;; TIMESTAMP columns (which only have second resolution by default)

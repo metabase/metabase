@@ -9,8 +9,7 @@
    [metabase.models.user :as user]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (deftest permissions-group-apis-test
   (testing "/api/permissions/group"
@@ -89,7 +88,7 @@
 
 (defn- add-membership! [user status group-info is-group-manager]
   (testing (format ", add membership with %s user" (mt/user-descriptor user))
-    (t2.with-temp/with-temp [User user-info]
+    (mt/with-temp [User user-info]
       (mt/user-http-request user :post status "permissions/membership"
                             {:group_id         (:id group-info)
                              :user_id          (:id user-info)
@@ -97,27 +96,27 @@
 
 (defn- update-membership! [user status group-info is-group-manager]
   (testing (format ", update membership with %s user" (mt/user-descriptor user))
-    (t2.with-temp/with-temp [User                       user-info    {}
-                             PermissionsGroupMembership {:keys [id]} {:user_id  (:id user-info)
-                                                                      :group_id (:id group-info)}]
+    (mt/with-temp [User                       user-info    {}
+                   PermissionsGroupMembership {:keys [id]} {:user_id  (:id user-info)
+                                                            :group_id (:id group-info)}]
       (mt/user-http-request user :put status (format "permissions/membership/%d" id)
                             {:is_group_manager is-group-manager}))))
 
 (defn- delete-membership! [user status group-info]
   (testing (format ", delete membership with %s user" (mt/user-descriptor user))
-    (t2.with-temp/with-temp [User                       user-info    {}
-                             PermissionsGroupMembership {pgm-id :id} {:user_id  (:id user-info)
-                                                                      :group_id (:id group-info)}]
+    (mt/with-temp [User                       user-info    {}
+                   PermissionsGroupMembership {pgm-id :id} {:user_id  (:id user-info)
+                                                            :group_id (:id group-info)}]
       (mt/user-http-request user :delete status (format "permissions/membership/%d" pgm-id)))))
 
 (defn- clear-memberships! [user status group-info]
   (testing (format ", clearing group memberships with %s user" (mt/user-descriptor :crowberto))
-    (t2.with-temp/with-temp [User                       user-info-1 {}
-                             User                       user-info-2 {}
-                             PermissionsGroupMembership _           {:user_id  (:id user-info-1)
-                                                                     :group_id (:id group-info)}
-                             PermissionsGroupMembership _           {:user_id  (:id user-info-2)
-                                                                     :group_id (:id group-info)}]
+    (mt/with-temp [User                       user-info-1 {}
+                   User                       user-info-2 {}
+                   PermissionsGroupMembership _           {:user_id  (:id user-info-1)
+                                                           :group_id (:id group-info)}
+                   PermissionsGroupMembership _           {:user_id  (:id user-info-2)
+                                                           :group_id (:id group-info)}]
       (mt/user-http-request user :put status (format "permissions/membership/%d/clear" (:id group-info))))))
 
 (defn- membership->groups-ids [membership]
@@ -201,10 +200,10 @@
               (is (= #{(:id group)} (membership->groups-ids (get-membership user 200))))))
 
           (testing "admin cant be group manager"
-            (t2.with-temp/with-temp [User                       new-user {:is_superuser true}
-                                     PermissionsGroupMembership _        {:user_id          (:id new-user)
-                                                                          :group_id         (:id group)
-                                                                          :is_group_manager false}]
+            (mt/with-temp [User                       new-user {:is_superuser true}
+                           PermissionsGroupMembership _        {:user_id          (:id new-user)
+                                                                :group_id         (:id group)
+                                                                :is_group_manager false}]
               (is (= "Admin cant be a group manager."
                      (mt/user-http-request user :post 400 "permissions/membership"
                                            {:group_id         (:id group)
@@ -246,23 +245,23 @@
 (deftest get-users-api-group-id-test
   (testing "GET /api/user?group_id=:group_id"
     (testing "should sort by admins -> group managers -> normal users when filter by group_id"
-      (t2.with-temp/with-temp [User                       user-a {:first_name "A"
-                                                                  :last_name  "A"}
-                               User                       user-b {:first_name "B"
-                                                                  :last_name  "B"}
-                               User                       user-c {:first_name   "C"
-                                                                  :last_name    "C"
-                                                                  :is_superuser true}
-                               PermissionsGroup           group  {}
-                               PermissionsGroupMembership _      {:user_id          (:id user-a)
-                                                                  :group_id         (:id group)
-                                                                  :is_group_manager false}
-                               PermissionsGroupMembership _      {:user_id          (:id user-b)
-                                                                  :group_id         (:id group)
-                                                                  :is_group_manager true}
-                               PermissionsGroupMembership _      {:user_id          (:id user-c)
-                                                                  :group_id         (:id group)
-                                                                  :is_group_manager false}]
+      (mt/with-temp [User                       user-a {:first_name "A"
+                                                        :last_name  "A"}
+                     User                       user-b {:first_name "B"
+                                                        :last_name  "B"}
+                     User                       user-c {:first_name   "C"
+                                                        :last_name    "C"
+                                                        :is_superuser true}
+                     PermissionsGroup           group  {}
+                     PermissionsGroupMembership _      {:user_id          (:id user-a)
+                                                        :group_id         (:id group)
+                                                        :is_group_manager false}
+                     PermissionsGroupMembership _      {:user_id          (:id user-b)
+                                                        :group_id         (:id group)
+                                                        :is_group_manager true}
+                     PermissionsGroupMembership _      {:user_id          (:id user-c)
+                                                        :group_id         (:id group)
+                                                        :is_group_manager false}]
         (is (=? {:data [{:first_name "C"}
                         {:first_name "B"}
                         {:first_name "A"}]}
@@ -275,7 +274,7 @@
        user  [group]]
       (letfn [(get-user [req-user status]
                 (testing (format "- get user with %s user" (mt/user-descriptor user))
-                  (t2.with-temp/with-temp [User new-user]
+                  (mt/with-temp [User new-user]
                     (mt/user-http-request req-user :get status (format "user/%d" (:id new-user))))))]
 
         (testing "if `advanced-permissions` is disabled, require admins"
@@ -367,6 +366,6 @@
                            (set (:user_group_memberships (remove-user-from-group! user 200 group))))))
 
                   (testing "Can't remove users from group they're not manager of"
-                    (t2.with-temp/with-temp [PermissionsGroup random-group]
+                    (mt/with-temp [PermissionsGroup random-group]
                       (add-user-to-group! user 403 random-group)
                       (remove-user-from-group! user 403 random-group))))))))))))

@@ -1,13 +1,15 @@
 (ns metabase.api.permissions-test-util
-  (:require [malli.core :as mc]
-            [malli.transform :as mtx]
-            [metabase.api.permission-graph :as api.permission-graph]))
+  (:require
+   [malli.core :as mc]
+   [malli.transform :as mtx]
+   [metabase.api.permission-graph :as api.permission-graph]
+   [metabase.util.malli.registry :as mr]))
 
 (def ^:private graph-output-schema
   [:map-of @#'api.permission-graph/GroupId @#'api.permission-graph/StrictDbGraph])
 
 (defn- decode-and-validate [schema value]
-  (mc/validate schema (mc/decode schema value (mtx/string-transformer))))
+  (mr/validate schema (mc/decode schema value (mtx/string-transformer))))
 
 (defn validate-graph-api-groups
   "Handles string->keyword transformations in DataPerms"
