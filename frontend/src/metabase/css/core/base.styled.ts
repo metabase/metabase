@@ -64,6 +64,13 @@ export const baseStyle = css`
     background-color: transparent;
   }
 
+  a:focus,
+  button:focus,
+  [role="button"]:focus {
+    outline: 2px solid var(--mb-color-focus);
+    transition: outline 0ms;
+  }
+
   a {
     color: inherit;
     cursor: pointer;
