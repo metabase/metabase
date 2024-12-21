@@ -13,7 +13,7 @@ Admins can create and share public links (URLs) for questions and dashboards. Pe
 
 ## Create a public link for a question
 
-![Create a public link for a question](../images/create-a-public-link.png)
+![Create a public link for a question](./images/create-a-public-link.png)
 
 To create a public link for a question, admins can click on the **Sharing** icon at the top right of a question and select **Create a public link**. Copy the link and test it out by viewing the link in a private/incognito browser session.
 
@@ -27,7 +27,7 @@ To create a public link that people can use to download the results of a questio
 2. Select **Create a public link**.
 3. Click on the file format you want (below the **Public link** URL): CSV, XLSX, or JSON.
 
-![Public export](../images/public-export.png)
+![Public export](./images/public-export.png)
 
 Open the public link in a new tab to test the download.
 
@@ -35,11 +35,11 @@ Open the public link in a new tab to test the download.
 
 To share a dashboard via a public link, admins can click on the **Sharing** button in the top right menu.
 
-![Sharing a dashboard](../images/dashboard-sharing.png)
+![Sharing a dashboard](./images/dashboard-sharing.png)
 
-To embed a dashboard, see [static embedding](../../embedding/static-embedding.md).
+To embed a dashboard, see [static embedding](./static-embedding.md).
 
-### Exporting raw, unformatted question results
+## Exporting raw, unformatted question results
 
 To export the raw, unformatted rows, you'll need to append `?format_rows=false` to the URL Metabase generates. For example, if you create a public link for a CSV download, the URL would look like:
 
@@ -55,12 +55,12 @@ See docs for the [export format endpoint](https://www.metabase.com/docs/latest/a
 
 Metabase's automatic [drill-through](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) won't work on public dashboards because public links don't give people access to your raw data.
 
-You can simulate drill-through on a public dashboard by setting up a [custom click behavior](../../dashboards/interactive.md) that sends people from one public link to another public link.
+You can simulate drill-through on a public dashboard by setting up a [custom click behavior](../dashboards/interactive.md) that sends people from one public link to another public link.
 
 1. Create a second dashboard to act as the destination dashboard.
 2. [Create a public link](#create-a-public-link-for-a-dashboard) for the destination dashboard.
 3. Copy the destination dashboard's public link.
-4. On your primary dashboard, create a [custom destination](../../dashboards/interactive.md#custom-destinations) with type "URL".
+4. On your primary dashboard, create a [custom destination](../dashboards/interactive.md#custom-destinations) with type "URL".
 5. Set the custom destination to the destination dashboard's public link.
 6. Optional: pass a filter value from the primary dashboard to the destination dashboard by adding a query parameter to the end of the destination URL:
 
@@ -72,11 +72,11 @@ You can simulate drill-through on a public dashboard by setting up a [custom cli
 
 For example, if you have a primary public dashboard that displays **Invoices** data, you can pass the **Plan** name (on click) to a destination public dashboard that displays **Accounts** data:
 
-![Public link with custom destination](../images/public-link-custom-destination.png)
+![Public link with custom destination](./images/public-link-custom-destination.png)
 
 ## Public embeds
 
-![Public embed](../images/public-embed.png)
+![Public embed](./images/public-embed.png)
 
 If you want to embed your question or dashboard as an iframe in a simple web page or app:
 
@@ -94,42 +94,17 @@ To apply appearance or filter settings to your public embed, you can add paramet
 
 Note that it's possible to find the public link URL behind a public embed. If someone gets access to the public link URL, they can remove the parameters from the URL to view the original question or dashboard (that is, without any appearance or filter settings).
 
-If you'd like to create a secure embed that prevents people from changing filter names or values, check out [static embedding](../../embedding/static-embedding.md).
+If you'd like to create a secure embed that prevents people from changing filter names or values, check out [static embedding](./static-embedding.md).
 
-### Appearance parameters
+## Appearance parameters
 
 To toggle appearance settings, add _hash_ parameters to the end of the public link in your iframe's `src` attribute.
 
-| Parameter name        | Possible values                                  |
-| --------------------- | ------------------------------------------------ |
-| bordered              | true, false                                      |
-| titled                | true, false                                      |
-| theme                 | null, transparent, night                         |
-| hide_parameters       | [filter name](#filter-parameters)                |
-| font¹                 | [font name](../../configuring-metabase/fonts.md) |
-| hide_download_button² | true, false                                      |
+See [appearance parameters](./static-embedding-parameters.md#customizing-the-appearance-of-a-static-embed).
 
-¹ Available on [Pro and Enterprise plans](https://www.metabase.com/pricing).
+## Filter parameters
 
-² Available on [Pro and Enterprise plans](https://www.metabase.com/pricing) and hides the download button on questions only (not dashboards).
-
-For example, to embed a dashboard with multiple appearance parameters:
-
-```
-/dashboard/42#theme=night&titled=true&bordered=false
-```
-
-To embed a question without filter widgets and without the download button:
-
-```
-/question/42#hide_parameters=filter_name&hide_download_button=true
-```
-
-For more info about hiding filter widgets with `hide_parameters`, see the next section on [Filter parameters](#filter-parameters).
-
-### Filter parameters
-
-You can display a filtered view of your question or dashboard in a public embed. Make sure you've set up a [question filter](../query-builder/introduction.md#filtering) or [dashboard filter](../../dashboards/filters.md) first.
+You can display a filtered view of your question or dashboard in a public embed. Make sure you've set up a [question filter](../questions/query-builder/filters.md) or [dashboard filter](../dashboards/filters.md) first.
 
 To apply a filter to your embedded question or dashboard, add a _query_ parameter to the end of the link in your iframe's `src` attribute, like this:
 
@@ -171,7 +146,7 @@ Note that the name of the filter in the URL should be specified in lower case, a
 
 Public sharing is enabled by default.
 
-![Enable public sharing](../images/enable-public-sharing.png)
+![Enable public sharing](./images/enable-public-sharing.png)
 
 To disable public sharing:
 
@@ -207,10 +182,10 @@ Admins can view and deactivate all public links for a Metabase.
 
 Admins can see all publicly shared questions, dashboards, and actions in **Admin Settings > Public Sharing**.
 
-![See shared content](../images/see-shared-content.png)
+![See shared content](./images/see-shared-content.png)
 
 ## Further reading
 
 - [Publishing data visualizations to the web](https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards).
-- [Customizing Metabase's appearance](../../configuring-metabase/appearance.md).
-- [Embedding introduction](../../embedding/start.md).
+- [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
+- [Embedding introduction](../embedding/start.md).

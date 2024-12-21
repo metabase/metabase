@@ -27,11 +27,11 @@ Common field types are text/varchar types.
 
 ## Location
 
-Marking fields as locations tell Metabase that it can use the field to display data on a [map chart](../questions/sharing/visualizations/map.md).
+Marking fields as locations tell Metabase that it can use the field to display data on a [map chart](../questions/visualizations/map.md).
 
 - **City**
 - **Country**
-- **Latitude**: Tells Metabase that the data could be plotted on a [pin map](../questions/sharing/visualizations/map.md).
+- **Latitude**: Tells Metabase that the data could be plotted on a [pin map](../questions/visualizations/map.md).
 - **Longitude**: Did you know that you can use the moons of Jupiter to calculate longitude?
 - **State**
 - **Zip Code**
@@ -47,18 +47,18 @@ Financial field types tell Metabase to treat the field's values as money. If you
 - **Income**
 - **Price**
 
-See [Currency formatting options](../questions/sharing/visualizations/table.md#currency-formatting-options).
+See [Currency formatting options](../questions/visualizations/table.md#currency-formatting-options).
 
 ## Numeric
 
-Metabase will treat numeric field types as [numbers](../questions/sharing/visualizations/table.md#number-formatting-options).
+Metabase will treat numeric field types as [numbers](../questions/visualizations/table.md#number-formatting-options).
 
 - **Percentage**: Displays the number as a percentage by default.
 - **Quantity**: Displays the number as normal by default.
 - **Score**: Displays the number as normal by default.
 - **Share**: The same as percentage, so prefer "Percentage".
 
-See [Number formatting options](../questions/sharing/visualizations/table.md#number-formatting-options).
+See [Number formatting options](../questions/visualizations/table.md#number-formatting-options).
 
 ## Profile
 
@@ -95,7 +95,7 @@ If your database stores datetimes as a number or string, you can [cast that colu
 - **UNIX Timestamp (Milliseconds)**
 - **UNIX Timestamp (Seconds)**
 
-See [Date formatting options](../questions/sharing/visualizations/table.md#date-formatting-options).
+See [Date formatting options](../questions/visualizations/table.md#date-formatting-options).
 
 ## Categorical
 

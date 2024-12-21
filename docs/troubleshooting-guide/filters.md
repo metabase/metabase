@@ -39,7 +39,7 @@ If a question filter is giving you no results or the wrong results:
 
 If you're having trouble filtering on a:
 
-- [Custom column](../questions/query-builder/introduction.md#creating-custom-columns): check if the custom expression is working as expected. For example, your custom expression might be returning blank values when you expect numbers.
+- [Custom column](../questions/query-builder/editor.md#custom-columns): check if the custom expression is working as expected. For example, your custom expression might be returning blank values when you expect numbers.
 - [SQL field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type): make sure you're using the correct [field filter syntax](../questions/native-editor/sql-parameters.md#field-filter-syntax), then see [Troubleshooting SQL variables](./sql.md#sql-variables-and-field-filters).
 
 **Explanation**
@@ -64,7 +64,7 @@ To debug dashboard and question filters that involve timestamps, UUIDs, or numer
    - the [Data reference](../exploration-and-organization/data-model-reference.md),
    - the [Table Metadata page](../data-modeling/metadata-editing.md) (admins only), or
    - directly from the database.
-2. Cast the column to a data type that matches the desired [filter type](../questions/query-builder/introduction.md#filter-types). You can:
+2. Cast the column to a data type that matches the desired [filter type](../questions/query-builder/filters.md#filter-types). You can:
    - [cast strings or numbers to dates](../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Table Metadata page, or
    - change the data type of the column in your database, and [re-sync](../databases/sync-scan.md#manually-syncing-tables-and-columns) the database schema.
 

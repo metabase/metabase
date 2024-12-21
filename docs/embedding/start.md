@@ -32,6 +32,6 @@ Also known as Signed Embedding, Static embedding is a secure way to embed charts
 
 You can pass parameters between Metabase and your website via the embedding URL to specify how Metabase items should look and behave inside the iframe on your website.
 
-## [Public embeds](../questions/sharing/public-links.md)
+## [Public embeds](./public-links.md)
 
 Admins can also create unsecured public links or embeds of questions and dashboards.

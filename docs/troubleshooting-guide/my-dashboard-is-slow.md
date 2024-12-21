@@ -49,15 +49,15 @@ When someone loads a question or a dashboard in a static embed, however, that qu
 ## Dashboard is slow compared to similar dashboards
 
 1. Remove fields (columns) that you don't need in the final result.
-2. Add a [filter](../questions/query-builder/introduction.md#filtering) to reduce the amount of data being queried. For example:
+2. Add a [filter](../questions/query-builder/filters.md) to reduce the amount of data being queried. For example:
    - Narrow down the time frame to the reporting period that you care about.
    - Exclude invalid records, such as: blanks, nulls, or rows with values like "cancelled", "expired", "invalid", and so on.
-3. Remove [joins](../questions/query-builder/introduction.md#joining-data) to tables that aren't being used.
+3. Remove [joins](../questions/query-builder/join.md) to tables that aren't being used.
 4. If you're aggregating data from the query builder, ask your database admin if there's a pre-aggregated [view](https://www.metabase.com/glossary/view) that you can use instead.
 
 **Explanation**
 
-When you update your question to use a minimal number of rows or columns (or switch your question to use a smaller table, such as a summary table) your database can spend less time scanning those records in order to return your results. Narrowing the scope of your question is especially important to think about if you're [starting from someone else's saved question or model](../questions/query-builder/introduction.md#play-around-with-saved-questions), because you might not need all of the data that the original creator decided to include.
+When you update your question to use a minimal number of rows or columns (or switch your question to use a smaller table, such as a summary table) your database can spend less time scanning those records in order to return your results. Narrowing the scope of your question is especially important to think about if you're starting from someone else's saved question or model, because you might not need all of the data that the original creator decided to include.
 
 If all of your dashboards are slow, you might be limited by the performance of a particular data source. In that case, we recommend teaming up with your database admin to [Troubleshoot database performance](./db-performance.md).
 
