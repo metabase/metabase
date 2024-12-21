@@ -13,6 +13,7 @@
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.underlying :as lib.underlying]
    [metabase.util.malli :as mu]))
 
 (mu/defn compare-aggregations-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.compare-aggregations]
@@ -23,10 +24,13 @@
   (when (and column
              (nil? value)
              (lib.drill-thru.common/mbql-stage? query stage-number)
-             (= (:lib/source column) :source/aggregations))
+             (lib.drill-thru.common/aggregation-sourced? query column))
     {:lib/type    :metabase.lib.drill-thru/drill-thru
      :type        :drill-thru/compare-aggregations
-     :aggregation (lib.aggregation/resolve-aggregation query stage-number (:lib/source-uuid column))}))
+     :aggregation (lib.aggregation/resolve-aggregation
+                   query
+                   (lib.underlying/top-level-stage-number query)
+                   (:lib/source-uuid (lib.underlying/top-level-column query column)))}))
 
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/compare-aggregations
   [_query _stage-number _drill & _args]
