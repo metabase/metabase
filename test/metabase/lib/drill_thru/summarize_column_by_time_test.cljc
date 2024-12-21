@@ -41,6 +41,22 @@
       (is (some? count-col))
       (is (nil? (lib.drill-thru.summarize-column-by-time/summarize-column-by-time-drill query -1 context))))))
 
+(deftest ^:parallel aggregate-column-multi-stage-query-test
+  (testing "Don't suggest summarize-column-by-time drill thrus for aggregate columns in multi-stage queries"
+    (let [base-query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                             (lib/aggregate (lib/count))
+                             (lib/breakout (meta/field-metadata :orders :product-id))
+                             lib/append-stage)
+          count-col (m/find-first (fn [col]
+                                    (= (:display-name col) "Count"))
+                                  (lib/returned-columns base-query))
+          _         (is (some? count-col))
+          query     (lib/filter base-query (lib/> count-col 0))
+          context   {:column     count-col
+                     :column-ref (lib/ref count-col)
+                     :value      nil}]
+      (is (nil? (lib.drill-thru.summarize-column-by-time/summarize-column-by-time-drill query -1 context))))))
+
 (deftest ^:parallel returns-summarize-column-by-time-test-1
   (lib.drill-thru.tu/test-returns-drill
    {:drill-type  :drill-thru/summarize-column-by-time
