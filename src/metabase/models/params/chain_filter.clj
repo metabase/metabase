@@ -81,6 +81,7 @@
    [metabase.models.params.chain-filter.dedupe-joins :as dedupe]
    [metabase.models.params.field-values :as params.field-values]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.setup :as qp.setup]
@@ -445,6 +446,11 @@
             ;; FIXME: this can OOM for text column if each value are too large. See #46411
             ;; Consider using the [[field-values/distinct-text-field-rff] rff]
             values      (qp/process-query mbql-query (constantly conj))]
+        (try ; Feature issue #46888: log chain filter query.
+          (log/debugf "Chain filter native query: `%s`."
+                      (:query (qp.compile/compile mbql-query)))
+          (catch Throwable _
+            (log/error "Chain filter log failed!")))
         {:values          values
          ;; It's unlikely that we don't have a query-limit, but better safe than sorry and default it true
          ;; so that calling chain-filter-search on the same field will search from DB.
