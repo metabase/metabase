@@ -204,35 +204,32 @@
   [_driver {:keys [catalog host http-path use-m2m token client-id oauth-secret log-level additional-options] :as _details}]
   (assert (string? (not-empty catalog)) "Catalog is mandatory.")
   (let [base-spec
-        {
-          :classname      "com.databricks.client.jdbc.Driver"
-          :subprotocol    "databricks"
-          ;; Reading through the changelog revealed `EnableArrow=0` solves multiple problems. Including the exception logged
-          ;; during first `can-connect?` call. Ref:
-          ;; https://databricks-bi-artifacts.s3.us-east-2.amazonaws.com/simbaspark-drivers/jdbc/2.6.40/docs/release-notes.txt
-          :subname        (str "//" host ":443/;EnableArrow=0"
+        {:classname      "com.databricks.client.jdbc.Driver"
+         :subprotocol    "databricks"
+         ;; Reading through the changelog revealed `EnableArrow=0` solves multiple problems. Including the exception logged
+         ;; during first `can-connect?` call. Ref:
+         ;; https://databricks-bi-artifacts.s3.us-east-2.amazonaws.com/simbaspark-drivers/jdbc/2.6.40/docs/release-notes.txt
+         :subname        (str "//" host ":443/;EnableArrow=0"
                               ";ConnCatalog=" (codec/url-encode catalog)
                               (preprocess-additional-options additional-options))
-          :transportMode  "http"
-          :ssl            1
-          :HttpPath       http-path
-          :UserAgentEntry (format "Metabase/%s" (:tag config/mb-version-info))
-          :UseNativeQuery 1}
-          ;; Following is used just for tests. See the [[metabase.driver.sql-jdbc.connection-test/perturb-db-details]]
-          ;; and test that is using the function.
-        base-spec (if log-level (assoc base-spec :LogLevel log-level) base-spec)]
-    (if use-m2m
-      ;; M2M OAuth
-      (assoc base-spec
-             :AuthMech 11
-             :Auth_Flow 1
-             :OAuth2ClientId client-id
-             :OAuth2Secret oauth-secret)
-      ;; PAT authentication
-      (assoc base-spec
-             :AuthMech 3
-             :uid "token"
-             :pwd token))))
+         :transportMode  "http"
+         :ssl            1
+         :HttpPath       http-path
+         :UserAgentEntry (format "Metabase/%s" (:tag config/mb-version-info))
+         :UseNativeQuery 1}]
+    (merge base-spec
+           (when log-level
+             {:LogLevel log-level})
+           (if use-m2m
+             ;; M2M OAuth
+             {:AuthMech 11
+              :Auth_Flow 1
+              :OAuth2ClientId client-id
+              :OAuth2Secret oauth-secret}
+             ;; PAT authentication
+             {:AuthMech 3
+              :uid "token"
+              :pwd token}))))
 
 (defmethod sql.qp/quote-style :databricks
   [_driver]

@@ -24,7 +24,7 @@ driver:
       - name: use-m2m
         display-name: Use Machine to Machine (M2M) authentication
         type: boolean
-        default: false
+        default: true
         helper-text: Use Personal Access Token for authentication.
       - merge:
         - password
