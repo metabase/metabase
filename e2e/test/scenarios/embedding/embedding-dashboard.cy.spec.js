@@ -115,7 +115,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       openFilterOptions("Name");
 
       cy.findByPlaceholderText("Search by Name").type("L");
-      H.selectDropdown().findByText("Lina Heaney").click();
+      H.popover().findByText("Lina Heaney").click();
 
       cy.button("Add filter").click();
 
@@ -310,32 +310,30 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       openFilterOptions("Id");
       H.popover().within(() => {
-        H.multiAutocompleteInput().type("Aly");
+        H.fieldValuesInput().type("Aly");
+        cy.contains("Alycia McCullough - 2016");
       });
-
-      H.selectDropdown().contains("Alycia McCullough - 2016");
 
       // close the suggestions popover
       H.popover()
         .first()
         .within(() => {
-          H.multiAutocompleteInput().blur();
+          H.fieldValuesInput().blur();
         });
 
       cy.log("should allow searching PEOPLE.NAME by PEOPLE.NAME");
 
       openFilterOptions("Name");
       H.popover().within(() => {
-        H.multiAutocompleteInput().type("{backspace}Aly");
+        H.fieldValuesInput().type("{backspace}Aly");
+        cy.findByText("Alycia McCullough").should("be.visible");
       });
-
-      H.selectDropdown().contains("Alycia McCullough");
 
       // close the suggestions popover
       H.popover()
         .first()
         .within(() => {
-          H.multiAutocompleteInput().blur();
+          H.fieldValuesInput().blur();
         });
 
       cy.log("should show values for PEOPLE.SOURCE");
@@ -347,16 +345,15 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       openFilterOptions("User");
       H.popover().within(() => {
-        H.multiAutocompleteInput().type("Aly");
+        H.fieldValuesInput().type("Aly");
+        cy.contains("Alycia McCullough - 2016");
       });
-
-      H.selectDropdown().contains("Alycia McCullough - 2016");
 
       // close the suggestions popover
       H.popover()
         .first()
         .within(() => {
-          H.multiAutocompleteInput().blur();
+          H.fieldValuesInput().blur();
         });
 
       cy.log("should accept url parameters");

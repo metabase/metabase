@@ -41,7 +41,6 @@ const SingleSelectListField = ({
   optionRenderer,
   placeholder = t`Find...`,
   onSearchChange,
-  alwaysShowOptions = false,
   isDashboardFilter,
   isLoading,
   checkedColor,
@@ -129,14 +128,14 @@ const SingleSelectListField = ({
     setFilter(value);
     onChange([]);
     setSelectedValue(null);
-    onSearchChange(value);
+    onSearchChange?.(value);
   };
 
   const handleResetClick = () => {
     setFilter("");
     onChange([]);
     setSelectedValue(null);
-    onSearchChange("");
+    onSearchChange?.("");
   };
 
   return (
@@ -150,6 +149,7 @@ const SingleSelectListField = ({
           onChange={handleFilterChange}
           onKeyDown={handleKeyDown}
           onResetClick={handleResetClick}
+          data-testid="single-select-list-field"
         />
       </FilterInputContainer>
 
@@ -167,24 +167,23 @@ const SingleSelectListField = ({
 
       {!isLoading && (
         <OptionsList isDashboardFilter={isDashboardFilter}>
-          {(alwaysShowOptions || debouncedFilter.length > 0) &&
-            filteredOptions.map(option => (
-              <OptionContainer key={option[0]}>
-                <OptionItem
-                  data-testid={`${option[0]}-filter-value`}
-                  selectedColor={
-                    (checkedColor ?? isDashboardFilter)
-                      ? "var(--mb-color-background-selected)"
-                      : "var(--mb-color-filter)"
-                  }
-                  selected={selectedValue === option[0]}
-                  onClick={() => onClickOption(option[0])}
-                  onMouseDown={e => e.preventDefault()}
-                >
-                  {optionRenderer(option)}
-                </OptionItem>
-              </OptionContainer>
-            ))}
+          {filteredOptions.map(option => (
+            <OptionContainer key={option[0]}>
+              <OptionItem
+                data-testid={`${option[0]}-filter-value`}
+                selectedColor={
+                  (checkedColor ?? isDashboardFilter)
+                    ? "var(--mb-color-background-selected)"
+                    : "var(--mb-color-filter)"
+                }
+                selected={selectedValue === option[0]}
+                onClick={() => onClickOption(option[0])}
+                onMouseDown={e => e.preventDefault()}
+              >
+                {optionRenderer(option)}
+              </OptionItem>
+            </OptionContainer>
+          ))}
         </OptionsList>
       )}
     </>

@@ -165,7 +165,7 @@ export function setFilterWidgetValue(
   popover()
     .first()
     .within(() => {
-      removeMultiAutocompleteValue(0);
+      removeFieldValuesValue(0);
       if (value) {
         cy.findByPlaceholderText(targetPlaceholder).type(value).blur();
       }
@@ -348,6 +348,18 @@ export function multiSelectInput(filter = ":eq(0)") {
 
 export function multiAutocompleteInput(filter = ":eq(0)") {
   return cy.findAllByRole("combobox").filter(filter).get("input").last();
+}
+
+export function fieldValuesInput(filter = ":eq(0)") {
+  return cy.findAllByRole("textbox").filter(filter).get("input").last();
+}
+
+export function fieldValuesValue(index) {
+  return cy.findAllByTestId("token-field").eq(index);
+}
+
+export function removeFieldValuesValue(index) {
+  return cy.findAllByTestId("token-field").icon("close").eq(index).click();
 }
 
 export function multiAutocompleteValue(index, filter = ":eq(0)") {
