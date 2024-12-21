@@ -9,9 +9,10 @@ import type {
 } from "react";
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { usePrevious } from "react-use";
+import type { AnySchema } from "yup";
 
 import Markdown from "metabase/core/components/Markdown";
-import { Box } from "metabase/ui";
+import { Box, Stack, Text } from "metabase/ui";
 
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
 
@@ -32,6 +33,7 @@ export interface EditableTextProps extends EditableTextAttributes {
   onFocus?: FocusEventHandler<HTMLTextAreaElement>;
   onBlur?: FocusEventHandler<HTMLTextAreaElement>;
   "data-testid"?: string;
+  validationSchema?: AnySchema;
 }
 
 const EditableText = forwardRef(function EditableText(
@@ -47,6 +49,7 @@ const EditableText = forwardRef(function EditableText(
     onFocus,
     onBlur,
     "data-testid": dataTestId,
+    validationSchema,
     ...props
   }: EditableTextProps,
   ref: Ref<HTMLDivElement>,
@@ -54,6 +57,7 @@ const EditableText = forwardRef(function EditableText(
   const [inputValue, setInputValue] = useState(initialValue ?? "");
   const [submitValue, setSubmitValue] = useState(initialValue ?? "");
   const [isInFocus, setIsInFocus] = useState(isEditing);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const displayValue = inputValue ? inputValue : placeholder;
   const submitOnBlur = useRef(true);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -78,17 +82,38 @@ const EditableText = forwardRef(function EditableText(
   const handleBlur = useCallback(
     (event: FocusEvent<HTMLTextAreaElement>) => {
       setIsInFocus(false);
-
+      setValidationError(null);
       if (!isOptional && !inputValue) {
         setInputValue(submitValue);
       } else if (inputValue !== submitValue && submitOnBlur.current) {
-        setSubmitValue(inputValue);
-        onChange?.(inputValue);
+        if (validationSchema) {
+          validationSchema
+            .validate(inputValue)
+            .then(() => {
+              setValidationError(null);
+              setSubmitValue(inputValue);
+              onChange?.(inputValue);
+            })
+            .catch(error => {
+              setValidationError(error.message);
+            });
+        } else {
+          setSubmitValue(inputValue);
+          onChange?.(inputValue);
+        }
       }
 
       onBlur?.(event);
     },
-    [inputValue, submitValue, isOptional, onChange, onBlur, setIsInFocus],
+    [
+      inputValue,
+      submitValue,
+      isOptional,
+      onChange,
+      onBlur,
+      setIsInFocus,
+      validationSchema,
+    ],
   );
 
   const handleChange = useCallback(
@@ -124,46 +149,54 @@ const EditableText = forwardRef(function EditableText(
   const shouldShowMarkdown = isMarkdown && !isInFocus && inputValue;
 
   return (
-    <Box
-      component={EditableTextRoot}
-      onClick={isMarkdown ? handleRootElementClick : undefined}
-      {...props}
-      ref={ref}
-      isEditing={isEditing}
-      isDisabled={isDisabled}
-      isEditingMarkdown={!shouldShowMarkdown}
-      data-value={`${displayValue}\u00A0`}
-      data-testid="editable-text"
-      tabIndex={0}
-      // For a11y, allow typing to activate the textarea
-      onKeyDown={(e: React.KeyboardEvent) => {
-        if (shouldPassKeyToTextarea(e.key)) {
-          (e.currentTarget as HTMLTextAreaElement).click();
-        }
-      }}
-      onKeyUp={(e: React.KeyboardEvent) => {
-        if (!shouldPassKeyToTextarea(e.key)) {
-          (e.currentTarget as HTMLTextAreaElement).click();
-        }
-      }}
-      lh={1.57}
-    >
-      {shouldShowMarkdown ? (
-        <Markdown>{inputValue}</Markdown>
-      ) : (
-        <EditableTextArea
-          ref={inputRef}
-          value={inputValue}
-          placeholder={placeholder}
-          disabled={isDisabled}
-          data-testid={dataTestId}
-          onFocus={onFocus}
-          onBlur={handleBlur}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-        />
+    <Stack spacing="0">
+      <Box
+        component={EditableTextRoot}
+        onClick={isMarkdown ? handleRootElementClick : undefined}
+        {...props}
+        ref={ref}
+        isEditing={isEditing}
+        isDisabled={isDisabled}
+        isEditingMarkdown={!shouldShowMarkdown}
+        data-value={`${displayValue}\u00A0`}
+        data-testid="editable-text"
+        tabIndex={0}
+        // For a11y, allow typing to activate the textarea
+        onKeyDown={(e: React.KeyboardEvent) => {
+          if (shouldPassKeyToTextarea(e.key)) {
+            (e.currentTarget as HTMLTextAreaElement).click();
+          }
+        }}
+        onKeyUp={(e: React.KeyboardEvent) => {
+          if (!shouldPassKeyToTextarea(e.key)) {
+            (e.currentTarget as HTMLTextAreaElement).click();
+          }
+        }}
+        lh={1.57}
+        error={!!validationError}
+      >
+        {shouldShowMarkdown ? (
+          <Markdown>{inputValue}</Markdown>
+        ) : (
+          <EditableTextArea
+            ref={inputRef}
+            value={inputValue}
+            placeholder={placeholder}
+            disabled={isDisabled}
+            data-testid={dataTestId}
+            onFocus={onFocus}
+            onBlur={handleBlur}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+          />
+        )}
+      </Box>
+      {!!validationError && (
+        <Text color="error" size="xs" mt="xs">
+          {validationError}
+        </Text>
       )}
-    </Box>
+    </Stack>
   );
 });
 

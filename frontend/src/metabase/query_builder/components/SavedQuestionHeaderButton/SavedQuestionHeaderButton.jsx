@@ -1,5 +1,9 @@
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import * as Yup from "yup";
+
+import * as Errors from "metabase/lib/errors";
+import { QUESTION_TITLE_MAX_LENGTH } from "metabase/questions/constants";
 
 import EditableText from "metabase/core/components/EditableText";
 import { Flex } from "metabase/ui";
@@ -13,6 +17,11 @@ SavedQuestionHeaderButton.propTypes = {
   onSave: PropTypes.func,
 };
 
+const TITLE_SCHEMA = Yup.string()
+  .required(Errors.required)
+  .max(QUESTION_TITLE_MAX_LENGTH, Errors.maxLength)
+  .default("");
+
 function SavedQuestionHeaderButton({ question, onSave }) {
   return (
     <Flex align="center" gap="0.25rem">
@@ -23,6 +32,7 @@ function SavedQuestionHeaderButton({ question, onSave }) {
         placeholder={t`Add title`}
         onChange={onSave}
         data-testid="saved-question-header-title"
+        validationSchema={TITLE_SCHEMA}
       />
 
       <CollectionIcon
