@@ -1026,3 +1026,12 @@
   "Return first item from Reducible"
   [reducible]
   (reduce (fn [_ fst] (reduced fst)) nil reducible))
+
+(defn update-some
+  "Update a value by key in the `m`, if it's `some?`. If `nil` is returned, dissoc it instead"
+  [m k f & args]
+  (let [v (get m k)
+        res (when v (apply f v args))]
+    (if res
+      (assoc m k res)
+      (dissoc m k))))
