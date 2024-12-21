@@ -51,15 +51,6 @@ export const AdHocViewHeading = styled(ViewHeading)`
   margin-right: ${space(2)};
 `;
 
-export const BackButton = styled(Button)`
-  color: var(--mb-color-brand);
-  padding: 0.75rem;
-`;
-
-export const BackButtonContainer = styled.span`
-  margin-right: 0.75rem;
-`;
-
 export const SaveButton = styled(MantineButton)<ButtonProps>`
   border-radius: 8px;
 
