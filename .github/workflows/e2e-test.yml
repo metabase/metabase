@@ -1,0 +1,151 @@
+name: E2E Test
+run-name: E2E Test - ${{ inputs.name }}
+
+on:
+  workflow_call:
+    inputs:
+      name:
+        required: true
+        type: string
+      edition: # oss | ee
+        required: false
+        type: string
+        default: ee
+      specs:
+        required: false
+        default: ./e2e/test/scenarios/**/*.cy.spec.*
+        type: string
+      tags:
+        required: false
+        type: string
+      runner:
+        required: false
+        type: string
+        default: ubuntu-22.04
+
+jobs:
+  e2e-tests:
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 45
+    name: e2e-tests-${{ inputs.name }}-${{ inputs.edition }}
+    env:
+      MB_EDITION: ${{ inputs.edition }}
+      DISPLAY: ""
+      QA_DB_ENABLED: true
+      # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
+      # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
+      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
+      CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
+      COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
+      MB_SNOWPLOW_AVAILABLE: true
+      MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
+      TZ: US/Pacific # to make node match the instance tz
+      CYPRESS_CI: true
+      CYPRESS_QA_DB_MONGO: ${{ inputs.name == 'mongo' }}
+      CYPRESS_IS_EMBEDDING_SDK: ${{ inputs.name == 'embedding-sdk' }}
+      mongo: ${{ inputs.name == 'mongo' }}
+      postgres: ${{ inputs.name != 'mongo' }}
+      mysql: ${{ inputs.name != 'mongo' }}
+      openldap: ${{ contains(inputs.specs, 'ldap') }}
+      maildev: true
+      webhook: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: true
+          openldap: ${{ env.openldap }}
+          postgres: ${{ env.postgres }}
+          mysql: ${{ env.mysql }}
+          mongo: ${{ env.mongo }}
+          webhook: ${{ env.webhook }}
+
+      - name: Run Embedding SDK Storybook
+        if: inputs.name == 'embedding-sdk'
+        uses: ./.github/actions/run-embedding-sdk-storybook
+
+      - name: Retrieve uberjar artifact for ${{ inputs.edition }}
+        uses: actions/download-artifact@v4
+        with:
+          name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+
+      - name: Get the version info
+        run: |
+          jar xf target/uberjar/metabase.jar version.properties
+          mv version.properties resources/
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: "temurin"
+
+      - name: Prepare Cypress environment
+        id: cypress-prep
+        uses: ./.github/actions/prepare-cypress
+
+      - name: Run Snowplow micro
+        uses: ./.github/actions/run-snowplow-micro
+
+      - name: Run EE Cypress tests on ${{ inputs.name }}
+        if: ${{ !inputs.tags }}
+        shell: bash
+        run: |
+          yarn run test-cypress-run \
+          --env grepTags="-@slow+-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
+          --spec '${{ inputs.specs }}' \
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+
+      - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
+        if: ${{ inputs.tags }}
+        shell: bash
+        run: |
+          yarn run test-cypress-run \
+          --env grepTags="${{inputs.tags}} --@quarantine",grepOmitFiltered=true \
+          --spec '${{ inputs.specs }}' \
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        with:
+          input-path: ./target/junit
+          output-name: e2e-${{ inputs.name }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+      - name: Upload Cypress Artifacts upon failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-recording-${{ inputs.name }}-${{ inputs.edition }}
+          path: |
+            ./cypress
+            ./logs/test.log
+          if-no-files-found: ignore
+
+      - name: Publish Summary
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: | #js
+            const {
+               parseReport,
+               formatSummary
+             } = require("./.github/scripts/handle-mochawesome-report.js");
+
+             const report = parseReport();
+             const summary = formatSummary(report);
+
+             await core.summary.addRaw(summary).write();

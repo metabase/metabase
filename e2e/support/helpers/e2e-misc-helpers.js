@@ -322,7 +322,7 @@ export function interceptIfNotPreviouslyDefined({ method, url, alias } = {}) {
 export function saveQuestion(
   name,
   { addToDashboard = false, wrapId = false, idAlias = "questionId" } = {},
-  pickEntityOptions,
+  pickEntityOptions = null,
 ) {
   cy.intercept("POST", "/api/card").as("saveQuestion");
   cy.findByTestId("qb-header").button("Save").click();

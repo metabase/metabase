@@ -2,8 +2,9 @@ import { H } from "e2e/support";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > navigation > navbar", () => {
-  describe("OSS", () => {
+  describe("Normal user", () => {
     beforeEach(() => {
+      H.restore();
       cy.signInAsNormalUser();
     });
 
@@ -25,6 +26,7 @@ describe("scenarios > navigation > navbar", () => {
       H.navigationSidebar().should("be.visible");
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.navigationSidebar().should("not.be.visible");
+
       cy.findByTestId("main-logo-link").click();
       H.navigationSidebar().should("not.be.visible");
     });
@@ -34,7 +36,7 @@ describe("scenarios > navigation > navbar", () => {
       H.navigationSidebar().should("not.be.visible");
     });
 
-    it("should preserve state when visting a collection", () => {
+    it("should preserve state when visiting a collection", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.navigationSidebar().should("not.be.visible");
       H.appBar().contains("Our analytics").parentsUntil("a").first().click();
@@ -60,22 +62,28 @@ describe("scenarios > navigation > navbar", () => {
         .click();
       H.navigationSidebar().should("not.be.visible");
     });
+  });
 
-    it("should be open when visiting home with a custom home page configured", () => {
+  describe("Custom Homepage", () => {
+    beforeEach(() => {
+      H.restore();
       cy.signInAsAdmin();
       H.updateSetting("custom-homepage", true);
       H.updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
+    });
+
+    it("should be open when visiting home with a custom home page configured", () => {
       cy.visit("/");
-      cy.reload();
-      cy.url().should("contain", "question");
+      cy.url().should("contain", "/dashboard/");
+      H.navigationSidebar().should("be.visible");
+
+      cy.findByTestId("main-logo-link").click();
       H.navigationSidebar().should("be.visible");
     });
 
-    it("should preserve state when clicking the mb logo and a custom home page is configured", () => {
-      cy.signInAsAdmin();
-      H.updateSetting("custom-homepage", true);
-      H.updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
+    it("should preserve state when clicking the mb logo and custom home page is configured", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.navigationSidebar().should("not.be.visible");
       cy.findByTestId("main-logo-link").click();
       H.navigationSidebar().should("not.be.visible");
     });
