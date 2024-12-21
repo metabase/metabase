@@ -3,12 +3,12 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
-   [malli.core :as mc]
    [malli.json-schema :as mjs]
+   [medley.core :as m]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms])
-  (:import [clojure.lang PersistentVector]))
+  (:import
+   (clojure.lang PersistentVector)))
 
 (set! *warn-on-reflection* true)
 
@@ -16,77 +16,62 @@
 
 ;;; Helpers
 
-(defn- fix-locations
-  "Fixes all {:$ref ....} locations - could be in properties, or in allOf/anyOf with arbitrary nesting."
-  [schema]
-  (walk/postwalk (fn [x]
-                   (cond-> x
-                     (:$ref x) (update :$ref str/replace "#/definitions/" "#/components/schemas/")))
-                 schema))
-
-(defn- json-schema-transform [malli-schema]
-  (let [jss         (mjs/transform malli-schema)
-        definitions (update-vals (:definitions jss) fix-locations)]
+(defn- mjs-collect-definitions
+  "We transform json-schema in a few different places, but we need to collect all defitions in a single one."
+  [malli-schema]
+  (let [jss         (mjs/transform malli-schema {::mjs/definitions-path "#/components/schemas/"})]
     (when *definitions*
-      (swap! *definitions* merge definitions))
-    (-> jss
-        (dissoc :definitions)
-        (update :properties fix-locations))))
+      (swap! *definitions* merge (:definitions jss)))
+    (dissoc jss :definitions)))
 
-(defn- fix-type
-  "Change type of params to make it more understandable to Rapidoc."
-  [{:keys [schema] :as param}]
-  ;; TODO: figure out how to teach rapidoc `[:or [:enum "all"] nat-int?]`
-  (cond
-    (and (:oneOf schema)
-         (= (second (:oneOf schema)) {:type "null"}))
-    (let [real-schema (merge (first (:oneOf schema))
-                             (select-keys schema [:description :default]))]
-      (recur
-       (assoc param :required false :schema real-schema)))
+(defn- merge-required [schema]
+  (let [optional? (set (keep (fn [[k v]] (when (:optional v) k))
+                             (:properties schema)))]
+    (-> schema
+        (m/update-existing :required #(vec (remove optional? %)))
+        (m/update-existing :properties #(update-vals % (fn [v] (dissoc v :optional)))))))
 
-    (= (:enum schema) (mc/children ms/BooleanValue))
-    (assoc param :schema (-> (dissoc schema :enum) (assoc :type "boolean")))
+(let [file-schema (mjs/transform ms/File)]
+  (defn- fix-json-schema
+    "Clean-up JSON schema to make it more understandable for OpenAPI tools.
 
-    (= (:enum schema) (mc/children ms/MaybeBooleanValue))
-    (assoc param
-           :schema (-> (dissoc schema :enum) (assoc :type "boolean"))
-           :required false)
+    Returns a new schema WITH an indicator if it's *NOT* required.
 
-    :else
-    param))
+    NOTE: maybe instead of fixing it up later we should re-work Malli's json-schema transformation into a way we want it to be?"
+    [schema]
+    (cond
+      ;; we're using `[:maybe ...]` a lot, and it generates `{:oneOf [... {:type "null"}]}`
+      ;; it needs to be cleaned up to be presented in OpenAPI viewers
+      (and (:oneOf schema)
+           (= (second (:oneOf schema)) {:type "null"}))
+      (recur (-> (first (:oneOf schema))
+                 (merge (select-keys schema [:description :default]))
+                 (assoc :optional true)))
 
-(let [file-schema (json-schema-transform ms/File)]
-  ;; TODO: unify this with `fix-type` somehow, but `:required` is making this hard
-  (defn- fix-schema
-    "Change type of request body to make it more understandable to Rapidoc."
-    [{:keys [required] :as schema}]
-    (let [not-required (atom #{})]
-      (-> schema
-          (update :properties (fn [props]
-                                (into {}
-                                      (for [[k v] props]
-                                        [k
-                                         (cond
-                                           (and (:oneOf v)
-                                                (= (second (:oneOf v)) {:type "null"}))
-                                           (do
-                                             (swap! not-required conj k)
-                                             (merge (first (:oneOf v))
-                                                    (select-keys v [:description :default])))
+      ;; this happens when we use `[:and ... [:fn ...]]`, the `:fn` schema gets converted into an empty object
+      (:allOf schema)
+      (cond
+        (= {} (first (:allOf schema)))  (recur (merge (second (:allOf schema))
+                                                      (select-keys schema [:description :default])))
+        (= {} (second (:allOf schema))) (recur (merge (first (:allOf schema))
+                                                      (select-keys schema [:description :default])))
+        :else                           (update schema :allOf (partial mapv fix-json-schema)))
 
-                                           (= (select-keys v (keys file-schema)) file-schema)
-                                           ;; I got this from StackOverflow and docs are not in agreement, but RapiDoc
-                                           ;; shows file input, so... :)
-                                           (merge {:type "string" :format "binary"}
-                                                  (select-keys v [:description :default]))
+      (= (select-keys schema (keys file-schema)) file-schema)
+      ;; I got this from StackOverflow and docs are not in agreement, but RapiDoc
+      ;; shows file input, so... :)
+      (merge {:type "string" :format "binary"}
+             (select-keys schema [:description :default]))
 
-                                           (= (:enum v) ["true" "false" true false])
-                                           (-> (dissoc v :enum) (assoc :type "boolean"))
+      (:properties schema)
+      (merge-required
+       (update schema :properties #(update-vals % fix-json-schema)))
 
-                                           :else
-                                           v)]))))
-          (assoc :required (vec (remove @not-required required)))))))
+      (= (:type schema) "array")
+      (update schema :items fix-json-schema)
+
+      :else
+      schema)))
 
 (defn- path->openapi [path]
   (str/replace path #":([^/]+)" "{$1}"))
@@ -145,20 +130,22 @@
 (defn- schema->params
   "https://spec.openapis.org/oas/latest.html#parameter-object"
   [full-path args schema]
-  (let [{:keys [properties required]} (json-schema-transform schema)
+  (let [{:keys [properties required]} (mjs-collect-definitions schema)
         required                      (set required)
         in-path?                      (set (map (comp keyword second) (re-seq #"\{([^}]+)\}" full-path)))
         in-query?                     (set (compojure-query-params args))
         renames                       (compojure-renames args)]
     (for [[k param-schema] properties
           :let             [k (get renames k k)]
-          :when            (or (in-path? k) (in-query? k))]
-      (fix-type
-       (cond-> {:in          (if (in-path? k) :path :query)
-                :name        k
-                :required    (contains? required k)
-                :schema      (dissoc param-schema :description)}
-         (:description param-schema) (assoc :description (:description param-schema)))))))
+          :when            (or (in-path? k) (in-query? k))
+          :let             [schema    (fix-json-schema param-schema)
+                            ;; if schema does not indicate it's optional, it's not :)
+                            optional? (:optional schema)]]
+      (cond-> {:in          (if (in-path? k) :path :query)
+               :name        k
+               :required    (and (contains? required k) (not optional?))
+               :schema      (dissoc schema :optional :description)}
+        (:description schema) (assoc :description (:description schema))))))
 
 (defn- defendpoint->path-item
   "Generate OpenAPI desc for a single handler
@@ -171,8 +158,8 @@
         body-params               (when (not= method :get)
                                     (remove #(non-body-param? (first %)) (rest (:schema data))))
         body-schema               (when (seq body-params)
-                                    (fix-schema
-                                     (json-schema-transform (into [:map] body-params))))
+                                    (fix-json-schema
+                                     (mjs-collect-definitions (into [:map] body-params))))
         ctype                     (if (:multipart (meta handler-var))
                                     "multipart/form-data"
                                     "application/json")]
@@ -200,7 +187,7 @@
                             (catch Exception e
                               (throw (ex-info (str "Exception at " path) {} e))))))]
       {:paths      paths
-       :components {:schemas @*definitions*}})))
+       :components {:schemas (update-vals @*definitions* fix-json-schema)}})))
 
 (comment
   ;; See what is the result of generation, could be helpful debugging what's wrong with display in rapidoc
