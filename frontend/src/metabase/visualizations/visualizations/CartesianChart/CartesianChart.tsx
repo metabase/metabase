@@ -93,6 +93,15 @@ function _CartesianChart(props: VisualizationProps) {
 
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
+
+    // HACK: clip paths cause glitches in Safari on multiseries line charts on dashboards
+    chartRef.current.on("finished", () => {
+      const svg = containerRef.current?.querySelector("svg");
+      if (svg) {
+        const clipPaths = svg.querySelectorAll('defs > clipPath[id^="zr"]');
+        clipPaths.forEach(cp => cp.remove());
+      }
+    });
   }, []);
 
   const handleToggleSeriesVisibility = useCallback(
