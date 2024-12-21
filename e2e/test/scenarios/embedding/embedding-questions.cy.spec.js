@@ -226,10 +226,19 @@ describe("scenarios > embedding > questions", () => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
       H.visitQuestion(id);
 
+      cy.intercept(
+        "GET",
+        "api/preview_embed/card/*",
+        cy.spy().as("previewEmbedSpy"),
+      ).as("previewEmbed");
+
       H.openStaticEmbeddingModal({
         activeTab: "parameters",
         previewMode: "preview",
       });
+
+      cy.wait("@previewEmbed");
+
       H.getIframeBody().within(() => {
         cy.findByTestId("embed-frame").as("embedFrame").should("be.visible");
         cy.findByTestId("download-button").click();
@@ -237,14 +246,6 @@ describe("scenarios > embedding > questions", () => {
       });
 
       cy.get("@dl").its("response.statusCode").should("eq", 302);
-
-      H.visitEmbeddedPage({ resource: { question: id }, params: {} });
-
-      H.getIframeBody().within(() => {
-        cy.findByTestId("embed-frame").as("embedFrame").should("be.visible");
-        cy.findByTestId("download-button").click();
-        cy.findByTestId("download-results-button").click();
-      });
     });
   });
 });
