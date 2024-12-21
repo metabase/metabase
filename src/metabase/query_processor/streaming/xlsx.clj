@@ -5,6 +5,7 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.formatter :as formatter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.models.visualization-settings :as mb.viz]
@@ -666,68 +667,111 @@
   (let [workbook-data      (volatile! nil)
         cell-styles        (volatile! nil)
         typed-cell-styles  (volatile! nil)
-        pivot-grouping-idx (volatile! nil)]
+        pivot-grouping-idx (volatile! nil)
+        format-rows        (volatile! nil)
+        is-pivot           (volatile! nil)
+        start-time         (System/currentTimeMillis)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols format-rows? pivot? pivot-export-options]
                    :or   {format-rows? true
                           pivot?       false}} :data}
                {col-settings ::mb.viz/column-settings :as viz-settings}]
-        (let [opts               (when (and pivot? pivot-export-options (public-settings/enable-pivoted-exports))
-                                   (pivot-opts->pivot-spec (merge {:pivot-cols []
-                                                                   :pivot-rows []}
-                                                                  pivot-export-options) ordered-cols))
-              col-names          (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
-              pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key col-names)]
-          (when pivot-grouping-key (vreset! pivot-grouping-idx pivot-grouping-key))
-          (if opts
-            (let [wb (init-native-pivot opts
-                                        {:ordered-cols ordered-cols
-                                         :col-settings col-settings
-                                         :viz-settings viz-settings
-                                         :format-rows? format-rows?})]
-              (vreset! workbook-data wb))
-            (let [wb (init-workbook {:ordered-cols (cond->> ordered-cols
-                                                     pivot-grouping-key (m/remove-nth pivot-grouping-key))
-                                     :col-settings col-settings
-                                     :format-rows? true})]
-              (vreset! workbook-data wb)))
+        (try
+          (let [opts               (when (and pivot? pivot-export-options (public-settings/enable-pivoted-exports))
+                                     (pivot-opts->pivot-spec (merge {:pivot-cols []
+                                                                     :pivot-rows []}
+                                                                    pivot-export-options) ordered-cols))
+                col-names          (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
+                pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key col-names)]
+            (vreset! format-rows format-rows?)
+            (vreset! is-pivot pivot?)
+            (when pivot-grouping-key (vreset! pivot-grouping-idx pivot-grouping-key))
+            (if opts
+              (let [wb (init-native-pivot opts
+                                          {:ordered-cols ordered-cols
+                                           :col-settings col-settings
+                                           :viz-settings viz-settings
+                                           :format-rows? format-rows?})]
+                (vreset! workbook-data wb))
+              (let [wb (init-workbook {:ordered-cols (cond->> ordered-cols
+                                                       pivot-grouping-key (m/remove-nth pivot-grouping-key))
+                                       :col-settings col-settings
+                                       :format-rows? true})]
+                (vreset! workbook-data wb)))
 
-          (let [{:keys [workbook sheet]} @workbook-data
-                data-format              (. ^SXSSFWorkbook workbook createDataFormat)
-                cols                     (cond->> ordered-cols
-                                           pivot-grouping-key (m/remove-nth pivot-grouping-key))]
-            (set-no-style-custom-helper sheet)
-            (vreset! cell-styles (compute-column-cell-styles workbook data-format viz-settings cols format-rows?))
-            (vreset! typed-cell-styles (compute-typed-cell-styles workbook data-format)))))
+            (let [{:keys [workbook sheet]} @workbook-data
+                  data-format              (. ^SXSSFWorkbook workbook createDataFormat)
+                  cols                     (cond->> ordered-cols
+                                             pivot-grouping-key (m/remove-nth pivot-grouping-key))]
+              (set-no-style-custom-helper sheet)
+              (vreset! cell-styles (compute-column-cell-styles workbook data-format viz-settings cols format-rows?))
+              (vreset! typed-cell-styles (compute-typed-cell-styles workbook data-format))))
+          (catch Exception e
+            (prometheus/inc! :metabase-streaming/file-export-error
+                             {:stage "begin!"
+                              :error-type (-> e .getClass .getName)
+                              :file-format "xlsx"
+                              :format-rows format-rows?
+                              :is-pivot pivot?
+                              :duration-ms (- (System/currentTimeMillis) start-time)} 1)
+            (throw e))))
 
       (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
-        (let [ordered-row          (vec (if output-order
-                                          (let [row-v (into [] row)]
-                                            (for [i output-order] (row-v i)))
-                                          row))
-              col-settings         (::mb.viz/column-settings viz-settings)
-              pivot-grouping-key   @pivot-grouping-idx
-              group                (get row pivot-grouping-key)
-              [row' ordered-cols'] (cond->> [ordered-row ordered-cols]
-                                     pivot-grouping-key
+        (try
+          (let [ordered-row          (vec (if output-order
+                                            (let [row-v (into [] row)]
+                                              (for [i output-order] (row-v i)))
+                                            row))
+                col-settings         (::mb.viz/column-settings viz-settings)
+                pivot-grouping-key   @pivot-grouping-idx
+                group                (get row pivot-grouping-key)
+                [row' ordered-cols'] (cond->> [ordered-row ordered-cols]
+                                       pivot-grouping-key
                                      ;; We need to remove the pivot-grouping key if it's there, because we don't show
                                      ;; it in the export. `ordered-cols` is a parallel array, so we must remove the
                                      ;; corresponding col.
-                                     (map #(m/remove-nth pivot-grouping-key %)))
-              {:keys [sheet]}      @workbook-data]
-          (when (or (not group)
-                    (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
-            (add-row! sheet (inc row-num) row' ordered-cols' col-settings @cell-styles @typed-cell-styles)
-            (when (= (inc row-num) *auto-sizing-threshold*)
-              (autosize-columns! sheet)))))
+                                       (map #(m/remove-nth pivot-grouping-key %)))
+                {:keys [sheet]}      @workbook-data]
+            (when (or (not group)
+                      (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
+              (add-row! sheet (inc row-num) row' ordered-cols' col-settings @cell-styles @typed-cell-styles)
+              (when (= (inc row-num) *auto-sizing-threshold*)
+                (autosize-columns! sheet))))
+          (catch Exception e
+            (prometheus/inc! :metabase-streaming/file-export-error
+                             {:stage "write-row!"
+                              :error-type (-> e .getClass .getName)
+                              :row-num (str row-num)
+                              :file-format "xlsx"
+                              :format-rows @format-rows
+                              :is-pivot @is-pivot
+                              :duration-ms (- (System/currentTimeMillis) start-time)} 1)
+            (throw e))))
 
       (finish! [_ {:keys [row_count]}]
-        (let [{:keys [workbook sheet]} @workbook-data]
-          (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
+        (try
+          (let [{:keys [workbook sheet]} @workbook-data
+                duration (- (System/currentTimeMillis) start-time)]
+            (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
             ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
-            (autosize-columns! sheet))
-          (try
-            (spreadsheet/save-workbook-into-stream! os workbook)
-            (finally
-              (.dispose ^SXSSFWorkbook workbook)
-              (.close os))))))))
+              (autosize-columns! sheet))
+            (try
+              (spreadsheet/save-workbook-into-stream! os workbook)
+              (finally
+                (.dispose ^SXSSFWorkbook workbook)
+                (.close os)
+                (prometheus/observe! :metabase-streaming/file-export-ms
+                                     {:file-format "xlsx"
+                                      :row-count row_count
+                                      :format-rows @format-rows
+                                      :is-pivot @is-pivot}
+                                     duration))))
+          (catch Exception e
+            (prometheus/inc! :metabase-streaming/file-export-error
+                             {:stage "finish!"
+                              :error-type (-> e .getClass .getName)
+                              :file-format "xlsx"
+                              :format-rows @format-rows
+                              :is-pivot @is-pivot
+                              :duration-ms (- (System/currentTimeMillis) start-time)} 1)
+            (throw e)))))))

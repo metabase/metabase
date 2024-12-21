@@ -223,7 +223,20 @@
    (prometheus/counter :metabase-search/response-ok
                        {:description "Number of successful search requests."})
    (prometheus/counter :metabase-search/response-error
-                       {:description "Number of errors when responding to search requests."})])
+                       {:description "Number of errors when responding to search requests."})
+   (prometheus/counter :metabase-streaming/file-export-error
+                       {:description "Number of errors when exporting files."
+                        :labels      [:stage :file-format :error-type :row-num :format-rows :is-pivot :duration-ms]})
+   (prometheus/histogram :metabase-streaming/file-export-ms
+                         {:description "Duration of file export in ms."
+                          :labels      [:file-format :row-count :format-rows :is-pivot]
+                          :buckets     [100 500 1000 2000 5000 10000]})
+   (prometheus/histogram :metabase-streaming/export-csv-ms
+                         {:description "Duration of csv file export in ms."
+                          :buckets [100 500 1000 2000 5000 10000]})
+   (prometheus/histogram :metabase-streaming/export-json-ms
+                         {:description "Duration of json file export in ms."
+                          :buckets [100 500 1000 2000 5000 10000]})])
 
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
@@ -289,6 +302,13 @@
    (when-let [registry (some-> system .-registry)]
      (when (metric registry)
        (prometheus/inc registry metric labels amount)))))
+
+(defn observe!
+  "Call iapetos.core/observe on the metric in the global registry"
+  ([metric labels amount]
+   (when-let [registry (some-> system .-registry)]
+     (when (metric registry)
+       (prometheus/observe registry metric labels amount)))))
 
 (comment
   (require 'iapetos.export)
