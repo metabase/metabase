@@ -37,7 +37,7 @@ describe("scenarios > question > trendline", () => {
     // Remove sum of total
     H.leftSidebar().within(() => {
       cy.findByText("Data").click();
-      cy.icon("close").last().click();
+      cy.icon("close").last().click({ force: true });
       cy.findByText("Done").click();
     });
 
