@@ -10239,6 +10239,9 @@ databaseChangeLog:
 
   - changeSet:
       id: v53.2024-12-02T17:21:16
+      validCheckSum:
+        - 9:209a494b250a08f022114249697cbc1b
+        - 9:8adcf08936200cc74153d0c306452e0c
       author: noahmoss
       comment: Add query_execution.parameterized column
       preConditions:
@@ -10254,9 +10257,8 @@ databaseChangeLog:
                   name: parameterized
                   type: ${boolean.type}
                   remarks: Whether or not the query has parameters with non-nil values
-                  defaultValueBoolean: false
                   constraints:
-                    nullable: false
+                    nullable: true
 
   - changeSet:
       id: v53.2024-12-10T10:00:00
@@ -10325,6 +10327,87 @@ databaseChangeLog:
               ALTER TABLE notification_subscription ALTER COLUMN id RESTART WITH 1;
               ALTER TABLE notification_recipient ALTER COLUMN id RESTART WITH 1;
               ALTER TABLE channel_template ALTER COLUMN id RESTART WITH 1;
+
+  - changeSet:
+      id: v53.2024-12-20T19:53:50
+      author: johnswanson
+      comment: >
+        add a table for user-level KV. This is intended for use as a lightweight mechanism for the frontend to be able
+        to mark things as seen, unseen, dismissed, etc
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: user_key_value
+      changes:
+        - createTable:
+            tableName: user_key_value
+            remarks: A simple key value store for each user.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'The ID of the user this KV-pair is for'
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_user_key_value_user_id
+              - column:
+                  name: namespace
+                  type: varchar(254)
+                  remarks: 'The namespace for this KV, e.g. "dashboard-filters" or "nobody-knows"'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: key
+                  remarks: 'The key'
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: value
+                  remarks: 'The value, serialized JSON'
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  remarks: 'When this row was created'
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: 'When this row was last updated'
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  remarks: 'If set, when this row expires'
+                  type: ${timestamp_type}
+                  defaultValue: null
+
+  - changeSet:
+      id: v53.2024-12-20T19:53:59
+      author: johnswanson
+      comment: Add a unique constraint for user_id,namespace,key
+      changes:
+        - addUniqueConstraint:
+            tableName: user_key_value
+            columnNames: user_id, namespace, key
+            constraintName: unique_user_key_value_user_id_namespace_key
+      rollback: # will be deleted with table
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

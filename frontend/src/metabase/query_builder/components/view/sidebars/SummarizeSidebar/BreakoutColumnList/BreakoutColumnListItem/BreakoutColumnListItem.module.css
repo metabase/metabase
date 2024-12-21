@@ -13,7 +13,6 @@
   width: 34px;
   margin-left: 0.5rem;
   color: var(--mb-color-text-white);
-  transition: none;
 }
 
 .RemoveButton {
@@ -47,6 +46,11 @@
   margin: 0.25rem 0;
   min-height: 34px;
   position: relative;
+
+  /* to increase specificity */
+  .AddButton {
+    transition: none;
+  }
 
   &.isSelected {
     .Content,
