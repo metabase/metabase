@@ -94,7 +94,9 @@ describe("scenarios > admin > settings > API keys", () => {
     const group = "Administrators";
     H.visitApiKeySettings();
     H.tryToCreateApiKeyViaModal({ name, group });
-    H.modal().button("Done").click();
+    H.modal()
+      .button(/done\|success/i)
+      .click();
     H.tryToCreateApiKeyViaModal({ name, group }).then(({ response }) => {
       expect(response?.statusCode).to.equal(400);
     });
