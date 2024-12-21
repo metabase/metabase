@@ -1,7 +1,16 @@
+import {
+  type CompletionContext,
+  autocompletion,
+} from "@codemirror/autocomplete";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getColumnIcon } from "metabase/common/utils/columns";
 import * as Lib from "metabase-lib";
+import {
+  formatIdentifier,
+  getDisplayNameWithSeparator,
+} from "metabase-lib/v1/expressions";
 import {
   enclosingFunction,
   partialMatch,
@@ -17,27 +26,128 @@ import {
   getMBQLName,
 } from "metabase-lib/v1/expressions/config";
 import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
+import type { SuggestArgs } from "metabase-lib/v1/expressions/suggest";
 import type {
   HelpText,
   MBQLClauseFunctionConfig,
 } from "metabase-lib/v1/expressions/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { formatIdentifier, getDisplayNameWithSeparator } from "./";
+type SuggestOptions = Omit<
+  SuggestArgs,
+  "source" | "targetOffset" | "getColumnIcon"
+>;
 
-export type Suggestion = {
-  type: string;
-  name: string;
-  text: string;
-  alternates?: string[];
-  index: number;
-  icon: string | null | undefined;
-  order: number;
-  range?: [number, number];
-  column?: Lib.ColumnMetadata;
-  helpText?: HelpText;
-  group?: GroupName;
-};
+export function suggestions(options: SuggestOptions) {
+  return autocompletion({
+    activateOnTyping: true,
+    activateOnTypingDelay: 0,
+    override: [
+      //
+      suggestFields(options),
+      suggestFunctions(options),
+    ],
+  });
+}
+
+function suggestFields({ query, stageIndex, expressionIndex }: SuggestOptions) {
+  return function (context: CompletionContext) {
+    const source = context.state.doc.toString();
+    const partialSource = source.slice(0, context.pos);
+    const match = partialMatch(partialSource);
+
+    if (!match.startsWith("[") || match.endsWith("]")) {
+      // We're not inside a field reference tag
+      return null;
+    }
+
+    // find the closing bracket
+    let end = source.length;
+    for (let idx = context.pos; idx < source.length; idx++) {
+      const ch = source[idx];
+      if (ch === "]") {
+        end = idx + 1;
+        break;
+      }
+    }
+
+    const suggestions = Lib.expressionableColumns(
+      query,
+      stageIndex,
+      expressionIndex,
+    ).map(column => {
+      const displayInfo = Lib.displayInfo(query, stageIndex, column);
+
+      return {
+        label: formatIdentifier(displayInfo.longDisplayName) + " ",
+        displayLabel: displayInfo.longDisplayName,
+        detail: t`Field`,
+        // TODO: add section?
+      };
+    });
+
+    const start = context.pos - match.length;
+
+    return {
+      from: start,
+      to: end,
+      options: suggestions,
+    };
+  };
+}
+
+function suggestFunctions({
+  startRule,
+  query,
+  metadata,
+  reportTimezone,
+}: SuggestOptions) {
+  return function (context: CompletionContext) {
+    const source = context.state.doc.toString();
+    const partialSource = source.slice(0, context.pos);
+    const match = partialMatch(partialSource);
+
+    const database = getDatabase(query, metadata);
+
+    if (match.startsWith("[")) {
+      // We're inside a field reference tag
+      return null;
+    }
+
+    const suggestions = Array.from(EXPRESSION_FUNCTIONS)
+      .map(name => MBQL_CLAUSES[name])
+      .filter(clause => clause && database?.hasFeature(clause.requiresFeature))
+      .filter(function disableOffsetInFilterExpressions(clause) {
+        const isOffset = clause.name === "offset";
+        const isFilterExpression = startRule === "boolean";
+        const isOffsetInFilterExpression = isOffset && isFilterExpression;
+        return !isOffsetInFilterExpression;
+      })
+      .map(func => ({
+        type: "function",
+        label: suggestionText(func),
+        displayLabel: func.displayName,
+        detail:
+          func.name &&
+          database &&
+          // TODO: render this better
+          getHelpText(func.name, database, reportTimezone)?.description,
+      }));
+
+    suggestions.unshift({
+      type: "function",
+      label: "case(",
+      displayLabel: "case",
+      detail: undefined,
+      // todo: support snippets?
+    });
+
+    return {
+      from: context.pos - match.length,
+      options: suggestions,
+    };
+  };
+}
 
 const suggestionText = (func: MBQLClauseFunctionConfig) => {
   const { displayName, args } = func;
@@ -59,27 +169,28 @@ export const GROUPS = {
 
 export type GroupName = keyof typeof GROUPS;
 
-export type SuggestArgs = {
-  source: string;
-  query: Lib.Query;
-  stageIndex: number;
-  metadata: Metadata;
-  reportTimezone?: string;
-  startRule: string;
-  targetOffset?: number;
-  expressionIndex: number | undefined;
-  getColumnIcon: (column: Lib.ColumnMetadata) => string;
+export type Suggestion = {
+  type: string;
+  name: string;
+  text: string;
+  alternates?: string[];
+  index: number;
+  icon: string | null | undefined;
+  order: number;
+  range?: [number, number];
+  column?: Lib.ColumnMetadata;
+  helpText?: HelpText;
+  group?: GroupName;
 };
 
+// OKIDO
 export function suggest({
   source,
   query,
   stageIndex,
-  getColumnIcon,
   metadata,
   reportTimezone,
   startRule,
-  expressionIndex,
   targetOffset = source.length,
 }: SuggestArgs): {
   helpText?: HelpText;
@@ -89,8 +200,9 @@ export function suggest({
   let suggestions: Suggestion[] = [];
 
   const partialSource = source.slice(0, targetOffset);
-  const matchPrefix = partialMatch(partialSource);
+  const match = partialMatch(source);
   const database = getDatabase(query, metadata);
+  const matchPrefix = match?.text ?? null;
 
   if (!matchPrefix || _.last(matchPrefix) === "]") {
     // no keystroke to match? show help text for the enclosing function
@@ -182,35 +294,35 @@ export function suggest({
   );
 
   if (_.first(matchPrefix) !== "[") {
-    suggestions.push({
-      type: "functions",
-      name: "case",
-      text: "case(",
-      index: targetOffset,
-      icon: "function",
-      order: 1,
-    });
-    suggestions.push(
-      ...Array.from(EXPRESSION_FUNCTIONS)
-        .map(name => MBQL_CLAUSES[name])
-        .filter(
-          clause => clause && database?.hasFeature(clause.requiresFeature),
-        )
-        .filter(function disableOffsetInFilterExpressions(clause) {
-          const isOffset = clause.name === "offset";
-          const isFilterExpression = startRule === "boolean";
-          const isOffsetInFilterExpression = isOffset && isFilterExpression;
-          return !isOffsetInFilterExpression;
-        })
-        .map(func => ({
-          type: "functions",
-          name: func.displayName,
-          text: suggestionText(func),
-          index: targetOffset,
-          icon: "function",
-          order: 1,
-        })),
-    );
+    // suggestions.push({
+    //   type: "functions",
+    //   name: "case",
+    //   text: "case(",
+    //   index: targetOffset,
+    //   icon: "function",
+    //   order: 1,
+    // });
+    // suggestions.push(
+    //   ...Array.from(EXPRESSION_FUNCTIONS)
+    //     .map(name => MBQL_CLAUSES[name])
+    //     .filter(
+    //       clause => clause && database?.hasFeature(clause.requiresFeature),
+    //     )
+    //     .filter(function disableOffsetInFilterExpressions(clause) {
+    //       const isOffset = clause.name === "offset";
+    //       const isFilterExpression = startRule === "boolean";
+    //       const isOffsetInFilterExpression = isOffset && isFilterExpression;
+    //       return !isOffsetInFilterExpression;
+    //     })
+    //     .map(func => ({
+    //       type: "functions",
+    //       name: func.displayName,
+    //       text: suggestionText(func),
+    //       index: targetOffset,
+    //       icon: "function",
+    //       order: 1,
+    //     })),
+    // );
     if (startRule === "aggregation") {
       suggestions.push(
         ...Array.from(AGGREGATION_FUNCTIONS)
@@ -232,27 +344,27 @@ export function suggest({
   }
 
   if (_.last(matchPrefix) !== "]") {
-    suggestions.push(
-      ...Lib.expressionableColumns(query, stageIndex, expressionIndex).map(
-        column => {
-          const displayInfo = Lib.displayInfo(query, stageIndex, column);
-
-          return {
-            type: "fields",
-            name: displayInfo.longDisplayName,
-            text: formatIdentifier(displayInfo.longDisplayName) + " ",
-            alternates: EDITOR_FK_SYMBOLS.symbols.map(symbol =>
-              getDisplayNameWithSeparator(displayInfo.longDisplayName, symbol),
-            ),
-            index: targetOffset,
-            icon: getColumnIcon(column),
-            order: 2,
-            column,
-            ...column,
-          };
-        },
-      ),
-    );
+    // suggestions.push(
+    //   ...Lib.expressionableColumns(query, stageIndex, expressionIndex).map(
+    //     column => {
+    //       const displayInfo = Lib.displayInfo(query, stageIndex, column);
+    //
+    //       return {
+    //         type: "fields",
+    //         name: displayInfo.longDisplayName,
+    //         text: formatIdentifier(displayInfo.longDisplayName) + " ",
+    //         alternates: EDITOR_FK_SYMBOLS.symbols.map(symbol =>
+    //           getDisplayNameWithSeparator(displayInfo.longDisplayName, symbol),
+    //         ),
+    //         index: targetOffset,
+    //         icon: getColumnIcon(column),
+    //         order: 2,
+    //         column,
+    //         ...column,
+    //       };
+    //     },
+    //   ),
+    // );
 
     const segments = Lib.availableSegments(query, stageIndex);
 
