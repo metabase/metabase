@@ -237,7 +237,7 @@ describe("scenarios > embedding > questions", () => {
         previewMode: "preview",
       });
 
-      cy.wait("@previewEmbed");
+      cy.wait(["@previewEmbed", "@previewEmbed"]);
 
       H.getIframeBody().within(() => {
         cy.findByTestId("embed-frame").as("embedFrame").should("be.visible");
