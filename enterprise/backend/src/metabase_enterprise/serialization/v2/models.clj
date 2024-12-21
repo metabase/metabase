@@ -62,6 +62,7 @@
    "ModelIndexValue"
    "ModerationReview"
    "Notification"
+   "NotificationCard"
    "NotificationSubscription"
    "NotificationHandler"
    "NotificationRecipient"
