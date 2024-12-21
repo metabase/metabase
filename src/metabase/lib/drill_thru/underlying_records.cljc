@@ -54,9 +54,9 @@
 
   There is another quite different case: clicking the legend of a chart with multiple bars or lines broken out by
   category. Then `column` is nil!"
-  [query                                                          :- ::lib.schema/query
-   stage-number                                                   :- :int
-   {:keys [column column-ref dimensions row value], :as _context} :- ::lib.schema.drill-thru/context]
+  [query                                                      :- ::lib.schema/query
+   stage-number                                               :- :int
+   {:keys [column column-ref dimensions value], :as _context} :- ::lib.schema.drill-thru/context]
   ;; Clicking on breakouts is weird. Clicking on Count(People) by State: Minnesota yields a FE `clicked` with:
   ;; - column is COUNT
   ;; - row[0] has col: STATE, value: "Minnesota"
@@ -68,12 +68,11 @@
   ;; Clicking on a single-row aggregation, there's no dimensions, but we should support underlying records.
 
   ;; Clicking on a table cell for an aggregated column when there are additional query stages (e.g. filters) after the
-  ;; underyling breakouts/aggregations stage results in a context like:
+  ;; underlying breakouts/aggregations stage results in a context like:
   ;; - (:lib/source column) is NOT :source/aggregations
   ;; - (:lib/source (lib.underlying/top-level-column query column) IS :source/aggregations
   ;; - column-ref is similarly NOT an :aggregation ref
-  ;; - dimensions is nil
-  ;; - rows is not nil and can be used to construct the breakout dimensions
+  ;; - dimensions is constructed from row data in available-drill-thrus
 
   ;; Clicking on a chart legend for eg. COUNT(Orders) by Products.CATEGORY and Orders.CREATED_AT has a context like:
   ;; - column is nil
@@ -102,14 +101,11 @@
      :table-name (when-let [table-or-card (or (some->> query lib.util/source-table-id (lib.metadata/table query))
                                               (some->> query lib.util/source-card-id  (lib.metadata/card  query)))]
                    (lib.metadata.calculation/display-name query stage-number table-or-card))
-     ;; If no dimensions were provided but the underlying column comes from an aggregation, then construct the
-     ;; dimensions from the row data.
-     :dimensions (or (not-empty dimensions)
-                     (lib.drill-thru.common/dimensions-from-breakout-columns query column row))
+     :dimensions dimensions
      ;; If the underlying column comes from an aggregation, then the column-ref needs to be updated as well to the
      ;; corresponding aggregation ref so that [[drill-underlying-records]] knows to extract the filter implied by
      ;; aggregations like sum-where.
-     :column-ref (if (lib.drill-thru.common/strictly-underyling-aggregation? query column)
+     :column-ref (if (lib.drill-thru.common/strictly-underlying-aggregation? query column)
                    (lib.aggregation/column-metadata->aggregation-ref (lib.underlying/top-level-column query column))
                    column-ref)}))
 
