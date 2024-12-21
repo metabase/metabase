@@ -35,7 +35,7 @@ export interface ExcludeDatePickerProps {
   value?: ExcludeDatePickerValue;
   availableOperators: DatePickerOperator[];
   availableUnits: DatePickerUnit[];
-  isNew: boolean;
+  submitButtonLabel: string;
   onChange: (value: ExcludeDatePickerValue) => void;
   onBack: () => void;
 }
@@ -44,7 +44,7 @@ export function ExcludeDatePicker({
   value,
   availableOperators,
   availableUnits,
-  isNew,
+  submitButtonLabel,
   onChange,
   onBack,
 }: ExcludeDatePickerProps) {
@@ -62,9 +62,9 @@ export function ExcludeDatePicker({
 
   return unit ? (
     <ExcludeValuePicker
-      isNew={isNew}
       unit={unit}
       initialValues={values}
+      submitButtonLabel={submitButtonLabel}
       onChange={onChange}
       onBack={handleBack}
     />
@@ -145,17 +145,17 @@ export function ExcludeOptionPicker({
 }
 
 interface ExcludeValuePickerProps {
-  isNew: boolean;
   unit: DatePickerExtractionUnit;
   initialValues: number[];
+  submitButtonLabel: string;
   onChange: (value: ExcludeDatePickerValue) => void;
   onBack: () => void;
 }
 
 function ExcludeValuePicker({
-  isNew,
   unit,
   initialValues,
+  submitButtonLabel,
   onChange,
   onBack,
 }: ExcludeValuePickerProps) {
@@ -220,7 +220,7 @@ function ExcludeValuePicker({
       <Divider />
       <Group p="sm" position="right">
         <Button variant="filled" disabled={isNone} onClick={handleSubmit}>
-          {isNew ? t`Add filter` : t`Update filter`}
+          {submitButtonLabel}
         </Button>
       </Group>
     </Box>

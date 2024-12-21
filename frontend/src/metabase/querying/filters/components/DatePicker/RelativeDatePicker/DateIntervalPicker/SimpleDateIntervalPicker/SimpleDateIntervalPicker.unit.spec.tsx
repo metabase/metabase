@@ -24,7 +24,6 @@ function getDefaultValue(
 interface SetupOpts {
   value: DateIntervalValue;
   availableUnits?: DatePickerUnit[];
-  isNew?: boolean;
 }
 
 function setup({ value, availableUnits = DATE_PICKER_UNITS }: SetupOpts) {

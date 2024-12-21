@@ -15,13 +15,13 @@ const TAB_CASES = TABS.flatMap(fromTab => TABS.map(toTab => [fromTab, toTab]));
 interface SetupOpts {
   value?: RelativeDatePickerValue;
   availableUnits?: DatePickerUnit[];
-  isNew?: boolean;
+  submitButtonLabel?: string;
 }
 
 function setup({
   value,
   availableUnits = DATE_PICKER_UNITS,
-  isNew = false,
+  submitButtonLabel = "Apply",
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -30,7 +30,7 @@ function setup({
     <RelativeDatePicker
       value={value}
       availableUnits={availableUnits}
-      isNew={isNew}
+      submitButtonLabel={submitButtonLabel}
       onChange={onChange}
       onBack={onBack}
     />,
@@ -99,7 +99,7 @@ describe("RelativeDatePicker", () => {
     const input = screen.getByLabelText("Interval");
     await userEvent.clear(input);
     await userEvent.type(input, "20");
-    await userEvent.click(screen.getByText("Update filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
@@ -112,7 +112,7 @@ describe("RelativeDatePicker", () => {
     const { onChange } = setup();
 
     await userEvent.click(await screen.findByLabelText("Starting from…"));
-    await userEvent.click(screen.getByText("Update filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
@@ -131,7 +131,7 @@ describe("RelativeDatePicker", () => {
     const input = screen.getByLabelText("Interval");
     await userEvent.clear(input);
     await userEvent.type(input, "20");
-    await userEvent.click(screen.getByText("Update filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
@@ -145,7 +145,7 @@ describe("RelativeDatePicker", () => {
 
     await userEvent.click(screen.getByText("Next"));
     await userEvent.click(await screen.findByLabelText("Starting from…"));
-    await userEvent.click(screen.getByText("Update filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",

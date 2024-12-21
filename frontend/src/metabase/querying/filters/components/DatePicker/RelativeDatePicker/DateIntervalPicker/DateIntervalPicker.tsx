@@ -28,7 +28,7 @@ import { setDefaultOffset, setUnit } from "./utils";
 interface DateIntervalPickerProps {
   value: DateIntervalValue;
   availableUnits: DatePickerUnit[];
-  isNew: boolean;
+  submitButtonLabel: string;
   onChange: (value: DateIntervalValue) => void;
   onSubmit: () => void;
 }
@@ -36,7 +36,7 @@ interface DateIntervalPickerProps {
 export function DateIntervalPicker({
   value,
   availableUnits,
-  isNew,
+  submitButtonLabel,
   onChange,
   onSubmit,
 }: DateIntervalPickerProps) {
@@ -102,7 +102,7 @@ export function DateIntervalPicker({
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
         <Button variant="filled" type="submit">
-          {isNew ? t`Add filter` : t`Update filter`}
+          {submitButtonLabel}
         </Button>
       </Group>
     </form>
