@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { Tabs } from "metabase/ui";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
-import { PopoverRoot, PopoverTabs } from "./ChartSettingsWidgetPopover.styled";
+import { PopoverRoot } from "./ChartSettingsWidgetPopover.styled";
 
 interface Widget {
   id: string;
@@ -53,15 +54,19 @@ const ChartSettingsWidgetPopover = ({
         widgets.length > 0 ? (
           <PopoverRoot noTopPadding={hasMultipleSections} ref={contentRef}>
             {hasMultipleSections && (
-              <PopoverTabs
+              <Tabs
                 value={currentSection}
-                options={sections.current.map((sectionName: string) => ({
-                  name: sectionName,
-                  value: sectionName,
-                }))}
-                onChange={section => setCurrentSection(String(section))}
-                variant="underlined"
-              />
+                onTabChange={section => setCurrentSection(String(section))}
+                mb="md"
+              >
+                <Tabs.List grow>
+                  {sections.current.map(sectionName => (
+                    <Tabs.Tab key={sectionName} value={sectionName}>
+                      {sectionName}
+                    </Tabs.Tab>
+                  ))}
+                </Tabs.List>
+              </Tabs>
             )}
             {widgets
               .filter(widget => widget.section === currentSection)
