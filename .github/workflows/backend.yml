@@ -183,6 +183,13 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
+      - name: Upload Test Results as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: "be-tests-${{ github.job }}"
+          path: ./target/junit/
+
       - name: Publish Test Report (JUnit)
         uses: dorny/test-reporter@v1
         if: failure()
