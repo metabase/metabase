@@ -26,7 +26,14 @@
   "Fetch a cached [[mc/validator]] for `schema`, creating one if needed. The cache is flushed whenever the registry
   changes."
   [schema]
-  (cached :validator schema #(mc/validator schema)))
+  (letfn [(make-validator []
+            (try
+              (mc/validator schema)
+              (catch #?(:clj Throwable :cljs :default) e
+                (throw (ex-info (str "Error making validator for " (pr-str schema) ":" (ex-message e))
+                                {:schema schema}
+                                e)))))]
+    (cached :validator schema make-validator)))
 
 (defn validate
   "[[mc/validate]], but uses a cached validator from [[validator]]."
@@ -38,14 +45,19 @@
   changes."
   [schema]
   (letfn [(make-explainer []
-            #_{:clj-kondo/ignore [:discouraged-var]}
-            (let [validator* (mc/validator schema)
-                  explainer* (mc/explainer schema)]
-              ;; for valid values, it's significantly faster to just call the validator. Let's optimize for the 99.9%
-              ;; of calls whose values are valid.
-              (fn schema-explainer [value]
-                (when-not (validator* value)
-                  (explainer* value)))))]
+            (try
+              #_{:clj-kondo/ignore [:discouraged-var]}
+              (let [validator* (mc/validator schema)
+                    explainer* (mc/explainer schema)]
+                ;; for valid values, it's significantly faster to just call the validator. Let's optimize for the 99.9%
+                ;; of calls whose values are valid.
+                (fn schema-explainer [value]
+                  (when-not (validator* value)
+                    (explainer* value))))
+              (catch #?(:clj Throwable :cljs :default) e
+                (throw (ex-info (str "Error making explainer for " (pr-str schema) ":" (ex-message e))
+                                {:schema schema}
+                                e)))))]
     (cached :explainer schema make-explainer)))
 
 (defn explain

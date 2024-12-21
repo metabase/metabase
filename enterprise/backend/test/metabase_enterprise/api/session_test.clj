@@ -22,6 +22,7 @@
                               :embedding-sdk
                               :hosting
                               :llm-autodescription
+                              :metabot-v3
                               :no-upsell
                               :official-collections
                               :query-reference-validation
@@ -52,6 +53,7 @@
             :embedding_sdk                  true
             :hosting                        true
             :llm_autodescription            true
+            :metabot_v3                     true
             :official_collections           true
             :query_reference_validation     true
             :sandboxes                      true
