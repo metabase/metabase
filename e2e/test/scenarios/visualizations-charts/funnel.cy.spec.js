@@ -60,7 +60,7 @@ describe("scenarios > visualizations > funnel chart", () => {
     H.getDraggableElements()
       .eq(1)
       .within(() => {
-        cy.icon("eye_crossed_out").click();
+        cy.icon("eye_crossed_out").click({ force: true });
       });
     cy.findAllByTestId("funnel-chart-header").should("have.length", 5);
   });
@@ -98,7 +98,7 @@ describe("scenarios > visualizations > funnel chart", () => {
     H.getDraggableElements()
       .eq(0)
       .within(() => {
-        cy.icon("eye_crossed_out").click();
+        cy.icon("eye_crossed_out").click({ force: true });
       });
 
     cy.log("remove filter");

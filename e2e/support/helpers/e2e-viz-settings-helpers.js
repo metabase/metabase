@@ -4,7 +4,7 @@ export function openSeriesSettings(field, isBreakout = false) {
       .contains(field)
       .closest("[data-testid^=draggable-item]")
       .find(".Icon-ellipsis")
-      .click();
+      .click({ force: true });
   } else {
     cy.findAllByTestId("chartsettings-field-picker-select")
       .then($elements => {
