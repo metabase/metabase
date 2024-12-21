@@ -48,6 +48,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
   const canWhitelabel = useSelector(getCanWhitelabel);
 
   const dashboard = useSelector(getDashboardComplete);
+  console.log("hiiii");
 
   return (
     <>

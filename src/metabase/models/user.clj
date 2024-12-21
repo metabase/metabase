@@ -534,6 +534,12 @@
   :type       :boolean
   :default    true)
 
+(defsetting dynamic-dictionary
+  (deferred-tru "Dictionary for translation of strings in databases.")
+  :export?    false
+  :visibility :authenticated
+  :type       :string)
+
 (defsetting trial-banner-dismissal-timestamp
   (deferred-tru "The ISO8601 date when a user last dismissed the trial banner.")
   :user-local :only
@@ -543,6 +549,8 @@
   :type       :string)
 
 ;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
+
+
 
 (defmethod audit-log/model-details :model/User
   [entity event-type]

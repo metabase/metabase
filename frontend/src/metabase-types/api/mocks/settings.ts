@@ -288,5 +288,6 @@ export const createMockSettings = (
   "check-for-updates": true,
   "update-channel": "latest",
   "trial-banner-dismissal-timestamp": null,
+  "dynamic-dictionary": null,
   ...opts,
 });

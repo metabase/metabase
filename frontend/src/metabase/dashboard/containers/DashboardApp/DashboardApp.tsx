@@ -41,6 +41,7 @@ import {
   getClickBehaviorSidebarDashcard,
   getDashboardBeforeEditing,
   getDashboardComplete,
+  getDashboardCompleteLocalized,
   getDocumentTitle,
   getFavicon,
   getIsAddParameterPopoverOpen,
@@ -77,7 +78,9 @@ const mapStateToProps = (state: State) => {
     dashboardBeforeEditing: getDashboardBeforeEditing(state),
     isEditingParameter: getIsEditingParameter(state),
     isDirty: getIsDirty(state),
-    dashboard: getDashboardComplete(state),
+    // NOTE: We probably won't localize dashboards here, only in embedding, but for
+    // exploration purposes, let's localize here as well.
+    dashboard: getDashboardCompleteLocalized(state),
     slowCards: getSlowCards(state),
     parameterValues: getParameterValues(state),
     loadingStartTime: getLoadingStartTime(state),

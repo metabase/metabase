@@ -2,6 +2,7 @@ import cx from "classnames";
 import { assoc } from "icepick";
 import type { HandleThunkActionCreator } from "react-redux";
 import _ from "underscore";
+import { L } from "metabase/i18n/utils";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ColorS from "metabase/css/core/colors.module.css";
@@ -145,8 +146,8 @@ export function PublicOrEmbeddedDashboardView({
 
   return (
     <EmbedFrame
-      name={dashboard && dashboard.name}
-      description={dashboard && dashboard.description}
+      name={dashboard && L(dashboard, "name")}
+      description={dashboard && L(dashboard, "description")}
       dashboard={dashboard}
       parameters={parameters}
       parameterValues={parameterValues}
