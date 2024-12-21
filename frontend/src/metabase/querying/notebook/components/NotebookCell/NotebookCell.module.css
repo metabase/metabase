@@ -44,10 +44,6 @@
   &.disabled {
     pointer-events: none;
   }
-
-  :global(.Icon-close) {
-    opacity: 0.6;
-  }
 }
 
 .NotebookCellItemContentContainer {
@@ -55,7 +51,6 @@
   align-items: center;
   background-color: var(--notebook-cell-item-content-container-color);
   transition: background 300ms linear;
-  /* background-color: transparent; */
 
   &.inactive {
     background-color: transparent;

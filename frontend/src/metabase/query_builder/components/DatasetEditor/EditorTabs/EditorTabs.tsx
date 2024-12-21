@@ -37,7 +37,7 @@ export function EditorTabs({ currentTab, disabledMetadata, onChange }: Props) {
           })}
           htmlFor="editor-tabs-query"
         >
-          <Icon name="notebook" />
+          <Icon name="notebook" mr="10px" />
           <input
             className={EditorTabsS.RadioInput}
             type="radio"
@@ -62,7 +62,7 @@ export function EditorTabs({ currentTab, disabledMetadata, onChange }: Props) {
           })}
           htmlFor="editor-tabs-metadata"
         >
-          <Icon name="notebook" />
+          <Icon name="notebook" mr="10px" />
           <input
             type="radio"
             className={EditorTabsS.RadioInput}

@@ -66,13 +66,16 @@ function MappedFieldPicker({
 
     return (
       <SelectButton
-        className={cx(
-          MappedFieldPickerS.StyledSelectButton,
-          {
-            [MappedFieldPickerS.hasValue]: fieldObject,
-          },
-          className,
-        )}
+        classNames={{
+          root: cx(
+            MappedFieldPickerS.StyledSelectButton,
+            {
+              [MappedFieldPickerS.hasValue]: fieldObject,
+            },
+            className,
+          ),
+          icon: MappedFieldPickerS.StyledSelectIcon,
+        }}
         hasValue={!!fieldObject}
         tabIndex={tabIndex}
         ref={selectButtonRef as any}
