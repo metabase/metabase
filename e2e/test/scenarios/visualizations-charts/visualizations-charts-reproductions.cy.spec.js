@@ -51,11 +51,9 @@ const externalDatabaseId = 2;
 
 describe("issue 16170", { tags: "@mongo" }, () => {
   function replaceMissingValuesWith(value) {
-    cy.findByText("Replace missing values with")
-      .parent()
-      .within(() => {
-        cy.findByTestId("chart-setting-select").click();
-      });
+    cy.get('[data-field-title="Replace missing values with"]').within(() => {
+      cy.findByTestId("chart-setting-select").click();
+    });
 
     H.popover().contains(value).click();
   }
