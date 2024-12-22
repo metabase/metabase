@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { Tabs } from "metabase/ui";
+import { Space, Tabs } from "metabase/ui";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
 import { PopoverRoot } from "./ChartSettingsWidgetPopover.styled";
@@ -52,12 +52,15 @@ const ChartSettingsWidgetPopover = ({
       reference={anchor}
       content={
         widgets.length > 0 ? (
-          <PopoverRoot noTopPadding={hasMultipleSections} ref={contentRef}>
+          <PopoverRoot
+            noTopPadding={hasMultipleSections}
+            ref={contentRef}
+            style={{ border: "1px solid red" }}
+          >
             {hasMultipleSections && (
               <Tabs
                 value={currentSection}
                 onTabChange={section => setCurrentSection(String(section))}
-                mb="md"
               >
                 <Tabs.List grow>
                   {sections.current.map(sectionName => (
@@ -68,6 +71,7 @@ const ChartSettingsWidgetPopover = ({
                 </Tabs.List>
               </Tabs>
             )}
+            <Space py="sm"></Space>
             {widgets
               .filter(widget => widget.section === currentSection)
               ?.map(widget => (

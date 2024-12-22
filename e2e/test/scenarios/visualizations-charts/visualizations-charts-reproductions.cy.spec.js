@@ -358,13 +358,14 @@ describe("issue 18063", () => {
     display: "map",
   };
 
-  function selectFieldValue(field, value) {
-    cy.findByText(field)
-      .parent()
-      .within(() => {
-        cy.findByPlaceholderText("Select a field").click();
-      });
+  function toggleFieldSelectElement(field) {
+    return cy.get(`[data-field-title="${field}"]`).within(() => {
+      cy.findByPlaceholderText("Select a field").click();
+    });
+  }
 
+  function selectFieldValue(field, value) {
+    toggleFieldSelectElement(field);
     H.popover().findByText(value).click();
   }
 
@@ -384,12 +385,9 @@ describe("issue 18063", () => {
     // Click on the popovers to close both popovers that open automatically.
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
     ["Latitude field", "Longitude field"].forEach(field =>
-      H.leftSidebar()
-        .findByText(field)
-        .parent()
-        .within(() => {
-          cy.findByPlaceholderText("Select a field").click();
-        }),
+      H.leftSidebar().within(() => {
+        toggleFieldSelectElement(field);
+      }),
     );
   });
 

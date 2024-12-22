@@ -57,6 +57,7 @@ const ChartSettingsWidget = ({
       inline={inline}
       marginBottom={marginBottom}
       data-testid={dataTestId ?? `chart-settings-widget-${extraWidgetProps.id}`}
+      data-field-title={title}
       borderBottom={borderBottom}
     >
       {title && (

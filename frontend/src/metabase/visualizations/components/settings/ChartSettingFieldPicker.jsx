@@ -87,7 +87,6 @@ export const ChartSettingFieldPicker = ({
       align="center"
     >
       <ChartSettingSelect
-        data-testid="chartsettings-field-picker-select"
         pl="sm"
         pr="xs"
         w="100%"
