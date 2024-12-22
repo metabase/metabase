@@ -446,14 +446,12 @@ describe("scenarios > visualizations > waterfall", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Display").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.get('[data-field-title="Show total"]').within(() => {
         cy.findByRole("switch").click({ force: true });
       });
 
       H.echartsContainer().get("text").contains("Total").should("not.exist");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.get('[data-field-title="Show total"]').within(() => {
         cy.findByRole("switch").click({ force: true });
       });
