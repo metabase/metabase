@@ -52,11 +52,7 @@ const ChartSettingsWidgetPopover = ({
       reference={anchor}
       content={
         widgets.length > 0 ? (
-          <PopoverRoot
-            noTopPadding={hasMultipleSections}
-            ref={contentRef}
-            style={{ border: "1px solid red" }}
-          >
+          <PopoverRoot noTopPadding={hasMultipleSections} ref={contentRef}>
             {hasMultipleSections && (
               <Tabs
                 value={currentSection}
