@@ -62,9 +62,11 @@ const ChartSettingsWidget = ({
       {title && (
         <Group align="center" spacing="xs" mb={inline && !hidden ? 0 : "sm"}>
           <Text
+            component="label"
             fw="bold"
             fz={isFormField ? "0.88em" : undefined}
             lh={variant === "default" ? "normal" : "0.875rem"}
+            htmlFor={extraWidgetProps.id}
           >
             {title}
           </Text>
