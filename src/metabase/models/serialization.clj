@@ -1198,12 +1198,14 @@
 (defn- export-viz-click-behavior-link
   [{:keys [linkType type] :as click-behavior}]
   (cond-> click-behavior
-    (= type "link") (update :targetId *export-fk* (link-card-model->toucan-model linkType))))
+    (= type "link") (-> (update :targetId *export-fk* (link-card-model->toucan-model linkType))
+                        (u/update-some :tabId *export-fk* :model/DashboardTab))))
 
 (defn- import-viz-click-behavior-link
   [{:keys [linkType type] :as click-behavior}]
   (cond-> click-behavior
-    (= type "link") (update :targetId *import-fk* (link-card-model->toucan-model linkType))))
+    (= type "link") (-> (update :targetId *import-fk* (link-card-model->toucan-model linkType))
+                        (u/update-some :tabId *import-fk* :model/DashboardTab))))
 
 (defn- export-viz-click-behavior-mapping [mapping]
   (-> mapping
@@ -1245,7 +1247,7 @@
 
 (defn- export-viz-click-behavior [settings]
   (some-> settings
-          (m/update-existing    :click_behavior export-viz-click-behavior-link)
+          (u/update-some :click_behavior export-viz-click-behavior-link)
           (m/update-existing-in [:click_behavior :parameterMapping] export-viz-click-behavior-mappings)))
 
 (defn- import-viz-click-behavior [settings]
@@ -1371,10 +1373,11 @@
 
 (defn- viz-click-behavior-deps
   [settings]
-  (when-let [{:keys [linkType targetId type]} (:click_behavior settings)]
+  (let [{:keys [linkType targetId type]} (:click_behavior settings)
+        model (when linkType (link-card-model->toucan-model linkType))]
     (case type
-      "link" (when-let [model (some-> linkType link-card-model->toucan-model name)]
-               #{[{:model model
+      "link" (when model
+               #{[{:model (name model)
                    :id    targetId}]})
       ;; TODO: We might need to handle the click behavior that updates dashboard filters? I can't figure out how get
       ;; that to actually attach to a filter to check what it looks like.
@@ -1401,9 +1404,10 @@
          (reduce set/union #{}))))
 
 (defn- viz-click-behavior-descendants [{:keys [click_behavior]}]
-  (when-let [{:keys [linkType targetId type]} click_behavior]
+  (let [{:keys [linkType targetId type]} click_behavior
+        model (when linkType (link-card-model->toucan-model linkType))]
     (case type
-      "link" (when-let [model (link-card-model->toucan-model linkType)]
+      "link" (when model
                #{[(name model) targetId]})
       ;; TODO: We might need to handle the click behavior that updates dashboard filters? I can't figure out how get
       ;; that to actually attach to a filter to check what it looks like.
