@@ -27,7 +27,6 @@ export interface State {
   dashboard: DashboardState;
   embed: EmbedState;
   entities: EntitiesState;
-  metabot: MetabotState;
   parameters: ParametersState;
   qb: QueryBuilderState;
   requests: RequestsState;
