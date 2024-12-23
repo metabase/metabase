@@ -1,12 +1,14 @@
 ---
 title: Pie and sunburst charts
+redirect_from:
+  - /docs/latest/questions/sharing/visualizations/pie-or-donut-chart
 ---
 
 # Pie and sunburst charts
 
 A **pie chart** can be used when breaking out a metric by a single dimension. In Metabase, pies are donuts. A **sunburst chart** is a multi-dimensional pie chart with multiple breakouts.
 
-![Pie and sunburst charts](../../images/pie-sunburst-demo.png)
+![Pie and sunburst charts](../images/pie-sunburst-demo.png)
 
 ## When to use a pie or sunburst chart
 
@@ -30,7 +32,7 @@ For a simple pie chart, you'll need a query with a single breakout and metric, f
 
 If your query has multiple metrics, you'll be able to choose the metric for the chart in [chart settings](#pie-and-sunburst-chart-settings).
 
-![Plain pie](../../images/plain-pie.png)
+![Plain pie](../images/plain-pie.png)
 
 For a sunburst (multi-dimensional pie) chart, you'll need a query with up to three breakouts and a numerical metric. Here's an example of a query result with two breakouts, `Type` and `Subtype`:
 
@@ -48,7 +50,7 @@ For a sunburst (multi-dimensional pie) chart, you'll need a query with up to thr
 
 You can choose which breakouts to assign to the inner, middle, or outer rings of the sunburst chart in [chart "Data" settings](#data-settings). If your query has multiple metrics, you'll also be able to choose which metric to display. Here's the sunburst chart for the example table above:
 
-![](../../images/sunburst-two-levels.png)
+![Sunburst with two levels](../images/sunburst-two-levels.png)
 
 You don't need to include the percentages in your query. Metabase will automatically compute the percentage of the total for each value of the metric (for example, Metabase will compute that 23 Cats make up 31.9% of all pets).
 
@@ -66,7 +68,7 @@ If your query has multiple metrics (columns), you can pick the column that shoul
 
 To format the total displayed in the middle of the chart, click on the three dots next to the metric name in the **Measure** setting. The measure format options — including the "number of decimal places" option — will only apply to the total, and not to the percentage values or labels. To configure the display of the percentage values and labels, go to the [display settings](#display-settings) tab.
 
-![format sunburst](../../images/sunburst-metric-options.png)
+![format sunburst](../images/sunburst-metric-options.png)
 
 ### Display settings
 
@@ -84,11 +86,11 @@ You can configure whether to show:
 
 To change the number of decimal places in the percentage values, use the **Number of decimal places** setting in the **Display** tab. If you want to change the number of decimal places for the total in the center of the chart, go to [data settings](#data-settings).
 
-![Settings showcase](../../images/sunburst-settings-showcase.png)
+![Settings showcase](../images/sunburst-settings-showcase.png)
 
 To make the chart more legible, you can group slices smaller than a certain percentage into one slice by adjusting **Minimum slice percentage**. You'll be able to see the categories and values in the **Other** slice by hovering over it:
 
-![Other slice](../../images/pie-other-slice.png)
+![Other slice](../images/pie-other-slice.png)
 
 Currently, you can't change the color or label of the **Other** slice.
 
@@ -96,6 +98,6 @@ Currently, you can't change the color or label of the **Other** slice.
 
 Consider using a bar or row chart (or a [stacked bar chart](line-bar-and-area-charts.md#stacked-bar-chart)) or a [pivot table](pivot-table.md) instead of a pie or sunburst chart in the following cases:
 
-- If your data has more than three breakouts
-- If your metrics don't add up to 100% (for example, average rating - prefer a gauge chart in that case)
-- If you have a lot of categories in each breakout
+- Your data has more than three breakouts
+- Your metrics don't add up to 100% (for example, average rating - prefer a gauge chart in that case)
+- You have a lot of categories in each breakout

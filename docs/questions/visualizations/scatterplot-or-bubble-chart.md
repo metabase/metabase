@@ -1,5 +1,7 @@
 ---
 title: Scatterplots and bubble charts
+redirect_from:
+  - /docs/latest/questions/sharing/visualizations/scatterplot-or-bubble-chart
 ---
 
 # Scatterplots and bubble charts
@@ -10,4 +12,4 @@ If you have a third numeric field, you can also create a **bubble chart**. Selec
 
 Scatterplots and bubble charts also have similar chart options as line, bar, and area charts, including the option to display trend or goal lines.
 
-![Scatter](../../images/scatter.png)
+![Scatter](../images/scatter.png)

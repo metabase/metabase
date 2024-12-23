@@ -1,12 +1,14 @@
 ---
 title: Numbers
+redirect_from:
+  - /docs/latest/questions/sharing/visualizations/numbers
 ---
 
 # Numbers
 
 The **Numbers** option is for displaying a single number, nice and big. The options for numbers include:
 
-![Number](../../images/number.png)
+![Number](../images/number.png)
 
 - **Adding character prefixes or suffixes** to it (so you can do things like put a currency symbol in front or a percent at the end),
 - **Setting the number of decimal places** you want to include, and

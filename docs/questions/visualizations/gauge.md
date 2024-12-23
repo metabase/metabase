@@ -1,12 +1,14 @@
 ---
 title: Gauge chart
+redirect_from:
+  - /docs/latest/questions/sharing/visualizations/gauge
 ---
 
 # Gauge chart
 
 Ah, **gauges**: you either love 'em or you hate 'em. …Or you feel "meh" about them, I guess. Whatever the case, gauges allow you to show a single number in the context of a set of colored ranges that you can specify.
 
-![Gauge](../../images/gauge.png)
+![Gauge](../images/gauge.png)
 
 ## When to use a gauge chart
 
@@ -33,7 +35,7 @@ To build a gauge chart, you'll need:
 
 - One or more ranges for the metric, for example "Low", "Medium", "High". Currently, Metabase only supports defining static ranges (you can't set range boundaries based on another query).
 
-![Gauge chart](../../images/gauge-labeled.png)
+![Gauge chart](../images/gauge-labeled.png)
 
 ## Gauge chart settings
 
@@ -43,7 +45,7 @@ To open the chart setting, click on the gear icon at the bottom left of the scre
 
 Format options will apply to both the result of the query and the range boundaries:
 
-![Gauge format options](../../images/gauge-format.png)
+![Gauge format options](../images/gauge-format.png)
 
 In particular, the gauge chart will apply the "Multiply by a number" option to the range boundaries. So if you want to show a range from 2000 to 4000 on the chart, you can set "Multiply by a number: 1000", then set the underlying range to be from 2 to 4.
 
