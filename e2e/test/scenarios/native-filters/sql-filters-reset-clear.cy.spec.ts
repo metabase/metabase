@@ -381,7 +381,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
 
     cy.log("no default value, required, has current value");
     filter(NO_DEFAULT_REQUIRED).click();
-    updateValue(otherValue);
+    setValue(otherValue);
     filter(NO_DEFAULT_REQUIRED).should("have.text", otherValueFormatted);
     // checkStatusIcon(NO_DEFAULT_REQUIRED, "clear");
 
@@ -578,7 +578,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     });
 
     H.popover().findByRole("textbox").clear().type(otherValue).blur();
-    H.popover().button("Update filter").click();
+    H.popover().button("Add filter").click();
 
     filterSection("no_default_required").within(() => {
       filter("Default filter widget value").should(
@@ -639,7 +639,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     });
 
     H.popover().findByRole("textbox").clear().type(otherValue).blur();
-    H.popover().button("Update filter").click();
+    H.popover().button("Add filter").click();
 
     filterSection("default_required").within(() => {
       filter("Default filter widget value").should(
