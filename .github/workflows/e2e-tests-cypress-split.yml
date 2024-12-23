@@ -131,16 +131,22 @@ jobs:
           java-version: ${{ matrix.java-version }}
           distribution: "temurin"
 
-      # 7. Prepare Cypress environment
+      # 7. Run Snowplow microservice
+      - name: Run Snowplow micro
+        uses: ./.github/actions/run-snowplow-micro
+
+      # 8. Prepare Cypress environment
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
-      # 8. Run Snowplow microservice
-      - name: Run Snowplow micro
-        uses: ./.github/actions/run-snowplow-micro
+      # 9. Generate snapshots (this is kind of a hack to setup some state before running Cypress tests)
+      - name: Generate snapshots
+        run: yarn test-cypress-setup-state
+        env:
+          E2E_HOST: http://localhost:4000
 
-      # 9. Run Cypress tests with `cypress-split`
+      # 10. Run Cypress tests with `cypress-split`
       - name: Run split Cypress tests
         run: |
           yarn run test-cypress-run \
@@ -161,7 +167,7 @@ jobs:
           MB_SNOWPLOW_AVAILABLE: true
           MB_SNOWPLOW_URL: "http://localhost:9090"
 
-      # 10. Upload test results
+      # 11. Upload test results
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -174,7 +180,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-      # 11. Upload Cypress artifacts
+      # 12. Upload Cypress artifacts
       - name: Upload Cypress Artifacts (on failure)
         uses: actions/upload-artifact@v4
         if: failure()
