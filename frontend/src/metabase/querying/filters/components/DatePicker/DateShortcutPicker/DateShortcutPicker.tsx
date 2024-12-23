@@ -1,21 +1,21 @@
 import type { ReactNode } from "react";
 import { Fragment, useMemo } from "react";
 
-import { Box, Button, Divider } from "metabase/ui";
-
-import { MIN_WIDTH } from "../constants";
 import type {
   DatePickerOperator,
   DatePickerShortcut,
   DatePickerValueType,
   RelativeDatePickerValue,
-} from "../types";
+} from "metabase/querying/filters/types";
+import { Box, Button, Divider } from "metabase/ui";
+
+import { MIN_WIDTH } from "../constants";
 
 import { getShortcutOptionGroups, getTypeOptions } from "./utils";
 
 interface DateShortcutPickerProps {
-  availableOperators: ReadonlyArray<DatePickerOperator>;
-  availableShortcuts: ReadonlyArray<DatePickerShortcut>;
+  availableOperators: DatePickerOperator[];
+  availableShortcuts: DatePickerShortcut[];
   backButton?: ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onSelectType: (type: DatePickerValueType) => void;

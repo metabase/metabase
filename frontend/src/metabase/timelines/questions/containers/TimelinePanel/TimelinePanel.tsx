@@ -1,8 +1,8 @@
-import { connect } from "react-redux";
 import _ from "underscore";
 
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import TimelineEvents from "metabase/entities/timeline-events";
+import { connect } from "metabase/lib/redux";
 import type { TimelineEvent } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

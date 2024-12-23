@@ -113,6 +113,32 @@ export function setupCollectionItemsEndpoint({
   });
 }
 
+export function setupDashboardItemsEndpoint({
+  dashboard,
+  dashboardItems,
+  models: modelsParam,
+}: {
+  dashboard: Dashboard;
+  dashboardItems: CollectionItem[];
+  models?: string[];
+}) {
+  fetchMock.get(`path:/api/dashboard/${dashboard.id}/items`, uri => {
+    const url = new URL(uri);
+    const models = modelsParam ?? url.searchParams.getAll("models") ?? ["card"];
+    const limit =
+      Number(url.searchParams.get("limit")) || dashboardItems.length;
+    const offset = Number(url.searchParams.get("offset")) || 0;
+
+    return {
+      data: dashboardItems.slice(offset, offset + limit),
+      total: dashboardItems.length,
+      models,
+      limit,
+      offset,
+    };
+  });
+}
+
 export function setupCollectionsWithError({
   error,
   status = 500,

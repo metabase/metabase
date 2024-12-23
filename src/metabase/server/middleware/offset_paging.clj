@@ -14,9 +14,16 @@
 (def ^:private default-limit 50)
 (def ^:private default-offset 0)
 
+(defn- ensure-single-value
+  "For parameters that should have a single value, only return the 1st if multiple values were passed in the request"
+  [v]
+  (if (sequential? v)
+    (first v)
+    v))
+
 (defn- parse-paging-params [{{:strs [limit offset]} :query-params}]
-  (let [limit  (some-> limit parse-long)
-        offset (some-> offset parse-long)]
+  (let [limit  (some-> limit ensure-single-value parse-long)
+        offset (some-> offset ensure-single-value parse-long)]
     (when (or limit offset)
       {:limit (or limit default-limit), :offset (or offset default-offset)})))
 

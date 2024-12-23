@@ -5,7 +5,7 @@ import {
   CREATE_MEMBERSHIP,
   DELETE_MEMBERSHIP,
 } from "metabase/admin/people/events";
-import { permissionApi } from "metabase/api";
+import { permissionApi, useGetPermissionsGroupQuery } from "metabase/api";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 
 /**
@@ -14,6 +14,12 @@ import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 const Groups = createEntity({
   name: "groups",
   path: "/api/permissions/group",
+
+  rtk: {
+    getUseGetQuery: () => ({
+      useGetQuery,
+    }),
+  },
 
   api: {
     list: (entityQuery, dispatch) =>
@@ -97,5 +103,9 @@ const Groups = createEntity({
     return state;
   },
 });
+
+const useGetQuery = ({ id }) => {
+  return useGetPermissionsGroupQuery(id);
+};
 
 export default Groups;

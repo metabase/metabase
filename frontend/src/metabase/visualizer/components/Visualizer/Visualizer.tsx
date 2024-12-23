@@ -6,8 +6,8 @@ import {
   PointerSensor,
   useSensor,
 } from "@dnd-kit/core";
-import { useCallback } from "react";
-import { useKeyPressEvent, useUnmount } from "react-use";
+import { useCallback, useEffect } from "react";
+import { useKeyPressEvent, usePrevious, useUnmount } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex } from "metabase/ui";
@@ -15,15 +15,19 @@ import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-h
 import {
   getDatasets,
   getDraggedItem,
+  getIsDirty,
+  getIsFullscreenModeEnabled,
   getIsVizSettingsSidebarOpen,
   getVisualizationType,
 } from "metabase/visualizer/selectors";
 import { isValidDraggedItem } from "metabase/visualizer/utils";
 import {
+  closeVizSettingsSidebar,
   handleDrop,
   resetVisualizer,
   setDisplay,
   setDraggedItem,
+  turnOffFullscreenMode,
 } from "metabase/visualizer/visualizer.slice";
 import type { VisualizationDisplay } from "metabase-types/api";
 import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
@@ -46,7 +50,11 @@ export const Visualizer = ({ onSave }: VisualizerProps) => {
   const display = useSelector(getVisualizationType);
   const draggedItem = useSelector(getDraggedItem);
   const datasets = useSelector(getDatasets);
+  const isFullscreen = useSelector(getIsFullscreenModeEnabled);
   const isVizSettingsSidebarOpen = useSelector(getIsVizSettingsSidebarOpen);
+
+  const isDirty = useSelector(getIsDirty);
+  const wasDirty = usePrevious(isDirty);
 
   const dispatch = useDispatch();
 
@@ -55,6 +63,13 @@ export const Visualizer = ({ onSave }: VisualizerProps) => {
   const canvasSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 10 },
   });
+
+  useEffect(() => {
+    if (wasDirty && !isDirty) {
+      dispatch(closeVizSettingsSidebar());
+      dispatch(turnOffFullscreenMode());
+    }
+  }, [isDirty, wasDirty, dispatch]);
 
   useUnmount(() => {
     dispatch(resetVisualizer({ full: true }));

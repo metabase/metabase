@@ -1,0 +1,5 @@
+.AdHocLeftSideRoot {
+  @media screen and (max-width: 40em) {
+    padding: 0 1.25rem;
+  }
+}

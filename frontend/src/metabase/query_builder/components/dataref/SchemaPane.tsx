@@ -14,8 +14,7 @@ import {
   NodeListItemName,
   NodeListTitle,
   NodeListTitleText,
-} from "./NodeList.styled";
-import { PaneContent } from "./Pane.styled";
+} from "./NodeList";
 
 interface SchemaPaneProps {
   onBack: () => void;
@@ -41,7 +40,7 @@ const SchemaPane = ({
       onBack={onBack}
       onClose={onClose}
     >
-      <PaneContent>
+      <SidebarContent.Pane>
         <NodeListContainer>
           <NodeListTitle>
             <NodeListIcon name="table" />
@@ -64,7 +63,7 @@ const SchemaPane = ({
             ))}
           </ul>
         </NodeListContainer>
-      </PaneContent>
+      </SidebarContent.Pane>
     </SidebarContent>
   );
 };

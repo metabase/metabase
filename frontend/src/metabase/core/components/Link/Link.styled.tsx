@@ -20,7 +20,7 @@ export const LinkRoot = styled(
   ${props => variants[props.variant ?? "default"] ?? ""}
 ` as unknown as React.FC<LinkProps & LinkVariantProp>;
 
-export const variants = {
+const variants = {
   default: "",
   brand: css`
     color: var(--mb-color-brand);

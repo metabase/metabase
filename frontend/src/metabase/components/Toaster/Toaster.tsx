@@ -2,7 +2,7 @@ import type { HTMLAttributes } from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { Icon } from "metabase/ui";
+import { Icon, Portal } from "metabase/ui";
 
 import {
   ToasterButton,
@@ -11,7 +11,7 @@ import {
   ToasterMessage,
 } from "./Toaster.styled";
 
-export interface ToasterProps extends HTMLAttributes<HTMLAnchorElement> {
+export interface ToasterProps extends HTMLAttributes<HTMLDivElement> {
   message: string;
   confirmText?: string;
   isShown: boolean;
@@ -21,6 +21,8 @@ export interface ToasterProps extends HTMLAttributes<HTMLAnchorElement> {
   onDismiss: () => void;
 }
 
+// TODO: Port to Mantine Notifications or consolidate with Undo-style toasts or
+// BulkActionsToast
 const Toaster = ({
   message,
   confirmText = t`Turn on`,
@@ -29,6 +31,7 @@ const Toaster = ({
   onConfirm,
   onDismiss,
   className,
+  ...divProps
 }: ToasterProps): JSX.Element | null => {
   const [open, setOpen] = useState(false);
   const [render, setRender] = useState(false);
@@ -48,15 +51,22 @@ const Toaster = ({
   }, [isShown]);
 
   return render ? (
-    <ToasterContainer show={open} fixed={fixed} className={className}>
-      <ToasterMessage>{message}</ToasterMessage>
-      <ToasterButton onClick={onConfirm} aria-label="Confirm">
-        {confirmText}
-      </ToasterButton>
-      <ToasterDismiss onClick={onDismiss} aria-label="Close">
-        <Icon name="close" />
-      </ToasterDismiss>
-    </ToasterContainer>
+    <Portal>
+      <ToasterContainer
+        show={open}
+        fixed={fixed}
+        className={className}
+        {...divProps}
+      >
+        <ToasterMessage>{message}</ToasterMessage>
+        <ToasterButton onClick={onConfirm} aria-label="Confirm">
+          {confirmText}
+        </ToasterButton>
+        <ToasterDismiss onClick={onDismiss} aria-label="Close">
+          <Icon name="close" />
+        </ToasterDismiss>
+      </ToasterContainer>
+    </Portal>
   ) : null;
 };
 

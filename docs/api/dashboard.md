@@ -220,7 +220,9 @@ Run the query associated with a Saved Question (`Card`) in the context of a `Das
 
 -  **`parameters`** nullable value must be a valid JSON string.
 
--  **`format_rows`** nullable boolean.
+-  **`format_rows`** nullable value must be a valid boolean string ('true' or 'false').
+
+-  **`pivot_results`** nullable value must be a valid boolean string ('true' or 'false').
 
 -  **`request-parameters`**
 

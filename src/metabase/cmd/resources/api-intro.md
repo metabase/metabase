@@ -23,6 +23,10 @@ Check out an introduction to the [Metabase API](https://www.metabase.com/learn/a
 
 Create keys to authenticate programmatic requests to your Metabase. See [API keys](./people-and-groups/api-keys.md).
 
+## API changelog
+
+For breaking changes, see the API [changelog](./developers-guide/api-changelog.md).
+
 ## API endpoints
 
 _* indicates endpoints used for features available on [paid plans](https://www.metabase.com/pricing)._

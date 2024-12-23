@@ -1,5 +1,3 @@
-import { withRouter } from "react-router";
-
 import { DashboardSharingMenu } from "metabase/sharing/components/SharingMenu";
 import { Center, Divider } from "metabase/ui";
 
@@ -19,15 +17,10 @@ import {
   FullscreenAnalyticsDashboard,
   FullscreenToggle,
   NightModeToggleButton,
-  useGetExtraButtons,
 } from "../buttons";
 import { AddLinkOrEmbedButton } from "../buttons/AddLinkOrEmbedButton";
 
-import type {
-  DashboardActionButton,
-  DashboardActionKey,
-  HeaderButtonProps,
-} from "./types";
+import type { DashboardActionButton, DashboardActionKey } from "./types";
 
 export const DASHBOARD_ACTION = {
   ADD_QUESTION: "ADD_QUESTION",
@@ -152,32 +145,7 @@ export const dashboardActionButtons: Record<
     enabled: ({ isEditing }) => !isEditing,
   },
   [DASHBOARD_ACTION.DASHBOARD_ACTION_MENU]: {
-    component: withRouter<HeaderButtonProps>(
-      ({
-        canResetFilters,
-        onResetFilters,
-        onFullscreenChange,
-        isFullscreen,
-        dashboard,
-        canEdit,
-        location,
-        openSettingsSidebar,
-      }) => {
-        const { extraButtons } = useGetExtraButtons({
-          canResetFilters,
-          onResetFilters,
-          onFullscreenChange,
-          isFullscreen,
-          dashboard,
-          canEdit,
-          pathname: location?.pathname,
-          openSettingsSidebar,
-          location,
-        });
-
-        return <DashboardActionMenu items={extraButtons} />;
-      },
-    ),
+    component: DashboardActionMenu,
     enabled: ({ isFullscreen, isEditing, isAnalyticsDashboard, dashboard }) =>
       !isFullscreen &&
       !isEditing &&

@@ -71,6 +71,7 @@
                                                           ::add/source-alias  "Cat__NAME"
                                                           ::add/desired-alias "Cat__NAME"
                                                           ::add/position      0}]]
+                 :breakout-idents {0 "tAm-2ApQEQSBGJDVg9TmQ"}
                  :order-by     [[:asc [:field %categories.name {:join-alias         "Cat"
                                                                 ::add/source-table  ::add/source
                                                                 ::add/source-alias  "Cat__NAME"
@@ -87,6 +88,7 @@
                                  :fields       [$id
                                                 &Cat.categories.name]}
                   :breakout     [&Cat.categories.name]
+                  :breakout-idents {0 "tAm-2ApQEQSBGJDVg9TmQ"}
                   :limit        1})))))
 
 (deftest ^:parallel multiple-joins-test
@@ -174,6 +176,7 @@
                                               ::add/desired-alias "CATEGORY"
                                               ::add/position      0}]
                                             "2"]}
+                 :expression-idents {"CATEGORY" "NasJJtjrlg_blZ_8ddjSx"}
                  :fields       [[:field %category {::add/source-table  $$products
                                                    ::add/source-alias  "CATEGORY"
                                                    ::add/desired-alias "CATEGORY"
@@ -184,6 +187,7 @@
               (add-alias-info
                (lib.tu.macros/mbql-query products
                  {:expressions {"CATEGORY" [:concat [:field %category nil] "2"]}
+                  :expression-idents {"CATEGORY" "NasJJtjrlg_blZ_8ddjSx"}
                   :fields      [[:field %category nil]
                                 [:expression "CATEGORY"]]
                   :limit       1})))))
@@ -196,6 +200,7 @@
                                  ::add/source-alias  "count"
                                  ::add/desired-alias "count"
                                  ::add/position      0}]]
+                 :aggregation-idents {0 "H8sfHf-gsjijAIs3APFjQ"}
                  :filter      [:!=
                                [:field %date {::add/source-table $$checkins
                                               ::add/source-alias "DATE"}]
@@ -208,6 +213,7 @@
               (add-alias-info
                (lib.tu.macros/mbql-query checkins
                  {:aggregation [[:count]]
+                  :aggregation-idents {0 "H8sfHf-gsjijAIs3APFjQ"}
                   :filter      [:not-null $date]})))))
 
 (deftest ^:parallel duplicate-aggregations-test
@@ -230,7 +236,10 @@
                                                 {:name               "count_3"
                                                  ::add/source-alias  "count_3"
                                                  ::add/desired-alias "count_3"
-                                                 ::add/position      2}]]}
+                                                 ::add/position      2}]]
+                                :aggregation-idents {0 "ZnBWpC26xWsBk40Ebuv63"
+                                                     1 "Qh4rDGS0a5-cnEthRD-qj"
+                                                     2 "vwlMLeUWqDdhN91kPr6U_"}}
                  :fields       [[:field "count" {:base-type          :type/Integer
                                                  ::add/source-table  ::add/source
                                                  ::add/source-alias  "count"
@@ -256,7 +265,10 @@
                                                   ::add/position      0
                                                   ::add/desired-alias "count"}]
                                                 [:count]
-                                                [:count]]}
+                                                [:count]]
+                                 :aggregation-idents {0 "ZnBWpC26xWsBk40Ebuv63"
+                                                      1 "Qh4rDGS0a5-cnEthRD-qj"
+                                                      2 "vwlMLeUWqDdhN91kPr6U_"}}
                   :limit        1})))))
 
 (deftest ^:parallel multiple-expressions-test
@@ -291,6 +303,8 @@
                   {:source-table $$venues
                    :expressions  {"big_price"                  [:+ price 2]
                                   "price_divided_by_big_price" [:/ price big-price]}
+                   :expression-idents {"big_price"                  "64aGSdDHNzSrRltFxwmHp",
+                                       "price_divided_by_big_price" "WOb_-8uyvcijoPRgU-Bjj"}
                    :fields       [price
                                   big-price
                                   price-divided-by-big-price]
@@ -300,6 +314,8 @@
                 (lib.tu.macros/mbql-query venues
                   {:expressions {"big_price"                  [:+ $price 2]
                                  "price_divided_by_big_price" [:/ $price [:expression "big_price"]]}
+                   :expression-idents {"big_price"                  "64aGSdDHNzSrRltFxwmHp",
+                                       "price_divided_by_big_price" "WOb_-8uyvcijoPRgU-Bjj"}
                    :fields      [$price
                                  [:expression "big_price"]
                                  [:expression "price_divided_by_big_price"]]
@@ -316,11 +332,13 @@
                                                              ::add/source-alias  "avg"
                                                              ::add/desired-alias "avg"
                                                              ::add/position      1}]]
+                                            :aggregation-idents {0 "_4g53S8I4pIlBaZGDJJID"}
                                             :breakout     [[:field %products.category {:join-alias         "P2"
                                                                                        ::add/source-table  "P2"
                                                                                        ::add/source-alias  "CATEGORY"
                                                                                        ::add/desired-alias "P2__CATEGORY"
                                                                                        ::add/position      0}]]
+                                            :breakout-idents {0 "jZPKhXzciFGQuzNYSV9zg"}
                                             :order-by     [[:asc [:field %products.category {:join-alias         "P2"
                                                                                              ::add/source-table  "P2"
                                                                                              ::add/source-alias  "CATEGORY"
@@ -334,8 +352,10 @@
                                                                            [:field %products.id {:join-alias        "P2"
                                                                                                  ::add/source-table "P2"
                                                                                                  ::add/source-alias "ID"}]]
+                                                            :ident        "Re0HbvwhsumyWhCHuPo8g"
                                                             :alias        "P2"}]}
                              :alias        "Q2"
+                             :ident        "0vefkkp2BmB9QcZmJFr9Q"
                              :strategy     :left-join
                              :condition    [:=
                                             [:field %products.category {:join-alias         "Q2"
@@ -368,12 +388,16 @@
                     :joins  [{:strategy     :left-join
                               :condition    [:= &Q2.products.category 1]
                               :alias        "Q2"
+                              :ident        "0vefkkp2BmB9QcZmJFr9Q"
                               :source-query {:source-table $$reviews
                                              :aggregation  [[:aggregation-options [:avg $reviews.rating] {:name "avg"}]]
+                                             :aggregation-idents {0 "_4g53S8I4pIlBaZGDJJID"}
                                              :breakout     [&P2.products.category]
+                                             :breakout-idents {0 "jZPKhXzciFGQuzNYSV9zg"}
                                              :joins        [{:strategy     :left-join
                                                              :source-table $$products
                                                              :condition    [:= $reviews.product-id &P2.products.id]
+                                                             :ident        "Re0HbvwhsumyWhCHuPo8g"
                                                              :alias        "P2"}]}}]
                     :limit  2}))))))
 
@@ -398,6 +422,7 @@
                                                                   ::add/position      0}]]
                                         {:source-table $$venues
                                          :expressions  {"double_price" [:* price 2]}
+                                         :expression-idents {"double_price" "_OlWGQXdxOFsQRNRnbxoR"}
                                          :fields       [price
                                                         [:expression "double_price" {::add/desired-alias "COOL.double_price"
                                                                                      ::add/position      1}]]
@@ -416,16 +441,21 @@
                                                                         ::add/position      1
                                                                         ::add/source-alias  "COOL.count"
                                                                         ::add/desired-alias "COOL.COOL.count"}]]
+                          :aggregation-idents {0 "lZ0_537DJeMm0j-vk_8qr"}
                           :breakout    [double-price]
+                          :breakout-idents {0 "p9sth24HDtbZ3Gb3GeTs5"}
                           :order-by    [[:asc double-price]]})))
                     (-> (lib.tu.macros/mbql-query venues
                           {:source-query {:source-table $$venues
                                           :expressions  {"double_price" [:* $price 2]}
+                                          :expression-idents {"double_price" "_OlWGQXdxOFsQRNRnbxoR"}
                                           :fields       [$price
                                                          [:expression "double_price"]]
                                           :limit        1}
                            :aggregation  [[:count]]
-                           :breakout     [[:field "double_price" {:base-type :type/Integer}]]})
+                           :aggregation-idents {0 "lZ0_537DJeMm0j-vk_8qr"}
+                           :breakout     [[:field "double_price" {:base-type :type/Integer}]]
+                           :breakout-idents {0 "p9sth24HDtbZ3Gb3GeTs5"}})
                         add-alias-info
                         :query)))))))
 
@@ -455,7 +485,9 @@
                         {:source-query
                          {:source-table $$venues
                           :breakout     [price]
+                          :breakout-idents {0 "bs-5Ij4lw0kDRLklLc_MW"}
                           :aggregation  [[:aggregation-options [:count] count-opts]]
+                          :aggregation-idents {0 "htRA_o2ioYfaoBulhEFvv"}
                           :order-by     [[:asc price]]}
                          :fields [outer-price
                                   [:field
@@ -472,7 +504,9 @@
                                           :aggregation  [[:aggregation-options
                                                           [:count]
                                                           {:name "strange count"}]]
-                                          :breakout     [$price]}
+                                          :aggregation-idents {0 "htRA_o2ioYfaoBulhEFvv"}
+                                          :breakout     [$price]
+                                          :breakout-idents {0 "bs-5Ij4lw0kDRLklLc_MW"}}
                            :filter       [:< [:field "strange count" {:base-type :type/Integer}] 10]
                            :limit        1})
                         add-alias-info
@@ -492,6 +526,7 @@
                     {:source-query {:source-table $$orders
                                     :joins        [{:source-table $$products
                                                     :alias        "Products_Renamed"
+                                                    :ident        "HfWxcPle1nlw1XR_JRkCS"
                                                     :condition
                                                     [:=
                                                      [:field
@@ -515,6 +550,7 @@
                                                        :join-alias         "Products_Renamed"}]]
                                                     :strategy     :left-join}]
                                     :expressions  {"CC" [:+ 1 1]}
+                                    :expression-idents {"CC" "U8KabZf9xDsU3066vHidT"}
                                     :fields
                                     [[:field
                                       %products.id
@@ -558,11 +594,13 @@
                         {:source-query {:source-table $$orders
                                         :joins        [{:source-table $$products
                                                         :alias        "Products Renamed"
+                                                        :ident        "HfWxcPle1nlw1XR_JRkCS"
                                                         :condition    [:=
                                                                        $product-id
                                                                        [:field %products.id {:join-alias "Products Renamed"}]]
                                                         :fields       [[:field %products.id {:join-alias "Products Renamed"}]]}]
                                         :expressions  {"CC" [:+ 1 1]}
+                                        :expression-idents {"CC" "U8KabZf9xDsU3066vHidT"}
                                         :fields       [[:field %products.id {:join-alias "Products Renamed"}]
                                                        [:expression "CC"]]
                                         :filter       [:=
@@ -661,30 +699,38 @@
                                    ::add/position      0
                                    ::add/source-alias  "sum"
                                    ::add/desired-alias "sum"}]]
+                   :aggregation-idents {0 "mXYj8fX11NEAGVQXp4fzv"}
                    :order-by    [[:asc [:aggregation 0 {::add/desired-alias "sum"
                                                         ::add/position      0}]]]})
                 (add-alias-info
                  (lib.tu.macros/mbql-query checkins
                    {:aggregation [[:sum $user-id]]
+                    :aggregation-idents {0 "mXYj8fX11NEAGVQXp4fzv"}
                     :order-by    [[:asc [:aggregation 0]]]}))))))
 
 (deftest ^:parallel uniquify-aggregation-names-text
   (is (query= (lib.tu.macros/mbql-query checkins
                 {:expressions {"count" [:+ 1 1]}
+                 :expression-idents {"count" "ZlGfnBJC-axsF8tkpkPL0"}
                  :breakout    [[:expression "count" {::add/desired-alias "count"
                                                      ::add/position      0}]]
+                 :breakout-idents {0 "E-Cy0ca-0PwGbVwXzgiDx"}
                  :aggregation [[:aggregation-options [:count] {:name               "count_2"
                                                                ::add/source-alias  "count"
                                                                ::add/desired-alias "count_2"
                                                                ::add/position      1}]]
+                 :aggregation-idents {0 "7CNnUL8lX44acBh3DyQ9W"}
                  :order-by    [[:asc [:expression "count" {::add/desired-alias "count"
                                                            ::add/position      0}]]]
                  :limit       1})
               (add-alias-info
                (lib.tu.macros/mbql-query checkins
                  {:expressions {"count" [:+ 1 1]}
+                  :expression-idents {"count" "ZlGfnBJC-axsF8tkpkPL0"}
                   :breakout    [[:expression "count"]]
+                  :breakout-idents {0 "E-Cy0ca-0PwGbVwXzgiDx"}
                   :aggregation [[:count]]
+                  :aggregation-idents {0 "7CNnUL8lX44acBh3DyQ9W"}
                   :limit       1})))))
 
 (deftest ^:parallel fuzzy-field-info-test
@@ -813,6 +859,7 @@
                                   :query    {:joins
                                              [{:fields :all,
                                                :alias "Model B - A1",
+                                               :ident "t3Nz_yY5hISIlmxaJlSsm"
                                                :strategy :inner-join,
                                                :condition
                                                [:=

@@ -41,7 +41,7 @@ describe("scenarios > question > native", () => {
     cy.contains("18,760");
   });
 
-  it("should suggest the currently viewed collection when saving question", () => {
+  it("should suggest the currently viewed collection when saving question if the user has not recently visited a dashboard", () => {
     H.visitCollection(THIRD_COLLECTION_ID);
 
     H.openNativeEditor({ fromCurrentPage: true });
@@ -51,14 +51,42 @@ describe("scenarios > question > native", () => {
       cy.findByText("Save").click();
     });
     cy.findByTestId("save-question-modal").within(() => {
-      cy.findByLabelText(/Which collection should this go in/).should(
+      cy.findByLabelText(/Where do you want to save this/).should(
         "have.text",
         "Third collection",
       );
+      cy.log("after selecting a dashboard, it should be the new suggestion");
+      cy.findByLabelText(/Where do you want to save this/).click();
+    });
+
+    H.entityPickerModal().within(() => {
+      cy.findByText("Orders in a dashboard").click();
+      cy.button("Select this dashboard").click();
+    });
+
+    cy.findByTestId("save-question-modal")
+      .findByLabelText(/Where do you want to save this/)
+      .should("have.text", "Orders in a dashboard");
+
+    cy.visit("/");
+
+    H.openNativeEditor({ fromCurrentPage: true });
+    cy.realType("select count(*) from orders");
+
+    cy.findByTestId("qb-header").within(() => {
+      cy.findByText("Save").click();
+    });
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByLabelText(/Where do you want to save this/).should(
+        "have.text",
+        "Orders in a dashboard",
+      );
+
+      cy.button("Cancel").click();
     });
   });
 
-  it("displays an error", () => {
+  it("displays an error", { tags: "@flaky" }, () => {
     H.openNativeEditor();
     cy.realType("select * from not_a_table");
     runQuery();
@@ -66,7 +94,7 @@ describe("scenarios > question > native", () => {
     cy.contains('Table "NOT_A_TABLE" not found');
   });
 
-  it("displays an error when running selected text", () => {
+  it("displays an error when running selected text", { tags: "@flaky" }, () => {
     H.openNativeEditor();
     cy.realType("select * from orders");
     // move left three
@@ -119,7 +147,7 @@ describe("scenarios > question > native", () => {
     cy.findByText("Not now").click();
   });
 
-  it("can save a question with no rows", () => {
+  it("can save a question with no rows", { tags: "@flaky" }, () => {
     H.openNativeEditor();
     cy.realType("select * from people where false");
     runQuery();
@@ -200,24 +228,28 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it("should be able to add new columns after hiding some (metabase#15393)", () => {
-    H.openNativeEditor();
-    cy.realType("select 1 as visible, 2 as hidden");
-    cy.findByTestId("native-query-editor-container")
-      .icon("play")
-      .as("runQuery")
-      .click();
+  it(
+    "should be able to add new columns after hiding some (metabase#15393)",
+    { tags: "@flaky" },
+    () => {
+      H.openNativeEditor();
+      cy.realType("select 1 as visible, 2 as hidden");
+      cy.findByTestId("native-query-editor-container")
+        .icon("play")
+        .as("runQuery")
+        .click();
 
-    cy.findByTestId("viz-settings-button").click();
-    cy.findByTestId("sidebar-left")
-      .as("sidebar")
-      .contains(/hidden/i)
-      .siblings("[data-testid$=hide-button]")
-      .click();
-    cy.get("@editor").type("{movetoend}, 3 as added");
-    cy.get("@runQuery").click();
-    cy.get("@sidebar").contains(/added/i);
-  });
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("sidebar-left")
+        .as("sidebar")
+        .contains(/hidden/i)
+        .siblings("[data-testid$=hide-button]")
+        .click();
+      cy.get("@editor").type("{movetoend}, 3 as added");
+      cy.get("@runQuery").click();
+      cy.get("@sidebar").contains(/added/i);
+    },
+  );
 
   it("should recognize template tags and save them as parameters", () => {
     H.openNativeEditor();

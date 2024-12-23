@@ -38,6 +38,7 @@
      :model/Card       {card-id :id} {:type "question" :name "name" :display "display" :collection_id coll-id :database_id db-id}]
     (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
     (is (= [{:description nil,
+             :dashboard nil
              :can_write true,
              :name "name",
              :parent_collection {:id coll-id, :name "my coll", :authority_level nil}
@@ -263,6 +264,7 @@
                    :parent_collection {:id "ID", :name "parent", :authority_level nil}
                    :database_id db-id}
                   {:description "this is my card",
+                   :dashboard nil
                    :can_write true,
                    :name "my card",
                    :parent_collection {:id "ID", :name "parent", :authority_level nil},

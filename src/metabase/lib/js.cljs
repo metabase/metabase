@@ -77,6 +77,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
@@ -700,6 +701,8 @@
 ;; **This currently only works for legacy queries in JSON form.** At some point MLv2 queries will become the source of
 ;; truth, and the format used on the wire. At that point, we'll want a similar comparison for MLv2 queries.
 
+;; TODO: These equality checks only seem to clean and check the last stages - does that really suffice?
+
 (defn- prep-query-for-equals-legacy [a-query field-ids]
   (-> a-query
       ;; If `:native` exists, but it doesn't have `:template-tags`, add it.
@@ -708,16 +711,22 @@
                                   (let [fields (or (:fields inner-query)
                                                    (for [id field-ids]
                                                      [:field id nil]))]
-                                    ;; We ignore the order of the fields in the lists, but need to make sure any dupes
-                                    ;; match up. Therefore de-dupe with `frequencies` rather than simply `set`.
-                                    (assoc inner-query :fields (frequencies fields)))))))
+                                    (-> inner-query
+                                        ;; We ignore the order of the fields in the lists, but need to make sure any
+                                        ;; dupes match up. Therefore de-dupe with `frequencies` rather than `set`.
+                                        (assoc :fields (frequencies fields))
+                                        ;; Remove the randomized idents, which are of course not going to match.
+                                        (dissoc :aggregation-idents :breakout-idents :expression-idents)))))))
 
 (defn- prep-query-for-equals-pMBQL
   [a-query field-ids]
   (let [fields (or (some->> (lib.core/fields a-query)
                             (map #(assoc % 1 {})))
                    (mapv (fn [id] [:field {} id]) field-ids))]
-    (lib.util/update-query-stage a-query -1 assoc :fields (frequencies fields))))
+    (lib.util/update-query-stage a-query -1
+                                 #(-> %
+                                      (assoc :fields (frequencies fields))
+                                      lib.schema.util/remove-randomized-idents))))
 
 (defn- prep-query-for-equals [a-query field-ids]
   (when-let [normalized-query (some-> a-query normalize-to-clj)]
@@ -748,11 +757,10 @@
          (= (first x) (first y) :field))
     (compare-field-refs x y)
 
-    ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid values don't
-    ;; have to match.
+    ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid and :ident values don't have to match.
     (and (map? x) (map? y))
-    (let [x (dissoc x :lib/uuid)
-          y (dissoc y :lib/uuid)]
+    (let [x (dissoc x :lib/uuid :ident)
+          y (dissoc y :lib/uuid :ident)]
       (and (= (set (keys x)) (set (keys y)))
            (every? (fn [[k v]]
                      (query=* v (get y k)))
@@ -1212,6 +1220,22 @@
       #js {:operator (name operator)
            :column   column
            :values   (to-array (map clj->js values))})))
+
+(defn ^:export default-filter-clause
+  "Creates a default filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[default-filter-parts]]. This clause works as a fallback for more specialized column types."
+  [operator column]
+  (lib.core/default-filter-clause (keyword operator) column))
+
+(defn ^:export default-filter-parts
+  "Destructures a default filter clause created by [[default-filter-clause]]. Returns `nil` if the clause does not match
+  the expected shape or if the clause uses a string column; the FE allows only `:is-empty` and `:not-empty` operators
+  for string columns."
+  [a-query stage-boolean a-filter-clause]
+  (when-let [filter-parts (lib.core/default-filter-parts a-query stage-boolean a-filter-clause)]
+    (let [{:keys [operator column]} filter-parts]
+      #js {:operator (name operator)
+           :column   column})))
 
 ;; TODO remove once all filter-parts are migrated to MBQL lib
 (defn ^:export is-column-metadata

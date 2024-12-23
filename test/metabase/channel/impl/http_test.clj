@@ -7,9 +7,9 @@
    [compojure.route :as compojure.route]
    [metabase.channel.core :as channel]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.pulse.send :as pulse.send]
    [metabase.server.handler :as server.handler]
    [metabase.server.middleware.json :as mw.json]
-   [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
    [metabase.util.i18n :refer [deferred-tru]]
    [ring.adapter.jetty :as jetty]
@@ -254,7 +254,18 @@
               :request-status 400}
              (exception-data (can-connect? {:url         (str url (:path get-400))
                                             :method      "get"
-                                            :auth-method "none"})))))))
+                                            :auth-method "none"})))))
+
+    (with-server [url [(make-route :get "/test_http_channel_400"
+                                   (fn [_]
+                                     {:status 400
+                                      :body   {:message "too bad"}}))]]
+      (testing "attempt to json parse the response body if it's a string"
+        (is (= {:request-body   {"message" "too bad"}
+                :request-status 400}
+               (exception-data (can-connect? {:url         (str url (:path get-400))
+                                              :method      "get"
+                                              :auth-method "none"}))))))))
 
 (deftest ^:parallel send!-test
   (testing "basic send"
@@ -329,10 +340,10 @@
            :model/Channel      {chn-id :id}  {:type    :channel/http
                                               :details {:url         (str url (:path receive-route))
                                                         :auth-method "none"}}
-           :model/PulseChannel {pc-id :id}   {:pulse_id     pulse-id
+           :model/PulseChannel _             {:pulse_id     pulse-id
                                               :channel_type "http"
                                               :channel_id   chn-id}]
-          (#'task.send-pulses/send-pulse!* pulse-id [pc-id])
+          (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))
           (is (=? {:body {:type               "alert"
                           :alert_id           pulse-id
                           :alert_creator_id   (mt/malli=? int?)

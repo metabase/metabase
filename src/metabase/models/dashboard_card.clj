@@ -38,7 +38,8 @@
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
   (merge {:parameter_mappings     []
-          :visualization_settings {}} dashcard))
+          :visualization_settings {}}
+         dashcard))
 
 (declare series)
 

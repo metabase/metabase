@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase.audit :as audit]
    [metabase.config :as config]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -792,6 +793,7 @@
 (deftest record-revision-and-description-completeness-test
   (t2.with-temp/with-temp
     [:model/Database   db   {:name "random db"}
+     :model/Dashboard  dashboard {:name "dashboard"}
      :model/Card       base-card {}
      :model/Card       card {:name                "A Card"
                              :description         "An important card"
@@ -822,6 +824,7 @@
                             (= col :table_id)          (mt/id :venues)
                             (= col :source_card_id)    (:id base-card)
                             (= col :database_id)       (:id db)
+                            (= col :dashboard_id)      (:id dashboard)
                             (= col :query_type)        :native
                             (= col :type)              "model"
                             (= col :dataset_query)     (mt/mbql-query users)
@@ -1090,6 +1093,74 @@
                               {:target [:dimension [:field 33 {:temporal-unit :month}]]}
                               {:target [:dimension [:field 10 {:temporal-unit :month}]]}]}]]))
 
+(deftest we-cannot-insert-invalid-dashboard-internal-cards
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Collection {other-coll-id :id} {}
+                 :model/Dashboard {dash-id :id} {:collection_id coll-id}]
+    (mt/with-model-cleanup [:model/Card]
+      (testing "You can't insert a card with a collection_id different than its dashboard's collection_id"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
+                              (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                                             :dashboard_id dash-id
+                                                             :collection_id other-coll-id))))
+        (testing "including if it's `nil`"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
+                                (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                                               :dashboard_id dash-id
+                                                               :collection_id nil)))))
+        (testing "But you can insert a card with the *same* collection_id"
+          (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                         :dashboard_id dash-id
+                                         :collection_id coll-id)))
+        (testing "... or no collection_id"
+          (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                         :dashboard_id dash-id))))
+      (testing "You can't insert a card with a type other than `:question` as a dashboard-internal card"
+        (testing "invalid"
+          (doseq [invalid-type (disj card/card-types :question)]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
+                                  (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                                                 :dashboard_id dash-id
+                                                                 :type invalid-type))))))
+        (testing "these are valid"
+          (doseq [valid-type [:question "question"]]
+            (is (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                               :dashboard_id dash-id
+                                               :type valid-type))))))
+      (testing "You can't insert a dashboard-internal card with a collection_position"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
+                              (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                                             :dashboard_id dash-id
+                                                             :collection_position 5))))))))
+
+(deftest no-updating-dashboard-internal-cards-with-invalid-data
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Collection {other-coll-id :id} {}
+                 :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                 :model/Card card {:dashboard_id dash-id}]
+    (mt/with-test-user :rasta
+      (testing "Can't update the collection_id"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot manually set `collection_id` on a Dashboard Question"
+                              (card/update-card! {:card-before-update card
+                                                  :card-updates {:collection_id other-coll-id}}))))
+      (testing "CAN 'update' the collection_id"
+        (is (card/update-card! {:card-before-update card
+                                :card-updates {:collection_id coll-id}})))
+      (testing "Can't update the collection_position"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot set `collection_position` on a Dashboard Question"
+                              (card/update-card! {:card-before-update card
+                                                  :card-updates {:collection_position 5}}))))
+      (testing "CAN 'update' the collection_position"
+        (is (card/update-card! {:card-before-update card
+                                :card-updates {:collection_position nil}})))
+      (testing "Can't update the type"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot set `type` on a Dashboard Question"
+                              (card/update-card! {:card-before-update card
+                                                  :card-updates {:type :model}}))))
+      (testing "CAN 'update' the type"
+        (is (card/update-card! {:card-before-update card
+                                :card-updates {:type :question}}))))))
+
 (deftest update-does-not-break
   ;; There's currently a footgun in Toucan2 - if 1) the result of `before-update` doesn't have an ID, 2) part of your
   ;; `update` would change a subset of selected rows, and 3) part of your `update` would change *every* selected row
@@ -1103,3 +1174,17 @@
       (t2/update! :model/Card :id [:in [card-1-id card-2-id]]
                   {:name "Flippy"})
       (is (= "Petey" (t2/select-one-fn :name :model/Card :id card-3-id))))))
+
+(deftest ^:parallel query-description-in-metric-cards-test
+  (testing "Metric cards contain query_description key (#51303)"
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+      (mt/with-temp
+        [:model/Card
+         {id :id}
+         {:name "My metric"
+          :type :metric
+          :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                             (lib/aggregate (lib/count))
+                             lib.convert/->legacy-MBQL)}]
+        (is (= "Orders, Count"
+               (:query_description (t2/select-one :model/Card :id id))))))))

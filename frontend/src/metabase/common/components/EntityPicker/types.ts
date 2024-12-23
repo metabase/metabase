@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { IconName } from "metabase/ui";
 import type { SearchResult, SearchResultId } from "metabase-types/api";
 
@@ -22,6 +24,7 @@ export type PickerState<Item, Query> = PickerStateItem<Item, Query>[];
 export type PickerStateItem<Item, Query> = {
   query?: Query;
   selectedItem: Item | null;
+  entity?: "collection" | "dashboard";
 };
 
 export type EntityPickerOptions = EntityPickerModalOptions;
@@ -49,8 +52,9 @@ export type EntityPickerTab<
    * Recents & Search tabs don't have models associated with them - hence null
    * (they provide the same models as the other tabs combined).
    */
-  model: Model | null;
+  models: Model[];
   folderModels: Model[];
+  extraButtons?: ReactNode[];
 };
 
 export type EntityPickerSearchScope = "everywhere" | "folder";
@@ -70,6 +74,7 @@ export type ListProps<
   options: Options;
   shouldDisableItem?: (item: Item) => boolean;
   shouldShowItem?: (item: Item) => boolean;
+  entity?: "collection" | "dashboard";
 };
 
 export type FilterItemsInPersonalCollection = "only" | "exclude";
@@ -85,6 +90,7 @@ export type SearchItem = Pick<SearchResult, "id" | "model" | "name"> &
     Pick<
       SearchResult,
       | "collection"
+      | "dashboard"
       | "description"
       | "collection_authority_level"
       | "moderated_status"

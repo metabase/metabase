@@ -16,37 +16,47 @@ Here you can set the default language (also called the "instance language") acro
 
 Thanks to our amazing user community, Metabase has been translated into many different languages. Due to [the way we collect translations](#translations), languages may be added or removed during major releases depending on translation coverage.
 
-The languages you can currently pick from are:
+Supported languages include:
 
-- English (default)
-- Albanian
-- Arabic
-- Bulgarian
-- Catalan
-- Chinese (simplified)
-- Chinese (traditional)
-- Czech
-- Dutch
-- Farsi/Persian
-- Finnish
-- French
-- German
-- Indonesian
-- Italian
-- Japanese
-- Korean
-- Latvian
-- Norwegian Bokmål
-- Polish
-- Portuguese
-- Russian
-- Serbian
-- Slovak
-- Spanish
-- Swedish
-- Turkish
-- Ukrainian
-- Vietnamese
+| Language               | Code    |
+| ---------------------- | ------- |
+| English                | `en`    |
+| Albanian               | `sq`    |
+| Arabic                 | `ar`    |
+| Arabic (Saudi Arabia)  | `ar-SA` |
+| Bulgarian              | `bg`    |
+| Catalan                | `ca`    |
+| Chinese (Traditional)  | `zh`    |
+| Chinese (Taiwanese)    | `zh-TW` |
+| Chinese (Hong Kong)    | `zh-HK` |
+| Chinese (Simplified)   | `zh-CN` |
+| Czech                  | `cs`    |
+| Dutch                  | `nl`    |
+| Farsi/Persian          | `fa`    |
+| Finnish                | `fi`    |
+| French                 | `fr`    |
+| German                 | `de`    |
+| Hebrew                 | `he`    |
+| Hungarian              | `hu`    |
+| Indonesian             | `id`    |
+| Malay                  | `ms`    |
+| Italian                | `it`    |
+| Japanese               | `ja`    |
+| Korean                 | `ko`    |
+| Latvian                | `lv`    |
+| Norwegian Bokmål       | `nb`    |
+| Polish                 | `pl`    |
+| Portuguese (Brazilian) | `pt-BR` |
+| Russian                | `ru`    |
+| Serbian                | `sr`    |
+| Slovak                 | `sk`    |
+| Spanish                | `es`    |
+| Swedish                | `sv`    |
+| Turkish                | `tr`    |
+| Ukrainian              | `uk`    |
+| Vietnamese             | `vi`    |
+
+The locale codes are relevant for setting the language in [static embeds](../embedding/static-embedding-parameters.md#setting-the-language-for-a-static-embed).
 
 > While Metabase can support languages that read right to left, the Metabase UI is designed around languages that read left to right.
 

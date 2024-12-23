@@ -317,18 +317,17 @@ describe("scenarios > admin > people", () => {
       cy.visit("/admin/people");
 
       cy.findByPlaceholderText("Find someone").type("no");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("5 people found");
-      assertTableRowsCount(5);
+      cy.findByTestId("people-list-footer").findByText("6 people found");
+      assertTableRowsCount(6);
 
       cy.findByPlaceholderText("Find someone").type("ne");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("1 person found");
+      cy.findByTestId("people-list-footer").findByText("1 person found");
       assertTableRowsCount(1);
 
       cy.findByPlaceholderText("Find someone").clear();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`${TOTAL_USERS} people found`);
+      cy.findByTestId("people-list-footer").findByText(
+        `${TOTAL_USERS} people found`,
+      );
       assertTableRowsCount(TOTAL_USERS);
     });
 

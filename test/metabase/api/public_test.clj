@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.analytics.stats :as stats]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.pivots :as api.pivots]
@@ -24,6 +25,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.test :as mt]
+   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [throttle.core :as throttle]
@@ -61,7 +63,7 @@
                                   :values_source_config {:values ["African" "American" "Asian"]}}]})
                  (shared-obj)
                  m)]
-    (t2.with-temp/with-temp [Card card m]
+    (t2.with-temp/with-temp [:model/Card card m]
       ;; add :public_uuid back in to the value that gets bound because it might not come back from post-select if
       ;; public sharing is disabled; but we still want to test it
       (f (assoc card :public_uuid (:public_uuid m))))))
@@ -143,6 +145,22 @@
           (mt/with-temp-vals-in-db Card card-id {:archived true}
             (is (= "Not found."
                    (client/client :get 404 (str "public/card/" uuid))))))))))
+
+(deftest public-queries-are-counted-test
+  (testing "GET /api/public/card/:uuid/query coutns as a public query"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-card [{uuid :public_uuid}]
+        (testing "should increment the public link query count when fetching a public Card"
+          (let [get-qe-count (fn get-qe-count [] (get-in (#'stats/->snowplow-grouped-metric-info)
+                                                         [:query-executions "public_link"]))
+                qe-count-before (get-qe-count)]
+            (client/client :get 202 (str "public/card/" uuid "/query"))
+            ;; The qe-count gets incremented asynchronously, so we need to poll until it's updated.
+            ;; We poll for 300ms, which should be enough time for the count to be updated.
+            ;; Once the qe-count is updated the test will pass, and stop polling.
+            ;; If it's not updated within 300ms, the test will fail.
+            (testing "the count should be incremented within 300 ms:"
+              (is (tu/poll-until 300 (> (get-qe-count) qe-count-before))))))))))
 
 (deftest make-sure-param-values-get-returned-as-expected
   (let [category-name-id (mt/id :categories :name)]
@@ -495,11 +513,9 @@
 
 (defn- card-with-trendline []
   (assoc (shared-obj)
-         :dataset_query {:database (mt/id)
-                         :type     :query
-                         :query   {:source-table (mt/id :checkins)
-                                   :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :month}]]
-                                   :aggregation  [[:count]]}}))
+         :dataset_query (mt/mbql-query checkins
+                          {:breakout    [!month.date]
+                           :aggregation [[:count]]})))
 
 (deftest make-sure-we-include-all-the-relevant-fields-like-insights
   (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -827,10 +843,8 @@
 
         (testing "with MBQL queries"
           (testing "`:id` parameters"
-            (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
-                                                                :type     :query
-                                                                :query    {:source-table (mt/id :venues)
-                                                                           :aggregation  [:count]}}}]
+            (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues
+                                                                 {:aggregation [:count]})}]
               (with-temp-public-dashboard [dash {:parameters [{:name "venue_id"
                                                                :slug "venue_id"
                                                                :id   "_VENUE_ID_"
@@ -853,10 +867,8 @@
 
           (testing "temporal parameters"
             (mt/with-temporary-setting-values [enable-public-sharing true]
-              (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
-                                                                  :type     :query
-                                                                  :query    {:source-table (mt/id :checkins)
-                                                                             :aggregation  [:count]}}}]
+              (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query checkins
+                                                                   {:aggregation [:count]})}]
                 (with-temp-public-dashboard [dash {:parameters [{:name "Date Filter"
                                                                  :slug "date_filter"
                                                                  :id   "_DATE_"
@@ -1878,11 +1890,10 @@
                                            (-> (qp/process-query query)
                                                :data :results_metadata :columns))})
 
-         :model/Card          c2 (let [query {:database (mt/id)
-                                              :type :query
-                                              :query {:source-table (str "card__" (:id c1))
-                                                      :aggregation
-                                                      [[:distinct [:field "STATE" {:base-type :type/Text}]]]}}]
+         :model/Card          c2 (let [query (mt/mbql-query nil
+                                               {:source-table (str "card__" (:id c1))
+                                                :aggregation
+                                                [[:distinct [:field "STATE" {:base-type :type/Text}]]]})]
                                    {:name "C2"
                                     :database_id (mt/id)
                                     :dataset_query query

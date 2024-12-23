@@ -701,6 +701,39 @@
                             :dashboard_tab_id new-tab-id-2}]
                           (:dashcards new-dashboard))))))))))))
 
+(deftest dashboard-questions-test
+  (testing "Dashboard Questions are serialized correctly"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          ;; preparation
+          (mt/with-temp
+            [:model/Collection {coll-id  :id
+                                coll-eid :entity_id}     {}
+             :model/Dashboard {dashboard-id  :id
+                               dashboard-eid :entity_id} {:name "Dashboard"
+                                                          :collection_id coll-id}
+             :model/Card      {card-eid :entity_id}    {:name         "Card on the Dashboard"
+                                                        :dashboard_id dashboard-id}]
+            (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+              (storage/store! (seq extraction) dump-dir))
+
+            (testing "ingest and load"
+              (ts/with-db dest-db
+                ;; ingest
+                (testing "doing ingestion"
+                  (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                      "successful"))
+
+                (testing "The loaded card is a dashboard question, same as before"
+                  (let [new-dash-id (t2/select-one-pk :model/Dashboard :entity_id dashboard-eid)
+                        new-coll-id (t2/select-one-pk :model/Collection :entity_id coll-eid)
+                        new-card-id (t2/select-one-pk :model/Card :entity_id card-eid)]
+                    (is (= new-dash-id (:dashboard_id
+                                        (t2/select-one :model/Card new-card-id))))
+                    (is (= new-coll-id (:collection_id
+                                        (t2/select-one :model/Card new-card-id))))))))))))))
+
 (deftest premium-features-test
   (testing "with :serialization enabled on the token"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]

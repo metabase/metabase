@@ -8,7 +8,7 @@ import {
 import { waitForLoaderToBeRemoved } from "__support__/ui";
 import {
   MetabaseProvider,
-  defineEmbeddingSdkConfig,
+  defineMetabaseAuthConfig,
 } from "embedding-sdk/components/public";
 import {
   createMockSettings,
@@ -23,10 +23,10 @@ import { getEmbeddingSdkVersion } from "../config";
 const METABASE_INSTANCE_URL = "path:";
 const AUTH_PROVIDER_URL = "http://auth-provider/metabase-sso";
 
-const defaultAuthUriConfig = defineEmbeddingSdkConfig({
+const defaultAuthConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
   authProviderUri: AUTH_PROVIDER_URL,
-  fetchRequestToken: _ =>
+  fetchRequestToken: () =>
     Promise.resolve({
       id: "123",
       exp: Number.MAX_SAFE_INTEGER,
@@ -56,7 +56,7 @@ const setup = async ({
   setupCurrentUserEndpoint(createMockUser({ id: 1 }));
 
   render(
-    <MetabaseProvider config={defaultAuthUriConfig}>
+    <MetabaseProvider authConfig={defaultAuthConfig}>
       <div>Hello</div>
     </MetabaseProvider>,
   );

@@ -424,6 +424,10 @@
   "Should we enable granular controls for cache TTL at the database, dashboard, and card level?"
   :cache-granular-controls)
 
+(define-premium-feature ^{:added "1.53.0"} enable-preemptive-caching?
+  "Should we enable preemptive caching; i.e., auto-refresh of cached results?"
+  :cache-preemptive)
+
 (define-premium-feature ^{:added "0.41.0"} enable-config-text-file?
   "Should we enable initialization on launch from a config file?"
   :config-text-file)

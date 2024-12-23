@@ -169,7 +169,7 @@ describe("issue 25144", { tags: "@OSS" }, () => {
     H.newButton("Question").click();
 
     H.entityPickerModal().within(() => {
-      cy.findByText("Saved questions").should("not.exist");
+      cy.findByText("Collections").should("not.exist");
       H.entityPickerModalItem(2, "Orders").click();
     });
 
@@ -178,7 +178,7 @@ describe("issue 25144", { tags: "@OSS" }, () => {
     H.newButton("Question").click();
 
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").should("be.visible").click();
+      H.entityPickerModalTab("Collections").should("be.visible").click();
       H.entityPickerModalItem(1, "Orders question").should("be.visible");
     });
   });
@@ -205,7 +205,7 @@ describe("issue 25144", { tags: "@OSS" }, () => {
     H.newButton("Question").click();
 
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Models").should("be.visible").click();
+      H.entityPickerModalTab("Collections").should("be.visible").click();
       H.entityPickerModalItem(1, "Orders model").should("be.visible");
     });
   });
@@ -480,14 +480,8 @@ describe("issue 30165", () => {
 
   it("should not autorun native queries after updating a question (metabase#30165)", () => {
     H.openNativeEditor();
-    H.focusNativeEditor().type("SELECT * FROM ORDERS");
-    H.queryBuilderHeader().findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(() => {
-      cy.findByLabelText("Name").clear().type("Q1");
-      cy.findByText("Save").click();
-    });
-    cy.wait("@createQuestion");
-    cy.button("Not now").click();
+    cy.findByTestId("native-query-editor").type("SELECT * FROM ORDERS");
+    H.saveQuestionToCollection("Q1");
 
     H.focusNativeEditor().type(" WHERE TOTAL < 20");
     H.queryBuilderHeader().findByText("Save").click();
@@ -521,7 +515,7 @@ describe("issue 30610", () => {
     H.openOrdersTable();
     H.openNotebook();
     removeSourceColumns();
-    H.saveQuestion("New orders");
+    H.saveQuestionToCollection("New orders");
     createAdHocQuestion("New orders");
     visualizeAndAssertColumns();
   });
@@ -557,6 +551,7 @@ describe("issue 36669", () => {
     });
 
     H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
       cy.findByPlaceholderText("Search this collection or everywhere…").type(
         "Orders 36669",
       );
@@ -644,7 +639,7 @@ describe("issue 43216", () => {
     cy.log("Create target question");
     H.newButton("Question").click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("Source question").click();
     });
     H.saveQuestion("Target question");
@@ -683,7 +678,7 @@ function removeSourceColumns() {
 function createAdHocQuestion(questionName) {
   H.startNewQuestion();
   H.entityPickerModal().within(() => {
-    H.entityPickerModalTab("Saved questions").click();
+    H.entityPickerModalTab("Collections").click();
     cy.findByText(questionName).click();
   });
   cy.findByTestId("fields-picker").click();
@@ -728,7 +723,7 @@ describe("Custom columns visualization settings", () => {
     goToExpressionSidebarVisualizationSettings();
     H.popover().within(() => {
       const miniBarSwitch = cy.findByLabelText("Show a mini bar chart");
-      miniBarSwitch.click();
+      miniBarSwitch.click({ force: true });
       miniBarSwitch.should("be.checked");
     });
     saveModifiedQuestion();
@@ -742,10 +737,10 @@ describe("Custom columns visualization settings", () => {
       viewAsDropdown.click();
     });
 
-    cy.findByLabelText("Email link").click();
+    cy.findAllByRole("option", { name: "Email link" }).click();
 
     H.popover().within(() => {
-      cy.findByText("Email link").should("exist");
+      cy.findByDisplayValue("Email link").should("exist");
     });
 
     saveModifiedQuestion();
@@ -758,7 +753,7 @@ describe("Custom columns visualization settings", () => {
     });
     H.popover().within(() => {
       const miniBarSwitch = cy.findByLabelText("Show a mini bar chart");
-      miniBarSwitch.click();
+      miniBarSwitch.click({ force: true });
       miniBarSwitch.should("be.checked");
     });
 

@@ -223,10 +223,14 @@ Modify an existing Collection, including archiving or unarchiving it, or moving 
 
 ## `PUT /api/collection/graph`
 
-Do a batch update of Collections Permissions by passing in a modified graph.
-  Will overwrite parts of the graph that are present in the request, and leave the rest unchanged.
+Do a batch update of Collections Permissions by passing in a modified graph. Will overwrite parts of the graph that
+  are present in the request, and leave the rest unchanged.
 
-  If the `skip_graph` query parameter is true, it will only return the current revision.
+  If the `force` query parameter is `true`, a `revision` number is not required. The provided graph will be persisted
+  as-is, and has the potential to clobber other writes that happened since the last read.
+
+  If the `skip_graph` query parameter is `true`, it will only return the current revision, not the entire permissions
+  graph.
 
 You must be a superuser to do this.
 
@@ -234,11 +238,13 @@ You must be a superuser to do this.
 
 -  **`namespace`** nullable value must be a non-blank string.
 
--  **`revision`** value must be an integer.
+-  **`revision`** nullable value must be an integer.
 
 -  **`groups`** map.
 
--  **`skip_graph`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`skip-graph`** nullable value must be a valid boolean string ('true' or 'false').
+
+-  **`force`** nullable value must be a valid boolean string ('true' or 'false').
 
 ---
 

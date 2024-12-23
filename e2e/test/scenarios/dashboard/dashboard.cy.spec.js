@@ -38,7 +38,6 @@ describe("scenarios > dashboard", () => {
       const dashboardName = "Dash A";
       const dashboardDescription = "Fresh new dashboard";
       const newQuestionName = "New dashboard question";
-      const existingQuestionName = "Orders, Count";
 
       cy.visit("/");
       H.appBar().findByText("New").click();
@@ -84,6 +83,7 @@ describe("scenarios > dashboard", () => {
         .click();
 
       H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Collections").click();
         cy.findByPlaceholderText("Search this collection or everywhere…").type(
           "Pro",
         );
@@ -94,25 +94,16 @@ describe("scenarios > dashboard", () => {
       H.queryBuilderHeader().findByText("Save").click();
       cy.findByTestId("save-question-modal").within(modal => {
         cy.findByLabelText("Name").clear().type(newQuestionName);
+        cy.findByLabelText("Where do you want to save this?").should(
+          "contain.text",
+          dashboardName,
+        );
         cy.findByText("Save").click();
       });
       cy.wait("@createQuestion");
-      H.modal().within(() => {
-        cy.button("Yes please!").click();
-      });
-
-      H.entityPickerModal().within(() => {
-        cy.findByRole("tab", { name: /Dashboards/ }).click();
-        cy.findByText(dashboardName)
-          .closest("button")
-          .then($button => {
-            expect($button).to.have.attr("data-active", "true");
-          });
-        cy.button("Select").click();
-      });
 
       H.openQuestionsSidebar();
-      H.sidebar().findByText(existingQuestionName).click();
+      H.sidebar().findByText("Orders, Count").click();
 
       H.getDashboardCards().should("have.length", 2);
 
@@ -121,10 +112,10 @@ describe("scenarios > dashboard", () => {
       cy.log("Breadcrumbs should show a collection dashboard was saved in");
       H.appBar().findByText("Our analytics").click();
 
-      cy.log("New dashboard should appear in the collection");
+      cy.log("New dashboard question should not appear in the collection");
       cy.findAllByTestId("collection-entry-name")
         .should("contain", dashboardName)
-        .and("contain", newQuestionName);
+        .and("not.contain", newQuestionName);
     });
 
     it(
@@ -187,7 +178,14 @@ describe("scenarios > dashboard", () => {
       cy.log("Save new question from an ad-hoc query");
       H.openProductsTable();
       cy.findByTestId("qb-header").findByText("Save").click();
-      cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.findByTestId("dashboard-and-collection-picker-button").click();
+      });
+      H.entityPickerModal().within(() => {
+        cy.findByText("First collection").click();
+        cy.findByText("Select this collection").click();
+      });
+      cy.findByTestId("save-question-modal").within(() => {
         cy.findByText("Save").click();
       });
       cy.wait("@saveQuestion");
@@ -1115,7 +1113,7 @@ describe("scenarios > dashboard", () => {
     cy.findByRole("dialog").within(() => {
       cy.findByRole("switch", {
         name: "Hide this card if there are no results",
-      }).click();
+      }).click({ force: true });
       cy.button("Done").click();
     });
 
@@ -1238,9 +1236,9 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
       cy.findByRole("switch", {
         name: "Hide this card if there are no results",
       })
-        .click() // enable
-        .click() // disable
-        .click(); // enable
+        .click({ force: true }) // enable
+        .click({ force: true }) // disable
+        .click({ force: true }); // enable
 
       H.expectGoodSnowplowEvent(
         {

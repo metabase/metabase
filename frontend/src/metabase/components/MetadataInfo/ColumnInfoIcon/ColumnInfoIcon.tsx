@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import type { IconName } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import type {
   QueryColumnInfoPopoverProps,
@@ -32,10 +31,7 @@ export function QueryColumnInfoIcon({
   color,
   ...props
 }: QueryColumnInfoIconProps) {
-  const { query, stageIndex, column } = props;
-  const { description = "" } = query
-    ? Lib.displayInfo(query, stageIndex, column)
-    : {};
+  const { column } = props;
 
   return (
     <>
@@ -50,7 +46,6 @@ export function QueryColumnInfoIcon({
           <PopoverHoverTarget
             className={className}
             name="info_filled"
-            hasDescription={Boolean(description)}
             size={size}
           />
         </span>
@@ -87,7 +82,6 @@ export function TableColumnInfoIcon({
         <PopoverHoverTarget
           className={className}
           name="info_filled"
-          hasDescription={Boolean(field.description)}
           size={size}
         />
       </span>

@@ -1,6 +1,5 @@
 import PropTypes from "prop-types";
 import { useCallback, useMemo, useState } from "react";
-import { connect } from "react-redux";
 import _ from "underscore";
 
 import {
@@ -10,10 +9,11 @@ import {
 } from "metabase/collections/utils";
 import { Tree } from "metabase/components/tree";
 import CS from "metabase/css/core/index.css";
-import Collection, {
+import Collections, {
   PERSONAL_COLLECTIONS,
   buildCollectionTree,
 } from "metabase/entities/collections";
+import { connect } from "metabase/lib/redux";
 import { Box, Icon } from "metabase/ui";
 
 import SavedEntityList from "./SavedEntityList";
@@ -143,12 +143,12 @@ SavedEntityPicker.propTypes = propTypes;
 const mapStateToProps = ({ currentUser }) => ({ currentUser });
 
 export default _.compose(
-  Collection.load({
+  Collections.load({
     id: () => "root",
     entityAlias: "rootCollection",
     loadingAndErrorWrapper: false,
   }),
-  Collection.loadList({
+  Collections.loadList({
     query: () => ({ tree: true, "exclude-archived": true }),
   }),
   connect(mapStateToProps),

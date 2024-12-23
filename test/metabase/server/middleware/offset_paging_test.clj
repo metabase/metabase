@@ -46,6 +46,13 @@
                        "paged?" true
                        "params" {"whatever" "true"}}}
             (read-response (handler (ring.mock/request :get "/" {:offset "200", :limit "100", :whatever "true"}))))))
+  (testing "w/duplicate paging params"
+    (is (=? {:status 200
+             :body {"limit" 100
+                    "offset" 200
+                    "paged?" true
+                    "params" {"whatever", "true"}}}
+            (read-response (handler (ring.mock/request :get  "/" {:offset ["200", "250"], :limit ["100" "150"], :whatever "true"}))))))
   (testing "w/ non-numeric paging params, paging is disabled"
     (is (=? {:status 200
              :body {"limit"  nil

@@ -10079,7 +10079,337 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.CreateSampleContentV2"
 
- # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+  - changeSet:
+      id: v52.2024-12-10T10:28:16
+      author: johnswanson
+      comment: Add `report_card.dashboard_id`
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: report_card
+              columnName: dashboard_id
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The dashboard that owns the card, if it is a dashboard-internal card.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v52.2024-12-10T10:28:21
+      author: johnswanson
+      comment: Make `report_card.dashboard_id` a foreign key
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - foreignKeyConstraintExists:
+            - foreignKeyName: fk_report_card_ref_dashboard_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: dashboard_id
+            referencedTableName: report_dashboard
+            referencedColumnNames: id
+            constraintName: fk_report_card_ref_dashboard_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v52.2024-12-10T10:28:24
+      author: johnswanson
+      comment: Add an index for `report_card.dashboard_id`
+      rollback: # will be removed with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: report_card
+                indexName: idx_report_card_dashboard_id
+      changes:
+        - createIndex:
+            indexName: idx_report_card_dashboard_id
+            tableName: report_card
+            columns:
+              - column:
+                  name: dashboard_id
+
+  - changeSet:
+      id: v52.2024-12-16T09:19:00
+      author: crisptrutski
+      comment: Metadata about search indexes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: search_index_metadata
+      changes:
+        - createTable:
+            tableName: search_index_metadata
+            remarks: Each entry corresponds to some queryable index, and contains metadata about it.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: engine
+                  type: varchar(64)
+                  remarks: 'The kind of search engine which this index belongs to.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: version
+                  type: varchar(254)
+                  remarks: 'Used to determine metabase compatibility. Format may depend on engine in future.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: index_name
+                  type: varchar(254)
+                  remarks: "The name by which the given engine refers to this particular index, e.g. table name."
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: status
+                  type: varchar(32)
+                  remarks: One of 'pending', 'active', or 'retired'
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: The timestamp of when the index was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the index status was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v52.2024-12-16T09:20:00
+      author: crisptrutski
+      comment: 'Protection against concurrent creation or promotion of indexes.'
+      rollback: # will be removed with the table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: search_index_metadata
+                indexName: idx_search_index_metadata_unique_status
+      changes:
+        - addUniqueConstraint:
+            remarks: Unique entry for each status, from any given metabase instance's perspective.
+            tableName: search_index_metadata
+            constraintName: idx_search_index_metadata_unique_status
+            columnNames: engine, version, status
+
+  - changeSet:
+      id: v53.2024-12-02T16:21:15
+      author: noahmoss
+      comment: Add cache_config.refresh_automatically column
+      preConditions:
+        - not:
+            - columnExists:
+                tableName: cache_config
+                columnName: refresh_automatically
+      changes:
+        - addColumn:
+            tableName: cache_config
+            columns:
+              - column:
+                  name: refresh_automatically
+                  type: ${boolean.type}
+                  remarks: Whether or not we should automatically refresh cache results when a cache expires
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v53.2024-12-02T17:21:16
+      validCheckSum:
+        - 9:209a494b250a08f022114249697cbc1b
+        - 9:8adcf08936200cc74153d0c306452e0c
+      author: noahmoss
+      comment: Add query_execution.parameterized column
+      preConditions:
+        - not:
+            - columnExists:
+                tableName: query_execution
+                columnName: parameterized
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: parameterized
+                  type: ${boolean.type}
+                  remarks: Whether or not the query has parameters with non-nil values
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v53.2024-12-10T10:00:00
+      author: qnkhuat
+      comment: add notification.internal_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: notification
+              columnName: internal_id
+      changes:
+        - addColumn:
+            tableName: notification
+            columns:
+              - column:
+                  name: internal_id
+                  type: varchar(254)
+                  remarks: the internal id of the notification
+                  constraints:
+                    nullable: true
+                    unique: true
+
+  # Prior to this, we used to truncate then insert notifications on startup (#50127)
+  # But we can't do that anymore because pulses are migated to notification, so moving forward
+  # we'll insert/replace notifications on startup (see metabase.notification.seed)
+  # We need to do another truncate here so we have a clean slate for the new notifications
+  - changeSet:
+      id: v53.2024-12-10T10:00:10
+      author: qnkhuat
+      comment: Truncate the notification tables
+      rollback: # not needed
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              TRUNCATE TABLE notification RESTART IDENTITY CASCADE;
+              TRUNCATE TABLE notification_handler RESTART IDENTITY CASCADE;
+              TRUNCATE TABLE notification_subscription RESTART IDENTITY CASCADE;
+              TRUNCATE TABLE notification_recipient RESTART IDENTITY CASCADE;
+              TRUNCATE TABLE channel_template RESTART IDENTITY CASCADE;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DELETE FROM notification;
+              ALTER TABLE notification AUTO_INCREMENT = 1;
+              DELETE FROM notification_handler;
+              ALTER TABLE notification_handler AUTO_INCREMENT = 1;
+              DELETE FROM notification_subscription;
+              ALTER TABLE notification_subscription AUTO_INCREMENT = 1;
+              DELETE FROM notification_recipient;
+              ALTER TABLE notification_recipient AUTO_INCREMENT = 1;
+              DELETE FROM channel_template;
+              ALTER TABLE channel_template AUTO_INCREMENT = 1;
+
+        - sql:
+            dbms: h2
+            sql: >-
+              DELETE FROM notification;
+              DELETE FROM notification_handler;
+              DELETE FROM notification_subscription;
+              DELETE FROM notification_recipient;
+              DELETE FROM channel_template;
+              ALTER TABLE notification ALTER COLUMN id RESTART WITH 1;
+              ALTER TABLE notification_handler ALTER COLUMN id RESTART WITH 1;
+              ALTER TABLE notification_subscription ALTER COLUMN id RESTART WITH 1;
+              ALTER TABLE notification_recipient ALTER COLUMN id RESTART WITH 1;
+              ALTER TABLE channel_template ALTER COLUMN id RESTART WITH 1;
+
+  - changeSet:
+      id: v53.2024-12-20T19:53:50
+      author: johnswanson
+      comment: >
+        add a table for user-level KV. This is intended for use as a lightweight mechanism for the frontend to be able
+        to mark things as seen, unseen, dismissed, etc
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: user_key_value
+      changes:
+        - createTable:
+            tableName: user_key_value
+            remarks: A simple key value store for each user.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'The ID of the user this KV-pair is for'
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_user_key_value_user_id
+              - column:
+                  name: namespace
+                  type: varchar(254)
+                  remarks: 'The namespace for this KV, e.g. "dashboard-filters" or "nobody-knows"'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: key
+                  remarks: 'The key'
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: value
+                  remarks: 'The value, serialized JSON'
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  remarks: 'When this row was created'
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: 'When this row was last updated'
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  remarks: 'If set, when this row expires'
+                  type: ${timestamp_type}
+                  defaultValue: null
+
+  - changeSet:
+      id: v53.2024-12-20T19:53:59
+      author: johnswanson
+      comment: Add a unique constraint for user_id,namespace,key
+      changes:
+        - addUniqueConstraint:
+            tableName: user_key_value
+            columnNames: user_id, namespace, key
+            constraintName: unique_user_key_value_user_id_namespace_key
+      rollback: # will be deleted with table
+
+  # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
 #

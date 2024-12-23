@@ -70,10 +70,17 @@ export const QuestionList = memo(function QuestionList({
         payload.query = searchText;
       }
 
-      const cards = await CardApi.compatibleCards({
-        ...payload,
-        cardId: dashcard.card_id,
-      });
+      //We want to ensure that we don't allow combining cards from other dashboards with this one
+      const cards = (
+        await CardApi.compatibleCards({
+          ...payload,
+          cardId: dashcard.card_id,
+        })
+      ).filter(
+        (card: Card) =>
+          card.dashboard_id === null ||
+          card.dashboard_id === dashcard.dashboard_id,
+      );
 
       setCards(prev => [...prev, ...cards]);
       setHasMore(cards.length === PAGE_SIZE);

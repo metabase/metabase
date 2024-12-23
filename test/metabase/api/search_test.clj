@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models
     :refer [Action Card CardBookmark Collection Dashboard DashboardBookmark
@@ -42,6 +43,8 @@
 
 (def ^:private default-search-row
   {:archived                   false
+   :dashboard_id               false
+   :dashboard                  nil
    :effective_location         nil
    :location                   nil
    :bookmark                   nil
@@ -1688,3 +1691,78 @@
 
       (finally
         (public-settings/experimental-search-weight-overrides! original-overrides)))))
+
+(deftest dashboard-questions
+  (testing "Dashboard questions get a dashboard_id when searched"
+    (let [search-name (random-uuid)
+          named #(str search-name "-" %)]
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name (named "dashboard")}
+                     :model/Card {card-id :id} {:dashboard_id dash-id :name (named "dashboard card")}
+                     :model/Card {reg-card-id :id} {:name (named "regular card")}
+                     ;; DQs aren't searchable without a DashboardCard (see later test)
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (testing "The card data includes the `dashboard_id`"
+          (is (= dash-id
+                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                      :data
+                      (filter #(= card-id (:id %)))
+                      first
+                      :dashboard_id))))
+        (testing "The card data also include `dashboard` info"
+          (is (= {:id dash-id
+                  :name (named "dashboard")
+                  :moderation_status nil}
+                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                      :data
+                      (filter #(= card-id (:id %)))
+                      first
+                      :dashboard))))
+        (testing "Regular cards don't have it"
+          (is (nil?
+               (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                    :data
+                    (filter #(= reg-card-id (:id %)))
+                    first
+                    :dashboard_id)))
+          (is (nil?
+               (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                    :data
+                    (filter #(= reg-card-id (:id %)))
+                    first
+                    :dashboard))))
+        (testing "Dashboard questions are only returned if you pass `include_dashboard_questions=true`"
+          (is (= []
+                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "false")
+                      :data
+                      (filter #(= card-id (:id %))))))))))
+  (testing "Dashboard questions aren't searchable without a DashboardCard"
+    (let [search-name (random-uuid)
+          named #(str search-name "-" %)]
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Dashboard"}
+                     :model/Card _ {:dashboard_id dash-id :name (named "dashboard card")}]
+        (is (= {:total 0
+                :data []}
+               (select-keys
+                (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                [:total :data])))))))
+
+(deftest prometheus-response-metrics-test
+  (testing "Prometheus counters get incremented for error responses"
+    (let [calls (atom nil)]
+      (mt/with-dynamic-redefs [prometheus/inc! #(swap! calls conj %)]
+        (testing "Success response"
+          (search-request :crowberto :q "test")
+          (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
+          (is (= 0 (count (filter #{:metabase-search/response-error} @calls)))))
+
+        (testing "Bad request (400)"
+          (mt/user-http-request :crowberto :get 400 "/search" :q " ")
+          (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
+          ;; We do not treat client side errors as errors for our alerts.
+          (is (= 0 (count (filter #{:metabase-search/response-error} @calls)))))
+
+        (testing "Unexpected server error (500)"
+          (mt/with-dynamic-redefs [search/search (fn [& _] (throw (Exception.)))]
+            (mt/user-http-request :crowberto :get 500 "/search" :q "test")
+            (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
+            (is (= 1 (count (filter #{:metabase-search/response-error} @calls))))))))))

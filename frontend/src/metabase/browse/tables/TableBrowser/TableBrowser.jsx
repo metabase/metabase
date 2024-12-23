@@ -4,15 +4,10 @@ import { t } from "ttag";
 
 import { BrowserCrumbs } from "metabase/components/BrowserCrumbs";
 import EntityItem from "metabase/components/EntityItem";
-import Database from "metabase/entities/databases";
 import { color } from "metabase/lib/colors";
 import { isSyncInProgress } from "metabase/lib/syncing";
-import * as Urls from "metabase/lib/urls";
 import { Icon } from "metabase/ui";
-import {
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
-  isVirtualCardId,
-} from "metabase-lib/v1/metadata/utils/saved-questions";
+import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import { BrowseHeaderContent } from "../../components/BrowseHeader.styled";
 import { trackTableClick } from "../analytics";
@@ -24,6 +19,7 @@ import {
   TableGridItem,
   TableLink,
 } from "./TableBrowser.styled";
+import { useDatabaseCrumb } from "./useDatabaseCrumb";
 
 const propTypes = {
   database: PropTypes.object,
@@ -46,13 +42,15 @@ export const TableBrowser = ({
   xraysEnabled,
   showSchemaInHeader = true,
 }) => {
+  const databaseCrumb = useDatabaseCrumb(dbId);
+
   return (
     <>
       <BrowseHeaderContent>
         <BrowserCrumbs
           crumbs={[
             { title: t`Databases`, to: "/browse/databases" },
-            getDatabaseCrumbs(dbId),
+            databaseCrumb,
             showSchemaInHeader && { title: schemaName },
           ]}
         />
@@ -149,18 +147,5 @@ const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
 };
 
 TableBrowserItemButtons.propTypes = itemButtonsPropTypes;
-
-const getDatabaseCrumbs = dbId => {
-  if (dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID) {
-    return {
-      title: t`Saved Questions`,
-      to: Urls.browseDatabase({ id: SAVED_QUESTIONS_VIRTUAL_DB_ID }),
-    };
-  } else {
-    return {
-      title: <Database.Link id={dbId} />,
-    };
-  }
-};
 
 export default TableBrowser;

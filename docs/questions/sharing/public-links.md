@@ -15,7 +15,21 @@ Admins can create and share public links (URLs) for questions and dashboards. Pe
 
 ![Create a public link for a question](../images/create-a-public-link.png)
 
-Admins can find the **Sharing** icon at the bottom right corner of a question. You can create a link to view the question as is, or to [export the results of a question](#public-link-to-export-question-results-in-csv-xlsx-json).
+To create a public link for a question, admins can click on the **Sharing** icon at the top right of a question and select **Create a public link**. Copy the link and test it out by viewing the link in a private/incognito browser session.
+
+## Public link to export question results in CSV, XLSX, JSON
+
+This export option is only available for questions, not dashboards.
+
+To create a public link that people can use to download the results of a question:
+
+1. Click on the **Sharing** icon for the question.
+2. Select **Create a public link**.
+3. Click on the file format you want (below the **Public link** URL): CSV, XLSX, or JSON.
+
+![Public export](../images/public-export.png)
+
+Open the public link in a new tab to test the download.
 
 ## Create a public link for a dashboard
 
@@ -24,20 +38,6 @@ To share a dashboard via a public link, admins can click on the **Sharing** butt
 ![Sharing a dashboard](../images/dashboard-sharing.png)
 
 To embed a dashboard, see [static embedding](../../embedding/static-embedding.md).
-
-## Public link to export question results in CSV, XLSX, JSON
-
-The export option is only available for questions, not dashboards.
-
-To create a public link that people can use to download the results of a question:
-
-1. Click on the **Sharing** icon for the question.
-2. Select **Public link**.
-3. Click on the file format you want (below the **Public link** URL): CSV, XLSX, or JSON.
-
-![Public export](../images/public-export.png)
-
-Open the public link in a new tab to test the download.
 
 ### Exporting raw, unformatted question results
 

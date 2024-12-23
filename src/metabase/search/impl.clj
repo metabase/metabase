@@ -271,7 +271,8 @@
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
-   [:calculate-available-models?         {:optional true} [:maybe :boolean]]])
+   [:calculate-available-models?         {:optional true} [:maybe :boolean]]
+   [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -286,6 +287,7 @@
            ids
            is-impersonated-user?
            is-sandboxed-user?
+           include-dashboard-questions?
            is-superuser?
            last-edited-at
            last-edited-by
@@ -331,6 +333,7 @@
                  (some? offset)                              (assoc :offset-int offset)
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
+                 (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
                  (seq ids)                                   (assoc :ids ids))]
     (when (and (seq ids)
                (not= (count models) 1))
@@ -399,6 +402,10 @@
       (:calculate-available-models? search-ctx)
       (assoc :available_models (model-set-fn search-ctx)))))
 
+(defn- hydrate-dashboards [results]
+  (->> (t2/hydrate results [:dashboard :moderation_status])
+       (map (fn [row] (update row :dashboard #(when % (select-keys % [:id :name :moderation_status])))))))
+
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."
   [search-ctx :- search.config/SearchContext]
@@ -411,6 +418,7 @@
                            (map (partial normalize-result-more search-ctx))
                            (keep #(search.engine/score scoring-ctx %)))
         total-results     (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
+                            true hydrate-dashboards
                             true hydrate-user-metadata
                             (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
                             true (add-collection-effective-location)

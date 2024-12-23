@@ -1,26 +1,22 @@
+import cx from "classnames";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 
+import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
-import {
-  HeaderDivider,
-  SavedQuestionHeaderButtonContainer,
-  SavedQuestionLeftSideRoot,
-  StyledLastEditInfoLabel,
-  StyledQuestionDataSource,
-  ViewHeaderLeftSubHeading,
-  ViewHeaderMainLeftContentContainer,
-} from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
-import { Flex } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
+import { ViewSubHeading } from "../../../ViewSection";
+import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
 import { HeaderCollectionBadge } from "../HeaderCollectionBadge";
 import { QuestionDataSource } from "../QuestionDataSource";
 
+import SavedQuestionLeftSideS from "./SavedQuestionLeftSide.module.css";
 import { ViewOnlyTag } from "./ViewOnly";
 
-interface SavedQuestionLeftSideProps {
+export interface SavedQuestionLeftSideProps {
   question: Question;
   isObjectDetail?: boolean;
   isAdditionalInfoVisible?: boolean;
@@ -65,15 +61,23 @@ export function SavedQuestionLeftSide({
   }, [isAdditionalInfoVisible, renderDataSource, renderLastEdit]);
 
   return (
-    <SavedQuestionLeftSideRoot
+    <Box
+      className={cx(ViewTitleHeaderS.SavedQuestionLeftSideRoot, {
+        [ViewTitleHeaderS.showSubHeader]: showSubHeader,
+      })}
       data-testid="qb-header-left-side"
-      showSubHeader={showSubHeader}
     >
-      <ViewHeaderMainLeftContentContainer>
-        <SavedQuestionHeaderButtonContainer isModelOrMetric={isModelOrMetric}>
+      <Flex align="center" wrap="nowrap">
+        <Box
+          className={cx(ViewTitleHeaderS.SavedQuestionHeaderButtonContainer, {
+            [ViewTitleHeaderS.isModelOrMetric]: isModelOrMetric,
+          })}
+        >
           <Flex align="center" gap="sm">
             <HeadBreadcrumbs
-              divider={<HeaderDivider>/</HeaderDivider>}
+              divider={
+                <span className={ViewTitleHeaderS.HeaderDivider}>/</span>
+              }
               parts={[
                 ...(isAdditionalInfoVisible && isModelOrMetric
                   ? [
@@ -94,13 +98,14 @@ export function SavedQuestionLeftSide({
 
             <ViewOnlyTag question={question} />
           </Flex>
-        </SavedQuestionHeaderButtonContainer>
-      </ViewHeaderMainLeftContentContainer>
+        </Box>
+      </Flex>
       {isAdditionalInfoVisible && (
-        <ViewHeaderLeftSubHeading>
+        <ViewSubHeading className={ViewTitleHeaderS.ViewHeaderLeftSubHeading}>
           {QuestionDataSource.shouldRender({ question, isObjectDetail }) &&
             !isModelOrMetric && (
-              <StyledQuestionDataSource
+              <QuestionDataSource
+                className={SavedQuestionLeftSideS.StyledQuestionDataSource}
                 question={question}
                 isObjectDetail={isObjectDetail}
                 originalQuestion={undefined} // can be removed, needed for typings
@@ -108,13 +113,14 @@ export function SavedQuestionLeftSide({
               />
             )}
           {hasLastEditInfo && isAdditionalInfoVisible && (
-            <StyledLastEditInfoLabel
+            <LastEditInfoLabel
+              className={SavedQuestionLeftSideS.StyledLastEditInfoLabel}
               item={question.card()}
               onClick={onOpenQuestionInfo}
             />
           )}
-        </ViewHeaderLeftSubHeading>
+        </ViewSubHeading>
       )}
-    </SavedQuestionLeftSideRoot>
+    </Box>
   );
 }

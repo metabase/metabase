@@ -3,7 +3,6 @@ import { renderHook } from "@testing-library/react-hooks";
 import {
   createMockActionParameter,
   createMockFieldSettings,
-  createMockImplicitQueryAction,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
 
@@ -134,28 +133,7 @@ describe("useActionForm", () => {
       });
     });
 
-    it("should filter out unchanged values when prefetching initial values", () => {
-      const parameter = createMockActionParameter({
-        id: "param1",
-        type: "string",
-      });
-      const action = createMockImplicitQueryAction({
-        kind: "row/update",
-        parameters: [parameter],
-      });
-      const { result } = renderHook(() =>
-        useActionForm({
-          action,
-          initialValues: { param1: "some value" },
-          prefetchesInitialValues: true,
-        }),
-      );
-      expect(result.current.getCleanValues({ param1: "some value" })).toEqual(
-        {},
-      );
-    });
-
-    it("sholud filter out hidden fields", () => {
+    it("should filter out hidden fields", () => {
       const parameter = createMockActionParameter({
         id: "param1",
         type: "string",

@@ -2,6 +2,7 @@ import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -135,26 +136,28 @@ describe("scenarios > question > saved", () => {
 
     H.modal().within(() => {
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
-      cy.findByTestId("collection-picker-button").click();
+      cy.findByTestId("dashboard-and-collection-picker-button").click();
     });
 
     H.entityPickerModal().findByText("Create a new collection").click();
 
-    const NEW_COLLECTION = "Foo";
+    const NEW_COLLECTION = "My New collection";
     H.collectionOnTheGoModal().then(() => {
       cy.findByPlaceholderText("My new collection").type(NEW_COLLECTION);
       cy.findByText("Create").click();
     });
 
-    H.entityPickerModal().findByText("Select").click();
+    H.entityPickerModal()
+      .button(/Select/)
+      .click();
 
     H.modal().within(() => {
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
-      cy.findByTestId("collection-picker-button").should(
+      cy.findByTestId("dashboard-and-collection-picker-button").should(
         "have.text",
         NEW_COLLECTION,
       );
-      cy.findByText("Duplicate").click();
+      cy.button("Duplicate").click();
       cy.wait("@cardCreate");
     });
 
@@ -208,6 +211,30 @@ describe("scenarios > question > saved", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     H.appBar().within(() => cy.findByText("Second collection").click());
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Orders").should("be.visible");
+  });
+
+  it("should show dashboard breadcrumbs for a saved question in a dashboard", () => {
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+      dashboard_id: ORDERS_DASHBOARD_ID,
+    });
+
+    H.visitQuestion(ORDERS_QUESTION_ID);
+    H.appBar().within(() => {
+      cy.findByText("Our analytics").should("exist");
+      cy.log("should be able to navigate to the parent dashboard");
+      cy.findByText("Orders in a dashboard").should("exist").click();
+    });
+
+    cy.log(
+      "should have dashboard info disappear when navigating away from question",
+    );
+    H.appBar().within(() => {
+      cy.findByText("Our analytics").should("exist");
+      cy.findByText("Orders in a dashboard").should("not.exist");
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").should("be.visible");
@@ -375,7 +402,7 @@ describe("scenarios > question > saved", () => {
       H.openQuestionActions();
       cy.findByTestId("move-button").click();
       H.entityPickerModal().within(() => {
-        clickTab && cy.findByRole("tab", { name: /Collections/ }).click();
+        clickTab && cy.findByRole("tab", { name: /Browse/ }).click();
         cy.findByText(newCollectionName).click();
         cy.button("Move").click();
       });

@@ -76,7 +76,11 @@
          (into {} (for [[k v] attribute_remappings
                         ;; get attribute that map to fields of the same table
                         :when (contains? field-ids
-                                         (lib.util.match/match-one v [:dimension [:field field-id _]] field-id))]
+                                         (lib.util.match/match-one v
+                                           ;; new style with {:stage-number }
+                                           [:dimension [:field field-id _] _] field-id
+                                           ;; old style without stage number
+                                           [:dimension [:field field-id _]] field-id))]
                     {k (get login-attributes k)})))])))
 
 (defenterprise field-id->field-values-for-current-user

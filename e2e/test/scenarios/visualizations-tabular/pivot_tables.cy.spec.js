@@ -317,7 +317,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     // turn off subtotals for User -> Source
     openColumnSettings(/Users? → Source/);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Show totals").parent().find("input").click();
+    cy.findByText("Show totals").parent().find("input").click({ force: true });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("3,520").should("not.exist"); // the subtotal has disappeared!
@@ -345,7 +345,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     // turn off subtotals for User -> Source
     openColumnSettings(/Users? → Source/);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Show totals").parent().find("input").click();
+    cy.findByText("Show totals").parent().find("input").click({ force: true });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("3,520").should("not.exist"); // the subtotal isn't there
@@ -395,8 +395,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByText("Separator style");
 
     cy.log("Change the value formatting");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Normal").click();
+    cy.findByDisplayValue("Normal").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Percent").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -1076,16 +1075,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
       });
 
-      cy.findByTestId("qb-header-action-panel").within(() => {
-        cy.findByText("Save").click();
-      });
-
-      cy.findByTestId("save-question-modal").within(() => {
-        cy.findByText("Save").click();
-      });
-
-      cy.get("#QuestionSavedModal").within(() => {
-        cy.findByText("Not now").click();
+      H.saveQuestion(undefined, undefined, {
+        tab: "Browse",
+        path: ["Our analytics"],
       });
 
       cy.reload(); // reload to make sure the settings are persisted
@@ -1157,8 +1149,10 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       "Showing 205 rows",
     );
 
-    cy.findByTestId("qb-header-action-panel").findByText("Save").click();
-    cy.findByTestId("save-question-modal").findByText("Save").click();
+    H.saveQuestion(undefined, undefined, {
+      tab: "Browse",
+      path: ["Our analytics"],
+    });
     cy.wait("@createCard");
     cy.url().should("include", "/question/");
     cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
@@ -1233,7 +1227,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       cy.signInAsNormalUser();
       H.visitQuestion("@questionId");
       cy.findByTestId("viz-settings-button").click();
-      cy.findByLabelText("Show row totals").click();
+      cy.findByLabelText("Show row totals").click({ force: true });
 
       cy.findByTestId("qb-save-button").should("have.attr", "data-disabled");
     });

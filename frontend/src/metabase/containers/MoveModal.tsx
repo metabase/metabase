@@ -2,11 +2,16 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { OnMoveWithOneItem } from "metabase/collections/types";
+import type {
+  MoveCollectionDestination,
+  MoveDestination,
+  OnMoveWithOneItem,
+} from "metabase/collections/types";
 import { isItemCollection } from "metabase/collections/utils";
 import {
   type CollectionPickerItem,
   CollectionPickerModal,
+  type CollectionPickerModel,
   type CollectionPickerValueItem,
 } from "metabase/common/components/CollectionPicker";
 import type {
@@ -16,13 +21,22 @@ import type {
   SearchResult,
 } from "metabase-types/api";
 
-interface MoveModalProps {
+interface BaseMoveModalProps {
   title: string;
   onClose: () => void;
-  onMove: OnMoveWithOneItem;
   initialCollectionId: CollectionId;
   movingCollectionId?: CollectionId;
 }
+
+type MoveModalProps =
+  | (BaseMoveModalProps & {
+      canMoveToDashboard?: true | undefined;
+      onMove: OnMoveWithOneItem;
+    })
+  | (BaseMoveModalProps & {
+      canMoveToDashboard?: false;
+      onMove: OnMoveWithOneItem<MoveCollectionDestination>;
+    });
 
 const makeRecentFilter = (
   disableFn: ((item: CollectionPickerItem) => boolean) | undefined,
@@ -48,6 +62,7 @@ export const MoveModal = ({
   onMove,
   initialCollectionId,
   movingCollectionId,
+  canMoveToDashboard,
 }: MoveModalProps) => {
   // if we are moving a collection, we can't move it into itself or any of its children
   const shouldDisableItem = movingCollectionId
@@ -64,10 +79,39 @@ export const MoveModal = ({
   const recentFilter = makeRecentFilter(shouldDisableItem);
 
   const handleMove = useCallback(
-    async (newCollection: CollectionPickerValueItem) =>
-      await onMove({ id: newCollection.id }),
-    [onMove],
+    (destination: CollectionPickerValueItem) => {
+      // GROSS:
+      // - CollectionPicker's `onChange` prop isn't generic to its `models` prop, so
+      //   `onChange`'s destination arg isn't narrowed based on the `models` passed in. This
+      //   requires we do additional type gauarding / unneeded error handling below.
+      // - To keep this same issue from bubbling up to consumers of MoveModal, we need
+      //   do some extra type casting so it has an external API where `canMoveToDashboard`
+      //   narrows the `destination` arg for its `onMove` prop.
+      // - Making CollectionPicker properly generic is hard due to some internal typing
+      //   being used by components other than the CollectionPicker. One type
+      //   cast here avoids a large headache-inducing refactor there.
+
+      if (!canMoveToDashboard) {
+        if (destination.model === "dashboard") {
+          throw new Error(
+            "MoveModal can't move to a dashboard with canMoveToDashboard=false",
+          );
+        }
+
+        return onMove({ id: destination.id, model: destination.model });
+      } else {
+        return onMove({
+          id: destination.id,
+          model: destination.model,
+        } as MoveDestination);
+      }
+    },
+    [onMove, canMoveToDashboard],
   );
+
+  const models: CollectionPickerModel[] = canMoveToDashboard
+    ? ["collection", "dashboard"]
+    : ["collection"];
 
   return (
     <CollectionPickerModal
@@ -77,6 +121,7 @@ export const MoveModal = ({
         model: "collection",
       }}
       onChange={handleMove}
+      models={models}
       options={{
         showSearch: true,
         allowCreateNew: true,
@@ -95,7 +140,7 @@ export const MoveModal = ({
 
 interface BulkMoveModalProps {
   onClose: () => void;
-  onMove: OnMoveWithOneItem;
+  onMove: OnMoveWithOneItem<MoveDestination>;
   selectedItems: CollectionItem[];
   initialCollectionId: CollectionId;
 }
@@ -132,6 +177,12 @@ export const BulkMoveModal = ({
       ? t`Move ${selectedItems.length} items?`
       : t`Move "${selectedItems[0].name}"?`;
 
+  const canMoveToDashboard = selectedItems.every(item => item.model === "card");
+
+  const models: CollectionPickerModel[] = canMoveToDashboard
+    ? ["collection", "dashboard"]
+    : ["collection"];
+
   return (
     <CollectionPickerModal
       title={title}
@@ -139,7 +190,12 @@ export const BulkMoveModal = ({
         id: initialCollectionId,
         model: "collection",
       }}
-      onChange={newCollection => onMove({ id: newCollection.id })}
+      onChange={destination => {
+        onMove({
+          id: destination.id,
+          model: destination.model,
+        } as MoveDestination);
+      }}
       options={{
         showSearch: true,
         allowCreateNew: true,
@@ -152,6 +208,7 @@ export const BulkMoveModal = ({
       searchResultFilter={searchResultFilter}
       recentFilter={recentFilter}
       onClose={onClose}
+      models={models}
     />
   );
 };

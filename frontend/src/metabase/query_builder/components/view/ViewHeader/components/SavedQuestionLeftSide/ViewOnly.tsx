@@ -4,7 +4,7 @@ import { Flex, HoverCard, Icon, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import CS from "./SavedQuestionLeftSide.module.css";
+import S from "./SavedQuestionLeftSide.module.css";
 import { useHiddenSourceTables } from "./hooks";
 
 export function ViewOnlyTag({ question }: { question: Question }) {
@@ -20,7 +20,7 @@ export function ViewOnlyTag({ question }: { question: Question }) {
   return (
     <HoverCard position="bottom-start" disabled={!tableName}>
       <HoverCard.Target>
-        <Flex align="center" gap="xs" px={4} py={2} mt={4} className={CS.badge}>
+        <Flex align="center" gap="xs" px={4} py={2} mt={4} className={S.badge}>
           <Icon name="lock_filled" size={12} />
           <Text size="xs" fw="bold">
             {t`View-only`}

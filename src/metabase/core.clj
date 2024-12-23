@@ -153,7 +153,7 @@
     (init-status/set-progress! 0.8))
 
   (ensure-audit-db-installed!)
-  (notification/truncate-then-seed-notification!)
+  (notification/seed-notification!)
   (init-status/set-progress! 0.9)
 
   (embed.settings/check-and-sync-settings-on-startup! env/env)

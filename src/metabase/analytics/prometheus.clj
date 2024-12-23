@@ -203,6 +203,10 @@
                        {:description "Number of successful SDK requests."})
    (prometheus/counter :metabase-sdk/response-error
                        {:description "Number of errors when responding to SDK requests."})
+   (prometheus/counter :metabase-embedding-iframe/response-ok
+                       {:description "Number of successful iframe embedding requests."})
+   (prometheus/counter :metabase-embedding-iframe/response-error
+                       {:description "Number of errors when responding to iframe embedding requests."})
    (prometheus/counter :metabase-scim/response-ok
                        {:description "Number of successful responses from SCIM endpoints"})
    (prometheus/counter :metabase-scim/response-error
@@ -213,7 +217,13 @@
                        {:description "Number of errors when processing metrics in the metrics adjust middleware."})
    (prometheus/counter :metabase-search/index
                        {:description "Number of entries indexed for search"
-                        :labels      [:model]})])
+                        :labels      [:model]})
+   (prometheus/counter :metabase-search/index-ms
+                       {:description "Total number of ms indexing took"})
+   (prometheus/counter :metabase-search/response-ok
+                       {:description "Number of successful search requests."})
+   (prometheus/counter :metabase-search/response-error
+                       {:description "Number of errors when responding to search requests."})])
 
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it

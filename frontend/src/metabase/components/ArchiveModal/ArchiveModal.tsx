@@ -3,14 +3,15 @@ import { t } from "ttag";
 
 import { archiveAndTrack } from "metabase/archive/analytics";
 import ModalContent from "metabase/components/ModalContent";
-import Button from "metabase/core/components/Button";
 import { FormMessage } from "metabase/forms";
+import { Button } from "metabase/ui";
 
 interface ArchiveModalProps {
   title?: string;
   message: React.ReactNode;
   model: "card" | "model" | "metric" | "dashboard" | "collection";
   modelId: number;
+  isLoading?: boolean;
   onArchive: () => Promise<void>;
   onClose?: () => void;
 }
@@ -20,6 +21,7 @@ export const ArchiveModal = ({
   message,
   model,
   modelId,
+  isLoading,
   onClose,
   onArchive,
 }: ArchiveModalProps) => {
@@ -46,7 +48,13 @@ export const ArchiveModal = ({
         <Button key="cancel" onClick={onClose}>
           {t`Cancel`}
         </Button>,
-        <Button key="archive" warning onClick={archive}>
+        <Button
+          key="archive"
+          color="error"
+          variant="filled"
+          onClick={archive}
+          loading={isLoading}
+        >
           {t`Move to trash`}
         </Button>,
       ]}

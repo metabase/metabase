@@ -44,6 +44,10 @@
 (t2/deftransforms :model/Notification
   {:payload_type (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-types))})
 
+(t2/define-after-select :model/Notification
+  [notification]
+  (dissoc notification :internal_id))
+
 (methodical/defmethod t2/batched-hydrate [:model/Notification :subscriptions]
   "Batch hydration NotificationSubscriptions for a list of Notifications."
   [_model k notifications]

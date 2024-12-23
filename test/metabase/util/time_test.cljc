@@ -408,6 +408,20 @@
     :minute      "00:02"
     :hour        "02:00"))
 
+(deftest ^:parallel extract-test
+  (let [t (shared.ut/local-date-time 2024 12 06 10 20 30 500)]
+    (are [unit expected] (= expected (shared.ut/extract t unit))
+      :second-of-minute 30
+      :minute-of-hour   20
+      :day-of-week      6
+      :day-of-week-iso  5
+      :day-of-month     6
+      :day-of-year      341
+      :week-of-year     49
+      :month-of-year    12
+      :quarter-of-year  4
+      :year             2024)))
+
 (deftest ^:parallel local-date-test
   (are [exp-str act] (same? (from-local-date exp-str) act)
     "2024-11-01" (shared.ut/local-date 2024 11 1)

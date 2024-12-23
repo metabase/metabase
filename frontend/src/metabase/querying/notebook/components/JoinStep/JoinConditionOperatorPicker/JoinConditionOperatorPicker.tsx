@@ -1,14 +1,12 @@
+import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import SelectList from "metabase/components/SelectList";
 import { Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import {
-  OperatorList,
-  OperatorListItem,
-  OperatorPickerButton,
-} from "./JoinConditionOperatorPicker.styled";
+import S from "./JoinConditionOperatorPicker.module.css";
 
 interface JoinConditionOperatorPickerProps {
   query: Lib.Query;
@@ -42,15 +40,19 @@ export function JoinConditionOperatorPicker({
   return (
     <Popover opened={isOpened} position="bottom-start" onChange={setIsOpened}>
       <Popover.Target>
-        <OperatorPickerButton
-          isOpened={isOpened}
-          isConditionComplete={isConditionComplete}
+        <button
+          className={cx(S.OperatorPickerButton, {
+            [S.disabled]: isReadOnly,
+            [S.completeCondition]: isConditionComplete,
+            [S.incompleteCondition]: !isConditionComplete,
+            [S.isOpened]: isOpened,
+          })}
           disabled={isReadOnly}
           aria-label={t`Change operator`}
           onClick={() => setIsOpened(!isOpened)}
         >
           {operatorInfo.shortName}
-        </OperatorPickerButton>
+        </button>
       </Popover.Target>
       <Popover.Dropdown>
         <JoinConditionOperatorDropdown
@@ -87,10 +89,11 @@ function JoinConditionOperatorDropdown({
   );
 
   return (
-    <OperatorList>
+    <SelectList className={S.OperatorList}>
       {items.map((item, index) => {
         return (
-          <OperatorListItem
+          <SelectList.Item
+            className={S.OperatorListItem}
             id={index}
             key={index}
             name={item.operatorInfo.shortName}
@@ -99,6 +102,6 @@ function JoinConditionOperatorDropdown({
           />
         );
       })}
-    </OperatorList>
+    </SelectList>
   );
 }

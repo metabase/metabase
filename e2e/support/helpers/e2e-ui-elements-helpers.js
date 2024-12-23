@@ -1,11 +1,10 @@
-// various Metabase-specific "scoping" functions like inside popover/modal/navbar/main/sidebar content area
+// Functions that get key elements in the app
+
 export const POPOVER_ELEMENT =
   ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
 
-export function popover() {
-  cy.get(POPOVER_ELEMENT).should("be.visible");
-  return cy.get(POPOVER_ELEMENT);
-}
+/** The currently visible popover dropdown or menu dropdown.*/
+export const popover = () => cy.get(POPOVER_ELEMENT).should("be.visible");
 
 const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']:visible";
 
@@ -29,7 +28,11 @@ export function modal() {
 }
 
 export function tooltip() {
-  return cy.get(".emotion-Tooltip-tooltip");
+  return cy.get(".emotion-Tooltip-tooltip, [role='tooltip']");
+}
+
+export function selectDropdown() {
+  return cy.get('[data-testid="select-dropdown"]');
 }
 
 export function entityPickerModal() {
@@ -74,6 +77,10 @@ export function tabsShouldBe(selected, tabs) {
 
 export function collectionOnTheGoModal() {
   return cy.findByTestId("create-collection-on-the-go");
+}
+
+export function dashboardOnTheGoModal() {
+  return cy.findByTestId("create-dashboard-on-the-go");
 }
 
 export function sidebar() {
@@ -178,8 +185,12 @@ export function toggleFilterWidgetValues(
   });
 }
 
-export const openQuestionActions = () => {
+export const openQuestionActions = action => {
   cy.findByTestId("qb-header-action-panel").icon("ellipsis").click();
+
+  if (action) {
+    popover().findByText(action).click();
+  }
 };
 
 export const collectionTable = () => {

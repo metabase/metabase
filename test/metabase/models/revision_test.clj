@@ -326,6 +326,39 @@
                      (map #(dissoc % :timestamp :id :model_id))
                      (map #(update % :description str)))))))))
 
+;;; # Concurrency
+
+(deftest revisions-can-be-created-concurrently
+  (mt/test-helpers-set-global-values!
+    (mt/with-model-cleanup [:model/Revision]
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        ;; we need one revision to exist already. Note that this means two concurrent `is_creation` revision
+        ;; insertions will have issues (both will be marked `most_recent`), but I don't think this is possible in
+        ;; practice.
+        (push-fake-revision! card-id :name "Creation")
+        ;; set up the concurrency issue
+        ;; thread 1 will start transaction, add the revision, then wait while...
+        ;; thread 2 starts a separate transaction and adds its own revision
+        ;; then both threads commit their transactions.
+        (let [p1 (promise)
+              p2 (promise)]
+          (future (t2/with-transaction [_conn]
+                    (push-fake-revision! card-id :name "Name1")
+                    (deref p1 100 ::timeout)
+                    (deliver p2 ::done)))
+          (t2/with-transaction [_conn]
+            (push-fake-revision! card-id :name "Name2")
+            (deliver p1 ::done))
+          ;; sanity check: nothing timed out, both transactions finished
+          (is (= ::done (deref p1 100 ::timeout) (deref p2 100 ::timeout)))
+          ;; we only have one `most_recent: true`
+          (is (= 1 (t2/count :model/Revision
+                             :model_id card-id :model "FakedCard"
+                             :most_recent true)))
+          ;; we have the expected total number of revisions
+          (is (= 3 (t2/count :model/Revision
+                             :model_id card-id :model "FakedCard"))))))))
+
 ;;; # REVERT
 
 (deftest revert-defer-to-revert-to-revision!-test

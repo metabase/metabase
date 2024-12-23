@@ -2,11 +2,15 @@
 title: "Alert"
 summary: |
   /api/alert endpoints.
+  
+    Deprecated: will soon be migrated to notification APIs.
 ---
 
 # Alert
 
 /api/alert endpoints.
+
+  Deprecated: will soon be migrated to notification APIs.
 
 ## `DELETE /api/alert/:id/subscription`
 

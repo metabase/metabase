@@ -100,8 +100,8 @@
                   ;; the [[lib.metadata.calculation/*propagate-binning-and-bucketing*]] is thruthy, ie. bound. Intent
                   ;; is to pass it from ref to column only during [[returned-columns]] call. Otherwise eg.
                   ;; [[orderable-columns]] would contain that too. That could be problematic, because original ref that
-                  ;; contained `:temporal-unit` contains no `:inherent-temporal-unit`. If the column like this was used
-                  ;; to generate ref for eg. order by it would contain the `:inherent-temporal-unit`, while
+                  ;; contained `:temporal-unit` contains no `:inherited-temporal-unit`. If the column like this was used
+                  ;; to generate ref for eg. order by it would contain the `:inherited-temporal-unit`, while
                   ;; the original column (eg. in breakout) would not.
                   (let [inherited-temporal-unit-keys (cond-> (list :inherited-temporal-unit)
                                                        lib.metadata.calculation/*propagate-binning-and-bucketing*

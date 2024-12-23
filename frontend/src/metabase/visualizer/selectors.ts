@@ -75,6 +75,9 @@ export const getIsLoading = createSelector(
 
 export const getDraggedItem = (state: State) => state.visualizer.draggedItem;
 
+export const getIsFullscreenModeEnabled = (state: State) =>
+  state.visualizer.isFullscreen;
+
 export const getIsVizSettingsSidebarOpen = (state: State) =>
   state.visualizer.isVizSettingsSidebarOpen;
 
@@ -228,8 +231,8 @@ export const getTabularPreviewSeries = createSelector(
 
 export const getCurrentVisualizerState = getCurrentHistoryItem;
 
-export const getIsDirty = createSelector([getCurrentVisualizerState], state =>
-  checkDirty(state),
+export const getIsDirty = createSelector([getCurrentHistoryItem], state =>
+  checkIfStateDirty(state),
 );
 
 export const getVisualizerUrlHash = createSelector(
@@ -247,15 +250,15 @@ export const getFutureVisualizerUrlHashes = createSelector(
   items => items.map(getStateHash),
 );
 
-function checkDirty(state: VisualizerHistoryItem) {
+function getStateHash(state: VisualizerHistoryItem) {
+  return checkIfStateDirty(state) ? utf8_to_b64(JSON.stringify(state)) : "";
+}
+
+function checkIfStateDirty(state: VisualizerHistoryItem) {
   return (
     !!state.display ||
     state.columns.length > 0 ||
     Object.keys(state.settings).length > 0 ||
     Object.keys(state.columnValuesMapping).length > 0
   );
-}
-
-function getStateHash(state: VisualizerHistoryItem) {
-  return checkDirty(state) ? utf8_to_b64(JSON.stringify(state)) : "";
 }

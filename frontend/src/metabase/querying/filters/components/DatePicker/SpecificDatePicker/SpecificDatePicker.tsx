@@ -1,19 +1,18 @@
 import { useMemo, useState } from "react";
 
-import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
-
 import type {
   DatePickerOperator,
   DatePickerUnit,
   SpecificDatePickerValue,
-} from "../types";
+} from "metabase/querying/filters/types";
+import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
 
 import { DateRangePicker, type DateRangePickerValue } from "./DateRangePicker";
 import {
   SingleDatePicker,
   type SingleDatePickerValue,
 } from "./SingleDatePicker";
-import { TabList } from "./SpecificDatePicker.styled";
+import S from "./SpecificDatePicker.modules.css";
 import {
   canSetTime,
   coerceValue,
@@ -28,8 +27,8 @@ import {
 
 interface SpecificDatePickerProps {
   value?: SpecificDatePickerValue;
-  availableOperators: ReadonlyArray<DatePickerOperator>;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
+  availableOperators: DatePickerOperator[];
+  availableUnits: DatePickerUnit[];
   isNew: boolean;
   onChange: (value: SpecificDatePickerValue) => void;
   onBack: () => void;
@@ -73,13 +72,13 @@ export function SpecificDatePicker({
     <Tabs value={value.operator} onTabChange={handleTabChange}>
       <Flex>
         <PopoverBackButton p="sm" onClick={onBack} />
-        <TabList>
+        <Tabs.List className={S.TabList}>
           {tabs.map(tab => (
             <Tabs.Tab key={tab.operator} value={tab.operator}>
               {tab.label}
             </Tabs.Tab>
           ))}
-        </TabList>
+        </Tabs.List>
       </Flex>
       <Divider />
       {tabs.map(tab => (

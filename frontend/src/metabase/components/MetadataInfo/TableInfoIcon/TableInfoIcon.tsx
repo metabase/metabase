@@ -31,7 +31,6 @@ export function TableInfoIcon({
         <PopoverHoverTarget
           className={className}
           name="info_filled"
-          hasDescription={Boolean(table.description)}
           size={size}
         />
       </span>

@@ -1,6 +1,9 @@
 import { t } from "ttag";
 
-import { Header, HeaderButton } from "./ExpressionWidgetHeader.styled";
+import Button from "metabase/core/components/Button";
+import { Flex } from "metabase/ui";
+
+import ExpressionWidgetHeaderS from "./ExpressionWidgetHeader.module.css";
 
 const DEFAULT_SECTION_NAME = t`Custom Expression`;
 
@@ -15,10 +18,15 @@ export const ExpressionWidgetHeader = ({
   onBack,
 }: Props): JSX.Element => {
   return (
-    <Header>
-      <HeaderButton icon="chevronleft" onlyText onClick={onBack}>
+    <Flex className={ExpressionWidgetHeaderS.Header}>
+      <Button
+        className={ExpressionWidgetHeaderS.HeaderButton}
+        icon="chevronleft"
+        onlyText
+        onClick={onBack}
+      >
         {title}
-      </HeaderButton>
-    </Header>
+      </Button>
+    </Flex>
   );
 };

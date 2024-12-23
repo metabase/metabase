@@ -55,12 +55,10 @@
 (deftest ^:parallel test-case-aggregations-in-metric
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Can we use case in metric"
-      (let [dataset-query {:query {:source-table (mt/id :venues)
-                                   :aggregation  [:sum
-                                                  [:case [[[:< [:field (mt/id :venues :price) nil] 4]
-                                                           [:field (mt/id :venues :price) nil]]]]]}
-                           :type :query
-                           :database (mt/id)}]
+      (let [dataset-query (mt/mbql-query venues
+                            {:aggregation  [:sum
+                                            [:case [[[:< $price 4]
+                                                     $price]]]]})]
         (t2.with-temp/with-temp [Card {metric-id :id} {:type :metric, :dataset_query dataset-query}]
           (is (= 179.0 (some->> (mt/run-mbql-query venues {:aggregation [[:metric metric-id]]
                                                            :source-table (str "card__" metric-id)})

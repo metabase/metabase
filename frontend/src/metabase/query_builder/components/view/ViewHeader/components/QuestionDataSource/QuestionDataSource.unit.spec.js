@@ -105,12 +105,14 @@ const ORDERS_PEOPLE_JOIN_CONDITION = [
 
 const PRODUCTS_JOIN = {
   alias: "Products",
+  ident: "WS62Exm69R6ffcsJ-aswG",
   condition: ORDERS_PRODUCT_JOIN_CONDITION,
   "source-table": PRODUCTS_ID,
 };
 
 const PEOPLE_JOIN = {
   alias: "People",
+  ident: "V0nl07W2JKSFu1-w2pL_i",
   condition: ORDERS_PEOPLE_JOIN_CONDITION,
   "source-table": PEOPLE_ID,
 };

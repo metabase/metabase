@@ -58,13 +58,13 @@
 
 (deftest ^:parallel expand-mbql-top-level-params-test
   (testing "can we expand MBQL params if they are specified at the top level?"
-    (is (= (mt/mbql-query venues
-             {:aggregation [[:count]]
-              :filter      [:= $price 1]})
-           (substitute-params
-            (mt/mbql-query venues
+    (is (=? (mt/mbql-query venues
               {:aggregation [[:count]]
-               :parameters  [{:name "price", :type :category, :target $price, :value 1}]}))))))
+               :filter      [:= $price 1]})
+            (substitute-params
+             (mt/mbql-query venues
+               {:aggregation [[:count]]
+                :parameters  [{:name "price", :type :category, :target $price, :value 1}]}))))))
 
 (deftest ^:parallel expand-native-top-level-params-test
   (testing "can we expand native params if they are specified at the top level?"
@@ -81,36 +81,36 @@
 
 (deftest ^:parallel expand-mbql-source-query-params-test
   (testing "can we expand MBQL params in a source query?"
-    (is (= (mt/mbql-query venues
-             {:source-query {:source-table $$venues
-                             :filter       [:= $price 1]}
-              :aggregation  [[:count]]})
-           (substitute-params
-            (mt/mbql-query venues
+    (is (=? (mt/mbql-query venues
               {:source-query {:source-table $$venues
-                              :parameters   [{:name "price", :type :category, :target $price, :value 1}]}
-               :aggregation  [[:count]]}))))))
+                              :filter       [:= $price 1]}
+               :aggregation  [[:count]]})
+            (substitute-params
+             (mt/mbql-query venues
+               {:source-query {:source-table $$venues
+                               :parameters   [{:name "price", :type :category, :target $price, :value 1}]}
+                :aggregation  [[:count]]}))))))
 
 (deftest ^:parallel expand-mbql-source-query-date-expression-param-test
   (testing "can we expand MBQL number and date expression params in a source query?"
-    (is (= (mt/mbql-query users
-             {:source-query {:source-table (meta/id :users)
-                             :expressions {"date-column" [:field (meta/id :users :last-login) nil]
-                                           "number-column" [:field (meta/id :users :id) nil]}
-                             :filter [:and
-                                      [:between [:expression "date-column"] "2019-09-29" "2023-09-29"]
-                                      [:= [:expression "number-column"] 1]]}})
-           (substitute-params
-            (mt/mbql-query users
+    (is (=? (mt/mbql-query users
               {:source-query {:source-table (meta/id :users)
                               :expressions {"date-column" [:field (meta/id :users :last-login) nil]
                                             "number-column" [:field (meta/id :users :id) nil]}
-                              :parameters   [{:type :date/range
-                                              :value "2019-09-29~2023-09-29"
-                                              :target [:dimension [:expression "date-column"]]}
-                                             {:type :category
-                                              :value 1
-                                              :target [:dimension [:expression "number-column"]]}]}}))))))
+                              :filter [:and
+                                       [:between [:expression "date-column"] "2019-09-29" "2023-09-29"]
+                                       [:= [:expression "number-column"] 1]]}})
+            (substitute-params
+             (mt/mbql-query users
+               {:source-query {:source-table (meta/id :users)
+                               :expressions {"date-column" [:field (meta/id :users :last-login) nil]
+                                             "number-column" [:field (meta/id :users :id) nil]}
+                               :parameters   [{:type :date/range
+                                               :value "2019-09-29~2023-09-29"
+                                               :target [:dimension [:expression "date-column"]]}
+                                              {:type :category
+                                               :value 1
+                                               :target [:dimension [:expression "number-column"]]}]}}))))))
 
 (deftest ^:parallel expand-native-source-query-params-test
   (testing "can we expand native params if in a source query?"
@@ -125,40 +125,40 @@
 
 (deftest ^:parallel expand-mbql-join-params-test
   (testing "can we expand MBQL params in a JOIN?"
-    (is (= (mt/mbql-query venues
-             {:aggregation [[:count]]
-              :joins       [{:source-query {:source-table $$categories
-                                            :filter       [:= $categories.name "BBQ"]}
-                             :alias        "c"
-                             :condition    [:= $category_id &c.categories.id]}]})
-           (substitute-params
-            (mt/mbql-query venues
+    (is (=? (mt/mbql-query venues
               {:aggregation [[:count]]
-               :joins       [{:source-table $$categories
+               :joins       [{:source-query {:source-table $$categories
+                                             :filter       [:= $categories.name "BBQ"]}
                               :alias        "c"
-                              :condition    [:= $category_id &c.categories.id]
-                              :parameters   [{:type "category", :target $categories.name, :value "BBQ"}]}]}))))))
+                              :condition    [:= $category_id &c.categories.id]}]})
+            (substitute-params
+             (mt/mbql-query venues
+               {:aggregation [[:count]]
+                :joins       [{:source-table $$categories
+                               :alias        "c"
+                               :condition    [:= $category_id &c.categories.id]
+                               :parameters   [{:type "category", :target $categories.name, :value "BBQ"}]}]}))))))
 
 (deftest ^:parallel expand-native-join-params-test
   (testing "can we expand native params in a JOIN?"
-    (is (= (mt/mbql-query venues
-             {:aggregation [[:count]]
-              :joins       [{:source-query {:native "SELECT * FROM categories WHERE name = ?;"
-                                            :params ["BBQ"]}
-                             :alias        "c"
-                             :condition    [:= $category_id &c.*categories.id]}]})
-           (substitute-params
-            (mt/mbql-query venues
+    (is (=? (mt/mbql-query venues
               {:aggregation [[:count]]
-               :joins       [{:source-query {:native        "SELECT * FROM categories WHERE name = {{cat}};"
-                                             :template-tags {"cat" {:name "cat", :display-name "Category", :type :text}}
-                                             :parameters    [{:type "category", :target [:variable [:template-tag "cat"]], :value "BBQ"}]}
+               :joins       [{:source-query {:native "SELECT * FROM categories WHERE name = ?;"
+                                             :params ["BBQ"]}
                               :alias        "c"
-                              :condition    [:= $category_id &c.*categories.id]}]}))))))
+                              :condition    [:= $category_id &c.*categories.id]}]})
+            (substitute-params
+             (mt/mbql-query venues
+               {:aggregation [[:count]]
+                :joins       [{:source-query {:native        "SELECT * FROM categories WHERE name = {{cat}};"
+                                              :template-tags {"cat" {:name "cat", :display-name "Category", :type :text}}
+                                              :parameters    [{:type "category", :target [:variable [:template-tag "cat"]], :value "BBQ"}]}
+                               :alias        "c"
+                               :condition    [:= $category_id &c.*categories.id]}]}))))))
 
 (deftest ^:parallel expand-multiple-mbql-params-test
   (testing "can we expand multiple sets of MBQL params?"
-    (is (=
+    (is (=?
          (mt/mbql-query venues
            {:source-query {:source-table $$venues
                            :filter       [:= $price 1]}
@@ -181,22 +181,22 @@
   ;; (This is dumb. Hopefully no one is creating queries like this.  The `:parameters` should go in the source query
   ;; instead of in the join.)
   (testing "can we expand multiple sets of MBQL params with params in a join and the join's source query?"
-    (is (= (mt/mbql-query venues
-             {:aggregation [[:count]]
-              :joins       [{:source-query {:source-table $$categories
-                                            :filter       [:and
-                                                           [:= $categories.name "BBQ"]
-                                                           [:= $categories.id 5]]}
-                             :alias        "c"
-                             :condition    [:= $category_id &c.categories.id]}]})
-           (substitute-params
-            (mt/mbql-query venues
+    (is (=? (mt/mbql-query venues
               {:aggregation [[:count]]
                :joins       [{:source-query {:source-table $$categories
-                                             :parameters   [{:name "id", :type :category, :target $categories.id, :value 5}]}
+                                             :filter       [:and
+                                                            [:= $categories.name "BBQ"]
+                                                            [:= $categories.id 5]]}
                               :alias        "c"
-                              :condition    [:= $category_id &c.categories.id]
-                              :parameters   [{:type "category", :target $categories.name, :value "BBQ"}]}]}))))))
+                              :condition    [:= $category_id &c.categories.id]}]})
+            (substitute-params
+             (mt/mbql-query venues
+               {:aggregation [[:count]]
+                :joins       [{:source-query {:source-table $$categories
+                                              :parameters   [{:name "id", :type :category, :target $categories.id, :value 5}]}
+                               :alias        "c"
+                               :condition    [:= $category_id &c.categories.id]
+                               :parameters   [{:type "category", :target $categories.name, :value "BBQ"}]}]}))))))
 
 (defn- card-template-tag
   [card-id]

@@ -732,7 +732,7 @@ describe("dashboard filters auto-wiring", () => {
 
     cy.log("add a card to the dashboard and auto-wire");
     H.editDashboard();
-    H.dashboardHeader().icon("add").click();
+    H.openQuestionsSidebar();
     cy.findByTestId("add-card-sidebar")
       .findByText(questionDetails.name)
       .click();
@@ -769,7 +769,7 @@ function createDashboardWithCards({
 function addCardToDashboard(dashcardNames = "Orders Model") {
   const dashcardsToSelect =
     typeof dashcardNames === "string" ? [dashcardNames] : dashcardNames;
-  cy.findByTestId("dashboard-header").icon("add").click();
+  H.openQuestionsSidebar();
   for (const dashcardName of dashcardsToSelect) {
     cy.findByTestId("add-card-sidebar").findByText(dashcardName).click();
   }

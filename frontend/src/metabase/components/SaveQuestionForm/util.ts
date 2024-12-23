@@ -42,6 +42,7 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
       ? details.collection_id
       : saveToCollectionId,
   );
+  const dashboardId = details.dashboard_id;
 
   const displayName = details.name.trim();
   const description = details.description ? details.description.trim() : null;
@@ -49,9 +50,10 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
   const newQuestion = question
     .setDisplayName(displayName)
     .setDescription(description)
-    .setCollectionId(collectionId);
+    .setCollectionId(collectionId)
+    .setDashboardId(dashboardId);
 
-  await onCreate(newQuestion);
+  return onCreate(newQuestion, { dashboardTabId: details.tab_id || undefined });
 };
 
 export async function submitQuestion(options: SubmitQuestionOptions) {
@@ -84,6 +86,8 @@ export const getInitialValues = (
   originalQuestion: Question | null,
   question: Question,
   initialCollectionId: FormValues["collection_id"],
+  initialDashboardId: FormValues["dashboard_id"],
+  initialDashboardTabId: FormValues["tab_id"],
 ): FormValues => {
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
@@ -91,6 +95,16 @@ export const getInitialValues = (
     originalQuestion
       ? t`${originalQuestion.displayName()} - Modified`
       : undefined;
+
+  const dashboardId =
+    question.dashboardId() === undefined || isReadonly
+      ? initialDashboardId
+      : question.dashboardId();
+
+  const collectionId =
+    question.collectionId() === undefined || isReadonly
+      ? initialCollectionId
+      : question.collectionId();
 
   return {
     name:
@@ -101,10 +115,9 @@ export const getInitialValues = (
       "",
     description:
       originalQuestion?.description() || question.description() || "",
-    collection_id:
-      question.collectionId() === undefined || isReadonly
-        ? initialCollectionId
-        : question.collectionId(),
+    collection_id: collectionId,
+    dashboard_id: dashboardId,
+    tab_id: initialDashboardTabId,
     saveType:
       originalQuestion &&
       originalQuestion.type() === "question" &&

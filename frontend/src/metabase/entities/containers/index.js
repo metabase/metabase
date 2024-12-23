@@ -1,9 +1,7 @@
 /* eslint-disable react/prop-types */
-import EntityLink from "./EntityLink";
 import EntityListLoader, { entityListLoader } from "./EntityListLoader";
 import { EntityName } from "./EntityName";
-import EntityObjectLoader, { entityObjectLoader } from "./EntityObjectLoader";
-import { entityObjectLoaderRtkQuery } from "./rtk-query";
+import { entityListLoaderRtkQuery, entityObjectLoader } from "./rtk-query";
 
 export function addEntityContainers(entity) {
   const ObjectName = entity.nameOne;
@@ -11,27 +9,7 @@ export function addEntityContainers(entity) {
   /**
    * @deprecated HOCs are deprecated
    */
-  entity.load = ({ id, query, ...props } = {}) => {
-    // TODO: define rtk mappings for all remaining entities
-    // https://github.com/metabase/metabase/issues/50323
-    if (!entity.rtk) {
-      return entity.loadLegacy({ id, query, ...props });
-    }
-
-    return entityObjectLoaderRtkQuery({
-      entityType: entity.name,
-      entityId: id,
-      entityQuery: query,
-      ...props,
-    });
-  };
-
-  /**
-   * TODO: remove this in https://github.com/metabase/metabase/issues/50322
-   *
-   * @deprecated HOCs are deprecated
-   */
-  entity.loadLegacy = ({ id, query, ...props } = {}) =>
+  entity.load = ({ id, query, ...props } = {}) =>
     entityObjectLoader({
       entityType: entity.name,
       entityId: id,
@@ -39,16 +17,34 @@ export function addEntityContainers(entity) {
       ...props,
     });
 
-  entity.Loader = ({ id, ...props }) => (
-    <EntityObjectLoader entityType={entity.name} entityId={id} {...props} />
-  );
-  entity.Loader.displayName = `${ObjectName}.Loader`;
-
   /**
    * @deprecated HOCs are deprecated
    */
-  entity.loadList = ({ query, ...props } = {}) =>
-    entityListLoader({ entityType: entity.name, entityQuery: query, ...props });
+  entity.loadList = ({ query, ...props } = {}) => {
+    // TODO: remove this in https://github.com/metabase/metabase/issues/50324
+    if (!entity.rtk?.useListQuery) {
+      return entity.loadListLegacy({ query, ...props });
+    }
+
+    return entityListLoaderRtkQuery({
+      entityType: entity.name,
+      entityQuery: query,
+      ...props,
+    });
+  };
+
+  /**
+   * TODO: remove this is in https://github.com/metabase/metabase/issues/50325
+   *
+   * @deprecated HOCs are deprecated
+   */
+  entity.loadListLegacy = ({ query, ...props } = {}) => {
+    return entityListLoader({
+      entityType: entity.name,
+      entityQuery: query,
+      ...props,
+    });
+  };
 
   entity.ListLoader = ({ query, ...props }) => (
     <EntityListLoader entityType={entity.name} entityQuery={query} {...props} />
@@ -59,9 +55,4 @@ export function addEntityContainers(entity) {
     <EntityName entityType={entity.name} entityId={id} {...props} />
   );
   entity.Name.displayName = `${ObjectName}.Name`;
-
-  entity.Link = ({ id, ...props }) => (
-    <EntityLink entityType={entity.name} entityId={id} {...props} />
-  );
-  entity.Link.displayName = `${ObjectName}.Link`;
 }

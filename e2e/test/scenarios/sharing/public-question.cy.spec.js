@@ -143,7 +143,14 @@ describe("scenarios > public > question", () => {
 
     cy.get("@editor").type("{moveToStart}select ");
 
-    H.saveQuestion("test question", { wrapId: true });
+    H.saveQuestion(
+      "test question",
+      { wrapId: true },
+      {
+        tab: "Browse",
+        path: ["Our analytics"],
+      },
+    );
 
     cy.get("@questionId").then(id => {
       H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
@@ -169,7 +176,14 @@ describe("scenarios > public > question", () => {
         .type("select * from {{#")
         .type(`{leftarrow}{leftarrow}${id}`);
 
-      H.saveQuestion("test question", { wrapId: true });
+      H.saveQuestion(
+        "test question",
+        { wrapId: true },
+        {
+          tab: "Browse",
+          path: ["Our analytics"],
+        },
+      );
       cy.get("@questionId").then(id => {
         H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
           cy.signOut();
@@ -216,16 +230,21 @@ H.describeEE("scenarios [EE] > public > question", () => {
       { wrapId: true },
     );
 
+    // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
+    cy.intercept("/app/locales/de.json").as("deLocale");
+
     cy.get("@questionId").then(id => {
       H.visitPublicQuestion(id, {
         params: {
           some_parameter: "some_value",
         },
         hash: {
-          locale: "de",
+          locale: "de-CH",
         },
       });
     });
+
+    cy.wait("@deLocale");
 
     H.main().findByText("Februar 11, 2025");
 

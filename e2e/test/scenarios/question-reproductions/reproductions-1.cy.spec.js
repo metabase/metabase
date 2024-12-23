@@ -130,7 +130,7 @@ describe("issue 9027", () => {
 
     H.startNewQuestion();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("Orders").should("exist");
       cy.button("Close").click();
     });
@@ -140,7 +140,10 @@ describe("issue 9027", () => {
     H.focusNativeEditor().type("select 0");
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
-    saveQuestion(QUESTION_NAME);
+    H.saveQuestion(QUESTION_NAME, undefined, {
+      tab: "Browse",
+      path: ["Our analytics"],
+    });
   });
 
   it("should display newly saved question in the 'Saved Questions' list immediately (metabase#9027)", () => {
@@ -157,23 +160,10 @@ describe("issue 9027", () => {
 function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
   H.startNewQuestion();
   H.entityPickerModal().within(() => {
-    H.entityPickerModalTab("Saved questions").click();
+    H.entityPickerModalTab("Collections").click();
     cy.findByText(questionName).should(exists ? "exist" : "not.exist");
     cy.button("Close").click();
   });
-}
-
-function saveQuestion(name) {
-  cy.intercept("POST", "/api/card").as("saveQuestion");
-  cy.findByText("Save").click();
-
-  cy.findByTestId("save-question-modal").within(modal => {
-    cy.findByLabelText("Name").clear().type(name);
-    cy.findByText("Save").click();
-  });
-
-  cy.button("Not now").click();
-  cy.wait("@saveQuestion");
 }
 
 function archiveQuestion(questionName) {
@@ -290,8 +280,10 @@ describe("issue 14957", { tags: "@external" }, () => {
     H.openNativeEditor({ databaseName: PG_DB_NAME }).type(
       "select pg_sleep(60)",
     );
-
-    saveQuestion("14957");
+    H.saveQuestion("14957", undefined, {
+      tab: "Browse",
+      path: ["Our analytics"],
+    });
     H.modal().should("not.exist");
   });
 });
@@ -844,15 +836,16 @@ describe("issues 11914, 18978, 18977, 23857", () => {
       "Make sure we don't offer to duplicate question with a query for which the user has no permission to run (metabase#23857)",
     );
     H.visitQuestion(ORDERS_QUESTION_ID);
-    cy.findByLabelText("Move, trash, and more...").click();
+    cy.findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Duplicate").should("not.exist");
 
     cy.log(
       "Make sure we don't offer to duplicate question based on a question with a query for which the user has no permission to run (metabase#23857)",
     );
+    cy.findByLabelText("Move, trash, and more…").click(); // close actions menu, without this "Search" button is treated as hidden by cypress
     H.commandPaletteSearch("Repro", false);
     H.commandPalette().findByText("Repro").click();
-    cy.findByLabelText("Move, trash, and more...").click();
+    cy.findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Duplicate").should("not.exist");
 
     cy.log(

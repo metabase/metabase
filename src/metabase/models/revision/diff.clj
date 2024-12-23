@@ -89,6 +89,16 @@
     [:result_metadata _ _]
     (deferred-tru "edited the metadata")
 
+    [:dashboard_id v1 v2]
+    (cond
+      (and v1 v2) (deferred-tru "moved from dashboard {0} to {1}"
+                                (t2/select-one-fn :name :model/Dashboard :id v1)
+                                (t2/select-one-fn :name :model/Dashboard :id v2))
+      (nil? v1) (deferred-tru "made this a dashboard-internal question in {0}"
+                              (t2/select-one-fn :name :model/Dashboard :id v2))
+      (nil? v2) (deferred-tru "extracted this question from {0}"
+                              (t2/select-one-fn :name :model/Dashboard :id v1)))
+
     [:width v1 v2]
     (if (and v1 v2)
       (deferred-tru "changed the width setting from {0} to {1}" (name v1) (name v2))

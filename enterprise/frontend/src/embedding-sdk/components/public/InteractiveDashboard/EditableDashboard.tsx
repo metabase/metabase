@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-import type { SdkPluginsConfig } from "embedding-sdk";
+import type { MetabasePluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import { StyledPublicComponentWrapper } from "embedding-sdk/components/public/InteractiveDashboard/EditableDashboard.styled";
 import {
@@ -21,7 +21,7 @@ import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
 export type EditableDashboardProps = {
   drillThroughQuestionHeight?: number;
-  plugins?: SdkPluginsConfig;
+  plugins?: MetabasePluginsConfig;
   className?: string;
   style?: CSSProperties;
 } & Omit<SdkDashboardDisplayProps, "withTitle" | "hiddenParameters"> &
@@ -72,7 +72,7 @@ export const EditableDashboard = ({
       {adhocQuestionUrl ? (
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}
-          withTitle
+          title={true}
           height={drillThroughQuestionHeight}
           plugins={plugins}
           onNavigateBack={onNavigateBackToDashboard}

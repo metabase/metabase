@@ -6,14 +6,18 @@ title: "Configuration file"
 
 {% include plans-blockquote.html feature="Loading from a configuration file" self-hosted-only="true" %}
 
-On self-hosted Pro and Enterprise plans, Metabase supports initialization on launch from a config file named `config.yml`. The config file should be located at:
+On self-hosted [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans, Metabase supports initialization on launch from a config file named `config.yml`. The config file should be located at:
 
 - The current directory (the directory where the running Metabase JAR is located).
 - The path specified by the `MB_CONFIG_FILE_PATH` [environment variable](./environment-variables.md).
 
-The settings as defined in the config file work the same as if you set these settings in the Admin Settings in your Metabase. Settings defined in this configuration file will update any existing settings. If, for example, a database already exists (that is, you'd already added it via the initial set up or **Admin settings** > **Databases**, Metabase will update the database entry based on the data in the config file).
+The settings as defined in the config file work the same as if you set these settings in the Admin Settings in your Metabase. Settings defined in this configuration file will update any existing settings. If, for example, a database already exists (that is, you'd already added it via the initial set up or **Admin settings** > **Databases**, Metabase will update the database entry based on the data in the config file). Which means: if you define a setting in the config file, and then later change that setting in your Metabase application, keep in mind that the config file will overwrite that change whenever Metabase restarts.
 
-The config file settings are not treated as a hardcoded source of truth (like [environment variables](./environment-variables.md) are). Settings set by environment variables cannot be changed, even in the Admin settings in the application itself.
+The config file settings are NOT treated as a hardcoded source of truth (like [environment variables](./environment-variables.md) are). Settings set by environment variables cannot be changed, even in the Admin settings in the application itself.
+
+## Example config template
+
+See [Config template](./config-template.md).
 
 ## Config setup
 
@@ -181,43 +185,7 @@ config:
       details: ...
 ```
 
-Just to give you an idea for some settings, here's an incomplete list of settings you can set via the config file:
-
-```txt
-application-colors
-config-from-file-sync-databases
-check-for-updates
-experimental-enable-actions
-persisted-model-refresh-cron-schedule
-email-smtp-host
-email-smtp-username
-start-of-week
-email-smtp-password
-email-smtp-port
-email-from-name
-email-from-address
-email-reply-to
-premium-embedding-token
-follow-up-email-sent
-persisted-models-enabled
-site-locale
-application-name
-settings-last-updated
-instance-creation
-enable-public-sharing
-enable-embedding
-embedding-secret-key
-jwt-group-sync
-anon-tracking-enabled
-snowplow-available
-jwt-enabled
-google-auth-enabled
-redirect-all-requests-to-https
-site-url
-site-name
-```
-
-But you can set any of the Admin settings with the config file. Check out the list of [environment variable](./environment-variables.md) to see what you can configure (though note that not all environment variables can be set via the config file.)
+But you can set any of the Admin settings with the config file (for a list of settings, check out the [config file template](./config-template.md)). You can also browse the list of [environment variable](./environment-variables.md) to see what you can configure (though note that not all environment variables can be set via the config file.)
 
 ## Loading a new Metabase from a config file
 
@@ -226,3 +194,8 @@ Since loading from a config file is a Pro/Enterprise feature: for new installati
 ```sh
 MB_PREMIUM_EMBEDDING_TOKEN="[your token]" java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
+
+## Further reading
+
+- [Config file template](./config-template.md)
+- [Environment variables](./environment-variables.md)

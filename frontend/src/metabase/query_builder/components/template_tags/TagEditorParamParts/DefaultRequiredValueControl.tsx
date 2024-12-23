@@ -9,7 +9,7 @@ import {
   ContainerLabel,
   DefaultParameterValueWidget,
   ErrorSpan,
-} from "./TagEditorParam.styled";
+} from "./TagEditorParam";
 
 export function DefaultRequiredValueControl({
   tag,

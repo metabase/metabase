@@ -28,7 +28,7 @@ Interactive embedding is the only kind of embedding that [integrates with SSO an
 
 Also known as signed embedding, [static embedding](./static-embedding.md) is a secure way to embed charts and dashboards.
 
-**When to use static embedding**: you don’t want to give people ad hoc query access to their data for whatever reason, or you want to present data that applies to all of your tenants at once. For example, say you want to showcase some benchmarking stats: if you just want to make those stats available exclusively to your customers, you could use a signed embed.
+**When to use static embedding**: you don't want to offer ad-hoc querying or chart drill-through. To filter data relevant to the viewer, you can use static embeds with [locked parameters](./static-embedding-parameters.md#locked-parameters-limit-the-values-available-to-other-editable-parameters).
 
 ## Public links and embeds
 

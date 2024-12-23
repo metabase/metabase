@@ -1,5 +1,5 @@
+import cx from "classnames";
 import { useMemo } from "react";
-import { connect } from "react-redux";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
@@ -7,6 +7,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import CS from "metabase/css/core/index.css";
 import Database from "metabase/entities/databases";
 import { formatNumber } from "metabase/lib/formatting";
+import { connect } from "metabase/lib/redux";
 import { setLimit } from "metabase/query_builder/actions";
 import LimitPopover from "metabase/query_builder/components/LimitPopover";
 import {
@@ -14,6 +15,7 @@ import {
   getIsResultDirty,
   getQuestion,
 } from "metabase/query_builder/selectors";
+import { Box } from "metabase/ui";
 import type { Limit } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -21,7 +23,7 @@ import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import type { Dataset } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { RowCountButton, RowCountStaticLabel } from "./QuestionRowCount.styled";
+import QuestionRowCountS from "./QuestionRowCount.module.css";
 
 const POPOVER_ID = "limit-popover";
 
@@ -123,6 +125,7 @@ function QuestionRowCount({
 
 function RowCountLabel({
   disabled,
+  className,
   ...props
 }: {
   children: string;
@@ -131,11 +134,24 @@ function RowCountLabel({
   className?: string;
 }) {
   const label = t`Row count`;
+  const { highlighted, ...propsForChild } = props;
   return disabled ? (
-    <RowCountStaticLabel {...props} aria-label={label} />
+    <Box
+      component="span"
+      className={cx(QuestionRowCountS.RowCountStaticLabel, className)}
+      {...propsForChild}
+      aria-label={label}
+    />
   ) : (
-    <RowCountButton
-      {...props}
+    <button
+      className={cx(
+        QuestionRowCountS.RowCountButton,
+        {
+          [QuestionRowCountS.isHighlighted]: highlighted,
+        },
+        className,
+      )}
+      {...propsForChild}
       aria-label={label}
       aria-haspopup="dialog"
       aria-controls={POPOVER_ID}

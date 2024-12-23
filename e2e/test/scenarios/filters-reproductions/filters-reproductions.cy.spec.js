@@ -1568,7 +1568,7 @@ describe("issue 49642", () => {
   });
 
   function addQuestion(name) {
-    cy.findByTestId("dashboard-header").icon("add").click();
+    H.openQuestionsSidebar();
     cy.findByTestId("add-card-sidebar").findByText(name).click();
   }
 

@@ -18,7 +18,7 @@ const {
   PEOPLE_ID,
 } = SAMPLE_DATABASE;
 
-const { DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
+const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 H.describeEE("formatting > sandboxes", () => {
   describe("admin", () => {
@@ -183,12 +183,156 @@ H.describeEE("formatting > sandboxes", () => {
     });
   });
 
+  describe("sandboxed user", () => {
+    const allCategories = ["Gadget", "Gizmo", "Doohickey", "Widget"];
+
+    function verifyCategoryList(visibleCategories) {
+      H.popover().within(() => {
+        allCategories.forEach(value => {
+          if (visibleCategories.includes(value)) {
+            cy.findByText(value).should("be.visible");
+          } else {
+            cy.findByText(value).should("not.exist");
+          }
+        });
+      });
+    }
+
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.setTokenFeatures("all");
+      preparePermissions();
+    });
+
+    it("should show field values for sandboxed users", () => {
+      cy.log("create another sandboxed user");
+      const user = {
+        email: "u2@metabase.test",
+        password: "12341234",
+        login_attributes: {
+          attr_uid: "2",
+          attr_cat: "Gadget",
+        },
+        user_group_memberships: [
+          { id: ALL_USERS_GROUP, is_group_manager: false },
+          { id: COLLECTION_GROUP, is_group_manager: false },
+        ],
+      };
+      cy.createUserFromRawData(user);
+
+      cy.log("setup sandboxing");
+      cy.visit(
+        `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
+      );
+      H.modifyPermission("collection", 0, "Sandboxed");
+      H.modal().findByText("Pick a column").click();
+      H.popover().findByText("Category").click();
+      H.modal().findByText("Pick a user attribute").click();
+      H.popover().findByText("attr_cat").click();
+      H.modal().button("Save").click();
+      H.savePermissions();
+
+      cy.log("setup a dashboard");
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.editDashboard();
+      H.setFilter("Text or Category", "Is");
+      H.selectDashboardFilter(H.getDashboardCard(), "Category");
+      H.saveDashboard();
+
+      cy.log("field values for admin");
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.filterWidget().click();
+      verifyCategoryList(allCategories);
+
+      cy.log("field values for the first sandboxed user");
+      cy.signIn("sandboxed");
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.filterWidget().click();
+      verifyCategoryList(["Widget"]);
+
+      cy.log("field values for the second sandboxed user");
+      cy.request("POST", "/api/session", {
+        username: user.email,
+        password: user.password,
+      });
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.filterWidget().click();
+      verifyCategoryList(["Gadget"]);
+    });
+  });
+
   describe("Sandboxing reproductions", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
       H.setTokenFeatures("all");
       preparePermissions();
+    });
+
+    it("should allow using a dashboard question as a sandbox source", () => {
+      const USER_ATTRIBUTE = "User ID";
+      const ATTRIBUTE_VALUE = "3";
+      const TTAG_NAME = "cid";
+      const QUESTION_NAME = "Joined test";
+
+      // Add user attribute to existing ("normal" / id:2) user
+      cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, {
+        login_attributes: { [USER_ATTRIBUTE]: ATTRIBUTE_VALUE },
+      });
+
+      // Orders join Products
+      createJoinedQuestion(QUESTION_NAME);
+
+      cy.sandboxTable({
+        table_id: ORDERS_ID,
+        group_id: DATA_GROUP,
+        attribute_remappings: {
+          [USER_ATTRIBUTE]: ["dimension", ["field", ORDERS.USER_ID, null]],
+        },
+      });
+
+      cy.createNativeQuestion({
+        name: "sql param in a dashboard",
+        dashboard_id: ORDERS_DASHBOARD_ID,
+        native: {
+          query: `select id,name,address,email from people where {{${TTAG_NAME}}}`,
+          "template-tags": {
+            [TTAG_NAME]: {
+              id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
+              name: TTAG_NAME,
+              "display-name": "CID",
+              type: "dimension",
+              dimension: ["field", PEOPLE.ID, null],
+              "widget-type": "id",
+            },
+          },
+        },
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.sandboxTable({
+          table_id: PEOPLE_ID,
+          card_id: QUESTION_ID,
+          group_id: DATA_GROUP,
+          attribute_remappings: {
+            [USER_ATTRIBUTE]: ["dimension", ["template-tag", TTAG_NAME]],
+          },
+        });
+      });
+
+      cy.signOut();
+      cy.signInAsNormalUser();
+
+      // see that the question is in the dashboard
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.dashboardCards().findByText("sql param in a dashboard").should("exist");
+
+      H.openPeopleTable();
+      // 1 row filtered on User ID
+      cy.findAllByText(ATTRIBUTE_VALUE).should("have.length", 1);
+      H.assertDatasetReqIsSandboxed({
+        columnId: PEOPLE.USER_ID,
+        columnAssertion: ATTRIBUTE_VALUE,
+      });
     });
 
     it("should allow joins to the sandboxed table (metabase-enterprise#154)", () => {
@@ -817,7 +961,7 @@ H.describeEE("formatting > sandboxes", () => {
 
       H.startNewQuestion();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Saved questions").click();
+        H.entityPickerModalTab("Collections").click();
         cy.findByText("14766_joined").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

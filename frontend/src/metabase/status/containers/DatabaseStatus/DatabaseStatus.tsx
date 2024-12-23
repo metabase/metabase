@@ -1,7 +1,7 @@
-import { connect } from "react-redux";
 import _ from "underscore";
 
 import Databases from "metabase/entities/databases";
+import { connect } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { getUser } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";

@@ -227,31 +227,23 @@
 (deftest ^:parallel add-correct-implicit-fields-for-deeply-nested-source-queries-test
   (testing "Make sure we add correct `:fields` from deeply-nested source queries (#14872)"
     (qp.store/with-metadata-provider meta/metadata-provider
-      (let [expected-cols (fn [query]
-                            (qp.preprocess/query->expected-cols
-                             {:database (meta/id)
-                              :type     :query
-                              :query    query}))
-            q1            (lib.tu.macros/$ids orders
-                            {:source-table $$orders
-                             :filter       [:= $id 1]
+      (let [expected-cols qp.preprocess/query->expected-cols
+            q1            (lib.tu.macros/mbql-query orders
+                            {:filter       [:= $id 1]
                              :aggregation  [[:sum $total]]
                              :breakout     [!day.created-at
                                             $product-id->products.title
                                             $product-id->products.category]})
-            q2            (lib.tu.macros/$ids orders
-                            {:source-query    q1
+            q2            (lib.tu.macros/mbql-query nil
+                            {:source-query    (:query q1)
                              :filter          [:> *sum/Float 100]
                              :aggregation     [[:sum *sum/Float]]
-                             :breakout        [$product-id->products.title]
+                             :breakout        [$orders.product-id->products.title]
                              :source-metadata (expected-cols q1)})
-            q3            (lib.tu.macros/$ids orders
-                            {:source-query    q2
+            query         (lib.tu.macros/mbql-query nil
+                            {:source-query    (:query q2)
                              :filter          [:> *sum/Float 100]
-                             :source-metadata (expected-cols q2)})
-            query         {:database (meta/id)
-                           :type     :query
-                           :query    q3}]
+                             :source-metadata (expected-cols q2)})]
         (is (=? (lib.tu.macros/$ids orders
                   [$product-id->products.title
                    *sum/Float])

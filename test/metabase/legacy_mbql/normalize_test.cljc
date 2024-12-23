@@ -1023,6 +1023,88 @@
                     :fields   [[:field 3 nil]]}}}}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              REPLACE LEGACY FILTERS                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(t/deftest ^:parallel replace-relative-date-filters-test
+  (tests 'replace-relative-date-filters #'mbql.normalize/replace-relative-date-filters
+         {"date range in the past"
+          {[:between
+            [:+ [:field 1 nil] [:interval 7 :year]]
+            [:relative-datetime -30 :day]
+            [:relative-datetime 0 :day]]
+           [:relative-time-interval [:field 1 nil] -30 :day -7 :year]}
+
+          "date range in the future"
+          {[:between
+            [:+ [:field 1 nil] [:interval -7 :year]]
+            [:relative-datetime 0 :day]
+            [:relative-datetime 30 :day]]
+           [:relative-time-interval [:field 1 nil] 30 :day 7 :year]}
+
+          "date range that is not entirely in the past or in the future should be skipped"
+          {[:between
+            [:+ [:field 1 nil] [:interval -7 :year]]
+            [:relative-datetime -5 :day]
+            [:relative-datetime 30 :day]]
+           [:between
+            [:+ [:field 1 nil] [:interval -7 :year]]
+            [:relative-datetime -5 :day]
+            [:relative-datetime 30 :day]]}
+
+          "date range with different units for start and end of the interval should be skipped"
+          {[:between
+            [:+ [:field 1 nil] [:interval -7 :year]]
+            [:relative-datetime 0 :day]
+            [:relative-datetime 30 :quarter]]
+           [:between
+            [:+ [:field 1 nil] [:interval -7 :year]]
+            [:relative-datetime 0 :day]
+            [:relative-datetime 30 :quarter]]}}))
+
+(t/deftest ^:parallel replace-exclude-date-filters-test
+  (tests 'replace-exclude-date-filters #'mbql.normalize/replace-exclude-date-filters
+         {"`:hour-of-day`"
+          {[:!= [:field 1 {:temporal-unit :hour-of-day}] 0 23]
+           [:!= [:get-hour [:field 1 nil]] 0 23]}
+
+          "`:day-of-week`"
+          {[:!= [:field 1 {:temporal-unit :day-of-week}] "2024-12-02" "2024-12-08"]
+           [:!= [:get-day-of-week [:field 1 nil] :iso] 1 7]}
+
+          "`:month-of-year`"
+          {[:!= [:field 1 {:temporal-unit :month-of-year}] "2024-01-02" "2024-12-08"]
+           [:!= [:get-month [:field 1 nil]] 1 12]}
+
+          "`:quarter-of-year`"
+          {[:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-02" "2024-12-08"]
+           [:!= [:get-quarter [:field 1 nil]] 1 4]}
+
+          "field options should be preserved"
+          {[:!= [:field 1 {:base-type :type/DateTime :temporal-unit :hour-of-day}] 10]
+           [:!= [:get-hour [:field 1 {:base-type :type/DateTime}]] 10]}
+
+          "filters with invalid dates should be ignored"
+          {[:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-99" "2024-12-08"]
+           [:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-99" "2024-12-08"]}
+
+          "filters with non-date string arguments should be ignored"
+          {[:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-02" "abc"]
+           [:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-02" "abc"]}}))
+
+(t/deftest ^:parallel replace-legacy-filters-test
+  (tests 'replace-legacy-filters-test #'mbql.normalize/replace-legacy-filters
+         {"exclude date filters"
+          {{:type  :query,
+            :query {:filters [:and
+                              [:!= [:field 1 {:temporal-unit :hour-of-day}] 0 23]
+                              [:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-02" "2024-12-08"]]}}
+           {:type  :query,
+            :query {:filters [:and
+                              [:!= [:get-hour [:field 1 nil]] 0 23]
+                              [:!= [:get-quarter [:field 1 nil]] 1 4]]}}}}))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              REMOVE EMPTY CLAUSES                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -1502,3 +1584,52 @@
                1
                {"base-type" "type/Float", "effective-type" "type/Float"}]
               -1]))))
+
+(t/deftest ^:parallel normalize-legacy-filters-test
+  (t/is (= {:database 1
+            :type     :query
+            :query   {:filters [:and
+                                [:!= [:get-hour [:field 1 nil]] 0 23]
+                                [:between [:field 1 nil] "2024-10-05" "2024-12-08"]]}}
+           (mbql.normalize/normalize {:database 1
+                                      :type     :query
+                                      :query   {:filters [:and
+                                                          [:!= [:field 1 {:temporal-unit :hour-of-day}] 0 23]
+                                                          [:between [:field 1 nil] "2024-10-05" "2024-12-08"]]}}))))
+
+(t/deftest ^:parallel normalizing-idents-test
+  (let [ident0 "ident0_______________"
+        ident1 "ident1_______________"
+        ident2 "ident2_______________"
+        ident3 "ident3_______________"
+        ident4 "ident4_______________"]
+    (t/testing ":aggregation-idents is normalized to have integer keys"
+      (t/is (=? {:query {:aggregation-idents {0 ident0
+                                              1 ident1
+                                              2 ident2}}}
+                (mbql.normalize/normalize
+                 {:query {:aggregation [[:count] [:count] [:count]]
+                          :aggregation-idents {0   ident0
+                                               "1" ident1
+                                               :2  ident2}}}))))
+    (t/testing ":breakout-idents is normalized to have integer keys"
+      (t/is (=? {:query {:breakout-idents {0 ident0
+                                           1 ident1
+                                           2 ident2}}}
+                (mbql.normalize/normalize
+                 {:query {:breakout [[:field 1 {}] [:field 2 {}] [:field 3 {}]]
+                          :breakout-idents {0   ident0
+                                            "1" ident1
+                                            :2  ident2}}}))))
+    (t/testing ":expression-idents is normalized to have string keys, even if they got keywordized"
+      (t/is (=? {:query {:expression-idents {"regular string"     ident0
+                                             "string/with slash"  ident1
+                                             "keyword-name"       ident2
+                                             "keyword/with-slash" ident3
+                                             "namespaced/keyword" ident4}}}
+                (mbql.normalize/normalize
+                 {:query {:expression-idents {"regular string"                 ident0
+                                              "string/with slash"              ident1
+                                              :keyword-name                    ident2
+                                              (keyword "keyword/with-slash")   ident3
+                                              (keyword "namespaced" "keyword") ident4}}}))))))

@@ -7,7 +7,10 @@ import {
   getCurrentVisualizerState,
   getIsDirty,
 } from "metabase/visualizer/selectors";
-import { toggleVizSettingsSidebar } from "metabase/visualizer/visualizer.slice";
+import {
+  toggleFullscreenMode,
+  toggleVizSettingsSidebar,
+} from "metabase/visualizer/visualizer.slice";
 import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 interface HeaderProps {
@@ -15,10 +18,10 @@ interface HeaderProps {
 }
 
 export function Header({ onSave }: HeaderProps) {
+  const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
+
   const visualization = useSelector(getCurrentVisualizerState);
   const isDirty = useSelector(getIsDirty);
-
-  const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
   const dispatch = useDispatch();
 
@@ -43,7 +46,10 @@ export function Header({ onSave }: HeaderProps) {
 
       <Flex align="center" gap="sm">
         <Tooltip label={t`Settings`}>
-          <ActionIcon onClick={() => dispatch(toggleVizSettingsSidebar())}>
+          <ActionIcon
+            disabled={!isDirty}
+            onClick={() => dispatch(toggleVizSettingsSidebar())}
+          >
             <Icon name="gear" />
           </ActionIcon>
         </Tooltip>
@@ -53,7 +59,10 @@ export function Header({ onSave }: HeaderProps) {
           </ActionIcon>
         </Tooltip>
         <Tooltip label={t`Fullscreen`}>
-          <ActionIcon>
+          <ActionIcon
+            disabled={!isDirty}
+            onClick={() => dispatch(toggleFullscreenMode())}
+          >
             <Icon name="expand" />
           </ActionIcon>
         </Tooltip>

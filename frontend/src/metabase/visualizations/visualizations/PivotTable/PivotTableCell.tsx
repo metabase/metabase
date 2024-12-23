@@ -63,6 +63,7 @@ export function Cell({
 }: CellProps) {
   return (
     <PivotTableCell
+      data-allow-page-break-after
       data-testid="pivot-table-cell"
       isNightMode={isNightMode}
       isBold={isBold}

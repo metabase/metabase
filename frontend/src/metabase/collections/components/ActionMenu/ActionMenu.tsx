@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -21,7 +20,7 @@ import {
 } from "metabase/collections/utils";
 import { ConfirmDeleteModal } from "metabase/components/ConfirmDeleteModal";
 import { bookmarks as BookmarkEntity } from "metabase/entities";
-import { useDispatch } from "metabase/lib/redux";
+import { connect, useDispatch } from "metabase/lib/redux";
 import { entityForObject } from "metabase/lib/schema";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
@@ -130,14 +129,19 @@ function ActionMenu({
       Entity.actions.update({ id: item.id, archived: false }),
     );
     await dispatch(BookmarkEntity.actions.invalidateLists());
-    const parent = HACK_getParentCollectionFromEntityUpdateAction(item, result);
-    const redirect = parent ? Urls.collection(parent) : `/collection/root`;
+
+    const entity = Entity.HACK_getObjectFromAction(result);
+    const parentCollection = HACK_getParentCollectionFromEntityUpdateAction(
+      item,
+      result,
+    );
+    const redirect = getParentEntityLink(entity, parentCollection);
 
     dispatch(
       addUndo({
         icon: "check",
         message: t`${item.name} has been restored.`,
-        actionLabel: t`View in collection`,
+        actionLabel: t`View`, // could be collection or dashboard
         action: () => dispatch(push(redirect)),
         undo: false,
       }),
@@ -181,6 +185,25 @@ function ActionMenu({
       )}
     </>
   );
+}
+
+export function getParentEntityLink(
+  updatedEntity: any,
+  parentCollection: Pick<Collection, "id" | "name"> | undefined,
+) {
+  // get link for parent collection
+  const parentCollectionLink = parentCollection
+    ? Urls.collection(parentCollection)
+    : `/collection/root`;
+
+  // get link for parent dashboard if we're dealing with a dashboard question
+  const parentDashboardId =
+    updatedEntity.type === "question" ? updatedEntity.dashboard_id : undefined;
+  const parentDashboardLink = parentDashboardId
+    ? Urls.dashboard({ id: parentDashboardId, name: "" })
+    : undefined;
+
+  return parentDashboardLink ? parentDashboardLink : parentCollectionLink;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
