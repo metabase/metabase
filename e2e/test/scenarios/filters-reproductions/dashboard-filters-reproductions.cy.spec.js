@@ -1174,7 +1174,7 @@ describe("issue 21528", () => {
 
 describe("issue 22482", () => {
   function getFormattedRange(start, end) {
-    return `${start.format("MMM D, YYYY")} - ${end.format("MMM D, YYYY")}`;
+    return `${start.format("MMM D, YYYY")} – ${end.format("MMM D, YYYY")}`;
   }
 
   beforeEach(() => {
@@ -1198,8 +1198,8 @@ describe("issue 22482", () => {
   });
 
   it("should round relative date range (metabase#22482)", () => {
-    cy.findByTestId("relative-datetime-value").clear().type(15);
-    cy.findByTestId("relative-datetime-unit").click();
+    cy.findByLabelText("Interval").clear().type(15);
+    cy.findByLabelText("Unit").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("months").click();
 

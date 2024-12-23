@@ -61,9 +61,7 @@ export function setAdHocFilter(
   }
 
   if (timeBucket) {
-    cy.findAllByTestId("relative-datetime-unit")
-      .should("have.value", "days")
-      .click();
+    cy.findByLabelText("Unit").should("have.value", "days").click();
 
     selectDropdown().contains(timeBucket).click();
   }
