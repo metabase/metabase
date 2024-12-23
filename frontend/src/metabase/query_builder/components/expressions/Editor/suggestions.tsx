@@ -54,14 +54,26 @@ export function suggestions(options: SuggestOptions) {
 
 function tokenAtPos(source: string, pos: number): TokenWithText | null {
   const { tokens } = tokenize(source);
-  for (const token of tokens) {
-    if (token.start <= pos && token.end >= pos) {
-      const text = source.slice(token.start, token.end);
-      return { ...token, text };
-    }
+
+  const idx = tokens.findIndex(token => token.start <= pos && token.end >= pos);
+  if (idx === -1) {
+    return null;
   }
 
-  return null;
+  const token = tokens[idx];
+  const prevToken = tokens[idx - 1];
+
+  if (
+    prevToken &&
+    prevToken.type === TOKEN.String &&
+    prevToken.end - prevToken.start === 1
+  ) {
+    // dangling single- or double-quote
+    return null;
+  }
+
+  const text = source.slice(token.start, token.end);
+  return { ...token, text };
 }
 
 function suggestFields({ query, stageIndex, expressionIndex }: SuggestOptions) {
