@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import { DatePicker } from "metabase/querying/filters/components/DatePicker";
 import type {
@@ -18,14 +19,14 @@ type DateAllOptionsWidgetProps = {
 };
 
 export function DateAllOptionsWidget({
-  value: text,
+  value: valueText,
   availableOperators,
-  submitButtonLabel,
+  submitButtonLabel = t`Apply`,
   onChange,
 }: DateAllOptionsWidgetProps) {
   const value = useMemo(
-    () => (text != null ? deserializeDateFilter(text) : undefined),
-    [text],
+    () => (valueText != null ? deserializeDateFilter(valueText) : undefined),
+    [valueText],
   );
 
   const handleChange = (value: DatePickerValue) => {
