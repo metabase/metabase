@@ -22,6 +22,7 @@
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations.metrics-v2 :as metrics-v2]
+   [metabase.db.custom-migrations.pulse-to-notification :as pulse-to-notification]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
@@ -1213,9 +1214,8 @@
    cause timeouts."
   true)
 
-(define-migration CreateSampleContent
+(define-migration CreateSampleContent)
   ;; Does nothing. This is left in so we do not alter the liquibase migration history. See: [[CreateSampleContentV2]].
-  )
 
 (defn- replace-temporals [v]
   (if (isa? (type v) java.time.temporal.Temporal)
@@ -1800,3 +1800,6 @@
 (define-reversible-migration AddStageNumberToVizSettingsParameterMappingTargets
   (add-stage-numbers-to-viz-settings-parameter-mapping-targets)
   (remove-stage-numbers-from-viz-settings-parameter-mapping-targets))
+
+(define-migration MigrateAlertToNotification
+  (pulse-to-notification/migrate-alerts!))
