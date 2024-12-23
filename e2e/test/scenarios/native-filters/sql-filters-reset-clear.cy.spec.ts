@@ -381,7 +381,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
 
     cy.log("no default value, required, has current value");
     filter(NO_DEFAULT_REQUIRED).click();
-    setValue(otherValue);
+    updateValue(otherValue);
     filter(NO_DEFAULT_REQUIRED).should("have.text", otherValueFormatted);
     // checkStatusIcon(NO_DEFAULT_REQUIRED, "clear");
 
@@ -818,6 +818,8 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
 
   function updateDateFilter(value: string) {
     H.popover().findByRole("textbox").clear().type(value).blur();
-    H.popover().button("Update filter").click();
+    H.popover()
+      .button(/(Add|Update) filter/)
+      .click();
   }
 });
