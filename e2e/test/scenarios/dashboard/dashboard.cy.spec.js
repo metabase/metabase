@@ -1202,7 +1202,10 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
     H.popover().findByText("Link").click();
 
     cy.wait("@recentViews");
-    cy.findByTestId("custom-edit-text-link").click().type("Orders");
+
+    cy.findByTestId("custom-edit-text-link")
+      .findByPlaceholderText("https://example.com")
+      .type("Orders");
 
     H.popover().within(() => {
       cy.findByText(/Loading/i).should("not.exist");
