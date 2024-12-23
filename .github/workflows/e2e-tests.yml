@@ -117,7 +117,7 @@ jobs:
           name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
   # ----------------------------------------------------------------
-  # 5) e2e-tests-skipped-stub (unchanged, if you want to keep it)
+  # 5) e2e-tests-skipped-stub (optional, unchanged if you want to keep it)
   # ----------------------------------------------------------------
   e2e-tests-skipped-stub:
     needs: [build, e2e-matrix-builder]
@@ -154,7 +154,7 @@ jobs:
     if: needs.build.result == 'success'
     runs-on: ubuntu-22.04
     outputs:
-      totalContainers: '33'
+      totalContainers: "33"
     steps:
       - name: Info
         run: echo "We will run 33 parallel containers using cypress-split."
@@ -241,9 +241,15 @@ jobs:
       - name: Retrieve uberjar artifact
         uses: actions/download-artifact@v4
         with:
-          # If your "build" job produces 'metabase-oss-<sha>-uberjar' or similar, reference that:
+          # If your "build" job produces 'metabase-oss-<sha>-uberjar' or 'metabase-ee-<sha>-uberjar',
+          # choose whichever you want to test. (Or do a small matrix for both editions, if you'd like.)
           name: metabase-oss-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-          # or for EE, or do a small strategy if you want to test both
+
+      # extract version.properties from the jar
+      - name: Get the version info
+        run: |
+          jar xf target/uberjar/metabase.jar version.properties
+          mv version.properties resources/
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
