@@ -59,7 +59,7 @@
           retry-errors    (volatile! [])
           retry-report    (fn []
                             {:attempted_retries (count @retry-errors)
-                            ;; we want the last retry to be the most recent
+                             ;; we want the last retry to be the most recent
                              :retry_errors       (reverse @retry-errors)})
           channel         (or (:channel handler)
                               {:type (:channel_type handler)})
@@ -164,7 +164,7 @@
                       (channel-send-retrying! notification-id (:payload_type hydrated-notification) handler message)))
                   (catch Exception e
                     (log/warnf e "[Notification %d] Error sending to channel %s"
-                                notification-id (handler->channel-name handler)))))
+                               notification-id (handler->channel-name handler)))))
               (do-after-notification-sent hydrated-notification)
               (log/infof "[Notification %d] Sent successfully" notification-id))
             (log/infof "[Notification %d] Skipping" notification-id)))))
