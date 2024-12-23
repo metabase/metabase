@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import { useState } from "react";
+import { t } from "ttag";
 
 import {
   DATE_PICKER_OPERATORS,
@@ -18,24 +18,26 @@ import { ExcludeDatePicker } from "./ExcludeDatePicker";
 import { RelativeDatePicker } from "./RelativeDatePicker";
 import { SpecificDatePicker } from "./SpecificDatePicker";
 
-interface DatePickerProps {
+type DatePickerProps = {
   value?: DatePickerValue;
   availableOperators?: DatePickerOperator[];
   availableShortcuts?: DatePickerShortcut[];
   availableUnits?: DatePickerUnit[];
-  backButton?: ReactNode;
-  isNew?: boolean;
+  submitButtonLabel?: string;
+  backButtonLabel?: string;
   onChange: (value: DatePickerValue) => void;
-}
+  onBack?: () => void;
+};
 
 export function DatePicker({
   value,
   availableOperators = DATE_PICKER_OPERATORS,
   availableShortcuts = DATE_PICKER_SHORTCUTS,
   availableUnits = DATE_PICKER_UNITS,
-  isNew = value == null,
-  backButton,
+  submitButtonLabel = t`Apply`,
+  backButtonLabel,
   onChange,
+  onBack,
 }: DatePickerProps) {
   const [type, setType] = useState(value?.type);
 
@@ -50,7 +52,7 @@ export function DatePicker({
           value={value?.type === type ? value : undefined}
           availableOperators={availableOperators}
           availableUnits={availableUnits}
-          isNew={isNew}
+          submitButtonLabel={submitButtonLabel}
           onChange={onChange}
           onBack={handleBack}
         />
@@ -60,7 +62,7 @@ export function DatePicker({
         <RelativeDatePicker
           value={value?.type === type ? value : undefined}
           availableUnits={availableUnits}
-          isNew={isNew}
+          submitButtonLabel={submitButtonLabel}
           onChange={onChange}
           onBack={handleBack}
         />
@@ -71,7 +73,7 @@ export function DatePicker({
           value={value?.type === type ? value : undefined}
           availableOperators={availableOperators}
           availableUnits={availableUnits}
-          isNew={isNew}
+          submitButtonLabel={submitButtonLabel}
           onChange={onChange}
           onBack={handleBack}
         />
@@ -81,9 +83,10 @@ export function DatePicker({
         <DateShortcutPicker
           availableOperators={availableOperators}
           availableShortcuts={availableShortcuts}
-          backButton={backButton}
+          backButtonLabel={backButtonLabel}
           onChange={onChange}
           onSelectType={setType}
+          onBack={onBack}
         />
       );
   }

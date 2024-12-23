@@ -24,13 +24,13 @@ function getDefaultValue(
 interface SetupOpts {
   value: DateIntervalValue;
   availableUnits?: DatePickerUnit[];
-  isNew?: boolean;
+  submitButtonLabel?: string;
 }
 
 function setup({
   value,
   availableUnits = DATE_PICKER_UNITS,
-  isNew = false,
+  submitButtonLabel = "Apply",
 }: SetupOpts) {
   const onChange = jest.fn();
   const onSubmit = jest.fn();
@@ -39,7 +39,7 @@ function setup({
     <DateIntervalPicker
       value={value}
       availableUnits={availableUnits}
-      isNew={isNew}
+      submitButtonLabel={submitButtonLabel}
       onChange={onChange}
       onSubmit={onSubmit}
     />,

@@ -20,25 +20,24 @@ export function setQuarterAndYear({ quarter, year } = {}) {
   popover().findByText(quarter).click();
 }
 
-function setDate(date, container) {
-  container.findByRole("textbox").clear().type(date).blur();
-}
-
 export function setSingleDate(date) {
-  setDate(date, cy.findByTestId("specific-date-picker"));
+  cy.findByLabelText("Date").clear().type(date).blur();
 }
 
 export function setTime({ hours, minutes }) {
   popover().within(() => {
-    cy.findByText("Add a time").click();
-    cy.findByPlaceholderText("hh").clear().type(hours);
-    cy.findByPlaceholderText("mm").clear().type(minutes);
+    cy.findByText("Add time").click();
+    cy.findByLabelText("Time")
+      .clear()
+      .type(
+        `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`,
+      );
   });
 }
 
 export function setDateRange({ startDate, endDate } = {}) {
-  setDate(startDate, cy.findAllByTestId("specific-date-picker").first());
-  setDate(endDate, cy.findAllByTestId("specific-date-picker").last());
+  cy.findByLabelText("Start date").clear().type(startDate).blur();
+  cy.findByLabelText("End date").clear().type(endDate).blur();
 }
 
 export function setRelativeDate(term) {
@@ -49,7 +48,7 @@ export function setAdHocFilter(
   { condition, quantity, timeBucket, includeCurrent = false } = {},
   buttonLabel = "Add filter",
 ) {
-  cy.findByText("Relative dates...").click();
+  cy.findByText("Relative dates…").click();
   if (condition) {
     cy.findByText(condition).click({ force: true });
   } else {
@@ -57,22 +56,19 @@ export function setAdHocFilter(
   }
 
   if (quantity) {
-    cy.findByPlaceholderText("30").clear().type(quantity);
+    cy.findByLabelText("Interval").clear().type(quantity);
   }
 
   if (timeBucket) {
-    cy.findAllByTestId("relative-datetime-unit")
-      .should("have.value", "days")
-      .click();
+    cy.findByLabelText("Unit").should("have.value", "days").click();
 
     selectDropdown().contains(timeBucket).click();
   }
 
   if (includeCurrent) {
-    popover().within(() => {
-      cy.icon("ellipsis").click();
-    });
-    cy.findByText(/^Include/).click();
+    popover()
+      .findByText(/Include/)
+      .click();
   }
 
   cy.button(buttonLabel).click();

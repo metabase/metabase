@@ -452,7 +452,7 @@ describe("scenarios > filters > bulk filtering", () => {
         });
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Specific dates...").click();
+      cy.findByText("Specific dates…").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Before").click();
 

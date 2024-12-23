@@ -1508,7 +1508,7 @@ describe("issue 42165", () => {
       H.visitDashboard(dashboardId);
 
       H.filterWidget().click();
-      H.popover().findByText("Last 30 Days").click();
+      H.popover().findByText("Last 30 days").click();
       cy.wait("@dashcardQuery");
 
       H.getDashboardCard(0).findByText("fooBarQuestion").click();
