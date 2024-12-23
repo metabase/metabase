@@ -169,9 +169,9 @@ describe("issue 15353", () => {
   it("should be able to change field name used for values (metabase#15353)", () => {
     cy.findByTestId("viz-settings-button").click();
     H.sidebar()
-      .contains("Count")
-      .siblings("[data-testid$=settings-button]")
-      .click();
+      .findByTestId("draggable-item-Count")
+      .icon("ellipsis")
+      .click({ force: true });
 
     cy.findByDisplayValue("Count").type(" renamed").blur();
 
@@ -395,10 +395,9 @@ describe("#22206 adding and removing columns doesn't duplicate columns", () => {
 
     // remove column
     cy.findByTestId("sidebar-content")
-      .findByText("Subtotal")
-      .parent()
-      .find(".Icon-eye_outline")
-      .click();
+      .findByTestId("draggable-item-Subtotal")
+      .icon("eye_outline")
+      .click({ force: true });
 
     // rerun query
     cy.findAllByTestId("run-button").first().click();
@@ -407,10 +406,9 @@ describe("#22206 adding and removing columns doesn't duplicate columns", () => {
 
     // add column back again
     cy.findByTestId("sidebar-content")
-      .findByText("Subtotal")
-      .parent()
-      .find(".Icon-eye_crossed_out")
-      .click();
+      .findByTestId("draggable-item-Subtotal")
+      .icon("eye_crossed_out")
+      .click({ force: true });
 
     // fails because there are 2 columns, when there should be one
     cy.findByTestId("sidebar-content").findByText("Subtotal");
