@@ -20,8 +20,7 @@ See [Compute settings for the Databricks JDBC Driver](https://docs.databricks.co
 
 ## HTTP path
 
-This is the Databrick's compute resources HTTP Path value. Often a SQL warehouse endpoint in the format `/sql/1.0/endpoints/abcdef1234567890`.
-Read [Connect to a SQL warehouse](https://docs.databricks.com/en/compute/sql-warehouse/index.html) article from Databricks for more information on how to create and connect to a SQL Warehouse.
+This is the Databrick's compute resources HTTP Path value. This value is often a SQL warehouse endpoint in the format `/sql/1.0/endpoints/abcdef1234567890`. See [Connect to a SQL warehouse](https://docs.databricks.com/en/compute/sql-warehouse/index.html).
 
 Additionally, see [Compute settings for the Databricks JDBC Driver](https://docs.databricks.com/en/integrations/jdbc/compute.html).
 
