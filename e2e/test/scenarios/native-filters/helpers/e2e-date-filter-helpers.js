@@ -57,7 +57,7 @@ export function setAdHocFilter(
   }
 
   if (quantity) {
-    cy.findByPlaceholderText("30").clear().type(quantity);
+    cy.findByLabelText("Interval").clear().type(quantity);
   }
 
   if (timeBucket) {

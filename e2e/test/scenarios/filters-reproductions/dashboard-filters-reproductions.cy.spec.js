@@ -1362,7 +1362,7 @@ describe("issue 24235", () => {
     cy.intercept("POST", "/api/dashboard/**/query").as("getCardQuery");
   });
 
-  it("should remove filter when all exclude options are selected (metabase#24235)", () => {
+  it("should not allow to add a filter when all exclude options are selected (metabase#24235)", () => {
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         mapParameterToDashboardCard({ id, card_id, dashboard_id });
@@ -1381,14 +1381,8 @@ describe("issue 24235", () => {
     H.filterWidget().click();
     H.popover().within(() => {
       cy.findByText("Select none").click();
-      cy.findByText("Update filter").click();
+      cy.button("Update filter").should("be.disabled");
     });
-
-    cy.wait("@getCardQuery");
-    cy.get("[data-testid=cell-data]").should(
-      "contain",
-      "Price, Schultz and Daniel",
-    );
   });
 });
 
