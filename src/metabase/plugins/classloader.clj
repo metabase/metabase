@@ -8,7 +8,7 @@
   correct classloader.
 
   If you are unfamiliar with ClassLoaders in general, I found this article pretty helpful:
-  https://www.javaworld.com/article/2077344/core-java/find-a-way-out-of-the-classloader-maze.html.
+  https://www.infoworld.com/article/2171026/find-a-way-out-of-the-classloader-maze.html.
 
   <3 Cam"
   (:refer-clojure :exclude [require])
