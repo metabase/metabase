@@ -109,7 +109,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
         filterType: subType,
         filterValue: value,
         isFilterRequired: true,
-        buttonLabel: "Update filter",
+        buttonLabel: /(Add|Update) filter/,
       });
 
       SQLFilter.runQuery();
