@@ -130,7 +130,9 @@
   NOTE: the encryption-check setting is not managed like most settings with 'defsetting' so we can manage checking the raw values in the database"
   [db-type :- :keyword
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
-  (when (or (liquibase/table-exists? "setting" (.getConnection ^javax.sql.DataSource data-source)) (liquibase/table-exists? "SETTING" (.getConnection ^javax.sql.DataSource data-source)))
+  (when (or
+         (liquibase/table-exists? "setting" (.getConnection ^javax.sql.DataSource data-source))
+         (liquibase/table-exists? "SETTING" (.getConnection ^javax.sql.DataSource data-source)))
     (try
       (t2/insert! :conn data-source :setting {:key "encryption-check" :value "unencrypted"})
       (catch Exception e (log/debug "encryption-check already exists" (.getMessage e))))
@@ -139,11 +141,12 @@
           looks-encrypted (not= raw "unencrypted")]
       (log/debug "Checking encryption configuration")
       (if looks-encrypted
-        (if (encryption/default-encryption-enabled?)
-          (if (string/valid-uuid? (encryption/maybe-decrypt raw))
-            (log/debug "Database encrypted and MB_ENCRYPTION_SECRET_KEY correctly configured")
-            (throw (Exception. "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains")))
-          (throw (Exception. "Database is encrypted but the MB_ENCRYPTION_SECRET_KEY environment variable was NOT set")))
+        (do
+          (when-not (encryption/default-encryption-enabled?)
+            (throw (ex-info "Database is encrypted but the MB_ENCRYPTION_SECRET_KEY environment variable was NOT set" {})))
+          (when-not (string/valid-uuid? (encryption/maybe-decrypt raw))
+            (throw (ex-info "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" {})))
+          (log/debug "Database encrypted and MB_ENCRYPTION_SECRET_KEY correctly configured"))
         (if (encryption/default-encryption-enabled?)
           (do
             (log/info "New MB_ENCRYPTION_SECRET_KEY environment variable set. Encrypting database...")
