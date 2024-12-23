@@ -390,7 +390,7 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
       });
 
       cy.findByTestId("viz-settings-button").click();
-      H.sidebar().findByText("Conditional Formatting").click();
+      H.sidebar().findByText("Conditional formatting").click();
     });
 
     it("should be able to remove, add, and re-order rows", () => {
@@ -481,7 +481,7 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
 
     it("should work with boolean columns", { tags: ["@external"] }, () => {
       cy.findByTestId("viz-settings-button").click();
-      H.leftSidebar().findByText("Conditional Formatting").click();
+      H.leftSidebar().findByText("Conditional formatting").click();
       cy.findByRole("button", { name: /add a rule/i }).click();
 
       H.popover().findByRole("option", { name: "Boolean" }).click();
