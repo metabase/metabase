@@ -1,16 +1,14 @@
+import cx from "classnames";
+
+import CS from "metabase/css/core/index.css";
 import type { AccentColorOptions } from "metabase/lib/colors/types";
 import type { IconProps } from "metabase/ui";
-import { Icon } from "metabase/ui";
+import { Flex, Group, Icon, Text } from "metabase/ui";
 
-import {
-  ColumnItemColorPicker,
-  ColumnItemContainer,
-  ColumnItemContent,
-  ColumnItemDragHandle,
-  ColumnItemIcon,
-  ColumnItemRoot,
-  ColumnItemSpan,
-} from "./ColumnItem.styled";
+import { ChartSettingActionIcon } from "../ChartSettingActionIcon";
+import { ChartSettingColorPicker } from "../ChartSettingColorPicker";
+
+import ColumnItemS from "./ColumnItem.module.css";
 
 interface ColumnItemProps {
   className?: string;
@@ -29,7 +27,7 @@ interface ColumnItemProps {
   accentColorOptions?: AccentColorOptions;
 }
 
-const BaseColumnItem = ({
+export const ColumnItem = ({
   className,
   title,
   color,
@@ -44,92 +42,81 @@ const BaseColumnItem = ({
   onEnable,
   onColorChange,
   accentColorOptions,
-}: ColumnItemProps) => {
-  return (
-    <ColumnItemRoot
-      className={className}
-      role={role}
-      isDraggable={draggable}
-      onClick={onClick}
-      aria-label={role ? title : undefined}
-      data-testid={draggable ? `draggable-item-${title}` : null}
-      data-enabled={!!onRemove}
-    >
-      <ColumnItemContainer>
-        {draggable && <ColumnItemDragHandle name="grabber" />}
-        {onColorChange && color && (
-          <ColumnItemColorPicker
-            value={color}
-            onChange={onColorChange}
-            pillSize="small"
-            accentColorOptions={accentColorOptions}
-          />
-        )}
-        <ColumnItemContent>
-          <ColumnItemSpan>
-            {icon && <Icon name={icon} />}
-            {title}
-          </ColumnItemSpan>
-          {onEdit && (
-            <ActionIcon
-              icon="ellipsis"
-              onClick={onEdit}
-              data-testid={`${title}-settings-button`}
-            />
-          )}
-          {onAdd && (
-            <ActionIcon
-              icon="add"
-              onClick={onAdd}
-              data-testid={`${title}-add-button`}
-            />
-          )}
-          {onRemove && (
-            <ActionIcon
-              icon={removeIcon}
-              onClick={onRemove}
-              data-testid={`${title}-hide-button`}
-            />
-          )}
-          {onEnable && (
-            <ActionIcon
-              icon="eye_crossed_out"
-              onClick={onEnable}
-              data-testid={`${title}-show-button`}
-            />
-          )}
-        </ColumnItemContent>
-      </ColumnItemContainer>
-    </ColumnItemRoot>
-  );
-};
-
-interface ActionIconProps {
-  icon: string;
-  onClick: (target: HTMLElement) => void;
-  "data-testid"?: string;
-}
-
-const ActionIcon = ({
-  icon,
-  onClick,
-  "data-testid": dataTestId,
-}: ActionIconProps) => (
-  <ColumnItemIcon
-    icon={icon}
-    onlyIcon
-    iconSize={16}
-    data-testid={dataTestId}
-    onClick={e => {
-      e.stopPropagation();
-      onClick(e.currentTarget);
-    }}
-  />
+}: ColumnItemProps) => (
+  <Flex
+    w="100%"
+    bg="bg-white"
+    c="text-medium"
+    className={cx(
+      CS.overflowHidden,
+      CS.bordered,
+      CS.rounded,
+      ColumnItemS.ColumnItemRoot,
+      {
+        [cx(ColumnItemS.Draggable, CS.cursorGrab)]: draggable,
+      },
+      className,
+    )}
+    role={role}
+    onClick={onClick}
+    aria-label={role ? title : undefined}
+    data-testid={draggable ? `draggable-item-${title}` : null}
+    data-enabled={!!onRemove}
+    px="sm"
+    py="xs"
+    my="sm"
+  >
+    <Group noWrap spacing="xs" p="xs">
+      {draggable && (
+        <Icon
+          className={cx(CS.flexNoShrink, ColumnItemS.ColumnItemDragHandle)}
+          name="grabber"
+        />
+      )}
+      {onColorChange && color && (
+        <ChartSettingColorPicker
+          value={color}
+          onChange={onColorChange}
+          pillSize="small"
+          accentColorOptions={accentColorOptions}
+        />
+      )}
+    </Group>
+    <Group className={CS.flex1} px="xs">
+      {icon && <Icon name={icon} />}
+      <Text lh="normal" fw="bold">
+        {title}
+      </Text>
+    </Group>
+    <Group noWrap spacing="sm" p="xs">
+      {onEdit && (
+        <ChartSettingActionIcon
+          icon="ellipsis"
+          onClick={e => onEdit(e.currentTarget)}
+          data-testid={`${title}-settings-button`}
+        />
+      )}
+      {onAdd && (
+        <ChartSettingActionIcon
+          icon="add"
+          onClick={e => onAdd(e.currentTarget)}
+          data-testid={`${title}-add-button`}
+        />
+      )}
+      {onRemove && (
+        <ChartSettingActionIcon
+          icon={removeIcon}
+          onClick={e => onRemove(e.currentTarget)}
+          data-testid={`${title}-hide-button`}
+        />
+      )}
+      {onEnable && (
+        <ChartSettingActionIcon
+          icon="eye_crossed_out"
+          onClick={e => onEnable(e.currentTarget)}
+          data-testid={`${title}-show-button`}
+        />
+      )}
+    </Group>
+  </Flex>
 );
-
-export const ColumnItem = Object.assign(BaseColumnItem, {
-  Root: ColumnItemRoot,
-  Container: ColumnItemContainer,
-  Icon: ColumnItemIcon,
-  Handle: ColumnItemDragHandle,
-});
