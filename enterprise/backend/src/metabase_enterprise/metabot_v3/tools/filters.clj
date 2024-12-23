@@ -14,10 +14,21 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
+(defn- date-filter?
+  "Tests if a date type filter is against a value without time component."
+  [{:keys [operation value]}]
+  (and (#{:date-equals :date-not-equals :date-before :date-on-or-before :date-after :date-on-or-after} operation)
+       (string? value)
+       (re-matches #"\d{4}-\d\d-\d\d" value)))
+
 (defn- add-filter
-  [query {:keys [column operation value]}]
-  (let [filter
-        (case (keyword operation)
+  [query llm-filter]
+  (let [llm-filter (update llm-filter :operation keyword)
+        {:keys [column operation value]} llm-filter
+        column (cond-> column
+                 (date-filter? llm-filter) (lib/with-temporal-bucket :day))
+        filter
+        (case operation
           :is-null                      (lib/is-null column)
           :is-not-null                  (lib/not-null column)
           :string-is-empty              (lib/is-empty column)
