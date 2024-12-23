@@ -133,6 +133,9 @@ const defaultConfig = {
      **                          CONFIG                                **
      ********************************************************************/
 
+    // Initialize cypress-split
+    cypressSplit(on, config);
+
     if (!isQaDatabase) {
       config.excludeSpecPattern = "e2e/snapshot-creators/qa-db.cy.snap.js";
     }
@@ -156,7 +159,6 @@ const defaultConfig = {
     };
 
     require("@cypress/grep/src/plugin")(config);
-    cypressSplit(on, config);
 
     return config;
   },
