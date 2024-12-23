@@ -127,14 +127,16 @@ export const Visualizer = ({ onSave }: VisualizerProps) => {
       <Flex direction="column" w="100%" h="100%">
         <Header onSave={onSave} />
         <Flex style={{ overflow: "hidden", flexGrow: 1 }}>
-          <Flex direction="column" miw={320}>
-            <Box h="50%" p={10} pr={0} style={{ overflowY: "hidden" }}>
-              <DataImporter />
-            </Box>
-            <Box h="50%" pl={10} pb={10} style={{ overflowY: "auto" }}>
-              <DataManager />
-            </Box>
-          </Flex>
+          {!isFullscreen && (
+            <Flex direction="column" miw={320}>
+              <Box h="50%" p={10} pr={0} style={{ overflowY: "hidden" }}>
+                <DataImporter />
+              </Box>
+              <Box h="50%" pl={10} pb={10} style={{ overflowY: "auto" }}>
+                <DataManager />
+              </Box>
+            </Flex>
+          )}
           <Box
             w="100%"
             m={10}
@@ -160,7 +162,7 @@ export const Visualizer = ({ onSave }: VisualizerProps) => {
               <VisualizationCanvas />
             </Box>
           </Box>
-          {isVizSettingsSidebarOpen && (
+          {!isFullscreen && isVizSettingsSidebarOpen && (
             <Flex direction="column" miw={320}>
               <VizSettingsSidebar />
             </Flex>
