@@ -33,6 +33,15 @@
   {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))
    :details mi/transform-encrypted-json})
 
+(def Channel
+  "Channel schema."
+  [:map
+   [:name                         string?]
+   [:type                         :keyword]
+   [:details                      :map]
+   [:active      {:optional true} :boolean]
+   [:description {:optional true} [:maybe string?]]])
+
 (defmethod mi/can-write? :model/Channel
   [& _]
   (or (mi/superuser?)
@@ -56,7 +65,7 @@
 
 (defmethod serdes/entity-id "Channel" [_ {:keys [name]}] name)
 
-(defmethod serdes/hash-fields :model/Channel         [_instance] [:name :type])
+(defmethod serdes/hash-fields :model/Channel [_instance] [:name :type])
 
 (defmethod serdes/make-spec "Channel"
   [_model-name _opts]

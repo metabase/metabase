@@ -6,6 +6,7 @@
   (:require
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.models.channel :as models.channel]
    [metabase.models.interface :as mi]
    [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.util :as u]
@@ -262,11 +263,11 @@
 (mr/def ::NotificationHandler
   [:map
    ;; optional during insertion
-   [:notification_id {:optional true} ms/PositiveInt]
-   [:channel_type                     [:fn #(= "channel" (-> % keyword namespace))]]
-   [:channel_id      {:optional true} [:maybe ms/PositiveInt]]
-   [:template_id     {:optional true} [:maybe ms/PositiveInt]]
-   [:active          {:optional true} [:maybe :boolean]]])
+   [:notification_id {:optional true}       ms/PositiveInt]
+   [:channel_type    {:decode/json keyword} [:fn #(= "channel" (-> % keyword namespace))]]
+   [:channel_id      {:optional true}       [:maybe ms/PositiveInt]]
+   [:template_id     {:optional true}       [:maybe ms/PositiveInt]]
+   [:active          {:optional true}       [:maybe :boolean]]])
 
 (defn- validate-notification-handler
   [notification-handler]
@@ -292,8 +293,6 @@
 (def ^:private notification-recipient-types
   #{:notification-recipient/user
     :notification-recipient/group
-    ;; TODO rename this to notification-recipient/raw-value so it's generic and can be used for slack channel
-    :notification-recipient/external-email
     :notification-recipient/raw-value
     :notification-recipient/template})
 
@@ -317,12 +316,6 @@
       [:permissions_group_id                  ms/PositiveInt]
       [:user_id              {:optional true} [:fn nil?]]
       [:details              {:optional true} [:fn empty?]]]]
-    [:notification-recipient/external-email
-     [:map
-      [:details                               [:map {:closed true}
-                                               [:email ms/Email]]]
-      [:user_id              {:optional true} [:fn nil?]]
-      [:permissions_group_id {:optional true} [:fn nil?]]]]
     [:notification-recipient/raw-value
      [:map
       [:details                               [:map {:closed true}
@@ -391,8 +384,8 @@
     [:handlers      {:optional true} [:sequential [:merge
                                                    ::NotificationHandler
                                                    [:map
-                                                    [:template   {:optional true} [:maybe :map]]
-                                                    [:channel    {:optional true} [:maybe :map]]
+                                                    [:template   {:optional true} [:maybe ::models.channel/ChannelTemplate]]
+                                                    [:channel    {:optional true} [:maybe ::models.channel/Channel]]
                                                     [:recipients {:optional true} [:sequential ::NotificationRecipient]]]]]]]
    [:multi {:dispatch (comp keyword :payload_type)}
     [:notification/card [:map

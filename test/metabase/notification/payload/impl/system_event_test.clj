@@ -43,8 +43,8 @@
                              :user_id (mt/user->id :crowberto)}
                             {:type                 :notification-recipient/group
                              :permissions_group_id group-id}
-                            {:type    :notification-recipient/external-email
-                             :details {:email "hi@metabase.com"}}]}])
+                            {:type    :notification-recipient/raw-value
+                             :details {:value "hi@metabase.com"}}]}])
           (mt/with-temporary-setting-values
             [site-name "Metabase Test"]
             (mt/with-fake-inbox
@@ -80,8 +80,8 @@
                              :user_id (mt/user->id :crowberto)}
                             {:type                 :notification-recipient/group
                              :permissions_group_id group-id}
-                            {:type    :notification-recipient/external-email
-                             :details {:email "hi@metabase.com"}}]}])
+                            {:type    :notification-recipient/raw-value
+                             :details {:value "hi@metabase.com"}}]}])
           (mt/with-temporary-setting-values
             [site-name "Metabase Test"]
             (mt/with-fake-inbox

@@ -27,8 +27,8 @@
     :email
     (for [recipient (:recipients pulse-channel)]
       (if-not (:id recipient)
-        {:type :notification-recipient/external-email
-         :details {:email (:email recipient)}}
+        {:type :notification-recipient/raw-value
+         :details {:value (:email recipient)}}
         {:type :notification-recipient/user
          :user recipient}))
     :http

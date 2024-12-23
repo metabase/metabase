@@ -4,6 +4,7 @@
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.models.notification :as models.notification]
+   [metabase.notification.core :as notification]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -40,5 +41,24 @@
     (api/check-404 existing-notification)
     (models.notification/update-notification! existing-notification body)
     (get-notification id)))
+
+(api/defendpoint POST "/:id/send"
+  "Send a notification by id."
+  [id :as {{:keys [handler_ids]} :body}]
+  {id          ms/PositiveInt
+   handler_ids [:maybe [:sequential ms/PositiveInt]]}
+  (api/let-404 [existing-notification (get-notification id)]
+    (cond-> existing-notification
+      (seq handler_ids)
+      (update :handlers (fn [handlers] (filter (comp (set handler_ids) :id) handlers)))
+
+      true
+      (notification/send-notification! :notification/sync? true))))
+
+(api/defendpoint POST "/send"
+  "Send an unsaved notification."
+  [:as {body :body}]
+  {body ::models.notification/FullyHydratedNotification}
+  (notification/send-notification! body :notification/sync? true))
 
 (api/define-routes)
