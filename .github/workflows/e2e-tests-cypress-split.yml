@@ -72,7 +72,7 @@ jobs:
       - name: Run split Cypress tests
         uses: cypress-io/github-action@v6
         with:
-          start: npm start # or yarn start, if needed
+          start: yarn dev
           # By default, cypress-io/github-action runs "cypress run"
           # cypress-split (in cypress.config.js) will see SPLIT and SPLIT_INDEX
           # and only run a portion of the specs
