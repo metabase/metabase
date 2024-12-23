@@ -6,6 +6,16 @@ import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 import * as Lib from "metabase-lib";
 import { FieldDimension } from "metabase-lib/v1/Dimension";
+import {
+  isAfterDateFilter,
+  isBeforeDateFilter,
+  isBetweenFilter,
+  isCurrentDateFilter,
+  isExcludeDateFilter,
+  isNextDateFilter,
+  isOnDateFilter,
+  isPreviousDateFilter,
+} from "metabase-lib/v1/queries/utils/date-filters";
 
 export const DATETIME_UNITS = [
   "minute",
@@ -235,6 +245,50 @@ export function getRelativeDatetimeInterval(filter) {
 const getMomentDateForSerialization = date => {
   return date.clone().locale("en");
 };
+
+export const DATE_OPERATORS = [
+  {
+    name: "previous",
+    displayName: t`Previous`,
+    test: filter => isPreviousDateFilter(filter),
+  },
+  {
+    name: "current",
+    displayName: t`Current`,
+    test: filter => isCurrentDateFilter(filter),
+  },
+  {
+    name: "next",
+    displayName: t`Next`,
+    test: filter => isNextDateFilter(filter),
+  },
+  {
+    name: "between",
+    displayName: t`Between`,
+    test: filter => isBetweenFilter(filter),
+  },
+  {
+    name: "before",
+    displayName: t`Before`,
+    test: filter => isBeforeDateFilter(filter),
+  },
+  {
+    name: "on",
+    displayName: t`On`,
+    test: filter => isOnDateFilter(filter),
+  },
+  {
+    name: "after",
+    displayName: t`After`,
+    test: filter => isAfterDateFilter(filter),
+  },
+  {
+    name: "exclude",
+    displayName: t`Exclude...`,
+    displayPrefix: t`Exclude`,
+    test: filter => isExcludeDateFilter(filter),
+  },
+];
 
 export const EXCLUDE_UNITS = {
   days: "day-of-week",

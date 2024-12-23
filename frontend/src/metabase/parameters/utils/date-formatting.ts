@@ -1,14 +1,16 @@
 import moment, { type Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 
-import { DATE_OPERATORS } from "metabase/admin/datamodel/components/filters/pickers/DatePicker/DatePicker";
 import {
   DATE_MBQL_FILTER_MAPPING,
   PARAMETER_OPERATOR_TYPES,
 } from "metabase-lib/v1/parameters/constants";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { dateParameterValueToMBQL } from "metabase-lib/v1/parameters/utils/mbql";
-import { generateTimeFilterValuesDescriptions } from "metabase-lib/v1/queries/utils/query-time";
+import {
+  DATE_OPERATORS,
+  generateTimeFilterValuesDescriptions,
+} from "metabase-lib/v1/queries/utils/query-time";
 
 // Use a placeholder value as field references are not used in dashboard filters
 const noopRef = null;
