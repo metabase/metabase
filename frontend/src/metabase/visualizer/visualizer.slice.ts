@@ -19,6 +19,7 @@ import type {
   Card,
   CardId,
   Dataset,
+  DatasetColumn,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -198,6 +199,29 @@ const visualizerHistoryItemSlice = createSlice({
         ...state.settings,
         ...action.payload,
       };
+    },
+    addColumn: (
+      state,
+      action: PayloadAction<{
+        dataSource: VisualizerDataSource;
+        column: DatasetColumn;
+      }>,
+    ) => {
+      const { dataSource, column } = action.payload;
+
+      if (!state.display) {
+        return;
+      }
+
+      const columnRef = createVisualizerColumnReference(
+        dataSource,
+        column,
+        extractReferencedColumns(state.columnValuesMapping),
+      );
+
+      const newColumn = copyColumn(columnRef.name, column);
+      state.columns.push(newColumn);
+      state.columnValuesMapping[newColumn.name] = [columnRef];
     },
     removeColumn: (state, action: PayloadAction<{ name: string }>) => {
       const { name } = action.payload;
@@ -527,7 +551,7 @@ function maybeCombineDataset(
   return state;
 }
 
-export const { setDisplay, updateSettings, removeColumn } =
+export const { setDisplay, updateSettings, addColumn, removeColumn } =
   visualizerHistoryItemSlice.actions;
 
 export const {
