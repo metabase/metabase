@@ -4,32 +4,47 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [malli.error :as me]
+   [malli.transform :as mtx]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (defn- format-path
   [path]
   (str (str/join #" / " (map #(if (keyword? %) (name %) %) path)) ":"))
 
-;; TODO: add :id-column, currently it assumes all models use :id
-(def ^:private Spec
+(mr/def ::Spec
   [:schema {:registry {::spec [:map {:closed true}
-                               [:model                         [:fn #(isa? % :metabase/model)]]
+                               [:model                         :keyword]
+                               [:id-col       {:optional true
+                                               :default :id}   :keyword]
                                ;; whether this nested model is a sequentials with respect to the parent model
-                               [:multi-row?   {:optional true} :boolean]
+                               [:multi-row?   {:optional true
+                                               :default false} :boolean]
                                ;; the foreign key column in the nested model with respect to the parent model
                                [:fk-column    {:optional true} :keyword]
                                ;; A list of columns that should be compared to determine if the row has changed
                                [:compare-cols {:optional true} [:sequential :keyword]]
+                               ;; other columns that are not part of compare-cols but are part of the table
+                               ;; these columns will be added when create / update
+                               [:extra-cols   {:optional true} [:sequential :keyword]]
                                [:nested-specs {:optional true} [:map-of :keyword [:ref ::spec]]]]}}
    [:ref ::spec]])
+
+(defn decode-spec
+  "Decode a spec with default value transformer."
+  [spec]
+  (mc/decode
+   ::Spec
+   spec
+   (mtx/default-value-transformer {::mtx/add-optional-keys true})))
 
 (defn validate-spec!
   "Check whether a given spec is valid"
   [spec]
-  (when-let [info (mc/explain Spec spec)]
+  (when-let [info (mc/explain ::Spec spec)]
     (throw (ex-info (str "Invalid spec for " (:model spec) ": " (me/humanize info)) info))))
 
 (defmacro define-spec
@@ -37,7 +52,7 @@
   [spec-name docstring spec]
   `(let [spec# ~spec]
      (validate-spec! spec#)
-     (def ~spec-name ~docstring spec#)))
+     (def ~spec-name ~docstring (decode-spec spec#))))
 
 (defn- compare-cols-fn
   [spec]
@@ -46,7 +61,7 @@
       (select-keys row compare-cols))
     identity))
 
-(declare do-map-update!)
+(declare handle-map-update!)
 (declare do-update!*)
 
 (defn- handle-nested-updates!
@@ -56,25 +71,25 @@
 
 (defn- with-parent-id
   [row nested-specs parent-id]
-  (into row
-        (for [[k {:keys [fk-column multi-row?]}] nested-specs]
-          [k (if fk-column
-               (if multi-row?
-                 (map #(assoc % fk-column parent-id) (get row k))
-                 (assoc (get row k) fk-column parent-id))
-               row)])))
+  (into row (for [[k {:keys [fk-column multi-row?]}] nested-specs
+                  :when fk-column]
+              [k (if multi-row?
+                  (map #(assoc % fk-column parent-id) (get row k))
+                  (when-let [nested-row (get row k)]
+                    (assoc nested-row fk-column parent-id)))])))
 
 (defn- sanitize-row-fn
-  [{:keys [nested-specs] :as spec}]
-  (comp (compare-cols-fn spec) #(apply dissoc % (keys nested-specs))))
+  [{:keys [nested-specs compare-cols extra-cols] :as _spec}]
+  (comp #(select-keys % (concat compare-cols extra-cols)) #(apply dissoc % (keys nested-specs))))
 
-(defn- do-sequential-updates!
-  [existing-rows new-rows {:keys [model nested-specs] :as spec} path]
+(defn- handle-sequential-updates!
+  [existing-rows new-rows {:keys [model nested-specs id-col] :as spec} path]
   (let [{:keys [to-update
                 to-create
                 to-delete
                 to-skip]
-         :as _updates}    (u/row-diff existing-rows new-rows :to-compare (compare-cols-fn spec))
+         :as _updates}    (u/row-diff existing-rows new-rows
+                                      :to-compare (compare-cols-fn spec) :id-fn id-col)
         sanitize-row      (sanitize-row-fn spec)]
     (when (seq to-create)
       (if nested-specs
@@ -88,89 +103,109 @@
           (log/tracef "%s no nested spec found, batch creating %d new rows of %s" (format-path path) (count to-create) model)
           (let [rows (map sanitize-row to-create)]
             (t2/insert! model rows)))))
+
     (when (seq to-delete)
       ;; TODO: cascade deletes?
-      (log/debugf "%s deleting %d rows with ids %s" (format-path path) (count to-delete) (str/join ", " (map :id to-delete)))
-      (t2/delete! model :id [:in (map :id to-delete)]))
+      (log/debugf "%s deleting %d rows with ids %s" (format-path path) (count to-delete) (str/join ", " (map id-col to-delete)))
+      (t2/delete! model id-col [:in (map id-col to-delete)]))
 
     (when (seq to-update)
       (log/tracef "%s Attempt updating %d rows of %s" (format-path path) (count to-update) model)
       (doseq [row to-update]
-        (let [path (conj path (:id row))]
-          (let [new-row (sanitize-row row)]
-            (log/debugf "%s Updating" (format-path path))
-            (t2/update! model (:id row) new-row))
+        (let [path (conj path (id-col row))]
+          (log/debugf "%s Updating" (format-path path))
+          (t2/update! model (id-col row) (sanitize-row row))
           (when nested-specs
-            (let [existing-row (first (filter #(= (:id row) (:id %)) existing-rows))]
-              (log/tracef "%s nested models detected, updating" (format-path path))
+            (log/tracef "%s nested models detected, updating" (format-path path))
+            (let [existing-row (first (filter #(= (id-col row) (id-col %)) existing-rows))]
               (handle-nested-updates! existing-row row nested-specs path))))))
 
     ;; the row might not change, but the nested models might
     (when (and (seq to-skip) nested-specs)
       (doseq [row to-skip]
-        (handle-nested-updates! (first (filter #(= (:id row) (:id %)) existing-rows))
+        (handle-nested-updates! (first (filter #(= (id-col row) (id-col %)) existing-rows))
                                 row
                                 nested-specs
-                                (conj path (:id row)))))))
+                                (conj path (id-col row)))))))
 
-(defn- do-map-update!
-  [existing-data new-data {:keys [model nested-specs] :as spec} path]
-  (let [sanitize-row        (sanitize-row-fn spec)
-        new-data-clean      (sanitize-row new-data)
-        existing-data-clean (sanitize-row existing-data)]
+(defn- handle-map-update!
+  [existing-data new-data {:keys [model nested-specs id-col] :as spec} path]
+  (let [sanitize-row            (sanitize-row-fn spec)
+        compare-row             (compare-cols-fn spec)
+        new-data-sanitized      (sanitize-row new-data)
+        existing-data-sanitized (sanitize-row existing-data)
+        existing-id             (id-col existing-data)
+        handle-nested!          (fn [existing-data new-data parent-id]
+                                 (when nested-specs
+                                   (log/tracef "%s nested models detected, updating nested models %s %d"
+                                             (format-path path) model parent-id)
+                                   (handle-nested-updates!
+                                    existing-data
+                                    (with-parent-id new-data nested-specs parent-id)
+                                    nested-specs
+                                    (conj path parent-id))))]
     (cond
       ;; delete
       (nil? new-data)
       (do
-        (log/debugf "%s Deleting" (format-path (conj path (:id existing-data))))
-        (t2/delete! model (:id existing-data)))
+        (log/debugf "%s Deleting" (format-path (conj path existing-id)))
+        (t2/delete! model existing-id)
+        (handle-nested! existing-data new-data existing-id))
 
       ;; create
       (nil? existing-data)
-      (let [parent-id (t2/insert! model new-data-clean)
+      (let [parent-id (t2/insert-returning-pk! model new-data-sanitized)
             path      (conj path parent-id)]
         (log/debugf "%s Created a new entity %s %d" (format-path path) model parent-id)
-        (when nested-specs
-          (log/tracef "%s nested models detected, creating nested models" (format-path path))
-          (handle-nested-updates! nil (with-parent-id new-data nested-specs parent-id) nested-specs path)))
+        (handle-nested! nil new-data parent-id))
+
+      ;; delete and create when id changes
+      (not= (id-col new-data) existing-id)
+      (do
+        (log/debugf "%s ID changed from %d to %d - deleting and recreating"
+                    (format-path path) existing-id (id-col new-data))
+        (t2/delete! model existing-id)
+        (let [parent-id (t2/insert-returning-pk! model new-data-sanitized)
+              path      (conj path parent-id)]
+          (log/debugf "%s Created a new entity %s %d" (format-path path) model parent-id)
+          (handle-nested! nil new-data parent-id)))
 
       ;; update
-      (not= new-data-clean existing-data-clean)
+      (not= (compare-row new-data-sanitized) (compare-row existing-data-sanitized))
       (do
-        (log/debugf "%s Updating" (format-path (conj path (:id existing-data))))
-        (t2/update! model (:id existing-data) new-data-clean))
+        (log/debugf "%s Updating" (format-path (conj path existing-id)))
+        (t2/update! model existing-id new-data-sanitized)
+        (handle-nested! existing-data new-data existing-id))
 
       :else
-      (log/debugf "%s no change detected for %s %d" (format-path path) model (:id existing-data)))
-
-    (when nested-specs
-      (log/tracef "%s nested models detected, updating nested models %s %d" (format-path path) model (:id new-data))
-      (handle-nested-updates! existing-data new-data nested-specs (conj path (:id new-data))))))
+      (do
+        (log/debugf "%s no change detected for %s %d" (format-path path) model existing-id)
+        (handle-nested! existing-data new-data existing-id)))))
 
 (defn- check-id-exists
-  "if x is a map, check if it has :id key, if x is a seq, check if all elements have :id key."
-  [x]
+  "if x is a map, check if it has id key, if x is a seq, check if all elements have id key."
+  [x id-col]
   (when x
     (assert (if (sequential? x)
-              (every? :id x)
-              (:id x))
-            (format ":id is missing in %s" x))))
+              (every? id-col x)
+              (id-col x))
+            (format "%s is missing in %s" id-col x))))
 
 (defn- do-update!*
-  [existing-data new-data spec path]
-  (check-id-exists existing-data)
-  (check-id-exists new-data)
+  [existing-data new-data {:keys [id-col] :as spec} path]
+  (check-id-exists existing-data id-col)
+  (check-id-exists new-data id-col)
   (if (:multi-row? spec)
     (do
       (log/tracef "%s multi-row spec found" (format-path path))
-      (do-sequential-updates! existing-data new-data spec path))
+      (handle-sequential-updates! existing-data new-data spec path))
     (do
       (log/tracef "%s single row spec found" (format-path path))
-      (do-map-update! existing-data new-data spec path))))
+      (handle-map-update! existing-data new-data spec path))))
 
 (mu/defn do-update!
   "Update data in the database based on the diff between existing and new data.
   `spec` defines the structure of the data and how to compare it."
-  [existing-data new-data spec :- Spec]
+  [existing-data new-data spec :- ::Spec]
   (t2/with-transaction []
     (do-update!* existing-data new-data spec ["root"])))
