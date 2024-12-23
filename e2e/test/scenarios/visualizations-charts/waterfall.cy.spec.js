@@ -464,8 +464,9 @@ describe("scenarios > visualizations > waterfall", () => {
 
       H.echartsContainer().get("text").contains("(4.56)").should("not.exist");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Show values on data points").next().click();
+      cy.get('[data-field-title="Show values on data points"]')
+        .findByRole("switch")
+        .click({ force: true });
       H.echartsContainer().get("text").contains("(4.56)").should("be.visible");
     });
   });
