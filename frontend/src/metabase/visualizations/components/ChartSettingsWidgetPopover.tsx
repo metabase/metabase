@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import CS from "metabase/css/core/index.css";
 import { Box, Space, Tabs } from "metabase/ui";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
@@ -52,7 +53,7 @@ export const ChartSettingsWidgetPopover = ({
       content={
         widgets.length > 0 ? (
           <Box
-            pt={hasMultipleSections && 0}
+            pt={hasMultipleSections ? 0 : undefined}
             ref={contentRef}
             mah="37.5rem"
             miw="336px"
