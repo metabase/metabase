@@ -428,4 +428,49 @@ describe("parameters/utils/mapping-options", () => {
       expect(options).toEqual(expectedTagOptions(["foo"]));
     });
   });
+
+  describe("link dashcard", () => {
+    const createLinkDashcard = linkUrl =>
+      createMockDashboardCard({
+        visualization_settings: {
+          virtual_card: {
+            display: "link",
+          },
+          link: {
+            url: linkUrl,
+          },
+        },
+      });
+
+    const getLinkOptions = linkUrl =>
+      getParameterMappingOptions(
+        undefined,
+        null,
+        { display: "link" },
+        createLinkDashcard(linkUrl),
+      );
+
+    const expectedTagOptions = tags =>
+      tags.map(tag => ({
+        name: tag,
+        icon: "string",
+        isForeign: false,
+        target: ["text-tag", tag],
+      }));
+
+    it("should return tag options from link URL", () => {
+      const options = getLinkOptions("https://example.com/{{foo}}/{{bar}}");
+      expect(options).toEqual(expectedTagOptions(["foo", "bar"]));
+    });
+
+    it("should return empty array for link without template tags", () => {
+      const options = getLinkOptions("https://example.com/page");
+      expect(options).toEqual([]);
+    });
+
+    it("should return empty array if link URL is undefined", () => {
+      const options = getLinkOptions(undefined);
+      expect(options).toEqual([]);
+    });
+  });
 });
