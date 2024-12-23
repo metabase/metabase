@@ -37,6 +37,27 @@ type Serializer = {
 };
 
 const SERIALIZERS: Serializer[] = [
+  // entire month, `2020-04`
+  {
+    regex: /^([0-9]{4})-([0-9]{2})$/,
+    serialize: value => {
+      if (value.type === "month") {
+        const { year, month } = value;
+        return `${year.toString().padStart(4, "0")}-${month.toString().padStart(2, "0")}`;
+      }
+    },
+    deserialize: match => {
+      const year = parseInt(match[1]);
+      const month = parseInt(match[2]);
+      if (isFinite(year) && isFinite(month)) {
+        return {
+          type: "month",
+          year,
+          month,
+        };
+      }
+    },
+  },
   // single day, `2020-01-02` or `2020-01-02T:10:20:00`
   {
     regex: /^([\d-T:]+)$/,
@@ -118,27 +139,6 @@ const SERIALIZERS: Serializer[] = [
           operator: "between",
           values: [date1.toDate(), date2.toDate()],
           hasTime: hasTimePart(match[0]),
-        };
-      }
-    },
-  },
-  // entire month, `2020-04`
-  {
-    regex: /^([0-9]{4})-([0-9]{2})$/,
-    serialize: value => {
-      if (value.type === "month") {
-        const { year, month } = value;
-        return `${year.toString().padStart(4, "0")}-${month.toString().padStart(2, "0")}`;
-      }
-    },
-    deserialize: match => {
-      const year = parseInt(match[1]);
-      const month = parseInt(match[2]);
-      if (isFinite(year) && isFinite(month)) {
-        return {
-          type: "month",
-          year,
-          month,
         };
       }
     },
