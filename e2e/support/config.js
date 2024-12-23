@@ -16,6 +16,8 @@ const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
 
+const cypressSplit = require("cypress-split");
+
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 const isCI = process.env["CYPRESS_CI"] === "true";
 
@@ -155,6 +157,7 @@ const defaultConfig = {
     };
 
     require("@cypress/grep/src/plugin")(config);
+    cypressSplit(on, config);
 
     return config;
   },
