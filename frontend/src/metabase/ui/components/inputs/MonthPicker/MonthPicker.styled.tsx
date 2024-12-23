@@ -5,6 +5,7 @@ export const getMonthPickerOverrides =
     MonthPicker: {
       defaultProps: {
         size: "md",
+        mih: 0, // overwrite Calendar's default value
       },
     },
   });
