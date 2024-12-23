@@ -25,6 +25,7 @@ import {
   Icon,
   Radio,
   Stack,
+  Switch,
   Text,
   Title,
   Tooltip,
@@ -33,6 +34,7 @@ import type {
   CacheStrategy,
   CacheStrategyType,
   CacheableModel,
+  DurationStrategy,
   ScheduleSettings,
   ScheduleStrategy,
 } from "metabase-types/api";
@@ -207,6 +209,15 @@ const StrategyFormBody = ({
 
   const headingId = "strategy-form-heading";
 
+  const handleSwitchToggle = useCallback(() => {
+    if (values.type === "duration" || values.type === "schedule") {
+      const newValue = !(values as DurationStrategy | ScheduleStrategy)
+        .refresh_automatically;
+      setFieldValue("refresh_automatically", newValue);
+      setStatus("idle");
+    }
+  }, [values, setFieldValue, setStatus]);
+
   return (
     <FormWrapper>
       <StyledForm
@@ -265,10 +276,20 @@ const StrategyFormBody = ({
                   />
                 </Field>
                 <input type="hidden" name="unit" />
+                <PreemptiveCachingSwitch
+                  enabled={values.refresh_automatically}
+                  handleSwitchToggle={handleSwitchToggle}
+                />
               </>
             )}
             {selectedStrategyType === "schedule" && (
-              <ScheduleStrategyFormFields />
+              <>
+                <ScheduleStrategyFormFields />
+                <PreemptiveCachingSwitch
+                  enabled={values.refresh_automatically}
+                  handleSwitchToggle={handleSwitchToggle}
+                />
+              </>
             )}
           </Stack>
         </FormBox>
@@ -283,6 +304,44 @@ const StrategyFormBody = ({
         />
       </StyledForm>
     </FormWrapper>
+  );
+};
+
+const PreemptiveCachingSwitch = ({
+  enabled,
+  handleSwitchToggle,
+}: {
+  enabled?: boolean;
+  handleSwitchToggle: () => void;
+}) => {
+  const { values } = useFormikContext<CacheStrategy>();
+
+  const hasRefreshAutomatically = (
+    strategy: CacheStrategy,
+  ): strategy is DurationStrategy | ScheduleStrategy => {
+    return strategy.type === "duration" || strategy.type === "schedule";
+  };
+
+  const currentRefreshValue = hasRefreshAutomatically(values)
+    ? values.refresh_automatically
+    : false;
+
+  useEffect(() => {
+    if (hasRefreshAutomatically(values) && enabled !== currentRefreshValue) {
+      handleSwitchToggle();
+    }
+  }, [enabled, currentRefreshValue, handleSwitchToggle, values]);
+
+  return (
+    <Switch
+      checked={currentRefreshValue}
+      onChange={handleSwitchToggle}
+      size="sm"
+      label="Refresh cache automatically"
+      description="As soon as cached results expire, run and cache the query again to update
+      the results and refresh the cache."
+      data-testid="preemptive-caching-switch"
+    />
   );
 };
 
@@ -386,14 +445,16 @@ const ScheduleStrategyFormFields = () => {
     );
   }
   return (
-    <Schedule
-      schedule={schedule}
-      scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
-      onScheduleChange={onScheduleChange}
-      verb={c("A verb in the imperative mood").t`Invalidate`}
-      timezone={timezone}
-      aria-label={t`Describe how often the cache should be invalidated`}
-    />
+    <>
+      <Schedule
+        schedule={schedule}
+        scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
+        onScheduleChange={onScheduleChange}
+        verb={c("A verb in the imperative mood").t`Invalidate`}
+        timezone={timezone}
+        aria-label={t`Describe how often the cache should be invalidated`}
+      />
+    </>
   );
 };
 
