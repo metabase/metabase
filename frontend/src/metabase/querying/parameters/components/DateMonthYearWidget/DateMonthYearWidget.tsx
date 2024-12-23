@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { MonthYearPicker } from "metabase/querying/filters/components/MonthYearPicker";
-import type { SpecificDatePickerValue } from "metabase/querying/filters/types";
+import type { MonthYearPickerValue } from "metabase/querying/filters/types";
 import {
   deserializeDateFilter,
   serializeDateFilter,
@@ -18,7 +18,7 @@ export function DateMonthYearWidget({
 }: DateMonthYearPickerProps) {
   const value = useMemo(() => getPickerValue(valueText), [valueText]);
 
-  const handleChange = (value: SpecificDatePickerValue) => {
+  const handleChange = (value: MonthYearPickerValue) => {
     onChange(serializeDateFilter(value));
   };
 
@@ -27,14 +27,8 @@ export function DateMonthYearWidget({
 
 function getPickerValue(
   valueText: string | undefined,
-): SpecificDatePickerValue | undefined {
+): MonthYearPickerValue | undefined {
   const value =
     valueText != null ? deserializeDateFilter(valueText) : undefined;
-  if (
-    value != null &&
-    value.type === "specific" &&
-    value.operator === "between"
-  ) {
-    return value;
-  }
+  return value != null && value.type === "month" ? value : undefined;
 }

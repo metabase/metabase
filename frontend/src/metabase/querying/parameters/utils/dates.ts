@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 
-import type { DatePickerValue } from "metabase/querying/filters/types";
+import type { DateFilterValue } from "metabase/querying/filters/types";
 import { isDatePickerTruncationUnit } from "metabase/querying/filters/utils";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -32,48 +32,11 @@ function hasTimePart(s: string) {
 
 type Serializer = {
   regex: RegExp;
-  serialize: (value: DatePickerValue) => string | undefined;
-  deserialize: (match: RegExpMatchArray) => DatePickerValue | undefined;
+  serialize: (value: DateFilterValue) => string | undefined;
+  deserialize: (match: RegExpMatchArray) => DateFilterValue | undefined;
 };
 
 const SERIALIZERS: Serializer[] = [
-  // entire month, `2020-04`
-  {
-    regex: /^([0-9]{4})-([0-9]{2})$/,
-    serialize: value => {
-      if (
-        value.type === "specific" &&
-        value.operator === "between" &&
-        !value.hasTime
-      ) {
-        const [date1, date2] = value.values;
-        const year = date1.getFullYear();
-        const month = date1.getMonth() + 1;
-        const startOfMonth = new Date(year, month - 1);
-        const endOfMonth = new Date(year, month, 0);
-        if (
-          date1.getTime() === startOfMonth.getTime() &&
-          date2.getTime() === endOfMonth.getTime()
-        ) {
-          return `${year.toString().padStart(4, "0")}-${month.toString().padStart(2, "0")}`;
-        }
-      }
-    },
-    deserialize: match => {
-      const year = parseInt(match[1]);
-      const month = parseInt(match[2]);
-      if (isFinite(year) && isFinite(month)) {
-        const startOfMonth = new Date(year, month - 1);
-        const endOfMonth = new Date(year, month, 0);
-        return {
-          type: "specific",
-          operator: "between",
-          values: [startOfMonth, endOfMonth],
-          hasTime: false,
-        };
-      }
-    },
-  },
   // single day, `2020-01-02` or `2020-01-02T:10:20:00`
   {
     regex: /^([\d-T:]+)$/,
@@ -155,6 +118,27 @@ const SERIALIZERS: Serializer[] = [
           operator: "between",
           values: [date1.toDate(), date2.toDate()],
           hasTime: hasTimePart(match[0]),
+        };
+      }
+    },
+  },
+  // entire month, `2020-04`
+  {
+    regex: /^([0-9]{4})-([0-9]{2})$/,
+    serialize: value => {
+      if (value.type === "month") {
+        const { year, month } = value;
+        return `${year.toString().padStart(4, "0")}-${month.toString().padStart(2, "0")}`;
+      }
+    },
+    deserialize: match => {
+      const year = parseInt(match[1]);
+      const month = parseInt(match[2]);
+      if (isFinite(year) && isFinite(month)) {
+        return {
+          type: "month",
+          year,
+          month,
         };
       }
     },
@@ -438,7 +422,7 @@ const SERIALIZERS: Serializer[] = [
   },
 ];
 
-export function serializeDateFilter(value: DatePickerValue): string {
+export function serializeDateFilter(value: DateFilterValue): string {
   for (const serializer of SERIALIZERS) {
     const text = serializer.serialize(value);
     if (text != null) {
@@ -451,7 +435,7 @@ export function serializeDateFilter(value: DatePickerValue): string {
 
 export function deserializeDateFilter(
   text: string,
-): DatePickerValue | undefined {
+): DateFilterValue | undefined {
   for (const serializer of SERIALIZERS) {
     const match = text.match(serializer.regex);
     if (match != null) {
