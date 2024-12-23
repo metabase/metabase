@@ -1,0 +1,292 @@
+name: E2E Tests (Cypress Split)
+
+on:
+  push:
+    branches:
+      - "master"
+      - "release-**"
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  # ----------------------------------------------------------------
+  # 1) Check which files changed (same as original)
+  # ----------------------------------------------------------------
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 3
+    outputs:
+      e2e_all: ${{ steps.changes.outputs.e2e_all }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  # ----------------------------------------------------------------
+  # 2) Generate E2E matrix (if you still need it to build multiple editions)
+  # ----------------------------------------------------------------
+  e2e-matrix-builder:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.e2e-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate matrix for E2E tests
+        id: e2e-matrix
+        uses: ./.github/actions/build-e2e-matrix
+
+  # ----------------------------------------------------------------
+  # 3) If this is a release branch, figure out the build requirements
+  # ----------------------------------------------------------------
+  get-build-requirements:
+    if: |
+      !cancelled() &&
+      contains(github.ref, 'release-x')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
+      node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Get build dependencies
+        uses: actions/github-script@v7
+        id: dependencies
+        with:
+          script: | # js
+            const { getBuildRequirements, getVersionFromReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const version = getVersionFromReleaseBranch('${{ github.ref }}');
+            const requirements = getBuildRequirements(version);
+            return {
+              java_version: requirements.java,
+              node_version: requirements.node,
+            };
+
+  # ----------------------------------------------------------------
+  # 4) Build the Metabase uberjar (same as original)
+  # ----------------------------------------------------------------
+  build:
+    needs: [files-changed, e2e-matrix-builder, get-build-requirements]
+    if: |
+      !cancelled() &&
+      github.event.pull_request.draft == false &&
+      needs.e2e-matrix-builder.result == 'success' &&
+      needs.files-changed.outputs.e2e_all == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    strategy:
+      matrix:
+        edition: [oss, ee]
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      INTERACTIVE: false
+      # make sure that builds on release branches get licenses
+      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+        with:
+          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: uberjar
+          java-version: "${{ needs.get-build-requirements.outputs.java_version || 11 }}"
+
+      - name: Build uberjar with ./bin/build.sh
+        run: ./bin/build.sh
+
+      - name: Prepare uberjar artifact
+        uses: ./.github/actions/prepare-uberjar-artifact
+        with:
+          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+
+  # ----------------------------------------------------------------
+  # 5) e2e-tests-skipped-stub (unchanged, if you want to keep it)
+  # ----------------------------------------------------------------
+  e2e-tests-skipped-stub:
+    needs: [build, e2e-matrix-builder]
+    if: |
+      !cancelled() &&
+      needs.build.result == 'skipped'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    name: e2e-tests-skipped-stub
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.e2e-matrix-builder.outputs.matrix) }}
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
+
+  # ----------------------------------------------------------------
+  # 6) pr-env job, unchanged if you want to keep it
+  # ----------------------------------------------------------------
+  pr-env:
+    needs: [build]
+    if: |
+      !cancelled() &&
+      contains(github.event.pull_request.labels.*.name, 'PR-Env')
+    uses: ./.github/workflows/pr-env.yml
+    secrets: inherit
+
+  # ----------------------------------------------------------------
+  # 7) Prepare for cypress-split: we output "33" for 33 parallel containers
+  # ----------------------------------------------------------------
+  prepare-split:
+    name: Prepare for parallel Cypress
+    needs: build
+    if: needs.build.result == 'success'
+    runs-on: ubuntu-22.04
+    outputs:
+      totalContainers: 33
+    steps:
+      - name: Info
+        run: echo "We will run 33 parallel containers using cypress-split."
+
+  # ----------------------------------------------------------------
+  # 8) e2e-tests-split: run ALL specs in 33 parallel containers
+  # ----------------------------------------------------------------
+  e2e-tests-split:
+    needs: [prepare-split]
+    if: |
+      !cancelled() &&
+      needs.build.result == 'success'
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # 0..32 => 33 total containers
+        index:
+          [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+          ]
+    name: cypress-split-index-${{ matrix.index }}
+    env:
+      DISPLAY: ""
+      QA_DB_ENABLED: true
+      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
+      MB_SNOWPLOW_AVAILABLE: true
+      MB_SNOWPLOW_URL: "http://localhost:9090"
+      TZ: US/Pacific
+      CYPRESS_CI: true
+
+      # cypress-split environment variables
+      SPLIT: ${{ needs.prepare-split.outputs.totalContainers }}
+      SPLIT_INDEX: ${{ matrix.index }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: true
+          openldap: true
+          postgres: true
+          mysql: true
+          mongo: true
+          webhook: true
+
+      - name: Retrieve uberjar artifact
+        uses: actions/download-artifact@v4
+        with:
+          # If your "build" job produces 'metabase-oss-<sha>-uberjar' or similar, reference that:
+          name: metabase-oss-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          # or for EE, or do a small strategy if you want to test both
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: 11
+          distribution: "temurin"
+
+      - name: Prepare Cypress environment
+        id: cypress-prep
+        uses: ./.github/actions/prepare-cypress
+
+      - name: Run Snowplow micro
+        uses: ./.github/actions/run-snowplow-micro
+
+      - name: Run E2E tests with cypress-split
+        uses: cypress-io/github-action@v6
+        with:
+          # cypress-split will split ALL found specs among the 33 containers
+          command: yarn run test-cypress-run \
+            --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
+            --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        with:
+          input-path: ./target/junit
+          output-name: cypress-split-${{ matrix.index }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+      - name: Upload Cypress Artifacts (on failure)
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-split-artifacts-${{ matrix.index }}
+          path: |
+            ./cypress
+            ./logs/test.log
+          if-no-files-found: ignore
