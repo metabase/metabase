@@ -1,0 +1,26 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { DatePicker, Box } from "metabase/ui";
+import * as MonthPickerStories from "./MonthPicker.stories";
+
+<Meta of={MonthPickerStories} />
+
+# MonthPicker
+
+Our themed wrapper around [Mantine MonthPicker](https://v6.mantine.dev/dates/month-picker/).
+
+## Docs
+
+- [Mantine DatePicker Docs](https://v6.mantine.dev/dates/month-picker/)
+
+## Examples
+
+<Canvas>
+  <Story of={DatePickerStories.Default} />
+</Canvas>
+
+### Allow deselect
+
+<Canvas>
+  <Story of={DatePickerStories.AllowDeselect} />
+</Canvas>
