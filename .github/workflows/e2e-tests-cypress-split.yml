@@ -13,14 +13,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  e2e-matrix-builder:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.e2e-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate matrix for E2E tests
+        id: e2e-matrix
+        uses: ./.github/actions/build-e2e-matrix
+
   e2e-tests-split:
+    needs: e2e-matrix-builder
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
-      matrix:
-        containers: [0, 1, 2, 3] # Adjust this based on desired parallelism
-        edition: [oss, ee]
-        java-version: [11, 17] # Add relevant Java versions if applicable
+      matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
 
     services:
       metabase:
