@@ -64,7 +64,7 @@ Which yields:
 
 ![Year over year order sum of order totals](../../images/year-over-year-sum-totals.png)
 
-With these offsets (the Sums in the "Previous period" column), we can then create [custom columns](../introduction.md#creating-custom-columns) to calculate things like the difference between yearly Sums:
+With these offsets (the Sums in the "Previous period" column), we can then create [custom columns](../editor.md#creating-custom-columns) to calculate things like the difference between yearly Sums:
 
 ```
 [Sum of total] - [Previous period]
