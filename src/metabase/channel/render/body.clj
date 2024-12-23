@@ -18,6 +18,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
@@ -207,7 +208,7 @@
 ;;; |                                                     render                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def RenderedPartCard
+(mr/def ::RenderedPartCard
   "Schema used for functions that operate on pulse card contents and their attachments"
   [:map
    [:attachments                  [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
@@ -231,7 +232,7 @@
       [ordered-cols ordered-rows])
     [(:cols data) (:rows data)]))
 
-(mu/defmethod render :table :- RenderedPartCard
+(mu/defmethod render :table :- ::RenderedPartCard
   [_chart-type
    _render-type
    timezone-id :- [:maybe :string]
@@ -339,7 +340,7 @@
                (DecimalFormat. base))]
      (.format fmt value))))
 
-(mu/defmethod render :progress :- RenderedPartCard
+(mu/defmethod render :progress :- ::RenderedPartCard
   [_chart-type
    render-type
    _timezone-id
@@ -382,7 +383,7 @@
     (assoc card-with-data :timeline_events timeline-events)
     card-with-data))
 
-(mu/defmethod render :gauge :- RenderedPartCard
+(mu/defmethod render :gauge :- ::RenderedPartCard
   [_chart-type render-type _timezone-id :- [:maybe :string] card _dashcard data]
   (let [image-bundle (image-bundle/make-image-bundle
                       render-type
@@ -396,7 +397,7 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
-(mu/defmethod render :row :- RenderedPartCard
+(mu/defmethod render :row :- ::RenderedPartCard
   [_chart-type render-type _timezone-id card _dashcard {:keys [rows cols] :as _data}]
   (let [viz-settings (get card :visualization_settings)
         data {:rows rows
@@ -420,7 +421,7 @@
                (when (= col-name (:name col))
                  [idx col])))))
 
-(mu/defmethod render :scalar :- RenderedPartCard
+(mu/defmethod render :scalar :- ::RenderedPartCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]
   (let [field-name    (:scalar.field viz-settings)
         [row-idx col] (or (when field-name
@@ -450,7 +451,7 @@
 ;; As of 2024-03-21, isomorphic chart types include: line, area, bar (LAB), and trend charts
 ;; Because this effort began with LAB charts, this method is written to handle multi-series dashcards.
 ;; Trend charts were added more recently and will not have multi-series.
-(mu/defmethod render :javascript_visualization :- RenderedPartCard
+(mu/defmethod render :javascript_visualization :- ::RenderedPartCard
   [_chart-type render-type _timezone-id card dashcard data]
   (let [series-cards-results                   (:series-results dashcard)
         cards-with-data                        (->> series-cards-results
@@ -477,7 +478,7 @@
       :html
       {:content [:div content] :attachments nil})))
 
-(mu/defmethod render :smartscalar :- RenderedPartCard
+(mu/defmethod render :smartscalar :- ::RenderedPartCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols insights viz-settings]}]
   (letfn [(col-of-type [t c] (or (isa? (:effective_type c) t)
                                  ;; computed and agg columns don't have an effective type
@@ -564,7 +565,7 @@
                              [k value])) funnel-viz raw-rows)]
       (remove nil? rows-data))))
 
-(mu/defmethod render :funnel_normal :- RenderedPartCard
+(mu/defmethod render :funnel_normal :- ::RenderedPartCard
   [_chart-type render-type _timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (formatter/graphing-column-row-fns card data)
@@ -589,14 +590,14 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
-(mu/defmethod render :funnel :- RenderedPartCard
+(mu/defmethod render :funnel :- ::RenderedPartCard
   [_chart-type render-type timezone-id card dashcard data]
   (let [viz-settings (get card :visualization_settings)]
     (if (= (get viz-settings :funnel.type) "bar")
       (render :javascript_visualization render-type timezone-id card dashcard data)
       (render :funnel_normal render-type timezone-id card dashcard data))))
 
-(mu/defmethod render :empty :- RenderedPartCard
+(mu/defmethod render :empty :- ::RenderedPartCard
   [_chart-type render-type _timezone-id _card _dashcard _data]
   (let [image-bundle (image-bundle/no-results-image-bundle render-type)]
     {:attachments
@@ -613,7 +614,7 @@
        (trs "No results")]]
      :render/text (trs "No results")}))
 
-(mu/defmethod render :attached :- RenderedPartCard
+(mu/defmethod render :attached :- ::RenderedPartCard
   [_chart-type render-type _timezone-id _card _dashcard _data]
   (let [image-bundle (image-bundle/attached-image-bundle render-type)]
     {:attachments
@@ -629,7 +630,7 @@
                       :color      style/color-gray-4})}
        (trs "This question has been included as a file attachment")]]}))
 
-(mu/defmethod render :unknown :- RenderedPartCard
+(mu/defmethod render :unknown :- ::RenderedPartCard
   [_chart-type _render-type _timezone-id _card _dashcard _data]
   {:attachments
    nil
@@ -643,10 +644,10 @@
     [:br]
     (trs "Please view this card in Metabase.")]})
 
-(mu/defmethod render :card-error :- RenderedPartCard
+(mu/defmethod render :card-error :- ::RenderedPartCard
   [_chart-type _render-type _timezone-id _card _dashcard _data]
   @card-error-rendered-info)
 
-(mu/defmethod render :render-error :- RenderedPartCard
+(mu/defmethod render :render-error :- ::RenderedPartCard
   [_chart-type _render-type _timezone-id _card _dashcard _data]
   @error-rendered-info)
