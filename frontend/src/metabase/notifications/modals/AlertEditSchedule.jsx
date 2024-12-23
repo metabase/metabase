@@ -34,7 +34,7 @@ export function AlertEditSchedule({
   return (
     <div>
       <h3 className={cx(CS.mt4, CS.mb3, CS.textDark)}>
-        {t`How often should we check for results?`}
+        {t`When do you want to check this?`}
       </h3>
 
       <div className={cx(CS.bordered, CS.rounded, CS.mb2)}>

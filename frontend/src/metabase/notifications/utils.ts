@@ -24,8 +24,6 @@ export const hasProperGoalForAlert = ({
   );
 };
 
-export const isAlert = (notification: Alert) =>
-  notification.alert_condition === "goal";
+export const isAlert = (_: Alert) => true;
 
-export const isSubscription = (notification: Alert) =>
-  notification.alert_condition === "rows";
+export const isSubscription = (_: Alert) => false;

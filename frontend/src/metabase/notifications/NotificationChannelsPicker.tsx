@@ -25,22 +25,22 @@ const DEFAULT_CHANNELS_CONFIG = {
 };
 
 interface NotificationChannelsPickerProps {
-  pulse: Alert;
+  alert: Alert;
   channels: ChannelApiResponse["channels"] | undefined;
-  user: User;
   users: User[];
   setPulse: (value: Alert) => void;
   emailRecipientText: string;
   invalidRecipientText: (domains: string) => string;
+  isAdminUser: boolean;
 }
 
 export const NotificationChannelsPicker = ({
-  pulse,
+  alert,
   channels: nullableChannels,
-  user,
   users,
   setPulse,
   invalidRecipientText,
+  isAdminUser,
 }: NotificationChannelsPickerProps) => {
   const { data: notificationChannels = [] } = useListChannelsQuery();
 
@@ -58,15 +58,15 @@ export const NotificationChannelsPicker = ({
       notification ? { channel_id: notification.id } : undefined,
     );
 
-    setPulse({ ...pulse, channels: pulse.channels.concat(channel) });
+    setPulse({ ...alert, channels: alert.channels.concat(channel) });
   };
 
   const onChannelPropertyChange = (index: number, name: string, value: any) => {
-    const channels = [...pulse.channels];
+    const channels = [...alert.channels];
 
     channels[index] = { ...channels[index], [name]: value };
 
-    setPulse({ ...pulse, channels });
+    setPulse({ ...alert, channels });
   };
 
   const toggleChannel = (
@@ -76,9 +76,9 @@ export const NotificationChannelsPicker = ({
     notification?: NotificationChannel,
   ) => {
     if (enable) {
-      if (pulse.channels[index]) {
+      if (alert.channels[index]) {
         setPulse(
-          updateIn(pulse, ["channels", index], (channel: Channel) =>
+          updateIn(alert, ["channels", index], (channel: Channel) =>
             assoc(channel, "enabled", true),
           ),
         );
@@ -86,16 +86,16 @@ export const NotificationChannelsPicker = ({
         addChannel(type, notification);
       }
     } else {
-      const channel = pulse.channels[index];
+      const channel = alert.channels[index];
 
       const shouldRemoveChannel =
         type === "email" && channel?.recipients?.length === 0;
 
       const updatedPulse = shouldRemoveChannel
-        ? updateIn(pulse, ["channels"], channels =>
+        ? updateIn(alert, ["channels"], channels =>
             channels.toSpliced(index, 1),
           )
-        : updateIn(pulse, ["channels", index], (channel: Channel) =>
+        : updateIn(alert, ["channels", index], (channel: Channel) =>
             assoc(channel, "enabled", false),
           );
       setPulse(updatedPulse);
@@ -109,32 +109,33 @@ export const NotificationChannelsPicker = ({
   return (
     <ul className={cx(CS.bordered, CS.rounded, CS.bgWhite)}>
       <EmailChannelEdit
-        user={user}
+        isAdminUser={isAdminUser}
         users={users}
         toggleChannel={toggleChannel}
         onChannelPropertyChange={onChannelPropertyChange}
         channelSpec={channels.email}
-        alert={pulse}
+        alert={alert}
         invalidRecipientText={invalidRecipientText}
       />
       {channels.slack.configured && (
         <SlackChannelEdit
-          user={user}
+          isAdminUser={isAdminUser}
           toggleChannel={toggleChannel}
           onChannelPropertyChange={onChannelPropertyChange}
           channelSpec={channels.slack}
-          alert={pulse}
+          alert={alert}
         />
       )}
-      {notificationChannels.map(notification => (
-        <WebhookChannelEdit
-          key={`webhook-${notification.id}`}
-          toggleChannel={toggleChannel}
-          channelSpec={channels.http}
-          alert={pulse}
-          notification={notification}
-        />
-      ))}
+      {isAdminUser &&
+        notificationChannels.map(notification => (
+          <WebhookChannelEdit
+            key={`webhook-${notification.id}`}
+            toggleChannel={toggleChannel}
+            channelSpec={channels.http}
+            alert={alert}
+            notification={notification}
+          />
+        ))}
     </ul>
   );
 };

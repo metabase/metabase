@@ -1,11 +1,11 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 import CS from "metabase/css/core/index.css";
 import { Icon, Switch } from "metabase/ui";
 import type { Alert, EmailChannelSpec, User } from "metabase-types/api";
 
+import { ChannelSetupMessage } from "./ChannelSetupMessage";
 import { RecipientPicker } from "./RecipientPicker";
 
 export const EmailChannelEdit = ({
@@ -14,13 +14,13 @@ export const EmailChannelEdit = ({
   toggleChannel,
   onChannelPropertyChange,
   users,
-  user,
+  isAdminUser,
   invalidRecipientText,
 }: {
   channelSpec: EmailChannelSpec;
   alert: Alert;
   toggleChannel: (channel: "email", index: number, value: boolean) => void;
-  user: User;
+  isAdminUser: boolean;
   users: User[];
   onChannelPropertyChange: (index: number, name: string, value: any) => void;
   invalidRecipientText: (domains: string) => string;
@@ -71,7 +71,10 @@ export const EmailChannelEdit = ({
           <h3
             className={CS.mb2}
           >{t`${channelSpec.name} needs to be set up by an administrator.`}</h3>
-          <ChannelSetupMessage user={user} channels={[channelSpec.name]} />
+          <ChannelSetupMessage
+            isAdminUser={isAdminUser}
+            channels={[channelSpec.name]}
+          />
         </div>
       ) : null}
     </li>

@@ -7,8 +7,8 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import Users from "metabase/entities/users";
 import { connect } from "metabase/lib/redux";
+import { NotificationChannelsPicker } from "metabase/notifications/NotificationChannelsPicker";
 import { fetchPulseFormInput } from "metabase/notifications/pulse/actions";
-import { NotificationChannelsPicker } from "metabase/notifications/pulse/components/NotificationChannelsPicker";
 import { getPulseFormInput } from "metabase/notifications/pulse/selectors";
 import { getUser } from "metabase/selectors/user";
 import type {
@@ -66,7 +66,7 @@ const AlertEditChannelsInner = ({
       >{t`Where do you want to send these alerts?`}</h3>
       <div className={CS.mb2}>
         <NotificationChannelsPicker
-          pulse={alert}
+          alert={alert}
           channels={formInput?.channels}
           user={user}
           users={users}

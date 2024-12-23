@@ -16,13 +16,13 @@ import { NormalAlertTip } from "./NormalAlertTip";
 function RawDataAlertTipInner(props) {
   const display = props.question.display();
   const vizSettings = props.visualizationSettings;
-  const goalEnabled = vizSettings["graph.show_goal"];
+  const goalEnabled = vizSettings?.["graph.show_goal"];
   const isLineAreaBar =
     display === "line" || display === "area" || display === "bar";
   const isMultiSeries =
     isLineAreaBar &&
-    vizSettings["graph.metrics"] &&
-    vizSettings["graph.metrics"].length > 1;
+    vizSettings?.["graph.metrics"] &&
+    vizSettings?.["graph.metrics"].length > 1;
   const showMultiSeriesGoalAlert = goalEnabled && isMultiSeries;
 
   return (

@@ -1,10 +1,8 @@
 import { t } from "ttag";
 
 import { skipToken, useListCardAlertsQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
 import { CommonNotificationsMenuItem } from "metabase/notifications/NotificationsActionsMenu/CommonNotificationsMenuItem";
-import { hasProperGoalForAlert, isAlert } from "metabase/notifications/utils";
-import { getVisualizationSettings } from "metabase/query_builder/selectors";
+import { isAlert } from "metabase/notifications/utils";
 import type Question from "metabase-lib/v1/Question";
 
 export function QuestionAlertsMenuItem({
@@ -14,18 +12,18 @@ export function QuestionAlertsMenuItem({
   question: Question;
   onClick: () => void;
 }) {
-  const visualizationSettings = useSelector(getVisualizationSettings);
+  // const visualizationSettings = useSelector(getVisualizationSettings);
 
   const { data: questionNotifications, isLoading } = useListCardAlertsQuery({
     id: question.id() ?? skipToken,
   });
 
-  const canAddAlertOnThisQuestion = hasProperGoalForAlert({
-    question,
-    visualizationSettings,
-  });
+  // const canAddAlertOnThisQuestion = hasProperGoalForAlert({
+  //   question,
+  //   visualizationSettings,
+  // });
 
-  if (isLoading || !canAddAlertOnThisQuestion) {
+  if (isLoading /*|| !canAddAlertOnThisQuestion*/) {
     return null;
   }
 

@@ -20,10 +20,10 @@ import { Flex } from "metabase/ui";
 import { ALERT_TYPE_ROWS } from "metabase-lib/v1/Alert";
 import type { Alert } from "metabase-types/api";
 
-import { AlertEditForm } from "./AlertEditForm";
-import { AlertModalTitle } from "./AlertModalTitle";
-import AlertModalsS from "./AlertModals.module.css";
-import { DeleteAlertSection } from "./DeleteAlertSection";
+import { AlertEditForm } from "../AlertEditForm";
+import { AlertModalTitle } from "../AlertModalTitle";
+import AlertModalsS from "../AlertModals.module.css";
+import { DeleteAlertSection } from "../DeleteAlertSection";
 
 interface UpdateAlertModalContentProps {
   alert: Alert;

@@ -1,23 +1,24 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 import CS from "metabase/css/core/index.css";
 import { SlackChannelField } from "metabase/notifications/SlackChannelField";
 import { Icon, Switch } from "metabase/ui";
-import type { Alert, SlackChannelSpec, User } from "metabase-types/api";
+import type { Alert, SlackChannelSpec } from "metabase-types/api";
+
+import { ChannelSetupMessage } from "./ChannelSetupMessage";
 
 export const SlackChannelEdit = ({
   channelSpec,
   alert,
   toggleChannel,
   onChannelPropertyChange,
-  user,
+  isAdminUser,
 }: {
   channelSpec: SlackChannelSpec;
   alert: Alert;
   toggleChannel: (channel: "slack", index: number, value: boolean) => void;
-  user: User;
+  isAdminUser: boolean;
   onChannelPropertyChange: (index: number, name: string, value: any) => void;
 }) => {
   const channelIndex = alert.channels.findIndex(
@@ -56,7 +57,10 @@ export const SlackChannelEdit = ({
           <h3
             className={CS.mb2}
           >{t`${channelSpec.name} needs to be set up by an administrator.`}</h3>
-          <ChannelSetupMessage user={user} channels={[channelSpec.name]} />
+          <ChannelSetupMessage
+            isAdminUser={isAdminUser}
+            channels={[channelSpec.name]}
+          />
         </div>
       ) : null}
     </div>

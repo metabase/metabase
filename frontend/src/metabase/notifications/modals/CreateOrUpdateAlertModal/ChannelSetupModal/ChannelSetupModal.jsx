@@ -3,9 +3,10 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
-import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 import ModalContent from "metabase/components/ModalContent";
 import { Flex } from "metabase/ui";
+
+import { ChannelSetupMessage } from "../../../ChannelSetupMessage";
 
 const formatChannelString = channels => {
   const lastChannel = channels[channels.length - 1];
