@@ -1194,7 +1194,7 @@ describe("issue 22482", () => {
 
     H.filterWidget().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative dates...").click();
+    cy.findByText("Relative dates…").click();
   });
 
   it("should round relative date range (metabase#22482)", () => {
@@ -1372,8 +1372,8 @@ describe("issue 24235", () => {
 
     H.filterWidget().contains(parameter.name).click();
     H.popover().within(() => {
-      cy.findByText("Exclude...").click();
-      cy.findByText("Days of the week...").click();
+      cy.findByText("Exclude…").click();
+      cy.findByText("Days of the week…").click();
       cy.findByText("Select all").click();
       cy.findByText("Add filter").click();
     });
@@ -2989,8 +2989,8 @@ describe("issue 27579", () => {
     H.saveDashboard();
     H.filterWidget().click();
     H.popover().within(() => {
-      cy.findByText("Exclude...").click();
-      cy.findByText("Hours of the day...").click();
+      cy.findByText("Exclude…").click();
+      cy.findByText("Hours of the day…").click();
       cy.findByText("Select all").click();
       cy.findByLabelText("12 AM").should("be.checked");
 

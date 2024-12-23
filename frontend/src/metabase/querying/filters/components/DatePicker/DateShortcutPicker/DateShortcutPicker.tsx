@@ -39,7 +39,7 @@ export function DateShortcutPicker({
 
   return (
     <Box p="sm" miw={MIN_WIDTH}>
-      {backButtonLabel && (
+      {onBack && (
         <PopoverBackButton p="sm" onClick={onBack}>
           {backButtonLabel}
         </PopoverBackButton>
