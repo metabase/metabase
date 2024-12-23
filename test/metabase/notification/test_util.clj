@@ -2,8 +2,11 @@
   "Define the `metabase-test` channel and notification test utilities."
   (:require
    [clojure.set :as set]
+   [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.events.notification :as events.notification]
+   [metabase.integrations.slack :as slack]
    [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
    [metabase.notification.payload.core :as notification.payload]
@@ -96,11 +99,18 @@
      (with-send-notification-sync
        ~@body)))
 
+(def default-card-name "Card notification test card")
+
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-card-notification
   [{:keys [card notification-card notification subscriptions handlers]} thunk]
   (mt/with-temp
-    [:model/Card {card-id :id} card]
+    [:model/Card {card-id :id} (merge
+                                {:name          default-card-name
+                                 :dataset_query (mt/mbql-query products {:aggregation [[:count]]
+                                                                         :breakout    [$category]})}
+
+                                card)]
     (let [notification (models.notification/create-notification!
                         (merge {:payload      (assoc notification-card
                                                      :card_id card-id)
@@ -118,11 +128,50 @@
   "Macro that sets up a card notification for testing.
     (with-card-notification
       [notification {:card              {:name \"My Card\"}
+                     :notification      {:creator_id 1}
                      :notification-card {:send_condition :rows}
                      :subscriptions     []
                      :handlers          []}]"
   [[bindings props] & body]
   `(do-with-card-notification ~props (fn [~bindings] ~@body)))
+
+(def channel-type->fixture
+  {:channel/email (fn [thunk] (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                                                 email-smtp-port 587
+                                                                 site-url        "https://metabase.com/testmb"]
+                                (thunk)))
+   :channel/slack (fn [thunk] (with-redefs [slack/files-channel (constantly "FOO")]
+                                (thunk)))})
+
+(defn apply-channel-fixtures
+  [channel-types thunk]
+  ((reduce (fn [handler fixture] #(fixture handler))
+           thunk
+           (keep channel-type->fixture channel-types))))
+
+(defmacro with-channel-fixtures
+  "Macro that applies the given channel fixtures to the body of the macro."
+  [channel-types & body]
+  `(apply-channel-fixtures ~channel-types (fn [] ~@body)))
+
+(defn test-send-notification!
+  "Test sending a notification with the given channel-type->assert-fn map."
+  [notification channel-type->assert-fn]
+  (with-channel-fixtures (keys channel-type->assert-fn)
+    (let [channel-type->captured-message (with-captured-channel-send!
+                                           (notification/send-notification! notification))]
+
+      (doseq [[channel-type assert-fn] channel-type->assert-fn]
+        (testing (format "chanel-type = %s" channel-type)
+          (assert-fn (get channel-type->captured-message channel-type)))))))
+
+(defn slack-message->boolean [{:keys [attachments] :as result}]
+  (assoc result :attachments (for [attachment-info attachments]
+                               (if (:rendered-info attachment-info)
+                                 (update attachment-info
+                                         :rendered-info
+                                         (fn [ri] (m/map-vals some? ri)))
+                                 attachment-info))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Dummy Data                                              ;;
@@ -144,3 +193,35 @@
    :details      {:type    :email/handlebars-text
                   :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
                   :body    "Hello {{payload.event_info.object.first_name}}! Welcome to {{context.site_name}}!"}})
+
+(def default-email-handler
+  (delay {:channel_type :channel/email
+          :recipients   [{:type    :notification-recipient/user
+                          :user_id (mt/user->id :rasta)}]}))
+
+(def default-slack-handler
+  {:channel_type :channel/slack
+   :recipients   [{:type    :notification-recipient/raw-value
+                   :details {:value "#general"}}]})
+
+(def png-attachment
+  {:type         :inline
+   :content-id   true
+   :content-type "image/png"
+   :content      java.net.URL})
+
+(def csv-attachment
+  {:type         :attachment
+   :content-type "text/csv"
+   :file-name    (format "%s.csv" default-card-name)
+   :content      java.net.URL
+   :description  (format "More results for '%s'" default-card-name)
+   :content-id   false})
+
+(def xls-attachment
+  {:type         :attachment
+   :file-name    "Test card.xlsx"
+   :content-type "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+   :content      java.net.URL
+   :description  "More results for 'Test card'"
+   :content-id   false})

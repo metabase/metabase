@@ -12,7 +12,7 @@
 (use-fixtures :once (fixtures/initialize :web-server))
 
 (deftest send-notification!*-test
-  (testing "sending a ntoification will call render on all of its handlers"
+  (testing "sending a notification will call render on all of its handlers"
     (notification.tu/with-notification-testing-setup!
       (mt/with-temp [:model/Channel         chn-1 notification.tu/default-can-connect-channel
                      :model/Channel         chn-2 (assoc notification.tu/default-can-connect-channel :name "Channel 2")

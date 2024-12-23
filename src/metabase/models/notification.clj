@@ -4,11 +4,14 @@
   - more than one subscriptions
   - more than one handlers where each handler has a channel, optionally a template, and more than one recpients."
   (:require
+   [malli.core :as mc]
    [medley.core :as m]
+   [metabase.models.channel :as models.channel]
    [metabase.models.interface :as mi]
    [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -70,11 +73,10 @@
         payload-type+id->payload (into {}
                                        (for [[payload-type payload-ids] payload-type->ids]
                                          (case payload-type
-                                           :notification/system-event
-                                           {[:notification/system-event nil] nil}
                                            :notification/card
                                            (t2/select-fn->fn (fn [x] [payload-type (:id x)]) identity
-                                                             :model/NotificationCard :id [:in payload-ids]))))]
+                                                             :model/NotificationCard :id [:in payload-ids])
+                                           {[payload-type nil] nil})))]
 
     (for [notification notifications]
       (assoc notification k
@@ -91,7 +93,7 @@
    :id
    {:default []}))
 
-(def ^:private Notification
+(mr/def ::notification
   [:merge
    [:map
     [:payload_type (ms/enum-decode-keyword notification-types)]]
@@ -108,7 +110,7 @@
 
 (defn- validate-notification
   [notification]
-  (mu/validate-throw Notification notification))
+  (mu/validate-throw ::notification notification))
 
 (t2/define-before-insert :model/Notification
   [instance]
@@ -153,7 +155,8 @@
   {:type       (mi/transform-validator mi/transform-keyword (partial mi/assert-enum subscription-types))
    :event_name (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "event"))})
 
-(def ^:private NotificationSubscription
+(mr/def ::NotificationSubscription
+  "Schema for :model/NotificationSubscription."
   [:merge [:map
            [:type (ms/enum-decode-keyword subscription-types)]]
    [:multi {:dispatch (comp keyword :type)}
@@ -169,7 +172,7 @@
 (defn- validate-subscription
   "Validate a NotificationSubscription."
   [subscription]
-  (mu/validate-throw NotificationSubscription subscription))
+  (mu/validate-throw ::NotificationSubscription subscription))
 
 (t2/define-before-insert :model/NotificationSubscription
   [instance]
@@ -257,18 +260,18 @@
                          :channel-type  channel-type
                          :template-type template-type}))))))
 
-(def ^:private NotificationHandler
+(mr/def ::NotificationHandler
   [:map
    ;; optional during insertion
-   [:notification_id {:optional true} ms/PositiveInt]
-   [:channel_type                     [:fn #(= "channel" (-> % keyword namespace))]]
-   [:channel_id      {:optional true} [:maybe ms/PositiveInt]]
-   [:template_id     {:optional true} [:maybe ms/PositiveInt]]
-   [:active          {:optional true} [:maybe :boolean]]])
+   [:notification_id {:optional true}       ms/PositiveInt]
+   [:channel_type    {:decode/json keyword} [:fn #(= "channel" (-> % keyword namespace))]]
+   [:channel_id      {:optional true}       [:maybe ms/PositiveInt]]
+   [:template_id     {:optional true}       [:maybe ms/PositiveInt]]
+   [:active          {:optional true}       [:maybe :boolean]]])
 
 (defn- validate-notification-handler
   [notification-handler]
-  (mu/validate-throw NotificationHandler notification-handler))
+  (mu/validate-throw ::NotificationHandler notification-handler))
 
 (t2/define-before-insert :model/NotificationHandler
   [instance]
@@ -290,14 +293,14 @@
 (def ^:private notification-recipient-types
   #{:notification-recipient/user
     :notification-recipient/group
-    :notification-recipient/external-email
+    :notification-recipient/raw-value
     :notification-recipient/template})
 
 (t2/deftransforms :model/NotificationRecipient
   {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-recipient-types))
    :details mi/transform-json})
 
-(def NotificationRecipient
+(mr/def ::NotificationRecipient
   "Schema for :model/NotificationRecipient."
   [:merge [:map
            [:type (ms/enum-decode-keyword notification-recipient-types)]
@@ -313,10 +316,10 @@
       [:permissions_group_id                  ms/PositiveInt]
       [:user_id              {:optional true} [:fn nil?]]
       [:details              {:optional true} [:fn empty?]]]]
-    [:notification-recipient/external-email
+    [:notification-recipient/raw-value
      [:map
       [:details                               [:map {:closed true}
-                                               [:email ms/Email]]]
+                                               [:value :any]]]
       [:user_id              {:optional true} [:fn nil?]]
       [:permissions_group_id {:optional true} [:fn nil?]]]]
     [:notification-recipient/template
@@ -329,7 +332,7 @@
 
 (defn- check-valid-recipient
   [recipient]
-  (mu/validate-throw NotificationRecipient recipient))
+  (mu/validate-throw ::NotificationRecipient recipient))
 
 (t2/define-before-insert :model/NotificationRecipient
   [instance]
@@ -345,7 +348,8 @@
 ;;                                     :model/NotificationCard                                     ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(def ^:private card-subscription-send-conditions
+(def card-subscription-send-conditions
+  "Set of valid send conditions for NotificationCard."
   #{:has_result
     :goal_above
     :goal_below})
@@ -353,7 +357,8 @@
 (t2/deftransforms :model/NotificationCard
   {:send_condition (mi/transform-validator mi/transform-keyword (partial mi/assert-enum card-subscription-send-conditions))})
 
-(def ^:private NotificationCard
+(mr/def ::NotificationCard
+  "Schema for :model/NotificationCard."
   [:map
    [:card_id                         ms/PositiveInt]
    [:send_condition {:optional true} (ms/enum-decode-keyword card-subscription-send-conditions)]
@@ -369,24 +374,25 @@
 ;;                                         Public APIs                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(def FullyHydratedNotification
+(mr/def ::FullyHydratedNotification
   "Fully hydrated notification."
   [:merge
-   Notification
+   ::notification
    [:map
     [:creator       {:optional true} [:maybe :map]]
-    [:subscriptions {:optional true} [:sequential NotificationSubscription]]
+    [:subscriptions {:optional true} [:sequential ::NotificationSubscription]]
     [:handlers      {:optional true} [:sequential [:merge
-                                                   NotificationHandler
+                                                   ::NotificationHandler
                                                    [:map
-                                                    [:template   {:optional true} [:maybe :map]]
-                                                    [:channel    {:optional true} [:maybe :map]]
-                                                    [:recipients {:optional true} [:sequential NotificationRecipient]]]]]]]
+                                                    [:template   {:optional true} [:maybe ::models.channel/ChannelTemplate]]
+                                                    [:channel    {:optional true} [:maybe ::models.channel/Channel]]
+                                                    [:recipients {:optional true} [:sequential ::NotificationRecipient]]]]]]]
    [:multi {:dispatch (comp keyword :payload_type)}
     [:notification/card [:map
-                         [:payload NotificationCard]]]]])
+                         [:payload ::NotificationCard]]]
+    [::mc/default       :any]]])
 
-(mu/defn hydrate-notification :- FullyHydratedNotification
+(mu/defn hydrate-notification :- ::FullyHydratedNotification
   "Fully hydrate notifictitons."
   [notification-or-notifications]
   (t2/hydrate notification-or-notifications
