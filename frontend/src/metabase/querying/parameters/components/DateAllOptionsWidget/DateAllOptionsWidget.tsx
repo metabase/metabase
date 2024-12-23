@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { DatePicker } from "metabase/querying/filters/components/DatePicker";
@@ -45,12 +46,8 @@ function getPickerValue(
 ): DatePickerValue | undefined {
   const value =
     valueText != null ? deserializeDateFilter(valueText) : undefined;
-  if (
-    value != null &&
-    (value.type === "specific" ||
-      value.type === "relative" ||
-      value.type === "exclude")
-  ) {
-    return value;
-  }
+  return match(value)
+    .returnType<DatePickerValue | undefined>()
+    .with({ type: P.union("specific", "relative", "exclude") }, value => value)
+    .otherwise(() => undefined);
 }

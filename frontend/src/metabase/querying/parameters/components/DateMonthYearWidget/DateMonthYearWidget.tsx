@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { match } from "ts-pattern";
 
 import { MonthYearPicker } from "metabase/querying/filters/components/MonthYearPicker";
 import type { MonthYearPickerValue } from "metabase/querying/filters/types";
@@ -30,5 +31,8 @@ function getPickerValue(
 ): MonthYearPickerValue | undefined {
   const value =
     valueText != null ? deserializeDateFilter(valueText) : undefined;
-  return value != null && value.type === "month" ? value : undefined;
+  return match(value)
+    .returnType<MonthYearPickerValue | undefined>()
+    .with({ type: "month" }, value => value)
+    .otherwise(() => undefined);
 }

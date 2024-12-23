@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import { useState } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
@@ -46,14 +47,13 @@ function getPickerValue(
 ): DateRangePickerValue | undefined {
   const value =
     valueText != null ? deserializeDateFilter(valueText) : undefined;
-  if (
-    value != null &&
-    value.type === "specific" &&
-    value.operator === "between"
-  ) {
-    const [date1, date2] = value.values;
-    return { dateRange: [date1, date2], hasTime: value.hasTime };
-  }
+  return match(value)
+    .returnType<DateRangePickerValue | undefined>()
+    .with({ type: "specific", operator: "between" }, ({ values, hasTime }) => ({
+      dateRange: [values[0], values[1]],
+      hasTime,
+    }))
+    .otherwise(() => undefined);
 }
 
 function getPickerDefaultValue(): DateRangePickerValue {
