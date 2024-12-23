@@ -2,9 +2,11 @@ import cx from "classnames";
 import type { LocationDescriptor } from "history";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
+import { getDashcardData } from "metabase/dashboard/selectors";
 import {
   getVirtualCardType,
   isQuestionCard,
@@ -19,16 +21,24 @@ import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
+import {
+  extractReferencedColumns,
+  getDataSourceIdFromNameRef,
+  isDataSourceNameRef,
+  parseDataSourceId,
+} from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,
   Dashboard,
   DashboardCard,
   Dataset,
+  RowValues,
   Series,
   VirtualCardDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
 import {
@@ -97,7 +107,7 @@ interface DashCardVisualizationProps {
 export function DashCardVisualization({
   dashcard,
   dashboard,
-  series,
+  series: _series,
   mode,
   getHref,
   gridSize,
@@ -128,6 +138,91 @@ export function DashCardVisualization({
   onUpdateVisualizationSettings,
   downloadsEnabled,
 }: DashCardVisualizationProps) {
+  const datasets = useSelector(state => getDashcardData(state, dashcard.id));
+
+  const series = useMemo(() => {
+    const isVisualizerDashcard =
+      !!dashcard?.visualization_settings?.visualization;
+    if (
+      !datasets ||
+      !dashcard ||
+      !_series ||
+      _series.length === 0 ||
+      !isVisualizerDashcard
+    ) {
+      return _series;
+    }
+
+    const { display, columns, columnValuesMapping, settings } = dashcard
+      .visualization_settings!.visualization as VisualizerHistoryItem;
+
+    const referencedColumns = extractReferencedColumns(columnValuesMapping);
+
+    const referencedColumnValuesMap: Record<string, RowValues> = {};
+    referencedColumns.forEach(ref => {
+      const { sourceId } = parseDataSourceId(ref.sourceId);
+      const dataset = datasets[sourceId];
+      if (!dataset) {
+        return;
+      }
+      const columnIndex = dataset.data.cols.findIndex(
+        col => col.name === ref.originalName,
+      );
+      if (columnIndex >= 0) {
+        const values = dataset.data.rows.map(row => row[columnIndex]);
+        referencedColumnValuesMap[ref.name] = values;
+      }
+    });
+
+    const hasPivotGrouping = columns.some(col => col.name === "pivot-grouping");
+    if (hasPivotGrouping) {
+      const rowLengths = Object.values(referencedColumnValuesMap).map(
+        values => values.length,
+      );
+      const maxLength = rowLengths.length > 0 ? Math.max(...rowLengths) : 0;
+      referencedColumnValuesMap["pivot-grouping"] = new Array(maxLength).fill(
+        0,
+      );
+    }
+
+    const unzippedRows = columns.map(column =>
+      (columnValuesMapping[column.name] ?? [])
+        .map(valueSource => {
+          if (isDataSourceNameRef(valueSource)) {
+            const id = getDataSourceIdFromNameRef(valueSource);
+            return `Not supported yet (card ${id})`;
+          }
+          const values = referencedColumnValuesMap[valueSource.name];
+          if (!values) {
+            return [];
+          }
+          return values;
+        })
+        .flat(),
+    );
+
+    const mergedData = {
+      cols: columns,
+      rows: _.zip(...unzippedRows),
+      results_metadata: { columns },
+    };
+
+    return [
+      {
+        card: {
+          display,
+          visualization_settings: settings,
+        },
+
+        data: mergedData,
+
+        // Certain visualizations memoize settings computation based on series keys
+        // This guarantees a visualization always rerenders on changes
+        started_at: new Date().toISOString(),
+      },
+    ];
+  }, [_series, dashcard, datasets]);
+
   const metadata = useSelector(getMetadata);
   const question = useMemo(() => {
     return isQuestionCard(dashcard.card)
