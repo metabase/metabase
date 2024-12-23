@@ -1,30 +1,20 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import type { DatePickerValue } from "metabase/querying/filters/types";
 
 import { DatePicker } from "./DatePicker";
-import type { DatePickerValue } from "./types";
 
 interface SetupOpts {
   value?: DatePickerValue;
   isNew?: boolean;
-  canUseRelativeOffsets?: boolean;
 }
 
-function setup({
-  value,
-  isNew = false,
-  canUseRelativeOffsets = false,
-}: SetupOpts = {}) {
+function setup({ value, isNew = false }: SetupOpts = {}) {
   const onChange = jest.fn();
 
   renderWithProviders(
-    <DatePicker
-      value={value}
-      isNew={isNew}
-      canUseRelativeOffsets={canUseRelativeOffsets}
-      onChange={onChange}
-    />,
+    <DatePicker value={value} isNew={isNew} onChange={onChange} />,
   );
 
   return { onChange };

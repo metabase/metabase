@@ -230,16 +230,21 @@ H.describeEE("scenarios [EE] > public > question", () => {
       { wrapId: true },
     );
 
+    // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
+    cy.intercept("/app/locales/de.json").as("deLocale");
+
     cy.get("@questionId").then(id => {
       H.visitPublicQuestion(id, {
         params: {
           some_parameter: "some_value",
         },
         hash: {
-          locale: "de",
+          locale: "de-CH",
         },
       });
     });
+
+    cy.wait("@deLocale");
 
     H.main().findByText("Februar 11, 2025");
 
