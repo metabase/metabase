@@ -26,9 +26,12 @@ export function setSingleDate(date) {
 
 export function setTime({ hours, minutes }) {
   popover().within(() => {
-    cy.findByText("Add a time").click();
-    cy.findByPlaceholderText("hh").clear().type(hours);
-    cy.findByPlaceholderText("mm").clear().type(minutes);
+    cy.findByText("Add time").click();
+    cy.findByLabelText("Time")
+      .clear()
+      .type(
+        `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`,
+      );
   });
 }
 

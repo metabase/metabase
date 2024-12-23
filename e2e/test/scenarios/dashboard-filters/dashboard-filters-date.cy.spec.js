@@ -149,7 +149,6 @@ describe("scenarios > dashboard > filters > date", () => {
     cy.findByText("minutes").click();
     // also check the "Include this minute" checkbox
     // which is actually "Include" followed by "this minute" wrapped in <strong>, so has to be clicked this way
-    H.popover().icon("ellipsis").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Include this minute").click();
   });
