@@ -1,6 +1,13 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type {
+  DatePickerExtractionUnit,
+  DatePickerOperator,
+  DatePickerUnit,
+  ExcludeDatePickerOperator,
+  ExcludeDatePickerValue,
+} from "metabase/querying/filters/types";
 import type { PopoverBackButtonProps } from "metabase/ui";
 import {
   Box,
@@ -13,13 +20,6 @@ import {
 } from "metabase/ui";
 
 import { MIN_WIDTH } from "../constants";
-import type {
-  DatePickerExtractionUnit,
-  DatePickerOperator,
-  DatePickerUnit,
-  ExcludeDatePickerOperator,
-  ExcludeDatePickerValue,
-} from "../types";
 
 import type { ExcludeValueOption } from "./types";
 import {
@@ -33,8 +33,8 @@ import {
 
 export interface ExcludeDatePickerProps {
   value?: ExcludeDatePickerValue;
-  availableOperators: ReadonlyArray<DatePickerOperator>;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
+  availableOperators: DatePickerOperator[];
+  availableUnits: DatePickerUnit[];
   isNew: boolean;
   onChange: (value: ExcludeDatePickerValue) => void;
   onBack: () => void;
@@ -82,8 +82,8 @@ export function ExcludeDatePicker({
 
 interface ExcludeOptionPickerProps {
   value: ExcludeDatePickerValue | undefined;
-  availableOperators: ReadonlyArray<DatePickerOperator>;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
+  availableOperators: DatePickerOperator[];
+  availableUnits: DatePickerUnit[];
   onChange: (value: ExcludeDatePickerValue) => void;
   onSelectUnit: (unit: DatePickerExtractionUnit) => void;
   onBack: () => void;

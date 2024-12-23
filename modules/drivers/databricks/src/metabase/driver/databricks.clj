@@ -142,7 +142,7 @@
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
 
-(defmethod driver/describe-fields :sql-jdbc
+(defmethod driver/describe-fields :databricks
   [driver database & {:as args}]
   (let [catalog (get-in database [:details :catalog])]
     (sql-jdbc.sync/describe-fields driver database (assoc args :catalog catalog))))
@@ -176,7 +176,7 @@
                :order-by [:fk-table-schema :fk-table-name]}
               :dialect (sql.qp/quote-style driver)))
 
-(defmethod driver/describe-fks :sql-jdbc
+(defmethod driver/describe-fks :databricks
   [driver database & {:as args}]
   (let [catalog (get-in database [:details :catalog])]
     (sql-jdbc.sync/describe-fks driver database (assoc args :catalog catalog))))
