@@ -1,5 +1,6 @@
-import CodeMirror from "@uiw/react-codemirror";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { startCompletion } from "@codemirror/autocomplete";
+import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Box } from "metabase/ui";
@@ -43,6 +44,7 @@ export function Editor(props: EditorProps) {
     error,
   } = props;
 
+  const ref = useRef<ReactCodeMirrorRef>(null);
   const { source, onSourceChange, commitExpression, hasChanges } =
     useExpression(props);
 
@@ -55,17 +57,28 @@ export function Editor(props: EditorProps) {
     onCommit: commitExpression,
   });
 
+  const handleFocus = useCallback(() => {
+    if (!ref.current?.view) {
+      return;
+    }
+    if (source === "") {
+      startCompletion(ref.current?.view);
+    }
+  }, [source]);
+
   return (
     <>
       <div className={S.wrapper}>
         <div className={S.prefix}>=</div>
         <CodeMirror
+          ref={ref}
           data-testid="custom-expression-query-editor"
           className={S.editor}
           extensions={extensions}
           readOnly={readOnly}
           value={source}
           onChange={onSourceChange}
+          onFocus={handleFocus}
           onBlur={commitExpression}
           height="100%"
           width="100%"
