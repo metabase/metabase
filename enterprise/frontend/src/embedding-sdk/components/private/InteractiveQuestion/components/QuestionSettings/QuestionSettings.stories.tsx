@@ -4,7 +4,7 @@ import { Box, Button, Popover } from "metabase/ui";
 
 import { QuestionSettings } from "./QuestionSettings";
 
-const QUESTION_ID = (window as any).QUESTION_ID || 12;
+const QUESTION_ID = (window as any).QUESTION_ID || 11;
 
 export default {
   title: "EmbeddingSDK/InteractiveQuestion/QuestionSettings",
