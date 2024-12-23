@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.notification.core :as notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -65,7 +66,6 @@
   (testing "404 on unknown notification"
     (is (= "Not found."
            (mt/user-http-request :crowberto :get (format "notification/%d" Integer/MAX_VALUE))))))
-
 
 (deftest create-simple-card-notification-test
   (mt/with-model-cleanup [:model/Notification]
@@ -253,6 +253,7 @@
                    :channel/http  [{:body (mt/malli=? some?)}]}
                   (notification.tu/with-captured-channel-send!
                     (mt/user-http-request :crowberto :post 204 "notification/send" (strip-keys notification [:id :created_at :updated_at]))))))))))
+
 ;; Permission tests
 
 (deftest get-notification-permissions-test
@@ -371,3 +372,51 @@
                  (perms/grant-application-permissions! (perms-group/all-users) :subscription)
                  (change-notification-creator (mt/user->id :rasta))
                  (move-card-collection (mt/user->id :rasta)))))))))))
+
+(deftest send-saved-notification-permissions-test
+  (mt/with-temp [:model/User {third-user-id :id} {:is_superuser false}]
+    (notification.tu/with-card-notification
+      [notification {:notification {:creator_id (mt/user->id :rasta)}
+                     :handlers     [{:channel_type "channel/email"
+                                     :recipients   [{:type    :notification-recipient/user
+                                                     :user_id (mt/user->id :lucky)}]}]}]
+      (let [send-notification (fn [user-or-id expected-status]
+                               (mt/user-http-request user-or-id :get expected-status (format "notification/%d" (:id notification))))]
+        (testing "admin can send"
+          (send-notification :crowberto 200))
+        (testing "creator can send"
+          (send-notification :rasta 200))
+        (testing "recipient can send"
+          (send-notification :lucky 200))
+        (testing "other than that no one can send"
+          (send-notification third-user-id 403))))))
+
+(deftest send-unsaved-notification-permissions-test
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-user-in-groups [group {:name "test notification perm"}
+                             user  [group]]
+      (mt/with-temp
+        [:model/Card {card-id :id} {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))}]
+        (let [create-notification! (fn [user-or-id expected-status]
+                                     (with-redefs [notification/send-notification! (fn [& _args] :done)]
+                                       (mt/user-http-request user-or-id :post expected-status "notification/send"
+                                                             {:payload_type  "notification/card"
+                                                              :creator_id    (mt/user->id :rasta)
+                                                              :handlers      []
+                                                              :subscriptions []
+                                                              :payload       {:card_id card-id}})))]
+          (mt/with-premium-features #{}
+            (testing "admin can send"
+              (create-notification! :crowberto 200))
+            (testing "users who can view the card can send"
+              (create-notification! :rasta 200))
+            (testing "normal users can't send"
+              (create-notification! (:id user) 403))
+            (mt/when-ee-evailable
+             (perms/grant-application-permissions! group :subscription)
+             (testing "users with advanced subscription permissions"
+               (testing "still can't send if advanced-permissions is disabled"
+                 (create-notification! (:id user) 403))
+               (testing "can send if advanced-permissions is enabled"
+                 (mt/with-premium-features #{:advanced-permissions}
+                   (create-notification! (:id user) 200)))))))))))

@@ -376,7 +376,8 @@
 ;;                                         Permissions                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defn- current-user-can-read-payload?
+(defn current-user-can-read-payload?
+  "Check if the current user can read the payload of a notification."
   [notification]
   (case (:payload_type notification)
     :notification/card
@@ -388,7 +389,8 @@
     :notification/testing
     true))
 
-(defn- current-user-is-recipient?
+(defn current-user-is-recipient?
+  "Check if the current user is a recipient of a notification."
   [notification]
   (->> (:handlers (t2/hydrate notification [:handlers :recipients]))
        (mapcat :recipients)
@@ -397,7 +399,8 @@
        (some #{(mi/current-user-id)})
        boolean))
 
-(defn- current-user-is-creator?
+(defn current-user-is-creator?
+  "Check if the current user is the creator of a notification."
   [notification]
   (= (:creator_id notification) (mi/current-user-id)))
 
