@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
 import { DateMonthYearWidget } from "metabase/components/DateMonthYearWidget";
 import { DateQuarterYearWidget } from "metabase/components/DateQuarterYearWidget";
 import { DateRangeWidget } from "metabase/components/DateRangeWidget";
@@ -12,6 +11,7 @@ import type { ParameterValueWidgetProps } from "metabase/parameters/components/P
 import { NumberInputWidget } from "metabase/parameters/components/widgets/NumberInputWidget";
 import { StringInputWidget } from "metabase/parameters/components/widgets/StringInputWidget";
 import { getParameterWidgetTitle } from "metabase/parameters/utils/ui";
+import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
 import type {
   FieldFilterUiParameter,
   UiParameter,
@@ -66,6 +66,20 @@ export const ParameterDropdownWidget = ({
   };
 
   if (isDateParameter(parameter)) {
+    if (parameter.type === "date/all-options") {
+      return (
+        <DateAllOptionsWidget
+          value={value}
+          availableOperators={["=", ">", "<", "between", "!="]}
+          submitButtonLabel={value ? t`Update filter` : t`Add filter`}
+          onChange={value => {
+            setValue?.(value);
+            onPopoverClose?.();
+          }}
+        />
+      );
+    }
+
     const DateWidget = checkNotNull(
       {
         "date/single": DateSingleWidget,
@@ -73,7 +87,6 @@ export const ParameterDropdownWidget = ({
         "date/relative": DateRelativeWidget,
         "date/month-year": DateMonthYearWidget,
         "date/quarter-year": DateQuarterYearWidget,
-        "date/all-options": DateAllOptionsWidget,
       }[parameter.type],
     );
 

@@ -19,7 +19,7 @@ import { ExcludeDatePicker } from "./ExcludeDatePicker";
 import { RelativeDatePicker } from "./RelativeDatePicker";
 import { SpecificDatePicker } from "./SpecificDatePicker";
 
-interface DatePickerProps {
+type DatePickerProps = {
   value?: DatePickerValue;
   availableOperators?: DatePickerOperator[];
   availableShortcuts?: DatePickerShortcut[];
@@ -27,7 +27,7 @@ interface DatePickerProps {
   submitButtonLabel?: string;
   backButton?: ReactNode;
   onChange: (value: DatePickerValue) => void;
-}
+};
 
 export function DatePicker({
   value,
