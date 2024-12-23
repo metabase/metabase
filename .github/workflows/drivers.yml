@@ -144,6 +144,8 @@ jobs:
       MB_DATABRICKS_TEST_HTTP_PATH: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH }}
       MB_DATABRICKS_TEST_TOKEN: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN }}
       MB_DATABRICKS_TEST_CATALOG: 'metabase_ci'
+      MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
+      MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
     steps:
     - uses: actions/checkout@v4
     - name: Test Databricks driver
