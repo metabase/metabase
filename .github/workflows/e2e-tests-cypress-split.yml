@@ -140,23 +140,15 @@ jobs:
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
-      # 9.Generate required test data
-      - name: Generate test data
-        uses: cypress-io/github-action@v6
-        with:
-          start: yarn dev
-          config-file: e2e/support/cypress.config.js
-          spec: e2e/test/scenarios/cross-version/source/01-generate-metadata.cy.spec.js
-          browser: ${{ steps.cypress-prep.outputs.chrome-path }}
-
-      # 10. Run Cypress tests with `cypress-split`
+      # 9. Run Cypress tests with `cypress-split`
       - name: Run split Cypress tests
-        uses: cypress-io/github-action@v6
-        with:
-          config-file: e2e/support/cypress.config.js
+        run: |
+          yarn run test-cypress-run \
+          --config-file e2e/support/cypress.config.js \
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         env:
-          SPLIT: ${{ strategy.job-total }} # Total parallel jobs
-          SPLIT_INDEX: ${{ matrix.containers }} # Index of this job
+          SPLIT: ${{ strategy.job-total }}
+          SPLIT_INDEX: ${{ matrix.containers }}
           CYPRESS_CI: true
           MB_EDITION: ${{ matrix.edition }}
           DISPLAY: ""
@@ -168,7 +160,7 @@ jobs:
           MB_SNOWPLOW_AVAILABLE: true
           MB_SNOWPLOW_URL: "http://localhost:9090"
 
-      # 11. Upload test results
+      # 10. Upload test results
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -181,7 +173,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-      # 12. Upload Cypress artifacts
+      # 11. Upload Cypress artifacts
       - name: Upload Cypress Artifacts (on failure)
         uses: actions/upload-artifact@v4
         if: failure()
