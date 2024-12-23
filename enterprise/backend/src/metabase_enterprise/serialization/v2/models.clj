@@ -84,10 +84,12 @@
    "QueryTable"
    "RecentViews"
    "Revision"
+   "SearchIndexMetadata"
    "Secret"
    "Session"
    "TablePrivileges"
    "TaskHistory"
    "User"
+   "UserKeyValue"
    "UserParameterValue"
    "ViewLog"])

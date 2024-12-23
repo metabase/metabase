@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [metabase.db :as mdb]
+   [metabase.models.search-index-metadata :as search-index-metadata]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -458,32 +459,6 @@
                   :collection_id    coll-id})
                 (ingest-then-fetch! "indexed-entity" entity-name)))))))
 
-(deftest ^:synchronized update-metadata!-test
-  (mt/with-temporary-setting-values [search-engine-appdb-index-state nil]
-    (testing "Clearing the setting clears the tracking atoms"
-      (is (nil? (search.index/active-table)))
-      (is (nil? (#'search.index/pending-table))))
-    (testing "Updating the setting updates the tracking atoms"
-      (#'search.index/update-metadata! {:active-table :active, :pending-table :pending})
-      (is (= :active (search.index/active-table)))
-      (is (= :pending (#'search.index/pending-table))))
-    (testing "We can update to a newer version"
-      (binding [search.index/*index-version-id* "newer-version"]
-        (#'search.index/update-metadata! {:active-table :activer, :pending-table :pendinger})
-        (is (= :activer (search.index/active-table)))
-        (is (= :pendinger (#'search.index/pending-table)))))
-    (testing "We keep the previous version around"
-      (is (= #{:newer-version (keyword @#'search.index/*index-version-id*)}
-             (set (keys (:versions (search.index/search-engine-appdb-index-state)))))))
-    (testing "We can update to an ever newer version"
-      (binding [search.index/*index-version-id* "newest-version"]
-        (#'search.index/update-metadata! {:active-table :activest, :pending-table :pendingest})
-        (is (= :activest (search.index/active-table)))
-        (is (= :pendingest (#'search.index/pending-table)))))
-    (testing "We only keep the two most recent versions around"
-      (is (= #{:newer-version :newest-version}
-             (set (keys (:versions (search.index/search-engine-appdb-index-state)))))))))
-
 (deftest ^:synchronized table-cleanup-test
   (when (search/supports-index?)
     ;; this test destroys the actual current index, regrettably
@@ -553,3 +528,32 @@
                            (when-let [ds (not-empty (into (sorted-set) (filter search-model? ds)))]
                              [p ds])))
                    table->descendants))))))
+
+(defn- active-table-after [simulated-delay-ns]
+  (mt/with-dynamic-redefs [search.index/now (constantly (+ simulated-delay-ns (System/nanoTime)))]
+    (search.index/active-table)))
+
+(deftest auto-refresh-test
+  (when (search/supports-index?)
+    (binding [search.index/*index-version-id* "auto-refresh-test"]
+      (try
+        (reset! @#'search.index/next-sync-at nil)
+        (search.index/reset-index!)
+        (let [active-before (search.index/active-table)
+              active-after  (search.index/gen-table-name)
+              pending-after (search.index/gen-table-name)
+              period        @#'search.index/sync-tracking-period
+              version       @#'search.index/*index-version-id*]
+          (search-index-metadata/create-pending! :appdb version active-after)
+          (search.index/create-table! active-after)
+          (search-index-metadata/active-pending! :appdb version)
+          (search-index-metadata/create-pending! :appdb version pending-after)
+          (search.index/create-table! pending-after)
+          (testing "We continue using our cached references for some time"
+            (is (= active-before (active-table-after 100)))
+            (is (= active-before (active-table-after (/ period 2)))))
+          (testing "But eventually we refresh")
+          (is (= active-after (active-table-after period))))
+        (finally
+          (t2/delete! :model/SearchIndexMetadata :version "auto-refresh-test")
+          (#'search.index/delete-obsolete-tables!))))))

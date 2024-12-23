@@ -341,6 +341,7 @@ describe("issue 51020", () => {
       cy.findByTestId("new-model-options")
         .findByText("Use the notebook editor")
         .click();
+      H.entityPickerModalTab("Collections").click();
       H.entityPickerModal().within(() => {
         cy.findByPlaceholderText("Search this collection or everywhere…").type(
           "foo",
@@ -360,7 +361,7 @@ describe("issue 51020", () => {
       setupBasicActionsInModel();
 
       H.newButton("Question").click();
-      H.entityPickerModalTab("Models").click();
+      H.entityPickerModalTab("Collections").click();
       H.entityPickerModalItem(1, "Model 51020").click();
       H.saveQuestion("Question 51020", undefined, {
         tab: "Browse",

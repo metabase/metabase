@@ -26,3 +26,78 @@
 .SpinOutActive {
   transform: rotateY(180deg);
 }
+
+@keyframes pop-in-from-bottom {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-left {
+  0% {
+    opacity: 0;
+    transform: translateX(50%);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pop-toast {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 100px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.popInFromBottom {
+  animation: 0.15s ease-out 0s 1 pop-in-from-bottom;
+  transform-origin: center center;
+}
+
+.slideLeft {
+  animation: 0.15s ease-out 0s 1 slide-left;
+}
+
+.popToast {
+  animation: 0.15s ease-out 0s 1 pop-toast;
+}
+
+.fadeIn {
+  animation: 0.15s ease-out 0s 1 fade-in;
+  transform-origin: center center;
+}
+
+/* This improves a11y and helps e2e testing */
+@media (prefers-reduced-motion: reduce) {
+  .ProgressBarAnimation,
+  .popInFromBottom,
+  .slideLeft,
+  .popToast,
+  .fadeIn {
+    animation: none;
+  }
+}

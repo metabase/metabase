@@ -1955,7 +1955,11 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
       );
 
       cy.get("@myNewDash").then((dashId: number | any) => {
-        H.visitDashboard(dashId);
+        cy.request("POST", "/api/activity/recents", {
+          context: "selection",
+          model: "dashboard",
+          model_id: dashId,
+        });
       });
 
       H.startNewQuestion();

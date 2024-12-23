@@ -6,7 +6,7 @@ redirect_from:
 
 # Upgrading Metabase
 
-Instructions for upgrading to a new [Metabase release](../releases.md).
+Instructions for upgrading to a new [Metabase release](https://github.com/metabase/metabase/releases).
 
 ## Backing up your application database
 
@@ -121,7 +121,7 @@ For example, if you're running Metabase 1.38, your upgrade path would look like:
 
 With X being the latest version available for each release.
 
-For a list of releases, see [Metabase versions](../releases.md).
+Check out a list of [Metabase releases](https://github.com/metabase/metabase/releases).
 
 ## Upgrading Metabase Cloud
 

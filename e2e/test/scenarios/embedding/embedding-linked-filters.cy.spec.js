@@ -60,10 +60,8 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       openFilterOptions("State");
 
-      H.popover().within(() => {
-        cy.findByText("AK").click();
-        cy.button("Add filter").click();
-      });
+      H.popover().findByText("AK").click();
+      H.popover().button("Add filter").click();
 
       cy.location("search").should("eq", "?city=&state=AK");
 
@@ -87,8 +85,9 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         .filter(":contains('Add filter')")
         .within(() => {
           H.multiAutocompleteInput().blur();
-          cy.button("Add filter").click();
         });
+
+      H.popover().button("Add filter").click();
 
       cy.location("search").should("eq", "?city=Anchorage&state=AK");
 
@@ -129,10 +128,8 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       cy.button("Apply").should("not.exist");
 
-      H.popover().within(() => {
-        cy.findByText("AK").click();
-        cy.button("Add filter").click();
-      });
+      H.popover().findByText("AK").click();
+      H.popover().button("Add filter").click();
 
       cy.button("Apply").should("be.visible").click();
       cy.button("Apply").should("not.exist");
@@ -160,8 +157,8 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         .filter(":contains('Add filter')")
         .within(() => {
           H.multiAutocompleteInput().blur();
-          cy.button("Add filter").click();
         });
+      H.popover().button("Add filter").click();
 
       cy.button("Apply").should("be.visible").click();
       cy.button("Apply").should("not.exist");
@@ -206,8 +203,9 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         .filter(":contains('Add filter')")
         .within(() => {
           H.multiAutocompleteInput().blur();
-          cy.button("Add filter").click();
         });
+
+      H.popover().button("Add filter").click();
 
       cy.location("search").should("eq", "?city=Anchorage&state=AK");
 
@@ -250,8 +248,8 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         .filter(":contains('Add filter')")
         .within(() => {
           H.multiAutocompleteInput().blur();
-          cy.button("Add filter").click();
         });
+      H.popover().button("Add filter").click();
 
       cy.location("search").should("eq", "?city=Anchorage&state=AK");
 
@@ -288,8 +286,8 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         .filter(":contains('Add filter')")
         .within(() => {
           H.multiAutocompleteInput().blur();
-          cy.button("Add filter").click();
         });
+      H.popover().button("Add filter").click();
 
       cy.location("search").should("eq", "?city=Anchorage");
     });

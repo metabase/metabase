@@ -1,12 +1,9 @@
+import cx from "classnames";
 import { t } from "ttag";
 
-import { Icon } from "metabase/ui";
+import { Flex, Icon, Text } from "metabase/ui";
 
-import {
-  ToggleContent,
-  ToggleRoot,
-  ToggleText,
-} from "./VisibilityToggler.styled";
+import VisibilityTogglerS from "./VisibilityToggler.module.css";
 
 interface VisibilityTogglerProps {
   isOpen: boolean;
@@ -25,17 +22,20 @@ export const VisibilityToggler = ({
   const icon = isOpen ? "contract" : "expand";
 
   return (
-    <ToggleRoot>
-      <ToggleContent
-        className={className}
-        isReadOnly={readOnly}
+    <Flex className={VisibilityTogglerS.ToggleRoot}>
+      <a
+        className={cx(VisibilityTogglerS.ToggleContent, className, {
+          [VisibilityTogglerS.isReadOnly]: readOnly,
+        })}
         onClick={toggleEditor}
         data-testid="visibility-toggler"
         aria-hidden={readOnly}
       >
-        <ToggleText>{text}</ToggleText>
+        <Text component="span" mr="sm" miw={70}>
+          {text}
+        </Text>
         <Icon name={icon} />
-      </ToggleContent>
-    </ToggleRoot>
+      </a>
+    </Flex>
   );
 };

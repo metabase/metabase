@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
-import { connect } from "react-redux";
 import { push, replace } from "react-router-redux";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import { connect } from "metabase/lib/redux";
 
 const mapStateToProps = (state, props) => ({
   adminItems: getAdminPaths(state),

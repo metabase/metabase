@@ -2,7 +2,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component, createRef, forwardRef } from "react";
-import { connect } from "react-redux";
 import { Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
 import _ from "underscore";
@@ -20,6 +19,7 @@ import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { renderRoot, unmountRoot } from "metabase/lib/react-compat";
+import { connect } from "metabase/lib/redux";
 import { setUIControls, zoomInRow } from "metabase/query_builder/actions";
 import {
   getIsShowingRawTable,
@@ -794,6 +794,7 @@ class TableInteractive extends Component {
       question,
       mode,
       theme,
+      onActionDismissal,
     } = this.props;
 
     const { dragColIndex, showDetailShortcut } = this.state;
@@ -837,6 +838,7 @@ class TableInteractive extends Component {
             dragColStyle: style,
             dragColNewIndex: columnIndex,
           });
+          onActionDismissal();
         }}
         onDrag={(e, data) => {
           const newIndex = this.getDragColNewIndex(data);
@@ -1045,7 +1047,7 @@ class TableInteractive extends Component {
       return;
     }
 
-    const scrollOffset = this.gridRef.current?.props?.scrollTop || 0;
+    const scrollOffset = this.gridRef.current?.state?.scrollTop || 0;
 
     // infer row index from mouse position when we hover the gutter column
     if (event?.currentTarget?.id === "gutter-column") {
@@ -1169,6 +1171,7 @@ class TableInteractive extends Component {
             } else {
               mainGridProps.scrollLeft = scrollLeft;
             }
+
             return (
               <TableInteractiveRoot
                 bg={backgroundColor}

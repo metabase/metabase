@@ -9,7 +9,7 @@
 }
 
 .SavedEntityListItem {
-  :global(.Icon):last-child {
+  .SavedEntityListItemIcon:last-child {
     justify-self: start;
   }
 }

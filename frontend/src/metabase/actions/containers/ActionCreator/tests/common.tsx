@@ -5,7 +5,11 @@ import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import {
+  renderWithProviders,
+  waitFor,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import type { Card, WritebackAction } from "metabase-types/api";
 import {
   createMockCard,
@@ -79,5 +83,12 @@ export async function setup({
     },
   );
 
+  if (action) {
+    await waitFor(() => {
+      expect(
+        fetchMock.calls(`path:/api/action/${action.id}`, { method: "GET" }),
+      ).toHaveLength(1);
+    });
+  }
   await waitForLoaderToBeRemoved();
 }

@@ -1,4 +1,4 @@
-import { popover } from "e2e/support/helpers";
+import { popover, selectDropdown } from "e2e/support/helpers";
 
 const currentYearString = new Date().getFullYear().toString();
 
@@ -16,7 +16,7 @@ export function setQuarterAndYear({ quarter, year } = {}) {
     .should("have.value", currentYearString)
     .click();
 
-  popover().last().findByText(year).click();
+  selectDropdown().findByText(year).click();
   popover().findByText(quarter).click();
 }
 
@@ -65,7 +65,7 @@ export function setAdHocFilter(
       .should("have.value", "days")
       .click();
 
-    popover().last().contains(timeBucket).click();
+    selectDropdown().contains(timeBucket).click();
   }
 
   if (includeCurrent) {

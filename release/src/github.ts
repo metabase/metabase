@@ -74,7 +74,7 @@ export const openNextMilestones = async ({
         owner,
         repo,
         title: milestoneName,
-      }),
+      }).catch(console.error),
     ),
   );
 };

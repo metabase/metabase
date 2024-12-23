@@ -8,7 +8,13 @@ import { Box, Flex } from "metabase/ui";
 import HeaderBreadcrumbsS from "./HeaderBreadcrumbs.module.css";
 
 const HeaderBadge = props => (
-  <Badge className={HeaderBreadcrumbsS.HeaderBadge} {...props} />
+  <Badge
+    classNames={{
+      root: HeaderBreadcrumbsS.HeaderBadge,
+      icon: HeaderBreadcrumbsS.HeaderBadgeIcon,
+    }}
+    {...props}
+  />
 );
 
 HeaderBadge.propTypes = {

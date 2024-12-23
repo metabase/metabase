@@ -1,14 +1,13 @@
-import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
 import Collections from "metabase/entities/collections";
+import { connect } from "metabase/lib/redux";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
 import type { RouterProps } from "metabase/selectors/app";
 import {
   getIsCollectionPathVisible,
-  getIsContainingDashboardPathVisible,
   getIsLogoVisible,
   getIsNavBarEnabled,
   getIsNavbarOpen,
@@ -34,10 +33,6 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isNewButtonVisible: getIsNewButtonVisible(state),
   isProfileLinkVisible: getIsProfileLinkVisible(state),
   isCollectionPathVisible: getIsCollectionPathVisible(state, props),
-  isContainingDashboardPathVisible: getIsContainingDashboardPathVisible(
-    state,
-    props,
-  ),
   isQuestionLineageVisible: getIsQuestionLineageVisible(state, props),
 });
 

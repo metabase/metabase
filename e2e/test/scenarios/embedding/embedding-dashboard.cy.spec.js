@@ -115,7 +115,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       openFilterOptions("Name");
 
       cy.findByPlaceholderText("Search by Name").type("L");
-      H.popover().last().findByText("Lina Heaney").click();
+      H.selectDropdown().findByText("Lina Heaney").click();
 
       cy.button("Add filter").click();
 
@@ -313,7 +313,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         H.multiAutocompleteInput().type("Aly");
       });
 
-      H.popover().last().contains("Alycia McCullough - 2016");
+      H.selectDropdown().contains("Alycia McCullough - 2016");
 
       // close the suggestions popover
       H.popover()
@@ -329,7 +329,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         H.multiAutocompleteInput().type("{backspace}Aly");
       });
 
-      H.popover().last().contains("Alycia McCullough");
+      H.selectDropdown().contains("Alycia McCullough");
 
       // close the suggestions popover
       H.popover()
@@ -350,7 +350,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         H.multiAutocompleteInput().type("Aly");
       });
 
-      H.popover().last().contains("Alycia McCullough - 2016");
+      H.selectDropdown().contains("Alycia McCullough - 2016");
 
       // close the suggestions popover
       H.popover()
@@ -777,8 +777,8 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
       cy.findByLabelText("Font").click();
     });
 
-    // Since the select popover is rendered outside of the modal, we need to exit the modal context first.
-    H.popover().findByText("Oswald").click();
+    // Since the select dropdown is rendered outside of the modal, we need to exit the modal context first.
+    H.selectDropdown().findByText("Oswald").click();
     H.modal().within(() => {
       H.getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
@@ -903,8 +903,8 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
       cy.findByLabelText("Font").click();
     });
 
-    // Since the select popover is rendered outside of the modal, we need to exit the modal context first.
-    H.popover().findByText("Oswald").click();
+    // Since the select dropdown is rendered outside of the modal, we need to exit the modal context first.
+    H.selectDropdown().findByText("Oswald").click();
     H.modal().within(() => {
       H.getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
@@ -995,6 +995,9 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
     });
     cy.signOut();
 
+    // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
+    cy.intercept("/app/locales/de.json").as("deLocale");
+
     H.visitEmbeddedPage(
       {
         resource: { dashboard: ORDERS_DASHBOARD_ID },
@@ -1002,10 +1005,12 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
       },
       {
         additionalHashOptions: {
-          locale: "de",
+          locale: "de-CH",
         },
       },
     );
+
+    cy.wait("@deLocale");
 
     H.main().findByText("Februar 11, 2025, 9:40 PM");
     // eslint-disable-next-line no-unscoped-text-selectors -- we don't care where the text is

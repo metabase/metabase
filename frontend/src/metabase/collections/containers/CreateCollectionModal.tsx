@@ -1,9 +1,9 @@
 import type { LocationDescriptor } from "history";
 import { useCallback } from "react";
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Modal } from "metabase/ui";
 import type { Collection } from "metabase-types/api";

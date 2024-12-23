@@ -21,18 +21,20 @@ export function modifyPermission(
 ) {
   selectPermissionRow(item, permissionIndex);
 
-  popover().within(() => {
-    if (shouldPropagate !== null) {
-      cy.findByRole("switch")
-        .as("toggle")
-        .then($el => {
-          if ($el.attr("aria-checked") !== shouldPropagate.toString()) {
-            cy.get("@toggle").click();
-          }
-        });
-    }
-    value && cy.findByText(value).click();
-  });
+  popover()
+    .should("have.length", 1)
+    .within(() => {
+      if (shouldPropagate !== null) {
+        cy.findByRole("switch")
+          .as("toggle")
+          .then($el => {
+            if ($el.attr("aria-checked") !== shouldPropagate.toString()) {
+              cy.get("@toggle").click();
+            }
+          });
+      }
+      value && cy.findByText(value).click();
+    });
 }
 
 export function selectPermissionRow(item, permissionIndex) {

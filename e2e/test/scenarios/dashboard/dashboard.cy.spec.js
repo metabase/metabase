@@ -83,6 +83,7 @@ describe("scenarios > dashboard", () => {
         .click();
 
       H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Collections").click();
         cy.findByPlaceholderText("Search this collection or everywhere…").type(
           "Pro",
         );
@@ -93,6 +94,10 @@ describe("scenarios > dashboard", () => {
       H.queryBuilderHeader().findByText("Save").click();
       cy.findByTestId("save-question-modal").within(modal => {
         cy.findByLabelText("Name").clear().type(newQuestionName);
+        cy.findByLabelText("Where do you want to save this?").should(
+          "contain.text",
+          dashboardName,
+        );
         cy.findByText("Save").click();
       });
       cy.wait("@createQuestion");
