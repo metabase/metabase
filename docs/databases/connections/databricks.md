@@ -26,7 +26,8 @@ Read [Connect to a SQL warehouse](https://docs.databricks.com/en/compute/sql-war
 Additionally, see [Compute settings for the Databricks JDBC Driver](https://docs.databricks.com/en/integrations/jdbc/compute.html).
 
 ## Authentication
-There are two ways to authenticate with Databricks on Metabase. You can use a personal access token (PAT) or a service principal using OAuth (OAuth M2M).
+
+There are two ways to authenticate with Databricks. You can use a personal access token (PAT) or a service principal using OAuth (OAuth M2M).
 
 The Databricks driver supports both options. Use the toggle to select the authentication method you want to use.
 
