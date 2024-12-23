@@ -143,6 +143,7 @@ export const ListField = ({
           onChange={handleFilterChange}
           onKeyDown={handleKeyDown}
           onResetClick={() => setFilter("")}
+          data-testid="list-field"
         />
       </FilterInputContainer>
 
