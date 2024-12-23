@@ -17,6 +17,21 @@
       (lib.types.isa/numeric? column)               "number"
       (lib.types.isa/temporal? column)              "date")))
 
+(defn table-field-id-prefix
+  "Return the field ID prefix for `table-id`."
+  [table-id]
+  (str "t" table-id "/"))
+
+(defn card-field-id-prefix
+  "Return the field ID prefix for a model or a metric with ID `card-id`."
+  [card-id]
+  (str "c" card-id "/"))
+
+(defn query-field-id-prefix
+  "Return the field ID prefix for `query-id`."
+  [query-id]
+  (str "q" query-id "/"))
+
 (defn- find-column-indexes
   [col-to-find cols]
   (keep-indexed (fn [i col]

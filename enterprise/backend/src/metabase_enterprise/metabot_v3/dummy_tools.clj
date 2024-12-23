@@ -58,7 +58,7 @@
                  (lib.metadata.jvm/application-database-metadata-provider (:db_id base)))
           table-query (lib/query mp (lib.metadata/table mp id))
           cols (lib/returned-columns table-query)
-          field-id-prefix (str "field_[" id "]_")]
+          field-id-prefix (metabot-v3.tools.u/table-field-id-prefix id)]
       (-> {:id id
            :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column %2 %1 field-id-prefix)) cols)
            :name (lib/display-name table-query)}
@@ -74,7 +74,7 @@
           card-query (lib/query mp (lib.metadata/card mp id))
           cols (lib/returned-columns card-query)
           external-id (str "card__" id)
-          field-id-prefix (str "field_[" external-id "]_")]
+          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
       (-> {:id external-id
            `:fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column %2 %1 field-id-prefix)) cols)
            :name (lib/display-name card-query)}
@@ -111,7 +111,7 @@
                                          (map #(lib/find-matching-column % visible-cols))
                                          (m/find-first lib.types.isa/temporal?))
           external-id (str "card__" id)
-          field-id-prefix (str "field_[" external-id "]_")]
+          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
       {:id external-id
        :name (:name card)
        :description (:description card)
@@ -200,7 +200,7 @@
 
 (defn- execute-query
   [query-id legacy-query]
-  (let [field-id-prefix (str "field_[" query-id "]_")
+  (let [field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         mp (lib.metadata.jvm/application-database-metadata-provider (:database legacy-query))
         query (lib/query mp legacy-query)
         returned-cols (lib/returned-columns query)]

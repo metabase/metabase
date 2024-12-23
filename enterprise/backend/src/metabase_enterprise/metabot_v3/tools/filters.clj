@@ -75,12 +75,12 @@
           base-query (->> (lib/query mp (lib.metadata/card mp metric-id))
                           lib/remove-all-breakouts)
           visible-cols (lib/visible-columns base-query)
-          filter-field-id-prefix (str "field_[card__" metric-id "]_")
+          filter-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
           query (as-> base-query $q
                   (reduce add-filter $q (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols) filters))
                   (reduce add-breakout $q (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols) group-by)))
           query-id (u/generate-nano-id)
-          query-field-id-prefix (str "field_[query__" query-id "]_")
+          query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
           returned-cols (lib/returned-columns query)]
       {:type :query
        :query_id query-id
@@ -119,21 +119,21 @@
       (some? table_id)
       (if-let [table (metabot-v3.tools.u/get-table table_id :db_id)]
         (let [mp (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
-          [(str "field_[" table_id "]_")
+          [(metabot-v3.tools.u/table-field-id-prefix table_id)
            (lib/query mp (lib.metadata/table mp table_id))])
         (throw (ex-info (str "No table found with table_id " table_id) {:data_source data-source})))
 
       (some? report_id)
       (if-let [card (api.card/get-card report_id)]
         (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))]
-          [(str "field_[card__" report_id "]_")
+          [(metabot-v3.tools.u/card-field-id-prefix report_id)
            (lib/query mp (lib.metadata/card mp report_id))])
         (throw (ex-info (str "No report found with report_id " report_id) {:data_source data-source})))
 
       (some? query_id)
       (if-let [query (metabot-v3.envelope/find-query e query_id)]
         (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database query))]
-          [(str "field_[query__" query_id "]_")
+          [(metabot-v3.tools.u/query-field-id-prefix query_id)
            (lib/query mp query)])
         (throw (ex-info (str "No query found with query_id " query_id) {:data_source data-source}))))))
 
@@ -143,7 +143,7 @@
         returned-cols (lib/returned-columns base)
         query (reduce add-filter base (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix returned-cols) filters))
         query-id (u/generate-nano-id)
-        query-field-id-prefix (str "field_[query__" query-id "]_")]
+        query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)]
     {:type :query
      :query_id query-id
      :query (lib.convert/->legacy-MBQL query)
