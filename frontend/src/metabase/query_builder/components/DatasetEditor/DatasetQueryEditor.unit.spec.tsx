@@ -136,14 +136,6 @@ describe("DatasetQueryEditor", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("hides the native query editor container when query tab is inactive", async () => {
-    await setup({ isActive: false });
-
-    expect(
-      screen.getByTestId("native-query-editor-container"),
-    ).not.toBeVisible();
-  });
-
   it("re-renders DatasetQueryEditor when height is 0 and isActive prop changes", async () => {
     const { query, question, rerender } = await setup({
       height: 0,

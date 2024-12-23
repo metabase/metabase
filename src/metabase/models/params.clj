@@ -26,7 +26,6 @@
    [metabase.models.params.field-values :as params.field-values]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -39,16 +38,20 @@
 (defn assert-valid-parameters
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameters]}]
-  (when-not (mc/validate [:maybe [:sequential ms/Parameter]] parameters)
-    (throw (ex-info (tru ":parameters must be a sequence of maps with :id and :type keys")
-                    {:parameters parameters}))))
+  (let [schema [:maybe [:sequential ms/Parameter]]]
+    (when-not (mc/validate schema parameters)
+      (throw (ex-info ":parameters must be a sequence of maps with :id and :type keys"
+                      {:parameters parameters
+                       :errors     (:errors (mc/explain schema parameters))})))))
 
 (defn assert-valid-parameter-mappings
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameter_mappings]}]
-  (when-not (mc/validate [:maybe [:sequential ms/ParameterMapping]] parameter_mappings)
-    (throw (ex-info (tru ":parameter_mappings must be a sequence of maps with :parameter_id and :type keys")
-                    {:parameter_mappings parameter_mappings}))))
+  (let [schema [:maybe [:sequential ms/ParameterMapping]]]
+    (when-not (mc/validate schema parameter_mappings)
+      (throw (ex-info ":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
+                      {:parameter_mappings parameter_mappings
+                       :errors             (:errors (mc/explain schema parameter_mappings))})))))
 
 (def ^:dynamic *ignore-current-user-perms-and-return-all-field-values*
   "Whether to ignore permissions for the current User and return *all* FieldValues for the Fields being parameterized by

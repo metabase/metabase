@@ -6,6 +6,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.config :as config]
+   [metabase.db :as mdb]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.task-history :as task-history]
    [metabase.plugins.classloader :as classloader]
@@ -44,7 +45,6 @@
   :audit      :never
   :getter     (fn []
                 (let [env-var-value (setting/get-value-of-type :integer :audit-max-retention-days)]
-                  (def env-var-value env-var-value)
                   (cond
                     (nil? env-var-value)
                     default-retention-days
@@ -69,23 +69,54 @@
 Twice a day, Metabase will delete rows older than this threshold. The minimum value is 30 days (Metabase will treat entered values of 1 to 29 the same as 30).
 If set to 0, Metabase will keep all rows.")
 
+(defsetting audit-table-truncation-batch-size
+  (deferred-tru "Batch size to use for deletion of old rows for audit-related tables (like query_execution). Can be only set as an environment variable.")
+  :visibility :internal
+  :setter     :none
+  :type       :integer
+  :default    50000
+  :audit      :never
+  :export?    false)
+
+(defn- truncate-table-batched!
+  [table-name time-column]
+  (t2/query-one
+   (case (mdb/db-type)
+     (:postgres :h2)
+     {:delete-from (keyword table-name)
+      :where [:in
+              :id
+              {:select [:id]
+               :from (keyword table-name)
+               :where [:<=
+                       (keyword time-column)
+                       (t/minus (t/offset-date-time) (t/days (audit-max-retention-days)))]
+               :limit (audit-table-truncation-batch-size)}]}
+
+     (:mysql :mariadb)
+     {:delete-from (keyword table-name)
+      :where [:<=
+              (keyword time-column)
+              (t/minus (t/offset-date-time) (t/days (audit-max-retention-days)))]
+      :limit (audit-table-truncation-batch-size)})))
+
 (defn- truncate-table!
   "Given a model, deletes all rows older than the configured threshold"
   [model time-column]
   (when-not (infinite? (audit-max-retention-days))
     (let [table-name (name (t2/table-name model))]
-      (task-history/with-task-history {:task "task-history-cleanup"}
-        (try
-          (log/infof "Cleaning up %s table" table-name)
-          (let [rows-deleted (t2/delete!
-                              model
-                              time-column
-                              [:<= (t/minus (t/offset-date-time) (t/days (audit-max-retention-days)))])]
-            (if (> rows-deleted 0)
-              (log/infof "%s cleanup successful, %d rows were deleted" table-name rows-deleted)
-              (log/infof "%s cleanup successful, no rows were deleted" table-name)))
-          (catch Throwable e
-            (log/errorf e "%s cleanup failed" table-name)))))))
+      (try
+        (log/infof "Cleaning up %s table" table-name)
+        (loop [total-rows-deleted 0]
+          (let [batch-rows-deleted (truncate-table-batched! table-name time-column)]
+            ;; Only try to delete another batch if the last batch was full
+            (if (= batch-rows-deleted (audit-table-truncation-batch-size))
+              (recur (+ total-rows-deleted (long batch-rows-deleted)))
+              (if (not= total-rows-deleted 0)
+                (log/infof "%s cleanup successful, %d rows were deleted" table-name total-rows-deleted)
+                (log/infof "%s cleanup successful, no rows were deleted" table-name)))))
+        (catch Throwable e
+          (log/errorf e "%s cleanup failed" table-name))))))
 
 (defenterprise audit-models-to-truncate
   "List of models to truncate. OSS implementation only truncates `query_execution` table."
@@ -97,7 +128,8 @@ If set to 0, Metabase will keep all rows.")
   []
   (run!
    (fn [{:keys [model timestamp-col]}]
-     (truncate-table! model timestamp-col))
+     (task-history/with-task-history {:task "task-history-cleanup"}
+       (truncate-table! model timestamp-col)))
    (audit-models-to-truncate)))
 
 (jobs/defjob ^{:doc "Triggers the removal of `query_execution` rows older than the configured threshold."} TruncateAuditTables [_]

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Component } from "react";
 
 import CS from "metabase/css/core/index.css";
+import ZIndex from "metabase/css/core/z-index.module.css";
 
 import { ModalHeader } from "./ModalHeader";
 import type { CommonModalProps } from "./types";
@@ -60,6 +61,7 @@ export default class ModalContent extends Component<ModalContentProps> {
           { [CS.fullHeight]: fullPageModal && !formModal },
           // add bottom padding if this is a standard "form modal" with no footer
           { [CS.pb4]: formModal && !footer },
+          ZIndex.Overlay,
         )}
         data-testid={dataTestId}
       >
@@ -106,7 +108,14 @@ export const ModalBody = ({
     })}
   >
     <div
-      className={cx(CS.flexFull, CS.mlAuto, CS.mrAuto, CS.flex, CS.flexColumn)}
+      className={cx(
+        CS.flexFull,
+        CS.mlAuto,
+        CS.mrAuto,
+        CS.flex,
+        CS.flexColumn,
+        ZIndex.Overlay,
+      )}
       style={{ maxWidth: formModal && fullPageModal ? FORM_WIDTH : undefined }}
     >
       {children}

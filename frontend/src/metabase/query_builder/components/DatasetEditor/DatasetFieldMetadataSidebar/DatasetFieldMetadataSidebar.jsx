@@ -32,7 +32,6 @@ import { isFK } from "metabase-lib/v1/types/utils/isa";
 import { EDITOR_TAB_INDEXES } from "../constants";
 
 import DatasetFieldMetadataSidebarS from "./DatasetFieldMetadataSidebar.module.css";
-import { FormContainer } from "./DatasetFieldMetadataSidebar.styled";
 import MappedFieldPicker from "./MappedFieldPicker";
 import SemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
 
@@ -230,9 +229,7 @@ function DatasetFieldMetadataSidebar({
         {({ values: formFieldValues }) => {
           return (
             <Form>
-              <FormContainer
-                className={DatasetFieldMetadataSidebarS.MainFormContainer}
-              >
+              <div className={DatasetFieldMetadataSidebarS.MainFormContainer}>
                 <FormTextInput
                   name="display_name"
                   onChange={handleDisplayNameChange}
@@ -274,6 +271,7 @@ function DatasetFieldMetadataSidebar({
                 {isNative && (
                   <Box mb="1.5rem">
                     <MappedFieldPicker
+                      className={DatasetFieldMetadataSidebarS.SelectButton}
                       name="id"
                       label={t`Database column this maps to`}
                       tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
@@ -284,6 +282,7 @@ function DatasetFieldMetadataSidebar({
                 )}
                 <Box mb="1.5rem">
                   <SemanticTypePicker
+                    className={DatasetFieldMetadataSidebarS.SelectButton}
                     name="semantic_type"
                     label={t`Column type`}
                     tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
@@ -301,7 +300,7 @@ function DatasetFieldMetadataSidebar({
                     />
                   </Box>
                 )}
-              </FormContainer>
+              </div>
 
               <Tabs value={tab} onTabChange={setTab}>
                 {hasColumnFormattingOptions ? (

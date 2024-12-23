@@ -28,7 +28,3 @@ export const SchemaLink = styled(Link)`
     color: ${() => color("accent2")};
   }
 `;
-
-export const SchemaBrowserContainer = styled.div`
-  width: 100%;
-`;

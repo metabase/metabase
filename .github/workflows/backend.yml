@@ -154,6 +154,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: be-tests
+          java-version: "${{ matrix.java-version }}"
       # Depending on which files changed, we might either have to build static-viz
       # from scratch or download the previously built artifact
       - name: Build static-viz frontend
@@ -194,9 +195,9 @@ jobs:
           fail-on-error: false
 
   be-tests-stub:
-    needs: [be-tests]
+    needs: [files-changed, static-viz-files-changed, be-tests]
     if: |
-      !cancelled() &&
+      always() &&
       github.event.pull_request.draft == false && needs.be-tests.result == 'skipped'
     runs-on: ubuntu-22.04
     name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}

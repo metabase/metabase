@@ -364,6 +364,8 @@
                    form)))
              form))]
     (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings" "graph.metrics"))
+      ;; "key" is an old unused value
+      true                                 (m/update-existing :table.columns (fn [cols] (mapv #(dissoc % :key) cols)))
       (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
       true                                 normalize-mbql-clauses
       ;; exclude graph.metrics from normalization as it may start with

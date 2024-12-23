@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import PropTypes from "prop-types";
 import { Component } from "react";
-import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -11,6 +10,7 @@ import { ArchiveModal } from "metabase/components/ArchiveModal";
 import { setArchivedDashboard } from "metabase/dashboard/actions";
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 
 const mapDispatchToProps = dispatch => ({

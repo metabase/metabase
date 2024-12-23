@@ -17,14 +17,3 @@
   (is (not (impossible? [:and [:= 1 :this.id] [:!= "card" "dashboard"]])))
   (is (not (impossible? [:or [:= 1 :this.id] [:!= "card" "dashboard"]])))
   (is (impossible? [:or [:= "oh" "no"] [:= "card" "dashboard"]])))
-
-(deftest ^:parallel cycle-recent-indexes-test
-  (are [previous-id active-id expected] (= expected
-                                           (search.util/cycle-recent-versions previous-id active-id))
-    nil            "a" ["a"]
-    ["a"]          "a" ["a"]
-    ["b"]          "a" ["a" "b"]
-    '("b" "a")     "a" ["a" "b"]
-    '("a" "b")     "a" ["a" "b"]
-    '("b" "c")     "a" ["a" "b"]
-    '("b" "c" "d") "a" ["a" "b"]))

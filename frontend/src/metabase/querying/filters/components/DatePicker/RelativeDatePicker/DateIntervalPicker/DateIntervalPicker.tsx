@@ -1,6 +1,7 @@
 import type { FormEvent } from "react";
 import { t } from "ttag";
 
+import type { DatePickerUnit } from "metabase/querying/filters/types";
 import {
   Button,
   Divider,
@@ -13,7 +14,6 @@ import {
   Tooltip,
 } from "metabase/ui";
 
-import type { DatePickerUnit } from "../../types";
 import { IncludeCurrentSwitch } from "../IncludeCurrentSwitch";
 import type { DateIntervalValue } from "../types";
 import {
@@ -27,9 +27,8 @@ import { setDefaultOffset, setUnit } from "./utils";
 
 interface DateIntervalPickerProps {
   value: DateIntervalValue;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
+  availableUnits: DatePickerUnit[];
   isNew: boolean;
-  canUseRelativeOffsets: boolean;
   onChange: (value: DateIntervalValue) => void;
   onSubmit: () => void;
 }
@@ -38,7 +37,6 @@ export function DateIntervalPicker({
   value,
   availableUnits,
   isNew,
-  canUseRelativeOffsets,
   onChange,
   onSubmit,
 }: DateIntervalPickerProps) {
@@ -84,17 +82,15 @@ export function DateIntervalPicker({
           ml="md"
           onChange={handleUnitChange}
         />
-        {canUseRelativeOffsets && (
-          <Tooltip label={t`Starting from…`} position="bottom">
-            <Button
-              aria-label={t`Starting from…`}
-              c="text-medium"
-              variant="subtle"
-              leftIcon={<Icon name="arrow_left_to_line" />}
-              onClick={handleStartingFromClick}
-            />
-          </Tooltip>
-        )}
+        <Tooltip label={t`Starting from…`} position="bottom">
+          <Button
+            aria-label={t`Starting from…`}
+            c="text-medium"
+            variant="subtle"
+            leftIcon={<Icon name="arrow_left_to_line" />}
+            onClick={handleStartingFromClick}
+          />
+        </Tooltip>
       </Flex>
       <Flex p="md" pt={0}>
         <IncludeCurrentSwitch value={value} onChange={onChange} />

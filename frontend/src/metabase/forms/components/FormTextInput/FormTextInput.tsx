@@ -60,7 +60,7 @@ export const FormTextInput = forwardRef(function FormTextInput(
       ref={ref}
       name={name}
       value={value ?? ""}
-      error={touched ? error : null}
+      error={touched ? <div role="alert">{error}</div> : null}
       onChange={handleChange}
       onBlur={handleBlur}
       rightSection={hasCopyButton ? <CopyWidgetButton value={value} /> : null}

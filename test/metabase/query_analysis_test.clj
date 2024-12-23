@@ -14,6 +14,8 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
+(set! *warn-on-reflection* true)
+
 (deftest native-query-enabled-test
   (mt/discard-setting-changes [sql-parsing-enabled]
     (testing "sql parsing enabled"
@@ -147,10 +149,15 @@
             (is (contains? tables "t"))
             (is (some (partial str/starts-with? long-table) tables))))))))
 
+(defn- throw-empty-exception [& _]
+  (let [ex (doto (ex-info "Oh no!" {})
+             (.setStackTrace (into-array StackTraceElement [])))]
+    (throw ex)))
+
 (deftest analysis-error-test
   (with-analysis-on
     (testing "Errors analyzing queries will not prevent cards being created or updated"
-      (mt/with-dynamic-redefs [query-analysis/update-query-analysis-for-card! (fn [& _] (throw (ex-info "Oh no!" {})))]
+      (mt/with-dynamic-redefs [query-analysis/update-query-analysis-for-card! throw-empty-exception]
         (mt/with-temp [Card {c-id :id} {:dataset_query (mt/native-query {:query "SELECT c FROM t"})}]
           (testing "The card was created"
             (is (t2/exists? :model/Card c-id)))

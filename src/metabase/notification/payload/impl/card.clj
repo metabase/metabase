@@ -8,7 +8,7 @@
    [toucan2.core :as t2]))
 
 (mu/defmethod notification.payload/payload :notification/card
-  [{:keys [creator_id payload subscriptions] :as _notification-info} :- notification.payload/Notification]
+   [{:keys [creator_id payload subscriptions] :as _notification-info} :- ::notification.payload/Notification]
   (let [card_id (:card_id payload)]
     {:card_part       (notification.execute/execute-card creator_id card_id
                                                          ;; for query_execution's context purposes

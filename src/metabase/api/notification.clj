@@ -26,7 +26,7 @@
 (api/defendpoint POST "/"
   "Create a new notification, return the created notification."
   [:as {body :body}]
-  {body models.notification/FullyHydratedNotification}
+  {body ::models.notification/FullyHydratedNotification}
   (api/create-check :model/Notification body)
   (models.notification/hydrate-notification
    (models.notification/create-notification!
@@ -39,7 +39,7 @@
   Return the updated notification."
   [id :as {body :body}]
   {id   ms/PositiveInt
-   body models.notification/FullyHydratedNotification}
+   body ::models.notification/FullyHydratedNotification}
   (let [existing-notification (get-notification id)]
     (api/update-check existing-notification body)
     (models.notification/update-notification! existing-notification body)
@@ -61,7 +61,7 @@
 (api/defendpoint POST "/send"
   "Send an unsaved notification."
   [:as {body :body}]
-  {body models.notification/FullyHydratedNotification}
+  {body ::models.notification/FullyHydratedNotification}
   (notification/send-notification! body :notification/sync? true))
 
 (api/define-routes)

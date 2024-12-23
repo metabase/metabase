@@ -145,7 +145,6 @@
   [[bindings props] & body]
   `(do-with-card-notification ~props (fn [~bindings] ~@body)))
 
-
 (defn do-with-system-event-notification!
   [{:keys [event notification subscriptions handlers]} thunk]
   (with-temporary-event-topics! [event]

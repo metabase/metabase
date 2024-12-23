@@ -253,7 +253,6 @@
                    :channel/http  [{:body (mt/malli=? some?)}]}
                   (notification.tu/with-captured-channel-send!
                     (mt/user-http-request :crowberto :post 204 "notification/send" (strip-keys notification [:id :created_at :updated_at]))))))))))
-
 ;; Permission tests
 
 (deftest get-notification-permissions-test

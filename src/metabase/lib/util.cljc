@@ -124,8 +124,10 @@
   [stage location target-clause new-clause]
   {:pre [((some-fn clause? #(= (:lib/type %) :mbql/join)) target-clause)]}
   (let [new-clause (if (= :expressions (first location))
-                     (top-level-expression-clause new-clause (or (custom-name new-clause)
-                                                                 (expression-name target-clause)))
+                     (-> new-clause
+                         (top-level-expression-clause (or (custom-name new-clause)
+                                                          (expression-name target-clause)))
+                         (lib.common/preserve-ident-of target-clause))
                      new-clause)]
     (m/update-existing-in
      stage

@@ -1,8 +1,14 @@
-import { type ReactNode, useState } from "react";
+import {
+  type HTMLAttributes,
+  type ReactNode,
+  useEffect,
+  useState,
+} from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import ZIndex from "metabase/css/core/z-index.module.css";
 import { capitalize, inflect } from "metabase/lib/formatting";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -58,13 +64,18 @@ const slideIn = {
 
 const TOAST_TRANSITION_DURATION = 300;
 
-interface UndoToastProps {
+interface UndoToastProps extends HTMLAttributes<HTMLDivElement> {
   undo: Undo;
   onUndo: () => void;
   onDismiss: () => void;
 }
 
-export function UndoToast({ undo, onUndo, onDismiss }: UndoToastProps) {
+export function UndoToast({
+  undo,
+  onUndo,
+  onDismiss,
+  ...divProps
+}: UndoToastProps) {
   const dispatch = useDispatch();
   const [mounted, setMounted] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -108,6 +119,7 @@ export function UndoToast({ undo, onUndo, onDismiss }: UndoToastProps) {
           className={CS.toast}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
+          {...divProps}
         >
           {undo.showProgress && (
             <Progress
@@ -158,8 +170,20 @@ export function UndoListing() {
   const dispatch = useDispatch();
   const undos = useSelector(state => state.undo);
 
+  const [lastId, setLastId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLastId(`${undos.at(-1)?.id}`);
+  }, [undos]);
+
   return (
-    <FloatingUndoList>
+    <UndoListOverlay
+      key={
+        // Remount the list when an undo is added so that the
+        // listing appears on top
+        lastId
+      }
+    >
       {undos.map(undo => (
         <UndoToast
           key={undo._domId}
@@ -168,14 +192,18 @@ export function UndoListing() {
           onDismiss={() => dispatch(dismissUndo({ undoId: undo.id }))}
         />
       ))}
-    </FloatingUndoList>
+    </UndoListOverlay>
   );
 }
 
-export const FloatingUndoList = ({ children }: { children: ReactNode }) => {
+export const UndoListOverlay = ({ children }: { children: ReactNode }) => {
   return (
     <Portal>
-      <UndoList data-testid="undo-list" aria-label="undo-list">
+      <UndoList
+        data-testid="undo-list"
+        aria-label="undo-list"
+        className={ZIndex.Overlay}
+      >
         {children}
       </UndoList>
     </Portal>

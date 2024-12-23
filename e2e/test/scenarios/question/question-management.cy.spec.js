@@ -429,7 +429,7 @@ function assertNoPermissionsError() {
 
 function turnIntoModel() {
   H.openQuestionActions();
-  cy.findByRole("dialog").contains("Turn into a model").click();
+  cy.findByRole("menu").contains("Turn into a model").click();
   cy.findByRole("dialog").contains("Turn this into a model").click();
   assertRequestNot403("updateQuestion");
   cy.findAllByRole("status").contains("This is a model now.").should("exist");

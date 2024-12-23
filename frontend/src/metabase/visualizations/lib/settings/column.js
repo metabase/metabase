@@ -327,11 +327,14 @@ export const NUMBER_COLUMN_SETTINGS = {
   currency_in_header: {
     title: t`Where to display the unit of currency`,
     widget: "radio",
-    props: {
-      options: [
-        { name: t`In the column heading`, value: true },
-        { name: t`In every table cell`, value: false },
-      ],
+    getProps: (_series, _vizSettings, onChange) => {
+      return {
+        onChange: value => onChange(value === "true"),
+        options: [
+          { name: t`In the column heading`, value: true },
+          { name: t`In every table cell`, value: false },
+        ],
+      };
     },
     getDefault: getDefaultCurrencyInHeader,
     getHidden: (_column, settings, { series, forAdminSettings }) => {

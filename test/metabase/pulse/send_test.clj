@@ -810,14 +810,13 @@
                                                  :max-interval-millis     30000}}
             send!                #(#'notification.send/channel-send-retrying! pulse-id :notification/card {:channel_type :channel/slack} fake-slack-notification)]
         (testing "channel send task history task details include retry config"
-          (with-redefs
-           [channel/send! (constantly true)]
-           (send!)
-           (is (=? {:task         "channel-send"
-                    :db_id        nil
-                    :status       :success
-                    :task_details default-task-details}
-                   (latest-task-history-entry :channel-send)))))
+          (with-redefs [channel/send! (constantly true)]
+            (send!)
+            (is (=? {:task         "channel-send"
+                     :db_id        nil
+                     :status       :success
+                     :task_details default-task-details}
+                    (latest-task-history-entry :channel-send)))))
 
         (testing "retry errors are recorded when the task eventually succeeds"
           (with-redefs [channel/send! (tu/works-after 2 (constantly nil))]
