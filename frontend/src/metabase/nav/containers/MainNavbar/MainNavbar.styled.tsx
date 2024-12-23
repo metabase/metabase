@@ -134,12 +134,6 @@ export const LoadingAndErrorContent = styled.div`
   text-align: center;
 `;
 
-export const LoadingAndErrorTitle = styled.h2`
-  color: var(--mb-color-text-light);
-  font-weight: 400;
-  margin-top: ${space(1)};
-`;
-
 export const PaddedSidebarLink = styled(SidebarLink)`
   padding-inline-start: 12px;
 `;
