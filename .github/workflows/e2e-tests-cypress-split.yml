@@ -78,7 +78,7 @@ jobs:
           # Tells cypress-split to do 4 runs in a single machine
           export SPLIT=10
           # "cypress-split-run" runs all splits in sequence on this single container
-          npx cypress-split-run \
+          yarn cypress-split-run \
             --command "yarn run test-cypress-run --browser ${{ steps.cypress-prep.outputs.chrome-path }}"
 
         env:
