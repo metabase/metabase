@@ -6,7 +6,7 @@ import { Icon } from "metabase/ui";
 
 import type { AlertVariant } from "./Alert";
 
-export interface AlertRootProps {
+interface AlertRootProps {
   hasBorder?: boolean;
   variant: AlertVariant;
 }

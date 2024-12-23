@@ -87,6 +87,7 @@
     :model/TimelineEvent
     :model/User
     :model/UserParameterValue
+    :model/UserKeyValue
     :model/ViewLog
     :model/GroupTableAccessPolicy
     :model/ConnectionImpersonation
