@@ -654,12 +654,31 @@
       (pre-update-check-sandbox-constraints changes)
       (assert-valid-type (merge old-card-info changes)))))
 
+(defn- add-query-description-to-metric-card
+  "Add `:query_description` key to returned card.
+
+  Some users were missing description that was present in v1 metric API responses. This new key compensates for that.
+
+  This function is used in `t2/define-after-select :model/Card`. Metadata provider caching should be considered when
+  fetching multiple metric cards having common database, as done in eg. dashboard API context."
+  [card]
+  (if-not (and (map? card)
+               (= :metric (:type card))
+               (-> card :dataset_query not-empty)
+               (-> card :database_id))
+    card
+    (m/assoc-some card :query_description (some-> (lib.metadata.jvm/application-database-metadata-provider
+                                                   (:database_id card))
+                                                  (lib/query (:dataset_query card))
+                                                  lib/suggested-name))))
+
 (t2/define-after-select :model/Card
   [card]
   (-> card
       (dissoc :dataset_query_metrics_v2_migration_backup)
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
-      public-settings/remove-public-uuid-if-public-sharing-is-disabled))
+      public-settings/remove-public-uuid-if-public-sharing-is-disabled
+      add-query-description-to-metric-card))
 
 (t2/define-before-insert :model/Card
   [card]

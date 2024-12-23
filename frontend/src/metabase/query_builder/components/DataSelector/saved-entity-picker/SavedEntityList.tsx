@@ -59,7 +59,10 @@ const SavedEntityList = ({
 
                     return (
                       <SelectList.Item
-                        className={SavedEntityListS.SavedEntityListItem}
+                        classNames={{
+                          root: SavedEntityListS.SavedEntityListItem,
+                          icon: SavedEntityListS.SavedEntityListItemIcon,
+                        }}
                         key={id}
                         id={id}
                         isSelected={selectedId === virtualTableId}
