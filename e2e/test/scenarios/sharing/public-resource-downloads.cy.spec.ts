@@ -27,7 +27,7 @@ H.describeWithSnowplowEE(
 
         cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
 
-        H.openSharingMenu("Create a public link");
+        H.openDashboardMenu("Create a public link");
 
         H.popover()
           .findByTestId("public-link-input")
@@ -108,7 +108,7 @@ H.describeWithSnowplowEE(
 
         cy.visit(`/question/${ORDERS_BY_YEAR_QUESTION_ID}`);
 
-        H.openSharingMenu("Create a public link");
+        H.openQuestionActions("Create a public link");
 
         H.popover()
           .findByTestId("public-link-input")

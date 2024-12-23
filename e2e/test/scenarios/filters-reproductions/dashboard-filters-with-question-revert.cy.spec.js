@@ -208,7 +208,8 @@ describe("issue 35954", () => {
         H.updateSetting("show-static-embed-terms", false);
 
         H.visitDashboard(id);
-        H.openSharingMenu("Embed");
+        H.openDashboardMenu("Embed");
+
         H.modal().findByText("Static embedding").click();
 
         cy.findByTestId("embedding-preview").within(() => {

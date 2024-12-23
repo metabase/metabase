@@ -443,7 +443,7 @@ describe("scenarios > dashboard > download pdf", () => {
       H.visitDashboard(dashboard.id);
     });
 
-    H.openSharingMenu("Export as PDF");
+    H.openDashboardMenu("Export as PDF");
     cy.verifyDownload(`saving pdf dashboard - ${date}.pdf`);
   });
 });
@@ -466,7 +466,7 @@ H.describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
       questions: [canSavePngQuestion, cannotSavePngQuestion],
     }).then(({ dashboard }) => {
       H.visitDashboard(dashboard.id);
-      H.openSharingMenu("Export as PDF");
+      H.openDashboardMenu("Export as PDF");
 
       H.expectGoodSnowplowEvent({
         event: "dashboard_pdf_exported",

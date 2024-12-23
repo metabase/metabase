@@ -22,11 +22,13 @@ import { H } from "e2e/support";
             visitResource(resource, id);
           });
 
-          H.openSharingMenu();
-          H.sharingMenu()
-            .findByRole("menuitem", { name: "Embed" })
-            .should("be.visible")
-            .and("be.enabled");
+          openResourceActionsMenu(resource);
+
+          H.popover().within(() => {
+            cy.findByRole("menuitem", { name: "Embed" })
+              .should("be.visible")
+              .and("be.enabled");
+          });
         });
       });
 
@@ -38,8 +40,9 @@ import { H } from "e2e/support";
             visitResource(resource, id);
           });
 
-          H.openSharingMenu();
-          H.sharingMenu().findByText(/embed/i).should("not.exist");
+          openResourceActionsMenu(resource);
+
+          H.popover().findByText(/embed/i).should("not.exist");
         });
       });
     });
@@ -57,7 +60,7 @@ import { H } from "e2e/support";
               visitResource(resource, id);
             });
 
-            H.openSharingMenu("Embed");
+            openResourceActionsMenu(resource, "Embed");
             H.modal().findByText("Embed Metabase").should("be.visible");
           });
 
@@ -67,7 +70,7 @@ import { H } from "e2e/support";
               visitResource(resource, id);
             });
 
-            H.openSharingMenu(/public link/i);
+            openResourceActionsMenu(resource, /public link/i);
 
             assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
           });
@@ -81,10 +84,8 @@ import { H } from "e2e/support";
               visitResource(resource, id);
             });
 
-            H.openSharingMenu();
-            H.sharingMenu().findByText(
-              "Ask your admin to create a public link",
-            );
+            openResourceActionsMenu(resource);
+            H.popover().findByText("Ask your admin to create a public link");
           });
 
           it(`should show the public link button if the ${resource} has a public link`, () => {
@@ -93,7 +94,7 @@ import { H } from "e2e/support";
               visitResource(resource, id);
             });
 
-            H.openSharingMenu(/public link/i);
+            openResourceActionsMenu(resource, /public link/i);
 
             assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
 
@@ -103,7 +104,7 @@ import { H } from "e2e/support";
               visitResource(resource, id);
             });
 
-            H.openSharingMenu("Public link");
+            openResourceActionsMenu(resource, "Public link");
 
             assertValidPublicLink({
               resource,
@@ -125,9 +126,9 @@ import { H } from "e2e/support";
               visitResource(resource, id);
             });
 
-            H.openSharingMenu();
+            openResourceActionsMenu(resource);
 
-            H.sharingMenu().within(() => {
+            H.popover().within(() => {
               cy.findByText("Public links are off").should("be.visible");
               cy.findByText("Enable them in settings").should("be.visible");
             });
@@ -152,10 +153,8 @@ import { H } from "e2e/support";
               visitResource(resource, id);
             });
 
-            H.openSharingMenu();
-            H.sharingMenu().findByText(
-              "Ask your admin to create a public link",
-            );
+            openResourceActionsMenu(resource);
+            H.popover().findByText("Ask your admin to create a public link");
           });
         });
       });
@@ -178,7 +177,7 @@ describe("embed modal display", () => {
       H.setTokenFeatures("all");
       H.visitDashboard("@dashboardId");
 
-      H.openSharingMenu("Embed");
+      H.openDashboardMenu("Embed");
 
       H.getEmbedModalSharingPane().within(() => {
         cy.findByText("Static embedding").should("be.visible");
@@ -204,7 +203,7 @@ describe("embed modal display", () => {
     it("should display a link to the product page for embedded analytics", () => {
       cy.signInAsAdmin();
       H.visitDashboard("@dashboardId");
-      H.openSharingMenu("Embed");
+      H.openDashboardMenu("Embed");
 
       H.getEmbedModalSharingPane().within(() => {
         cy.findByText("Static embedding").should("be.visible");
@@ -225,34 +224,6 @@ describe("embed modal display", () => {
         );
       });
     });
-  });
-});
-
-describe("#39152 sharing an unsaved question", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.updateSetting("enable-public-sharing", true);
-  });
-
-  it("should ask the user to save the question before creating a public link", () => {
-    H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-      cy.findByText("People").click();
-    });
-    H.visualize();
-
-    H.openSharingMenu();
-
-    H.modal().within(() => {
-      cy.findByText("First, save your question").should("be.visible");
-      cy.findByText("Save").click();
-    });
-
-    H.openSharingMenu("Create a public link");
-
-    assertValidPublicLink({ resource: "question", shouldHaveRemoveLink: true });
   });
 });
 
@@ -281,7 +252,7 @@ describe("#39152 sharing an unsaved question", () => {
             visitResource(resource, id);
           });
 
-          H.openSharingMenu(/public link/i);
+          openResourceActionsMenu(resource, /public link/i);
           cy.findByTestId("copy-button").realClick();
           if (resource === "dashboard") {
             H.expectGoodSnowplowEvent({
@@ -329,7 +300,7 @@ describe("#39152 sharing an unsaved question", () => {
             visitResource(resource, id);
           });
 
-          H.openSharingMenu(/public link/i);
+          openResourceActionsMenu(resource, /public link/i);
           H.popover().button("Remove public link").click();
           H.expectGoodSnowplowEvent({
             event: "public_link_removed",
@@ -345,7 +316,7 @@ describe("#39152 sharing an unsaved question", () => {
             visitResource(resource, id);
           });
 
-          H.openSharingMenu("Embed");
+          openResourceActionsMenu(resource, "Embed");
 
           H.modal().findByText("Get embedding code").click();
 
@@ -372,7 +343,7 @@ describe("#39152 sharing an unsaved question", () => {
             visitResource(resource, id);
           });
 
-          H.openSharingMenu("Embed");
+          openResourceActionsMenu(resource, "Embed");
           H.modal().findByText("Get embedding code").click();
 
           H.popover().findByText("Remove public link").click();
@@ -390,7 +361,7 @@ describe("#39152 sharing an unsaved question", () => {
           cy.get("@resourceId").then(id => {
             visitResource(resource, id);
           });
-          H.openStaticEmbeddingModal();
+          H.openStaticEmbeddingModal({ context: resource });
 
           cy.log("Assert copying codes in Overview tab");
           cy.findByTestId("embed-backend")
@@ -531,7 +502,10 @@ describe("#39152 sharing an unsaved question", () => {
             cy.get("@resourceId").then(id => {
               visitResource(resource, id);
             });
-            H.openStaticEmbeddingModal({ acceptTerms: false });
+            H.openStaticEmbeddingModal({
+              context: resource,
+              acceptTerms: false,
+            });
 
             cy.log("Assert copying codes in Overview tab");
             cy.findByTestId("embed-backend")
@@ -657,7 +631,10 @@ describe("#39152 sharing an unsaved question", () => {
           });
 
           cy.log("changing parameters, so we could discard changes");
-          H.openStaticEmbeddingModal({ activeTab: "parameters" });
+          H.openStaticEmbeddingModal({
+            context: resource,
+            activeTab: "parameters",
+          });
           H.modal().button("Price").click();
           H.popover().findByText("Editable").click();
 
@@ -678,7 +655,7 @@ describe("#39152 sharing an unsaved question", () => {
           cy.get("@resourceId").then(id => {
             visitResource(resource, id);
           });
-          H.openStaticEmbeddingModal();
+          H.openStaticEmbeddingModal({ context: resource });
 
           cy.findByTestId("embed-modal-content-status-bar")
             .button("Publish")
@@ -743,7 +720,7 @@ describe("#39152 sharing an unsaved question", () => {
             enableEmbeddingForResource({ resource, id });
             visitResource(resource, id);
           });
-          H.openStaticEmbeddingModal();
+          H.openStaticEmbeddingModal({ context: resource });
 
           const HOUR = 60 * 60 * 1000;
           cy.clock(new Date(Date.now() + HOUR));
@@ -849,6 +826,20 @@ function visitResource(resource, id) {
 
   if (resource === "dashboard") {
     H.visitDashboard(id);
+  }
+}
+
+function openResourceActionsMenu(resource, menuItemText) {
+  if (resource === "question") {
+    H.openQuestionActions();
+  }
+
+  if (resource === "dashboard") {
+    H.openDashboardMenu();
+  }
+
+  if (menuItemText) {
+    H.popover().findByText(menuItemText).click();
   }
 }
 

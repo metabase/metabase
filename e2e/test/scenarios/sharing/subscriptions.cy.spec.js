@@ -2,7 +2,6 @@ import { H } from "e2e/support";
 import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import { multiAutocompleteInput } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const { admin, normal } = USERS;
@@ -20,10 +19,10 @@ describe("scenarios > dashboard > subscriptions", () => {
 
     cy.findByLabelText("subscriptions").should("not.exist");
 
-    H.openSharingMenu(/public link/i);
+    H.openDashboardMenu(/public link/i);
     cy.findByTestId("public-link-popover-content").should("be.visible");
 
-    H.openSharingMenu("Embed");
+    H.openDashboardMenu("Embed");
     H.getEmbedModalSharingPane().within(() => {
       cy.findByText("public embedding").should("be.visible");
       cy.findByText("Static embedding").should("be.visible");
@@ -38,12 +37,13 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.button("Save").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("You're editing this dashboard.").should("not.exist");
-    H.openSharingMenu();
+
     // Dashboard subscriptions are not shown because
     // getting notifications with static text-only cards doesn't make a lot of sense
-    H.sharingMenu().findByText("subscriptions").should("not.exist");
+    H.notificationsMenuButton().should("not.exist");
 
-    H.sharingMenu().within(() => {
+    H.openDashboardMenu();
+    H.popover().within(() => {
       cy.findByText("Create a public link").should("be.visible");
       cy.findByText("Embed").should("be.visible");
     });
@@ -54,7 +54,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       openDashboardSubscriptions();
 
       // The sidebar starts open after the method there, so test that clicking the icon closes it
-      H.openSharingMenu("Subscriptions");
+      H.openNotificationsMenu("Subscriptions");
       H.sidebar().should("not.exist");
     });
   });
@@ -477,8 +477,8 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should disable subscriptions for non-admin users", () => {
       cy.signInAsNormalUser();
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openSharingMenu();
-      H.sharingMenu()
+      H.openNotificationsMenu();
+      H.notificationsMenu()
         .findByText("Can't send subscriptions")
         .should("be.visible");
     });
@@ -529,7 +529,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         });
         cy.findByRole("option", { name: "Sallie Flatley" }).click();
         cy.findByTestId("parameter-value-dropdown").within(() => {
-          multiAutocompleteInput().blur();
+          H.multiAutocompleteInput().blur();
         });
         H.popover().button("Update filter").click();
 
@@ -643,10 +643,12 @@ describe("scenarios > dashboard > subscriptions", () => {
           .findByText("Corbin Mertz")
           .click();
         H.removeMultiAutocompleteValue(0, ":eq(1)");
-        H.popover().within(() => multiAutocompleteInput().type("Sallie"));
+        H.popover().within(() => {
+          H.multiAutocompleteInput().type("Sallie");
+        });
         cy.findByRole("option", { name: "Sallie Flatley" }).click();
         cy.findByTestId("parameter-value-dropdown").within(() => {
-          multiAutocompleteInput().blur();
+          H.multiAutocompleteInput().blur();
         });
         H.popover().button("Update filter").click();
         cy.button("Save").click();
@@ -673,7 +675,9 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByText("Emailed hourly").click();
 
         cy.findAllByText("Corbin Mertz").last().click();
-        H.popover().within(() => multiAutocompleteInput().type("Bob"));
+        H.popover().within(() => {
+          H.multiAutocompleteInput().type("Bob");
+        });
         H.selectDropdown().findByText("Bobby Kessler").click();
         H.popover().contains("Update filter").click();
 
@@ -706,7 +710,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 function openDashboardSubscriptions(dashboard_id = ORDERS_DASHBOARD_ID) {
   // Orders in a dashboard
   H.visitDashboard(dashboard_id);
-  H.openSharingMenu("Subscriptions");
+  H.openNotificationsMenu("Subscriptions");
 }
 
 function assignRecipient({
