@@ -73,6 +73,7 @@ jobs:
         uses: cypress-io/github-action@v6
         with:
           start: yarn dev
+          config-file: e2e/support/cypress.config.js
           # By default, cypress-io/github-action runs "cypress run"
           # cypress-split (in cypress.config.js) will see SPLIT and SPLIT_INDEX
           # and only run a portion of the specs
