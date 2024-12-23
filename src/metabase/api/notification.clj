@@ -51,6 +51,7 @@
   {id          ms/PositiveInt
    handler_ids [:maybe [:sequential ms/PositiveInt]]}
   (let [notification (get-notification id)]
+    (api/read-check notification)
     (cond-> notification
       (seq handler_ids)
       (update :handlers (fn [handlers] (filter (comp (set handler_ids) :id) handlers)))
@@ -62,6 +63,7 @@
   "Send an unsaved notification."
   [:as {body :body}]
   {body ::models.notification/FullyHydratedNotification}
+  (api/create-check :model/Notification body)
   (notification/send-notification! body :notification/sync? true))
 
 (api/define-routes)
