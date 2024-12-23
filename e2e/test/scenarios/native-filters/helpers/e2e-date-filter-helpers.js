@@ -20,12 +20,8 @@ export function setQuarterAndYear({ quarter, year } = {}) {
   popover().findByText(quarter).click();
 }
 
-function setDate(date, container) {
-  container.findByRole("textbox").clear().type(date).blur();
-}
-
 export function setSingleDate(date) {
-  setDate(date, cy.findByTestId("specific-date-picker"));
+  cy.findByLabelText("Date").clear().type(date).blur();
 }
 
 export function setTime({ hours, minutes }) {
@@ -37,8 +33,8 @@ export function setTime({ hours, minutes }) {
 }
 
 export function setDateRange({ startDate, endDate } = {}) {
-  setDate(startDate, cy.findAllByTestId("specific-date-picker").first());
-  setDate(endDate, cy.findAllByTestId("specific-date-picker").last());
+  cy.findByLabelText("Start date").clear().type(startDate).blur();
+  cy.findByLabelText("End date").clear().type(endDate).blur();
 }
 
 export function setRelativeDate(term) {
