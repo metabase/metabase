@@ -34,6 +34,7 @@ export interface DurationStrategy extends CacheStrategyBase {
   type: "duration";
   duration: number;
   unit: CacheDurationUnit;
+  refresh_automatically: boolean;
 }
 
 export interface InheritStrategy extends CacheStrategyBase {
@@ -43,6 +44,7 @@ export interface InheritStrategy extends CacheStrategyBase {
 export interface ScheduleStrategy extends CacheStrategyBase {
   type: "schedule";
   schedule: string;
+  refresh_automatically: boolean;
 }
 
 /** Cache invalidation strategy */
