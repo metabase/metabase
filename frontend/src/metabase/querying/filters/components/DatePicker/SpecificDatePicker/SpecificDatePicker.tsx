@@ -1,12 +1,11 @@
 import { useMemo, useState } from "react";
 
-import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
-
 import type {
   DatePickerOperator,
   DatePickerUnit,
   SpecificDatePickerValue,
-} from "../types";
+} from "metabase/querying/filters/types";
+import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
 
 import { DateRangePicker, type DateRangePickerValue } from "./DateRangePicker";
 import {
@@ -28,8 +27,8 @@ import {
 
 interface SpecificDatePickerProps {
   value?: SpecificDatePickerValue;
-  availableOperators: ReadonlyArray<DatePickerOperator>;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
+  availableOperators: DatePickerOperator[];
+  availableUnits: DatePickerUnit[];
   isNew: boolean;
   onChange: (value: SpecificDatePickerValue) => void;
   onBack: () => void;

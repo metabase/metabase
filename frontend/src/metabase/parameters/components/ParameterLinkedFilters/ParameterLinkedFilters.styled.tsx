@@ -1,9 +1,5 @@
 import styled from "@emotion/styled";
 
-export const SectionRoot = styled.div`
-  padding: 1.5rem 1rem;
-`;
-
 export const SectionHeader = styled.div`
   font-size: 1rem;
   font-weight: bold;

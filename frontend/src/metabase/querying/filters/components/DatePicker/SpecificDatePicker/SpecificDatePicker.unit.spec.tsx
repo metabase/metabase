@@ -1,20 +1,22 @@
 import _userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-
-import { DATE_PICKER_OPERATORS, DATE_PICKER_UNITS } from "../constants";
+import {
+  DATE_PICKER_OPERATORS,
+  DATE_PICKER_UNITS,
+} from "metabase/querying/filters/constants";
 import type {
   DatePickerOperator,
   DatePickerUnit,
   SpecificDatePickerValue,
-} from "../types";
+} from "metabase/querying/filters/types";
 
 import { SpecificDatePicker } from "./SpecificDatePicker";
 
 interface SetupOpts {
   value?: SpecificDatePickerValue;
-  availableOperators?: ReadonlyArray<DatePickerOperator>;
-  availableUnits?: ReadonlyArray<DatePickerUnit>;
+  availableOperators?: DatePickerOperator[];
+  availableUnits?: DatePickerUnit[];
   isNew?: boolean;
 }
 

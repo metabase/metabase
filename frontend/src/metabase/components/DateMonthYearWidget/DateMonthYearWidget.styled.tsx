@@ -15,7 +15,7 @@ export const MonthContainer = styled.div`
   width: 33.33%;
 `;
 
-export interface MonthRootProps {
+interface MonthRootProps {
   isSelected: boolean;
 }
 

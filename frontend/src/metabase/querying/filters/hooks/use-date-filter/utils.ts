@@ -1,15 +1,16 @@
-import * as Lib from "metabase-lib";
-
+import type {
+  DatePickerOperator,
+  DatePickerUnit,
+  DatePickerValue,
+  ExcludeDatePickerValue,
+  RelativeDatePickerValue,
+  SpecificDatePickerValue,
+} from "metabase/querying/filters/types";
 import {
-  type DatePickerOperator,
-  type DatePickerUnit,
-  type DatePickerValue,
-  type ExcludeDatePickerValue,
-  type RelativeDatePickerValue,
-  type SpecificDatePickerValue,
   isDatePickerOperator,
   isDatePickerUnit,
-} from "../../components/DatePicker";
+} from "metabase/querying/filters/utils";
+import * as Lib from "metabase-lib";
 
 export function getPickerValue(
   query: Lib.Query,

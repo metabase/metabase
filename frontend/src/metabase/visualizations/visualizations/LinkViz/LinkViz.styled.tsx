@@ -4,7 +4,6 @@ import BaseExternalLink from "metabase/core/components/ExternalLink";
 import Input from "metabase/core/components/Input";
 import Link from "metabase/core/components/Link";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
-import { Icon } from "metabase/ui";
 
 export const DisplayLinkCardWrapper = styled.div`
   padding: 0 0.5rem;
@@ -51,11 +50,6 @@ export const ExternalLink = styled(BaseExternalLink)`
   &:hover {
     color: var(--mb-color-brand);
   }
-`;
-
-export const BrandIconWithHorizontalMargin = styled(Icon)`
-  color: var(--mb-color-brand);
-  margin: 0 0.5rem;
 `;
 
 const searchResultsStyles = `
