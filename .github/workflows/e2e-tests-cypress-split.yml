@@ -1,4 +1,4 @@
-name: E2E Tests (Cypress Split, Single Shared Backend)
+name: E2E Tests (Cypress Split)
 
 on:
   push:
@@ -14,16 +14,21 @@ concurrency:
 
 jobs:
   e2e-tests-split:
+    # We'll run 3 parallel copies of this job
+    # each with its own ephemeral container
     name: e2e-tests-split
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # pick how many parallel containers you want
+        containers: [0, 1, 2, 4, 5, 6, 7, 8, 9]
 
-    # 1) We define a Metabase "service," so we only spin up Metabase once.
-    #    All Cypress specs are split on this single container / single job.
+    # services is defined at the job level
+    # each parallel job has its own container, not shared
     services:
       metabase:
-        # In practice, you'd build/pull your Metabase Docker image here:
         image: metabase/metabase:latest
-        # by default, runs on port 3000
         ports:
           - 4000:3000
         options: >-
@@ -33,70 +38,57 @@ jobs:
           --health-retries=20
 
     steps:
-      # ----------------------------------------------------------------
-      # 1) Check out code & build jar (if you haven't already)
-      #    Or you can download your built uberjar artifact if done in a prior job.
-      # ----------------------------------------------------------------
+      # ---------------------------------------------------
+      # 1) Checkout your repo, install deps, etc.
+      # ---------------------------------------------------
       - name: Check out code
         uses: actions/checkout@v4
 
       - name: Prepare environment (Node, Yarn, etc.)
         uses: ./.github/actions/prepare-frontend
-        # For example, might set node-version, etc.
 
-      # If needed, retrieve the uberjar from a prior "build" job
+      # If you have a built uberjar artifact, you can download it here
       # - name: Retrieve uberjar artifact
       #   uses: actions/download-artifact@v4
       #   with:
       #     name: metabase-oss-<sha>-uberjar
 
-      # If you want to do something with the jar, extract version.properties, etc.
-      # - name: Get version info
-      #   run: |
-      #     jar xf target/uberjar/metabase.jar version.properties
-      #     mv version.properties resources/
-
-      # ----------------------------------------------------------------
-      # 2) Wait for the Metabase "service" to come up healthy
-      #    (The container is started automatically by the "services:" block)
-      # ----------------------------------------------------------------
-      - name: Wait for Metabase to be healthy
+      - name: Wait for Metabase service
         run: |
-          echo "Waiting for Metabase container to pass healthcheck..."
-          # optional: we can wait up to 2 minutes, or just rely on the service health
-          sleep 10
+          echo "Waiting ~15s for Metabase to pass healthcheck..."
+          sleep 15
 
-      # ----------------------------------------------------------------
-      # 3) Install Cypress environment (if not installed in container)
-      # ----------------------------------------------------------------
+      # ---------------------------------------------------
+      # 2) Prepare Cypress environment
+      # ---------------------------------------------------
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
-      - name: Run cypress-split - multiple runs
-        run: |
-          # Tells cypress-split to do 4 runs in a single machine
-          export SPLIT=10
-          # "cypress-split-run" runs all splits in sequence on this single container
-          yarn cypress-split-run \
-            --command "yarn run test-cypress-run --browser ${{ steps.cypress-prep.outputs.chrome-path }}"
-
+      # ---------------------------------------------------
+      # 3) Run Cypress with cypress-split
+      #    We pass SPLIT / SPLIT_INDEX from the matrix
+      # ---------------------------------------------------
+      - name: Run split Cypress tests
+        uses: cypress-io/github-action@v6
+        with:
+          start: npm start # or yarn start, if needed
+          # By default, cypress-io/github-action runs "cypress run"
+          # cypress-split (in cypress.config.js) will see SPLIT and SPLIT_INDEX
+          # and only run a portion of the specs
         env:
-          # cypress-split environment
-          CYPRESS_CI: true
-          CYPRESS_BASE_URL: http://localhost:3000
-          MB_SNOWPLOW_AVAILABLE: true
-          MB_SNOWPLOW_URL: "http://localhost:9090"
+          SPLIT: ${{ strategy.job-total }} # total # of parallel containers
+          SPLIT_INDEX: ${{ matrix.containers }} # 0..2 for 3 containers
 
-      # ----------------------------------------------------------------
-      # 4) Upload results / artifacts
-      # ----------------------------------------------------------------
+      # ---------------------------------------------------
+      # 4) Upload test results, artifacts
+      # ---------------------------------------------------
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
         with:
           input-path: ./target/junit
-          output-name: cypress-split
+          output-name: cypress-split-${{ matrix.containers }}
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
@@ -107,7 +99,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: cypress-split-artifacts
+          name: cypress-split-artifacts-${{ matrix.containers }}
           path: |
             ./cypress
             ./logs/test.log
