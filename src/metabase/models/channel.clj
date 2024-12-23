@@ -33,7 +33,7 @@
   {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))
    :details mi/transform-encrypted-json})
 
-(def Channel
+(mr/def ::Channel
   "Channel schema."
   [:map
    [:name                         string?]
