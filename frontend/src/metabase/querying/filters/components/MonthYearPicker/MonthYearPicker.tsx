@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 
 import type { SpecificDatePickerValue } from "metabase/querying/filters/types";
-import { MonthPicker } from "metabase/ui";
+import { Box, MonthPicker } from "metabase/ui";
 
 type MonthYearPickerProps = {
   value?: SpecificDatePickerValue;
@@ -13,7 +13,7 @@ export function MonthYearPicker({ value, onChange }: MonthYearPickerProps) {
 
   const handleChange = (value: Date) => {
     const start = dayjs(value).startOf("month").toDate();
-    const end = dayjs(value).endOf("month").toDate();
+    const end = dayjs(value).add(1, "month").subtract(1, "day").toDate();
     onChange({
       type: "specific",
       operator: "between",
@@ -22,5 +22,9 @@ export function MonthYearPicker({ value, onChange }: MonthYearPickerProps) {
     });
   };
 
-  return <MonthPicker value={date} onChange={handleChange} />;
+  return (
+    <Box p="md">
+      <MonthPicker value={date} onChange={handleChange} />
+    </Box>
+  );
 }

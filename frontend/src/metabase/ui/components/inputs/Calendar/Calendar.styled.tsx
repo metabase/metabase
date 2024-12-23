@@ -2,7 +2,7 @@ import type { MantineThemeOverride } from "@mantine/core";
 import { getStylesRef, rem } from "@mantine/core";
 
 export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
-  Calendar: {
+  DatePicker: {
     defaultProps: {
       /**
        * Months have different number of day rows (4, 5 or 6). This causes date picker height to change when
