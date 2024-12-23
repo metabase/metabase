@@ -315,7 +315,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByText("Show totals").should("not.be.visible");
 
     // turn off subtotals for User -> Source
-    openColumnSettings(/Users? → Source/);
+    openColumnSettings("User → Source");
     cy.findByTestId(
       "chart-settings-widget-pivot_table.column_show_totals",
     ).within(() => {
@@ -347,7 +347,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByTestId("viz-settings-button").click();
 
     // turn off subtotals for User -> Source
-    openColumnSettings(/Users? → Source/);
+    openColumnSettings("User → Source");
     cy.findByTestId(
       "chart-settings-widget-pivot_table.column_show_totals",
     ).within(() => {
