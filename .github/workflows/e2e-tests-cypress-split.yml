@@ -1,4 +1,4 @@
-name: E2E Tests (Cypress Split)
+name: E2E Tests (Cypress Split with Custom Setup)
 
 on:
   push:
@@ -13,19 +13,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  e2e-tests-split:
-    # We'll run 3 parallel copies of this job
-    # each with its own ephemeral container
+  e2e-tests:
     name: e2e-tests-split
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
-        # pick how many parallel containers you want
         containers: [0, 1, 2, 4, 5, 6, 7, 8, 9]
 
-    # services is defined at the job level
-    # each parallel job has its own container, not shared
     services:
       metabase:
         image: metabase/metabase:latest
@@ -38,52 +33,58 @@ jobs:
           --health-retries=20
 
     steps:
-      # ---------------------------------------------------
-      # 1) Checkout your repo, install deps, etc.
-      # ---------------------------------------------------
+      # 1. Checkout code
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Prepare environment (Node, Yarn, etc.)
+      # 2. Prepare environment
+      - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-
-      # If you have a built uberjar artifact, you can download it here
-      # - name: Retrieve uberjar artifact
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: metabase-oss-<sha>-uberjar
 
       - name: Wait for Metabase service
         run: |
-          echo "Waiting ~15s for Metabase to pass healthcheck..."
+          echo "Waiting for Metabase to be healthy..."
           sleep 15
 
-      # ---------------------------------------------------
-      # 2) Prepare Cypress environment
-      # ---------------------------------------------------
+      # 3. Custom setup for Docker containers
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: true
+          openldap: ${{ matrix.containers == 0 }}
+          postgres: ${{ matrix.containers != 2 }}
+          mysql: ${{ matrix.containers != 3 }}
+          mongo: ${{ matrix.containers == 3 }}
+          webhook: true
+
+      # 4. Prepare Cypress environment
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
-      # ---------------------------------------------------
-      # 3) Run Cypress with cypress-split
-      #    We pass SPLIT / SPLIT_INDEX from the matrix
-      # ---------------------------------------------------
+      # 5. Run Cypress tests with `cypress-split`
       - name: Run split Cypress tests
         uses: cypress-io/github-action@v6
         with:
           start: yarn dev
           config-file: e2e/support/cypress.config.js
-          # By default, cypress-io/github-action runs "cypress run"
-          # cypress-split (in cypress.config.js) will see SPLIT and SPLIT_INDEX
-          # and only run a portion of the specs
         env:
-          SPLIT: ${{ strategy.job-total }} # total # of parallel containers
-          SPLIT_INDEX: ${{ matrix.containers }} # 0..2 for 3 containers
+          SPLIT: ${{ strategy.job-total }} # Total parallel jobs
+          SPLIT_INDEX: ${{ matrix.containers }} # Index of this job
+          CYPRESS_CI: true
+          MB_EDITION: "oss"
+          DISPLAY: ""
+          QA_DB_ENABLED: true
+          CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+          CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
+          CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
+          COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
+          MB_SNOWPLOW_AVAILABLE: true
+          MB_SNOWPLOW_URL: "http://localhost:9090"
 
-      # ---------------------------------------------------
-      # 4) Upload test results, artifacts
-      # ---------------------------------------------------
+      # 6. Upload test results
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -96,6 +97,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
+      # 7. Upload Cypress artifacts
       - name: Upload Cypress Artifacts (on failure)
         uses: actions/upload-artifact@v4
         if: failure()
