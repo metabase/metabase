@@ -147,6 +147,7 @@ jobs:
           --config-file e2e/support/cypress.config.js \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         env:
+          E2E_HOST: http://localhost:4000
           SPLIT: ${{ strategy.job-total }}
           SPLIT_INDEX: ${{ matrix.containers }}
           CYPRESS_CI: true
