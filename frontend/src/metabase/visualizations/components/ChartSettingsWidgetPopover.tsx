@@ -2,10 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { Space, Tabs } from "metabase/ui";
+import { Box, Space, Tabs } from "metabase/ui";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
-import { PopoverRoot } from "./ChartSettingsWidgetPopover.styled";
 
 interface Widget {
   id: string;
@@ -19,7 +18,7 @@ interface ChartSettingsWidgetPopoverProps {
   widgets: Widget[];
 }
 
-const ChartSettingsWidgetPopover = ({
+export const ChartSettingsWidgetPopover = ({
   anchor,
   handleEndShowWidget,
   widgets,
@@ -52,7 +51,13 @@ const ChartSettingsWidgetPopover = ({
       reference={anchor}
       content={
         widgets.length > 0 ? (
-          <PopoverRoot noTopPadding={hasMultipleSections} ref={contentRef}>
+          <Box
+            pt={hasMultipleSections && 0}
+            ref={contentRef}
+            mah="37.5rem"
+            miw="336px"
+            className={CS.overflowYAuto}
+          >
             {hasMultipleSections && (
               <Tabs
                 value={currentSection}
@@ -77,7 +82,7 @@ const ChartSettingsWidgetPopover = ({
                   hidden={false}
                 />
               ))}
-          </PopoverRoot>
+          </Box>
         ) : null
       }
       visible={!!anchor}
@@ -97,6 +102,3 @@ const ChartSettingsWidgetPopover = ({
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ChartSettingsWidgetPopover;
