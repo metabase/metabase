@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
+import { Stack } from "metabase/ui";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 import {
   getComputedSettings,
@@ -53,10 +54,14 @@ function getWidgets({
     { series, ...extraData },
   );
 
-  return widgets.filter(
-    widget =>
-      (!allowlist || allowlist.has(widget.id)) &&
-      (!denylist || !denylist.has(widget.id)),
+  return (
+    <Stack>
+      {widgets.filter(
+        widget =>
+          (!allowlist || allowlist.has(widget.id)) &&
+          (!denylist || !denylist.has(widget.id)),
+      )}
+    </Stack>
   );
 }
 
@@ -70,7 +75,7 @@ const ColumnSettings = ({ value, variant = "default", ...props }) => {
   const widgets = getWidgets({ storedSettings, ...props });
 
   return (
-    <div style={{ maxWidth: 300 }} data-testid="column-settings">
+    <Stack style={{ maxWidth: 300 }} data-testid="column-settings">
       {widgets.length > 0 ? (
         widgets.map(widget => (
           <ChartSettingsWidget
@@ -87,7 +92,7 @@ const ColumnSettings = ({ value, variant = "default", ...props }) => {
           illustrationElement={<img src={NoResults} />}
         />
       )}
-    </div>
+    </Stack>
   );
 };
 
