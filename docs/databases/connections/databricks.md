@@ -34,6 +34,7 @@ The Databricks driver supports both options. Use the toggle to select the authen
 See [Personal Access Token (PAT)](https://docs.databricks.com/en/dev-tools/auth/pat.html).
 
 ### Authenticate access with a service principal using OAuth (OAuth M2M)
+
 See [Authenticate access with a service principal using OAuth](https://docs.databricks.com/en/dev-tools/auth/oauth-m2m.html).
 
 ## Catalog
