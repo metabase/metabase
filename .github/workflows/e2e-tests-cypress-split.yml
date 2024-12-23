@@ -1,4 +1,4 @@
-name: E2E Tests (Cypress Split with Custom Setup)
+name: E2E Tests (Cypress Split with Full Setup)
 
 on:
   push:
@@ -13,13 +13,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  e2e-tests:
-    name: e2e-tests-split
+  e2e-tests-split:
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
-        containers: [0, 1, 2, 4, 5, 6, 7, 8, 9]
+        containers: [0, 1, 2, 3] # Adjust this based on desired parallelism
+        edition: [oss, ee]
+        java-version: [11, 17] # Add relevant Java versions if applicable
 
     services:
       metabase:
@@ -34,19 +35,9 @@ jobs:
 
     steps:
       # 1. Checkout code
-      - name: Check out code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # 2. Prepare environment
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-
-      - name: Wait for Metabase service
-        run: |
-          echo "Waiting for Metabase to be healthy..."
-          sleep 15
-
-      # 3. Custom setup for Docker containers
+      # 2. Prepare Docker containers
       - name: Prepare Docker containers
         uses: ./.github/actions/e2e-prepare-containers
         with:
@@ -59,12 +50,39 @@ jobs:
           mongo: ${{ matrix.containers == 3 }}
           webhook: true
 
-      # 4. Prepare Cypress environment
+      # 3. Retrieve uberjar artifact
+      - name: Retrieve uberjar artifact for ${{ matrix.edition }}
+        uses: actions/download-artifact@v4
+        with:
+          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+
+      # 4. Extract version info
+      - name: Get the version info
+        run: |
+          jar xf target/uberjar/metabase.jar version.properties
+          mv version.properties resources/
+
+      # 5. Prepare front-end environment
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      # 6. Prepare JDK environment
+      - name: Prepare JDK ${{ matrix.java-version }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.java-version }}
+          distribution: "temurin"
+
+      # 7. Prepare Cypress environment
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
-      # 5. Run Cypress tests with `cypress-split`
+      # 8. Run Snowplow microservice
+      - name: Run Snowplow micro
+        uses: ./.github/actions/run-snowplow-micro
+
+      # 9. Run Cypress tests with `cypress-split`
       - name: Run split Cypress tests
         uses: cypress-io/github-action@v6
         with:
@@ -74,7 +92,7 @@ jobs:
           SPLIT: ${{ strategy.job-total }} # Total parallel jobs
           SPLIT_INDEX: ${{ matrix.containers }} # Index of this job
           CYPRESS_CI: true
-          MB_EDITION: "oss"
+          MB_EDITION: ${{ matrix.edition }}
           DISPLAY: ""
           QA_DB_ENABLED: true
           CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
@@ -84,7 +102,7 @@ jobs:
           MB_SNOWPLOW_AVAILABLE: true
           MB_SNOWPLOW_URL: "http://localhost:9090"
 
-      # 6. Upload test results
+      # 10. Upload test results
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -97,7 +115,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-      # 7. Upload Cypress artifacts
+      # 11. Upload Cypress artifacts
       - name: Upload Cypress Artifacts (on failure)
         uses: actions/upload-artifact@v4
         if: failure()
