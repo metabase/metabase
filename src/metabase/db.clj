@@ -43,6 +43,7 @@
   clob->str]
 
  [mdb.encryption
+  decrypt-db
   encrypt-db]
 
  [mdb.setup
