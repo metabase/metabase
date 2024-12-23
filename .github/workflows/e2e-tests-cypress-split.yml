@@ -13,6 +13,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 3
+    outputs:
+      e2e_all: ${{ steps.changes.outputs.e2e_all }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
   e2e-matrix-builder:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
@@ -24,8 +39,42 @@ jobs:
         id: e2e-matrix
         uses: ./.github/actions/build-e2e-matrix
 
+  build:
+    needs: [files-changed, e2e-matrix-builder]
+    if: |
+      !cancelled() &&
+      github.event.pull_request.draft == false &&
+      needs.e2e-matrix-builder.result == 'success' &&
+      needs.files-changed.outputs.e2e_all == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    strategy:
+      matrix:
+        edition: [oss, ee]
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      INTERACTIVE: false
+      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: uberjar
+          java-version: 11
+
+      - name: Build uberjar with ./bin/build.sh
+        run: ./bin/build.sh
+
+      - name: Prepare uberjar artifact
+        uses: ./.github/actions/prepare-uberjar-artifact
+        with:
+          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+
   e2e-tests-split:
-    needs: e2e-matrix-builder
+    needs: [build, e2e-matrix-builder]
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
@@ -60,7 +109,7 @@ jobs:
           webhook: true
 
       # 3. Retrieve uberjar artifact
-      - name: Retrieve uberjar artifact for ${{ matrix.edition }}
+      - name: Retrieve uberjar artifact
         uses: actions/download-artifact@v4
         with:
           name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
