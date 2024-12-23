@@ -179,7 +179,7 @@ describe("scenarios > dashboard > filters > date", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Exclure...").click(); // "Exclude…"
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Mois de l'année…").click(); // "Months of the year…"
+    cy.findByText("Mois de l'année...").click(); // "Months of the year…"
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("janvier").click(); // "January"
 
