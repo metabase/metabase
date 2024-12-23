@@ -73,14 +73,6 @@ jobs:
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
-      # ----------------------------------------------------------------
-      # 4) cypress-split in a single job
-      #    We'll run 4 splits in sequence, each partial set of specs.
-      #    This uses cypress-split-run's built-in approach for multi-runs.
-      # ----------------------------------------------------------------
-      - name: Install cypress-split (if not installed yet)
-        run: yarn add --dev cypress-split
-
       - name: Run cypress-split - multiple runs
         run: |
           # Tells cypress-split to do 4 runs in a single machine
@@ -97,7 +89,7 @@ jobs:
           MB_SNOWPLOW_URL: "http://localhost:9090"
 
       # ----------------------------------------------------------------
-      # 5) Upload results / artifacts
+      # 4) Upload results / artifacts
       # ----------------------------------------------------------------
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
