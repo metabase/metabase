@@ -35,6 +35,7 @@ type SuggestOptions = Omit<
 // TODO: enable snippet support
 // TODO: render better help texts
 // TODO: shortcuts
+// TODO: use namespaced suggestion for fk sparator (eg. products.|
 
 export function suggestions(options: SuggestOptions) {
   return autocompletion({
@@ -85,7 +86,7 @@ function suggestFields({ query, stageIndex, expressionIndex }: SuggestOptions) {
     const displayInfo = Lib.displayInfo(query, stageIndex, column);
     return {
       type: "field",
-      label: formatIdentifier(displayInfo.longDisplayName) + " ",
+      label: formatIdentifier(displayInfo.longDisplayName),
       displayLabel: displayInfo.longDisplayName,
       detail: t`Field`,
     };
