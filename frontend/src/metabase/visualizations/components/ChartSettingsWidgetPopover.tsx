@@ -61,12 +61,14 @@ export const ChartSettingsWidgetPopover = ({
           >
             {hasMultipleSections && (
               <Tabs
+                px="md"
+                pt="xs"
                 value={currentSection}
                 onTabChange={section => setCurrentSection(String(section))}
               >
                 <Tabs.List grow>
                   {sections.current.map(sectionName => (
-                    <Tabs.Tab key={sectionName} value={sectionName}>
+                    <Tabs.Tab key={sectionName} value={sectionName} p="md">
                       {sectionName}
                     </Tabs.Tab>
                   ))}
