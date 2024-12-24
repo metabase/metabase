@@ -7,4 +7,5 @@
   "eslint.options": {
     "rulePaths": ["frontend/lint/eslint-rules/"]
   },
+  "deepscan.ignoreConfirmWarning": true
 }

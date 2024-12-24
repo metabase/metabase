@@ -186,11 +186,19 @@ jobs:
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
+      # Generate database snapshots before running tests in each split (sets up state)
+      - name: Generate database snapshots
+        run: |
+          yarn test-cypress-run \
+            --config-file e2e/support/cypress-snapshots.config.js \
+            --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
+            --spec "e2e/snapshot-creators/default.cy.snap.js"
+
       - name: Run split Cypress tests
         run: |
           yarn test-cypress-run \
           --config-file e2e/support/cypress.config.js \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
 
       - name: Upload test results
         uses: ./.github/actions/upload-test-results
