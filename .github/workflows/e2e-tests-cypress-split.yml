@@ -118,15 +118,17 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       DISPLAY: ""
       QA_DB_ENABLED: true
-      # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
       CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
       COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head_sha }}
       MB_SNOWPLOW_AVAILABLE: true
-      MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
-      TZ: US/Pacific # to make node match the instance tz
+      MB_SNOWPLOW_URL: "http://localhost:9090"
+      TZ: US/Pacific
       CYPRESS_CI: true
+      E2E_HOST: "http://localhost:3000"
+      SPLIT: ${{ strategy.job-total }} # for cypress-split to parallelize
+      SPLIT_INDEX: ${{ matrix.containers }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -174,7 +176,7 @@ jobs:
 
       - name: Create writable test database
         run: |
-          docker exec $(docker ps -q -f "ancestor=metabase/qa-databases:postgres-sample-12") psql -U metabase -c "CREATE DATABASE writable_db"
+          docker exec $(docker ps -q -f "ancestor=metabase/qa-databases:postgres-sample-12") psql -U metabase -p 5432 -c "CREATE DATABASE writable_db"
 
       - name: Run Metabase in the background
         run: |
@@ -186,7 +188,7 @@ jobs:
           MB_DB_PASS=metasample123 \
           MB_ENABLE_TEST_ENDPOINTS=true \
           java -jar ./target/uberjar/metabase.jar &
-          while ! curl -s "http://localhost:3000/api/health" | grep '{"status":"ok"}'; do
+          while ! curl -s "$E2E_HOST/api/health" | grep '{"status":"ok"}'; do
             sleep 1
           done
 
@@ -196,18 +198,6 @@ jobs:
           --spec "e2e/snapshot-creators/*.cy.snap.js" \
           --config-file e2e/support/cypress.config.js \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
-        env:
-          E2E_HOST: http://localhost:3000
-          CYPRESS_CI: true
-          MB_EDITION: ${{ matrix.edition }}
-          DISPLAY: ""
-          QA_DB_ENABLED: true
-          CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
-          CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
-          CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
-          COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head_sha }}
-          MB_SNOWPLOW_AVAILABLE: true
-          MB_SNOWPLOW_URL: "http://localhost:9090"
 
       - name: Run Embedding SDK Storybook
         if: matrix.context == 'embedding-sdk' && github.event_name != 'schedule'
@@ -218,21 +208,6 @@ jobs:
           yarn test-cypress-run \
           --config-file e2e/support/cypress.config.js \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
-        env:
-          SPLIT: ${{ strategy.job-total }}
-          SPLIT_INDEX: ${{ matrix.containers }}
-          E2E_HOST: http://localhost:3000
-          CYPRESS_CI: true
-          MB_EDITION: ${{ matrix.edition }}
-          DISPLAY: ""
-          QA_DB_ENABLED: true
-          CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
-          CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
-          CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
-          COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head_sha }}
-          MB_SNOWPLOW_AVAILABLE: true
-          MB_SNOWPLOW_URL: "http://localhost:9090"
-          CYPRESS_IS_EMBEDDING_SDK: ${{ matrix.context == 'embedding-sdk' }}
 
       - name: Upload test results
         uses: ./.github/actions/upload-test-results
