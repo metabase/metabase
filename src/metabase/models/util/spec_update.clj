@@ -155,7 +155,7 @@
 
       ;; create
       (nil? existing-data)
-      (let [parent-id #p (t2/insert-returning-pk! model new-data-sanitized)
+      (let [parent-id (t2/insert-returning-pk! model new-data-sanitized)
             path      (conj path parent-id)]
         (log/debugf "%s Created a new entity %s %d" (format-path path) model parent-id)
         (handle-nested! nil new-data parent-id))
