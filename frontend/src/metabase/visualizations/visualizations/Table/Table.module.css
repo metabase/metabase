@@ -1,0 +1,52 @@
+.table {
+  block-size: 100%;
+  border: none;
+  background-color: var(--mb-color-bg-white);
+  width: 100%;
+}
+
+.table :global(.rdg-header-row) {
+  background-color: var(--mb-color-bg-white);
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.table :global(.rdg-row:hover) {
+  background-color: var(--mb-color-bg-light);
+}
+
+.table :global(.rdg-cell) {
+  border-right: none;
+  border-bottom: 1px solid var(--mb-color-border-alpha-30);
+  padding: 0 0.75em;
+  color: var(--mb-color-text-dark);
+  font-size: 0.875rem;
+}
+
+.table :global(.rdg-cell:hover) {
+  background-color: var(--mb-color-bg-medium);
+}
+
+.table :global(.rdg-cell:focus) {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--mb-color-focus);
+}
+
+.table :global(.rdg-header-cell) {
+  font-weight: 700;
+  padding: 0.25em 0.65em;
+  color: var(--mb-color-text-dark);
+  background-color: var(--mb-color-bg-white);
+  cursor: grab;
+}
+
+.table :global(.rdg-header-cell:hover) {
+  background-color: var(--mb-color-brand-alpha-10);
+}
+
+.table :global(.rdg-header-cell.rdg-header-cell-dragging) {
+  cursor: grabbing;
+}
+
+.rightAligned {
+  text-align: right;
+}

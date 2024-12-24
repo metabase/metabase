@@ -90,6 +90,7 @@
     "react-beautiful-dnd": "^13.1.1",
     "react-color": "^2.14.1",
     "react-copy-to-clipboard": "^5.0.1",
+    "react-data-grid": "^7.0.0-beta.47",
     "react-dnd": "4",
     "react-dnd-html5-backend": "4",
     "react-dom": "^18.2.0",
