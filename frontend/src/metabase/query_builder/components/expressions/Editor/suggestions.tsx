@@ -2,6 +2,7 @@ import {
   type Completion,
   type CompletionContext,
   type CompletionResult,
+  type CompletionSection,
   autocompletion,
   snippetCompletion,
 } from "@codemirror/autocomplete";
@@ -42,6 +43,31 @@ type SuggestOptions = Omit<
 // TODO: render better help texts
 // TODO: shortcuts
 // TODO: use namespaced suggestion for fk sparator (eg. products.|
+
+const FUNCTIONS_SECTION = {
+  name: t`Functions`,
+  rank: 1,
+};
+
+const AGGREGATIONS_SECTION = {
+  name: t`Aggregations`,
+  rank: 2,
+};
+
+const COLUMNS_SECTION = {
+  name: t`Columns`,
+  rank: 3,
+};
+
+const METRICS_SECTION = {
+  name: t`Metrics`,
+  rank: 4,
+};
+
+const LITERALS_SECTION = {
+  name: t`Literals`,
+  rank: 5,
+};
 
 export function suggestions(options: SuggestOptions) {
   return autocompletion({
@@ -109,7 +135,7 @@ function suggestFields({ query, stageIndex, expressionIndex }: SuggestOptions) {
       type: "field",
       label: formatIdentifier(displayInfo.longDisplayName),
       displayLabel: displayInfo.longDisplayName,
-      section: t`Columns`,
+      section: COLUMNS_SECTION,
       icon: getColumnIcon(column),
     };
   });
@@ -158,7 +184,7 @@ function suggestFunctions({
     .map(func =>
       expressionClauseCompletion(func, {
         type: "function",
-        section: t`Functions`,
+        section: FUNCTIONS_SECTION,
         database,
         reportTimezone,
       }),
@@ -197,7 +223,7 @@ function suggestAggregations({
     .map(agg =>
       expressionClauseCompletion(agg, {
         type: "aggregation",
-        section: t`Aggregations`,
+        section: AGGREGATIONS_SECTION,
         database,
         reportTimezone,
       }),
@@ -293,12 +319,12 @@ function suggestLiterals() {
         {
           label: "True",
           type: "literal",
-          section: t`Literals`,
+          section: LITERALS_SECTION,
         },
         {
           label: "False",
           type: "literal",
-          section: t`Literals`,
+          section: LITERALS_SECTION,
         },
       ],
     };
@@ -342,7 +368,7 @@ function suggestMetrics({ startRule, query, stageIndex }: SuggestOptions) {
       type: "metric",
       displayLabel: displayInfo.longDisplayName,
       label: formatIdentifier(displayInfo.longDisplayName),
-      section: t`Metrics`,
+      section: METRICS_SECTION,
     };
   });
 
@@ -393,7 +419,7 @@ function expressionClauseCompletion(
     reportTimezone,
   }: {
     type: string;
-    section: string;
+    section: string | CompletionSection;
     database: Database | null;
     reportTimezone?: string;
   },
