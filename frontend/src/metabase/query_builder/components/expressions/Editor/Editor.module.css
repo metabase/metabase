@@ -105,7 +105,8 @@
       ul li[role="option"] {
         color: inherit;
         padding: 8px 16px;
-        justify-content: space-between;
+        display: flex;
+        flex-wrap: wrap;
 
         &:first-child {
           margin-top: 4px;
@@ -122,6 +123,7 @@
         }
       }
 
+      /* stylelint-disable-next-line selector-type-no-unknown */
       completion-section {
         font-family: var(--mb-default-font-family);
         font-size: 14px;
@@ -133,6 +135,18 @@
 
       .cm-completionIcon {
         display: none;
+      }
+
+      .cm-columnIcon {
+        margin-right: 0.5rem;
+        display: flex;
+        align-items: center;
+
+        svg {
+          width: 14px;
+          height: 14px;
+          color: var(--mb-color-text-dark);
+        }
       }
 
       .cm-completionMatchedText {
@@ -148,8 +162,8 @@
         font-weight: normal !important;
         overflow: hidden;
         text-overflow: ellipsis;
-        font-weight: bold;
         font-size: 14px;
+        flex-shrink: 1;
       }
 
       .cm-completionDetail {
@@ -159,7 +173,8 @@
         text-align: end;
         margin: 0;
         white-space: wrap;
-
+        width: 100%;
+        flex-shrink: 0;
         display: none;
       }
 

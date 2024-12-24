@@ -5,10 +5,13 @@ import {
   autocompletion,
   snippetCompletion,
 } from "@codemirror/autocomplete";
+import { renderToString } from "react-dom/server";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getColumnIcon } from "metabase/common/utils/columns";
 import { isNotNull } from "metabase/lib/types";
+import { Icon, type IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { formatIdentifier } from "metabase-lib/v1/expressions";
 import {
@@ -54,6 +57,20 @@ export function suggestions(options: SuggestOptions) {
       suggestAggregations(options),
       suggestPopular(options),
     ].filter(isNotNull),
+    addToOptions: [
+      {
+        position: 25,
+        render(completion: Completion & { icon?: IconName }) {
+          if (completion.type !== "field" || !completion.icon) {
+            return null;
+          }
+          const span = document.createElement("span");
+          span.className = "cm-columnIcon";
+          span.innerHTML = renderToString(<Icon name={completion.icon} />);
+          return span;
+        },
+      },
+    ],
   });
 }
 
@@ -93,6 +110,7 @@ function suggestFields({ query, stageIndex, expressionIndex }: SuggestOptions) {
       label: formatIdentifier(displayInfo.longDisplayName),
       displayLabel: displayInfo.longDisplayName,
       section: t`Columns`,
+      icon: getColumnIcon(column),
     };
   });
 
