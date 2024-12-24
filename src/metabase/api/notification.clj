@@ -104,4 +104,13 @@
   (api/create-check :model/Notification body)
   (notification/send-notification! body :notification/sync? true))
 
+(api/defendpoint POST "/:id/unsubscribe"
+  "Unsubscribe current user from a notification."
+  [id]
+  {id ms/PositiveInt}
+  (let [notification (get-notification id)]
+    (api/check-403 (models.notification/can-unsubscribe? notification))
+    (models.notification/unsubscribe-user! id api/*current-user-id*)
+    (get-notification id)))
+
 (api/define-routes)

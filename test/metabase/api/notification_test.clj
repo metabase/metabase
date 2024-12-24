@@ -601,3 +601,76 @@
                                          :creator_id (mt/user->id :rasta)
                                          :recipient_id Integer/MAX_VALUE
                                          :card_id card-id))))))))))
+
+
+(deftest unsubscribe-notification-test
+  (mt/with-model-cleanup [:model/Notification]
+    (let [unsbuscribe     (fn [user status thunk]
+                            (notification.tu/with-card-notification
+                              [{noti-id :id} {:notification {:creator_id (mt/user->id :crowberto)}
+                                              :handlers     [{:channel_type "channel/email"
+                                                              :recipients   [{:type    :notification-recipient/user
+                                                                              :user_id (mt/user->id :crowberto)}
+                                                                             {:type    :notification-recipient/user
+                                                                              :user_id (mt/user->id :lucky)}]}]}]
+                              (mt/user-http-request user :post status (format "notification/%d/unsubscribe" noti-id))
+                              (thunk (models.notification/hydrate-notification (t2/select-one :model/Notification noti-id)))))
+          email-recipients (fn [notification]
+                             (->> notification :handlers (m/find-first #(= :channel/email (:channel_type %))) :recipients))]
+      (testing "creator can unsubscribe themselves"
+        (unsbuscribe
+         :crowberto 200
+         (fn [noti]
+           (is (=?
+                [{:type    :notification-recipient/user
+                  :user_id (mt/user->id :lucky)}]
+                (email-recipients noti))))))
+
+      (testing "recipient can unsubscribe themselves"
+        (unsbuscribe
+         :lucky 200
+         (fn [noti]
+           (is (=?
+                [{:type    :notification-recipient/user
+                  :user_id (mt/user->id :crowberto)}]
+                (email-recipients noti))))))
+
+      (testing "other than that no one can unsubscribe"
+        (unsbuscribe
+         :rasta 403
+         (fn [noti]
+           (is (=?
+                [{:type    :notification-recipient/user
+                  :user_id (mt/user->id :crowberto)}
+                 {:type    :notification-recipient/user
+                  :user_id (mt/user->id :lucky)}]
+                (email-recipients noti)))))))))
+
+
+(deftest unsubscribe-notification-only-current-notification-test
+  (testing "test that unsubscribe will only unsubscribe from the specified notification"
+    (mt/with-model-cleanup [:model/Notification]
+      (let [email-recipients (fn [noti-id]
+                               (->> (t2/select-one :model/Notification noti-id)
+                                    models.notification/hydrate-notification
+                                    :handlers
+                                    (m/find-first #(= :channel/email (:channel_type %)))
+                                    :recipients))]
+        (notification.tu/with-card-notification [{noti-1 :id} {:notification {:creator_id (mt/user->id :rasta)}
+                                                               :handlers     [{:channel_type "channel/email"
+                                                                               :recipients   [{:type    :notification-recipient/user
+                                                                                               :user_id (mt/user->id :lucky)}]}]}]
+          (notification.tu/with-card-notification [{noti-2 :id} {:notification {:creator_id (mt/user->id :rasta)}
+                                                                 :handlers     [{:channel_type "channel/email"
+                                                                                 :recipients   [{:type    :notification-recipient/user
+                                                                                                 :user_id (mt/user->id :lucky)}]}]}]
+            ;; Unsubscribe from first notification
+            (mt/user-http-request :lucky :post 200 (format "notification/%d/unsubscribe" noti-1))
+
+            ;; Check first notification has no recipients
+              ;; First notification should have no recipients
+            (is (empty? (email-recipients noti-1)))
+              ;; Second notification should still have lucky as recipient
+            (is (=? [{:type    :notification-recipient/user
+                      :user_id (mt/user->id :lucky)}]
+                    (email-recipients noti-2)))))))))

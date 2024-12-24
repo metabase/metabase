@@ -437,6 +437,14 @@
      (perms/current-user-has-application-permissions? :subscription))
     (current-user-can-read-payload? instance))))
 
+(defn can-unsubscribe?
+  "Check if the current user can unsubscribe from a notification."
+  [notification]
+  (or
+   (mi/superuser?)
+   (current-user-is-creator? notification)
+   (current-user-is-recipient? notification)))
+
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Public APIs                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
@@ -532,3 +540,15 @@
   "Update an existing notification with `new-notification`."
   [existing-notification new-notification]
   (models.u.spec-update/do-update! existing-notification new-notification notification-update-spec))
+
+(defn unsubscribe-user!
+  "Unsubscribe a user from a notification."
+  [notification-id user-id]
+  (t2/delete! :model/NotificationRecipient
+              {:where [:and
+                       [:= :user_id user-id]
+                       [:exists {:select [1]
+                                 :from [:notification_handler]
+                                 :where [:and
+                                         [:= :notification_handler.id :notification_recipient.notification_handler_id]
+                                         [:= :notification_handler.notification_id notification-id]]}]]}))
