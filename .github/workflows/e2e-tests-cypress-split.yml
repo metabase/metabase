@@ -88,6 +88,7 @@ jobs:
       SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@v4
+
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
         with:
@@ -107,6 +108,13 @@ jobs:
         with:
           name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
+  # Main test job - Key differences from e2e-tests.yml:
+  # 1. Test Execution Strategy:
+  #    - Original: Uses tags (@OSS, @slow, @flaky) to run different test subsets
+  #    - Split: Uses SPLIT/SPLIT_INDEX to divide ALL tests across multiple runners
+  # 2. Database Configuration:
+  #    - Original: Relies on implicit port mapping and configuration
+  #    - Split: Makes ports and database config explicit for better maintainability
   e2e-tests-split:
     needs: [build, e2e-matrix-builder, get-build-requirements]
     if: |
@@ -127,12 +135,14 @@ jobs:
       TZ: US/Pacific
       CYPRESS_CI: true
       E2E_HOST: "http://localhost:3000"
-      SPLIT: ${{ strategy.job-total }} # for cypress-split to parallelize
+      # Parallelization: These vars tell Cypress how to parallelize the test suite
+      SPLIT: ${{ strategy.job-total }}
       SPLIT_INDEX: ${{ matrix.containers }}
-      # Database configuration
+      # Database config: Making ports explicit for better maintainability
       PG_INTERNAL_PORT: 5432
       PG_PORT: 5404
       PG_DB_NAME: sample
+
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -178,10 +188,15 @@ jobs:
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
+      # Create a separate database for tests that need to write data
+      # Previously this was happening implicitly, now we make it explicit for better debugging
       - name: Create writable test database
         run: |
           docker exec $(docker ps -q -f "ancestor=metabase/qa-databases:postgres-sample-12") psql -U metabase -d $PG_DB_NAME -p $PG_INTERNAL_PORT -c "CREATE DATABASE writable_db"
 
+      # Start Metabase with explicit database configuration
+      # The health check ensures Metabase is fully ready before tests start
+      # Previously these connection details were implicit/hardcoded
       - name: Run Metabase in the background
         run: |
           MB_DB_TYPE=postgres \
@@ -196,13 +211,17 @@ jobs:
             sleep 1
           done
 
+      # Run tests that generate snapshots for visual regression testing
+      # These create snapshot files that other tests will use for comparison
       - name: Generate snapshot files
         run: |
           yarn test-cypress-run \
-          --spec "e2e/snapshot-creators/*.cy.snap.js" \
-          --config-file e2e/support/cypress.config.js \
+          --spec "e2e/snapshot-creators/**/*.js" \
+          --config-file e2e/support/cypress-snapshots.config.js \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
+      # Required for embedding tests, previously hidden in test setup
+      # Only runs for embedding-specific test suites
       - name: Run Embedding SDK Storybook
         if: matrix.context == 'embedding-sdk' && github.event_name != 'schedule'
         uses: ./.github/actions/run-embedding-sdk-storybook
