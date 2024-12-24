@@ -172,6 +172,16 @@ jobs:
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
+      - name: Generate snapshot files
+        run: |
+          yarn run test-cypress-run \
+          --spec "e2e/snapshot-creators/default.cy.snap.js" \
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+
+      - name: Create writable test database
+        run: |
+          docker exec $(docker ps -q -f "ancestor=metabase/qa-databases:postgres-sample-12") psql -U metabase -c "CREATE DATABASE writable_db"
+
       - name: Run Metabase in the background
         run: |
           MB_DB_TYPE=postgres \
