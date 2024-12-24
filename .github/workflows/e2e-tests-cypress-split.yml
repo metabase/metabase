@@ -132,10 +132,8 @@ jobs:
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
 
     steps:
-      # 1. Checkout code
       - uses: actions/checkout@v4
 
-      # 2. Prepare Docker containers
       - name: Prepare Docker containers
         uses: ./.github/actions/e2e-prepare-containers
         with:
@@ -148,44 +146,43 @@ jobs:
           mongo: ${{ matrix.name == 'mongo'}}
           webhook: true
 
-      # 3. Retrieve uberjar artifact
-      - name: Retrieve uberjar artifact
+      - name: Retrieve uberjar artifact for ${{ matrix.edition }}
         uses: actions/download-artifact@v4
         with:
           name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
-      # 4. Extract version info
       - name: Get the version info
         run: |
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
 
-      # 5. Prepare front-end environment
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
 
-      # 6. Prepare JDK environment
       - name: Prepare JDK ${{ matrix.java-version }}
         uses: actions/setup-java@v4
         with:
           java-version: ${{ matrix.java-version }}
           distribution: "temurin"
 
-      # 7. Prepare Cypress environment
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
-      # 8. Run Snowplow microservice
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
-      # 9. Run Embedding SDK Storybook
+      - name: Run Metabase in the background
+        run: |
+          java -jar ./target/uberjar/metabase.jar &
+          while ! curl -s "http://localhost:3000/api/health" | grep '{"status":"ok"}'; do
+            sleep 1
+          done
+
       - name: Run Embedding SDK Storybook
         if: matrix.context == 'embedding-sdk' && github.event_name != 'schedule'
         uses: ./.github/actions/run-embedding-sdk-storybook
 
-      # 10. Run Cypress tests with `cypress-split`
       - name: Run split Cypress tests
         run: |
           yarn run test-cypress-run \
@@ -194,7 +191,7 @@ jobs:
         env:
           SPLIT: ${{ strategy.job-total }}
           SPLIT_INDEX: ${{ matrix.containers }}
-          E2E_HOST: http://localhost:4000
+          E2E_HOST: http://localhost:3000
           CYPRESS_CI: true
           MB_EDITION: ${{ matrix.edition }}
           DISPLAY: ""
@@ -207,8 +204,7 @@ jobs:
           MB_SNOWPLOW_URL: "http://localhost:9090"
           CYPRESS_IS_EMBEDDING_SDK: ${{ matrix.context == 'embedding-sdk' }}
 
-      # 11. Upload test results
-      - name: Upload Test Results
+      - name: Upload test results
         uses: ./.github/actions/upload-test-results
         if: always()
         with:
@@ -220,8 +216,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-      # 12. Upload Cypress artifacts
-      - name: Upload Cypress Artifacts (on failure)
+      - name: Upload Cypress artifacts
         uses: actions/upload-artifact@v4
         if: failure()
         with:
