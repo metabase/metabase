@@ -99,9 +99,7 @@ function suggestFields({ query, stageIndex, expressionIndex }: SuggestOptions) {
     const source = context.state.doc.toString();
     const token = tokenAtPos(source, context.pos);
 
-    if (!token || !isFieldReference(token)) {
-      // Cursor is not inside a field reference tag so we don't provide
-      // field suggestions
+    if (!token) {
       return null;
     }
 
