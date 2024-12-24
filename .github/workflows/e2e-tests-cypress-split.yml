@@ -174,9 +174,22 @@ jobs:
 
       - name: Generate snapshot files
         run: |
-          yarn run test-cypress-run \
-          --spec "e2e/snapshot-creators/default.cy.snap.js" \
+          yarn test-cypress-run \
+          --spec "e2e/snapshot-creators/*.cy.snap.js" \
+          --config-file e2e/support/cypress.config.js \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+        env:
+          E2E_HOST: http://localhost:3000
+          CYPRESS_CI: true
+          MB_EDITION: ${{ matrix.edition }}
+          DISPLAY: ""
+          QA_DB_ENABLED: true
+          CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+          CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
+          CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
+          COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head_sha }}
+          MB_SNOWPLOW_AVAILABLE: true
+          MB_SNOWPLOW_URL: "http://localhost:9090"
 
       - name: Create writable test database
         run: |
@@ -202,7 +215,7 @@ jobs:
 
       - name: Run split Cypress tests
         run: |
-          yarn run test-cypress-run \
+          yarn test-cypress-run \
           --config-file e2e/support/cypress.config.js \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         env:
