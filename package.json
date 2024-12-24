@@ -422,7 +422,6 @@
     "storybook-embedding-sdk": "yarn build:cljs && IS_EMBEDDING_SDK=true start-storybook -c .storybook-sdk -p 6006",
     "test": "yarn test-unit && yarn test-timezones && yarn test-cypress",
     "test-cljs": "yarn && shadow-cljs compile test && node target/node-tests.js",
-    "test-cypress-setup-state": "yarn test-cypress-run --config-file e2e/support/cypress-snapshots.config.js",
     "test-cypress": "yarn build && ./bin/build-for-test && yarn test-cypress-run",
     "test-cypress-open": "./bin/build-for-test && CYPRESS_FE_HEALTHCHECK=false yarn test-cypress-run --e2e --open",
     "test-cypress-open-no-backend": "E2E_HOST='http://localhost:3000' yarn test-cypress-run --e2e --open",
