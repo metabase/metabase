@@ -14,7 +14,7 @@ import {
   ChartSettingFieldPickerRoot,
   GrabberHandle,
 } from "./ChartSettingFieldPicker.styled";
-import ChartSettingSelect from "./ChartSettingSelect";
+import { ChartSettingSelect } from "./ChartSettingSelect";
 
 export const ChartSettingFieldPicker = ({
   value,
