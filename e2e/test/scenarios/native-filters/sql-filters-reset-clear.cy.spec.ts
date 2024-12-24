@@ -231,7 +231,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       },
       updateValue: value => {
         popover().findByRole("textbox").clear().type(value).blur();
-        popover().button("Update filter").click();
+        popover().button("Add filter").click();
       },
     });
   });
