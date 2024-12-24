@@ -102,10 +102,10 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           maildev: true
-          openldap: ${{ matrix.containers == 0 }}
-          postgres: ${{ matrix.containers != 2 }}
-          mysql: ${{ matrix.containers != 3 }}
-          mongo: ${{ matrix.containers == 3 }}
+          openldap: ${{ startsWith(matrix.name, 'admin') }}
+          postgres: ${{ matrix.name != 'mongo'}}
+          mysql: ${{ matrix.name != 'mongo'}}
+          mongo: ${{ matrix.name == 'mongo'}}
           webhook: true
 
       # 3. Retrieve uberjar artifact
@@ -131,38 +131,25 @@ jobs:
           java-version: ${{ matrix.java-version }}
           distribution: "temurin"
 
-      # 7. Prepare Docker containers
-      - name: Prepare Docker containers
-        uses: ./.github/actions/e2e-prepare-containers
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-          maildev: true
-          openldap: false
-          postgres: true
-          mysql: true
-          mongo: false
-          webhook: true
-
-      # 8. Prepare Cypress environment
+      # 7. Prepare Cypress environment
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
-      # 9. Run Snowplow microservice
+      # 8. Run Snowplow microservice
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
-      # 10. Run Cypress tests with `cypress-split`
+      # 9. Run Cypress tests with `cypress-split`
       - name: Run split Cypress tests
         run: |
           yarn run test-cypress-run \
           --config-file e2e/support/cypress.config.js \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         env:
-          E2E_HOST: http://localhost:4000
           SPLIT: ${{ strategy.job-total }}
           SPLIT_INDEX: ${{ matrix.containers }}
+          E2E_HOST: http://localhost:4000
           CYPRESS_CI: true
           MB_EDITION: ${{ matrix.edition }}
           DISPLAY: ""
@@ -174,7 +161,7 @@ jobs:
           MB_SNOWPLOW_AVAILABLE: true
           MB_SNOWPLOW_URL: "http://localhost:9090"
 
-      # 11. Upload test results
+      # 10. Upload test results
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -187,7 +174,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-      # 12. Upload Cypress artifacts
+      # 11. Upload Cypress artifacts
       - name: Upload Cypress Artifacts (on failure)
         uses: actions/upload-artifact@v4
         if: failure()
