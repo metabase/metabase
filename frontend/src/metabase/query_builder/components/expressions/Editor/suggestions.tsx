@@ -88,7 +88,7 @@ function suggestFields({ query, stageIndex, expressionIndex }: SuggestOptions) {
       type: "field",
       label: formatIdentifier(displayInfo.longDisplayName),
       displayLabel: displayInfo.longDisplayName,
-      detail: t`Field`,
+      section: t`Columns`,
     };
   });
 
@@ -149,6 +149,7 @@ function suggestFunctions({
     label: "case(",
     displayLabel: "case",
     detail: undefined,
+    section: t`Functions`,
   });
 
   return function (context: CompletionContext) {
@@ -272,12 +273,12 @@ function suggestLiterals() {
         {
           label: "True",
           type: "literal",
-          detail: t`Boolean`,
+          section: t`Literals`,
         },
         {
           label: "False",
           type: "literal",
-          detail: t`Boolean`,
+          section: t`Literals`,
         },
       ],
     };
@@ -321,6 +322,7 @@ function suggestMetrics({ startRule, query, stageIndex }: SuggestOptions) {
       type: "metric",
       displayLabel: displayInfo.longDisplayName,
       label: formatIdentifier(displayInfo.longDisplayName),
+      section: t`Metrics`,
     };
   });
 
