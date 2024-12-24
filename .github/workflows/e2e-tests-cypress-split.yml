@@ -112,7 +112,6 @@ jobs:
   # 1. Test Execution Strategy:
   #    - Original: Uses tags (@OSS, @slow, @flaky) to run different test subsets
   #    - Split: Uses SPLIT/SPLIT_INDEX to divide ALL tests across multiple runners
-  # 2. Database Configuration:
   #    - Original: Relies on implicit port mapping and configuration
   #    - Split: Makes ports and database config explicit for better maintainability
   e2e-tests-split:
