@@ -495,7 +495,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         addParametersToDashboard();
       });
 
-      it.only("should have a list of the default parameters applied to the subscription", () => {
+      it("should have a list of the default parameters applied to the subscription", () => {
         assignRecipient();
 
         cy.findByTestId("dashboard-parameters-and-cards")
