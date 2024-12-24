@@ -1,7 +1,9 @@
 import {
+  type Completion,
   type CompletionContext,
   type CompletionResult,
   autocompletion,
+  snippetCompletion,
 } from "@codemirror/autocomplete";
 import { t } from "ttag";
 import _ from "underscore";
@@ -21,9 +23,11 @@ import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
 import type { SuggestArgs } from "metabase-lib/v1/expressions/suggest";
 import { TOKEN, tokenize } from "metabase-lib/v1/expressions/tokenizer";
 import type {
+  HelpText,
   MBQLClauseFunctionConfig,
   Token,
 } from "metabase-lib/v1/expressions/types";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 type SuggestOptions = Omit<
@@ -32,13 +36,13 @@ type SuggestOptions = Omit<
 >;
 
 // TODO: tests
-// TODO: enable snippet support
 // TODO: render better help texts
 // TODO: shortcuts
 // TODO: use namespaced suggestion for fk sparator (eg. products.|
 
 export function suggestions(options: SuggestOptions) {
   return autocompletion({
+    closeOnBlur: false,
     activateOnTyping: true,
     activateOnTypingDelay: 0,
     override: [
@@ -133,16 +137,14 @@ function suggestFunctions({
       const isOffsetInFilterExpression = isOffset && isFilterExpression;
       return !isOffsetInFilterExpression;
     })
-    .map(func => ({
-      type: "function",
-      label: suggestionText(func),
-      displayLabel: func.displayName,
-      detail:
-        (func.name &&
-          database &&
-          getHelpText(func.name, database, reportTimezone)?.description) ??
-        undefined,
-    }));
+    .map(func =>
+      expressionClauseCompletion(func, {
+        type: "function",
+        section: t`Functions`,
+        database,
+        reportTimezone,
+      }),
+    );
 
   return function (context: CompletionContext) {
     const source = context.state.doc.toString();
@@ -160,7 +162,12 @@ function suggestFunctions({
   };
 }
 
-function suggestAggregations({ startRule, query, metadata }: SuggestOptions) {
+function suggestAggregations({
+  startRule,
+  query,
+  metadata,
+  reportTimezone,
+}: SuggestOptions) {
   if (startRule !== "aggregation") {
     return null;
   }
@@ -169,11 +176,14 @@ function suggestAggregations({ startRule, query, metadata }: SuggestOptions) {
   const aggregations = Array.from(AGGREGATION_FUNCTIONS)
     .map(name => MBQL_CLAUSES[name])
     .filter(clause => clause && database?.hasFeature(clause.requiresFeature))
-    .map(func => ({
-      type: "aggregation",
-      label: suggestionText(func),
-      displayLabel: func.displayName,
-    }));
+    .map(agg =>
+      expressionClauseCompletion(agg, {
+        type: "aggregation",
+        section: t`Aggregations`,
+        database,
+        reportTimezone,
+      }),
+    );
 
   return function (context: CompletionContext) {
     const source = context.state.doc.toString();
@@ -347,6 +357,50 @@ const suggestionText = (func: MBQLClauseFunctionConfig) => {
 function getDatabase(query: Lib.Query, metadata: Metadata) {
   const databaseId = Lib.databaseID(query);
   return metadata.database(databaseId);
+}
+
+function getSnippet(helpText: HelpText) {
+  const args = helpText.args
+    ?.map(arg => "${" + arg.name.replace("…", "") + "}")
+    .join(", ");
+  return `${helpText.name}(${args})`;
+}
+
+function expressionClauseCompletion(
+  clause: MBQLClauseFunctionConfig,
+  {
+    type,
+    section,
+    database,
+    reportTimezone,
+  }: {
+    type: string;
+    section: string;
+    database: Database | null;
+    reportTimezone?: string;
+  },
+): Completion {
+  const helpText =
+    clause.name &&
+    database &&
+    getHelpText(clause.name, database, reportTimezone);
+
+  if (helpText) {
+    return snippetCompletion(getSnippet(helpText), {
+      type,
+      section,
+      label: clause.displayName,
+      displayLabel: clause.displayName,
+      detail: helpText.description,
+    });
+  }
+
+  return {
+    type,
+    section,
+    label: suggestionText(clause),
+    displayLabel: clause.displayName,
+  };
 }
 
 type TokenWithText = Token & { text: string };
