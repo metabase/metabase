@@ -1250,7 +1250,7 @@ describe("issue 39863", () => {
   function setDateFilter() {
     cy.findByLabelText("Date filter").click();
     H.popover()
-      .findByText(/Last 12 months/i)
+      .findByText(/Previous 12 months/i)
       .click();
   }
 
