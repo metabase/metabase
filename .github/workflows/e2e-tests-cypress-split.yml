@@ -172,6 +172,24 @@ jobs:
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
+      - name: Create writable test database
+        run: |
+          docker exec $(docker ps -q -f "ancestor=metabase/qa-databases:postgres-sample-12") psql -U metabase -c "CREATE DATABASE writable_db"
+
+      - name: Run Metabase in the background
+        run: |
+          MB_DB_TYPE=postgres \
+          MB_DB_HOST=localhost \
+          MB_DB_PORT=5404 \
+          MB_DB_DBNAME=sample \
+          MB_DB_USER=metabase \
+          MB_DB_PASS=metasample123 \
+          MB_ENABLE_TEST_ENDPOINTS=true \
+          java -jar ./target/uberjar/metabase.jar &
+          while ! curl -s "http://localhost:3000/api/health" | grep '{"status":"ok"}'; do
+            sleep 1
+          done
+
       - name: Generate snapshot files
         run: |
           yarn test-cypress-run \
@@ -190,24 +208,6 @@ jobs:
           COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head_sha }}
           MB_SNOWPLOW_AVAILABLE: true
           MB_SNOWPLOW_URL: "http://localhost:9090"
-
-      - name: Create writable test database
-        run: |
-          docker exec $(docker ps -q -f "ancestor=metabase/qa-databases:postgres-sample-12") psql -U metabase -c "CREATE DATABASE writable_db"
-
-      - name: Run Metabase in the background
-        run: |
-          MB_DB_TYPE=postgres \
-          MB_DB_HOST=localhost \
-          MB_DB_PORT=5404 \
-          MB_DB_DBNAME=sample \
-          MB_DB_USER=metabase \
-          MB_DB_PASS=metasample123 \
-          MB_ENABLE_TEST_ENDPOINTS=true \
-          java -jar ./target/uberjar/metabase.jar &
-          while ! curl -s "http://localhost:3000/api/health" | grep '{"status":"ok"}'; do
-            sleep 1
-          done
 
       - name: Run Embedding SDK Storybook
         if: matrix.context == 'embedding-sdk' && github.event_name != 'schedule'
