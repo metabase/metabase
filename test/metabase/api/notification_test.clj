@@ -4,6 +4,7 @@
    [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.models.notification :as models.notification]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.notification.core :as notification]
@@ -420,3 +421,183 @@
                (testing "can send if advanced-permissions is enabled"
                  (mt/with-premium-features #{:advanced-permissions}
                    (create-notification! (:id user) 200)))))))))))
+
+(deftest list-notifications-basic-test
+  (testing "GET /api/notification"
+    (mt/with-model-cleanup [:model/Notification]
+      (notification.tu/with-card-notification [{rasta-noti-1 :id} {:notification {:creator_id (mt/user->id :rasta)}
+                                                                   :handlers     [{:channel_type "channel/email"
+                                                                                   :recipients   [{:type    :notification-recipient/user
+                                                                                                   :user_id (mt/user->id :lucky)}]}]}]
+        (notification.tu/with-card-notification [{crowberto-noti-1 :id} {:notification {:creator_id (mt/user->id :crowberto)
+                                                                                        :active true}}]
+          (notification.tu/with-card-notification [{rasta-noti-2 :id} {:notification {:creator_id (mt/user->id :rasta)
+                                                                                      :active false}}]
+            (letfn [(get-notification-ids [user & params]
+                      (->> (apply mt/user-http-request user :get 200 "notification" params)
+                           (map :id)
+                           (filter #{rasta-noti-1 crowberto-noti-1 rasta-noti-2})
+                           set))]
+
+              (testing "returns all active notifications by default"
+                (is (= #{rasta-noti-1 crowberto-noti-1}
+                       (get-notification-ids :crowberto))))
+
+              (testing "include inactive notifications"
+                (is (= #{rasta-noti-1 crowberto-noti-1 rasta-noti-2}
+                       (get-notification-ids :crowberto :include_inactive true)))))))))))
+
+(deftest list-notifications-creator-filter-test
+  (testing "GET /api/notification with creator_id filter"
+    (mt/with-model-cleanup [:model/Notification]
+      (notification.tu/with-card-notification [{rasta-noti :id} {:notification {:creator_id (mt/user->id :rasta)}
+                                                                 :handlers     [{:channel_type "channel/email"
+                                                                                 :recipients   [{:type    :notification-recipient/user
+                                                                                                 :user_id (mt/user->id :lucky)}]}]}]
+        (letfn [(get-notification-ids [user & params]
+                  (->> (apply mt/user-http-request user :get 200 "notification" params)
+                       (map :id)
+                       (filter #{rasta-noti})
+                       set))]
+
+          (testing "admin can view"
+            (is (= #{rasta-noti}
+                   (get-notification-ids :crowberto :creator_id (mt/user->id :rasta)))))
+
+          (testing "creators can view notifications they created"
+            (is (= #{rasta-noti}
+                   (get-notification-ids :rasta :creator_id (mt/user->id :rasta)))))
+
+          (testing "recipients can view"
+            (is (= #{rasta-noti}
+                   (get-notification-ids :lucky :creator_id (mt/user->id :rasta)))))
+
+          (testing "other than that no one can view"
+            (mt/with-temp [:model/User {third-user-id :id} {:is_superuser false}]
+              (is (= #{}
+                     (get-notification-ids third-user-id :creator_id (mt/user->id :rasta))))))
+
+          (testing "non-existent creator id returns empty set"
+            (is (= #{}
+                   (get-notification-ids :crowberto :creator_id Integer/MAX_VALUE)))))))))
+
+(deftest list-notifications-recipient-filter-test
+  (testing "GET /api/notification with recipient_id filter"
+    (mt/with-model-cleanup [:model/Notification]
+      (notification.tu/with-card-notification [{rasta-noti :id} {:notification {:creator_id (mt/user->id :rasta)}
+                                                                 :handlers     [{:channel_type "channel/email"
+                                                                                 :recipients   [{:type    :notification-recipient/user
+                                                                                                 :user_id (mt/user->id :lucky)}]}]}]
+        (letfn [(get-notification-ids [user & params]
+                  (->> (apply mt/user-http-request user :get 200 "notification" params)
+                       (map :id)
+                       (filter #{rasta-noti})
+                       set))]
+
+          (testing "admin can view"
+            (is (= #{rasta-noti}
+                   (get-notification-ids :crowberto :recipient_id (mt/user->id :lucky)))))
+
+          (testing "recipients can view notifications they receive"
+            (is (= #{rasta-noti}
+                   (get-notification-ids :lucky :recipient_id (mt/user->id :lucky)))))
+
+          (testing "creators can view"
+            (is (= #{rasta-noti}
+                   (get-notification-ids :rasta :recipient_id (mt/user->id :lucky)))))
+
+          (testing "other than that no one can view"
+            (mt/with-temp [:model/User {third-user-id :id} {:is_superuser false}]
+              (is (= #{}
+                     (get-notification-ids third-user-id :recipient_id (mt/user->id :lucky))))))
+
+          (testing "non-existent recipient id returns empty set"
+            (is (= #{}
+                   (get-notification-ids :crowberto :recipient_id Integer/MAX_VALUE)))))))))
+
+(deftest list-notifications-card-filter-test
+  (testing "GET /api/notification with card_id filter"
+    (mt/with-model-cleanup [:model/Notification]
+      (notification.tu/with-card-notification [{rasta-noti :id} {:notification {:creator_id (mt/user->id :rasta)}
+                                                                 :handlers     [{:channel_type "channel/email"
+                                                                                 :recipients   [{:type    :notification-recipient/user
+                                                                                                 :user_id (mt/user->id :lucky)}]}]}]
+        (let [card-id (-> (t2/select-one :model/Notification rasta-noti)
+                         models.notification/hydrate-notification
+                         :payload
+                         :card_id)]
+          (letfn [(get-notification-ids [user & params]
+                    (->> (apply mt/user-http-request user :get 200 "notification" params)
+                         (map :id)
+                         (filter #{rasta-noti})
+                         set))]
+
+            (testing "admin can view"
+              (is (= #{rasta-noti}
+                     (get-notification-ids :crowberto :card_id card-id))))
+
+            (testing "creators can view notifications with their cards"
+              (is (= #{rasta-noti}
+                     (get-notification-ids :rasta :card_id card-id))))
+
+            (testing "recipients can view"
+              (is (= #{rasta-noti}
+                     (get-notification-ids :lucky :card_id card-id))))
+
+            (testing "other than that no one can view"
+              (mt/with-temp [:model/User {third-user-id :id} {:is_superuser false}]
+                (is (= #{}
+                       (get-notification-ids third-user-id :card_id card-id)))))
+
+            (testing "non-existent card id returns empty set"
+              (is (= #{}
+                     (get-notification-ids :crowberto :card_id Integer/MAX_VALUE))))))))))
+
+(deftest list-notifications-combined-filters-test
+  (testing "GET /api/notification with multiple filters"
+    (mt/with-model-cleanup [:model/Notification]
+      (notification.tu/with-card-notification [{rasta-noti :id} {:notification {:creator_id (mt/user->id :rasta)}
+                                                                 :handlers     [{:channel_type "channel/email"
+                                                                                 :recipients   [{:type    :notification-recipient/user
+                                                                                                 :user_id (mt/user->id :lucky)}]}]}]
+        (let [card-id (-> (t2/select-one :model/Notification rasta-noti)
+                         models.notification/hydrate-notification
+                         :payload
+                         :card_id)]
+          (letfn [(get-notification-ids [user & params]
+                    (->> (apply mt/user-http-request user :get 200 "notification" params)
+                         (map :id)
+                         (filter #{rasta-noti})
+                         set))]
+
+            (testing "can filter by creator_id and recipient_id"
+              (is (= #{rasta-noti}
+                     (get-notification-ids :crowberto
+                                         :creator_id (mt/user->id :rasta)
+                                         :recipient_id (mt/user->id :lucky)))))
+
+            (testing "can filter by creator_id and card_id"
+              (is (= #{rasta-noti}
+                     (get-notification-ids :crowberto
+                                         :creator_id (mt/user->id :rasta)
+                                         :card_id card-id))))
+
+            (testing "can filter by recipient_id and card_id"
+              (is (= #{rasta-noti}
+                     (get-notification-ids :crowberto
+                                         :recipient_id (mt/user->id :lucky)
+                                         :card_id card-id))))
+
+            (testing "can filter by all three"
+              (is (= #{rasta-noti}
+                     (get-notification-ids :crowberto
+                                         :creator_id (mt/user->id :rasta)
+                                         :recipient_id (mt/user->id :lucky)
+                                         :card_id card-id))))
+
+            (testing "returns empty set when any filter doesn't match"
+              (is (= #{}
+                     (get-notification-ids :crowberto
+                                         :creator_id (mt/user->id :rasta)
+                                         :recipient_id Integer/MAX_VALUE
+                                         :card_id card-id))))))))))

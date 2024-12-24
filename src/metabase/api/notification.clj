@@ -2,11 +2,14 @@
   "/api/notification endpoints"
   (:require
    [compojure.core :refer [DELETE GET POST PUT]]
+   [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
+   [metabase.models.interface :as mi]
    [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
 
 (set! *warn-on-reflection* true)
 
@@ -15,6 +18,41 @@
   (-> (t2/select-one :model/Notification id)
       api/check-404
       models.notification/hydrate-notification))
+
+(api/defendpoint GET "/"
+  "List notifications.
+  - `creator_id`: if provided returns only notifications created by this user
+  - `recipient_id`: if provided returns only notification that has recipient_id as a recipient
+  - `card_id`: if provided returns only notification that has card_id as payload"
+  [creator_id recipient_id card_id include_inactive]
+  {creator_id       [:maybe ms/PositiveInt]
+   recipient_id     [:maybe ms/PositiveInt]
+   card_id          [:maybe ms/PositiveInt]
+   include_inactive [:maybe ms/BooleanValue]}
+  (->> (t2/select :model/Notification
+                  (cond-> {}
+                    creator_id
+                    (sql.helpers/where [:= :notification.creator_id creator_id])
+
+                    card_id
+                    (-> (sql.helpers/left-join
+                         :notification_card
+                         [:and
+                          [:= :notification_card.id :notification.payload_id]
+                          [:= :notification.payload_type "notification/card"]])
+                        (sql.helpers/where [:= :notification_card.card_id card_id]))
+
+                    recipient_id
+                    (-> (sql.helpers/left-join
+                         :notification_handler [:= :notification_handler.notification_id :notification.id])
+                        (sql.helpers/left-join
+                         :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
+                        (sql.helpers/where [:= :notification_recipient.user_id recipient_id]))
+
+                    (not (true? include_inactive))
+                    (sql.helpers/where [:= :notification.active true])))
+       (filter mi/can-read?)
+       (map models.notification/hydrate-notification)))
 
 (api/defendpoint GET "/:id"
   "Get a notification by id."
