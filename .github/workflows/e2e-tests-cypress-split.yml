@@ -129,6 +129,10 @@ jobs:
       E2E_HOST: "http://localhost:3000"
       SPLIT: ${{ strategy.job-total }} # for cypress-split to parallelize
       SPLIT_INDEX: ${{ matrix.containers }}
+      # Database configuration
+      PG_INTERNAL_PORT: 5432
+      PG_PORT: 5404
+      PG_DB_NAME: sample
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -176,14 +180,14 @@ jobs:
 
       - name: Create writable test database
         run: |
-          docker exec $(docker ps -q -f "ancestor=metabase/qa-databases:postgres-sample-12") psql -U metabase -p 5432 -c "CREATE DATABASE writable_db"
+          docker exec $(docker ps -q -f "ancestor=metabase/qa-databases:postgres-sample-12") psql -U metabase -d $PG_DB_NAME -p $PG_INTERNAL_PORT -c "CREATE DATABASE writable_db"
 
       - name: Run Metabase in the background
         run: |
           MB_DB_TYPE=postgres \
           MB_DB_HOST=localhost \
-          MB_DB_PORT=5404 \
-          MB_DB_DBNAME=sample \
+          MB_DB_PORT=$PG_PORT \
+          MB_DB_DBNAME=$PG_DB_NAME \
           MB_DB_USER=metabase \
           MB_DB_PASS=metasample123 \
           MB_ENABLE_TEST_ENDPOINTS=true \
