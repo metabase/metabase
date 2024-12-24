@@ -3,6 +3,7 @@ import path from "node:path";
 
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
+import cypressSplit from "cypress-split";
 import {
   removeDirectory,
   verifyDownloadTasks,
@@ -10,7 +11,6 @@ import {
 import webpackConfig from "./component-webpack.config";
 import * as dbTasks from "./db_tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
-import cypressSplit from "cypress-split";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
 const {
