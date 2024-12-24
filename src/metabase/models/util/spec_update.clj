@@ -79,8 +79,9 @@
                     (assoc nested-row fk-column parent-id)))])))
 
 (defn- sanitize-row-fn
-  [{:keys [nested-specs compare-cols extra-cols] :as _spec}]
-  (comp #(select-keys % (concat compare-cols extra-cols)) #(apply dissoc % (keys nested-specs))))
+  "Return a function that sanitizes the row to be inserted/updated."
+  [{:keys [compare-cols extra-cols fk-column id-col] :as _spec}]
+  #(select-keys % (filter some? (concat compare-cols extra-cols [fk-column id-col]))))
 
 (defn- handle-sequential-updates!
   [existing-rows new-rows {:keys [model nested-specs id-col] :as spec} path]
@@ -154,7 +155,7 @@
 
       ;; create
       (nil? existing-data)
-      (let [parent-id (t2/insert-returning-pk! model new-data-sanitized)
+      (let [parent-id #p (t2/insert-returning-pk! model new-data-sanitized)
             path      (conj path parent-id)]
         (log/debugf "%s Created a new entity %s %d" (format-path path) model parent-id)
         (handle-nested! nil new-data parent-id))

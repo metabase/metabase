@@ -44,7 +44,6 @@
              (with-tracked-operations!
                (spec-update/do-update! nil new-data basic-spec)))))))
 
-
 (deftest basic-update-root-test
   (testing "Updating root record with no nested model changes"
     (let [existing-data {:id   1
@@ -142,9 +141,12 @@
 (spec-update/define-spec multi-row-spec
   "A spec with multi-row nested models"
   {:model :root
+   :compare-cols [:name]
+   :extra-cols   [:unrelated]
    :nested-specs {:bars {:model :bar
                          :multi-row? true
                          :fk-column :root_id
+                         :extra-cols [:unrelated]
                          :compare-cols [:name]}}})
 
 (deftest multi-row-create-test
@@ -264,15 +266,20 @@
 (spec-update/define-spec complex-model-spec
   "A complex nested model spec with multiple levels"
   {:model :foo
+   :compare-cols [:name]
    :nested-specs {:bars {:model :bar
+                         :compare-cols [:name]
                          :multi-row? true
                          :fk-column :foo_id
                          :nested-specs {:quxes {:model :bar_qux
+                                                :compare-cols [:name]
                                                 :multi-row? true
                                                 :fk-column :bar_id}}}
                   :qux {:model :qux
+                        :compare-cols [:name]
                         :fk-column :foo_id
                         :nested-specs {:bar {:model :qux_bar
+                                             :compare-cols [:name]
                                              :fk-column :qux_id}}}}})
 
 (deftest complex-nested-model-test
