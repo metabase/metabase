@@ -53,7 +53,7 @@ describe("DateFilterEditor", () => {
       column,
     });
 
-    await userEvent.click(screen.getByText("Last month"));
+    await userEvent.click(screen.getByText("Previous month"));
 
     expect(getNextFilterName()).toBe("Created At is in the previous month");
   });
