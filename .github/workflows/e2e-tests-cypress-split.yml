@@ -90,6 +90,23 @@ jobs:
           --health-interval=5s
           --health-timeout=3s
           --health-retries=20
+        env:
+          MB_DB_FILE: /tmp/metabase.db
+          MB_DB_TYPE: h2
+          MB_ENABLE_TEST_ENDPOINTS: true
+          MB_JETTY_PORT: 3000
+          MB_FIELD_FILTER_OPERATORS_ENABLED: true
+      postgres:
+        image: metabase/qa-databases:postgres-sample-12
+        ports:
+          - 5404:5432
+        env:
+          TZ: US/Pacific
+        options: >-
+          --health-cmd="pg_isready -h localhost -p 5432"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
 
     steps:
       # 1. Checkout code
