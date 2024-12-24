@@ -201,7 +201,7 @@ jobs:
         if: matrix.context == 'folder' && github.event_name != 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@slow+-@mongo+-@flaky --@quarantine",grepOmitFiltered=true \
+          --env gre pTags="-@slow+-@mongo+-@flaky --@quarantine",grepOmitFiltered=true \
           --folder ${{ matrix.name }} \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 

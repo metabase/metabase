@@ -39,8 +39,38 @@ jobs:
         id: e2e-matrix
         uses: ./.github/actions/build-e2e-matrix
 
+  get-build-requirements:
+    if: |
+      !cancelled() &&
+      contains(github.ref, 'release-x')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
+      node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Get build dependencies
+        uses: actions/github-script@v7
+        id: dependencies
+        with:
+          script: | # js
+            const { getBuildRequirements, getVersionFromReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const version = getVersionFromReleaseBranch('${{ github.ref }}');
+            const requirements = getBuildRequirements(version);
+
+            return {
+              java_version: requirements.java,
+              node_version: requirements.node,
+            };
+
   build:
-    needs: [files-changed, e2e-matrix-builder]
+    needs: [files-changed, e2e-matrix-builder, get-build-requirements]
     if: |
       !cancelled() &&
       github.event.pull_request.draft == false &&
@@ -54,16 +84,20 @@ jobs:
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
+      # make sure that builds on release branches get licenses, because we use them for releases
       SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
+        with:
+          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
+
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: uberjar
-          java-version: 11
+          java-version: "${{ needs.get-build-requirements.outputs.java_version || 11 }}"
 
       - name: Build uberjar with ./bin/build.sh
         run: ./bin/build.sh
@@ -74,39 +108,28 @@ jobs:
           name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
   e2e-tests-split:
-    needs: [build, e2e-matrix-builder]
-    runs-on: ubuntu-22.04
+    needs: [build, e2e-matrix-builder, get-build-requirements]
+    if: |
+      !cancelled() && needs.build.result == 'success'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      DISPLAY: ""
+      QA_DB_ENABLED: true
+      # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
+      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
+      CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
+      COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head_sha }}
+      MB_SNOWPLOW_AVAILABLE: true
+      MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
+      TZ: US/Pacific # to make node match the instance tz
+      CYPRESS_CI: true
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
-
-    services:
-      metabase:
-        image: metabase/metabase:latest
-        ports:
-          - 4000:3000
-        options: >-
-          --health-cmd="curl --fail http://localhost:3000/api/health || exit 1"
-          --health-interval=5s
-          --health-timeout=3s
-          --health-retries=20
-        env:
-          MB_DB_FILE: /tmp/metabase.db
-          MB_DB_TYPE: h2
-          MB_ENABLE_TEST_ENDPOINTS: true
-          MB_JETTY_PORT: 3000
-          MB_FIELD_FILTER_OPERATORS_ENABLED: true
-      postgres:
-        image: metabase/qa-databases:postgres-sample-12
-        ports:
-          - 5404:5432
-        env:
-          TZ: US/Pacific
-        options: >-
-          --health-cmd="pg_isready -h localhost -p 5432"
-          --health-interval=5s
-          --health-timeout=3s
-          --health-retries=20
 
     steps:
       # 1. Checkout code
@@ -157,7 +180,12 @@ jobs:
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
-      # 9. Run Cypress tests with `cypress-split`
+      # 9. Run Embedding SDK Storybook
+      - name: Run Embedding SDK Storybook
+        if: matrix.context == 'embedding-sdk' && github.event_name != 'schedule'
+        uses: ./.github/actions/run-embedding-sdk-storybook
+
+      # 10. Run Cypress tests with `cypress-split`
       - name: Run split Cypress tests
         run: |
           yarn run test-cypress-run \
@@ -174,11 +202,12 @@ jobs:
           CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
           CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
           CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
-          COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
+          COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head_sha }}
           MB_SNOWPLOW_AVAILABLE: true
           MB_SNOWPLOW_URL: "http://localhost:9090"
+          CYPRESS_IS_EMBEDDING_SDK: ${{ matrix.context == 'embedding-sdk' }}
 
-      # 10. Upload test results
+      # 11. Upload test results
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -191,7 +220,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-      # 11. Upload Cypress artifacts
+      # 12. Upload Cypress artifacts
       - name: Upload Cypress Artifacts (on failure)
         uses: actions/upload-artifact@v4
         if: failure()
@@ -201,3 +230,41 @@ jobs:
             ./cypress
             ./logs/test.log
           if-no-files-found: ignore
+
+      - name: Publish Summary
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: | #js
+            const {
+               parseReport,
+               formatSummary
+             } = require("./.github/scripts/handle-mochawesome-report.js");
+
+             const report = parseReport();
+             const summary = formatSummary(report);
+
+             await core.summary.addRaw(summary).write();
+
+  e2e-tests-skipped-stub:
+    needs: [e2e-tests-split, e2e-matrix-builder]
+    if: |
+      !cancelled() &&
+      needs.e2e-tests-split.result == 'skipped'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 5
+    name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
+
+  pr-env:
+    needs: [build]
+    if: |
+      !cancelled() &&
+      contains(github.event.pull_request.labels.*.name, 'PR-Env')
+    uses: ./.github/workflows/pr-env.yml
+    secrets: inherit
