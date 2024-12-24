@@ -66,6 +66,10 @@ export function Editor(props: EditorProps) {
     }
   }, [source]);
 
+  const handleBlur = useCallback(() => {
+    commitExpression(source);
+  }, [source, commitExpression]);
+
   return (
     <>
       <div className={S.wrapper}>
@@ -79,7 +83,7 @@ export function Editor(props: EditorProps) {
           value={source}
           onChange={onSourceChange}
           onFocus={handleFocus}
-          onBlur={commitExpression}
+          onBlur={handleBlur}
           height="100%"
           width="100%"
           indentWithTab={false}
@@ -136,7 +140,7 @@ function useExpression({
   }, [expression, formatExpression]);
 
   const commitExpression = useCallback(
-    function () {
+    function (source: string) {
       if (source.trim() === "") {
         onError({ message: t`Invalid expression` });
         return;
@@ -176,16 +180,7 @@ function useExpression({
       onError(null);
       onChange(expression, expressionClause);
     },
-    [
-      source,
-      name,
-      query,
-      stageIndex,
-      startRule,
-      expressionIndex,
-      onChange,
-      onError,
-    ],
+    [name, query, stageIndex, startRule, expressionIndex, onChange, onError],
   );
 
   return {

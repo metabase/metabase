@@ -24,7 +24,7 @@ type Options = {
   stageIndex: number;
   name?: string | null;
   expressionIndex: number | undefined;
-  onCommit: () => void;
+  onCommit: (source: string) => void;
   reportTimezone?: string;
 };
 
@@ -71,8 +71,9 @@ export function useExtensions(options: Options) {
         keymap.of([
           {
             key: "Enter",
-            run() {
-              onCommit();
+            run(view: EditorView) {
+              const source = view.state.doc.toString();
+              onCommit(source);
               return true;
             },
           },
