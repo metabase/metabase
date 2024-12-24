@@ -174,13 +174,12 @@ jobs:
 
       - name: Run Metabase in the background
         run: |
-          MB_JETTY_PORT=3000 \
           MB_DB_TYPE=postgres \
           MB_DB_HOST=localhost \
           MB_DB_PORT=5404 \
-          MB_DB_DBNAME=test \
-          MB_DB_USER=metabase \
-          MB_DB_PASS=metabase \
+          MB_DB_DBNAME=test_data \
+          MB_DB_USER=postgres \
+          MB_DB_PASS=postgres \
           MB_ENABLE_TEST_ENDPOINTS=true \
           java -jar ./target/uberjar/metabase.jar &
           while ! curl -s "http://localhost:3000/api/health" | grep '{"status":"ok"}'; do
