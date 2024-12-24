@@ -224,6 +224,7 @@ describe("scenarios > question > native", () => {
     "should be able to add new columns after hiding some (metabase#15393)",
     { tags: "@flaky" },
     () => {
+      H.openNativeEditor();
       H.NativeEditor.type("select 1 as visible, 2 as hidden");
       cy.findByTestId("native-query-editor-container")
         .icon("play")
@@ -238,7 +239,7 @@ describe("scenarios > question > native", () => {
             .icon("eye_outline")
             .click({ force: true });
         });
-      cy.get("@editor").type("{movetoend}, 3 as added");
+      H.NativeEditor.type("{movetoend}, 3 as added");
       cy.get("@runQuery").click();
       cy.get("@sidebar").contains(/added/i);
     },
