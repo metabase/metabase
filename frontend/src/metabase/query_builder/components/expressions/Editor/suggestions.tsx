@@ -123,7 +123,8 @@ function suggestFunctions({
   }
 
   const database = getDatabase(query, metadata);
-  const functions = Array.from(EXPRESSION_FUNCTIONS)
+  const ALIASES = ["case"];
+  const functions = [...EXPRESSION_FUNCTIONS, ...ALIASES]
     .map(name => MBQL_CLAUSES[name])
     .filter(clause => clause && database?.hasFeature(clause.requiresFeature))
     .filter(function disableOffsetInFilterExpressions(clause) {
@@ -142,15 +143,6 @@ function suggestFunctions({
           getHelpText(func.name, database, reportTimezone)?.description) ??
         undefined,
     }));
-
-  // TODO: how to handle aliases better?
-  functions.unshift({
-    type: "function",
-    label: "case(",
-    displayLabel: "case",
-    detail: undefined,
-    section: t`Functions`,
-  });
 
   return function (context: CompletionContext) {
     const source = context.state.doc.toString();
