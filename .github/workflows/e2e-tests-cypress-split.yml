@@ -136,7 +136,7 @@ jobs:
       CYPRESS_CI: true
       # Parallelization: These vars tell Cypress how to parallelize the test suite
       SPLIT: ${{ strategy.job-total }}
-      SPLIT_INDEX: ${{ matrix.containers }}
+      SPLIT_INDEX: ${{ strategy.job-index }}
       # Database config: Making ports explicit for better maintainability
       PG_INTERNAL_PORT: 5432
       PG_PORT: 5404
@@ -186,7 +186,6 @@ jobs:
 
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
-
 
       - name: Run split Cypress tests
         run: |
