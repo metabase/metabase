@@ -49,40 +49,43 @@ describe("scenarios > question > native subquery", () => {
     });
   });
 
-  it("autocomplete should complete question slugs inside template tags", () => {
-    // Create a question and a model.
-    cy.createNativeQuestion({
-      name: "A People Question",
-      native: {
-        query: "SELECT id FROM PEOPLE",
-      },
-    }).then(({ body: { id: questionId1 } }) => {
+  it(
+    "autocomplete should complete question slugs inside template tags",
+    { tags: "@flaky" },
+    () => {
+      // Create a question and a model.
       cy.createNativeQuestion({
-        name: "A People Model",
+        name: "A People Question",
         native: {
           query: "SELECT id FROM PEOPLE",
         },
-        type: "model",
-        collection_id: ADMIN_PERSONAL_COLLECTION_ID,
-      }).then(({ body: { id: questionId2 } }) => {
-        // Move question 2 to personal collection
-        cy.visit(`/question/${questionId2}`);
-        H.openQuestionActions();
-        cy.findByTestId("move-button").click();
-        H.entityPickerModal().within(() => {
-          cy.findByRole("tab", { name: /Collections/ }).click();
-          cy.findByText("Bobby Tables's Personal Collection").click();
-          cy.button("Move").click();
-        });
+      }).then(({ body: { id: questionId1 } }) => {
+        cy.createNativeQuestion({
+          name: "A People Model",
+          native: {
+            query: "SELECT id FROM PEOPLE",
+          },
+          type: "model",
+          collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+        }).then(({ body: { id: questionId2 } }) => {
+          // Move question 2 to personal collection
+          cy.visit(`/question/${questionId2}`);
+          H.openQuestionActions();
+          cy.findByTestId("move-button").click();
+          H.entityPickerModal().within(() => {
+            cy.findByRole("tab", { name: /Collections/ }).click();
+            cy.findByText("Bobby Tables's Personal Collection").click();
+            cy.button("Move").click();
+          });
 
         H.openNativeEditor();
         cy.reload(); // Refresh the state, so previously created questions need to be loaded again.
         H.NativeEditor.focus().type(" {{#people");
 
-        // Wait until another explicit autocomplete is triggered
-        // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
-        // See https://github.com/metabase/metabase/pull/20970
-        cy.wait(1000);
+          // Wait until another explicit autocomplete is triggered
+          // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
+          // See https://github.com/metabase/metabase/pull/20970
+          cy.wait(1000);
 
         H.NativeEditor.completions().within(() => {
           H.NativeEditor.completion(`${questionId2}-a-`)
@@ -96,8 +99,8 @@ describe("scenarios > question > native subquery", () => {
             .should("be.visible");
         });
       });
-    });
-  });
+    },
+  );
 
   it("autocomplete should work for columns from referenced questions", () => {
     // Create two saved questions, the first will be referenced in the query when it is opened, and the second will be added to the query after it is opened.

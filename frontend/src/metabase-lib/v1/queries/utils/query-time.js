@@ -1,4 +1,3 @@
-import { assoc } from "icepick";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 import _ from "underscore";
@@ -7,6 +6,16 @@ import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 import * as Lib from "metabase-lib";
 import { FieldDimension } from "metabase-lib/v1/Dimension";
+import {
+  isAfterDateFilter,
+  isBeforeDateFilter,
+  isBetweenFilter,
+  isCurrentDateFilter,
+  isExcludeDateFilter,
+  isNextDateFilter,
+  isOnDateFilter,
+  isPreviousDateFilter,
+} from "metabase-lib/v1/queries/utils/date-filters";
 
 export const DATETIME_UNITS = [
   "minute",
@@ -23,96 +32,6 @@ export const DATETIME_UNITS = [
   "month-of-year",
   "quarter-of-year",
 ];
-
-export function computeFilterTimeRange(filter) {
-  let expandedFilter;
-  let defaultUnit;
-  if (filter[0] === "time-interval") {
-    defaultUnit = filter[3];
-    expandedFilter = expandTimeIntervalFilter(filter);
-  } else {
-    expandedFilter = filter;
-  }
-
-  const [operator, field, ...values] = expandedFilter;
-  const bucketing = parseFieldBucketing(field, defaultUnit ?? "day");
-
-  let start, end;
-  if (isStartingFrom(filter)) {
-    const [startingFrom, startingFromUnit] = getStartingFrom(filter);
-    const [value, unit] = getRelativeDatetimeInterval(filter);
-    const now = moment().startOf(unit).add(-startingFrom, startingFromUnit);
-    start = now.clone().add(value < 0 ? value : 0, unit);
-    end = now.clone().add(value < 0 ? 0 : value, unit);
-    if (["day", "week", "month", "quarter", "year"].indexOf(unit) > -1) {
-      end = end.add(-1, "day");
-    }
-  } else if (operator === "=" && values[0]) {
-    const point = absolute(values[0]);
-    start = point.clone().startOf(bucketing);
-    end = point.clone().endOf(bucketing);
-  } else if (operator === ">" && values[0]) {
-    start = absolute(values[0]).endOf(bucketing);
-    end = max();
-  } else if (operator === "<" && values[0]) {
-    start = min();
-    end = absolute(values[0]).startOf(bucketing);
-  } else if (operator === "between" && values[0] && values[1]) {
-    start = absolute(values[0]).startOf(bucketing);
-    end = absolute(values[1]).endOf(bucketing);
-  }
-
-  return [start, end];
-}
-
-export function expandTimeIntervalFilter(filter) {
-  let [operator, field, n, unit, options] = filter;
-  const includeCurrent = !!options?.["include-current"];
-
-  if (operator !== "time-interval") {
-    throw new Error("translateTimeInterval expects operator 'time-interval'");
-  }
-
-  if (n === "current") {
-    n = 0;
-  } else if (n === "last") {
-    n = -1;
-  } else if (n === "next") {
-    n = 1;
-  }
-
-  const dimension = FieldDimension.parseMBQLOrWarn(field);
-  if (dimension) {
-    field = dimension.withTemporalUnit(unit).mbql();
-  }
-
-  if (n < -1) {
-    return [
-      "between",
-      field,
-      ["relative-datetime", n, unit],
-      ["relative-datetime", includeCurrent ? 0 : -1, unit],
-    ];
-  } else if (n > 1) {
-    return [
-      "between",
-      field,
-      ["relative-datetime", includeCurrent ? 0 : 1, unit],
-      ["relative-datetime", n, unit],
-    ];
-  } else if (n === 0) {
-    return ["=", field, ["relative-datetime", "current"]];
-  } else if (includeCurrent) {
-    return [
-      "between",
-      field,
-      ["relative-datetime", n < 0 ? n : 0, unit],
-      ["relative-datetime", n < 0 ? 0 : n, unit],
-    ];
-  } else {
-    return ["=", field, ["relative-datetime", n, unit]];
-  }
-}
 
 export function generateTimeFilterValuesDescriptions(filter) {
   const [operator, field, ...values] = filter;
@@ -189,15 +108,6 @@ export function parseFieldBucketing(field, defaultUnit = null) {
     return parseFieldBucketing(field[1], defaultUnit);
   }
   return defaultUnit;
-}
-
-// 271821 BC and 275760 AD and should be far enough in the past/future
-function max() {
-  return moment(new Date(864000000000000));
-}
-
-function min() {
-  return moment(new Date(-864000000000000));
 }
 
 export function isRelativeDatetime(value) {
@@ -312,16 +222,6 @@ function getDefaultDatetimeValue(unit, isDefault = false) {
   }
 }
 
-export function getRelativeDatetimeField(filter) {
-  if (isStartingFrom(filter)) {
-    const [_op, expr] = filter;
-    const [_exprOp, field] = expr;
-    return field;
-  } else {
-    return filter?.[1];
-  }
-}
-
 export function getRelativeDatetimeInterval(filter) {
   if (isStartingFrom(filter)) {
     const [_op, _field, [_left, leftNum, unit], right] = filter;
@@ -342,126 +242,53 @@ export function getRelativeDatetimeInterval(filter) {
   return [null, null];
 }
 
-export function toTimeInterval(filter) {
-  const field = getRelativeDatetimeField(filter);
-
-  const [num, unit] = getRelativeDatetimeInterval(filter);
-  if (isStartingFrom(filter)) {
-    return ["time-interval", field, -num, unit];
-  }
-  return ["time-interval", field, num, unit];
-}
-
-export function updateRelativeDatetimeFilter(filter, positive) {
-  if (!filter) {
-    return null;
-  }
-
-  if (filter[0] === "time-interval") {
-    const [op, field, value, unit = "day", options] = filter;
-    const numValue =
-      typeof value === "number" ? value : getDefaultDatetimeValue(unit, true);
-    const newValue = positive ? Math.abs(numValue) : -Math.abs(numValue);
-    return options
-      ? [op, field, newValue, unit, options]
-      : [op, field, newValue, unit];
-  } else if (isStartingFrom(filter)) {
-    const [_op, [fieldOp, field, [intervalOp, intervalNum, intervalUnit]]] =
-      filter;
-    const [value, unit] = getRelativeDatetimeInterval(filter);
-    const absValue = Math.abs(value);
-    const newValue = positive ? absValue : -absValue;
-    const absInterval = Math.abs(intervalNum);
-    const newInterval = positive ? -absInterval : absInterval;
-    const newField = [fieldOp, field, [intervalOp, newInterval, intervalUnit]];
-    const zeroed = ["relative-datetime", 0, unit];
-    const interval = ["relative-datetime", newValue, unit];
-    const left = newValue < 0 ? interval : zeroed;
-    const right = newValue < 0 ? zeroed : interval;
-    return ["between", newField, left, right];
-  }
-  return null;
-}
-
-export function setRelativeDatetimeUnit(filter, unit) {
-  if (filter[0] === "time-interval") {
-    return assoc(filter, 3, unit);
-  }
-  const startingFrom = getStartingFrom(filter);
-  if (startingFrom) {
-    const [op, field, start, end] = filter;
-    return setStartingFrom(
-      [op, field, assoc(start, 2, unit), end ? assoc(end, 2, unit) : end],
-      startingFrom[0],
-      unit,
-    );
-  }
-  return filter;
-}
-
-export function setRelativeDatetimeValue(filter, value) {
-  if (filter[0] === "time-interval") {
-    return assoc(filter, 2, value);
-  }
-  if (isStartingFrom(filter)) {
-    const [_op, field] = filter;
-    const [_num, unit] = getRelativeDatetimeInterval(filter);
-    return [
-      "between",
-      field,
-      ["relative-datetime", value < 0 ? value : 0, unit],
-      ["relative-datetime", value < 0 ? 0 : value, unit],
-    ];
-  }
-  return filter;
-}
-
-export const DATE_FORMAT = "YYYY-MM-DD";
-export const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
-
-export const getTimeComponent = value => {
-  let hours = null;
-  let minutes = null;
-  let date = null;
-  if (moment(value, DATE_TIME_FORMAT, true).isValid()) {
-    date = moment(value, DATE_TIME_FORMAT, true);
-    hours = date.hours();
-    minutes = date.minutes();
-    date.startOf("day");
-  } else if (moment(value, DATE_FORMAT, true).isValid()) {
-    date = moment(value, DATE_FORMAT, true);
-  } else {
-    date = moment();
-  }
-  return { hours, minutes, date };
-};
-
-export const setTimeComponent = (value, hours, minutes) => {
-  const m = moment(value);
-  if (!m.isValid()) {
-    return null;
-  }
-
-  let hasTime = false;
-  if (typeof hours === "number" && typeof minutes === "number") {
-    m.hours(hours);
-    m.minutes(minutes);
-    hasTime = true;
-  }
-
-  if (hasTime) {
-    return m.format(DATE_TIME_FORMAT);
-  } else {
-    return m.format(DATE_FORMAT);
-  }
-};
-
 const getMomentDateForSerialization = date => {
   return date.clone().locale("en");
 };
 
-export const TIME_SELECTOR_DEFAULT_HOUR = 12;
-export const TIME_SELECTOR_DEFAULT_MINUTE = 30;
+export const DATE_OPERATORS = [
+  {
+    name: "previous",
+    displayName: t`Previous`,
+    test: filter => isPreviousDateFilter(filter),
+  },
+  {
+    name: "current",
+    displayName: t`Current`,
+    test: filter => isCurrentDateFilter(filter),
+  },
+  {
+    name: "next",
+    displayName: t`Next`,
+    test: filter => isNextDateFilter(filter),
+  },
+  {
+    name: "between",
+    displayName: t`Between`,
+    test: filter => isBetweenFilter(filter),
+  },
+  {
+    name: "before",
+    displayName: t`Before`,
+    test: filter => isBeforeDateFilter(filter),
+  },
+  {
+    name: "on",
+    displayName: t`On`,
+    test: filter => isOnDateFilter(filter),
+  },
+  {
+    name: "after",
+    displayName: t`After`,
+    test: filter => isAfterDateFilter(filter),
+  },
+  {
+    name: "exclude",
+    displayName: t`Exclude...`,
+    displayPrefix: t`Exclude`,
+    test: filter => isExcludeDateFilter(filter),
+  },
+];
 
 export const EXCLUDE_UNITS = {
   days: "day-of-week",

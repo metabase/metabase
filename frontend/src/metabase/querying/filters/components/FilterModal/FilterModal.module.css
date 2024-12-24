@@ -1,0 +1,15 @@
+.ModalHeader {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.ModalBody {
+  height: calc(90vh - 10rem);
+
+  @media screen and (max-width: 40em) {
+    height: calc(98vh - 10rem);
+  }
+}
+
+.ModalFooter {
+  border-top: 1px solid var(--mb-color-border);
+}

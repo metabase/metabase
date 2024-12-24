@@ -446,6 +446,9 @@
                                               {:display-name "1°"}
                                               {:display-name "10°"}
                                               {:display-name "20°"}
+                                              {:display-name "0.05°"}
+                                              {:display-name "0.01°"}
+                                              {:display-name "0.005°"}
                                               nil])]
         (is (= exp
                (some->> strat

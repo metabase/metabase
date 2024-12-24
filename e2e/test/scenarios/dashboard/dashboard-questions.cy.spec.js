@@ -57,6 +57,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.modal().button("Done").click();
       H.undoToast().findByText("First collection");
       H.appBar().findByText("First collection"); // breadcrumb should change
+      H.appBar().findByText("Orders in a dashboard").should("not.exist"); // dashboard name should no longer be visible
 
       // card should still be visible in dashboard
       cy.visit(`/dashboard/${S.ORDERS_DASHBOARD_ID}`);
@@ -346,8 +347,15 @@ describe("Dashboard > Dashboard Questions", () => {
       );
 
       cy.get("@dashboardId").then(dashboardId => {
-        H.visitDashboard(dashboardId);
+        //Simulate having picked the dashboard in the entity picker previously
+        cy.request("POST", "/api/activity/recents", {
+          context: "selection",
+          model: "dashboard",
+          model_id: dashboardId,
+        });
       });
+
+      cy.visit("/");
 
       cy.findByLabelText("Navigation bar").findByText("New").click();
       H.popover().findByText("Question").click();
@@ -758,7 +766,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       // add the quanity question to the blue dashboard
       H.editDashboard();
-      H.openAddQuestionMenu("Existing Question");
+      H.openQuestionsSidebar();
 
       H.sidebar().findByText("First collection").click();
       H.sidebar().findByText("Average Quantity by Month Question").click();
@@ -770,7 +778,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       // add the total question to the purple dashboard
       H.editDashboard();
-      H.openAddQuestionMenu("Existing Question");
+      H.openQuestionsSidebar();
 
       H.sidebar().findByText("First collection").click();
       H.sidebar().findByText("Average Order Total by Month Question").click();
@@ -903,7 +911,7 @@ describe("Dashboard > Dashboard Questions", () => {
       });
 
       H.editDashboard();
-      H.openAddQuestionMenu("Existing Question");
+      H.openQuestionsSidebar();
       H.sidebar()
         .findByText(/our analyt/i)
         .click();
