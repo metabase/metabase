@@ -150,10 +150,10 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           maildev: true
-          openldap: ${{ startsWith(matrix.name, 'admin') }}
-          postgres: ${{ matrix.name != 'mongo'}}
-          mysql: ${{ matrix.name != 'mongo'}}
-          mongo: ${{ matrix.name == 'mongo'}}
+          openldap: true
+          postgres: true
+          mysql: true
+          mongo: true
           webhook: true
 
       - name: Retrieve uberjar artifact for ${{ matrix.edition }}
