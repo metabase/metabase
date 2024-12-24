@@ -681,16 +681,8 @@ export const LightThemeDateFilterMonthYear = {
     await userEvent.click(filter);
 
     const popover = getLastPopover();
-    const month = popover.getByText("March");
+    const month = popover.getByText("May");
     month.classList.add("pseudo-hover");
-
-    await userEvent.click(
-      popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
-    );
-    const dropdown = getLastPopover();
-    dropdown
-      .getByRole("option", { name: "2023" })
-      .setAttribute("data-hovered", "true");
   },
 };
 

@@ -61,7 +61,7 @@ describe("scenarios > dashboard > filters > date", () => {
     cy.findByText("Default value").next().click();
 
     DateFilter.setMonthAndYear({
-      month: "November",
+      month: "Nov",
       year: "2022",
     });
 
@@ -79,7 +79,7 @@ describe("scenarios > dashboard > filters > date", () => {
     // Make sure we can override the default value
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("November 2022").click();
-    H.popover().contains("June").click();
+    H.popover().contains("Jun").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("33.9");
   });
@@ -106,7 +106,7 @@ describe("scenarios > dashboard > filters > date", () => {
 
     H.sidebar().findByText("Default value").next().click();
     DateFilter.setMonthAndYear({
-      month: "November",
+      month: "Nov",
       year: "2023",
     });
 
@@ -115,7 +115,7 @@ describe("scenarios > dashboard > filters > date", () => {
 
     // Updates the filter value
     H.filterWidget().should("contain.text", "November 2023").click();
-    H.popover().findByText("December").click();
+    H.popover().findByText("Dec").click();
     H.filterWidget().findByText("December 2023");
     H.ensureDashboardCardHasText("76.83");
 

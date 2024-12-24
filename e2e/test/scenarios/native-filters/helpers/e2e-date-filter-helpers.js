@@ -3,12 +3,11 @@ import { popover, selectDropdown } from "e2e/support/helpers";
 const currentYearString = new Date().getFullYear().toString();
 
 export function setMonthAndYear({ month, year } = {}) {
-  cy.findByTestId("select-year-picker")
-    .should("have.value", currentYearString)
-    .click();
-
-  cy.findByText(year).click();
-  cy.findByText(month).click();
+  popover().within(() => {
+    cy.findByText(currentYearString).click();
+    cy.findByText(year).click();
+    cy.findByText(month).click();
+  });
 }
 
 export function setQuarterAndYear({ quarter, year } = {}) {
