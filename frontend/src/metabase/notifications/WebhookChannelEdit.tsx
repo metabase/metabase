@@ -8,8 +8,8 @@ import { useActionButtonLabel } from "metabase/hooks/use-action-button-label";
 import { createChannel } from "metabase/lib/pulse";
 import { Box, Button, Flex, Icon, Switch, Text } from "metabase/ui";
 import type {
-  Alert,
   ChannelSpec,
+  CreateAlertRequest,
   NotificationChannel,
 } from "metabase-types/api";
 
@@ -20,7 +20,7 @@ export const WebhookChannelEdit = ({
   toggleChannel,
 }: {
   channelSpec: ChannelSpec;
-  alert: Alert;
+  alert: CreateAlertRequest;
   toggleChannel: (
     channel: "http",
     index: number,

@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -65,9 +64,9 @@ export const SlackChannelField = ({
 
   return (
     <div>
-      <span className={cx(CS.block, CS.textBold, CS.pb2)}>
-        {channelField?.displayName}
-      </span>
+      {/*<span className={cx(CS.block, CS.textBold, CS.pb2)}>*/}
+      {/*  {channelField?.displayName}*/}
+      {/*</span>*/}
       <Autocomplete
         data={channelField?.options || []}
         value={value}

@@ -1,15 +1,14 @@
-import cx from "classnames";
 import { assoc, updateIn } from "icepick";
 import { t } from "ttag";
 
 import { useListChannelsQuery } from "metabase/api/channel";
-import CS from "metabase/css/core/index.css";
 import { createChannel } from "metabase/lib/pulse";
+import { Button, Menu, Stack } from "metabase/ui";
 import type {
-  Alert,
   Channel,
   ChannelApiResponse,
   ChannelType,
+  CreateAlertRequest,
   NotificationChannel,
   User,
 } from "metabase-types/api";
@@ -25,12 +24,12 @@ const DEFAULT_CHANNELS_CONFIG = {
 };
 
 interface NotificationChannelsPickerProps {
-  alert: Alert;
+  alert: CreateAlertRequest;
   channels: ChannelApiResponse["channels"] | undefined;
   users: User[];
-  setPulse: (value: Alert) => void;
+  onAlertChange: (value: CreateAlertRequest) => void;
   emailRecipientText: string;
-  invalidRecipientText: (domains: string) => string;
+  getInvalidRecipientText: (domains: string) => string;
   isAdminUser: boolean;
 }
 
@@ -38,11 +37,16 @@ export const NotificationChannelsPicker = ({
   alert,
   channels: nullableChannels,
   users,
-  setPulse,
-  invalidRecipientText,
+  onAlertChange,
+  getInvalidRecipientText,
   isAdminUser,
 }: NotificationChannelsPickerProps) => {
   const { data: notificationChannels = [] } = useListChannelsQuery();
+
+  // console.log("NotificationChannelsPicker", {
+  //   alert,
+  //   channels: nullableChannels,
+  // });
 
   const addChannel = (
     type: ChannelType,
@@ -58,7 +62,7 @@ export const NotificationChannelsPicker = ({
       notification ? { channel_id: notification.id } : undefined,
     );
 
-    setPulse({ ...alert, channels: alert.channels.concat(channel) });
+    onAlertChange({ ...alert, channels: alert.channels.concat(channel) });
   };
 
   const onChannelPropertyChange = (index: number, name: string, value: any) => {
@@ -66,39 +70,36 @@ export const NotificationChannelsPicker = ({
 
     channels[index] = { ...channels[index], [name]: value };
 
-    setPulse({ ...alert, channels });
+    onAlertChange({ ...alert, channels });
   };
 
-  const toggleChannel = (
+  const onRemoveChannel = (type: ChannelType, index: number) => {
+    const channel = alert.channels[index];
+
+    const shouldRemoveChannel =
+      type === "email" && channel?.recipients?.length === 0;
+
+    const updatedPulse = shouldRemoveChannel
+      ? updateIn(alert, ["channels"], channels => channels.toSpliced(index, 1))
+      : updateIn(alert, ["channels", index], (channel: Channel) =>
+          assoc(channel, "enabled", false),
+        );
+    onAlertChange(updatedPulse);
+  };
+
+  const onAddChannel = (
     type: ChannelType,
     index: number,
-    enable: boolean,
     notification?: NotificationChannel,
   ) => {
-    if (enable) {
-      if (alert.channels[index]) {
-        setPulse(
-          updateIn(alert, ["channels", index], (channel: Channel) =>
-            assoc(channel, "enabled", true),
-          ),
-        );
-      } else {
-        addChannel(type, notification);
-      }
+    if (alert.channels[index]) {
+      onAlertChange(
+        updateIn(alert, ["channels", index], (channel: Channel) =>
+          assoc(channel, "enabled", true),
+        ),
+      );
     } else {
-      const channel = alert.channels[index];
-
-      const shouldRemoveChannel =
-        type === "email" && channel?.recipients?.length === 0;
-
-      const updatedPulse = shouldRemoveChannel
-        ? updateIn(alert, ["channels"], channels =>
-            channels.toSpliced(index, 1),
-          )
-        : updateIn(alert, ["channels", index], (channel: Channel) =>
-            assoc(channel, "enabled", false),
-          );
-      setPulse(updatedPulse);
+      addChannel(type, notification);
     }
   };
 
@@ -106,36 +107,45 @@ export const NotificationChannelsPicker = ({
   const channels = (nullableChannels ||
     DEFAULT_CHANNELS_CONFIG) as ChannelApiResponse["channels"];
 
+  const hasEnabledSlackForAlert = !!alert.channels.find(
+    ({ channel_type }) => channel_type === "slack",
+  );
+
   return (
-    <ul className={cx(CS.bordered, CS.rounded, CS.bgWhite)}>
+    <Stack spacing="xl" align="start">
       <EmailChannelEdit
-        isAdminUser={isAdminUser}
-        users={users}
-        toggleChannel={toggleChannel}
-        onChannelPropertyChange={onChannelPropertyChange}
-        channelSpec={channels.email}
         alert={alert}
-        invalidRecipientText={invalidRecipientText}
+        users={users}
+        invalidRecipientText={getInvalidRecipientText}
+        onRemoveChannel={onRemoveChannel}
+        onChannelPropertyChange={onChannelPropertyChange}
       />
-      {channels.slack.configured && (
+      {channels.slack.configured && hasEnabledSlackForAlert && (
         <SlackChannelEdit
-          isAdminUser={isAdminUser}
-          toggleChannel={toggleChannel}
-          onChannelPropertyChange={onChannelPropertyChange}
-          channelSpec={channels.slack}
           alert={alert}
+          channelSpec={channels.slack}
+          onRemoveChannel={onRemoveChannel}
+          onChannelPropertyChange={onChannelPropertyChange}
         />
       )}
       {isAdminUser &&
         notificationChannels.map(notification => (
           <WebhookChannelEdit
             key={`webhook-${notification.id}`}
-            toggleChannel={toggleChannel}
+            toggleChannel={onRemoveChannel}
             channelSpec={channels.http}
             alert={alert}
             notification={notification}
           />
         ))}
-    </ul>
+
+      <Menu position="bottom-start">
+        {/* TODO: this doesn't close on click outside */}
+        <Menu.Target>
+          <Button variant="subtle">{t`Add another destination`}</Button>
+        </Menu.Target>
+        <Menu.Dropdown>TEST</Menu.Dropdown>
+      </Menu>
+    </Stack>
   );
 };

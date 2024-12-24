@@ -1,6 +1,6 @@
 import { action } from "@storybook/addon-actions";
 import type { StoryFn } from "@storybook/react";
-import type { ComponentProps } from "react";
+import { type ComponentProps, useState } from "react";
 import { Provider } from "react-redux";
 
 import { createMockEntitiesState } from "__support__/store";
@@ -61,8 +61,10 @@ function ReduxDecorator(Story: StoryFn) {
 const Template: StoryFn<
   ComponentProps<typeof CreateAlertModalContent>
 > = args => {
+  const [isOpen, setIsOpen] = useState(true);
+
   return (
-    <Modal isOpen>
+    <Modal isOpen={isOpen} onClose={() => setIsOpen(false)}>
       <CreateAlertModalContent {...args} />
     </Modal>
   );

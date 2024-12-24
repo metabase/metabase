@@ -8,15 +8,11 @@ import SchedulePicker from "metabase/containers/SchedulePicker";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { alertIsValid } from "metabase/lib/alert";
-import {
-  getHasConfiguredAnyChannel,
-  getHasConfiguredEmailChannel,
-} from "metabase/lib/pulse";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { NotificationChannelsPicker } from "metabase/notifications/NotificationChannelsPicker";
 import { AlertModalSettingsBlock } from "metabase/notifications/modals/CreateOrUpdateAlertModal/AlertModalSettingsBlock";
+import { AlertTriggerIcon } from "metabase/notifications/modals/CreateOrUpdateAlertModal/AlertTriggerIcon";
 import { getScheduleFromChannel } from "metabase/notifications/modals/schedule";
-import { getPulseFormInput } from "metabase/notifications/pulse/selectors";
 import { createAlert } from "metabase/notifications/redux/alert";
 import { updateUrl } from "metabase/query_builder/actions";
 import {
@@ -24,16 +20,15 @@ import {
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { Flex, Icon, Select, Stack } from "metabase/ui";
+import { Flex, Select, Stack, Switch } from "metabase/ui";
 import { ALERT_TYPE_ROWS, getDefaultAlert } from "metabase-lib/v1/Alert";
+import { ALERT_DEFAULT_SLACK_CHANNEL_CONFIG } from "metabase-lib/v1/Alert/Alert";
 import type {
-  Alert,
   Channel,
+  CreateAlertRequest,
   ScheduleSettings,
   ScheduleType,
 } from "metabase-types/api";
-
-import ChannelSetupModal from "./ChannelSetupModal";
 
 const ALERT_TRIGGER_OPTIONS = [
   {
@@ -72,40 +67,56 @@ export const CreateAlertModalContent = ({
   const visualizationSettings = useSelector(getVisualizationSettings);
   const isAdmin = useSelector(getUserIsAdmin);
   const user = useSelector(getUser);
-  const channelsConfig = useSelector(getPulseFormInput);
 
-  const { data: channelSpec = {}, isLoading: isLoadingChannelInfo } =
-    useGetChannelInfoQuery();
+  const { data: channelSpec } = useGetChannelInfoQuery();
 
   const [formState, setFormState] = useState({
     schedule: {
       schedule_type: ALERT_SCHEDULE_OPTIONS[0],
     } as ScheduleSettings,
     trigger: ALERT_TRIGGER_OPTIONS[0].value,
+    sendOnce: false,
   });
-
-  const hasConfiguredAnyChannel = getHasConfiguredAnyChannel(channelSpec);
-  const hasConfiguredEmailChannel = getHasConfiguredEmailChannel(channelSpec);
 
   const alertType =
     (notificationType === "alert" &&
       question?.alertType(visualizationSettings)) ||
     ALERT_TYPE_ROWS;
 
-  const [alert, setAlert] = useState<any>(
-    getDefaultAlert(question, alertType, user),
+  const [alert, setAlert] = useState(
+    getDefaultAlert(question, alertType, user, channelSpec),
   );
 
   useEffect(() => {
-    // NOTE Atte Keinänen 11/6/17: Don't fill in the card information yet
-    // Because `onCreate` and `onSave` of QueryHeader mix Redux action dispatches and `setState` calls,
-    // we don't have up-to-date card information in the constructor yet
-    // TODO: Refactor QueryHeader so that `onCreate` and `onSave` only call Redux actions and don't modify the local state
-    setAlert((currentAlert: any) => ({
-      ...currentAlert,
-      card: { ...currentAlert.card, id: question?.id() },
-    }));
+    if (question) {
+      setAlert(currentAlert => ({
+        ...currentAlert,
+        card: { ...currentAlert.card, id: question.id() },
+      }));
+    }
   }, [question]);
+
+  useEffect(() => {
+    if (channelSpec && channelSpec.channels.slack.configured) {
+      setAlert(currentAlert => {
+        const slackChannel = currentAlert.channels.find(
+          ({ channel_type }) => channel_type === "slack",
+        );
+
+        if (slackChannel) {
+          return currentAlert;
+        }
+
+        return {
+          ...currentAlert,
+          channels: [
+            ...currentAlert.channels,
+            ALERT_DEFAULT_SLACK_CHANNEL_CONFIG,
+          ],
+        };
+      });
+    }
+  }, [channelSpec]);
 
   const onCreateAlert = async () => {
     await dispatch(createAlert(alert));
@@ -114,22 +125,7 @@ export const CreateAlertModalContent = ({
     onAlertCreated();
   };
 
-  const channelRequirementsMet = isAdmin
-    ? hasConfiguredAnyChannel
-    : hasConfiguredEmailChannel;
-
   const isValid = alertIsValid(alert, channelSpec);
-
-  if (!isLoadingChannelInfo && !channelRequirementsMet) {
-    return (
-      <ChannelSetupModal
-        user={user}
-        onClose={onCancel}
-        entityNamePlural={t`alerts`}
-        channels={isAdmin ? ["email", "Slack", "Webhook"] : ["email"]}
-      />
-    );
-  }
 
   return (
     <ModalContent
@@ -152,7 +148,7 @@ export const CreateAlertModalContent = ({
           title={t`What do you want to be alerted about?`}
         >
           <Flex gap="1.5rem">
-            <Icon name="alert" />
+            <AlertTriggerIcon />
             <Select
               data={ALERT_TRIGGER_OPTIONS}
               value={formState.trigger}
@@ -185,13 +181,13 @@ export const CreateAlertModalContent = ({
           />
         </AlertModalSettingsBlock>
         <AlertModalSettingsBlock
-          title={t`Where do you want to send the results? `}
+          title={t`Where do you want to send the results?`}
         >
           <NotificationChannelsPicker
             alert={alert}
-            channels={channelsConfig?.channels}
-            users={[]}
-            setPulse={(alert: Alert) => {
+            channels={channelSpec ? channelSpec.channels : undefined}
+            users={[] /* TODO: add users list for emails picker*/}
+            onAlertChange={(alert: CreateAlertRequest) => {
               // If the pulse channel has been added, it PulseEditChannels puts the default schedule to it
               // We want to have same schedule for all channels
               const schedule = getScheduleFromChannel(
@@ -207,19 +203,27 @@ export const CreateAlertModalContent = ({
               });
             }}
             emailRecipientText={t`Email alerts to:`}
-            invalidRecipientText={domains =>
+            getInvalidRecipientText={domains =>
               t`You're only allowed to email alerts to addresses ending in ${domains}`
             }
             isAdminUser={isAdmin}
           />
         </AlertModalSettingsBlock>
+        <AlertModalSettingsBlock title={t`More options`}>
+          <Switch
+            label={t`Only send this alert once`}
+            labelPosition="right"
+            size="sm"
+            checked={formState.sendOnce}
+            onChange={e =>
+              setFormState(prevState => ({
+                ...prevState,
+                sendOnce: e.target.checked,
+              }))
+            }
+          />
+        </AlertModalSettingsBlock>
       </Stack>
-      {/*<AlertEditForm*/}
-      {/*  type={notificationType}*/}
-      {/*  alertType={alertType}*/}
-      {/*  alert={alert}*/}
-      {/*  onAlertChange={onAlertChange}*/}
-      {/*/>*/}
     </ModalContent>
   );
 };

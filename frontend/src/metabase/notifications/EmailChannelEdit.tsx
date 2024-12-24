@@ -1,29 +1,22 @@
-import cx from "classnames";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
-import { Icon, Switch } from "metabase/ui";
-import type { Alert, EmailChannelSpec, User } from "metabase-types/api";
+import { ChannelSettingsBlock } from "metabase/notifications/ChannelSettingsBlock";
+import type { ChannelType, CreateAlertRequest, User } from "metabase-types/api";
 
-import { ChannelSetupMessage } from "./ChannelSetupMessage";
 import { RecipientPicker } from "./RecipientPicker";
 
 export const EmailChannelEdit = ({
-  channelSpec,
   alert,
-  toggleChannel,
-  onChannelPropertyChange,
   users,
-  isAdminUser,
   invalidRecipientText,
+  onRemoveChannel,
+  onChannelPropertyChange,
 }: {
-  channelSpec: EmailChannelSpec;
-  alert: Alert;
-  toggleChannel: (channel: "email", index: number, value: boolean) => void;
-  isAdminUser: boolean;
+  alert: CreateAlertRequest;
   users: User[];
-  onChannelPropertyChange: (index: number, name: string, value: any) => void;
   invalidRecipientText: (domains: string) => string;
+  onRemoveChannel: (type: ChannelType, index: number) => void;
+  onChannelPropertyChange: (index: number, name: string, value: any) => void;
 }) => {
   const channelIndex = alert.channels.findIndex(
     channel => channel.channel_type === "email",
@@ -34,49 +27,17 @@ export const EmailChannelEdit = ({
     onChannelPropertyChange(channelIndex, "recipients", recipients);
 
   return (
-    <li className={CS.borderRowDivider}>
-      <div className={cx(CS.flex, CS.alignCenter, CS.p3, CS.borderRowDivider)}>
-        <Icon className={cx(CS.mr1, CS.textLight)} name="mail" size={28} />
-
-        <h2>{channelSpec.name}</h2>
-        <Switch
-          className={CS.flexAlignRight}
-          checked={channel?.enabled}
-          onChange={val =>
-            toggleChannel("email", channelIndex, val.target.checked)
-          }
-        />
-      </div>
-      {channel?.enabled && channelSpec.configured ? (
-        <ul className={cx(CS.bgLight, CS.px3)}>
-          <li className={CS.py2}>
-            <div>
-              <div className={cx(CS.h4, CS.textBold, CS.mb1)}>
-                {t`Email alerts to:`}
-              </div>
-              <RecipientPicker
-                autoFocus={!!alert.name}
-                recipients={channel.recipients}
-                users={users}
-                onRecipientsChange={handleRecipientsChange}
-                invalidRecipientText={invalidRecipientText}
-              />
-            </div>
-          </li>
-
-          {/* {renderChannel(channel, channelSpec, channelIndex)} */}
-        </ul>
-      ) : channel?.enabled && !channelSpec.configured ? (
-        <div className={cx(CS.p4, CS.textCentered)}>
-          <h3
-            className={CS.mb2}
-          >{t`${channelSpec.name} needs to be set up by an administrator.`}</h3>
-          <ChannelSetupMessage
-            isAdminUser={isAdminUser}
-            channels={[channelSpec.name]}
-          />
-        </div>
-      ) : null}
-    </li>
+    <ChannelSettingsBlock
+      title={t`Email`}
+      iconName="mail"
+      onRemoveChannel={() => onRemoveChannel("email", channelIndex)}
+    >
+      <RecipientPicker
+        recipients={channel.recipients}
+        users={users}
+        onRecipientsChange={handleRecipientsChange}
+        invalidRecipientText={invalidRecipientText}
+      />
+    </ChannelSettingsBlock>
   );
 };

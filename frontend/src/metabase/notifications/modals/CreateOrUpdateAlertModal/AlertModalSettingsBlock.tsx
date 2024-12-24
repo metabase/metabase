@@ -16,7 +16,12 @@ export const AlertModalSettingsBlock = ({
       <Text size="lg" lineClamp={1}>
         {title}
       </Text>
-      <Box bg="var(--mb-color-background-info)" px="2rem" py="1.5rem">
+      <Box
+        bg="var(--mb-color-background-info)"
+        px="2rem"
+        py="1.5rem"
+        style={{ borderRadius: "0.5rem" }}
+      >
         {children}
       </Box>
     </Stack>

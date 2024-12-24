@@ -70,9 +70,9 @@ const AlertEditChannelsInner = ({
           channels={formInput?.channels}
           user={user}
           users={users}
-          setPulse={onSetPulse}
+          onAlertChange={onSetPulse}
           emailRecipientText={t`Email alerts to:`}
-          invalidRecipientText={domains =>
+          getInvalidRecipientText={domains =>
             t`You're only allowed to email alerts to addresses ending in ${domains}`
           }
         />
