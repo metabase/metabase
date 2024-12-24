@@ -6,7 +6,7 @@ export function openSeriesSettings(field, isBreakout = false) {
       .find(".Icon-ellipsis")
       .click({ force: true });
   } else {
-    cy.findAllByTestId("chartsettings-field-picker-select")
+    cy.findAllByTestId("chart-setting-select")
       .then($elements => {
         for (const element of $elements) {
           if (element.value === field) {
