@@ -7,6 +7,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.after :as t2.after]))

@@ -12,8 +12,6 @@
 
 (def CachingModel "Caching is configurable for those models" [:enum "root" "database" "dashboard" "question"])
 
-(def :model/CacheConfig "Cache configuration" :model/CacheConfig)
-
 (doto :model/CacheConfig
   (derive :metabase/model)
   (derive :hook/timestamped?))

@@ -4,6 +4,7 @@
    [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.models.revision.diff :as revision.diff]
+   [metabase.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]

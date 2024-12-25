@@ -53,7 +53,7 @@
   (doseq [model models]
     (cond
       (mi/instance-of? :model/Collection model)
-      (t2/insert! CollectionBookmark
+      (t2/insert! :model/CollectionBookmark
                   {:user_id user-id
                    :collection_id (u/the-id model)})
 

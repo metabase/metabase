@@ -88,7 +88,7 @@
      :initial_sync_status "complete"})))
 
 (defn- table-details [table]
-  (-> (merge (mt/obj->json->obj (mt/object-defaults Table))
+  (-> (merge (mt/obj->json->obj (mt/object-defaults :model/Table))
              (select-keys table [:active :created_at :db_id :description :display_name :entity_type
                                  :id :name :rows :schema :updated_at :visibility_type :initial_sync_status]))
       (update :entity_type #(when % (str "entity/" (name %))))
@@ -96,7 +96,7 @@
       (update :schema str)))
 
 (defn- expected-tables [db-or-id]
-  (map table-details (t2/select Table
+  (map table-details (t2/select :model/Table
                                 :db_id (u/the-id db-or-id), :active true, :visibility_type nil
                                 {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
 
@@ -158,9 +158,9 @@
 (deftest ^:parallel get-database-test-2
   (testing "GET /api/database/:id"
     (mt/with-temp [:model/Database db  {:name "My DB" :engine ::test-driver}
-                   Table    t1  {:name "Table 1" :db_id (:id db)}
-                   Table    t2  {:name "Table 2" :db_id (:id db)}
-                   Table    _t3 {:name "Table 3" :db_id (:id db) :visibility_type "hidden"}
+                   :model/Table    t1  {:name "Table 1" :db_id (:id db)}
+                   :model/Table    t2  {:name "Table 2" :db_id (:id db)}
+                   :model/Table    _t3 {:name "Table 3" :db_id (:id db) :visibility_type "hidden"}
                    :model/Field    f1  {:name "Field 1.1" :table_id (:id t1)}
                    :model/Field    f2  {:name "Field 2.1" :table_id (:id t2)}
                    :model/Field    f3  {:name "Field 2.2" :table_id (:id t2)}]
@@ -171,7 +171,7 @@
                             [:tables])))
         (testing "Schemas are always empty strings, not nil"
           (mt/with-temp [:model/Database db  {:name "My DB" :engine ::test-driver}
-                         Table    {}  {:name "Table 1" :db_id (:id db) :schema nil}]
+                         :model/Table    {}  {:name "Table 1" :db_id (:id db) :schema nil}]
             (is (= [""]
                    (->> (mt/user-http-request :lucky :get 200 (format "database/%d?include=tables" (:id db)))
                         :tables
@@ -216,9 +216,9 @@
     (mt/with-discard-model-updates! [:model/Database] ; to restore any existing metabase_database.uploads_enabled=true
       (doseq [uploads-enabled? [true false]]
         (mt/with-temp [:model/Database {db-id :id} {:engine          :postgres
-                                                     :name            "The Chosen One"
-                                                     :uploads_enabled uploads-enabled?
-                                                     :uploads_schema_name "public"}]
+                                                    :name            "The Chosen One"
+                                                    :uploads_enabled uploads-enabled?
+                                                    :uploads_schema_name "public"}]
           (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
             (let [result (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
               (is (= uploads-enabled? (:can_upload result))))))))))
@@ -226,32 +226,32 @@
 (deftest ^:parallel get-database-usage-info-test
   (mt/with-temp
     [:model/Database {db-id :id}      {}
-     Table    {table-id-1 :id} {:db_id db-id}
-     Table    {table-id-2 :id} {:db_id db-id}
+     :model/Table    {table-id-1 :id} {:db_id db-id}
+     :model/Table    {table-id-2 :id} {:db_id db-id}
      ;; question
      :model/Card     _                {:database_id db-id
-                                        :table_id    table-id-1
-                                        :type        :question}
+                                       :table_id    table-id-1
+                                       :type        :question}
      ;; dataset
      :model/Card     _                {:database_id db-id
-                                        :table_id    table-id-1
-                                        :type        :model}
+                                       :table_id    table-id-1
+                                       :type        :model}
      :model/Card     _                {:database_id db-id
-                                        :table_id    table-id-2
-                                        :type        :model
-                                        :archived    true}
+                                       :table_id    table-id-2
+                                       :type        :model
+                                       :archived    true}
 
      ;; metric
      :model/Card     _                {:database_id db-id
-                                        :table_id    table-id-1
-                                        :type        :metric
-                                        :archived    true}
+                                       :table_id    table-id-1
+                                       :type        :metric
+                                       :archived    true}
      :model/Card     _                {:database_id db-id
-                                        :table_id    table-id-1
-                                        :type        :metric}
+                                       :table_id    table-id-1
+                                       :type        :metric}
      :model/Card     _                {:database_id db-id
-                                        :table_id    table-id-2
-                                        :type        :metric}
+                                       :table_id    table-id-2
+                                       :type        :metric}
      :model/Segment  _                {:table_id table-id-2}]
     (testing "should require admin"
       (is (= "You don't have permissions to do that."
@@ -557,16 +557,16 @@
     (letfn [(update! [db request-body]
               (mt/user-http-request :crowberto :put 400 (str "database/" (u/the-id db)) request-body))]
       (t2.with-temp/with-temp [:model/Database db {:name    (mt/random-name)
-                                                    :details (:details (mt/db))
-                                                    :engine  :postgres}]
+                                                   :details (:details (mt/db))
+                                                   :engine  :postgres}]
         (testing "Don't allow changing engine to H2"
           (is (= {:message "H2 is not supported as a data warehouse"}
                  (update! db {:engine :h2})))
           (is (= :postgres
                  (t2/select-one-fn :engine :model/Database (u/the-id db))))))
       (t2.with-temp/with-temp [:model/Database db {:name    (mt/random-name)
-                                                    :details (:details (mt/db))
-                                                    :engine  :h2}]
+                                                   :details (:details (mt/db))
+                                                   :engine  :h2}]
         (testing "Don't allow editing H2 connection details"
           (is (= {:message "H2 is not supported as a data warehouse"}
                  (update! db {:details {:db "mem:test-data;USER=GUEST;PASSWORD=guest;WHATEVER=true"}})))
@@ -576,7 +576,7 @@
 (deftest ^:parallel enable-model-actions-with-user-controlled-scheduling-test
   (testing "Should be able to enable/disable actions for a database with user-controlled scheduling (metabase#30699)"
     (t2.with-temp/with-temp [:model/Database {db-id :id} {:details  {:let-user-control-scheduling true}
-                                                           :settings {:database-enable-actions true}}]
+                                                          :settings {:database-enable-actions true}}]
       (is (false? (get-in (mt/user-http-request :crowberto
                                                 :put 200
                                                 (format "database/%s" db-id)
@@ -631,8 +631,8 @@
                    :name          "test-data (h2)"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
                    :tables        [(merge
-                                    (mt/obj->json->obj (mt/object-defaults Table))
-                                    (t2/select-one [Table :created_at :updated_at] :id (mt/id :categories))
+                                    (mt/obj->json->obj (mt/object-defaults :model/Table))
+                                    (t2/select-one [:model/Table :created_at :updated_at] :id (mt/id :categories))
                                     {:schema              "PUBLIC"
                                      :name                "CATEGORIES"
                                      :display_name        "Categories"
@@ -684,17 +684,17 @@
                                          :table_name "CHECKINS"}}
                     (f (mt/user-http-request :rasta :get 200 (format "database/%d/fields" (mt/id))))))
       (testing "shows display names"
-        (mt/with-temp [Table {t-id :id} {:name "FOO_TABLE" :display_name "irrelevant"
-                                         :db_id (mt/id)}
+        (mt/with-temp [:model/Table {t-id :id} {:name "FOO_TABLE" :display_name "irrelevant"
+                                                :db_id (mt/id)}
                        :model/Field _ {:name "F_NAME" :display_name "user editable"
-                                        :table_id t-id}]
+                                       :table_id t-id}]
           (is (partial= {"FOO_TABLE.F_NAME" {:name "F_NAME" :display_name "user editable"
                                              :table_name "FOO_TABLE"}}
                         (f (mt/user-http-request :rasta :get 200 (format "database/%d/fields" (mt/id)))))))))))
 
 (deftest fetch-database-metadata-include-hidden-test
   ;; NOTE: test for the exclude_uneditable parameter lives in metabase-enterprise.advanced-permissions.common-test
-  (mt/with-temp-vals-in-db Table (mt/id :categories) {:visibility_type "hidden"}
+  (mt/with-temp-vals-in-db :model/Table (mt/id :categories) {:visibility_type "hidden"}
     (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type "sensitive"}
       (testing "GET /api/database/:id/metadata?include_hidden=true"
         (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?include_hidden=true" (mt/id)))
@@ -719,7 +719,7 @@
 
 (deftest ^:parallel fetch-database-metadata-remove-inactive-test
   (mt/with-temp [:model/Database {db-id :id} {}
-                 Table    _ {:db_id db-id, :active false}]
+                 :model/Table    _ {:db_id db-id, :active false}]
     (testing "GET /api/database/:id/metadata?include_hidden=true"
       (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?remove_inactive=true" db-id))
                         :tables)]
@@ -727,7 +727,7 @@
 
 (deftest ^:parallel fetch-database-metadata-skip-fields-test
   (mt/with-temp [:model/Database {db-id :id} {}
-                 Table    table       {:db_id db-id}
+                 :model/Table    table       {:db_id db-id}
                  :model/Field    _           {:table_id (u/the-id table)}]
     (testing "GET /api/database/:id/metadata?skip_fields=true"
       (let [fields (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?skip_fields=true" db-id))
@@ -780,11 +780,11 @@
                                              :substring search))]
     (testing "GET /api/database/:id/autocomplete_suggestions"
       (testing " handles large numbers of tables and fields sensibly with prefix"
-        (mt/with-model-cleanup [:model/Field Table :model/Database]
+        (mt/with-model-cleanup [:model/Field :model/Table :model/Database]
           (mt/with-temp [:model/Database tmp-db {:name "Temp Autocomplete Pagination DB" :engine "h2"}]
             ;; insert more than 50 temporary tables and fields
             (doseq [i (range 60)]
-              (let [tmp-tbl (first (t2/insert-returning-instances! Table {:name (format "My Table %d" i) :db_id (u/the-id tmp-db) :active true}))]
+              (let [tmp-tbl (first (t2/insert-returning-instances! :model/Table {:name (format "My Table %d" i) :db_id (u/the-id tmp-db) :active true}))]
                 (t2/insert! :model/Field {:name (format "My Field %d" i) :table_id (u/the-id tmp-tbl) :base_type "type/Text" :database_type "varchar"})))
             ;; for each type-specific prefix, we should get 50 fields
             (is (= 50 (count (prefix-fn (u/the-id tmp-db) "My Field"))))
@@ -920,9 +920,9 @@
       (doseq [uploads-enabled? [true false]]
         (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
           (mt/with-temp [:model/Database _ {:engine          :postgres
-                                             :name            "The Chosen One"
-                                             :uploads_enabled uploads-enabled?
-                                             :uploads_schema_name "public"}]
+                                            :name            "The Chosen One"
+                                            :uploads_enabled uploads-enabled?
+                                            :uploads_schema_name "public"}]
             (let [result (get-all :crowberto "database" old-ids)]
               (is (= 1
                      (:total result)))
@@ -932,7 +932,7 @@
 (deftest ^:parallel databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
     (t2.with-temp/with-temp [:model/Card _ (assoc (card-with-native-query "Some Card")
-                                             :result_metadata [{:name "col_name"}])]
+                                                  :result_metadata [{:name "col_name"}])]
       (testing "We should be able to include the saved questions virtual DB (without Tables) with the param ?saved=true"
         (is (= {:name               "Saved Questions"
                 :id                 lib.schema.id/saved-questions-virtual-database-id
@@ -1059,13 +1059,13 @@
     (testing "should remove Cards that belong to a driver that doesn't support nested queries"
       (mt/with-temp [:model/Database bad-db   {:engine ::no-nested-query-support, :details {}}
                      :model/Card     bad-card {:name            "Bad Card"
-                                                :dataset_query   {:database (u/the-id bad-db)
-                                                                  :type     :native
-                                                                  :native   {:query "[QUERY GOES HERE]"}}
-                                                :result_metadata [{:name "sparrows"}]
-                                                :database_id     (u/the-id bad-db)}
+                                               :dataset_query   {:database (u/the-id bad-db)
+                                                                 :type     :native
+                                                                 :native   {:query "[QUERY GOES HERE]"}}
+                                               :result_metadata [{:name "sparrows"}]
+                                               :database_id     (u/the-id bad-db)}
                      :model/Card     ok-card  (assoc (card-with-native-query "OK Card")
-                                                :result_metadata [{:name "finches"}])]
+                                                     :result_metadata [{:name "finches"}])]
         (let [response (fetch-virtual-database)]
           (is (malli= SavedQuestionsDB
                       response))
@@ -1083,12 +1083,12 @@
     (testing "should remove Cards that use cumulative-sum and cumulative-count aggregations"
       (mt/with-temp [:model/Card ok-card  (ok-mbql-card)
                      :model/Card bad-card (merge
-                                            (mt/$ids checkins
-                                              (card-with-mbql-query "Cum Count Card"
-                                                                    :source-table $$checkins
-                                                                    :aggregation  [[:cum-count]]
-                                                                    :breakout     [!month.date]))
-                                            {:result_metadata [{:name "num_toucans"}]})]
+                                           (mt/$ids checkins
+                                             (card-with-mbql-query "Cum Count Card"
+                                                                   :source-table $$checkins
+                                                                   :aggregation  [[:cum-count]]
+                                                                   :breakout     [!month.date]))
+                                           {:result_metadata [{:name "num_toucans"}]})]
         (let [response (fetch-virtual-database)]
           (is (malli= SavedQuestionsDB
                       response))
@@ -1098,7 +1098,7 @@
 (deftest ^:parallel db-metadata-saved-questions-db-test
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
     (t2.with-temp/with-temp [:model/Card card (assoc (card-with-native-query "Birthday Card")
-                                                :result_metadata [{:name "age_in_bird_years"}])]
+                                                     :result_metadata [{:name "age_in_bird_years"}])]
       (let [response (mt/user-http-request :crowberto :get 200
                                            (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))]
         (is (malli= SavedQuestionsDB
@@ -1317,8 +1317,8 @@
 (deftest ^:parallel fetch-db-with-expanded-schedules
   (testing "If we FETCH a database will it have the correct 'expanded' schedules?"
     (t2.with-temp/with-temp [:model/Database db {:details                     {:let-user-control-scheduling true}
-                                                  :metadata_sync_schedule      "0 0 * ? * 6 *"
-                                                  :cache_field_values_schedule "0 0 23 ? * 6L *"}]
+                                                 :metadata_sync_schedule      "0 0 * ? * 6 *"
+                                                 :cache_field_values_schedule "0 0 23 ? * 6L *"}]
       (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
               :metadata_sync_schedule      "0 0 * ? * 6 *"
               :schedules                   {:cache_field_values schedule-map-for-last-friday-at-11pm
@@ -1358,7 +1358,7 @@
 (deftest ^:parallel dismiss-spinner-test
   (testing "Can we dismiss the spinner? (#20863)"
     (t2.with-temp/with-temp [:model/Database db    {:engine "h2", :details (:details (mt/db)) :initial_sync_status "incomplete"}
-                             Table    table {:db_id (u/the-id db) :initial_sync_status "incomplete"}]
+                             :model/Table    table {:db_id (u/the-id db) :initial_sync_status "incomplete"}]
       (mt/user-http-request :crowberto :post 200 (format "database/%d/dismiss_spinner" (u/the-id db)))
       (testing "dismissed db spinner"
         (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database (:id db)))))
@@ -1400,8 +1400,8 @@
 (deftest discard-db-fieldvalues
   (testing "Can we DISCARD all the FieldValues for a DB?"
     (mt/with-temp [:model/Database    db       {:engine "h2", :details (:details (mt/db))}
-                   Table       table-1  {:db_id (u/the-id db)}
-                   Table       table-2  {:db_id (u/the-id db)}
+                   :model/Table       table-1  {:db_id (u/the-id db)}
+                   :model/Table       table-2  {:db_id (u/the-id db)}
                    :model/Field       field-1  {:table_id (u/the-id table-1)}
                    :model/Field       field-2  {:table_id (u/the-id table-2)}
                    :model/FieldValues values-1 {:field_id (u/the-id field-1), :values [1 2 3 4]}
@@ -1519,9 +1519,9 @@
     (testing "Multiple schemas are ordered by name"
       (mt/with-temp
         [:model/Database {db-id :id} {}
-         Table    _           {:db_id db-id :schema "schema3"}
-         Table    _           {:db_id db-id :schema "schema2"}
-         Table    _           {:db_id db-id :schema "schema1"}]
+         :model/Table    _           {:db_id db-id :schema "schema3"}
+         :model/Table    _           {:db_id db-id :schema "schema2"}
+         :model/Table    _           {:db_id db-id :schema "schema1"}]
         (is (= ["schema1" "schema2" "schema3"]
                (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id))))))
 
@@ -1543,9 +1543,9 @@
           (is (contains? schemas "My Collection")))))
     (testing "null and empty schemas should both come back as blank strings"
       (mt/with-temp [:model/Database {db-id :id} {}
-                     Table    _ {:db_id db-id :schema ""}
-                     Table    _ {:db_id db-id :schema nil}
-                     Table    _ {:db_id db-id :schema " "}]
+                     :model/Table    _ {:db_id db-id :schema ""}
+                     :model/Table    _ {:db_id db-id :schema nil}
+                     :model/Table    _ {:db_id db-id :schema " "}]
         (is (= ["" " "]
                (mt/user-http-request :lucky :get 200 (format "database/%d/schemas" db-id))))))))
 
@@ -1554,7 +1554,7 @@
     (t2.with-temp/with-temp [:model/Database {db-id :id} {:name "my/database"}]
       (doseq [schema-name [nil ""]]
         (testing (str "schema name = " (pr-str schema-name))
-          (t2.with-temp/with-temp [Table _ {:db_id db-id, :schema schema-name, :name "just a table"}]
+          (t2.with-temp/with-temp [:model/Table _ {:db_id db-id, :schema schema-name, :name "just a table"}]
             (is (= [""] (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id))))))))))
 
 (deftest get-syncable-schemas-test
@@ -1571,14 +1571,14 @@
 (deftest ^:parallel get-schemas-for-schemas-with-no-visible-tables
   (mt/with-temp
     [:model/Database {db-id :id} {}
-     Table    _ {:db_id db-id :schema "schema_1a" :name "table_1"}
-     Table    _ {:db_id db-id :schema "schema_1c" :name "table_1"} ;; out of order for sorting
-     Table    _ {:db_id db-id :schema "schema_1b" :name "table_1"}
+     :model/Table    _ {:db_id db-id :schema "schema_1a" :name "table_1"}
+     :model/Table    _ {:db_id db-id :schema "schema_1c" :name "table_1"} ;; out of order for sorting
+     :model/Table    _ {:db_id db-id :schema "schema_1b" :name "table_1"}
      ;; table is not visible. Any non-nil value of `visibility_type` means Table shouldn't be visible
-     Table    _ {:db_id db-id :schema "schema_2" :name "table_2a" :visibility_type "hidden"}
-     Table    _ {:db_id db-id :schema "schema_2" :name "table_2b" :visibility_type "cruft"}
+     :model/Table    _ {:db_id db-id :schema "schema_2" :name "table_2a" :visibility_type "hidden"}
+     :model/Table    _ {:db_id db-id :schema "schema_2" :name "table_2b" :visibility_type "cruft"}
        ;; table is not active
-     Table    _ {:db_id db-id :schema "schema_3" :name "table_3" :active false}]
+     :model/Table    _ {:db_id db-id :schema "schema_3" :name "table_3" :active false}]
     (testing "GET /api/database/:id/schemas should not return schemas with no VISIBLE TABLES"
       (is (= ["schema_1a" "schema_1b" "schema_1c"]
              (mt/user-http-request :crowberto :get 200 (format "database/%d/schemas" db-id)))))
@@ -1589,8 +1589,8 @@
 (deftest get-schemas-permissions-test
   (testing "GET /api/database/:id/schemas against permissions"
     (mt/with-temp [:model/Database {db-id :id} {}
-                   Table    t1 {:db_id db-id :schema "schema1"}
-                   Table    t2 {:db_id db-id :schema "schema1"}]
+                   :model/Table    t1 {:db_id db-id :schema "schema1"}
+                   :model/Table    t2 {:db_id db-id :schema "schema1"}]
       (testing "should work if user has full DB perms..."
         (is (= ["schema1"]
                (mt/with-full-data-perms-for-all-users!
@@ -1619,8 +1619,8 @@
 
     (testing "should exclude schemas for which the user has no perms"
       (mt/with-temp [:model/Database {database-id :id} {}
-                     Table    {t1-id :id} {:db_id database-id :schema "schema-with-perms"}
-                     Table    _ {:db_id database-id :schema "schema-without-perms"}]
+                     :model/Table    {t1-id :id} {:db_id database-id :schema "schema-with-perms"}
+                     :model/Table    _ {:db_id database-id :schema "schema-without-perms"}]
         (mt/with-no-data-perms-for-all-users!
           (data-perms/set-database-permission! (perms-group/all-users) database-id :perms/view-data :unrestricted)
           (data-perms/set-table-permission! (perms-group/all-users) t1-id :perms/create-queries :query-builder)
@@ -1634,14 +1634,14 @@
              (mt/user-http-request :crowberto :get 404 (format "database/%s/schema/%s" Integer/MAX_VALUE "schema1")))))
     (testing "Should return a 404 if the schema isn't found"
       (mt/with-temp [:model/Database {db-id :id} {}
-                     Table    _ {:db_id db-id :schema "schema1"}]
+                     :model/Table    _ {:db_id db-id :schema "schema1"}]
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404 (format "database/%d/schema/%s" db-id "not schema1"))))))
 
     (testing "should exclude Tables for which the user has no perms"
       (mt/with-temp [:model/Database {database-id :id} {}
-                     Table    table-with-perms {:db_id database-id :schema "public" :name "table-with-perms"}
-                     Table    _                {:db_id database-id :schema "public" :name "table-without-perms"}]
+                     :model/Table    table-with-perms {:db_id database-id :schema "public" :name "table-with-perms"}
+                     :model/Table    _                {:db_id database-id :schema "public" :name "table-without-perms"}]
         (mt/with-no-data-perms-for-all-users!
           (data-perms/set-database-permission! (perms-group/all-users) database-id :perms/view-data :unrestricted)
           (data-perms/set-table-permission! (perms-group/all-users) table-with-perms :perms/create-queries :query-builder)
@@ -1650,22 +1650,22 @@
 
     (testing "should exclude inactive Tables"
       (mt/with-temp [:model/Database {database-id :id} {}
-                     Table    _ {:db_id database-id :schema "public" :name "table"}
-                     Table    _ {:db_id database-id :schema "public" :name "inactive-table" :active false}]
+                     :model/Table    _ {:db_id database-id :schema "public" :name "table"}
+                     :model/Table    _ {:db_id database-id :schema "public" :name "inactive-table" :active false}]
         (is (= ["table"]
                (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))
 
     (testing "should exclude hidden Tables"
       (mt/with-temp [:model/Database {database-id :id} {}
-                     Table    _ {:db_id database-id :schema "public" :name "table"}
-                     Table    _ {:db_id database-id :schema "public" :name "hidden-table" :visibility_type "hidden"}]
+                     :model/Table    _ {:db_id database-id :schema "public" :name "table"}
+                     :model/Table    _ {:db_id database-id :schema "public" :name "hidden-table" :visibility_type "hidden"}]
         (is (= ["table"]
                (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))
 
     (testing "should show hidden Tables when explicitly asked for"
       (mt/with-temp [:model/Database {database-id :id} {}
-                     Table    _ {:db_id database-id :schema "public" :name "table"}
-                     Table    _ {:db_id database-id :schema "public" :name "hidden-table" :visibility_type "hidden"}]
+                     :model/Table    _ {:db_id database-id :schema "public" :name "table"}
+                     :model/Table    _ {:db_id database-id :schema "public" :name "hidden-table" :visibility_type "hidden"}]
         (is (= #{"table" "hidden-table"}
                (set (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")
                                                      :include_hidden true)))))))
@@ -1720,20 +1720,20 @@
     (testing "should work for the datasets in the 'virtual' database"
       (mt/with-temp [:model/Collection coll   {:name "My Collection"}
                      :model/Card       card-1 (assoc (card-with-native-query "Card 1")
-                                                :collection_id (:id coll)
-                                                :type :model)
+                                                     :collection_id (:id coll)
+                                                     :type :model)
                      :model/Card       metric {:type :metric
-                                                :name "Metric"
-                                                :database_id (mt/id)
-                                                :collection_id (:id coll)
-                                                :dataset_query (mt/mbql-query nil
-                                                                 {:source-table (str "card__" (:id card-1))
-                                                                  :aggregation [[:count]]})}
+                                               :name "Metric"
+                                               :database_id (mt/id)
+                                               :collection_id (:id coll)
+                                               :dataset_query (mt/mbql-query nil
+                                                                {:source-table (str "card__" (:id card-1))
+                                                                 :aggregation [[:count]]})}
                      :model/Card       card-2 (assoc (card-with-native-query "Card 2")
-                                                :type :model)
+                                                     :type :model)
                      :model/Card       _card-3 (assoc (card-with-native-query "error")
                                                ;; regular saved question should not be in the results
-                                                 :type :question)]
+                                                      :type :question)]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
           (is (=? {:status "completed"}
@@ -1785,8 +1785,8 @@
                                        (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id "Coin Collection")))))))
 
     (mt/with-temp [:model/Database {db-id :id} {}
-                   Table    _ {:db_id db-id :schema nil :name "t1"}
-                   Table    _ {:db_id db-id :schema "" :name "t2"}]
+                   :model/Table    _ {:db_id db-id :schema nil :name "t1"}
+                   :model/Table    _ {:db_id db-id :schema "" :name "t2"}]
       (testing "to fetch Tables with `nil` or empty schemas, use the blank string"
         (is (= ["t1" "t2"]
                (map :name (mt/user-http-request :lucky :get 200 (format "database/%d/schema/" db-id)))))))))
@@ -1794,17 +1794,17 @@
 (deftest get-schema-tables-unreadable-metrics-are-not-returned-test
   (mt/with-temp [:model/Collection model-coll   {:name "Model Collection"}
                  :model/Card       card         (assoc (card-with-native-query "Card 1")
-                                                  :collection_id (:id model-coll)
-                                                  :type :model)
+                                                       :collection_id (:id model-coll)
+                                                       :type :model)
                  :model/Collection metric-coll {:name "Metric Collection"}
                  :model/Card       metric      {:type          :metric
-                                                 :name          "Metric"
-                                                 :database_id   (mt/id)
-                                                 :collection_id (:id metric-coll)
-                                                 :dataset_query {:type     :query
-                                                                 :database (mt/id)
-                                                                 :query    {:source-table (str "card__" (:id card))
-                                                                            :aggregation  [[:count]]}}}]
+                                                :name          "Metric"
+                                                :database_id   (mt/id)
+                                                :collection_id (:id metric-coll)
+                                                :dataset_query {:type     :query
+                                                                :database (mt/id)
+                                                                :query    {:source-table (str "card__" (:id card))
+                                                                           :aggregation  [[:count]]}}}]
     (is (=? {:status "completed"}
             (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card)))))
     (let [virtual-table {:id           (format "card__%d" (:id card))
@@ -1835,9 +1835,9 @@
 (deftest get-schema-tables-permissions-test
   (testing "GET /api/database/:id/schema/:schema against permissions"
     (mt/with-temp [:model/Database {db-id :id} {}
-                   Table    t1  {:db_id db-id :schema "schema1" :name "t1"}
-                   Table    _t2 {:db_id db-id :schema "schema2"}
-                   Table    t3  {:db_id db-id :schema "schema1" :name "t3"}]
+                   :model/Table    t1  {:db_id db-id :schema "schema1" :name "t1"}
+                   :model/Table    _t2 {:db_id db-id :schema "schema2"}
+                   :model/Table    t3  {:db_id db-id :schema "schema1" :name "t3"}]
       (testing "if we have full data perms for the DB"
         (mt/with-full-data-perms-for-all-users!
           (is (= ["t1" "t3"]
@@ -1862,15 +1862,15 @@
     (testing "should return a 403 for a user that doesn't have read permissions"
       (testing "for the DB"
         (mt/with-temp [:model/Database {database-id :id} {}
-                       Table    _ {:db_id database-id :schema "test"}]
+                       :model/Table    _ {:db_id database-id :schema "test"}]
           (mt/with-no-data-perms-for-all-users!
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "test")))))))
 
       (testing "for all tables in the schema"
         (mt/with-temp [:model/Database {database-id :id} {}
-                       Table    {t1-id :id} {:db_id database-id :schema "schema-with-perms"}
-                       Table    _ {:db_id database-id :schema "schema-without-perms"}]
+                       :model/Table    {t1-id :id} {:db_id database-id :schema "schema-with-perms"}
+                       :model/Table    _ {:db_id database-id :schema "schema-without-perms"}]
           (mt/with-no-data-perms-for-all-users!
             (data-perms/set-database-permission! (perms-group/all-users) database-id :perms/view-data :unrestricted)
             (data-perms/set-table-permission! (perms-group/all-users) t1-id :perms/create-queries :query-builder)
@@ -1888,7 +1888,7 @@
                            "my_schema/"
                            "my_schema\\"]]
         (testing (format "\nschema name = %s" (pr-str schema-name))
-          (t2.with-temp/with-temp [Table _ {:db_id db-id, :schema schema-name, :name "my/table"}]
+          (t2.with-temp/with-temp [:model/Table _ {:db_id db-id, :schema schema-name, :name "my/table"}]
             (testing "\nFetch schemas"
               (testing "\nGET /api/database/:id/schemas/"
                 (is (= [schema-name]
@@ -2020,9 +2020,9 @@
   (mt/with-driver :secret-test-driver
     (testing "File path values for secrets are returned as plaintext in the API (#20030)"
       (t2.with-temp/with-temp [:model/Database database {:engine  :secret-test-driver
-                                                          :name    "Test secret DB with password path"
-                                                          :details {:host           "localhost"
-                                                                    :password-path "/path/to/password.txt"}}]
+                                                         :name    "Test secret DB with password path"
+                                                         :details {:host           "localhost"
+                                                                   :password-path "/path/to/password.txt"}}]
         (is (= {:password-source "file-path"
                 :password-value  "/path/to/password.txt"}
                (as-> (u/the-id database) d
@@ -2060,9 +2060,9 @@
 (deftest database-local-settings-come-back-with-database-test
   (testing "Database-local Settings should come back with"
     (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:test-db-local-setting-public        1
-                                                                  :test-db-local-setting-authenticated 1
-                                                                  :test-db-local-setting-admin         1
-                                                                  :test-db-local-setting-internal      1}}
+                                                                 :test-db-local-setting-authenticated 1
+                                                                 :test-db-local-setting-admin         1
+                                                                 :test-db-local-setting-internal      1}}
       (doseq [[user user-type] {:crowberto :admin, :rasta :non-admin}]
         (doseq [{:keys [endpoint response]} [{:endpoint "GET /api/database/:id"
                                               :response (fn []
@@ -2162,7 +2162,7 @@
       (let [db-id (:id (mt/db))]
         (t2.with-temp/with-temp
           [:model/Card card {:database_id db-id
-                              :type        :model}]
+                             :type        :model}]
           (mt/with-temporary-setting-values [persisted-models-enabled false]
             (testing "requires persist setting to be enabled"
               (is (= "Persisting models is not enabled."
@@ -2193,7 +2193,7 @@
       (let [db-id (:id (mt/db))]
         (t2.with-temp/with-temp
           [:model/Card     _ {:database_id db-id
-                               :type        :model}]
+                              :type        :model}]
           (testing "only users with permissions can persist a database"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :post 403 (str "database/" db-id "/unpersist")))))

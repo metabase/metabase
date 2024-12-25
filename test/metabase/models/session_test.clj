@@ -1,6 +1,7 @@
 (ns metabase.models.session-test
   (:require
    [clojure.test :refer :all]
+   [metabase.models.session :as session]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [toucan2.core :as t2]))

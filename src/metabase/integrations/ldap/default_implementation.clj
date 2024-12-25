@@ -4,6 +4,7 @@
    [clj-ldap.client :as ldap]
    [clojure.string :as str]
    [metabase.integrations.common :as integrations.common]
+   [metabase.models.user :as user]
    [metabase.public-settings.premium-features
     :refer [defenterprise-schema]]
    [metabase.util :as u]

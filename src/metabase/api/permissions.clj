@@ -14,6 +14,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.interface :as mi]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-revision :as perms-revision]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.permissions.util :as perms.u]

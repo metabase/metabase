@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.models.field-values :as field-values]
    [metabase.models.serialization :as serdes]
    [metabase.sync :as sync]
    [metabase.test :as mt]

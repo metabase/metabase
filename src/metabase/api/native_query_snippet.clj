@@ -5,6 +5,7 @@
    [compojure.core :refer [GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
+   [metabase.models.native-query-snippet :as native-query-snippet]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]

@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.table :as table]
    [metabase.models.serialization :as serdes]
    [metabase.sync :as sync]
    [metabase.test :as mt]

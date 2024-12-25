@@ -103,11 +103,11 @@
     (mt/with-premium-features #{:sandboxes :advanced-permissions}
       (mt/with-model-cleanup [:model/Permissions]
         (mt/with-temp [:model/PermissionsGroup       {group-id :id} {}
-                       GroupTableAccessPolicy _ {:table_id (mt/id :venues)
-                                                 :group_id group-id}]
+                       :model/GroupTableAccessPolicy _ {:table_id (mt/id :venues)
+                                                        :group_id group-id}]
           (grant-block-perms! group-id)
           (is (nil? (test-db-perms group-id)))
-          (is (not (t2/exists? GroupTableAccessPolicy :group_id group-id))))))))
+          (is (not (t2/exists? :model/GroupTableAccessPolicy :group_id group-id))))))))
 
 (deftest update-graph-data-perms-should-delete-block-perms-test
   (testing "granting data permissions for a table should not delete existing block permissions"

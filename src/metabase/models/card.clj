@@ -26,6 +26,7 @@
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
+   [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as models.pulse]
@@ -51,11 +52,6 @@
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
-
-(def :model/Card
-  "Used to be the toucan2 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the Card symbol in our codebase."
-  :model/Card)
 
 (methodical/defmethod t2/table-name :model/Card [_model] :report_card)
 
@@ -866,8 +862,8 @@
                                               ;; this collection to change position, check that and fix it if needed
                                               (api/maybe-reconcile-collection-position! position-info)
                                               (t2/insert-returning-instance! :model/Card (cond-> card-data
-                                                                                            metadata
-                                                                                            (assoc :result_metadata metadata))))]
+                                                                                           metadata
+                                                                                           (assoc :result_metadata metadata))))]
      (when-let [dashboard-id (and autoplace-dashboard-questions? (:dashboard_id card))]
        (autoplace-dashcard-for-card! dashboard-id card))
      (when-not delay-event?

@@ -3,17 +3,12 @@
    [clojure.string :as str]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
+   [metabase.models.card :as card]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
-
-;; We'll keep this till we replace all the symbols in our codebase."
-(def :model/CardBookmark       "CardBookmark model"       :model/CardBookmark)
-(def :model/DashboardBookmark  "DashboardBookmark model"  :model/DashboardBookmark)
-(def :model/CollectionBookmark "CollectionBookmark model" :model/CollectionBookmark)
-(def :model/BookmarkOrdering   "BookmarkOrdering model"   :model/BookmarkOrdering)
 
 (methodical/defmethod t2/table-name :model/CardBookmark       [_model] :card_bookmark)
 (methodical/defmethod t2/table-name :model/DashboardBookmark  [_model] :dashboard_bookmark)
@@ -137,5 +132,5 @@
   [user-id orderings]
   (t2/delete! :model/BookmarkOrdering :user_id user-id)
   (t2/insert! :model/BookmarkOrdering (->> orderings
-                                    (map #(select-keys % [:type :item_id]))
-                                    (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
+                                           (map #(select-keys % [:type :item_id]))
+                                           (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))

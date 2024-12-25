@@ -17,6 +17,7 @@
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.action :as action]
+   [metabase.models.card :as card]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.query-processor.card :as qp.card]

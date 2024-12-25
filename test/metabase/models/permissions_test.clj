@@ -1,6 +1,9 @@
 (ns metabase.models.permissions-test
   (:require
    [clojure.test :refer :all]
+   [metabase.models.collection :as collection]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]

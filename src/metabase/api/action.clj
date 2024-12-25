@@ -63,11 +63,11 @@
     (let [models (if model-id
                    [(api/read-check :model/Card model-id)]
                    (t2/select :model/Card {:where
-                                            [:and
-                                             [:= :type "model"]
-                                             [:= :archived false]
+                                           [:and
+                                            [:= :type "model"]
+                                            [:= :archived false]
                                              ;; action permission keyed off of model permission
-                                             (collection/visible-collection-filter-clause)]}))]
+                                            (collection/visible-collection-filter-clause)]}))]
       (actions-for models))))
 
 (api/defendpoint GET "/public"
@@ -128,7 +128,7 @@
                       {:status-code 400})))
     (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
       (actions/check-actions-enabled-for-database!
-       (t2/select-one Database :id db-id))))
+       (t2/select-one :model/Database :id db-id))))
   (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
     (snowplow/track-event! ::snowplow/action
                            {:event          :action-created

@@ -10,6 +10,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.models.serialization :as serdes]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -553,7 +554,7 @@
 
 (defn- set-and-fetch-csv-setting-value! [v]
   (test-csv-setting! v)
-  {:db-value     (t2/select-one-fn :value setting/:model/Setting :key "test-csv-setting")
+  {:db-value     (t2/select-one-fn :value :model/Setting :key "test-csv-setting")
    :parsed-value (test-csv-setting)})
 
 (deftest csv-setting-test
@@ -725,11 +726,11 @@
 (deftest cache-sync-test
   (testing "make sure that if for some reason the cache gets out of sync it will reset so we can still set new settings values (#4178)"
     ;; clear out any existing values of `toucan-name`
-    (t2/delete! (t2/table-name setting/:model/Setting) :key "toucan-name")
+    (t2/delete! (t2/table-name :model/Setting) :key "toucan-name")
     ;; restore the cache
     (setting.cache/restore-cache-if-needed!)
     ;; now set a value for the `toucan-name` setting the wrong way
-    (t2/insert! setting/:model/Setting {:key "toucan-name", :value "Reggae"})
+    (t2/insert! :model/Setting {:key "toucan-name", :value "Reggae"})
     ;; ok, now try to set the Setting the correct way
     (toucan-name! "Banana Beak")
     ;; ok, make sure the setting was set

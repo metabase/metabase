@@ -1,6 +1,7 @@
 (ns metabase.models.pulse-card-test
   (:require
    [clojure.test :refer :all]
+   [metabase.models.pulse-card :as pulse-card]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)

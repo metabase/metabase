@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.serialize :as serialize]
-   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase-enterprise.serialization.test-util :as ts]))
 
 (defn- all-ids-are-fully-qualified-names?
   [m]

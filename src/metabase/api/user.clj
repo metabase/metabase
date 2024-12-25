@@ -12,6 +12,7 @@
    [metabase.config :as config]
    [metabase.events :as events]
    [metabase.integrations.google :as google]
+   [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :refer [defsetting]]

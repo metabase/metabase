@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.task :as task]
    [metabase.task.send-pulses :as task.send-pulses]
+   [metabase.models.pulse-channel :as pulse-channel]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]

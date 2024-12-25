@@ -17,7 +17,11 @@
    [metabase.events :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.models.card :as card]
+   [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
+   [metabase.models.database :as database]
+   [metabase.models.field :refer [readable-fields-only]]
    [metabase.models.interface :as mi]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.secret :as secret]
@@ -856,7 +860,7 @@
     (merge (:details database)
            (reduce
             (fn [details k]
-              (if (= protected-password (get details k))
+              (if (= database/protected-password (get details k))
                 (m/update-existing details k (constantly (get-in database [:details k])))
                 details))
             details

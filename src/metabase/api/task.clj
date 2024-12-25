@@ -4,6 +4,7 @@
    [compojure.core :refer [GET]]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.models.task-history :as task-history]
    [metabase.request.core :as request]
    [metabase.task :as task]
    [metabase.util.malli.schema :as ms]

@@ -8,6 +8,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
+   [metabase.models.secret :as secret]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]

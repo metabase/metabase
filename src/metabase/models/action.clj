@@ -18,11 +18,6 @@
 (methodical/defmethod t2/table-name :model/HTTPAction [_model] :http_action)
 (methodical/defmethod t2/table-name :model/ImplicitAction [_model] :implicit_action)
 
-(def :model/Action         "Action model"         :model/Action)
-(def :model/QueryAction    "QueryAction model"    :model/QueryAction)
-(def :model/HTTPAction     "HTTPAction model"     :model/HTTPAction)
-(def :model/ImplicitAction "ImplicitAction model" :model/ImplicitAction)
-
 (def ^:private action-sub-models [:model/QueryAction :model/HTTPAction :model/ImplicitAction])
 
 (doto :model/Action
@@ -126,11 +121,11 @@
                                   (assoc :action_id (:id action))
                                   (cond->
                                    (= (:type action) :implicit)
-                                    (dissoc :database_id)
-                                    (= (:type action) :http)
-                                    (update :template json/encode)
-                                    (= (:type action) :query)
-                                    (update :dataset_query json/encode)))]})
+                                   (dissoc :database_id)
+                                   (= (:type action) :http)
+                                   (update :template json/encode)
+                                   (= (:type action) :query)
+                                   (update :dataset_query json/encode)))]})
       (:id action))))
 
 (defn update!

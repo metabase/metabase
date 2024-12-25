@@ -12,6 +12,7 @@
    [metabase.integrations.google :as google]
    [metabase.integrations.ldap :as ldap]
    [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.models.user :as user]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.util :as u]

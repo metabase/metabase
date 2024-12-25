@@ -3,8 +3,6 @@
    [metabase-enterprise.advanced-permissions.api.util
     :as advanced-perms.api.u]
    [metabase-enterprise.sandbox.api.table :as table]
-   [metabase-enterprise.sandbox.models.group-table-access-policy
-    :refer [:model/GroupTableAccessPolicy]]
    [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
     :as row-level-restrictions]
    [metabase.api.common :as api]

@@ -2,6 +2,7 @@
   "Tests for TimelineEvent model namespace."
   (:require
    [clojure.test :refer :all]
+   [metabase.models.timeline-event :as timeline-event]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

@@ -18,6 +18,7 @@
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.models.permissions :as perms]
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings.premium-features :as premium-features]
    ;; Trying to use metabase.search would cause a circular reference ;_;

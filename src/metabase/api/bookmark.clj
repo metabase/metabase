@@ -7,6 +7,7 @@
   (:require
    [compojure.core :refer [DELETE GET POST]]
    [metabase.api.common :as api]
+   [metabase.models.bookmark :as bookmark]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 

@@ -109,7 +109,7 @@
 
 (defn- do-with-dashboards-in-a-collection! [grant-collection-perms-fn! dashboards-or-ids f]
   (mt/with-non-admin-groups-no-root-collection-perms
-    (t2.with-temp/with-temp [Collection collection]
+    (t2.with-temp/with-temp [:model/Collection collection]
       (grant-collection-perms-fn! (perms-group/all-users) collection)
       (doseq [dashboard-or-id dashboards-or-ids]
         (t2/update! :model/Dashboard (u/the-id dashboard-or-id) {:collection_id (u/the-id collection)}))
@@ -186,7 +186,7 @@
 (deftest create-dashboard-test
   (testing "POST /api/dashboard"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (t2.with-temp/with-temp [Collection collection]
+      (t2.with-temp/with-temp [:model/Collection collection]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (let [test-dashboard-name "Test Create Dashboard"]
           (mt/with-model-cleanup [:model/Dashboard]
@@ -213,7 +213,7 @@
   (testing "POST /api/dashboard"
     (testing "Make sure we can create a Dashboard with a Collection position"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (t2.with-temp/with-temp [Collection collection]
+        (t2.with-temp/with-temp [:model/Collection collection]
           (mt/with-model-cleanup [:model/Dashboard]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (let [dashboard-name (mt/random-name)]
@@ -225,7 +225,7 @@
                               (update :collection_id (partial = (u/the-id collection))))))))
 
           (testing "..but not if we don't have permissions for the Collection"
-            (t2.with-temp/with-temp [Collection collection]
+            (t2.with-temp/with-temp [:model/Collection collection]
               (let [dashboard-name (mt/random-name)]
                 (mt/user-http-request :rasta :post 403 "dashboard" {:name                dashboard-name
                                                                     :collection_id       (u/the-id collection)
@@ -592,7 +592,7 @@
                  (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
                      :collection_authority_level)))
             (let [collection-id (:collection_id (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))]
-              (t2/update! Collection collection-id {:authority_level "official"}))
+              (t2/update! :model/Collection collection-id {:authority_level "official"}))
             (is (= "official"
                    (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
                        :collection_authority_level)))))))))
@@ -601,7 +601,7 @@
   (testing "GET /api/dashboard/:id"
     (testing "Fetch Dashboard with a series, should fail if the User doesn't have access to the Collection"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp [Collection          {coll-id :id}      {:name "Collection 1"}
+        (mt/with-temp [:model/Collection          {coll-id :id}      {:name "Collection 1"}
                        :model/Dashboard           {dashboard-id :id} {:name       "Test Dashboard"
                                                                        :creator_id (mt/user->id :crowberto)}
                        :model/Card                {card-id :id}      {:name          "Dashboard Test Card"
@@ -819,7 +819,7 @@
   (testing "PUT /api/dashboard/:id"
     (testing "Can we change the Collection a Dashboard is in (assuming we have the permissions to do so)?"
       (dashboard-test/with-dash-in-collection! [_db collection dash]
-        (t2.with-temp/with-temp [Collection new-collection]
+        (t2.with-temp/with-temp [:model/Collection new-collection]
           ;; grant Permissions for both new and old collections
           (doseq [coll [collection new-collection]]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll))
@@ -832,7 +832,7 @@
     (testing "if we don't have the Permissions for the old collection, we should get an Exception"
       (mt/with-non-admin-groups-no-root-collection-perms
         (dashboard-test/with-dash-in-collection! [_db _collection dash]
-          (t2.with-temp/with-temp [Collection new-collection]
+          (t2.with-temp/with-temp [:model/Collection new-collection]
             ;; grant Permissions for only the *new* collection
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) new-collection)
             ;; now make an API call to move collections. Should fail
@@ -843,7 +843,7 @@
     (testing "if we don't have the Permissions for the new collection, we should get an Exception"
       (mt/with-non-admin-groups-no-root-collection-perms
         (dashboard-test/with-dash-in-collection! [_db collection dash]
-          (t2.with-temp/with-temp [Collection new-collection]
+          (t2.with-temp/with-temp [:model/Collection new-collection]
             ;; grant Permissions for only the *old* collection
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             ;; now make an API call to move collections. Should fail
@@ -952,7 +952,7 @@
   (testing "PUT /api/dashboard/:id"
     (testing "Can we change the Collection position of a Dashboard?"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp [Collection collection {}
+        (mt/with-temp [:model/Collection collection {}
                        :model/Dashboard  dashboard {:collection_id (u/the-id collection)}]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard))
@@ -967,14 +967,14 @@
                    (t2/select-one-fn :collection_position :model/Dashboard :id (u/the-id dashboard))))))
 
         (testing "we shouldn't be able to if we don't have permissions for the Collection"
-          (mt/with-temp [Collection collection {}
+          (mt/with-temp [:model/Collection collection {}
                          :model/Dashboard  dashboard {:collection_id (u/the-id collection)}]
             (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dashboard))
                                   {:collection_position 1})
             (is (= nil
                    (t2/select-one-fn :collection_position :model/Dashboard :id (u/the-id dashboard)))))
 
-          (mt/with-temp [Collection collection {}
+          (mt/with-temp [:model/Collection collection {}
                          :model/Dashboard  dashboard {:collection_id (u/the-id collection), :collection_position 1}]
             (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dashboard))
                                   {:collection_position nil})
@@ -983,7 +983,7 @@
 
 (deftest update-dashboard-position-test
   (mt/with-non-admin-groups-no-root-collection-perms
-    (t2.with-temp/with-temp [Collection collection]
+    (t2.with-temp/with-temp [:model/Collection collection]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
       (letfn [(move-dashboard! [dashboard new-position]
                 (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard))
@@ -1038,8 +1038,8 @@
 (deftest move-dashboard-to-different-collection-test
   (testing "Check that moving a dashboard to another collection will fixup both collections"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [Collection collection-1 {}
-                     Collection collection-2 {}]
+      (mt/with-temp [:model/Collection collection-1 {}
+                     :model/Collection collection-2 {}]
         (api.card-test/with-ordered-items collection-1 [:model/Dashboard a
                                                         :model/Card      b
                                                         :model/Card      c
@@ -1072,7 +1072,7 @@
   (testing "POST /api/dashboard"
     (testing "Check that adding a new Dashboard at Collection position 3 will increment position of the existing item at position 3"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (t2.with-temp/with-temp [Collection collection]
+        (t2.with-temp/with-temp [:model/Collection collection]
           (mt/with-model-cleanup [:model/Dashboard]
             (api.card-test/with-ordered-items collection [:model/Card  a
                                                           :model/Pulse b
@@ -1095,7 +1095,7 @@
   (testing "POST /api/dashboard"
     (testing "Check that adding a new Dashboard without a position, leaves the existing positions unchanged"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (t2.with-temp/with-temp [Collection collection]
+        (t2.with-temp/with-temp [:model/Collection collection]
           (api.card-test/with-ordered-items collection [:model/Dashboard a
                                                         :model/Card      b
                                                         :model/Pulse     d]
@@ -1185,8 +1185,8 @@
   (testing "Deep copy: POST /api/dashboard/:id/copy"
     (mt/dataset test-data
       (mt/with-temp
-        [Collection source-coll {:name "Source collection"}
-         Collection dest-coll   {:name "Destination collection"}
+        [:model/Collection source-coll {:name "Source collection"}
+         :model/Collection dest-coll   {:name "Destination collection"}
          :model/Dashboard  dashboard {:name          "Dashboard to be Copied"
                                        :description   "A description"
                                        :collection_id (u/the-id source-coll)
@@ -1272,9 +1272,9 @@
   (testing "Deep copy: POST /api/dashboard/:id/copy"
     (mt/dataset test-data
       (testing "When there are cards the user lacks write perms for"
-        (mt/with-temp [Collection source-coll {:name "Source collection"}
-                       Collection no-read-coll {:name "Crowberto lacks write coll"}
-                       Collection dest-coll   {:name "Destination collection"}
+        (mt/with-temp [:model/Collection source-coll {:name "Source collection"}
+                       :model/Collection no-read-coll {:name "Crowberto lacks write coll"}
+                       :model/Collection dest-coll   {:name "Destination collection"}
                        :model/Dashboard  dashboard {:name          "Dashboard to be Copied"
                                                      :description   "A description"
                                                      :collection_id (u/the-id source-coll)
@@ -1354,7 +1354,7 @@
   (testing "Deep copy: POST /api/dashboard/:id/copy"
     (mt/dataset test-data
       (testing "When source and destination are the same"
-        (mt/with-temp [Collection source-coll {:name "Source collection"}
+        (mt/with-temp [:model/Collection source-coll {:name "Source collection"}
                        :model/Dashboard  dashboard {:name          "Dashboard to be Copied"
                                                      :description   "A description"
                                                      :collection_id (u/the-id source-coll)
@@ -1624,7 +1624,7 @@
   (testing "POST /api/dashboard/:id/copy"
     (testing "Ensure the correct collection is set when copying"
       (dashboard-test/with-dash-in-collection! [_db collection dash]
-        (t2.with-temp/with-temp [Collection new-collection]
+        (t2.with-temp/with-temp [:model/Collection new-collection]
           ;; grant Permissions for both new and old collections
           (doseq [coll [collection new-collection]]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll))
@@ -2931,7 +2931,7 @@
                                                                               (keyword (:price param-keys)) 4))))))))
       (testing "Should require perms for the Dashboard"
         (mt/with-non-admin-groups-no-root-collection-perms
-          (t2.with-temp/with-temp [Collection collection]
+          (t2.with-temp/with-temp [:model/Collection collection]
             (with-chain-filter-fixtures [{:keys [dashboard param-keys]} {:collection_id (:id collection)}]
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :get 403 (chain-filter-values-url
@@ -3175,7 +3175,7 @@
 
     (testing "Should require perms for the Dashboard"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (t2.with-temp/with-temp [Collection collection]
+        (t2.with-temp/with-temp [:model/Collection collection]
           (with-chain-filter-fixtures [{:keys [dashboard param-keys]} {:collection_id (:id collection)}]
             (let [url (chain-filter-search-url dashboard (:category-name param-keys) "s")]
               (testing (str "\n url")
@@ -3405,12 +3405,12 @@
   (testing "users must have permissions to read the collection that source card is in"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp
-        [Collection coll1 {:name "Source card collection"}
+        [:model/Collection coll1 {:name "Source card collection"}
          :model/Card       {source-card-id :id} {:collection_id (:id coll1)
                                                   :database_id   (mt/id)
                                                   :table_id      (mt/id :venues)
                                                   :dataset_query (mt/mbql-query venues {:limit 5})}
-         Collection coll2 {:name "Dashboard collections"}
+         :model/Collection coll2 {:name "Dashboard collections"}
          :model/Dashboard  {dashboard-id :id} {:collection_id (:id coll2)
                                                 :parameters    [{:id                   "abc"
                                                                  :type                 "category"
@@ -3563,7 +3563,7 @@
                        (mt/user-http-request :rasta :post 404 (url :card-id Integer/MAX_VALUE))))))
 
             (testing "perms"
-              (t2.with-temp/with-temp [Collection {collection-id :id}]
+              (t2.with-temp/with-temp [:model/Collection {collection-id :id}]
                 (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
                 (testing "Should return error if current User doesn't have read perms for the Dashboard"
                   (mt/with-temp-vals-in-db :model/Dashboard dashboard-id {:collection_id collection-id}

@@ -9,6 +9,7 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
+   [metabase.models.field-values :as field-values]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]

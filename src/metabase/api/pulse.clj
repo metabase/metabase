@@ -19,6 +19,7 @@
    [metabase.integrations.slack :as slack]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.pulse-channel :as pulse-channel]
    [metabase.notification.core :as notification]
    [metabase.plugins.classloader :as classloader]
@@ -225,7 +226,7 @@
   "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
   (validation/check-has-application-permission :subscription false)
-  (let [chan-types (-> channel-types
+  (let [chan-types (-> pulse-channel/channel-types
                        (assoc-in [:slack :configured] (slack/slack-configured?))
                        (assoc-in [:email :configured] (email/email-configured?))
                        (assoc-in [:http :configured] (t2/exists? :model/Channel :type :channel/http :active true)))]

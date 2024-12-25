@@ -4,6 +4,7 @@
   (:require
    [metabase.db.query :as mdb.query]
    [metabase.models.field :as field]
+   [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]

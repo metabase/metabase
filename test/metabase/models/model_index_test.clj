@@ -6,6 +6,7 @@
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.driver.util :as driver.u]
+   [metabase.models.model-index :as model-index]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.task :as task]
@@ -205,7 +206,7 @@
                                             :alias        "Products"}]})
                           [(mt/$ids [&Products.products.id &Products.products.title])]])])]
         (t2.with-temp/with-temp [:model/Card model (mt/card-with-source-metadata-for-query
-                                                     query)]
+                                                    query)]
           (testing (str "scenario: " scenario)
             (let [[pk-ref value-ref] (or field-refs
                                          (->> model :result_metadata (map :field_ref)))
@@ -300,11 +301,11 @@
                                                           :type :model
                                                           :name "model index test")
                                  :model/ModelIndex mi {:model_id   (u/the-id model)
-                                                        :pk_ref     pk-ref
-                                                        :value_ref  invalid-value-ref
-                                                        :creator_id (mt/user->id :rasta)
-                                                        :schedule   "0 0 23 * * ? *"
-                                                        :state      "initial"}]
+                                                       :pk_ref     pk-ref
+                                                       :value_ref  invalid-value-ref
+                                                       :creator_id (mt/user->id :rasta)
+                                                       :schedule   "0 0 23 * * ? *"
+                                                       :state      "initial"}]
           (model-index/add-values! mi)
           (let [bad-attempt (t2/select-one :model/ModelIndex :id (u/the-id mi))]
             (is (=? {:state "error"

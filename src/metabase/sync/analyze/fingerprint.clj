@@ -9,6 +9,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.models.field :as field]
    [metabase.models.table :as table]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync.interface :as i]
@@ -202,7 +203,7 @@
       (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
       (let [stats (sync-util/with-error-handling
                    (format "Error fingerprinting %s" (sync-util/name-for-logging table))
-                   (fingerprint-table! table fields))]
+                    (fingerprint-table! table fields))]
         (if (instance? Exception stats)
           (empty-stats-map 0)
           stats)))

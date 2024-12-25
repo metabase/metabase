@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase.models.secret :as secret]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.encryption-test :as encryption-test]
