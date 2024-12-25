@@ -7,7 +7,7 @@
    [clojure.string :as str]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
-   [metabase.models :refer [Card Collection Dashboard]]
+   [metabase.models :refer [:model/Card :model/Collection :model/Dashboard]]
    [metabase.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -48,7 +48,7 @@
 
   Does not export ee-only analytics collections."
   [user-id]
-  (let [roots (t2/select Collection {:where [:and [:= :location "/"]
+  (let [roots (t2/select :model/Collection {:where [:and [:= :location "/"]
                                              [:or [:= :personal_owner_id nil]
                                               [:= :personal_owner_id user-id]]
                                              [:or [:= :namespace nil]
@@ -60,7 +60,7 @@
 
 (defn- collection-label [coll-id]
   (if coll-id
-    (let [collection (t2/hydrate (t2/select-one Collection :id coll-id) :ancestors)
+    (let [collection (t2/hydrate (t2/select-one :model/Collection :id coll-id) :ancestors)
           names      (->> (conj (:ancestors collection) collection)
                           (map :name)
                           (str/join " > "))]
@@ -68,7 +68,7 @@
     "[no collection]"))
 
 (defn- card-label [card-id]
-  (let [card (t2/select-one [Card :collection_id :name] :id card-id)]
+  (let [card (t2/select-one [:model/Card :collection_id :name] :id card-id)]
     (format "Card %d (%s from collection %s)" card-id (:name card) (collection-label (:collection_id card)))))
 
 (defn- parse-target [[model-name id :as target]]
@@ -79,10 +79,10 @@
 (defn- escape-analysis [{colls "Collection" cards "Card"} nodes]
   (log/tracef "Running escape analysis for %d colls and %d cards" (count colls) (count cards))
   (when-let [colls (-> colls set not-empty)]
-    (let [known-cards (t2/select-pks-set Card {:where [:or
-                                                       [:in :collection_id colls]
-                                                       (when (contains? colls nil)
-                                                         [:= :collection_id nil])]})
+    (let [known-cards (t2/select-pks-set :model/Card {:where [:or
+                                                               [:in :collection_id colls]
+                                                               (when (contains? colls nil)
+                                                                 [:= :collection_id nil])]})
           escaped     (->> (set/difference (set cards) known-cards)
                            (mapv (fn [id]
                                    (-> (get nodes ["Card" id])
@@ -94,7 +94,7 @@
     (doseq [[dash-id escapes] (dissoc dashboards nil)]
       (log/warnf "Failed to export Dashboard %d (%s) containing Card saved outside requested collections: %s"
                  dash-id
-                 (t2/select-one-fn :name Dashboard :id dash-id)
+                 (t2/select-one-fn :name :model/Dashboard :id dash-id)
                  (str/join ", " (map #(card-label (:escapee %)) escapes))))
     (when-let [other (not-empty (get dashboards nil))]
       (log/warnf "Failed to export Cards based on questions outside requested collections: %s"

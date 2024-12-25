@@ -4,8 +4,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.serialize :as serialize]
    [metabase-enterprise.serialization.test-util :as ts]
-   [metabase.models :refer [Card Collection Dashboard Database Field NativeQuerySnippet
-                            Segment Table]]))
+   [metabase.models :refer [:model/Card :model/Collection :model/Dashboard :model/Database :model/Field :model/NativeQuerySnippet
+                            :model/Segment :model/Table]]))
 
 (defn- all-ids-are-fully-qualified-names?
   [m]
@@ -24,14 +24,14 @@
 
 (deftest serialization-test
   (ts/with-world
-    (doseq [[model id] [[Card card-id]
-                        [Segment segment-id]
-                        [Collection collection-id]
-                        [Dashboard dashboard-id]
-                        [Table table-id]
-                        [Field numeric-field-id]
-                        [Database db-id]
-                        [NativeQuerySnippet snippet-id]]]
+    (doseq [[model id] [[:model/Card card-id]
+                        [:model/Segment segment-id]
+                        [:model/Collection collection-id]
+                        [:model/Dashboard dashboard-id]
+                        [:model/Table table-id]
+                        [:model/Field numeric-field-id]
+                        [:model/Database db-id]
+                        [:model/NativeQuerySnippet snippet-id]]]
       (testing (name model)
         (let [serialization (serialize/serialize (model id))]
           (testing (format "\nserialization = %s" (pr-str serialization))

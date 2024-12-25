@@ -3,11 +3,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
-   [metabase.models.field :refer [Field]]
+   [metabase.models.field :refer [:model/Field]]
    [metabase.models.interface :as mi]))
 
 (def ^:private long-text-field
-  (mi/instance Field
+  (mi/instance :model/Field
                {:database_type       "VARCHAR"
                 :semantic_type       nil
                 :name                "longfield"

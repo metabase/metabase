@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:model/Card]]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]
    [toucan2.util :as u]))
@@ -12,7 +12,7 @@
     (let [query     (mt/mbql-query products)
           pk_ref    (mt/$ids $products.id)
           value_ref (mt/$ids $products.title)]
-      (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
+      (t2.with-temp/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
                                                  :type :model
                                                  :name "model index test")]
         (let [model-index (mt/user-http-request :rasta :post 200 "/model-index"
@@ -62,7 +62,7 @@
   (testing "Ensures that the pk ref is a primary key"
     (mt/dataset test-data
       (let [query (mt/mbql-query products)]
-        (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
+        (t2.with-temp/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
                                                    :type :model
                                                    :name "model index test")]
           (let [by-name (fn [n] (or (some (fn [f] (when (= n (-> f :name u/lower-case-en))
@@ -102,9 +102,9 @@
         (let [query     (mt/mbql-query products)
               pk_ref    (mt/$ids $products.id)
               value_ref (mt/$ids $products.title)]
-          (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                                     :type :model
-                                                     :name "model index test")]
+          (t2.with-temp/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
+                                                             :type :model
+                                                             :name "model index test")]
             (mt/user-http-request :crowberto :post 200 "/model-index" {:model_id  (:id model)
                                                                        :pk_ref    pk_ref
                                                                        :value_ref value_ref})

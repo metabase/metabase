@@ -13,7 +13,7 @@
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.secret :as secret :refer [Secret]]
+   [metabase.models.secret :as secret :refer [:model/Secret]]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
@@ -34,7 +34,7 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(def Database
+(def :model/Database
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
   We'll keep this till we replace all Database symbols in our codebase."
   :model/Database)
@@ -71,7 +71,7 @@
   [database-id]
   (and (not (premium-features/enable-audit-app?)) (= database-id audit/audit-db-id)))
 
-(defmethod mi/can-read? Database
+(defmethod mi/can-read? :model/Database
   ([instance]
    (mi/can-read? :model/Database (u/the-id instance)))
   ([_model pk]
@@ -222,7 +222,7 @@
                                 []
                                 possible-secret-prop-names)]
         (log/infof "Deleting secret ID %s from app DB because the owning database (%s) is being deleted" secret-id id)
-        (t2/delete! Secret :id secret-id)))))
+        (t2/delete! :model/Secret :id secret-id)))))
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
@@ -483,13 +483,13 @@
 
 (defmethod serdes/load-find-local "Database"
   [[{:keys [id]}]]
-  (t2/select-one Database :name id))
+  (t2/select-one :model/Database :name id))
 
 (defmethod serdes/storage-path "Database" [{:keys [name]} _]
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
   ["databases" name name])
 
-(defmethod audit-log/model-details Database
+(defmethod audit-log/model-details :model/Database
   [database _event-type]
   (select-keys database [:id :name :engine]))
 

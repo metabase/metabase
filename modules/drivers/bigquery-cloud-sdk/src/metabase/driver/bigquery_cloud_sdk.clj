@@ -14,7 +14,7 @@
    [metabase.driver.sync :as driver.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models :refer [Database]]
+   [metabase.models :refer [:model/Database]]
    [metabase.models.table :as table]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -268,8 +268,8 @@
                  (cond->
                   {:select [:table_name :column_name :data_type :field_path]
                    :from [[(information-schema-table project-id dataset-id "COLUMN_FIELD_PATHS") :c]]}
-                   (not-empty table-names)
-                   (assoc :where [:in :table_name table-names])))
+                  (not-empty table-names)
+                  (assoc :where [:in :table_name table-names])))
         nested-columns (map (fn [{data-type :data_type field-path-str :field_path table-name :table_name}]
                               (let [field-path (str/split field-path-str #"\.")
                                     nfc-path (not-empty (pop field-path))
@@ -299,8 +299,8 @@
                      {:select [:table_name :column_name :data_type :ordinal_position
                                [[:= :is_partitioning_column "YES"] :partitioned]]
                       :from [[(information-schema-table project-id dataset-id "COLUMNS") :c]]}
-                      (not-empty table-names)
-                      (assoc :where [:in :table_name table-names])))
+                     (not-empty table-names)
+                     (assoc :where [:in :table_name table-names])))
         nested-column-lookup (build-nested-column-lookup driver database project-id dataset-id table-names)
         maybe-add-nested-fields (fn maybe-add-nested-fields [col nfc-path root-database-position]
                                   (let [new-path ((fnil conj []) nfc-path (:name col))
@@ -713,7 +713,7 @@
     (let [updated-db (-> (assoc-in database [:details :dataset-filters-type] "inclusion")
                          (assoc-in [:details :dataset-filters-patterns] dataset-id)
                          (m/dissoc-in [:details :dataset-id]))]
-      (t2/update! Database db-id {:details (:details updated-db)})
+      (t2/update! :model/Database db-id {:details (:details updated-db)})
       updated-db)))
 
 ;; TODO: THIS METHOD SHOULD NOT BE UPDATING THE APP-DB (which it does in [convert-dataset-id-to-filters!])

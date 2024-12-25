@@ -7,7 +7,7 @@
    [mb.hawk.parallel]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
-   [metabase.models.user :refer [User]]
+   [metabase.models.user :refer [:model/User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features
     :as premium-features
@@ -286,7 +286,7 @@
 
 (deftest active-users-count-setting-test
   (t2.with-temp/with-temp
-    [User _ {:is_active false}]
+    [:model/User _ {:is_active false}]
     (testing "returns the number of active users"
       (is (= (t2/count :model/User :is_active true :type :personal)
              (premium-features/active-users-count))))

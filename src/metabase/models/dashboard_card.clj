@@ -4,9 +4,9 @@
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
-   [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+   [metabase.models.dashboard-card-series :refer [:model/DashboardCardSeries]]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse-card :refer [PulseCard]]
+   [metabase.models.pulse-card :refer [:model/PulseCard]]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -15,7 +15,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(def DashboardCard
+(def :model/DashboardCard
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
    We'll keep this till we replace all the DashboardCard symbol in our codebase."
   :model/DashboardCard)
@@ -146,12 +146,12 @@
   [dashcard-id->card-ids]
   (when (seq dashcard-id->card-ids)
     ;; first off, just delete all series on the dashboard card (we add them again below)
-    (t2/delete! DashboardCardSeries :dashboardcard_id [:in (keys dashcard-id->card-ids)])
+    (t2/delete! :model/DashboardCardSeries :dashboardcard_id [:in (keys dashcard-id->card-ids)])
     ;; now just insert all of the series that were given to us
     (when-let [card-series (seq (for [[dashcard-id card-ids] dashcard-id->card-ids
                                       [i card-id]            (map-indexed vector card-ids)]
                                   {:dashboardcard_id dashcard-id, :card_id card-id, :position i}))]
-      (t2/insert! DashboardCardSeries card-series))))
+      (t2/insert! :model/DashboardCardSeries card-series))))
 
 (def ^:private DashboardCardUpdates
   [:map
@@ -214,7 +214,7 @@
   (when (seq dashboard-cards)
     (t2/with-transaction [_conn]
       (let [dashboard-card-ids (t2/insert-returning-pks!
-                                DashboardCard
+                                :model/DashboardCard
                                 (for [dashcard dashboard-cards]
                                   (merge {:parameter_mappings []
                                           :visualization_settings {}}
@@ -222,7 +222,7 @@
         ;; add series to the DashboardCard
         (update-dashboard-cards-series! (zipmap dashboard-card-ids (map #(get % :series []) dashboard-cards)))
         ;; return the full DashboardCard
-        (-> (t2/select DashboardCard :id [:in dashboard-card-ids])
+        (-> (t2/select :model/DashboardCard :id [:in dashboard-card-ids])
             (t2/hydrate :series))))))
 
 (defn delete-dashboard-cards!
@@ -230,8 +230,8 @@
   [dashboard-card-ids]
   {:pre [(coll? dashboard-card-ids)]}
   (t2/with-transaction [_conn]
-    (t2/delete! PulseCard :dashboard_card_id [:in dashboard-card-ids])
-    (t2/delete! DashboardCard :id [:in dashboard-card-ids])))
+    (t2/delete! :model/PulseCard :dashboard_card_id [:in dashboard-card-ids])
+    (t2/delete! :model/DashboardCard :id [:in dashboard-card-ids])))
 
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------
 

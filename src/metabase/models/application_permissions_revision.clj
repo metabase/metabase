@@ -5,7 +5,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(def ApplicationPermissionsRevision
+(def :model/ApplicationPermissionsRevision
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
   We'll keep this till we replace all the symbols in our codebase."
   :model/ApplicationPermissionsRevision)
@@ -28,5 +28,5 @@
   "Return the ID of the newest `ApplicationPermissionsRevision`, or zero if none have been made yet.
    (This is used by the permissions graph update logic that checks for changes since the original graph was fetched)."
   []
-  (or (t2/select-one-pk ApplicationPermissionsRevision {:order-by [[:id :desc]]})
+  (or (t2/select-one-pk :model/ApplicationPermissionsRevision {:order-by [[:id :desc]]})
       0))

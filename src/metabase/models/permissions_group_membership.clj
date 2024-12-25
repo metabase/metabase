@@ -7,7 +7,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(def PermissionsGroupMembership
+(def :model/PermissionsGroupMembership
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
   We'll keep this till we replace all the symbols in our codebase."
   :model/PermissionsGroupMembership)
@@ -22,7 +22,7 @@
 
 (defonce ^:dynamic ^{:doc "Should we allow people to be added to or removed from the All Users permissions group? By
   default, this is `false`, but enable it when adding or deleting users."}
-  *allow-changing-all-users-group-members*
+ *allow-changing-all-users-group-members*
   false)
 
 (defn- check-not-all-users-group

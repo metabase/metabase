@@ -4,23 +4,23 @@
    [clojure.data :as data]
    [medley.core :as m]
    [metabase-enterprise.serialization.names :refer [name-for-logging]]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
-   [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.dashboard-card :refer [DashboardCard]]
-   [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.dimension :refer [Dimension]]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.field-values :refer [FieldValues]]
-   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-   [metabase.models.pulse :refer [Pulse]]
-   [metabase.models.pulse-card :refer [PulseCard]]
-   [metabase.models.pulse-channel :refer [PulseChannel]]
-   [metabase.models.segment :refer [Segment]]
-   [metabase.models.setting  :refer [Setting]]
-   [metabase.models.table :refer [Table]]
-   [metabase.models.user :refer [User]]
+   [metabase.models.card :refer [:model/Card]]
+   [metabase.models.collection :refer [:model/Collection]]
+   [metabase.models.dashboard :refer [:model/Dashboard]]
+   [metabase.models.dashboard-card :refer [:model/DashboardCard]]
+   [metabase.models.dashboard-card-series :refer [:model/DashboardCardSeries]]
+   [metabase.models.database :refer [:model/Database]]
+   [metabase.models.dimension :refer [:model/Dimensions]]
+   [metabase.models.field :refer [:model/Field]]
+   [metabase.models.field-values :refer [:model/FieldValues]]
+   [metabase.models.native-query-snippet :refer [:model/NativeQuerySnippet]]
+   [metabase.models.pulse :refer [:model/Pulse]]
+   [metabase.models.pulse-card :refer [:model/PulseCard]]
+   [metabase.models.pulse-channel :refer [:model/PulseChannel]]
+   [metabase.models.segment :refer [:model/Segment]]
+   [metabase.models.setting  :refer [:model/Setting]]
+   [metabase.models.table :refer [:model/Table]]
+   [metabase.models.user :refer [:model/User]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
@@ -30,23 +30,23 @@
    [toucan2.tools.after :as t2.after]))
 
 (def ^:private identity-condition
-  {Database            [:name :engine]
-   Table               [:schema :name :db_id]
-   Field               [:name :table_id]
-   Segment             [:name :table_id]
-   Collection          [:name :location :namespace]
-   Dashboard           [:name :collection_id]
-   DashboardCard       [:card_id :dashboard_id :visualization_settings]
-   DashboardCardSeries [:dashboardcard_id :card_id]
-   FieldValues         [:field_id]
-   Dimension           [:field_id :human_readable_field_id]
-   Setting             [:key]
-   Pulse               [:name :collection_id]
-   PulseCard           [:pulse_id :card_id]
-   PulseChannel        [:pulse_id :channel_type :details]
-   Card                [:name :collection_id]
-   User                [:email]
-   NativeQuerySnippet  [:name :collection_id]})
+  {:model/Database            [:name :engine]
+   :model/Table               [:schema :name :db_id]
+   :model/Field               [:name :table_id]
+   :model/Segment             [:name :table_id]
+   :model/Collection          [:name :location :namespace]
+   :model/Dashboard           [:name :collection_id]
+   :model/DashboardCard       [:card_id :dashboard_id :visualization_settings]
+   :model/DashboardCardSeries [:dashboardcard_id :card_id]
+   :model/FieldValues         [:field_id]
+   :model/Dimensions           [:field_id :human_readable_field_id]
+   :model/Setting             [:key]
+   :model/Pulse               [:name :collection_id]
+   :model/PulseCard           [:pulse_id :card_id]
+   :model/PulseChannel        [:pulse_id :channel_type :details]
+   :model/Card                [:name :collection_id]
+   :model/User                [:email]
+   :model/NativeQuerySnippet  [:name :collection_id]})
 
 ;; This could potentially be unrolled into one giant select
 (defn- select-identical
@@ -79,7 +79,7 @@
     (when-let [entity-id (if (= :abort on-error)
                            (first (t2/insert-returning-pks! model entity))
                            (with-error-handling
-                             (trs "Error inserting {0}" (name-for-logging model entity))
+                            (trs "Error inserting {0}" (name-for-logging model entity))
                              (first (t2/insert-returning-pks! model entity))))]
       entity-id)))
 
@@ -147,7 +147,7 @@
                      (if (= on-error :abort)
                        (t2/update! model id entity)
                        (with-error-handling
-                         (trs "Error updating {0}" (name-for-logging (name model) entity))
+                        (trs "Error updating {0}" (name-for-logging (name model) entity))
                          (t2/update! model id entity)))
                      [id position])))
          (sort-by second)

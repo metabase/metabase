@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.models
-    :refer [Card Dashboard DashboardCard DashboardCardSeries]]
+    :refer [:model/Card :model/Dashboard :model/DashboardCard :model/DashboardCardSeries]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -57,12 +57,12 @@
                                                      :display-name "quantity locked"
                                                      :type         :number
                                                      :default      nil}}})]
-        (mt/with-temp [Card {card-id :id} {:dataset_query query}
-                       Dashboard {dashboard-id :id} {:parameters [{:name "param"
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}
+                       :model/Dashboard {dashboard-id :id} {:parameters [{:name "param"
                                                                    :slug "param"
                                                                    :id   "_dash_id_"
                                                                    :type :number/=}]}
-                       DashboardCard {dashcard-id :id} {:parameter_mappings [{:parameter_id "_dash_id_"
+                       :model/DashboardCard {dashcard-id :id} {:parameter_mappings [{:parameter_id "_dash_id_"
                                                                               :card_id card-id
                                                                               :target [:variable [:template-tag "qty_locked"]]}]
                                                         :card_id card-id
@@ -85,14 +85,14 @@
                                             {:parameters (assoc-in params [0 :value] 3)}))))))))))
 
 (deftest card-and-dashcard-id-validation-test
-  (mt/with-temp [Dashboard     {dashboard-id :id} {:parameters []}
-                 Card          {card-id-1 :id} {:dataset_query (mt/mbql-query venues)}
-                 Card          {card-id-2 :id} {:dataset_query (mt/mbql-query venues)}
-                 Card          {card-id-3 :id} {:dataset_query (mt/mbql-query venues)}
-                 DashboardCard {dashcard-id-1 :id} {:card_id card-id-1 :dashboard_id dashboard-id}
-                 DashboardCard {dashcard-id-2 :id} {:card_id card-id-2 :dashboard_id dashboard-id}
-                 DashboardCard {dashcard-id-3 :id} {:card_id card-id-3 :dashboard_id dashboard-id}
-                 DashboardCardSeries _ {:dashboardcard_id dashcard-id-3 :card_id card-id-3}]
+  (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:parameters []}
+                 :model/Card          {card-id-1 :id} {:dataset_query (mt/mbql-query venues)}
+                 :model/Card          {card-id-2 :id} {:dataset_query (mt/mbql-query venues)}
+                 :model/Card          {card-id-3 :id} {:dataset_query (mt/mbql-query venues)}
+                 :model/DashboardCard {dashcard-id-1 :id} {:card_id card-id-1 :dashboard_id dashboard-id}
+                 :model/DashboardCard {dashcard-id-2 :id} {:card_id card-id-2 :dashboard_id dashboard-id}
+                 :model/DashboardCard {dashcard-id-3 :id} {:card_id card-id-3 :dashboard_id dashboard-id}
+                 :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id-3 :card_id card-id-3}]
     (testing "Sanity check that a valid combination card, dashcard and dashboard IDs executes successfully"
       (is (= 100 (count (mt/rows (run-query-for-dashcard dashboard-id card-id-1 dashcard-id-1))))))
 
@@ -123,28 +123,28 @@
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
     (mt/dataset test-data
       (mt/with-temp
-        [Card {card-id :id} {:dataset_query {:database (mt/id)
-                                             :type     :native
-                                             :native   {:query (str "SELECT distinct category "
-                                                                    "FROM products "
-                                                                    "WHERE {{filter}} "
-                                                                    "ORDER BY category ASC")
-                                                        :template-tags
-                                                        {"filter"
-                                                         {:id           "xyz456"
-                                                          :name         "filter"
-                                                          :display-name "Filter"
-                                                          :type         :dimension
-                                                          :dimension    [:field (mt/id :products :category) nil]
-                                                          :widget-type  :category
-                                                          :default      ["Gizmo" "Gadget"]
-                                                          :required     false}}}}}
-         Dashboard {dashboard-id :id} {:parameters [{:name    "category"
+        [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                     :type     :native
+                                                     :native   {:query (str "SELECT distinct category "
+                                                                            "FROM products "
+                                                                            "WHERE {{filter}} "
+                                                                            "ORDER BY category ASC")
+                                                                :template-tags
+                                                                {"filter"
+                                                                 {:id           "xyz456"
+                                                                  :name         "filter"
+                                                                  :display-name "Filter"
+                                                                  :type         :dimension
+                                                                  :dimension    [:field (mt/id :products :category) nil]
+                                                                  :widget-type  :category
+                                                                  :default      ["Gizmo" "Gadget"]
+                                                                  :required     false}}}}}
+         :model/Dashboard {dashboard-id :id} {:parameters [{:name    "category"
                                                      :slug    "category"
                                                      :id      "abc123"
                                                      :type    "string/="
                                                      :default ["Widget"]}]}
-         DashboardCard {dashcard-id :id} {:dashboard_id       dashboard-id
+         :model/DashboardCard {dashcard-id :id} {:dashboard_id       dashboard-id
                                           :card_id            card-id
                                           :parameter_mappings [{:parameter_id "abc123"
                                                                 :card_id      card-id
@@ -171,13 +171,13 @@
 (deftest ^:parallel execute-card-with-filter-stage-test
   (testing "GET /api/card/:id/query with parameters with default values"
     (mt/with-temp
-      [Card {card-id :id} {:database_id   (mt/id)
-                           :table_id      (mt/id :venues)
-                           :dataset_query (mt/mbql-query venues
-                                            {:aggregation  [:count]
-                                             :breakout     [$category_id
-                                                            $price]})}
-       Dashboard {dashboard-id :id} {:parameters
+      [:model/Card {card-id :id} {:database_id   (mt/id)
+                                   :table_id      (mt/id :venues)
+                                   :dataset_query (mt/mbql-query venues
+                                                    {:aggregation  [:count]
+                                                     :breakout     [$category_id
+                                                                    $price]})}
+       :model/Dashboard {dashboard-id :id} {:parameters
                                      [{:slug      "venue_id"
                                        :id        "_VENUE_ID_"
                                        :name      "venue_id"
@@ -186,7 +186,7 @@
                                        :id        "_COUNT_"
                                        :name      "count"
                                        :type      "number/>="}]}
-       DashboardCard {dashcard-id :id} {:dashboard_id       dashboard-id
+       :model/DashboardCard {dashcard-id :id} {:dashboard_id       dashboard-id
                                         :card_id            card-id
                                         :parameter_mappings [{:parameter_id "_VENUE_ID_"
                                                               :card_id      card-id
@@ -221,23 +221,23 @@
   (testing "If both Dashboard and Card have default values for a raw value parameter, Card defaults should take precedence\n"
     (mt/dataset test-data
       (mt/with-temp
-        [Card {card-id :id} {:dataset_query {:database (mt/id)
-                                             :type     :native
-                                             :native   {:query "SELECT {{filter}}"
-                                                        :template-tags
-                                                        {"filter"
-                                                         {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
-                                                          :name         "filter"
-                                                          :display-name "Filter"
-                                                          :type         "text"
-                                                          :required     true
-                                                          :default      "Foo"}}}}}
-         Dashboard {dashboard-id :id} {:parameters [{:name    "Text"
+        [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                     :type     :native
+                                                     :native   {:query "SELECT {{filter}}"
+                                                                :template-tags
+                                                                {"filter"
+                                                                 {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
+                                                                  :name         "filter"
+                                                                  :display-name "Filter"
+                                                                  :type         "text"
+                                                                  :required     true
+                                                                  :default      "Foo"}}}}}
+         :model/Dashboard {dashboard-id :id} {:parameters [{:name    "Text"
                                                      :slug    "text"
                                                      :id      "5791ff38"
                                                      :type    "string/="
                                                      :default "Bar"}]}
-         DashboardCard {dashcard-id :id} {:dashboard_id       dashboard-id
+         :model/DashboardCard {dashcard-id :id} {:dashboard_id       dashboard-id
                                           :card_id            card-id
                                           :parameter_mappings [{:parameter_id "5791ff38"
                                                                 :card_id      card-id
@@ -268,8 +268,8 @@
                 "filters for the DashCard we're running a query for (#19494)")
     (mt/dataset test-data
       (mt/with-temp
-        [Card      {card-id :id}      {:dataset_query (mt/mbql-query products {:aggregation [[:count]]})}
-         Dashboard {dashboard-id :id} {:parameters [{:name "Category (DashCard 1)"
+        [:model/Card      {card-id :id}      {:dataset_query (mt/mbql-query products {:aggregation [[:count]]})}
+         :model/Dashboard {dashboard-id :id} {:parameters [{:name "Category (DashCard 1)"
                                                      :slug "category_1"
                                                      :id   "CATEGORY_1"
                                                      :type "string/="}
@@ -277,12 +277,12 @@
                                                      :slug    "category_2"
                                                      :id      "CATEGORY_2"
                                                      :type    "string/="}]}
-         DashboardCard {dashcard-1-id :id} {:card_id            card-id
+         :model/DashboardCard {dashcard-1-id :id} {:card_id            card-id
                                             :dashboard_id       dashboard-id
                                             :parameter_mappings [{:parameter_id "CATEGORY_1"
                                                                   :card_id      card-id
                                                                   :target       [:dimension (mt/$ids $products.category)]}]}
-         DashboardCard {dashcard-2-id :id} {:card_id            card-id
+         :model/DashboardCard {dashcard-2-id :id} {:card_id            card-id
                                             :dashboard_id       dashboard-id
                                             :parameter_mappings [{:parameter_id "CATEGORY_2"
                                                                   :card_id      card-id
@@ -322,14 +322,14 @@
         (mt/with-native-query-testing-context query
           (is (= [[200]]
                  (mt/rows (qp/process-query query)))))
-        (mt/with-temp [Card          {card-id :id} {:dataset_query query}
-                       Dashboard     {dashboard-id :id} {:parameters [{:name      "Text"
+        (mt/with-temp [:model/Card          {card-id :id} {:dataset_query query}
+                       :model/Dashboard     {dashboard-id :id} {:parameters [{:name      "Text"
                                                                        :slug      "text"
                                                                        :id        "_TEXT_"
                                                                        :type      "string/="
                                                                        :sectionId "string"
                                                                        :default   ["Doohickey"]}]}
-                       DashboardCard {dashcard-id :id} {:parameter_mappings     [{:parameter_id "_TEXT_"
+                       :model/DashboardCard {dashcard-id :id} {:parameter_mappings     [{:parameter_id "_TEXT_"
                                                                                   :card_id      card-id
                                                                                   :target       [:dimension [:template-tag "cat"]]}]
                                                         :card_id                card-id
@@ -348,9 +348,9 @@
                                                                   :value   nil
                                                                   :default ["Doohickey"]}]))))))
         (testing "if the dashboard doesn't have a parameter mapped to the card parameter"
-          (mt/with-temp [Card          {card-id :id} {:dataset_query query}
-                         Dashboard     {dashboard-id :id} {:parameters []}
-                         DashboardCard {dashcard-id :id} {:parameter_mappings     []
+          (mt/with-temp [:model/Card          {card-id :id} {:dataset_query query}
+                         :model/Dashboard     {dashboard-id :id} {:parameters []}
+                         :model/DashboardCard {dashcard-id :id} {:parameter_mappings     []
                                                           :card_id                card-id
                                                           :visualization_settings {}
                                                           :dashboard_id           dashboard-id}]
@@ -371,14 +371,14 @@
         (mt/with-native-query-testing-context query
           (is (= [[51]]
                  (mt/rows (qp/process-query query)))))
-        (mt/with-temp [Card          {card-id :id} {:dataset_query query}
-                       Dashboard     {dashboard-id :id} {:parameters [{:name      "Text"
+        (mt/with-temp [:model/Card          {card-id :id} {:dataset_query query}
+                       :model/Dashboard     {dashboard-id :id} {:parameters [{:name      "Text"
                                                                        :slug      "text"
                                                                        :id        "_text_"
                                                                        :type      "string/="
                                                                        :sectionId "string"
                                                                        :default   ["Doohickey"]}]}
-                       DashboardCard {dashcard-id :id} {:parameter_mappings     [{:parameter_id "_text_"
+                       :model/DashboardCard {dashcard-id :id} {:parameter_mappings     [{:parameter_id "_text_"
                                                                                   :card_id      card-id
                                                                                   :target       [:dimension [:template-tag "cat"]]}]
                                                         :card_id                card-id
@@ -397,9 +397,9 @@
                                                                   :value   nil
                                                                   :default ["Doohickey"]}]))))))
         (testing "should apply the default if the dashboard parameter is not mapped to the card parameter"
-          (mt/with-temp [Card          {card-id :id} {:dataset_query query}
-                         Dashboard     {dashboard-id :id} {:parameters []}
-                         DashboardCard {dashcard-id :id} {:parameter_mappings     []
+          (mt/with-temp [:model/Card          {card-id :id} {:dataset_query query}
+                         :model/Dashboard     {dashboard-id :id} {:parameters []}
+                         :model/DashboardCard {dashcard-id :id} {:parameter_mappings     []
                                                           :card_id                card-id
                                                           :visualization_settings {}
                                                           :dashboard_id           dashboard-id}]
@@ -409,18 +409,18 @@
 (deftest ignore-default-values-in-request-parameters-test
   (testing "Parameters passed in from the request with only default values (but no actual values) should get ignored (#20516)"
     (mt/dataset test-data
-      (mt/with-temp [Card {card-id :id} {:name          "Orders"
-                                         :dataset_query (mt/mbql-query products
-                                                          {:fields   [$id $title $category]
-                                                           :order-by [[:asc $id]]
-                                                           :limit    2})}
-                     Dashboard {dashboard-id :id} {:name       "20516 Dashboard"
+      (mt/with-temp [:model/Card {card-id :id} {:name          "Orders"
+                                                 :dataset_query (mt/mbql-query products
+                                                                  {:fields   [$id $title $category]
+                                                                   :order-by [[:asc $id]]
+                                                                   :limit    2})}
+                     :model/Dashboard {dashboard-id :id} {:name       "20516 Dashboard"
                                                    :parameters [{:name    "Category"
                                                                  :slug    "category"
                                                                  :id      "_CATEGORY_"
                                                                  :type    "category"
                                                                  :default ["Doohickey"]}]}
-                     DashboardCard {dashcard-id :id} {:parameter_mappings [{:parameter_id "_CATEGORY_"
+                     :model/DashboardCard {dashcard-id :id} {:parameter_mappings [{:parameter_id "_CATEGORY_"
                                                                             :card_id      card-id
                                                                             :target       [:dimension [:field (mt/id :products :category) nil]]}]
                                                       :card_id            card-id

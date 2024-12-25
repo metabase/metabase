@@ -8,7 +8,7 @@
    [medley.core :as m]
    [metabase.audit :as audit]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:model/Card]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
@@ -143,7 +143,7 @@
    ;; not all sandboxes have Cards
    (when card-id
      ;; not all Cards have saved result metadata
-     (when-let [result-metadata (t2/select-one-fn :result_metadata Card :id card-id)]
+     (when-let [result-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
        (check-columns-match-table table-id result-metadata))))
 
   ([table-id :- ms/PositiveInt result-metadata-columns]
@@ -161,7 +161,7 @@
   [{new-result-metadata :result_metadata, card-id :id}]
   (when new-result-metadata
     (when-let [gtaps-using-this-card (not-empty (t2/select [GroupTableAccessPolicy :id :table_id] :card_id card-id))]
-      (let [original-result-metadata (t2/select-one-fn :result_metadata Card :id card-id)]
+      (let [original-result-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
         (when-not (= original-result-metadata new-result-metadata)
           (doseq [{table-id :table_id} gtaps-using-this-card]
             (try

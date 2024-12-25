@@ -17,9 +17,9 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
-   [metabase.models :refer [Field Table]]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models :refer [:model/Field :model/Table]]
+   [metabase.models.card :refer [:model/Card]]
+   [metabase.models.collection :as collection :refer [:model/Collection]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -462,11 +462,11 @@
            :where  [:= [:raw "\"source\".\"BIRD.ID\""] [:inline 1]]
            :limit  [:inline 10]})
          (qp.compile/compile
-          {:database (mt/id)
-           :type     :query
-           :query    {:source-query {:source-table (mt/id :venues)}
-                      :filter       [:= [:field "BIRD.ID" {:base-type :type/Integer}] 1]
-                      :limit        10}}))
+           {:database (mt/id)
+            :type     :query
+            :query    {:source-query {:source-table (mt/id :venues)}
+                       :filter       [:= [:field "BIRD.ID" {:base-type :type/Integer}] 1]
+                       :limit        10}}))
       (str "make sure that dots in field literal identifiers get handled properly so you can't reference fields "
            "from other tables using them")))
 
@@ -485,10 +485,10 @@
                       [:< [:raw "\"source\".\"BIRD.ID\""]  (t/local-date-time "2017-01-08T00:00")]]
              :limit  [:inline 10]})
            (qp.compile/compile
-            (mt/mbql-query venues
-              {:source-query {:source-table $$venues}
-               :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
-               :limit        10})))
+             (mt/mbql-query venues
+               {:source-query {:source-table $$venues}
+                :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
+                :limit        10})))
         "make sure that field-literals work as DateTimeFields")))
 
 (deftest ^:parallel aggregatation-references-test
@@ -563,10 +563,10 @@
                       [:= :source.text nil]]
              :limit  [:inline 10]})
            (qp.compile/compile
-            (mt/mbql-query nil
-              {:source-query {:source-table $$venues}
-               :limit        10
-               :filter       [:!= [:field "text" {:base-type :type/Text}] "Coo"]}))))))
+             (mt/mbql-query nil
+               {:source-query {:source-table $$venues}
+                :limit        10
+                :filter       [:!= [:field "text" {:base-type :type/Text}] "Coo"]}))))))
 
 (deftest ^:parallel filter-by-number-fields-test
   (testing "Make sure we can filter by number fields form a source query"
@@ -581,10 +581,10 @@
              :where  [:> :source.sender_id [:inline 3]]
              :limit  [:inline 10]})
            (qp.compile/compile
-            (mt/mbql-query nil
-              {:source-query {:source-table $$venues}
-               :limit        10
-               :filter       [:> *sender_id/Integer 3]}))))))
+             (mt/mbql-query nil
+               {:source-query {:source-table $$venues}
+                :limit        10
+                :filter       [:> *sender_id/Integer 3]}))))))
 
 (deftest ^:parallel native-query-with-default-params-as-source-test
   (testing "make sure using a native query with default params as a source works"
@@ -601,9 +601,9 @@
       (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = ? LIMIT 10) AS \"source\" LIMIT 1048575"
               :params ["Widget"]}
              (qp.compile/compile
-              {:database (meta/id)
-               :type     :query
-               :query    {:source-table "card__1"}}))))))
+               {:database (meta/id)
+                :type     :query
+                :query    {:source-table "card__1"}}))))))
 
 (deftest ^:parallel correct-column-metadata-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -776,12 +776,12 @@
           (mt/with-no-data-perms-for-all-users!
             (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
             (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
-            (mt/with-temp [Collection collection {}
-                           Card       card-1 {:collection_id (u/the-id collection)
-                                              :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 2})}
-                           Card       card-2 {:collection_id (u/the-id collection)
-                                              :dataset_query (mt/mbql-query nil
-                                                               {:source-table (format "card__%d" (u/the-id card-1))})}]
+            (mt/with-temp [:model/Collection collection {}
+                           :model/Card       card-1 {:collection_id (u/the-id collection)
+                                                      :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 2})}
+                           :model/Card       card-2 {:collection_id (u/the-id collection)
+                                                      :dataset_query (mt/mbql-query nil
+                                                                       {:source-table (format "card__%d" (u/the-id card-1))})}]
               (testing "read perms for both Cards should be the same as reading the parent collection")
               (is (= (mi/perms-objects-set collection :read)
                      (mi/perms-objects-set card-1 :read)
@@ -820,10 +820,10 @@
   using Rasta. Use this to test how the API endpoint behaves based on certain permissions grants for the `All Users`
   group."
   [expected-status-code db-or-id source-collection-or-id-or-nil dest-collection-or-id-or-nil]
-  (t2.with-temp/with-temp [Card card {:collection_id (some-> source-collection-or-id-or-nil u/the-id)
-                                      :dataset_query {:database (u/the-id db-or-id)
-                                                      :type     :native
-                                                      :native   {:query "SELECT * FROM VENUES"}}}]
+  (t2.with-temp/with-temp [:model/Card card {:collection_id (some-> source-collection-or-id-or-nil u/the-id)
+                                              :dataset_query {:database (u/the-id db-or-id)
+                                                              :type     :native
+                                                              :native   {:query "SELECT * FROM VENUES"}}}]
     (mt/user-http-request :rasta :post expected-status-code "card"
                           {:name                   (mt/random-name)
                            :collection_id          (some-> dest-collection-or-id-or-nil u/the-id)
@@ -837,8 +837,8 @@
     (mt/with-temp-copy-of-db
       (testing (str "To save a Card that uses another Card as its source, you only need read permissions for the Collection "
                     "the Source Card is in, and write permissions for the Collection you're trying to save the new Card in")
-        (mt/with-temp [Collection source-card-collection {}
-                       Collection dest-card-collection   {}]
+        (mt/with-temp [:model/Collection source-card-collection {}
+                       :model/Collection dest-card-collection   {}]
           (perms/grant-collection-read-permissions!      (perms-group/all-users) source-card-collection)
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
           (is (some? (save-card-via-API-with-native-source-query! 200 (mt/db) source-card-collection dest-card-collection)))))
@@ -846,28 +846,28 @@
       (testing (str "however, if we do *not* have read permissions for the source Card's collection we shouldn't be "
                     "allowed to save the query. This API call should fail")
         (testing "Card in the Root Collection"
-          (t2.with-temp/with-temp [Collection dest-card-collection]
+          (t2.with-temp/with-temp [:model/Collection dest-card-collection]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
             (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
                     (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
 
         (testing "Card in a different Collection for which we do not have perms"
-          (mt/with-temp [Collection source-card-collection {}
-                         Collection dest-card-collection   {}]
+          (mt/with-temp [:model/Collection source-card-collection {}
+                         :model/Collection dest-card-collection   {}]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
             (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
                     (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection)))))
 
         (testing "similarly, if we don't have *write* perms for the dest collection it should also fail"
           (testing "Try to save in the Root Collection"
-            (t2.with-temp/with-temp [Collection source-card-collection]
+            (t2.with-temp/with-temp [:model/Collection source-card-collection]
               (perms/grant-collection-read-permissions! (perms-group/all-users) source-card-collection)
               (is (=? {:message "You do not have curate permissions for this Collection."}
                       (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
 
           (testing "Try to save in a different Collection for which we do not have perms"
-            (mt/with-temp [Collection source-card-collection {}
-                           Collection dest-card-collection   {}]
+            (mt/with-temp [:model/Collection source-card-collection {}
+                           :model/Collection dest-card-collection   {}]
               (perms/grant-collection-read-permissions! (perms-group/all-users) source-card-collection)
               (is (=? {:message "You do not have curate permissions for this Collection."}
                       (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection))))))))))
@@ -1150,8 +1150,8 @@
                            (ean-metadata (qp/process-query query))))))))))))))
 
 (defn- field-id->name [field-id]
-  (let [{field-name :name, table-id :table_id} (t2/select-one [Field :name :table_id] :id field-id)
-        table-name                             (t2/select-one-fn :name Table :id table-id)]
+  (let [{field-name :name, table-id :table_id} (t2/select-one [:model/Field :name :table_id] :id field-id)
+        table-name                             (t2/select-one-fn :name :model/Table :id table-id)]
     (format "%s.%s" table-name field-name)))
 
 (deftest ^:parallel inception-test

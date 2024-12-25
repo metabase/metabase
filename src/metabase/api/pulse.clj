@@ -17,15 +17,15 @@
    [metabase.email :as email]
    [metabase.events :as events]
    [metabase.integrations.slack :as slack]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:model/Card]]
    [metabase.models.collection :as collection]
-   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard :refer [:model/Dashboard]]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse :as models.pulse :refer [Pulse]]
+   [metabase.models.pulse :as models.pulse :refer [:model/Pulse]]
    [metabase.models.pulse-channel
     :as pulse-channel
-    :refer [channel-types PulseChannel]]
-   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+    :refer [channel-types :model/PulseChannel]]
+   [metabase.models.pulse-channel-recipient :refer [:model/PulseChannelRecipient]]
    [metabase.notification.core :as notification]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
@@ -108,7 +108,7 @@
   (doseq [card cards
           :let [card-id (u/the-id card)]]
     (assert (integer? card-id))
-    (api/read-check Card card-id)))
+    (api/read-check :model/Card card-id)))
 
 (api/defendpoint POST "/"
   "Create a new `Pulse`."
@@ -130,7 +130,7 @@
     (collection/check-write-perms-for-collection collection_id))
   ;; prohibit creating dashboard subs if the the user doesn't have at least read access for the dashboard
   (when dashboard_id
-    (api/read-check Dashboard dashboard_id))
+    (api/read-check :model/Dashboard dashboard_id))
   (let [pulse-data {:name                name
                     :creator_id          api/*current-user-id*
                     :skip_if_empty       skip_if_empty
@@ -272,7 +272,7 @@
   "Get HTML rendering of a Card with `id`."
   [id]
   {id ms/PositiveInt}
-  (let [card   (api/read-check Card id)
+  (let [card   (api/read-check :model/Card id)
         result (pulse-card-query-results card)]
     {:status 200
      :body   (html5
@@ -308,7 +308,7 @@
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
   [id]
   {id ms/PositiveInt}
-  (let [card      (api/read-check Card id)
+  (let [card      (api/read-check :model/Card id)
         result    (pulse-card-query-results card)
         data      (:data result)
         card-type (channel.render/detect-pulse-chart-type card nil data)
@@ -330,7 +330,7 @@
   "Get PNG rendering of a Card with `id`."
   [id]
   {id ms/PositiveInt}
-  (let [card   (api/read-check Card id)
+  (let [card   (api/read-check :model/Card id)
         result (pulse-card-query-results card)
         ba     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
                                                         card
@@ -366,10 +366,10 @@
   "For users to unsubscribe themselves from a pulse subscription."
   [id]
   {id ms/PositiveInt}
-  (api/let-404 [pulse-id (t2/select-one-pk Pulse :id id)
-                pc-id    (t2/select-one-pk PulseChannel :pulse_id pulse-id :channel_type "email")
-                pcr-id   (t2/select-one-pk PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
-    (t2/delete! PulseChannelRecipient :id pcr-id))
+  (api/let-404 [pulse-id (t2/select-one-pk :model/Pulse :id id)
+                pc-id    (t2/select-one-pk :model/PulseChannel :pulse_id pulse-id :channel_type "email")
+                pcr-id   (t2/select-one-pk :model/PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
+    (t2/delete! :model/PulseChannelRecipient :id pcr-id))
   api/generic-204-no-content)
 
 (def ^:private style-nonce-middleware

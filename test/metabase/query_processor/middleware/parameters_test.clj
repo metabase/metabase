@@ -9,8 +9,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+   [metabase.models.card :refer [:model/Card]]
+   [metabase.models.native-query-snippet :refer [:model/NativeQuerySnippet]]
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
@@ -220,38 +220,38 @@
    [(native-query {:query "SELECT 1"})
     (native-query {:query "SELECT 2"})
     (native-query
-     {:query         "SELECT * FROM {{#1}} AS c1"
-      :template-tags (card-template-tags [1])})]))
+      {:query         "SELECT * FROM {{#1}} AS c1"
+       :template-tags (card-template-tags [1])})]))
 
 (deftest ^:parallel expand-multiple-referenced-cards-in-template-tags
   (testing "multiple sub-queries, referenced in template tags, are correctly substituted"
     (qp.store/with-metadata-provider mock-native-query-cards-metadata-provider
       (is (=? (native-query
-               {:query "SELECT COUNT(*) FROM (SELECT 1) AS c1, (SELECT 2) AS c2", :params []})
+                {:query "SELECT COUNT(*) FROM (SELECT 1) AS c1, (SELECT 2) AS c2", :params []})
               (substitute-params
                (native-query
-                {:query         (str "SELECT COUNT(*) FROM {{#" 1 "}} AS c1, {{#" 2 "}} AS c2")
-                 :template-tags (card-template-tags [1 2])})))))))
+                 {:query         (str "SELECT COUNT(*) FROM {{#" 1 "}} AS c1, {{#" 2 "}} AS c2")
+                  :template-tags (card-template-tags [1 2])})))))))
 
 (deftest ^:parallel expand-multiple-referenced-cards-in-template-tags-2
   (testing "multiple CTE queries, referenced in template tags, are correctly substituted"
     (qp.store/with-metadata-provider mock-native-query-cards-metadata-provider
       (is (=? (native-query
-               {:query "WITH c1 AS (SELECT 1), c2 AS (SELECT 2) SELECT COUNT(*) FROM c1, c2", :params []})
+                {:query "WITH c1 AS (SELECT 1), c2 AS (SELECT 2) SELECT COUNT(*) FROM c1, c2", :params []})
               (substitute-params
                (native-query
-                {:query         "WITH c1 AS {{#1}}, c2 AS {{#2}} SELECT COUNT(*) FROM c1, c2"
-                 :template-tags (card-template-tags [1 2])})))))))
+                 {:query         "WITH c1 AS {{#1}}, c2 AS {{#2}} SELECT COUNT(*) FROM c1, c2"
+                  :template-tags (card-template-tags [1 2])})))))))
 
 (deftest ^:parallel expand-multiple-referenced-cards-in-template-tags-3
   (testing "recursive native queries, referenced in template tags, are correctly substituted"
     (qp.store/with-metadata-provider mock-native-query-cards-metadata-provider
       (is (=? (native-query
-               {:query "SELECT COUNT(*) FROM (SELECT * FROM (SELECT 1) AS c1) AS c2", :params []})
+                {:query "SELECT COUNT(*) FROM (SELECT * FROM (SELECT 1) AS c1) AS c2", :params []})
               (substitute-params
                (native-query
-                {:query         "SELECT COUNT(*) FROM {{#3}} AS c2"
-                 :template-tags (card-template-tags [3])})))))))
+                 {:query         "SELECT COUNT(*) FROM {{#3}} AS c2"
+                  :template-tags (card-template-tags [3])})))))))
 
 (deftest ^:parallel expand-multiple-referenced-cards-in-template-tags-4
   (testing "recursive native/MBQL queries, referenced in template tags, are correctly substituted"
@@ -259,8 +259,8 @@
                                       meta/metadata-provider
                                       [(lib.tu.macros/mbql-query venues)
                                        (native-query
-                                        {:query         "SELECT * FROM {{#1}} AS c1"
-                                         :template-tags (card-template-tags [1])})])
+                                         {:query         "SELECT * FROM {{#1}} AS c1"
+                                          :template-tags (card-template-tags [1])})])
       (let [card-1-subquery (str "SELECT "
                                  "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
                                  "\"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
@@ -270,51 +270,51 @@
                                  "\"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
                                  "FROM \"PUBLIC\".\"VENUES\"")]
         (is (=? (native-query
-                 {:query (str "SELECT COUNT(*) FROM (SELECT * FROM (" card-1-subquery ") AS c1) AS c2") :params []})
+                  {:query (str "SELECT COUNT(*) FROM (SELECT * FROM (" card-1-subquery ") AS c1) AS c2") :params []})
                 (substitute-params
                  (native-query
-                  {:query         "SELECT COUNT(*) FROM {{#2}} AS c2"
-                   :template-tags (card-template-tags [2])}))))))))
+                   {:query         "SELECT COUNT(*) FROM {{#2}} AS c2"
+                    :template-tags (card-template-tags [2])}))))))))
 
 (deftest ^:parallel referencing-cards-with-parameters-test
   (testing "referencing card with parameter and default value substitutes correctly"
     (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                                       meta/metadata-provider
                                       [(native-query
-                                        {:query         "SELECT {{x}}"
-                                         :template-tags {"x"
-                                                         {:id           "x"
-                                                          :name         "x"
-                                                          :display-name "Number x"
-                                                          :type         :number
-                                                          :default      "1"
-                                                          :required     true}}})])
+                                         {:query         "SELECT {{x}}"
+                                          :template-tags {"x"
+                                                          {:id           "x"
+                                                           :name         "x"
+                                                           :display-name "Number x"
+                                                           :type         :number
+                                                           :default      "1"
+                                                           :required     true}}})])
       (is (=? (native-query
-               {:query "SELECT * FROM (SELECT 1) AS x", :params []})
+                {:query "SELECT * FROM (SELECT 1) AS x", :params []})
               (substitute-params
                (native-query
-                {:query         "SELECT * FROM {{#1}} AS x"
-                 :template-tags (card-template-tags [1])})))))))
+                 {:query         "SELECT * FROM {{#1}} AS x"
+                  :template-tags (card-template-tags [1])})))))))
 
 (deftest ^:parallel referencing-cards-with-parameters-test-2
   (testing "referencing card with parameter and NO default value, fails substitution"
     (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                                       meta/metadata-provider
                                       [(native-query
-                                        {:query         "SELECT {{x}}"
-                                         :template-tags {"x"
-                                                         {:id           "x"
-                                                          :name         "x"
-                                                          :display-name "Number x"
-                                                          :type         :number
-                                                          :required     true}}})])
+                                         {:query         "SELECT {{x}}"
+                                          :template-tags {"x"
+                                                          {:id           "x"
+                                                           :name         "x"
+                                                           :display-name "Number x"
+                                                           :type         :number
+                                                           :required     true}}})])
       (is (thrown-with-msg?
            ExceptionInfo
            #"\QYou'll need to pick a value for 'Number x' before this query can run.\E"
            (substitute-params
             (native-query
-             {:query         "SELECT * FROM {{#1}} AS x"
-              :template-tags (card-template-tags [1])})))))))
+              {:query         "SELECT * FROM {{#1}} AS x"
+               :template-tags (card-template-tags [1])})))))))
 
 (defn- snippet-template-tags
   [snippet-name->id]
@@ -326,22 +326,22 @@
                             :snippet-id   snippet-id}])))
 
 (deftest expand-multiple-snippets-test
-  (t2.with-temp/with-temp [NativeQuerySnippet select-snippet {:content     "name, price"
-                                                              :creator_id  (mt/user->id :rasta)
-                                                              :description "Fields to SELECT"
-                                                              :name        "Venue fields"}
-                           NativeQuerySnippet where-snippet  {:content     "price > 2"
-                                                              :creator_id  (mt/user->id :rasta)
-                                                              :description "Meant for use in WHERE clause"
-                                                              :name        "Filter: expensive venues"}
-                           Card card {:dataset_query
-                                      (mt/native-query
-                                        {:query         (str "SELECT {{ Venue fields }} "
-                                                             "FROM venues "
-                                                             "WHERE {{ Filter: expensive venues }}")
-                                         :template-tags (snippet-template-tags
-                                                         {"Venue fields"             (:id select-snippet)
-                                                          "Filter: expensive venues" (:id where-snippet)})})}]
+  (t2.with-temp/with-temp [:model/NativeQuerySnippet select-snippet {:content     "name, price"
+                                                                      :creator_id  (mt/user->id :rasta)
+                                                                      :description "Fields to SELECT"
+                                                                      :name        "Venue fields"}
+                           :model/NativeQuerySnippet where-snippet  {:content     "price > 2"
+                                                                      :creator_id  (mt/user->id :rasta)
+                                                                      :description "Meant for use in WHERE clause"
+                                                                      :name        "Filter: expensive venues"}
+                           :model/Card card {:dataset_query
+                                              (mt/native-query
+                                                {:query         (str "SELECT {{ Venue fields }} "
+                                                                     "FROM venues "
+                                                                     "WHERE {{ Filter: expensive venues }}")
+                                                 :template-tags (snippet-template-tags
+                                                                 {"Venue fields"             (:id select-snippet)
+                                                                  "Filter: expensive venues" (:id where-snippet)})})}]
     (qp.store/with-metadata-provider (mt/id)
       (testing "multiple snippets are correctly expanded in parent query"
         (is (= (mt/native-query
@@ -368,13 +368,13 @@
                                           :breakout    [!month.created-at]})])
       (let [card-tag "#1"
             query    (native-query
-                      {:query         (format "SELECT * FROM {{%s}}" card-tag)
-                       :template-tags {card-tag
-                                       {:id           "5aa37572-058f-14f6-179d-a158ad6c029d"
-                                        :name         card-tag
-                                        :display-name card-tag
-                                        :type         :card
-                                        :card-id      1}}})]
+                       {:query         (format "SELECT * FROM {{%s}}" card-tag)
+                        :template-tags {card-tag
+                                        {:id           "5aa37572-058f-14f6-179d-a158ad6c029d"
+                                         :name         card-tag
+                                         :display-name card-tag
+                                         :type         :card
+                                         :card-id      1}}})]
         (is (malli= [:map
                      [:native
                       [:map

@@ -25,10 +25,10 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.models.action :as action]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
+   [metabase.models.database :refer [:model/Database]]
+   [metabase.models.field :refer [:model/Field]]
    [metabase.models.secret :as secret]
-   [metabase.models.table :refer [Table]]
+   [metabase.models.table :refer [:model/Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.store :as qp.store]
@@ -206,7 +206,7 @@
         ;; create the postgres DB
         (drop-if-exists-and-create-db! "hyphen-names-test")
         ;; create the DB object
-        (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "hyphen-names-test")}]
+        (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "hyphen-names-test")}]
           (let [sync! #(sync/sync-database! database)]
             ;; populate the DB and create a view
             (exec! spec ["CREATE SCHEMA \"x-mas\";"
@@ -217,7 +217,7 @@
                    (mt/rows (qp/process-query
                              {:database (u/the-id database)
                               :type     :query
-                              :query    {:source-table (t2/select-one-pk Table :name "presents-and-gifts")}}))))))))
+                              :query    {:source-table (t2/select-one-pk :model/Table :name "presents-and-gifts")}}))))))))
     (testing "Make sure that Schemas / Tables / Fields with backslashes in their names get escaped properly"
       (mt/with-empty-db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
@@ -313,7 +313,7 @@
                                 SERVER foreign_server
                                 OPTIONS (user '" (:user details) "');
                               GRANT ALL ON public.local_table to PUBLIC;")])
-        (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
+        (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
           (is (=? [(default-table-result "foreign_table")
                    (default-table-result "local_table" {:estimated_row_count (mt/malli=? int?)})]
                   (describe-database->tables :postgres database))))))))
@@ -327,7 +327,7 @@
         ;; create the postgres DB
         (drop-if-exists-and-create-db! "dropped_views_test")
         ;; create the DB object
-        (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "dropped_views_test")}]
+        (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "dropped_views_test")}]
           (let [sync! #(sync/sync-database! database)]
             ;; populate the DB and create a view
             (exec! spec ["CREATE table birds (name VARCHAR UNIQUE NOT NULL);"
@@ -348,7 +348,7 @@
             ;; now take a look at the Tables in the database related to the view. THERE SHOULD BE ONLY ONE!
             (is (= [{:name "angry_birds", :active true}]
                    (map (partial into {})
-                        (t2/select [Table :name :active] :db_id (u/the-id database), :name "angry_birds"))))))))))
+                        (t2/select [:model/Table :name :active] :db_id (u/the-id database), :name "angry_birds"))))))))))
 
 (deftest partitioned-table-test
   (mt/test-driver :postgres
@@ -367,7 +367,7 @@
                          (.. conn getMetaData getDatabaseMajorVersion)))]
           (if (>= major-v 10)
             ;; create the DB object
-            (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname db-name)}]
+            (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname db-name)}]
               (let [sync! #(sync/sync-database! database)]
                 ;; create a main partitioned table and two partitions for it
                 (exec! spec ["CREATE TABLE part_vals (val bigint NOT NULL) PARTITION BY RANGE (\"val\");"
@@ -465,13 +465,13 @@
                                :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis"
                                :metabase.query-processor.util.add-alias-info/position      1}]
               compile-res    (qp.compile/compile
-                              (mt/query nil
-                                {:database 1
-                                 :type     :query
-                                 :query    {:source-table 1
-                                            :aggregation  [[:count]]
-                                            :breakout     [field-bucketed]
-                                            :order-by     [[:asc field-bucketed]]}}))]
+                               (mt/query nil
+                                 {:database 1
+                                  :type     :query
+                                  :query    {:source-table 1
+                                             :aggregation  [[:count]]
+                                             :breakout     [field-bucketed]
+                                             :order-by     [[:asc field-bucketed]]}}))]
           (is (= ["SELECT"
                   "  DATE_TRUNC("
                   "    'month',"
@@ -497,10 +497,10 @@
       (qp.store/with-metadata-provider json-alias-mock-metadata-provider
         (let [field-ordinary [:field 1 nil]
               only-order     (qp.compile/compile
-                              {:database 1
-                               :type     :query
-                               :query    {:source-table 1
-                                          :order-by     [[:asc field-ordinary]]}})]
+                               {:database 1
+                                :type     :query
+                                :query    {:source-table 1
+                                           :order-by     [[:asc field-ordinary]]}})]
           (is (= ["SELECT"
                   "  (\"json_alias_test\".\"bob\" #>> array [ ?, ? ] :: text [ ]) :: VARCHAR AS \"json_alias_test\""
                   "FROM"
@@ -529,9 +529,9 @@
     (testing "JSON columns in inner queries are referenced properly in outer queries #34930"
       (qp.store/with-metadata-provider json-alias-in-model-mock-metadata-provider
         (let [nested (qp.compile/compile
-                      {:database (meta/id)
-                       :type     :query
-                       :query    {:source-table "card__123"}})]
+                       {:database (meta/id)
+                        :type     :query
+                        :query    {:source-table "card__123"}})]
           (is (= ["SELECT"
                   "  \"json_alias_test\" AS \"json_alias_test\","
                   "  \"source\".\"count\" AS \"count\""
@@ -740,7 +740,7 @@
                           "Lucky Pigeon"   6.0
                           "Katie Parakeet" 23.99]]]
          (next.jdbc/execute! conn sql+args))))
-    (t2.with-temp/with-temp [Database db {:engine :postgres, :details (assoc details :dbname "money_columns_test")}]
+    (t2.with-temp/with-temp [:model/Database db {:engine :postgres, :details (assoc details :dbname "money_columns_test")}]
       (sync/sync-database! db)
       (mt/with-db db
         (thunk)))))
@@ -822,7 +822,7 @@
 
 (defn- do-with-enums-db! [f]
   (create-enums-db!)
-  (t2.with-temp/with-temp [Database database {:engine :postgres, :details (enums-test-db-details)}]
+  (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details (enums-test-db-details)}]
     (sync-metadata/sync-db-metadata! database)
     (f database)
     (driver/notify-database-updated :postgres database)))
@@ -885,17 +885,17 @@
                       (sort-by :database-position)))))
 
        (testing "check that when syncing the DB the enum types get recorded appropriately"
-         (let [table-id (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")]
+         (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "birds")]
            (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
                     {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
                     {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}
                     {:name "other_status", :database_type "\"bird_schema\".\"bird_status\"", :base_type :type/PostgresEnum}}
                   (set (map (partial into {})
-                            (t2/select [Field :name :database_type :base_type] :table_id table-id)))))))
+                            (t2/select [:model/Field :name :database_type :base_type] :table_id table-id)))))))
 
        (testing "End-to-end check: make sure everything works as expected when we run an actual query"
-         (let [table-id           (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")
-               bird-type-field-id (t2/select-one-pk Field :table_id table-id, :name "type")]
+         (let [table-id           (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "birds")
+               bird-type-field-id (t2/select-one-pk :model/Field :table_id table-id, :name "type")]
            (is (= {:rows        [["Rasta" "good bird" "sad bird" "toucan"]]
                    :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
                                               " \"public\".\"birds\".\"status\" AS \"status\","
@@ -964,17 +964,17 @@
                       (sort-by :database-position)))))
 
        (testing "check that when syncing the DB the enum types get recorded appropriately"
-         (let [table-id (t2/select-one-pk Table :db_id (u/the-id db), :name "birds_m")]
+         (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "birds_m")]
            (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
                     {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
                     {:name "other_status", :database_type "\"bird_schema\".\"bird_status\"", :base_type :type/PostgresEnum}
                     {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
                   (set (map (partial into {})
-                            (t2/select [Field :name :database_type :base_type] :table_id table-id)))))))
+                            (t2/select [:model/Field :name :database_type :base_type] :table_id table-id)))))))
 
        (testing "End-to-end check: make sure everything works as expected when we run an actual query"
-         (let [table-id           (t2/select-one-pk Table :db_id (u/the-id db), :name "birds_m")
-               bird-type-field-id (t2/select-one-pk Field :table_id table-id, :name "type")]
+         (let [table-id           (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "birds_m")
+               bird-type-field-id (t2/select-one-pk :model/Field :table_id table-id, :name "type")]
            (is (= {:rows        [["Rasta" "good bird" "sad bird" "toucan"]]
                    :native_form {:query  (str "SELECT \"public\".\"birds_m\".\"name\" AS \"name\","
                                               " \"public\".\"birds_m\".\"status\" AS \"status\","
@@ -1169,7 +1169,7 @@
                              ");"
                              "INSERT INTO toucan_sleep_schedule (start_time, end_time, reason) "
                              "  VALUES ('22:00'::time, '9:00'::time, 'Beauty Sleep');")])
-        (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
+        (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
           (sync/sync-database! database)
           (is (= {"start_time" {:global {:distinct-count 1
                                          :nil%           0.0}
@@ -1186,8 +1186,8 @@
                                                      :percent-email  0.0
                                                      :percent-state  0.0
                                                      :average-length 12.0}}}}
-                 (t2/select-fn->fn :name :fingerprint Field
-                                   :table_id (t2/select-one-pk Table :db_id (u/the-id database))))))))))
+                 (t2/select-fn->fn :name :fingerprint :model/Field
+                                   :table_id (t2/select-one-pk :model/Table :db_id (u/the-id database))))))))))
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 
@@ -1254,12 +1254,12 @@
       (let [test-user-details (assoc (mt/dbdef->connection-details :postgres :db {:database-name "no-select-test"})
                                      :user "no_select_test_user"
                                      :password "123456")]
-        (t2.with-temp/with-temp [Database database {:engine :postgres, :details test-user-details}]
+        (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details test-user-details}]
           ;; make sure that sync still succeeds even tho some tables are not SELECTable.
           (binding [sync-util/*log-exceptions-and-continue?* false]
             (is (some? (sync/sync-database! database {:scan :schema}))))
           (is (= #{"table_with_perms"}
-                 (t2/select-fn-set :name Table :db_id (:id database)))))))))
+                 (t2/select-fn-set :name :model/Table :db_id (:id database)))))))))
 
 (deftest json-operator-?-works
   (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"
@@ -1276,7 +1276,7 @@
                                  "json_val::jsonb ?| array['c', 'd'],"
                                  "json_val::jsonb ?& array['a', 'b']"
                                  "FROM \"json_table\";")]
-        (t2.with-temp/with-temp [Database database {:engine :postgres, :details json-db-details}]
+        (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details json-db-details}]
           (mt/with-db database (sync/sync-database! database)
             (is (= [[true false true]]
                    (-> {:query query}
@@ -1313,7 +1313,7 @@
                      (sql-jdbc.sync/describe-nested-field-columns
                       :postgres
                       database
-                      (t2/select-one Table :db_id (mt/id) :name "json_table")))))))))))
+                      (t2/select-one :model/Table :db_id (mt/id) :name "json_table")))))))))))
 
 (defn- pretty-sql [s]
   (-> s
@@ -1469,8 +1469,8 @@
               get-privileges (fn []
                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                 [spec [:postgres (assoc (:details (mt/db)) :user "privilege_rows_test_example_role")]]
-                                 (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                   (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
+                                (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
+                                  (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
           (try
             (jdbc/execute! conn-spec (str
                                       "DROP SCHEMA IF EXISTS \"dotted.schema\" CASCADE;"

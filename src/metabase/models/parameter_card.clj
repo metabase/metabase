@@ -9,7 +9,7 @@
    [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
-(def ParameterCard
+(def :model/ParameterCard
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
   We'll keep this till we replace all these symbols in our codebase."
   :model/ParameterCard)
@@ -24,7 +24,7 @@
   {:parameterized_object_type mi/transform-keyword})
 
 (defonce ^{:doc "Set of valid parameterized_object_type for a ParameterCard"}
-  valid-parameterized-object-type #{"dashboard" "card"})
+ valid-parameterized-object-type #{"dashboard" "card"})
 
 (defn- validate-parameterized-object-type
   [{:keys [parameterized_object_type] :as _parameter-card}]
@@ -54,7 +54,7 @@
                              :parameterized_object_id parameterized-object-id]
                             (when (seq parameter-ids-still-in-use)
                               [:parameter_id [:not-in parameter-ids-still-in-use]]))]
-     (apply t2/delete! ParameterCard conditions))))
+     (apply t2/delete! :model/ParameterCard conditions))))
 
 (defn- upsert-from-parameters!
   [parameterized-object-type parameterized-object-id parameters]
@@ -63,8 +63,8 @@
           conditions {:parameterized_object_id   parameterized-object-id
                       :parameterized_object_type parameterized-object-type
                       :parameter_id              id}]
-      (or (pos? (t2/update! ParameterCard conditions {:card_id card-id}))
-          (t2/insert! ParameterCard (merge conditions {:card_id card-id}))))))
+      (or (pos? (t2/update! :model/ParameterCard conditions {:card_id card-id}))
+          (t2/insert! :model/ParameterCard (merge conditions {:card_id card-id}))))))
 
 (mu/defn upsert-or-delete-from-parameters!
   "From a parameters list on card or dashboard, create, update,
