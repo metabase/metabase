@@ -50,7 +50,7 @@ export function DateShortcutPicker({
           {group.map((option, optionIndex) => (
             <Button
               key={optionIndex}
-              c="text-dark"
+              c="var(--mb-text-primary)"
               display="block"
               variant="subtle"
               onClick={() => onChange(option.value)}
@@ -66,7 +66,7 @@ export function DateShortcutPicker({
       {typeOptions.map((option, optionIndex) => (
         <Button
           key={optionIndex}
-          c="text-dark"
+          c="var(--mb-text-primary)"
           display="block"
           variant="subtle"
           onClick={() => onSelectType(option.type)}
