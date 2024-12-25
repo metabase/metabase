@@ -104,7 +104,7 @@
                                                                      :card_id      model-card-id}
                      :model/DashboardCard {question-dash-card-id :id} {:dashboard_id dash-id
                                                                         :card_id      question-card-id}
-                     :model/Pulse___Pulse {pulse-id :id
+                     :model/Pulse {pulse-id :id
                                             :as      pulse} {:name         "Test Pulse"
                                                              :dashboard_id dash-id}
                      :model/PulseCard _ {:pulse_id          pulse-id
@@ -139,7 +139,7 @@
     ;; combine all 3 cards into a single pulse with no dashboard.
     (with-metadata-data-cards [base-card-id model-card-id question-card-id]
       (testing "The data from the first question is just numbers."
-        (mt/with-temp [:model/Pulse___Pulse {pulse-id :id
+        (mt/with-temp [:model/Pulse {pulse-id :id
                                               :as      pulse} {:name            "Test Pulse"
                                                                :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
@@ -151,7 +151,7 @@
                                                        :user_id          (mt/user->id :rasta)}]
           (is (all-float? (first (run-pulse-and-return-last-data-columns! pulse))))))
       (testing "The data from the second question (a model) is percent formatted"
-        (mt/with-temp [:model/Pulse___Pulse {pulse-id :id
+        (mt/with-temp [:model/Pulse {pulse-id :id
                                               :as      pulse} {:name "Test Pulse"
                                                                :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
@@ -163,7 +163,7 @@
                                                        :user_id          (mt/user->id :rasta)}]
           (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns! pulse))))))
       (testing "The data from the last question (based on a a model) is percent formatted"
-        (mt/with-temp [:model/Pulse___Pulse {pulse-id :id
+        (mt/with-temp [:model/Pulse {pulse-id :id
                                               :as      pulse} {:name "Test Pulse"
                                                                :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
@@ -217,7 +217,7 @@
                                                                      :card_id      model-card-id}
                      :model/DashboardCard {question-dash-card-id :id} {:dashboard_id dash-id
                                                                         :card_id      question-card-id}
-                     :model/Pulse___Pulse {pulse-id :id
+                     :model/Pulse {pulse-id :id
                                             :as      pulse} {:name         "Test Pulse"
                                                              :dashboard_id dash-id}
                      :model/PulseCard _ {:pulse_id          pulse-id
@@ -246,7 +246,7 @@
   (testing "Exported cards should preserve the formatting specified in their column metadata (#36320)"
     (with-metadata-data-cards [base-card-id model-card-id question-card-id]
       (testing "The attached data from the first question is just numbers."
-        (mt/with-temp [:model/Pulse___Pulse {pulse-id :id
+        (mt/with-temp [:model/Pulse {pulse-id :id
                                               :as      pulse} {:name "Test Pulse"
                                                                :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
@@ -259,7 +259,7 @@
           (let [parsed-data (run-pulse-and-return-attached-csv-data! pulse)]
             (is (all-float? (get-in parsed-data ["Base question - no special metadata.csv" "Tax Rate"]))))))
       (testing "The attached data from the second question (a model) is percent formatted"
-        (mt/with-temp [:model/Pulse___Pulse {pulse-id :id
+        (mt/with-temp [:model/Pulse {pulse-id :id
                                               :as      pulse} {:name "Test Pulse"
                                                                :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
@@ -272,7 +272,7 @@
           (let [parsed-data (run-pulse-and-return-attached-csv-data! pulse)]
             (is (all-pct-2d? (get-in parsed-data ["Model with percent semantic type.csv" "Tax Rate"]))))))
       (testing "The attached data from the last question (based on a a model) is percent formatted"
-        (mt/with-temp [:model/Pulse___Pulse {pulse-id :id
+        (mt/with-temp [:model/Pulse {pulse-id :id
                                               :as      pulse} {:name "Test Pulse"
                                                                :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
@@ -379,7 +379,7 @@
                                                                      :card_id      model-card-id}
                      :model/DashboardCard {metamodel-dash-card-id :id} {:dashboard_id dash-id
                                                                          :card_id      meta-model-card-id}
-                     :model/Pulse___Pulse {pulse-id :id
+                     :model/Pulse {pulse-id :id
                                             :as      pulse} {:name "Consistent Time Formatting Pulse"
                                                              :dashboard_id dash-id}
                      :model/PulseCard _ {:pulse_id          pulse-id
@@ -540,7 +540,7 @@
                                                                             :card_id      meta-model-card-id}
                        :model/DashboardCard {question-dash-card-id :id} {:dashboard_id dash-id
                                                                           :card_id      question-card-id}
-                       :model/Pulse___Pulse {pulse-id :id
+                       :model/Pulse {pulse-id :id
                                               :as      pulse} {:name "Consistent Column Names"
                                                                :dashboard_id dash-id}
                        :model/PulseCard _ {:pulse_id          pulse-id
@@ -634,7 +634,7 @@
                                                                   :card_id      card-id1}
                        :model/DashboardCard {dash-card-id2 :id} {:dashboard_id dash-id
                                                                   :card_id      card-id2}
-                       :model/Pulse___Pulse         {pulse-id :id :as pulse} {:name         "Test Pulse"
+                       :model/Pulse         {pulse-id :id :as pulse} {:name         "Test Pulse"
                                                                                :dashboard_id dash-id}
                        :model/PulseCard             _             {:pulse_id          pulse-id
                                                                    :card_id           card-id1
@@ -693,7 +693,7 @@
                                                                    :card_id      ~'base-card-id}
                   :model/DashboardCard {~'empty-dash-card-id :id} {:dashboard_id ~'dash-id
                                                                     :card_id      ~'empty-card-id}
-                  :model/Pulse___Pulse {~'pulse-id :id :as ~'pulse} {:name          "Only populated pulse"
+                  :model/Pulse {~'pulse-id :id :as ~'pulse} {:name          "Only populated pulse"
                                                                       :dashboard_id  ~'dash-id
                                                                       :skip_if_empty ~skip-if-empty?}
                   :model/PulseCard ~'_ {:pulse_id          ~'pulse-id
@@ -791,7 +791,7 @@
                                                             :card_id      base-card-id}
              :model/DashboardCard {empty-dash-card-id :id} {:dashboard_id dash-id
                                                              :card_id      empty-card-id}
-             :model/Pulse___Pulse {pulse-id :id :as pulse} {:name          "Only populated pulse"
+             :model/Pulse {pulse-id :id :as pulse} {:name          "Only populated pulse"
                                                              :dashboard_id  dash-id
                                                              :skip_if_empty skip?}
              :model/PulseCard _ {:pulse_id          pulse-id
@@ -832,7 +832,7 @@
           (testing "Make sure our content was generated and saved"
             (is (= 11 (count dashcards)))
             (is (= "A look at Orders" title)))
-          (mt/with-temp [:model/Pulse___Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
+          (mt/with-temp [:model/Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
                                                                          :dashboard_id dash-id}
                          :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
                                                                      :pulse_id     pulse-id
@@ -879,7 +879,7 @@
                                                                  :card_id      card-id}
                        :model/DashboardCard {model-card-id :id} {:dashboard_id dash-id
                                                                   :card_id      model-id}
-                       :model/Pulse___Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
+                       :model/Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
                                                                        :dashboard_id dash-id}
                        :model/PulseCard _ {:pulse_id          pulse-id
                                            :card_id           card-id
@@ -910,7 +910,7 @@
     (notification.tu/with-notification-testing-setup
       (mt/dataset test-data
         (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Completely empty dashboard"}
-                       :model/Pulse___Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
+                       :model/Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
                                                                        :dashboard_id dash-id}
                        :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
                                                                    :pulse_id     pulse-id

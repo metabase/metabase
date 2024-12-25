@@ -56,7 +56,7 @@
 
 (deftest retrieve-pulse-test
   (testing "this should cover all the basic Pulse attributes"
-    (t2.with-temp/with-temp [:model/Pulse___Pulse        {pulse-id :id}   {:name "Lodi Dodi"}
+    (t2.with-temp/with-temp [:model/Pulse        {pulse-id :id}   {:name "Lodi Dodi"}
                              :model/PulseChannel {channel-id :id} {:pulse_id pulse-id
                                                                     :details  {:other  "stuff"
                                                                                :emails ["foo@bar.com"]}}
@@ -99,7 +99,7 @@
                  mt/derecordize))))))
 
 (deftest update-notification-cards!-test
-  (mt/with-temp [:model/Pulse___Pulse pulse {}
+  (mt/with-temp [:model/Pulse pulse {}
                  :model/Card  card-1 {:name "card1"}
                  :model/Card  card-2 {:name "card2"}
                  :model/Card  card-3 {:name "card3"}]
@@ -125,7 +125,7 @@
 ;; simple example with a single card
 (deftest create-pulse-test
   (t2.with-temp/with-temp [:model/Card card {:name "Test Card"}]
-    (mt/with-model-cleanup [:model/Pulse___Pulse]
+    (mt/with-model-cleanup [:model/Pulse]
       (is (= (merge
               pulse-defaults
               {:creator_id (mt/user->id :rasta)
@@ -162,7 +162,7 @@
 (deftest create-pulse-event-test
   (testing "Creating pulse also logs event."
     (t2.with-temp/with-temp [:model/Card card {:name "Test Card"}]
-      (mt/with-model-cleanup [:model/Pulse___Pulse]
+      (mt/with-model-cleanup [:model/Pulse]
         (mt/with-premium-features #{:audit-app}
           (let [pulse (models.pulse/create-pulse! [(models.pulse/card->ref card)]
                                                   [{:channel_type  :email
@@ -188,7 +188,7 @@
 
 (deftest create-dashboard-subscription-test
   (testing "Make sure that the dashboard_id is set correctly when creating a Dashboard Subscription pulse"
-    (mt/with-model-cleanup [:model/Pulse___Pulse]
+    (mt/with-model-cleanup [:model/Pulse]
       (mt/with-temp [:model/Collection    {collection-id :id} {}
                      :model/Dashboard     {dashboard-id :id} {:collection_id collection-id}
                      :model/Card          {card-id :id :as card} {}
@@ -221,7 +221,7 @@
 ;;  7. subscription-update event is called
 (deftest update-pulse-test
   (mt/with-premium-features #{:audit-app}
-    (t2.with-temp/with-temp [:model/Pulse___Pulse pulse  {}
+    (t2.with-temp/with-temp [:model/Pulse pulse  {}
                              :model/Card  card-1 {:name "Test Card"}
                              :model/Card  card-2 {:name "Bar Card" :display :bar}]
       (is (= (merge pulse-defaults
@@ -289,15 +289,15 @@
   (testing "collection_id and dashboard_id of a dashboard subscription cannot be directly modified"
     (mt/with-temp [:model/Collection {collection-id :id} {}
                    :model/Dashboard  {dashboard-id :id} {}
-                   :model/Pulse___Pulse      {pulse-id :id} {:dashboard_id dashboard-id :collection_id collection-id}]
+                   :model/Pulse      {pulse-id :id} {:dashboard_id dashboard-id :collection_id collection-id}]
       (is (thrown-with-msg? Exception #"collection ID of a dashboard subscription cannot be directly modified"
-                            (t2/update! :model/Pulse___Pulse pulse-id {:collection_id (inc collection-id)})))
+                            (t2/update! :model/Pulse pulse-id {:collection_id (inc collection-id)})))
       (is (thrown-with-msg? Exception #"dashboard ID of a dashboard subscription cannot be modified"
-                            (t2/update! :model/Pulse___Pulse pulse-id {:dashboard_id (inc dashboard-id)}))))))
+                            (t2/update! :model/Pulse pulse-id {:dashboard_id (inc dashboard-id)}))))))
 
 (deftest no-archived-cards-test
   (testing "make sure fetching a Pulse doesn't return any archived cards"
-    (mt/with-temp [:model/Pulse___Pulse     pulse {}
+    (mt/with-temp [:model/Pulse     pulse {}
                    :model/Card      card-1 {:archived true}
                    :model/Card      card-2 {}
                    :model/PulseCard _ {:pulse_id (u/the-id pulse) :card_id (u/the-id card-1) :position 0}
@@ -308,14 +308,14 @@
 (deftest archive-pulse-when-last-user-unsubscribes-test
   (letfn [(do-with-objects [f]
             (mt/with-temp [:model/User                  {user-id :id} {}
-                           :model/Pulse___Pulse                 {pulse-id :id} {}
+                           :model/Pulse                 {pulse-id :id} {}
                            :model/PulseChannel          {pulse-channel-id :id} {:pulse_id pulse-id}
                            :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id :user_id user-id}]
               (f {:user-id          user-id
                   :pulse-id         pulse-id
                   :pulse-channel-id pulse-channel-id
                   :archived?        (fn []
-                                      (t2/select-one-fn :archived :model/Pulse___Pulse :id pulse-id))})))]
+                                      (t2/select-one-fn :archived :model/Pulse :id pulse-id))})))]
     (testing "automatically archive a Pulse when the last user unsubscribes"
       (testing "one subscriber"
         (do-with-objects
@@ -414,7 +414,7 @@
 (defn do-with-pulse-in-collection! [f]
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp [:model/Collection collection {}
-                   :model/Pulse___Pulse      pulse {:collection_id (u/the-id collection)}
+                   :model/Pulse      pulse {:collection_id (u/the-id collection)}
                    :model/Database   db    {:engine :h2}
                    :model/Table      table {:db_id (u/the-id db)}
                    :model/Card       card  {:dataset_query {:database (u/the-id db)
@@ -439,16 +439,16 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Pulse can only go in Collections in the \"default\" or :analytics namespace."
-               (t2/insert! :model/Pulse___Pulse (assoc (t2.with-temp/with-temp-d:model/Pulsets :model/Pulse) :collection_id collection-id, :name pulse-name))))
+               (t2/insert! :model/Pulse (assoc (t2.with-temp/with-temp :model/Pulse) :collection_id collection-id, :name pulse-name))))
           (finally
-            (t2/delete! :model/Pulse___Pulse :name pulse-name)))))
+            (t2/delete! :model/Pulse :name pulse-name)))))
 
     (testing "Shouldn't be able to move a Pulse to a non-normal Collection"
-      (t2.with-temp/with-temp [:model/Pulse___Pulse {card-id :id}]
+      (t2.with-temp/with-temp [:model/Pulse {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Pulse can only go in Collections in the \"default\" or :analytics namespace."
-             (t2/update! :model/Pulse___Pulse card-id {:collection_id collection-id})))))))
+             (t2/update! :model/Pulse card-id {:collection_id collection-id})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                         Dashboard Subscription Collections Permissions Tests                                   |
@@ -458,7 +458,7 @@
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp [:model/Collection collection {}
                    :model/Dashboard  dashboard {:collection_id (u/the-id collection)}
-                   :model/Pulse___Pulse      pulse     {:collection_id (u/the-id collection)
+                   :model/Pulse      pulse     {:collection_id (u/the-id collection)
                                                          :dashboard_id  (u/the-id dashboard)
                                                          :creator_id    (mt/user->id :rasta)}
                    :model/Database   db        {:engine :h2}]
@@ -487,7 +487,7 @@
 
         (testing "A non-admin has read-only access to a subscription they are a recipient of"
           ;; Create a new Dashboard Subscription with an admin creator but non-admin recipient
-          (mt/with-temp [:model/Pulse___Pulse                subscription            {:collection_id (u/the-id collection)
+          (mt/with-temp [:model/Pulse                subscription            {:collection_id (u/the-id collection)
                                                                                        :dashboard_id  (u/the-id dashboard)
                                                                                        :creator_id    (mt/user->id :crowberto)}
                          :model/PulseChannel          {pulse-channel-id :id} {:pulse_id (u/the-id subscription)}
@@ -497,7 +497,7 @@
             (is (not (mi/can-write? subscription)))))
 
         (testing "A non-admin doesn't have read or write access to a subscription they aren't a creator or recipient of"
-          (mt/with-temp [:model/Pulse___Pulse subscription {:collection_id (u/the-id collection)
+          (mt/with-temp [:model/Pulse subscription {:collection_id (u/the-id collection)
                                                              :dashboard_id  (u/the-id dashboard)
                                                              :creator_id    (mt/user->id :crowberto)}]
             (is (not (mi/can-read? subscription)))

@@ -67,7 +67,7 @@
 (defn- create-raw-user!
   "create a user but skip pre and post insert steps"
   [email]
-  (first (t2/insert-returning-instances! (t2/table-name :model/Userl___User)
+  (first (t2/insert-returning-instances! (t2/table-name :model/User)
                                          :email        email
                                          :first_name   (mt/random-name)
                                          :last_name    (mt/random-name)
@@ -94,7 +94,7 @@
                                                                                                         :engine    "h2"
                                                                                                         :is_sample false
                                                                                                         :name      "populate-collection-created-at-test-db"}))
-            user-id                  (first (t2/insert-returning-pks! (t2/table-name :model/Userl___User) {:first_name  "Cam"
+            user-id                  (first (t2/insert-returning-pks! (t2/table-name :model/User) {:first_name  "Cam"
                                                                                                             :last_name   "Era"
                                                                                                             :email       "cam@example.com"
                                                                                                             :password    "123456"
@@ -198,7 +198,7 @@
   (testing "Migrations v46.00-084 and v46.00-085 set delete CASCADE for action.model_id to
            fix the bug of unable to delete database with actions"
     (impl/test-migrations ["v46.00-084" "v46.00-085"] [migrate!]
-      (let [user-id  (first (t2/insert-returning-pks! (t2/table-name :model/Userl___User) {:first_name  "Howard"
+      (let [user-id  (first (t2/insert-returning-pks! (t2/table-name :model/User) {:first_name  "Howard"
                                                                                             :last_name   "Hughes"
                                                                                             :email       "howard@aircraft.com"
                                                                                             :password    "superstrong"

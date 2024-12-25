@@ -42,7 +42,7 @@
 (defn- do-with-french-user-and-personal-collection! [f]
   (binding [collection/*allow-deleting-personal-collections* true]
     (mt/with-mock-i18n-bundles! {"fr" {:messages {"{0} {1}''s Personal Collection" "Collection personnelle de {0} {1}"}}}
-      (t2.with-temp/with-temp [:model/Userl___User       user       {:locale     "fr"
+      (t2.with-temp/with-temp [:model/User       user       {:locale     "fr"
                                                                       :first_name "Taco"
                                                                       :last_name  "Bell"}
                                :model/Collection collection {:personal_owner_id (:id user)}]
@@ -627,7 +627,7 @@
   (testing "GET /api/collection/:id/items"
     (testing "check that cards are returned with the collection/items endpoint"
       (t2.with-temp/with-temp [:model/Collection       collection             {}
-                               :model/Userl___User             {user-id :id}          {:first_name "x" :last_name "x" :email "zzzz@example.com"}
+                               :model/User             {user-id :id}          {:first_name "x" :last_name "x" :email "zzzz@example.com"}
                                :model/Card             {card-id :id :as card} {:collection_id (u/the-id collection)}
                                :model/ModerationReview _                      {:moderated_item_type "card"
                                                                                 :moderated_item_id   card-id
@@ -685,7 +685,7 @@
   (testing "GET /api/collection/:id/items"
     (testing "Database id is returned for items in which dataset is true"
       (t2.with-temp/with-temp [:model/Collection collection      {}
-                               :model/Userl___User       _               {:first_name "x" :last_name "x" :email "zzzz@example.com"}
+                               :model/User       _               {:first_name "x" :last_name "x" :email "zzzz@example.com"}
                                :model/Card       {card-id-1 :id} {:type          :model
                                                                    :collection_id (u/the-id collection)}
                                :model/Card       {card-id-2 :id} {:collection_id (u/the-id collection)}]
@@ -905,8 +905,8 @@
     (mt/test-helpers-set-global-values!
       (mt/with-temp
         [:model/Collection {collection-id :id}      {:name "Collection with Items"}
-         :model/Userl___User       {user1-id :id}           {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}
-         :model/Userl___User       {user2-id :id}           {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}
+         :model/User       {user1-id :id}           {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}
+         :model/User       {user2-id :id}           {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}
          :model/Card       {card1-id :id :as card1} {:name "Card with history 1" :collection_id collection-id}
          :model/Card       {card2-id :id :as card2} {:name "Card with history 2" :collection_id collection-id}
          :model/Card       _                        {:name "ZZ" :collection_id collection-id}
@@ -995,8 +995,8 @@
   (testing "GET /api/collection/:id/items"
     (testing "Results have the lastest revision timestamp"
       (t2.with-temp/with-temp [:model/Collection {collection-id :id}              {:name "Collection with Items"}
-                               :model/Userl___User       {failuser-id :id}                {:first_name "failure" :last_name "failure" :email "failure@example.com"}
-                               :model/Userl___User       {passuser-id :id}                {:first_name "pass" :last_name "pass" :email "pass@example.com"}
+                               :model/User       {failuser-id :id}                {:first_name "failure" :last_name "failure" :email "failure@example.com"}
+                               :model/User       {passuser-id :id}                {:first_name "pass" :last_name "pass" :email "pass@example.com"}
                                :model/Card       {card-id :id :as card}           {:name "card" :collection_id collection-id}
                                :model/Dashboard  {dashboard-id :id :as dashboard} {:name "dashboard" :collection_id collection-id}
                                :model/Revision   card-revision1 {:model    "Card"

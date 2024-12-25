@@ -465,8 +465,8 @@
        (select-keys [:title :description :transient_title :groups])
        (cond->
         (:comparison? root)
-        (update :groups (partial m/map-vals (fn [{:keys [title comparison_title] :as group}]
-                                              (assoc group :title (or comparison_title title))))))
+         (update :groups (partial m/map-vals (fn [{:keys [title comparison_title] :as group}]
+                                               (assoc group :title (or comparison_title title))))))
        (instantiate-metadata context available-metrics {}))))
 
 (defn affinities->viz-types
@@ -715,10 +715,10 @@
                         sideways [[:metrics] [:similar-questions]]
                         up       [[:table]]
                         compare  [[:compare]]]
-                   {:zoom-in  [down down]
-                    :zoom-out [up]
-                    :related  [sideways sideways sideways]
-                    :compare  [compare compare]})})
+                    {:zoom-in  [down down]
+                     :zoom-out [up]
+                     :related  [sideways sideways sideways]
+                     :compare  [compare compare]})})
 
 (mu/defn- related
   "Build a balanced list of related X-rays. General composition of the list is determined for each
@@ -899,7 +899,7 @@
                             {:cell-query cell-query
                              :cell-url   cell-url}))))
 
-(defmethod automagic-analysis model___Query
+(defmethod automagic-analysis :model/Query
   [query {:keys [cell-query] :as opts}]
   (let [root       (->root query)
         cell-query (when cell-query (mbql.normalize/normalize-fragment [:query :filter] cell-query))

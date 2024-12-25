@@ -122,7 +122,7 @@
 (deftest feature-flags-test
   (doseq [{:keys [action request-body]} (mock-requests)]
     (testing action
-      (mt/with-temp-vals-in-db model__Database (mt/id) {:settings {:database-enable-actions false}}
+      (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-actions false}}
         (binding [*current-user-permissions-set* (delay #{"/"})]
           (testing "Should return a 400 if Database feature flag is disabled."
             (is (thrown-with-msg?
@@ -143,7 +143,7 @@
 
 (deftest actions-feature-test
   (testing "Only allow actions for drivers that support the `:actions` driver feature. (#22557)"
-    (mt/with-temp [model__Database {db-id :id}    {:name     "Birds"
+    (mt/with-temp [:model/Database {db-id :id}    {:name     "Birds"
                                                    :engine   ::feature-flag-test-driver
                                                    :settings {:database-enable-actions true}}
                    :model/Table    {table-id :id} {:db_id db-id}]

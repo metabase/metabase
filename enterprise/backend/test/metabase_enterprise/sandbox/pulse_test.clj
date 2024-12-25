@@ -44,7 +44,7 @@
   [query]
   (mt/with-temp [:model/Card                  pulse-card {:name          "Test card"
                                                            :dataset_query query}
-                 :model/Pulse___Pulse                 pulse {:alert_condition "rows"}
+                 :model/Pulse                 pulse {:alert_condition "rows"}
                  :model/PulseCard             _ {:pulse_id (:id pulse), :card_id (:id pulse-card)}
                  :model/PulseChannel          pc {:channel_type :email
                                            :pulse_id     (:id pulse)
@@ -89,7 +89,7 @@
   (testing "When we send an alert, we also log the event:"
     (mt/with-premium-features #{:audit-app}
       (t2.with-temp/with-temp [:model/Card                  pulse-card {:dataset_query (mt/mbql-query venues)}
-                               :model/Pulse___Pulse                 pulse {:creator_id (mt/user->id :crowberto)
+                               :model/Pulse                 pulse {:creator_id (mt/user->id :crowberto)
                                                                     :name "Test Pulse"
                                                                     :alert_condition "rows"}
                                :model/PulseCard             _ {:pulse_id (:id pulse)
@@ -196,7 +196,7 @@
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
           (mt/with-temp [:model/Card                 {card-id :id}  {:dataset_query query}
-                         :model/Pulse___Pulse                {pulse-id :id} {:name            "Pulse Name"
+                         :model/Pulse                {pulse-id :id} {:name            "Pulse Name"
                                                                       :skip_if_empty   false
                                                                       :alert_condition "rows"}
                          :model/PulseCard             _             {:pulse_id pulse-id
@@ -220,7 +220,7 @@
 
 (deftest sandboxed-users-cant-read-pulse-recipients
   (testing "When sandboxed users fetch a pulse hydrated with recipients, they should only see themselves"
-    (mt/with-temp [:model/Pulse___Pulse        {pulse-id :id} {:name "my pulse"}
+    (mt/with-temp [:model/Pulse        {pulse-id :id} {:name "my pulse"}
                    :model/PulseChannel {pc-id :id} {:pulse_id     pulse-id
                                              :channel_type :email}
                    :model/PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :crowberto)}
@@ -253,7 +253,7 @@
 (deftest sandboxed-users-cant-delete-pulse-recipients
   (testing "When sandboxed users update a pulse, Metabase users in the recipients list are not deleted, even if they
            are not included in the request."
-    (mt/with-temp [:model/Pulse___Pulse        {pulse-id :id} {:name            "my pulse"
+    (mt/with-temp [:model/Pulse        {pulse-id :id} {:name            "my pulse"
                                                         :alert_condition "rows"}
                    :model/PulseChannel {pc-id :id :as pc} {:pulse_id     pulse-id
                                                     :channel_type :email

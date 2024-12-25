@@ -120,7 +120,7 @@
   `(do-with-random-dump-dir ~prefix (fn [~dump-dir-binding] ~@body)))
 
 (defn do-with-world [f]
-  (with-temp-dpc [model__Database   {db-id :id} (into {:name temp-db-name} (-> (data/db)
+  (with-temp-dpc [:model/Database   {db-id :id} (into {:name temp-db-name} (-> (data/db)
                                                                                (dissoc :id :features :name)))
                   :model/Table      {table-id :id :as table} (temp-table (data/id :venues) db-id)
                   :model/Table      {table-id-categories :id}  (temp-table (data/id :categories) db-id)

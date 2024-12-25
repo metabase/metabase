@@ -189,7 +189,7 @@
      (concat
       (all-admin-recipients)
       (when (seq user-ids)
-        (t2/select-fn-set :email model__User {:where [:and
+        (t2/select-fn-set :email :model/User {:where [:and
                                                       [:= :is_active true]
                                                       [:in :id user-ids]]}))))))
 

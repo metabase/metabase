@@ -490,7 +490,7 @@
                      (mt/summarize-multipart-single-email email test-card-regex))) ;#"stop sending you alerts")))
               (testing "Pulse should be deleted"
                 (is (= false
-                       (t2/exists? :model/Pulse___Pulse :id pulse-id)))))}}
+                       (t2/exists? :model/Pulse :id pulse-id)))))}}
 
           "first run alert with no data"
           {:card
@@ -503,7 +503,7 @@
               (is (empty? emails))
               (testing "Pulse should still exist"
                 (is (= true
-                       (t2/exists? :model/Pulse___Pulse :id pulse-id)))))}}))
+                       (t2/exists? :model/Pulse :id pulse-id)))))}}))
 
 (deftest above-goal-alert-test
   (testing "above goal alert"
@@ -680,7 +680,7 @@
                                                                                   :type     :native
                                                                                   :native   {:query "select * from checkins"}}
                                                                   :display       :table}
-                     :model/Pulse___Pulse                 {pulse-id :id} {:name            "Pulse Name"
+                     :model/Pulse                 {pulse-id :id} {:name            "Pulse Name"
                                                                            :alert_condition "rows"}
                      :model/PulseCard             _ {:pulse_id pulse-id
                                                      :card_id  card-id}
@@ -907,7 +907,7 @@
                                                    :dataset_query   q
                                                    :type            :model
                                                    :result_metadata result-metadata}
-                       :model/Pulse___Pulse {pulse-id :id :as p} {:name "Test Pulse" :alert_condition "rows"}
+                       :model/Pulse {pulse-id :id :as p} {:name "Test Pulse" :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
                                            :card_id  card-id}
                        :model/PulseChannel _ {:channel_type :email
@@ -928,7 +928,7 @@
       (mt/with-temp
         [:model/Card         {card-id :id}  (pulse.test-util/checkins-query-card {:breakout [!day.date]
                                                                                    :limit    1})
-         :model/Pulse___Pulse        {pulse-id :id} {:name "Test Pulse"
+         :model/Pulse        {pulse-id :id} {:name "Test Pulse"
                                                       :alert_condition "rows"}
          :model/PulseCard    _              {:pulse_id pulse-id
                                              :card_id  card-id}

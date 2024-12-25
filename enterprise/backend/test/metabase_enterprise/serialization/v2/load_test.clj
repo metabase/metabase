@@ -126,9 +126,9 @@
       (ts/with-dbs [source-db dest-db]
         (testing "serializing the two databases"
           (ts/with-db source-db
-            (reset! db1s (ts/create! model__Database :name "db1"))
+            (reset! db1s (ts/create! :model/Database :name "db1"))
             (reset! t1s  (ts/create! :model/Table    :name "posts" :db_id (:id @db1s)))
-            (reset! db2s (ts/create! model__Database :name "db2"))
+            (reset! db2s (ts/create! :model/Database :name "db2"))
             (reset! t2s  (ts/create! :model/Table    :name "posts" :db_id (:id @db2s))) ; Deliberately the same name!
             (reset! f1s  (ts/create! :model/Field    :name "Target Field" :table_id (:id @t1s)))
             (reset! f2s  (ts/create! :model/Field    :name "Foreign Key"  :table_id (:id @t2s) :fk_target_field_id (:id @f1s)))
@@ -163,13 +163,13 @@
         (testing "deserialization works properly, keeping the same-named tables apart"
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-            (reset! db1d (t2/select-one model__Database :name (:name @db1s)))
-            (reset! db2d (t2/select-one model__Database :name (:name @db2s)))
+            (reset! db1d (t2/select-one :model/Database :name (:name @db1s)))
+            (reset! db2d (t2/select-one :model/Database :name (:name @db2s)))
 
-            (is (= 3 (t2/count model__Database)))
-            (is (every? #(= "complete" (:initial_sync_status %)) (t2/select model__Database)))
+            (is (= 3 (t2/count :model/Database)))
+            (is (every? #(= "complete" (:initial_sync_status %)) (t2/select :model/Database)))
             (is (= #{"db1" "db2" "test-data (h2)"}
-                   (t2/select-fn-set :name model__Database)))
+                   (t2/select-fn-set :name :model/Database)))
             (is (= #{(:id @db1d) (:id @db2d)}
                    (t2/select-fn-set :db_id :model/Table :name "posts")))
             (is (t2/exists? :model/Table :name "posts" :db_id (:id @db1d)))
@@ -205,7 +205,7 @@
         (testing "serializing the original database, table, field and card"
           (ts/with-db source-db
             (reset! coll1s  (ts/create! :model/Collection :name "pop! minis"))
-            (reset! db1s    (ts/create! model__Database :name "my-db"))
+            (reset! db1s    (ts/create! :model/Database :name "my-db"))
             (reset! table1s (ts/create! :model/Table :name "customers" :db_id (:id @db1s)))
             (reset! field1s (ts/create! :model/Field :name "age"    :table_id (:id @table1s)))
             (reset! user1s  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
@@ -237,7 +237,7 @@
         (testing "deserializing adjusts the IDs properly"
           (ts/with-db dest-db
             ;; A different database and tables, so the IDs don't match.
-            (reset! db2d    (ts/create! model__Database :name "other-db"))
+            (reset! db2d    (ts/create! :model/Database :name "other-db"))
             (reset! table2d (ts/create! :model/Table    :name "orders" :db_id (:id @db2d)))
             (reset! field2d (ts/create! :model/Field    :name "subtotal" :table_id (:id @table2d)))
             (reset! user1d  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
@@ -246,7 +246,7 @@
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
 
             ;; Fetch the relevant bits
-            (reset! db1d    (t2/select-one model__Database :name "my-db"))
+            (reset! db1d    (t2/select-one :model/Database :name "my-db"))
             (reset! table1d (t2/select-one :model/Table :name "customers"))
             (reset! field1d (t2/select-one :model/Field :table_id (:id @table1d) :name "age"))
             (reset! card1d  (t2/select-one :model/Card  :name "Example Card"))
@@ -292,7 +292,7 @@
         (testing "serializing the original database, table, field and card"
           (ts/with-db source-db
             (reset! coll1s  (ts/create! :model/Collection :name "pop! minis"))
-            (reset! db1s    (ts/create! model__Database :name "my-db"))
+            (reset! db1s    (ts/create! :model/Database :name "my-db"))
             (reset! table1s (ts/create! :model/Table :name "customers" :db_id (:id @db1s)))
             (reset! field1s (ts/create! :model/Field :name "age"    :table_id (:id @table1s)))
             (reset! user1s  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
@@ -315,7 +315,7 @@
         (testing "deserializing adjusts the IDs properly"
           (ts/with-db dest-db
             ;; A different database and tables, so the IDs don't match.
-            (reset! db2d    (ts/create! model__Database :name "other-db"))
+            (reset! db2d    (ts/create! :model/Database :name "other-db"))
             (reset! table2d (ts/create! :model/Table    :name "orders" :db_id (:id @db2d)))
             (reset! field2d (ts/create! :model/Field    :name "subtotal" :table_id (:id @table2d)))
             (reset! user1d  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
@@ -324,7 +324,7 @@
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
 
             ;; Fetch the relevant bits
-            (reset! db1d    (t2/select-one model__Database :name "my-db"))
+            (reset! db1d    (t2/select-one :model/Database :name "my-db"))
             (reset! table1d (t2/select-one :model/Table :name "customers"))
             (reset! field1d (t2/select-one :model/Field :table_id (:id @table1d) :name "age"))
             (reset! seg1d   (t2/select-one :model/Segment :name "Minors"))
@@ -380,7 +380,7 @@
         (testing "serializing the original database, table, field and card"
           (ts/with-db source-db
             (reset! coll1s   (ts/create! :model/Collection :name "pop! minis"))
-            (reset! db1s     (ts/create! model__Database :name "my-db"))
+            (reset! db1s     (ts/create! :model/Database :name "my-db"))
             (reset! table1s  (ts/create! :model/Table :name "orders" :db_id (:id @db1s)))
             (reset! field1s  (ts/create! :model/Field :name "subtotal" :table_id (:id @table1s)))
             (reset! field2s  (ts/create! :model/Field :name "invoice" :table_id (:id @table1s)))
@@ -526,7 +526,7 @@
         (testing "deserializing adjusts the IDs properly"
           (ts/with-db dest-db
             ;; A different database and tables, so the IDs don't match.
-            (reset! db2d    (ts/create! model__Database :name "other-db"))
+            (reset! db2d    (ts/create! :model/Database :name "other-db"))
             (reset! table2d (ts/create! :model/Table    :name "customers" :db_id (:id @db2d)))
             (reset! field3d (ts/create! :model/Field    :name "age" :table_id (:id @table2d)))
             (ts/create! :model/Field :name "name" :table_id (:id @table2d))
@@ -537,7 +537,7 @@
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
 
             ;; Fetch the relevant bits
-            (reset! db1d       (t2/select-one model__Database :name "my-db"))
+            (reset! db1d       (t2/select-one :model/Database :name "my-db"))
             (reset! table1d    (t2/select-one :model/Table :name "orders"))
             (reset! field1d    (t2/select-one :model/Field :table_id (:id @table1d) :name "subtotal"))
             (reset! field2d    (t2/select-one :model/Field :table_id (:id @table1d) :name "invoice"))
@@ -762,7 +762,7 @@
 
       (testing "serializing the original database, table, field and fieldvalues"
         (mt/with-empty-h2-app-db
-          (reset! db1s     (ts/create! model__Database :name "my-db"))
+          (reset! db1s     (ts/create! :model/Database :name "my-db"))
           (reset! table1s  (ts/create! :model/Table :name "CUSTOMERS" :db_id (:id @db1s)))
           (reset! field1s  (ts/create! :model/Field :name "STATE" :table_id (:id @table1s)))
           (reset! field2s  (ts/create! :model/Field :name "CATEGORY" :table_id (:id @table1s)))
@@ -800,14 +800,14 @@
       (testing "deserializing finds existing FieldValues properly"
         (mt/with-empty-h2-app-db
           ;; A different database and tables, so the IDs don't match.
-          (reset! db2d    (ts/create! model__Database :name "other-db"))
+          (reset! db2d    (ts/create! :model/Database :name "other-db"))
           (reset! table2d (ts/create! :model/Table    :name "ORDERS" :db_id (:id @db2d)))
           (reset! field3d (ts/create! :model/Field    :name "SUBTOTAL" :table_id (:id @table2d)))
           (ts/create! :model/Field :name "DISCOUNT" :table_id (:id @table2d))
           (ts/create! :model/Field :name "UNITS"    :table_id (:id @table2d))
 
           ;; Now the database, table, fields and *one* of the FieldValues from the src side.
-          (reset! db1d     (ts/create! model__Database :name "my-db"))
+          (reset! db1d     (ts/create! :model/Database :name "my-db"))
           (reset! table1d  (ts/create! :model/Table :name "CUSTOMERS" :db_id (:id @db1d)))
           (reset! field1d  (ts/create! :model/Field :name "STATE" :table_id (:id @table1d)))
           (reset! field2d  (ts/create! :model/Field :name "CATEGORY" :table_id (:id @table1d)))
@@ -846,7 +846,7 @@
 
     (testing "loading a bare card"
       (mt/with-empty-h2-app-db
-        (reset! db1s    (ts/create! model__Database :name "my-db"))
+        (reset! db1s    (ts/create! :model/Database :name "my-db"))
         (reset! table1s (ts/create! :model/Table :name "CUSTOMERS" :db_id (:id @db1s)))
         (ts/create! :model/Field :name "STATE" :table_id (:id @table1s))
         (ts/create! :model/User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz")
@@ -891,7 +891,7 @@
         extracted  (atom nil)]
     (testing "snippets referenced by native cards must be deserialized"
       (mt/with-empty-h2-app-db
-        (reset! db1s      (ts/create! model__Database :name "my-db"))
+        (reset! db1s      (ts/create! :model/Database :name "my-db"))
         (reset! table1s   (ts/create! :model/Table :name "CUSTOMERS" :db_id (:id @db1s)))
         (reset! snippet1s (ts/create! :model/NativeQuerySnippet :name "some snippet"))
         (reset! card1s    (ts/create! :model/Card
@@ -963,7 +963,7 @@
     (ts/with-dbs [source-db dest-db]
       (testing "extraction succeeds"
         (ts/with-db source-db
-          (let [db       (ts/create! model__Database :name "my-db")
+          (let [db       (ts/create! :model/Database :name "my-db")
                 card     (ts/create! :model/Card
                                      :name "the query"
                                      :query_type :native
@@ -1115,7 +1115,7 @@
     (ts/with-dbs [source-db dest-db]
       (testing "Sprinkle the source database with a variety of different models"
         (ts/with-db source-db
-          (let [db         (ts/create! model__Database :name "my-db")
+          (let [db         (ts/create! :model/Database :name "my-db")
                 card       (ts/create! :model/Card
                                        :name "the query"
                                        :query_type :native
@@ -1263,7 +1263,7 @@
 (deftest database-test
   (ts/with-dbs [source-db dest-db]
     (ts/with-db source-db
-      (mt/with-temp [model__Database   _ {:name    "My Database"
+      (mt/with-temp [:model/Database   _ {:name    "My Database"
                                           :details {:some "secret"}}]
         (testing "without :include-database-secrets"
           (let [extracted (vec (serdes.extract/extract {:no-settings true}))
@@ -1274,14 +1274,14 @@
               (testing "loading still works even if there are no details"
                 (serdes.load/load-metabase! (ingestion-in-memory extracted))
                 (is (= {}
-                       (t2/select-one-fn :details model__Database)))
+                       (t2/select-one-fn :details :model/Database)))
                 (testing "If we did not export details - it won't override existing data"
-                  (t2/update! model__Database {:details {:other "secret"}})
+                  (t2/update! :model/Database {:details {:other "secret"}})
                   (serdes.load/load-metabase! (ingestion-in-memory extracted))
                   (is (= {:other "secret"}
-                         (t2/select-one-fn :details model__Database)))))))))
+                         (t2/select-one-fn :details :model/Database)))))))))
 
-      (mt/with-temp [model__Database   _ {:name    "My Database"
+      (mt/with-temp [:model/Database   _ {:name    "My Database"
                                           :details {:some "secret"}}]
         (testing "with :include-database-secrets"
           (let [extracted (vec (serdes.extract/extract {:no-settings true :include-database-secrets true}))
@@ -1292,7 +1292,7 @@
               (testing "Details are imported if provided"
                 (serdes.load/load-metabase! (ingestion-in-memory extracted))
                 (is (= (:details (first dbs))
-                       (t2/select-one-fn :details model__Database)))))))))))
+                       (t2/select-one-fn :details :model/Database)))))))))))
 
 (deftest unique-dimensions-test
   (ts/with-dbs [source-db dest-db]
@@ -1355,7 +1355,7 @@
 
 (deftest identically-named-fields-test
   (mt/with-empty-h2-app-db
-    (let [db (ts/create! model__Database :name "mydb")
+    (let [db (ts/create! :model/Database :name "mydb")
           t  (ts/create! :model/Table :name "table" :db_id (:id db))
           f1 (ts/create! :model/Field :name "field" :table_id (:id t))
           ;; name is the same, but parent_id is different
