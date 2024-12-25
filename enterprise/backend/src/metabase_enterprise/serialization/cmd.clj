@@ -13,6 +13,7 @@
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.db :as mdb]
+   [metabase.models.field :as field]
    [metabase.models.serialization :as serdes]
    [metabase.plugins :as plugins]
    [metabase.public-settings.premium-features :as premium-features]

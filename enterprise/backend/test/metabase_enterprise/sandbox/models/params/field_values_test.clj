@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
    [metabase-enterprise.sandbox.models.params.field-values :as ee-params.field-values]
    [metabase-enterprise.test :as met]
    [metabase.models.field-values :as field-values]
@@ -123,10 +122,10 @@
                                                     :user_id user-id-1}
                :model/PermissionsGroupMembership _ {:group_id group-id
                                                     :user_id user-id-2}
-               GroupTableAccessPolicy     _ {:card_id card-id
-                                             :group_id group-id
-                                             :table_id (mt/id :categories)
-                                             :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]
+               :model/GroupTableAccessPolicy     _ {:card_id card-id
+                                                    :group_id group-id
+                                                    :table_id (mt/id :categories)
+                                                    :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]
 
               (testing "with same attributes, the hash should be the same field"
                 (is (= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
@@ -158,10 +157,10 @@
                :model/User                       {user-id :id} {}
                :model/PermissionsGroupMembership _ {:group_id group-id
                                                     :user_id user-id}
-               GroupTableAccessPolicy     _ {:card_id card-id
-                                             :group_id group-id
-                                             :table_id (mt/id :categories)
-                                             :attribute_remappings {"State" [:variable [:template-tag "STATE"]]}}]
+               :model/GroupTableAccessPolicy     _ {:card_id card-id
+                                                    :group_id group-id
+                                                    :table_id (mt/id :categories)
+                                                    :attribute_remappings {"State" [:variable [:template-tag "STATE"]]}}]
               (testing "same users but if the login_attributes change, they should have different hash (#24966)"
                 (is (not= (hash-for-user-id-with-attributes user-id {"State" "CA"} (mt/id :categories :name))
                           (hash-for-user-id-with-attributes user-id {"State" "NY"} (mt/id :categories :name)))))))
@@ -175,19 +174,19 @@
                :model/PermissionsGroup           {group-id-1 :id} {}
                :model/PermissionsGroupMembership _ {:group_id group-id-1
                                                     :user_id user-id-1}
-               GroupTableAccessPolicy     _ {:card_id card-id
-                                             :group_id group-id-1
-                                             :table_id (mt/id :categories)
-                                             :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}
+               :model/GroupTableAccessPolicy     _ {:card_id card-id
+                                                    :group_id group-id-1
+                                                    :table_id (mt/id :categories)
+                                                    :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}
                ;; user 2 in group 2 with gtap using the same card
                :model/User                       {user-id-2 :id} {}
                :model/PermissionsGroup           {group-id-2 :id} {}
                :model/PermissionsGroupMembership _ {:group_id group-id-2
                                                     :user_id user-id-2}
-               GroupTableAccessPolicy     _ {:card_id card-id
-                                             :group_id group-id-2
-                                             :table_id (mt/id :categories)
-                                             :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]
+               :model/GroupTableAccessPolicy     _ {:card_id card-id
+                                                    :group_id group-id-2
+                                                    :table_id (mt/id :categories)
+                                                    :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]
               (testing "with the same attributes, the hash should be the same"
                 (is (= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
                        (hash-for-user-id-with-attributes user-id-2 {"State" "CA"} (mt/id :categories :name)))))
@@ -207,20 +206,20 @@
                :model/PermissionsGroup           {group-id-1 :id} {}
                :model/PermissionsGroupMembership _ {:group_id group-id-1
                                                     :user_id user-id-1}
-               GroupTableAccessPolicy     _ {:card_id card-id-1
-                                             :group_id group-id-1
-                                             :table_id (mt/id :categories)
-                                             :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}
+               :model/GroupTableAccessPolicy     _ {:card_id card-id-1
+                                                    :group_id group-id-1
+                                                    :table_id (mt/id :categories)
+                                                    :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}
                ;; user 2 in group 2 with gtap using card 2
                :model/Card                       {card-id-2 :id} {}
                :model/User                       {user-id-2 :id} {}
                :model/PermissionsGroup           {group-id-2 :id} {}
                :model/PermissionsGroupMembership _ {:group_id group-id-2
                                                     :user_id user-id-2}
-               GroupTableAccessPolicy     _ {:card_id card-id-2
-                                             :group_id group-id-2
-                                             :table_id (mt/id :categories)
-                                             :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]
+               :model/GroupTableAccessPolicy     _ {:card_id card-id-2
+                                                    :group_id group-id-2
+                                                    :table_id (mt/id :categories)
+                                                    :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]
               (testing "the hash are different even though they have the same attribute"
                 (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
                           (hash-for-user-id-with-attributes user-id-2 {"State" "CA"} (mt/id :categories :name))))

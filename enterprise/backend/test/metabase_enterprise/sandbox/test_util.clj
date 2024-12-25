@@ -3,7 +3,6 @@
   (:require
    [malli.core :as mc]
    [mb.hawk.parallel]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.request.core :as request]
    [metabase.test :as mt]
@@ -40,10 +39,10 @@
                            (f nil)))]
       (do-with-card
        (fn [card-id]
-         (t2.with-temp/with-temp [GroupTableAccessPolicy _gtap {:group_id             (u/the-id group)
-                                                                :table_id             (data/id table-kw)
-                                                                :card_id              card-id
-                                                                :attribute_remappings remappings}]
+         (t2.with-temp/with-temp [:model/GroupTableAccessPolicy _gtap {:group_id             (u/the-id group)
+                                                                       :table_id             (data/id table-kw)
+                                                                       :card_id              card-id
+                                                                       :attribute_remappings remappings}]
            (data-perms/set-database-permission! group (data/id) :perms/view-data :unrestricted)
            (data-perms/set-table-permission! group (data/id table-kw) :perms/create-queries :query-builder)
            (do-with-gtap-defs! group more f)))))))

@@ -4,7 +4,7 @@
     :as advanced-perms.api.u]
    [metabase-enterprise.sandbox.api.table :as table]
    [metabase-enterprise.sandbox.models.group-table-access-policy
-    :refer [GroupTableAccessPolicy]]
+    :refer [:model/GroupTableAccessPolicy]]
    [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
     :as row-level-restrictions]
    [metabase.api.common :as api]
@@ -30,7 +30,7 @@
   "Find the GTAP for current user that apply to table `table-id`."
   [table-id]
   (let [group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id api/*current-user-id*)
-        gtaps     (t2/select GroupTableAccessPolicy
+        gtaps     (t2/select :model/GroupTableAccessPolicy
                              :group_id [:in group-ids]
                              :table_id table-id)]
     (when gtaps

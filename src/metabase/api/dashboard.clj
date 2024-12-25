@@ -26,13 +26,15 @@
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.dashboard-tab :as dashboard-tab]
+   [metabase.models.card :as card]
+   [metabase.models.dashboard :as dashboard]
+   [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.pulse :as models.pulse]
-   [metabase.models.query :refer [Query]]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
    [metabase.models.revision.last-edit :as last-edit]
@@ -222,7 +224,7 @@
   another, and thus do not work as one would expect when used as map keys.)"
   [hashes]
   (when (seq hashes)
-    (into {} (for [[k v] (t2/select-fn->fn :query_hash :average_execution_time Query :query_hash [:in hashes])]
+    (into {} (for [[k v] (t2/select-fn->fn :query_hash :average_execution_time :model/Query :query_hash [:in hashes])]
                {(vec k) v}))))
 
 (defn- add-query-average-duration-to-card

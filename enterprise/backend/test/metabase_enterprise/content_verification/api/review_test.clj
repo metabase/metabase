@@ -1,6 +1,7 @@
 (ns metabase-enterprise.content-verification.api.review-test
   (:require
    [clojure.test :refer :all]
+   [metabase.models.moderation-review :as moderation-review :refer]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

@@ -151,8 +151,8 @@
    [metabase.analyze :as analyze]
    [metabase.db.query :as mdb.query]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.models.field :as field]
    [metabase.models.interface :as mi]
-   [metabase.models.query :refer [Query]]
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
    [metabase.util :as u]
@@ -306,7 +306,7 @@
                                     "table"
                                     "question")]}))
 
-(defmethod ->root Query
+(defmethod ->root :model/Query
   [query]
   (let [source (source query)]
     {:entity                     query
@@ -465,8 +465,8 @@
        (select-keys [:title :description :transient_title :groups])
        (cond->
         (:comparison? root)
-         (update :groups (partial m/map-vals (fn [{:keys [title comparison_title] :as group}]
-                                               (assoc group :title (or comparison_title title))))))
+        (update :groups (partial m/map-vals (fn [{:keys [title comparison_title] :as group}]
+                                              (assoc group :title (or comparison_title title))))))
        (instantiate-metadata context available-metrics {}))))
 
 (defn affinities->viz-types
@@ -711,14 +711,14 @@
                      :zoom-out [up]
                      :related  [sideways sideways sideways]
                      :compare  [compare compare]})
-   Query   (let [down     [[:drilldown-fields]]
-                 sideways [[:metrics] [:similar-questions]]
-                 up       [[:table]]
-                 compare  [[:compare]]]
-             {:zoom-in  [down down]
-              :zoom-out [up]
-              :related  [sideways sideways sideways]
-              :compare  [compare compare]})})
+   :model/Query   (let [down     [[:drilldown-fields]]
+                        sideways [[:metrics] [:similar-questions]]
+                        up       [[:table]]
+                        compare  [[:compare]]]
+                   {:zoom-in  [down down]
+                    :zoom-out [up]
+                    :related  [sideways sideways sideways]
+                    :compare  [compare compare]})})
 
 (mu/defn- related
   "Build a balanced list of related X-rays. General composition of the list is determined for each
@@ -899,7 +899,7 @@
                             {:cell-query cell-query
                              :cell-url   cell-url}))))
 
-(defmethod automagic-analysis Query
+(defmethod automagic-analysis model___Query
   [query {:keys [cell-query] :as opts}]
   (let [root       (->root query)
         cell-query (when cell-query (mbql.normalize/normalize-fragment [:query :filter] cell-query))

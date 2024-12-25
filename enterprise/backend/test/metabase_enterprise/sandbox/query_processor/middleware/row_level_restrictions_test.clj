@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
    [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
    [metabase-enterprise.test :as met]
    [metabase.api.common :as api]
@@ -649,7 +648,7 @@
                                                   :remappings {"venue_id" [:variable [:template-tag "sandbox"]]}}
                                        :checkins {}}
                           :attributes {"venue_id" 1}})
-        (let [venues-gtap-card-id (t2/select-one-fn :card_id GroupTableAccessPolicy
+        (let [venues-gtap-card-id (t2/select-one-fn :card_id :model/GroupTableAccessPolicy
                                                     :group_id (:id &group)
                                                     :table_id (mt/id :venues))]
           (is (integer? venues-gtap-card-id))
@@ -687,7 +686,7 @@
                                               :remappings {"venue_id" [:variable [:template-tag "sandbox"]]}}
                                    :checkins {}}
                       :attributes {"venue_id" 1}})
-    (let [venues-gtap-card-id (t2/select-one-fn :card_id GroupTableAccessPolicy
+    (let [venues-gtap-card-id (t2/select-one-fn :card_id :model/GroupTableAccessPolicy
                                                 :group_id (:id &group)
                                                 :table_id (mt/id :venues))]
       (is (integer? venues-gtap-card-id))
@@ -960,7 +959,7 @@
   a parameter in order to run the query to get metadata, pass `param-name` and `param-value` template tag parameters
   when running the query."
   [group table-name param-name param-value]
-  (let [card-id (t2/select-one-fn :card_id GroupTableAccessPolicy :group_id (u/the-id group), :table_id (mt/id table-name))
+  (let [card-id (t2/select-one-fn :card_id :model/GroupTableAccessPolicy :group_id (u/the-id group), :table_id (mt/id table-name))
         query   (t2/select-one-fn :dataset_query :model/Card :id (u/the-id card-id))
         results (mt/with-test-user :crowberto
                   (qp/process-query (assoc query :parameters [{:type   :category
@@ -1060,7 +1059,7 @@
   (testing "Make sure Sandboxing works in combination with caching (#18579)"
     (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
       (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})}}}
-        (let [card-id   (t2/select-one-fn :card_id GroupTableAccessPolicy :group_id (u/the-id &group))
+        (let [card-id   (t2/select-one-fn :card_id :model/GroupTableAccessPolicy :group_id (u/the-id &group))
               _         (is (integer? card-id))
               query     (t2/select-one-fn :dataset_query :model/Card :id card-id)
               run-query (fn []

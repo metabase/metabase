@@ -3,11 +3,6 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(def :model/PulseChannelRecipient
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all these symbols in our codebase."
-  :model/PulseChannelRecipient)
-
 (methodical/defmethod t2/table-name :model/PulseChannelRecipient [_model] :pulse_channel_recipient)
 
 (derive :model/PulseChannelRecipient :metabase/model)
