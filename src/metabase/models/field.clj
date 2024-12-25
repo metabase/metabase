@@ -9,8 +9,6 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
-   [metabase.models.dimension :refer [:model/Dimensions]]
-   [metabase.models.field-values :as field-values :refer [:model/FieldValues]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -38,11 +36,6 @@
     :retired})      ; For fields that no longer exist in the physical db.  automatically set by Metabase.  QP should error if encountered in a query.
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
-
-(def :model/Field
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]]; now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the Field symbol in our codebase."
-  :model/Field)
 
 (methodical/defmethod t2/table-name :model/Field [_model] :metabase_field)
 

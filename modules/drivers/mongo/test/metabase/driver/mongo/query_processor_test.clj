@@ -6,7 +6,6 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.mongo.query-processor :as mongo.qp]
-   [metabase.models :refer [:model/Field :model/Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.alternative-date-test :as qp.alternative-date-test]
    [metabase.query-processor-test.date-time-zone-functions-test :as qp.datetime-test]

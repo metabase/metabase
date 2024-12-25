@@ -11,7 +11,6 @@
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
    [metabase.email.result-attachment :as email.result-attachment]
-   [metabase.models :refer [:model/Card]]
    [metabase.models.card :as card]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.query-processor :as qp]

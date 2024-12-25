@@ -1,7 +1,6 @@
 (ns metabase.models.native-query-snippet-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:model/Collection :model/NativeQuerySnippet]]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [toucan2.core :as t2]
@@ -37,7 +36,7 @@
       (mt/with-temp [:model/Collection         {source-collection-id :id} {:namespace source}
                      :model/Collection         {dest-collection-id :id}   {:namespace dest}
                      :model/NativeQuerySnippet {snippet-id :id} (when source
-                                                           {:collection_id source-collection-id})]
+                                                                  {:collection_id source-collection-id})]
         (t2/update! :model/NativeQuerySnippet snippet-id {:collection_id (when dest dest-collection-id)})
         (is (= (when dest dest-collection-id)
                (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id snippet-id))))))

@@ -1,11 +1,8 @@
 (ns metabase.models.segment-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.database :refer [:model/Database]]
    [metabase.models.revision :as revision]
-   [metabase.models.segment :refer [:model/Segment]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])

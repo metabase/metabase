@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.models :refer [model:model/Col:model/Da:model/DashboardCard Dashboard DashboardCard]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.test :as mt]

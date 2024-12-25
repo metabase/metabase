@@ -5,7 +5,6 @@
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase.db :as mdb]
-   [metabase.models :refer [:model/Collection :model/Dashboard]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2])
@@ -22,8 +21,8 @@
     (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
       (mt/test-helpers-set-global-values!
         (mt/with-temp [:model/Collection c {:name       "No Entity ID Collection"
-                                             :slug       "no_entity_id_collection"
-                                             :created_at now}]
+                                            :slug       "no_entity_id_collection"
+                                            :created_at now}]
           (t2/update! :model/Collection (:id c) {:entity_id nil})
           (letfn [(entity-id []
                     (some-> (t2/select-one-fn :entity_id :model/Collection :id (:id c)) str/trim))]
@@ -36,8 +35,8 @@
           (testing "Error: duplicate entity IDs"
             (mt/test-helpers-set-global-values!
               (mt/with-temp [:model/Collection c2 {:name       "No Entity ID Collection"
-                                                    :slug       "no_entity_id_collection"
-                                                    :created_at now}]
+                                                   :slug       "no_entity_id_collection"
+                                                   :created_at now}]
                 (t2/update! :model/Collection (:id c2) {:entity_id nil})
                 (letfn [(entity-id []
                           (some-> (t2/select-one-fn :entity_id :model/Collection :id (:id c2)) str/trim))]
@@ -50,7 +49,7 @@
                          (entity-id)))))))
           (testing "Cannot create entity ID error"
             (mt/with-temp [:model/Collection c3 {:name      "error collection"
-                                                  :entity_id nil}]
+                                                 :entity_id nil}]
               ;; update table directly so checks for collection existence don't trigger
               (t2/update! :collection (:id c3) {:location "/13371338/"})
               (mt/with-log-messages-for-level [messages [metabase-enterprise :error]]
@@ -65,8 +64,8 @@
       (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
         (mt/test-helpers-set-global-values!
           (mt/with-temp [:model/Collection c {:name       "No Entity ID Collection"
-                                               :slug       "no_entity_id_collection"
-                                               :created_at now}]
+                                              :slug       "no_entity_id_collection"
+                                              :created_at now}]
             (letfn [(entity-id []
                       (some-> (t2/select-one-fn :entity_id :model/Collection :id (:id c)) str/trim))]
               (is (some? (entity-id)))
@@ -78,7 +77,7 @@
       (testing "has no entity ids"
         (mt/test-helpers-set-global-values!
           (mt/with-temp [:model/Collection _ {:name "No Entity ID Collection"
-                                               :slug "no_entity_id_collection"}]
+                                              :slug "no_entity_id_collection"}]
             (is (nil? (t2/select-fn-set :entity-id :model/Dashboard)))
             (testing "but doesn't crash drop-entity-ids"
               (is (= true

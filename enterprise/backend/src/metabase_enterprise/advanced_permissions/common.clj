@@ -1,7 +1,6 @@
 (ns metabase-enterprise.advanced-permissions.common
   (:require
    [metabase.api.common :as api]
-   [metabase.models :refer [:model/PermissionsGroupMembership]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.permissions :as perms]

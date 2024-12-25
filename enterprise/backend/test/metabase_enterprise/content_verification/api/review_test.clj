@@ -1,8 +1,6 @@
 (ns metabase-enterprise.content-verification.api.review-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.moderation-review :as moderation-review :refer [:model/ModerationReview]]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -65,12 +63,12 @@
                                         :moderated_item_type "card"))))))
             (testing "Ensures we never have more than `modreview/max-moderation-reviews`"
               (t2/insert! :model/ModerationReview (repeat (* 2 moderation-review/max-moderation-reviews)
-                                                           {:moderated_item_id   card-id
-                                                            :moderated_item_type "card"
-                                                            :moderator_id        (mt/user->id :crowberto)
-                                                            :most_recent         false
-                                                            :status              "verified"
-                                                            :text                "old review"}))
+                                                          {:moderated_item_id   card-id
+                                                           :moderated_item_type "card"
+                                                           :moderator_id        (mt/user->id :crowberto)
+                                                           :most_recent         false
+                                                           :status              "verified"
+                                                           :text                "old review"}))
               ;; manually inserted many
 
               (is (> (review-count) moderation-review/max-moderation-reviews))

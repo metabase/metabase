@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.models :refer [:model/Card :model/Collection :model/Dashboard :model/DashboardCard]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]))

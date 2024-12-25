@@ -6,8 +6,6 @@
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
-   [metabase.models :refer [:model/Card :model/Collection :model/Dashboard :model/DashboardCard :model/DashboardCardSeries model__Database
-                            :model/Field :model/NativeQuerySnippet :model/Pulse :model/PulseCard :model/Segment :model/Table :model/User]]
    [metabase.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.models.visualization-settings :as mb.viz]
@@ -147,7 +145,7 @@
                                                                              table-id-checkins)
                                                                       (assoc :fk_target_field_id venues-pk-field-id))
                   :model/Field      {last-login-field-id :id}  (temp-field (data/id :users :last_login)
-                                                                            table-id-users)
+                                                                           table-id-users)
                   :model/Collection {collection-id :id} {:name "My Collection"}
                   :model/Collection {collection-id-nested :id} {:name "My Nested Collection"
                                                                  :location (format "/%s/" collection-id)}

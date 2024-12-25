@@ -3,9 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.http-client :as client]
-   [metabase.models.collection :refer [:model/Collection]]
-   [metabase.models.timeline :refer [:model/Timeline]]
-   [metabase.models.timeline-event :refer [:model/TimelineEvent]]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -24,11 +21,11 @@
   (testing "GET /api/timeline-event/:id"
     (mt/with-temp [:model/Collection    collection {:name "Important Data"}
                    :model/Timeline      timeline   {:name          "Important Events"
-                                                     :collection_id (u/the-id collection)}
+                                                    :collection_id (u/the-id collection)}
                    :model/TimelineEvent event      {:name         "Very Important Event"
-                                                     :timestamp    (java.time.OffsetDateTime/now)
-                                                     :time_matters false
-                                                     :timeline_id  (u/the-id timeline)}]
+                                                    :timestamp    (java.time.OffsetDateTime/now)
+                                                    :time_matters false
+                                                    :timeline_id  (u/the-id timeline)}]
       (testing "check that we get the timeline-event with `id`"
         (is (= "Very Important Event"
                (->> (mt/user-http-request :rasta :get 200 (str "timeline-event/" (u/the-id event)))
@@ -38,7 +35,7 @@
   (testing "POST /api/timeline-event"
     (mt/with-temp [:model/Collection    collection {:name "Important Data"}
                    :model/Timeline      timeline   {:name          "Important Events"
-                                                     :collection_id (u/the-id collection)}]
+                                                    :collection_id (u/the-id collection)}]
       (testing "create a timeline event"
         ;; make an API call to create a timeline
         (mt/user-http-request :rasta :post 200 "timeline-event" {:name         "Rasta Migrates to Florida for the Winter"
@@ -55,9 +52,9 @@
     (testing "Can archive the timeline event"
       (mt/with-temp [:model/Collection    collection {:name "Important Data"}
                      :model/Timeline      timeline   {:name          "Important Events"
-                                                       :collection_id (u/the-id collection)}
+                                                      :collection_id (u/the-id collection)}
                      :model/TimelineEvent event      {:name         "Very Important Event"
-                                                       :timeline_id  (u/the-id timeline)}]
+                                                      :timeline_id  (u/the-id timeline)}]
         (testing "check that we can adjust the timestamp for timeline-event with `id`"
           (is (= "2022-01-01T00:00:00Z"
                  (->> (mt/user-http-request :rasta :put 200 (str "timeline-event/" (u/the-id event)) {:timestamp "2022-01-01"})
@@ -71,9 +68,9 @@
   (testing "DELETE /api/timeline-event/:id"
     (mt/with-temp [:model/Collection    {collection-id :id} {:name "Example Data"}
                    :model/Timeline      {timeline-id :id}   {:name "Some Events"
-                                                              :collection_id collection-id}
+                                                             :collection_id collection-id}
                    :model/TimelineEvent {event-id :id}      {:name "Example Event"
-                                                              :timeline_id timeline-id}]
+                                                             :timeline_id timeline-id}]
       (testing "delete an existing timeline-event `id`"
         (is (= nil
                (mt/user-http-request :rasta :delete 204 (str "timeline-event/" event-id))))

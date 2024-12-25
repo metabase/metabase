@@ -8,7 +8,6 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.actions :as lib.schema.actions]
-   [metabase.models :refer [:model/Database]]
    [metabase.models.setting :as setting]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]

@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.models :refer [:model/Card :model/Collection :model/Database :model/Table]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -274,9 +273,9 @@
   (testing "Make sure a query on an inactive table fails to run"
     (mt/with-temp [:model/Database db {:name "Test DB"}
                    :model/Table    table {:db_id (u/the-id db)
-                                   :name "Inactive Table"
-                                   :schema "PUBLIC"
-                                   :active false}]
+                                          :name "Inactive Table"
+                                          :schema "PUBLIC"
+                                          :active false}]
       (mt/with-full-data-perms-for-all-users!
         (is (thrown-with-msg?
              Exception

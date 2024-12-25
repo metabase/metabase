@@ -5,7 +5,6 @@
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.metabot :as metabot]
-   [metabase.models :refer [:model/Card :model/Database]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))

@@ -7,10 +7,6 @@
    [clojure.test :refer :all]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models
-    :refer [:model/Action :model/Card :model/CardBookmark :model/Collection Da:model/DashboardBookmarkBookmark
-            :model/DashboardCard :model/Database :model/PermissionsGroup :model/PermissionsGroupMembership
-            :model/Pulse :model/PulseCard :model/QueryAction :model/Segment :model/Table]]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
@@ -171,15 +167,15 @@
                      :model/Database    {db-id :id
                                           :as db}       (data-map "database %s database")
                      :model/Table       table          (merge (data-map "database %s database")
-                                                       {:db_id db-id})
+                                                        {:db_id db-id})
 
                      :model/QueryAction _qa (query-action action-id)
                      :model/Card        card           (coll-data-map "card %s card" coll)
                      :model/Card        dataset        (assoc (coll-data-map "dataset %s dataset" coll)
-                                                               :type :model)
+                                                              :type :model)
                      Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
                      :model/Card        metric         (assoc (coll-data-map "metric %s metric" coll)
-                                                               :type :metric)
+                                                              :type :metric)
                      :model/Segment     segment        (data-map "segment %s segment")]
         (f {:action     action
             :collection coll
@@ -574,7 +570,7 @@
   (testing "Segments on tables for which the user does not have access to should not show up in results"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table-id :id} {:db_id  db-id
-                                            :schema nil}
+                                                   :schema nil}
                    :model/Segment  _ {:table_id table-id
                                        :name     "test segment"}]
       (mt/with-no-data-perms-for-all-users!
@@ -1334,31 +1330,31 @@
        [_                         {:type :model :dataset_query (mt/mbql-query venues)}
         {http-action :action-id}  {:type :http :name search-term}
         {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
-        (testing "by default do not search for native content"
-          (is (= #{["card" mbql-card]
-                   ["card" native-card-in-name]
-                   ["dataset" mbql-model]
-                   ["dataset" native-model-in-name]
-                   ["action" http-action]}
-                 (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term)
-                      :data
-                      (map (juxt :model :id))
-                      set))))
+       (testing "by default do not search for native content"
+         (is (= #{["card" mbql-card]
+                  ["card" native-card-in-name]
+                  ["dataset" mbql-model]
+                  ["dataset" native-model-in-name]
+                  ["action" http-action]}
+                (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term)
+                     :data
+                     (map (juxt :model :id))
+                     set))))
 
-        (testing "if search-native-query is true, search both dataset_query and the name"
-          (is (= #{["card" mbql-card]
-                   ["card" native-card-in-name]
-                   ["dataset" mbql-model]
-                   ["dataset" native-model-in-name]
-                   ["action" http-action]
+       (testing "if search-native-query is true, search both dataset_query and the name"
+         (is (= #{["card" mbql-card]
+                  ["card" native-card-in-name]
+                  ["dataset" mbql-model]
+                  ["dataset" native-model-in-name]
+                  ["action" http-action]
 
-                   ["card" native-card-in-query]
-                   ["dataset" native-model-in-query]
-                   ["action" query-action]}
-                 (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :search_native_query true)
-                      :data
-                      (map (juxt :model :id))
-                      set))))))))
+                  ["card" native-card-in-query]
+                  ["dataset" native-model-in-query]
+                  ["action" query-action]}
+                (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :search_native_query true)
+                     :data
+                     (map (juxt :model :id))
+                     set))))))))
 
 (deftest search-result-with-user-metadata-test
   (let [search-term "with-user-metadata"]

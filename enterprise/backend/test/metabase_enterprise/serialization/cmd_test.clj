@@ -9,8 +9,6 @@
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.cmd :as cmd]
-   [metabase.models :refer [:model/Card :model/Collection :model/Dashboard :model/DashboardCard :model/Database
-                            :model/User]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize.test-users :as test-users]
@@ -268,11 +266,11 @@
                 (let [db   (ts/create! :model/Database)
                       dash (ts/create! :model/Dashboard)
                       c1   (ts/create! :model/Card {:name          "card1"
-                                                     :database_id   (:id db)
-                                                     :dataset_query {:database (:id db), :type :native, :native {:query "SELECT 1;"}}})
+                                                    :database_id   (:id db)
+                                                    :dataset_query {:database (:id db), :type :native, :native {:query "SELECT 1;"}}})
                       c2   (ts/create! :model/Card {:name          "card2"
-                                                     :database_id   (:id db)
-                                                     :dataset_query {:database (:id db), :type :native, :native {:query "SELECT 1;"}}})
+                                                    :database_id   (:id db)
+                                                    :dataset_query {:database (:id db), :type :native, :native {:query "SELECT 1;"}}})
                       _    (ts/create! :model/DashboardCard {:dashboard_id (:id dash) :card_id (:id c1)})
                       _    (ts/create! :model/DashboardCard {:dashboard_id (:id dash) :card_id (:id c2)})]
                   (testing "initial dump"

@@ -7,12 +7,7 @@
    [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.db.query :as mdb.query]
-   [metabase.models.collection :as collection :refer [:model/Collection]]
    [metabase.models.collection-permission-graph-revision :as c-perm-revision]
-   [metabase.models.permissions :as perms :refer [:model/Permissions]]
-   [metabase.models.permissions-group
-    :as perms-group
-    :refer [:model/PermissionsGroup]]
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]

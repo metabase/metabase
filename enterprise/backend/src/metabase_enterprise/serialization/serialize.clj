@@ -7,21 +7,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.dashboard :refer [:model/Dashboard]]
-   [metabase.models.dashboard-card :refer [:model/DashboardCard]]
-   [metabase.models.dashboard-card-series :refer [:model/DashboardCardSeries]]
-   [metabase.models.database :refer [:model/Database]]
-   [metabase.models.dimension :refer [:model/Dimensions]]
-   [metabase.models.field :as field :refer [:model/Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.native-query-snippet :refer [:model/NativeQuerySnippet]]
-   [metabase.models.pulse :refer [:model/Pulse]]
-   [metabase.models.pulse-card :refer [:model/PulseCard]]
-   [metabase.models.pulse-channel :refer [:model/PulseChannel]]
-   [metabase.models.segment :refer [:model/Segment]]
-   [metabase.models.table :refer [:model/Table]]
-   [metabase.models.user :refer [:model/User]]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -83,9 +69,9 @@
                                                 (if (and (string? source-table)
                                                          (str/starts-with? source-table "card__"))
                                                   (fully-qualified-name :model/Card (-> source-table
-                                                                                         (str/split #"__")
-                                                                                         second
-                                                                                         Integer/parseInt))
+                                                                                        (str/split #"__")
+                                                                                        second
+                                                                                        Integer/parseInt))
                                                   (fully-qualified-name :model/Table source-table))))
       (m/update-existing entity :breakout (fn [breakout]
                                             (map mbql-id->fully-qualified-name breakout)))

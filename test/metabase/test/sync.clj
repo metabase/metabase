@@ -1,8 +1,6 @@
 (ns metabase.test.sync
   (:require
    [clojure.test :refer :all]
-   [metabase.models.database :refer [:model/Database]]
-   [metabase.models.task-history :refer [:model/TaskHistory]]
    [metabase.sync :as sync]
    [metabase.test.data :as data]
    [toucan2.core :as t2]))

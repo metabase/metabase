@@ -1,7 +1,6 @@
 (ns metabase.xrays.automagic-dashboards.util-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:model/Card]]
    [metabase.test :as mt]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [metabase.xrays.automagic-dashboards.util :as magic.util]

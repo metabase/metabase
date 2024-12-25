@@ -3,8 +3,6 @@
    [clojure.data :as data]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.upsert :as upsert]
-   [metabase.models :refer [:model/Card :model/Collection :model/Dashboard :model/DashboardCard :model/Database :model/Field :model/NativeQuerySnippet
-                            :model/Pulse :model/Segment :model/Table :model/User]]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util :as u]

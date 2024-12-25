@@ -7,7 +7,6 @@
    [metabase.events :as events]
    [metabase.events.notification :as events.notification]
    [metabase.integrations.common :as integrations.common]
-   [metabase.models.user :refer [:model/User]]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]

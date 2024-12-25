@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [:model/Card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]

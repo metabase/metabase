@@ -7,7 +7,6 @@
    [metabase-enterprise.serialization.api :as api.serialization]
    [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.models :refer [:model/Card :model/Collection :model/Dashboard]]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.compress :as u.compress]

@@ -16,7 +16,6 @@
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
-   [metabase.models.user :refer [model__User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.timezone :as qp.timezone]

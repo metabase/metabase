@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
-   [metabase.models :refer [model__:model/Cardion Card :model/Dashboard :model/DashboardCard]]
    [metabase.models.action :as action]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sync :as sync]
@@ -134,7 +133,7 @@
         (mt/with-actions [{:keys [action-id]} {}]
           (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                          :model/DashboardCard {dashcard-id :id} {:action_id action-id
-                                                          :dashboard_id dashboard-id}]
+                                                                 :dashboard_id dashboard-id}]
             (is (= 1 (t2/count :model/DashboardCard :id dashcard-id)))
             (action/update! {:id action-id, :archived true} {:id action-id})
             (is (zero? (t2/count :model/DashboardCard :id dashcard-id)))))))))
@@ -146,7 +145,7 @@
         (mt/with-actions [{:keys [action-id]} {}]
           (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                          :model/DashboardCard {dashcard-id :id} {:action_id action-id
-                                                          :dashboard_id dashboard-id}]
+                                                                 :dashboard_id dashboard-id}]
             (is (= 1 (t2/count :model/DashboardCard :id dashcard-id)))
             (t2/delete! :model/Action :id action-id)
             (is (zero? (t2/count :model/DashboardCard :id dashcard-id)))))))))

@@ -17,9 +17,6 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.action :as action]
-   [metabase.models.database :refer [:model/Database]]
-   [metabase.models.field :refer [:model/Field]]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.string-extracts-test
     :as string-extracts-test]
@@ -163,8 +160,8 @@
 
       (testing "if someone says specifies `tinyInt1isBit=false`, it should come back as a number instead"
         (t2.with-temp/with-temp [:model/Database db {:engine  "mysql"
-                                                      :details (assoc (:details (mt/db))
-                                                                      :additional-options "tinyInt1isBit=false")}]
+                                                     :details (assoc (:details (mt/db))
+                                                                     :additional-options "tinyInt1isBit=false")}]
           (sync/sync-database! db)
           (is (= #{{:name "number-of-cans", :base_type :type/Integer, :semantic_type :type/Quantity}
                    {:name "id", :base_type :type/Integer, :semantic_type :type/PK}

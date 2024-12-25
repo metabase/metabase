@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [compojure.core :refer [GET PUT]]
    [metabase.api.common :as api]
-   [metabase.models.user :refer [:model/User]]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]

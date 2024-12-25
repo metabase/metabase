@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.email.messages :as messages]
-   [metabase.models :refer [model_:model/PulseChanneleChannel]]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -42,8 +41,8 @@
       (testing "Valid hash and email"
         (mt/with-temp [:model/Pulse        {pulse-id :id} {:name "title"}
                        :model/PulseChannel _              {:pulse_id     pulse-id
-                                                    :channel_type "email"
-                                                    :details      {:emails [email]}}]
+                                                           :channel_type "email"
+                                                           :details      {:emails [email]}}]
           (is (= {:status "success" :title "title"}
                  (mt/client :post 200 "pulse/unsubscribe" {:pulse-id pulse-id
                                                            :email    email
@@ -55,8 +54,8 @@
       (testing "Valid hash and email returns event."
         (t2.with-temp/with-temp [:model/Pulse        {pulse-id :id} {}
                                  :model/PulseChannel _              {:pulse_id     pulse-id
-                                                              :channel_type "email"
-                                                              :details      {:emails ["test@metabase.com"]}}]
+                                                                     :channel_type "email"
+                                                                     :details      {:emails ["test@metabase.com"]}}]
           (mt/client :post 200 "pulse/unsubscribe" {:pulse-id pulse-id
                                                     :email    "test@metabase.com"
                                                     :hash     (messages/generate-pulse-unsubscribe-hash pulse-id "test@metabase.com")})
@@ -87,8 +86,8 @@
       (testing "Valid hash and email already exists"
         (mt/with-temp [:model/Pulse        {pulse-id :id} {}
                        :model/PulseChannel _              {:pulse_id     pulse-id
-                                                    :channel_type "email"
-                                                    :details      {:emails [email]}}]
+                                                           :channel_type "email"
+                                                           :details      {:emails [email]}}]
           (is (= "Email for pulse-id already exists."
                  (mt/client :post 400 "pulse/unsubscribe/undo" {:pulse-id pulse-id
                                                                 :email    email

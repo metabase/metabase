@@ -4,16 +4,8 @@
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
    [metabase.audit :as audit]
-   [metabase.models :refer [:model/User]]
-   [metabase.models.collection :as collection :refer [:model/Collection]]
-   [metabase.models.collection-permission-graph-revision
-    :as c-perm-revision
-    :refer [:model/CollectionPermissionGraphRevision]]
    [metabase.models.collection.graph :as graph]
    [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group
-    :as perms-group
-    :refer [:model/PermissionsGroup]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]

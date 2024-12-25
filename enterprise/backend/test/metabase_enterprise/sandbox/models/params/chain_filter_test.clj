@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
-   [metabase.models :refer [:model/FieldValues]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.field-values :as field-values]
    [metabase.models.params.chain-filter :as chain-filter]

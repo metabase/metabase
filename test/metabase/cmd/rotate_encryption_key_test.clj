@@ -12,7 +12,6 @@
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
-   [metabase.models :refer [:model/Database :model/Secret :model/Setting :model/User]]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -85,25 +84,25 @@
               (t2/insert! :model/Setting {:key "nocrypt", :value "unencrypted value"})
               (t2/insert! :model/Setting {:key "settings-last-updated", :value original-timestamp})
               (let [u (first (t2/insert-returning-instances! :model/User {:email        "nobody@nowhere.com"
-                                                                           :first_name   "No"
-                                                                           :last_name    "Body"
-                                                                           :password     "nopassword"
-                                                                           :is_active    true
-                                                                           :is_superuser false}))]
+                                                                          :first_name   "No"
+                                                                          :last_name    "Body"
+                                                                          :password     "nopassword"
+                                                                          :is_active    true
+                                                                          :is_superuser false}))]
 
                 (reset! user-id (u/the-id u)))
               (let [secret (first (t2/insert-returning-instances! :model/Secret {:name       "My Secret (plaintext)"
-                                                                                  :kind       "password"
-                                                                                  :value      (.getBytes secret-val StandardCharsets/UTF_8)
-                                                                                  :creator_id @user-id}))]
+                                                                                 :kind       "password"
+                                                                                 :value      (.getBytes secret-val StandardCharsets/UTF_8)
+                                                                                 :creator_id @user-id}))]
                 (reset! secret-id-unenc (u/the-id secret)))
               (encryption-test/with-secret-key k1
                 (t2/insert! :model/Setting {:key "k1crypted", :value "encrypted with k1"})
                 (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
                 (let [secret (first (t2/insert-returning-instances! :model/Secret {:name       "My Secret (encrypted)"
-                                                                                    :kind       "password"
-                                                                                    :value      (.getBytes secret-val StandardCharsets/UTF_8)
-                                                                                    :creator_id @user-id}))]
+                                                                                   :kind       "password"
+                                                                                   :value      (.getBytes secret-val StandardCharsets/UTF_8)
+                                                                                   :creator_id @user-id}))]
                   (reset! secret-id-enc (u/the-id secret))))
 
               (testing "rotating with the same key is a noop"

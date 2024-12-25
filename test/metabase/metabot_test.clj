@@ -6,7 +6,6 @@
    [metabase.metabot :as metabot]
    [metabase.metabot.client :as metabot-client]
    [metabase.metabot.util :as metabot-util]
-   [metabase.models :refer [:model/Card]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]

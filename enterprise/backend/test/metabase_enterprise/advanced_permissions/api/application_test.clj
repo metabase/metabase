@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as a-perms]
-   [metabase.models :refer [:model/PermissionsGroup]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))

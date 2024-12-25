@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.names :as names]
    [metabase-enterprise.serialization.test-util :as ts]
-   [metabase.models :refer [model:model/Col:model/Dashboardection Dashboard :model/Database :model/Field :model/NativeQuery:model/Segment Segment :model/Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

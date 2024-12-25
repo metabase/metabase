@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.analyze :as analyze]
    [metabase.analyze.classifiers.core :as classifiers]
-   [metabase.models.field :refer [:model/Field]]
    [metabase.models.interface :as mi]))
 
 (defn- ->field [field]

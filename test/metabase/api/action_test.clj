@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.action :as api.action]
-   [metabase.models :refer [model__:model/Cardion Card :model/Database]]
    [metabase.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]

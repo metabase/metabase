@@ -3,7 +3,6 @@
   details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
-   [metabase.models :refer [:model/ApplicationPermissionsRevision :model/Permissions]]
    [metabase.models.application-permissions-revision :as a-perm-revision]
    [metabase.models.permissions :as perms]
    [metabase.permissions.util :as perms.u]

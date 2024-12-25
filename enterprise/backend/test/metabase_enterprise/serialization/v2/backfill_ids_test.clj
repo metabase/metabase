@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
-   [metabase.models :refer [:model/Collection]]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -13,9 +12,9 @@
                        :model/Collection {c2-id :id} {:name "other collection"}
                        ;; These two deliberately have the same name!
                        :model/Collection {c3-id :id} {:name     "child collection"
-                                                       :location (str "/" c1-id "/")}
+                                                      :location (str "/" c1-id "/")}
                        :model/Collection {c4-id :id} {:name     "child collection"
-                                                       :location (str "/" c2-id "/")}]
+                                                      :location (str "/" c2-id "/")}]
 
       (let [coll-ids [c1-id c2-id c3-id c4-id]
             all-eids #(t2/select-fn-set :entity_id :model/Collection :id [:in coll-ids])]

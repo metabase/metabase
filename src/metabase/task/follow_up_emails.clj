@@ -8,7 +8,6 @@
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.models.setting :as setting]
-   [metabase.models.user :refer [:model/User]]
    [metabase.public-settings :as public-settings]
    [metabase.task :as task]
    [metabase.util.date-2 :as u.date]

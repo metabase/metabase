@@ -9,7 +9,6 @@
    [clojure.string :as str]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.ident :as lib.ident]
-   [metabase.models.card :refer [:model/Card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]

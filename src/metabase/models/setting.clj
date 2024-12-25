@@ -147,11 +147,6 @@
 
 (declare admin-writable-site-wide-settings get-value-of-type set-value-of-type!)
 
-(def :model/Setting
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/Setting)
-
 (methodical/defmethod t2/table-name :model/Setting [_model] :setting)
 
 (doto :model/Setting

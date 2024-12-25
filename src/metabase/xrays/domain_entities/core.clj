@@ -4,8 +4,6 @@
    [medley.core :as m]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]

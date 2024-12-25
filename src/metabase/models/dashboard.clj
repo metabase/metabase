@@ -10,9 +10,6 @@
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.collection :as collection :refer [:model/Collection]]
-   [metabase.models.dashboard-card :as dashboard-card :refer [:model/DashboardCard]]
    [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
@@ -38,11 +35,6 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
-
-(def :model/Dashboard
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model
-  name. We'll keep this till we replace all the Dashboard symbol in our codebase."
-  :model/Dashboard)
 
 (methodical/defmethod t2/table-name :model/Dashboard [_model] :report_dashboard)
 

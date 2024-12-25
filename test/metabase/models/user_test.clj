@@ -8,16 +8,6 @@
    [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.http-client :as client]
    [metabase.integrations.google]
-   [metabase.models
-    :refer [:model/Collection
-            :model/Database
-            :model/PermissionsGroup
-            :model/PermissionsGroupMembership
-            :model/Pulse
-            :model/PulseChannel
-            :model/PulseChannelRecipient
-            :model/Session
-            :model/User]]
    [metabase.models.collection :as collection]
    [metabase.models.collection-test :as collection-test]
    [metabase.models.permissions :as perms]

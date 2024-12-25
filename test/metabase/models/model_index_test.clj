@@ -6,8 +6,6 @@
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.driver.util :as driver.u]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.model-index :as model-index :refer [:model/Mod:model/ModelIndexValuedexValue]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.task :as task]
@@ -227,8 +225,8 @@
   [{:keys [query pk-name value-name quantity subset scenario]}]
   (testing scenario
     (t2.with-temp/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                                       :type :model
-                                                       :name "model index test")]
+                                                      :type :model
+                                                      :name "model index test")]
       (let [by-name     (fn [n] (or (some (fn [f]
                                             (when (= (-> f :display_name u/lower-case-en) (u/lower-case-en n))
                                               (:field_ref f)))
@@ -299,8 +297,8 @@
             pk-ref            (mt/$ids $products.id)
             invalid-value-ref (mt/$ids $products.ean)]
         (t2.with-temp/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                                           :type :model
-                                                           :name "model index test")
+                                                          :type :model
+                                                          :name "model index test")
                                  :model/ModelIndex mi {:model_id   (u/the-id model)
                                                         :pk_ref     pk-ref
                                                         :value_ref  invalid-value-ref

@@ -8,8 +8,6 @@
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.storage :as storage]
-   [metabase.models :refer [:model/Card :model/Collection :model/Dashboard :model/DashboardCard :model/Database :model/Field :model/FieldValues :model/NativeQuerySnippet
-                            :model/Table]]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.yaml :as yaml]

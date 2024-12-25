@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.events :as events]
-   [metabase.models.user :refer [:model/User]]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 

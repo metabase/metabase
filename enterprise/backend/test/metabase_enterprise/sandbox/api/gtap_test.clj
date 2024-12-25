@@ -4,7 +4,6 @@
    [metabase-enterprise.sandbox.models.group-table-access-policy
     :refer [GroupTableAccessPolicy]]
    [metabase.http-client :as client]
-   [metabase.models :refer [:model/Card :model/Field :model/PermissionsGroup :model/Table]]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.request.core :as request]

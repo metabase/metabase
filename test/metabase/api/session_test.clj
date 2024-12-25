@@ -7,7 +7,6 @@
    [metabase.api.session :as api.session]
    [metabase.driver.h2 :as h2]
    [metabase.http-client :as client]
-   [metabase.models :refer [:model/LoginHistory :model/Permissio:model/PermissionsGroupMembershipmbership :model/Session :model/Userl___User]]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]

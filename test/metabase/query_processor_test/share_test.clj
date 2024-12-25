@@ -3,8 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.segment :refer [:model/Segment]]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [toucan2.tools.with-temp :as t2.with-temp]))

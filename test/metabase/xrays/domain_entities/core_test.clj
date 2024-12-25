@@ -1,8 +1,6 @@
 (ns metabase.xrays.domain-entities.core-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.field :refer [:model/Field]]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.test.data :as data]
    [metabase.xrays.domain-entities.core :as de]
    [metabase.xrays.test-util.domain-entities :as test.de]

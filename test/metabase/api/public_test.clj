@@ -14,9 +14,6 @@
    [metabase.api.public :as api.public]
    [metabase.config :as config]
    [metabase.http-client :as client]
-   [metabase.models
-    :refer [:model/Card :model/Collection :model/Dashboard :model/DashboardCard :model/DashboardCardSeries
-            :model/Database :model/Dimension :model/Field :model/FieldValues]]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
@@ -106,7 +103,7 @@
                                                                                                [{:parameter_id "_VENUE_ID_"
                                                                                                  :card_id      (u/the-id card)
                                                                                                  :target       [:dimension [:field (mt/id :venues :id) nil]]}])}
-                                                                      kvs))))
+                                                                     kvs))))
 
 ;; TODO -- we can probably use [[metabase.api.dashboard-test/with-chain-filter-fixtures]] for mocking this stuff
 ;; instead since it does mostly the same stuff anyway
@@ -409,7 +406,7 @@
                                                                            :default      1
                                                                            :type         :dimension,
                                                                            :widget-type  :id}}}}}
-                                  (shared-obj))]
+                                 (shared-obj))]
         (is (=? {:status     "completed"
                  :json_query {:parameters [{:id    "_VENUE_ID_"
                                             :name  "venue_id"
@@ -728,7 +725,7 @@
                                                                              :default      1
                                                                              :type         :dimension
                                                                              :widget-type  :id}}}}}
-                                    (shared-obj))]
+                                   (shared-obj))]
           (let [dashcard (add-card-to-dashboard! card dash {:parameter_mappings [{:parameter_id "_VENUE_ID_"
                                                                                   :card_id      (u/the-id card)
                                                                                   :target       ["dimension" ["template-tag" "venue_id"]]}]})]

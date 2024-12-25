@@ -3,7 +3,6 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.api.common :as api]
-   [metabase.models :refer [:model/PermissionsGroupMembership]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))

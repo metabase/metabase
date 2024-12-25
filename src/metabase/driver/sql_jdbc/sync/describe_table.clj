@@ -15,7 +15,6 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.literal :as lib.schema.literal]
-   [metabase.models :refer [:model/Field]]
    [metabase.models.setting :as setting]
    [metabase.models.table :as table]
    [metabase.query-processor.error-type :as qp.error-type]

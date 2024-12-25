@@ -22,8 +22,6 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models :refer [:model/Table]]
-   [metabase.models.database :refer [:model/Database]]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]

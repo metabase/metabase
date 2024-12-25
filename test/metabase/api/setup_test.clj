@@ -12,7 +12,6 @@
    [metabase.driver.h2 :as h2]
    [metabase.events :as events]
    [metabase.http-client :as client]
-   [metabase.models :refer [:model/Database :model/User]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache-test :as setting.cache-test]

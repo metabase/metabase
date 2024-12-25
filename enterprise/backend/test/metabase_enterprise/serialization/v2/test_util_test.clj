@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.test-util :as ts]
-   [metabase.models :refer [:model/Database :model/Field :model/Table]]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]))
 
@@ -10,8 +9,8 @@
   (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [:model/Database   {db-id      :id} {:name "Metabase Store"}
                        :model/Table      {crm-id     :id} {:name  "crm_survey_response"
-                                                    :db_id db-id
-                                                    :schema "public"}
+                                                           :db_id db-id
+                                                           :schema "public"}
                        :model/Field      {created-id :id} {:name "created_at"
                                                             :table_id crm-id}
                        :model/Field      {nps-id     :id} {:name "nps"

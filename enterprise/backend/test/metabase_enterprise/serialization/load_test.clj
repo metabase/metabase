@@ -7,23 +7,6 @@
    [metabase-enterprise.serialization.cmd :refer [v1-dump! v1-load!]]
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.test-util :as ts]
-   [metabase.models
-    :refer [:model/Card
-            :model/Collection
-            :model/Dashboard
-            :model/DashboardCard
-            :model/DashboardCardSeries
-            :model/Database
-            :model/Dimension
-            :model/Field
-            :model/FieldValues
-            :model/NativeQuerySnippet
-            :model/Pulse
-            :model/PulseCard
-            :model/PulseChannel
-            :model/Segment
-            :model/Table
-            :model/User]]
    [metabase.models.interface :as mi]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.models.visualization-settings-test :as mb.viz-test]

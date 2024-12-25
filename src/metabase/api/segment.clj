@@ -7,7 +7,6 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
-   [metabase.models.segment :refer [:model/Segment]]
    [metabase.related :as related]
    [metabase.util :as u]
    [metabase.util.log :as log]

@@ -2,7 +2,6 @@
   "Permisisons tests for API that needs to be enforced by Application Permissions of type `:monitoring`."
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:model/TaskHistory]]
    [metabase.models.permissions :as perms]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))

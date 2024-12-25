@@ -7,7 +7,6 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [:model/Database :model/Dimension :model/Field :model/FieldValues :model/Table]]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.test :as mt]

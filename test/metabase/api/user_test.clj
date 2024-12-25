@@ -5,9 +5,6 @@
    [metabase.api.user :as api.user]
    [metabase.config :as config]
    [metabase.http-client :as client]
-   [metabase.models
-    :refer [:model/Card :model/Collection :model/Dashboard :model/LoginHistory :model/PermissionsGroup
-            :model/PermissionsGroupMembership :model/User]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]

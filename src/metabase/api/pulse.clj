@@ -17,15 +17,9 @@
    [metabase.email :as email]
    [metabase.events :as events]
    [metabase.integrations.slack :as slack]
-   [metabase.models.card :refer [:model/Card]]
    [metabase.models.collection :as collection]
-   [metabase.models.dashboard :refer [:model/Dashboard]]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse :as models.pulse :refer [:model/Pulse]]
-   [metabase.models.pulse-channel
-    :as pulse-channel
-    :refer [channel-types :model/PulseChannel]]
-   [metabase.models.pulse-channel-recipient :refer [:model/PulseChannelRecipient]]
+   [metabase.models.pulse-channel :as pulse-channel]
    [metabase.notification.core :as notification]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]

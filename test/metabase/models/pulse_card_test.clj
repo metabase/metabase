@@ -1,11 +1,6 @@
 (ns metabase.models.pulse-card-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.dashboard :refer [:model/Dashboard]]
-   [metabase.models.dashboard-card :refer [:model/DashboardCard]]
-   [metabase.models.pulse :refer [:model/Pulse]]
-   [metabase.models.pulse-card :as pulse-card :refer [:model/PulseCard]]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
@@ -20,7 +15,7 @@
                              :model/Dashboard     {dashboard-id :id} {}
                              :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id}
                              :model/PulseCard     _                  {:pulse_id          pulse-id
-                                                                       :card_id           card-id
-                                                                       :dashboard_card_id dashcard-id
-                                                                       :position          2}]
+                                                                      :card_id           card-id
+                                                                      :dashboard_card_id dashcard-id
+                                                                      :position          2}]
       (is (= 3 (pulse-card/next-position-for pulse-id))))))

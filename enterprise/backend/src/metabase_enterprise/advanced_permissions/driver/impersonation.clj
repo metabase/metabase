@@ -7,8 +7,6 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.util :as driver.u]
    [metabase.models.field :as field]
-   [metabase.models.permissions-group-membership
-    :refer [:model/PermissionsGroupMembership]]
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]

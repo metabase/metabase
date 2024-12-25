@@ -34,11 +34,6 @@
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
-(def :model/Table
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the Table symbol in our codebase."
-  :model/Table)
-
 (methodical/defmethod t2/table-name :model/Table [_model] :metabase_table)
 
 (doto :model/Table

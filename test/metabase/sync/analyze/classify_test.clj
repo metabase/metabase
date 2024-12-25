@@ -1,9 +1,6 @@
 (ns metabase.sync.analyze.classify-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.database :refer [:model/Database]]
-   [metabase.models.field :refer [:model/Field]]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.sync.analyze.classify :as classify]
    [metabase.sync.interface :as i]
    [metabase.util :as u]

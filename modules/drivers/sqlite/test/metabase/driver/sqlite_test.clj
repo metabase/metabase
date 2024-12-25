@@ -6,8 +6,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.models.database :refer [:model/Database]]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.query-processor :as qp]
    [metabase.sync :as sync]
    [metabase.test :as mt]

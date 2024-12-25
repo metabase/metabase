@@ -4,12 +4,6 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging]
    [metabase.integrations.common :as integrations.common]
-   [metabase.models.permissions-group
-    :as perms-group
-    :refer [:model/PermissionsGroup]]
-   [metabase.models.permissions-group-membership
-    :as perms-group-membership
-    :refer [:model/PermissionsGroupMembership]]
    [metabase.test :as mt :refer [with-user-in-groups]]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]

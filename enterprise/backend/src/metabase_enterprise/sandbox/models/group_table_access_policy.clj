@@ -8,7 +8,6 @@
    [medley.core :as m]
    [metabase.audit :as audit]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.card :refer [:model/Card]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]

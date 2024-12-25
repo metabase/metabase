@@ -111,11 +111,6 @@
 
 ;; ## Entity
 
-(def :model/PulseChannel
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all these symbols in our codebase."
-  :model/PulseChannel)
-
 (methodical/defmethod t2/table-name :model/PulseChannel [_model] :pulse_channel)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :pulse_channel] [_original-model _k] :model/PulseChannel)
 

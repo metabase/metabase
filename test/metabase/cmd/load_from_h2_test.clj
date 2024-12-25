@@ -11,7 +11,6 @@
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.models :refer [:model/Table]]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]

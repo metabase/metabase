@@ -8,8 +8,6 @@
    [metabase.api.permissions :as api.permissions]
    [metabase.api.permissions-test-util :as perm-test-util]
    [metabase.config :as config]
-   [metabase.models
-    :refer [:model/Database :model/Permissio:model/PermissionsGroupMembershipmbership :model/Table :model/User]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.permissions-group :as perms-group]

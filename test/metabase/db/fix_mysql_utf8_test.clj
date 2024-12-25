@@ -6,7 +6,6 @@
    [metabase.db.data-source :as mdb.data-source]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.models :refer [:model/Database]]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

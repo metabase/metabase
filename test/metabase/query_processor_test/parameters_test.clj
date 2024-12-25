@@ -9,7 +9,6 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.native :as lib-native]
-   [metabase.models :refer [:model/Card]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]

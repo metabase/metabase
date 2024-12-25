@@ -8,7 +8,6 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [:model/Database :model/Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]

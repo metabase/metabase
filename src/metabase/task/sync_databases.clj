@@ -15,7 +15,6 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.database :refer [:model/Database]]
    [metabase.models.interface :as mi]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as sync.field-values]

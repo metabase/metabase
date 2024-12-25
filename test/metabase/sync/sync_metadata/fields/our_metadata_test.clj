@@ -3,8 +3,6 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.models.database :refer [:model/Database]]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
    [metabase.test :as mt]

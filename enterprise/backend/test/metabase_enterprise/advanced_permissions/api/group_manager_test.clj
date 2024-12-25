@@ -4,7 +4,6 @@
    [clojure.set :refer [subset?]]
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.models.permissions.group-manager :as gm]
-   [metabase.models :refer [:model/Permissio:model/PermissionsGroupMembershipmbership :model/User]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.user :as user]
    [metabase.test :as mt]

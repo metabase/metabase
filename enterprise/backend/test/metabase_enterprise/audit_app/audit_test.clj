@@ -10,7 +10,6 @@
    [metabase.audit :as audit]
    [metabase.core :as mbc]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.database :refer [:model/Database]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
    [metabase.plugins :as plugins]

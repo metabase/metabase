@@ -4,8 +4,6 @@
    [clojure.test :refer :all]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.db.query :as mdb.query]
-   [metabase.models.field :refer [:model/Field]]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.query-processor :as qp]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.interface :as i]
@@ -263,10 +261,10 @@
 (deftest fingerprint-table!-test
   (testing "the `fingerprint!` function is correctly updating the correct columns of Field"
     (t2.with-temp/with-temp [:model/Field field {:base_type           :type/Integer
-                                                  :table_id            (data/id :venues)
-                                                  :fingerprint         nil
-                                                  :fingerprint_version 1
-                                                  :last_analyzed       #t "2017-08-09T00:00:00"}]
+                                                 :table_id            (data/id :venues)
+                                                 :fingerprint         nil
+                                                 :fingerprint_version 1
+                                                 :last_analyzed       #t "2017-08-09T00:00:00"}]
       (binding [i/*latest-fingerprint-version* 3]
         (with-redefs [qp/process-query             (fn [_query rff]
                                                      (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))

@@ -8,9 +8,6 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models.database :refer [:model/Database]]
-   [metabase.models.field :refer [:model/Field]]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
@@ -378,7 +375,7 @@
                      (mt/first-row (qp/process-query query)))))))
         (testing "WITH coercion strategy"
           (mt/with-temp-vals-in-db :model/Field (mt/id :timestamps :timestamp) {:coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
-                                                                                 :effective_type    :type/Instant}
+                                                                                :effective_type    :type/Instant}
             (let [query (mt/mbql-query timestamps)]
               (mt/with-native-query-testing-context query
                 (is (= [1 "2022-01-20T18:49:10.656Z"]

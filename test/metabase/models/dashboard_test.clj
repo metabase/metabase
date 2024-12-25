@@ -3,8 +3,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.models :refer [model__:model/Cardion Card :model/Collection :model/Dashboard :model/DashboardCard :model/DashboardCardSeries
-                            :model/Database :model/Field model_:model/PulseCardulseCard :model/Revision :model/Table]]
    [metabase.models.collection :as collection]
    [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]

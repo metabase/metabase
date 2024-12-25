@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
-   [metabase.models :refer [:model/Field :model/FieldValues :model/User]]
    [metabase.models.field-values :as field-values]
    [metabase.test :as mt]
    [toucan2.core :as t2]

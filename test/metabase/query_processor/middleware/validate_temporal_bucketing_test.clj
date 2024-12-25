@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.validate-temporal-bucketing-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:model/Field]]
    [metabase.query-processor.middleware.validate-temporal-bucketing
     :as validate-temporal-bucketing]
    [metabase.test :as mt]

@@ -5,10 +5,8 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models.database :refer [:model/Database]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
@@ -150,9 +148,9 @@
               (sync-util/name-for-logging (mi/instance :model/Table table))))
   (doseq [{schema :schema table-name :name :as _table} old-tables]
     (t2/update! :model/Table {:db_id  (u/the-id database)
-                               :schema schema
-                               :name   table-name
-                               :active true}
+                              :schema schema
+                              :name   table-name
+                              :active true}
                 {:active false})))
 
 (mu/defn- update-table-metadata-if-needed!

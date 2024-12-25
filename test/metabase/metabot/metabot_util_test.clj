@@ -8,7 +8,6 @@
    [metabase.metabot.client :as metabot-client]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.metabot.util :as metabot-util]
-   [metabase.models :refer [:model/Card :model/Database :model/Table]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.util :as tu]

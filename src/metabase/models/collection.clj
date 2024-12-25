@@ -17,7 +17,6 @@
    [metabase.models.api-key :as api-key]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms :refer [:model/Permissions]]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings.premium-features :as premium-features]
@@ -95,11 +94,6 @@
   "Is this the trash collection, or a descendant of it?"
   [collection]
   (str/starts-with? (:location collection) (trash-path)))
-
-(def :model/Collection
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], no2 it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the Card symbol in our codebase."
-  :model/Collection)
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
@@ -1326,7 +1320,7 @@
   in the single case of deleting a User themselves, we need to allow this. (Note that in normal usage, Users never get
   deleted, but rather archived; thus this code is used solely by our test suite, by things such as the `with-temp`
   macros.)"}
-  *allow-deleting-personal-collections*
+ *allow-deleting-personal-collections*
   false)
 
 (t2/define-before-delete :model/Collection

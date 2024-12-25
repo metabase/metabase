@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.integrations.google :as google]
-   [metabase.models.user :refer [:model/User]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]))
 

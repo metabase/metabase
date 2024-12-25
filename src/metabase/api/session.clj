@@ -11,10 +11,7 @@
    [metabase.events :as events]
    [metabase.integrations.google :as google]
    [metabase.integrations.ldap :as ldap]
-   [metabase.models.login-history :refer [:model/LoginHistory]]
-   [metabase.models.session :refer [:model/Session]]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.models.user :as user :refer [:model/User]]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -35,8 +32,8 @@
    user-id     :- ms/PositiveInt
    device-info :- request/DeviceInfo]
   (t2/insert! :model/LoginHistory (merge {:user_id    user-id
-                                           :session_id (str session-id)}
-                                          device-info)))
+                                          :session_id (str session-id)}
+                                         device-info)))
 
 (defmulti create-session!
   "Generate a new Session for a User. `session-type` is the currently either `:password` (for email + password login) or

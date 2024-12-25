@@ -151,14 +151,8 @@
    [metabase.analyze :as analyze]
    [metabase.db.query :as mdb.query]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.database :refer [:model/Database]]
-   [metabase.models.field :as field :refer [:model/Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.legacy-metric :refer [:model/LegacyMetric]]
    [metabase.models.query :refer [Query]]
-   [metabase.models.segment :refer [:model/Segment]]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
    [metabase.util :as u]
@@ -682,41 +676,41 @@
 
 (def ^:private related-selectors
   {:model/Table   (let [down     [[:indepth] [:segments :metrics] [:drilldown-fields]]
-                         sideways [[:linking-to :linked-from] [:tables]]
-                         compare  [[:compare]]]
-                     {:zoom-in [down down down down]
-                      :related [sideways sideways]
-                      :compare [compare compare]})
+                        sideways [[:linking-to :linked-from] [:tables]]
+                        compare  [[:compare]]]
+                    {:zoom-in [down down down down]
+                     :related [sideways sideways]
+                     :compare [compare compare]})
    :model/Segment (let [down     [[:indepth] [:segments :metrics] [:drilldown-fields]]
-                         sideways [[:linking-to] [:tables]]
-                         up       [[:table]]
-                         compare  [[:compare]]]
-                     {:zoom-in  [down down down]
-                      :zoom-out [up]
-                      :related  [sideways sideways]
-                      :compare  [compare compare]})
+                        sideways [[:linking-to] [:tables]]
+                        up       [[:table]]
+                        compare  [[:compare]]]
+                    {:zoom-in  [down down down]
+                     :zoom-out [up]
+                     :related  [sideways sideways]
+                     :compare  [compare compare]})
    :model/LegacyMetric  (let [down     [[:drilldown-fields]]
-                               sideways [[:metrics :segments]]
-                               up       [[:table]]
-                               compare  [[:compare]]]
-                           {:zoom-in  [down down]
-                            :zoom-out [up]
-                            :related  [sideways sideways sideways]
-                            :compare  [compare compare]})
+                              sideways [[:metrics :segments]]
+                              up       [[:table]]
+                              compare  [[:compare]]]
+                          {:zoom-in  [down down]
+                           :zoom-out [up]
+                           :related  [sideways sideways sideways]
+                           :compare  [compare compare]})
    :model/Field   (let [sideways [[:fields]]
-                         up       [[:table] [:metrics :segments]]
-                         compare  [[:compare]]]
-                     {:zoom-out [up]
-                      :related  [sideways sideways]
-                      :compare  [compare]})
+                        up       [[:table] [:metrics :segments]]
+                        compare  [[:compare]]]
+                    {:zoom-out [up]
+                     :related  [sideways sideways]
+                     :compare  [compare]})
    :model/Card    (let [down     [[:drilldown-fields]]
-                         sideways [[:metrics] [:similar-questions :dashboard-mates]]
-                         up       [[:table]]
-                         compare  [[:compare]]]
-                     {:zoom-in  [down down]
-                      :zoom-out [up]
-                      :related  [sideways sideways sideways]
-                      :compare  [compare compare]})
+                        sideways [[:metrics] [:similar-questions :dashboard-mates]]
+                        up       [[:table]]
+                        compare  [[:compare]]]
+                    {:zoom-in  [down down]
+                     :zoom-out [up]
+                     :related  [sideways sideways sideways]
+                     :compare  [compare compare]})
    Query   (let [down     [[:drilldown-fields]]
                  sideways [[:metrics] [:similar-questions]]
                  up       [[:table]]
@@ -822,9 +816,9 @@
            (->> aggregation-clause second (t2/select-one :model/LegacyMetric :id))
            (let [table-id (table-id question)]
              (mi/instance :model/LegacyMetric {:definition {:aggregation  [aggregation-clause]
-                                                             :source-table table-id}
-                                                :name       (names/metric->description root aggregation-clause)
-                                                :table_id   table-id}))))
+                                                            :source-table table-id}
+                                               :name       (names/metric->description root aggregation-clause)
+                                               :table_id   table-id}))))
        (get-in question [:dataset_query :query :aggregation])))
 
 (mu/defn- collect-breakout-fields :- [:maybe [:sequential (ms/InstanceOf :model/Field)]]

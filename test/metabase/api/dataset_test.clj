@@ -19,10 +19,8 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
-   [metabase.models.card :refer [:model/Card]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.query-execution :refer [:model/QueryExecution]]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -261,10 +259,10 @@
           metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])]
       (t2.with-temp/with-temp
         [:model/Card card (assoc {:dataset_query native-query}
-                                  :result_metadata
-                                  (-> (lib.metadata.protocols/metadatas metadata-provider :metadata/card [1])
-                                      first
-                                      :result-metadata))]
+                                 :result_metadata
+                                 (-> (lib.metadata.protocols/metadatas metadata-provider :metadata/card [1])
+                                     first
+                                     :result-metadata))]
         (let [card-query {:database (mt/id)
                           :type     "query"
                           :query    {:source-table (str "card__" (u/the-id card))}}]

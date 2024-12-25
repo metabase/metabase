@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.models.field :refer [:model/Field]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]

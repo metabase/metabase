@@ -10,7 +10,6 @@
    [hickory.core :as hik]
    [hickory.select :as hik.s]
    [metabase.email :as email]
-   [metabase.models :refer [:model/Card :model/Collection :model/Dashboard :model/DashboardCard :model/Pulse___Pulse :model/PulseCard :model/PulseChannel :model/PulseChannelRecipient]]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
@@ -109,19 +108,19 @@
                                             :as      pulse} {:name         "Test Pulse"
                                                              :dashboard_id dash-id}
                      :model/PulseCard _ {:pulse_id          pulse-id
-                                  :card_id           base-card-id
-                                  :dashboard_card_id base-dash-card-id}
+                                         :card_id           base-card-id
+                                         :dashboard_card_id base-dash-card-id}
                      :model/PulseCard _ {:pulse_id          pulse-id
-                                  :card_id           model-card-id
-                                  :dashboard_card_id model-dash-card-id}
+                                         :card_id           model-card-id
+                                         :dashboard_card_id model-dash-card-id}
                      :model/PulseCard _ {:pulse_id          pulse-id
-                                  :card_id           question-card-id
-                                  :dashboard_card_id question-dash-card-id}
+                                         :card_id           question-card-id
+                                         :dashboard_card_id question-dash-card-id}
                      :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                          :pulse_id     pulse-id
-                                                          :enabled      true}
+                                                                 :pulse_id     pulse-id
+                                                                 :enabled      true}
                      :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                              :user_id          (mt/user->id :rasta)}]
+                                                     :user_id          (mt/user->id :rasta)}]
         (let [[base-data-row
                model-data-row
                question-data-row] (run-pulse-and-return-last-data-columns! pulse)]
@@ -144,36 +143,36 @@
                                               :as      pulse} {:name            "Test Pulse"
                                                                :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
-                                    :card_id  base-card-id}
+                                           :card_id  base-card-id}
                        :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                            :pulse_id     pulse-id
-                                                            :enabled      true}
+                                                                   :pulse_id     pulse-id
+                                                                   :enabled      true}
                        :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                                :user_id          (mt/user->id :rasta)}]
+                                                       :user_id          (mt/user->id :rasta)}]
           (is (all-float? (first (run-pulse-and-return-last-data-columns! pulse))))))
       (testing "The data from the second question (a model) is percent formatted"
         (mt/with-temp [:model/Pulse___Pulse {pulse-id :id
                                               :as      pulse} {:name "Test Pulse"
                                                                :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
-                                    :card_id  model-card-id}
+                                           :card_id  model-card-id}
                        :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                            :pulse_id     pulse-id
-                                                            :enabled      true}
+                                                                   :pulse_id     pulse-id
+                                                                   :enabled      true}
                        :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                                :user_id          (mt/user->id :rasta)}]
+                                                       :user_id          (mt/user->id :rasta)}]
           (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns! pulse))))))
       (testing "The data from the last question (based on a a model) is percent formatted"
         (mt/with-temp [:model/Pulse___Pulse {pulse-id :id
                                               :as      pulse} {:name "Test Pulse"
                                                                :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
-                                    :card_id  question-card-id}
+                                           :card_id  question-card-id}
                        :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                            :pulse_id     pulse-id
-                                                            :enabled      true}
+                                                                   :pulse_id     pulse-id
+                                                                   :enabled      true}
                        :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                                :user_id          (mt/user->id :rasta)}]
+                                                       :user_id          (mt/user->id :rasta)}]
           (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns! pulse)))))))))
 
 (defn- strip-timestamp
@@ -222,19 +221,19 @@
                                             :as      pulse} {:name         "Test Pulse"
                                                              :dashboard_id dash-id}
                      :model/PulseCard _ {:pulse_id          pulse-id
-                                  :card_id           base-card-id
-                                  :dashboard_card_id base-dash-card-id}
+                                         :card_id           base-card-id
+                                         :dashboard_card_id base-dash-card-id}
                      :model/PulseCard _ {:pulse_id          pulse-id
-                                  :card_id           model-card-id
-                                  :dashboard_card_id model-dash-card-id}
+                                         :card_id           model-card-id
+                                         :dashboard_card_id model-dash-card-id}
                      :model/PulseCard _ {:pulse_id          pulse-id
-                                  :card_id           question-card-id
-                                  :dashboard_card_id question-dash-card-id}
+                                         :card_id           question-card-id
+                                         :dashboard_card_id question-dash-card-id}
                      :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                          :pulse_id     pulse-id
-                                                          :enabled      true}
+                                                                 :pulse_id     pulse-id
+                                                                 :enabled      true}
                      :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                              :user_id          (mt/user->id :rasta)}]
+                                                     :user_id          (mt/user->id :rasta)}]
         (let [parsed-data (run-pulse-and-return-attached-csv-data! pulse)]
           (testing "The base model has no special formatting"
             (is (all-float? (get-in parsed-data ["Base question - no special metadata.csv" "Tax Rate"]))))
@@ -251,12 +250,12 @@
                                               :as      pulse} {:name "Test Pulse"
                                                                :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
-                                    :card_id  base-card-id}
+                                           :card_id  base-card-id}
                        :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                            :pulse_id     pulse-id
-                                                            :enabled      true}
+                                                                   :pulse_id     pulse-id
+                                                                   :enabled      true}
                        :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                                :user_id          (mt/user->id :rasta)}]
+                                                       :user_id          (mt/user->id :rasta)}]
           (let [parsed-data (run-pulse-and-return-attached-csv-data! pulse)]
             (is (all-float? (get-in parsed-data ["Base question - no special metadata.csv" "Tax Rate"]))))))
       (testing "The attached data from the second question (a model) is percent formatted"
@@ -264,12 +263,12 @@
                                               :as      pulse} {:name "Test Pulse"
                                                                :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
-                                    :card_id  model-card-id}
+                                           :card_id  model-card-id}
                        :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                            :pulse_id     pulse-id
-                                                            :enabled      true}
+                                                                   :pulse_id     pulse-id
+                                                                   :enabled      true}
                        :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                                :user_id          (mt/user->id :rasta)}]
+                                                       :user_id          (mt/user->id :rasta)}]
           (let [parsed-data (run-pulse-and-return-attached-csv-data! pulse)]
             (is (all-pct-2d? (get-in parsed-data ["Model with percent semantic type.csv" "Tax Rate"]))))))
       (testing "The attached data from the last question (based on a a model) is percent formatted"
@@ -277,12 +276,12 @@
                                               :as      pulse} {:name "Test Pulse"
                                                                :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
-                                    :card_id  question-card-id}
+                                           :card_id  question-card-id}
                        :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                            :pulse_id     pulse-id
-                                                            :enabled      true}
+                                                                   :pulse_id     pulse-id
+                                                                   :enabled      true}
                        :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                                :user_id          (mt/user->id :rasta)}]
+                                                       :user_id          (mt/user->id :rasta)}]
           (let [parsed-data (run-pulse-and-return-attached-csv-data! pulse)]
             (is (all-pct-2d? (get-in parsed-data ["Query based on model.csv" "Tax Rate"])))))))))
 
@@ -384,22 +383,22 @@
                                             :as      pulse} {:name "Consistent Time Formatting Pulse"
                                                              :dashboard_id dash-id}
                      :model/PulseCard _ {:pulse_id          pulse-id
-                                  :card_id           native-card-id
-                                  :dashboard_card_id base-dash-card-id
-                                  :include_csv       true}
+                                         :card_id           native-card-id
+                                         :dashboard_card_id base-dash-card-id
+                                         :include_csv       true}
                      :model/PulseCard _ {:pulse_id          pulse-id
-                                  :card_id           model-card-id
-                                  :dashboard_card_id model-dash-card-id
-                                  :include_csv       true}
+                                         :card_id           model-card-id
+                                         :dashboard_card_id model-dash-card-id
+                                         :include_csv       true}
                      :model/PulseCard _ {:pulse_id          pulse-id
-                                  :card_id           meta-model-card-id
-                                  :dashboard_card_id metamodel-dash-card-id
-                                  :include_csv       true}
+                                         :card_id           meta-model-card-id
+                                         :dashboard_card_id metamodel-dash-card-id
+                                         :include_csv       true}
                      :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                          :pulse_id     pulse-id
-                                                          :enabled      true}
+                                                                 :pulse_id     pulse-id
+                                                                 :enabled      true}
                      :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                              :user_id          (mt/user->id :rasta)}]
+                                                     :user_id          (mt/user->id :rasta)}]
         (let [attached-data     (run-pulse-and-return-attached-csv-data! pulse)
               get-res           #(-> (get attached-data %)
                                      (update-vals first)
@@ -545,26 +544,26 @@
                                               :as      pulse} {:name "Consistent Column Names"
                                                                :dashboard_id dash-id}
                        :model/PulseCard _ {:pulse_id          pulse-id
-                                    :card_id           base-card-id
-                                    :dashboard_card_id base-dash-card-id
-                                    :include_csv       true}
+                                           :card_id           base-card-id
+                                           :dashboard_card_id base-dash-card-id
+                                           :include_csv       true}
                        :model/PulseCard _ {:pulse_id          pulse-id
-                                    :card_id           model-card-id
-                                    :dashboard_card_id model-dash-card-id
-                                    :include_csv       true}
+                                           :card_id           model-card-id
+                                           :dashboard_card_id model-dash-card-id
+                                           :include_csv       true}
                        :model/PulseCard _ {:pulse_id          pulse-id
-                                    :card_id           meta-model-card-id
-                                    :dashboard_card_id meta-model-dash-card-id
-                                    :include_csv       true}
+                                           :card_id           meta-model-card-id
+                                           :dashboard_card_id meta-model-dash-card-id
+                                           :include_csv       true}
                        :model/PulseCard _ {:pulse_id          pulse-id
-                                    :card_id           question-card-id
-                                    :dashboard_card_id question-dash-card-id
-                                    :include_csv       true}
+                                           :card_id           question-card-id
+                                           :dashboard_card_id question-dash-card-id
+                                           :include_csv       true}
                        :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                            :pulse_id     pulse-id
-                                                            :enabled      true}
+                                                                   :pulse_id     pulse-id
+                                                                   :enabled      true}
                        :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                                :user_id          (mt/user->id :rasta)}]
+                                                       :user_id          (mt/user->id :rasta)}]
           (let [attachment-name->cols (mt/with-fake-inbox
                                         (with-redefs [email/bcc-enabled? (constantly false)]
                                           (mt/with-test-user nil
@@ -638,16 +637,16 @@
                        :model/Pulse___Pulse         {pulse-id :id :as pulse} {:name         "Test Pulse"
                                                                                :dashboard_id dash-id}
                        :model/PulseCard             _             {:pulse_id          pulse-id
-                                                            :card_id           card-id1
-                                                            :dashboard_card_id dash-card-id1}
+                                                                   :card_id           card-id1
+                                                                   :dashboard_card_id dash-card-id1}
                        :model/PulseCard             _             {:pulse_id          pulse-id
-                                                            :card_id           card-id2
-                                                            :dashboard_card_id dash-card-id2}
+                                                                   :card_id           card-id2
+                                                                   :dashboard_card_id dash-card-id2}
                        :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                            :pulse_id     pulse-id
-                                                            :enabled      true}
+                                                                   :pulse_id     pulse-id
+                                                                   :enabled      true}
                        :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                                :user_id          (mt/user->id :rasta)}]
+                                                       :user_id          (mt/user->id :rasta)}]
           ;; First value is the scalar returned from card1 (specified "TAX" field directly in the query)
           ;; Second value is the scalar returned from card2 (scalar field specified only in viz-settings, not the query)
           (is (= ["2.07" "2.07"]
@@ -698,20 +697,20 @@
                                                                       :dashboard_id  ~'dash-id
                                                                       :skip_if_empty ~skip-if-empty?}
                   :model/PulseCard ~'_ {:pulse_id          ~'pulse-id
-                                 :card_id           ~'base-card-id
-                                 :dashboard_card_id ~'base-dash-card-id
-                                 :include_csv       true
-                                 :position          1}
+                                        :card_id           ~'base-card-id
+                                        :dashboard_card_id ~'base-dash-card-id
+                                        :include_csv       true
+                                        :position          1}
                   :model/PulseCard ~'_ {:pulse_id          ~'pulse-id
-                                 :card_id           ~'empty-card-id
-                                 :dashboard_card_id ~'empty-dash-card-id
-                                 :include_csv       true
-                                 :position          2}
+                                        :card_id           ~'empty-card-id
+                                        :dashboard_card_id ~'empty-dash-card-id
+                                        :include_csv       true
+                                        :position          2}
                   :model/PulseChannel {~'pulse-channel-id :id} {:channel_type :email
-                                                         :pulse_id     ~'pulse-id
-                                                         :enabled      true}
+                                                                :pulse_id     ~'pulse-id
+                                                                :enabled      true}
                   :model/PulseChannelRecipient ~'_ {:pulse_channel_id ~'pulse-channel-id
-                                             :user_id          (mt/user->id :rasta)}]
+                                                    :user_id          (mt/user->id :rasta)}]
      (let [~result (run-pulse-and-return-data-tables! ~'pulse)]
        ~@body)))
 
@@ -796,18 +795,18 @@
                                                              :dashboard_id  dash-id
                                                              :skip_if_empty skip?}
              :model/PulseCard _ {:pulse_id          pulse-id
-                          :card_id           base-card-id
-                          :dashboard_card_id base-dash-card-id
-                          :include_csv       true}
+                                 :card_id           base-card-id
+                                 :dashboard_card_id base-dash-card-id
+                                 :include_csv       true}
              :model/PulseCard _ {:pulse_id          pulse-id
-                          :card_id           empty-card-id
-                          :dashboard_card_id empty-dash-card-id
-                          :include_csv       true}
+                                 :card_id           empty-card-id
+                                 :dashboard_card_id empty-dash-card-id
+                                 :include_csv       true}
              :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                  :pulse_id     pulse-id
-                                                  :enabled      true}
+                                                         :pulse_id     pulse-id
+                                                         :enabled      true}
              :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                      :user_id          (mt/user->id :rasta)}]
+                                             :user_id          (mt/user->id :rasta)}]
             (mt/with-fake-inbox
               (with-redefs [email/bcc-enabled? (constantly false)]
                 (mt/with-test-user nil
@@ -836,10 +835,10 @@
           (mt/with-temp [:model/Pulse___Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
                                                                          :dashboard_id dash-id}
                          :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                              :pulse_id     pulse-id
-                                                              :enabled      true}
+                                                                     :pulse_id     pulse-id
+                                                                     :enabled      true}
                          :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                                  :user_id          (mt/user->id :rasta)}]
+                                                         :user_id          (mt/user->id :rasta)}]
             (mt/with-fake-inbox
               (with-redefs [email/bcc-enabled? (constantly false)]
                 (mt/with-test-user nil
@@ -883,16 +882,16 @@
                        :model/Pulse___Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
                                                                        :dashboard_id dash-id}
                        :model/PulseCard _ {:pulse_id          pulse-id
-                                    :card_id           card-id
-                                    :dashboard_card_id dash-card-id}
+                                           :card_id           card-id
+                                           :dashboard_card_id dash-card-id}
                        :model/PulseCard _ {:pulse_id          pulse-id
-                                    :card_id           model-id
-                                    :dashboard_card_id model-card-id}
+                                           :card_id           model-id
+                                           :dashboard_card_id model-card-id}
                        :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                            :pulse_id     pulse-id
-                                                            :enabled      true}
+                                                                   :pulse_id     pulse-id
+                                                                   :enabled      true}
                        :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                                :user_id          (mt/user->id :rasta)}]
+                                                       :user_id          (mt/user->id :rasta)}]
           (testing "The html output renders the table cells as geographic coordinates"
             (is (= [[["1" "9.85" "57.09"]
                      ["2" "39.22" "-6.22"]
@@ -914,10 +913,10 @@
                        :model/Pulse___Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
                                                                        :dashboard_id dash-id}
                        :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                            :pulse_id     pulse-id
-                                                            :enabled      true}
+                                                                   :pulse_id     pulse-id
+                                                                   :enabled      true}
                        :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                                :user_id          (mt/user->id :rasta)}]
+                                                       :user_id          (mt/user->id :rasta)}]
           (mt/with-fake-inbox
             (with-redefs [email/bcc-enabled? (constantly false)]
               (mt/with-test-user nil

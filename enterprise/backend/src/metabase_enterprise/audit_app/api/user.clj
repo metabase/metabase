@@ -7,8 +7,6 @@
    [metabase.api.user :as api.user]
    [metabase.audit :as audit]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse :refer [:model/Pulse]]
-   [metabase.models.pulse-channel-recipient :refer [:model/PulseChannelRecipient]]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))

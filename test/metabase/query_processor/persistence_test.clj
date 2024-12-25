@@ -6,7 +6,6 @@
    [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.models :refer [:model/Card]]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]

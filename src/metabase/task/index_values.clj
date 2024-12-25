@@ -5,8 +5,6 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.model-index :as model-index :refer [:model/ModelIndex]]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]
    [metabase.util :as u]

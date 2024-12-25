@@ -7,10 +7,6 @@
    [metabase-enterprise.serialization.v2.extract :as serdes.extract]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
-   [metabase.models
-    :refer [:model/Card :model/Collection :model/Dashboard :model/DashboardCard model__Database :model/Field
-            :model/FieldValues :model/NativeQuery:model/Segment Segment :model/Table :model/Timeline
-            :model/TimelineEvent :model/User]]
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]

@@ -1,11 +1,6 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.sandbox.models.group-table-access-policy
-    :refer [GroupTableAccessPolicy]]
-   [metabase.models
-    :refer [:model/Card :model/Collection :model/Database :model/Perm:model/PermissionsGrouponsGroup
-            :model/PermissionsGroupMembership :model/User]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.interface :as mi]
@@ -164,7 +159,7 @@
                      :model/PermissionsGroupMembership _ {:group_id group-id :user_id user-id}
                      :model/Collection                 {collection-id :id} {}
                      :model/Card                       {card-id :id} {:collection_id collection-id
-                                                                       :dataset_query query}
+                                                                      :dataset_query query}
                      :model/Permissions                _ {:group_id group-id :object (perms/collection-read-path collection-id)}]
         (mt/with-premium-features #{:advanced-permissions}
           (mt/with-no-data-perms-for-all-users!

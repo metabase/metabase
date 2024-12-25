@@ -26,8 +26,6 @@
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
-   [metabase.models.pulse-card :refer [:model/PulseCard]]
-   [metabase.models.pulse-channel :as pulse-channel :refer [:model/PulseChannel]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -36,11 +34,6 @@
    [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
-
-(def :model/Pulse
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all these symbols in our codebase."
-  :model/Pulse)
 
 (methodical/defmethod t2/table-name :model/Pulse [_model] :pulse)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :pulse]  [_original-model _k] :model/Pulse)

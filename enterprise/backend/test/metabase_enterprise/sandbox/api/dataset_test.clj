@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
-   [metabase.models :refer [:model/Card]]
    [metabase.test :as mt]))
 
 (deftest dataset-parameter-test

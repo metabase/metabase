@@ -1,8 +1,6 @@
 (ns metabase.xrays.transforms.materialize
   (:require
    [metabase.api.common :as api]
-   [metabase.models.card :as card :refer [:model/Card]]
-   [metabase.models.collection :as collection :refer [:model/Collection]]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [toucan2.core :as t2]))
 

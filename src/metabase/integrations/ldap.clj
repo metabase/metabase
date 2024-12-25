@@ -4,7 +4,6 @@
    [metabase.config :as config]
    [metabase.integrations.ldap.default-implementation :as default-impl]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.models.user :refer [:model/User]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]

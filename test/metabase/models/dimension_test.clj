@@ -1,11 +1,7 @@
 (ns metabase.models.dimension-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.database :refer [:model/Database]]
-   [metabase.models.dimension :refer [:model/Dimensions]]
-   [metabase.models.field :refer [:model/Field]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.test :as mt])
   (:import
    (java.time LocalDateTime)))
@@ -20,8 +16,8 @@
                      :model/Field     field1 {:name "sku" :table_id (:id table)}
                      :model/Field     field2 {:name "human" :table_id (:id table)}
                      :model/Dimensions dim    {:field_id                (:id field1)
-                                                :human_readable_field_id (:id field2)
-                                                :created_at              now}]
+                                               :human_readable_field_id (:id field2)
+                                               :created_at              now}]
         (is (= "c52f8889"
                (serdes/raw-hash [(serdes/identity-hash field1) (serdes/identity-hash field2) now])
                (serdes/identity-hash dim)))))))

@@ -9,7 +9,6 @@
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
    [metabase.formatter :as formatter]
-   [metabase.models :refer [:model/Card]]
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor :as qp]

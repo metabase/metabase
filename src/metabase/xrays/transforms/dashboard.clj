@@ -2,7 +2,6 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.util :as u]
    [metabase.xrays.automagic-dashboards.populate :as populate]
    [metabase.xrays.transforms.materialize :as tf.materialize]

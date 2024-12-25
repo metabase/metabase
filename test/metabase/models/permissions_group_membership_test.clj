@@ -2,9 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.permissions-group-membership
-    :refer [:model/PermissionsGroupMembership]]
-   [metabase.models.user :refer [model__User]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]

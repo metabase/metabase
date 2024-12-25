@@ -73,7 +73,6 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.ident :as lib.ident]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models :refer [:model/Field :model/FieldValues :model/Table]]
    [metabase.models.database :as database]
    [metabase.models.field :as field]
    [metabase.models.field-values :as field-values]

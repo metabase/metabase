@@ -3,8 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.http-client :as client]
-   [metabase.models :refer [:model/Database :model/Revision :model/Table]]
-   [metabase.models.segment :refer [:model/Segment]]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.util :as u]

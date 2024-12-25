@@ -13,9 +13,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models.database :refer [:model/Database]]
-   [metabase.models.table :refer [:model/Table]]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.order-by-test :as qp-test.order-by-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -416,9 +413,9 @@
                                           "SSL with Truststore Upload"]]]
                 (testing (str " " variant)
                   (t2.with-temp/with-temp [:model/Database database {:engine  :oracle,
-                                                                      :name    (format (str variant " version of %d") (mt/id)),
-                                                                      :details (->> details
-                                                                                    (driver.u/db-details-client->server :oracle))}]
+                                                                     :name    (format (str variant " version of %d") (mt/id)),
+                                                                     :details (->> details
+                                                                                   (driver.u/db-details-client->server :oracle))}]
                     (mt/with-db database
                       (testing " can sync correctly"
                         (sync/sync-database! database {:scan :schema})

@@ -5,10 +5,6 @@
    [metabase.api.common :as api]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
-   [metabase.models.timeline :refer [:model/Timeline]]
-   [metabase.models.timeline-event
-    :as timeline-event
-    :refer [:model/TimelineEvent]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli.schema :as ms]

@@ -1,7 +1,6 @@
 (ns metabase-enterprise.advanced-config.api.pulse-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:model/Card]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]

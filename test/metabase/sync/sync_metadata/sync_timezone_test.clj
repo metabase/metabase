@@ -7,7 +7,6 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.models.database :refer [:model/Database]]
    [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]

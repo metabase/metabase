@@ -5,9 +5,6 @@
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.http-client :as client]
-   [metabase.models.permissions-group :refer [:model/PermissionsGroup]]
-   [metabase.models.permissions-group-membership :refer [:model/PermissionsGroupMembership]]
-   [metabase.models.user :refer [:model/User]]
    [metabase.request.core :as request]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
@@ -234,7 +231,7 @@
 (defn do-with-group-for-user [group test-user-name-or-user-id f]
   (t2.with-temp/with-temp [:model/PermissionsGroup           group group
                            :model/PermissionsGroupMembership _     {:group_id (u/the-id group)
-                                                                     :user_id  (test-user-name-or-user-id->user-id test-user-name-or-user-id)}]
+                                                                    :user_id  (test-user-name-or-user-id->user-id test-user-name-or-user-id)}]
     (f group)))
 
 (defmacro with-group

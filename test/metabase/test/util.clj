@@ -13,17 +13,6 @@
    [mb.hawk.parallel]
    [metabase.audit :as audit]
    [metabase.config :as config]
-   [metabase.models
-    :refer [:model/Card
-            :model/Dimension
-            :model/Field
-            :model/FieldValues
-            :model/Permissions
-            :model/PermissionsGroup
-            :model/PermissionsGroupMembership
-            :model/Setting
-            :model/Table
-            :model/User]]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.moderation-review :as moderation-review]
@@ -1066,7 +1055,7 @@
   For most use cases see the macro [[with-all-users-permission]]."
   [permission-path f]
   (t2.with-temp/with-temp [:model/Permissions _ {:group_id (:id (perms-group/all-users))
-                                                  :object permission-path}]
+                                                 :object permission-path}]
     (f)))
 
 (defn do-with-all-user-data-perms-graph!
@@ -1143,9 +1132,9 @@
           (let [remapped (t2/select-one :model/Field :id (u/the-id remap))]
             (fn []
               (t2.with-temp/with-temp [:model/Dimension _ {:field_id                (:id original)
-                                                            :name                    (format "%s [external remap]" (:display_name original))
-                                                            :type                    :external
-                                                            :human_readable_field_id (:id remapped)}]
+                                                           :name                    (format "%s [external remap]" (:display_name original))
+                                                           :type                    :external
+                                                           :human_readable_field_id (:id remapped)}]
                 (testing (format "With FK remapping %s -> %s\n" (describe-field original) (describe-field remapped))
                   (thunk)))))
           ;; remap is sequential or map => HRV remap
@@ -1162,15 +1151,15 @@
                                                      (describe-field original) (pr-str values-map))
                                       (thunk)))]
                 (t2.with-temp/with-temp [:model/Dimension _ {:field_id (:id original)
-                                                              :name     (format "%s [internal remap]" (:display_name original))
-                                                              :type     :internal}]
+                                                             :name     (format "%s [internal remap]" (:display_name original))
+                                                             :type     :internal}]
                   (if preexisting-id
                     (with-temp-vals-in-db :model/FieldValues preexisting-id {:values (keys values-map)
-                                                                              :human_readable_values (vals values-map)}
+                                                                             :human_readable_values (vals values-map)}
                       (testing-thunk))
                     (t2.with-temp/with-temp [:model/FieldValues _ {:field_id              (:id original)
-                                                                    :values                (keys values-map)
-                                                                    :human_readable_values (vals values-map)}]
+                                                                   :values                (keys values-map)
+                                                                   :human_readable_values (vals values-map)}]
                       (testing-thunk)))))))))))
    orig->remapped))
 

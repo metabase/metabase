@@ -2,7 +2,6 @@
   (:require
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.models.field :as field :refer [:model/Field]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.xrays.automagic-dashboards.util :as magic.util]

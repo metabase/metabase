@@ -2,12 +2,7 @@
   "Tests for On-Demand FieldValues updating behavior for Cards and Dashboards."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.dashboard :as dashboard :refer [:model/Dashboard]]
-   [metabase.models.database :refer [:model/Database]]
-   [metabase.models.field :as field :refer [:model/Field]]
    [metabase.models.field-values :as field-values]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
@@ -43,13 +38,13 @@
 (defn- do-with-updated-fields-for-card! [options & [f]]
   (mt/with-temp [:model/Database db    (:db options)
                  :model/Table    table (merge {:db_id (u/the-id db)}
-                                               (:table options))
+                                              (:table options))
                  :model/Field    field (merge {:table_id (u/the-id table) :has_field_values "list"}
-                                               (:field options))]
+                                              (:field options))]
     (do-with-mocked-field-values-updating!
      (fn [updated-field-names]
        (t2.with-temp/with-temp [:model/Card card (merge {:dataset_query (native-query-with-template-tag field)}
-                                                         (:card options))]
+                                                        (:card options))]
          (when f
            (f {:db db :table table :field field :card card :updated-field-names updated-field-names})))))))
 
@@ -96,8 +91,8 @@
                 (reset! updated-field-names #{})
                 ;; now Change the Field that is referenced by the Card's SQL param
                 (t2.with-temp/with-temp [:model/Field new-field {:table_id         (u/the-id table)
-                                                                  :has_field_values "list"
-                                                                  :name             "New Field"}]
+                                                                 :has_field_values "list"
+                                                                 :name             "New Field"}]
                   (t2/update! :model/Card (u/the-id card)
                               {:dataset_query (native-query-with-template-tag new-field)})))))))))
 
@@ -152,8 +147,8 @@
                 ;; change the query to one referencing a different Field. Field should
                 ;; not get values since DB is not On-Demand
                 (t2.with-temp/with-temp [:model/Field new-field {:table_id         (u/the-id table)
-                                                                  :has_field_values "list"
-                                                                  :name             "New Field"}]
+                                                                 :has_field_values "list"
+                                                                 :name             "New Field"}]
                   (t2/update! :model/Card (u/the-id card)
                               {:dataset_query (native-query-with-template-tag new-field)})))))))))
 
@@ -224,8 +219,8 @@
               (fn [{:keys [table card dash dashcard updated-field-names]}]
                 ;; create a Dashboard and add a DashboardCard with a param mapping
                 (t2.with-temp/with-temp [:model/Field new-field {:table_id         (u/the-id table)
-                                                                  :name             "New Field"
-                                                                  :has_field_values "list"}]
+                                                                 :name             "New Field"
+                                                                 :has_field_values "list"}]
                   ;; clear out the list of updated Field Names
                   (reset! updated-field-names #{})
                   ;; ok, now update the parameter mapping to the new field. The new Field should get new values

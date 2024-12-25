@@ -2,9 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.models.card :refer [:model/Card]]
    [metabase.models.interface :as mi]
-   [metabase.models.revision :as revision :refer [:model/Revision]]
    [metabase.models.revision.diff :as revision.diff]
    [metabase.test :as mt]
    [metabase.util :as u]

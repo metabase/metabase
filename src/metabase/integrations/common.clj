@@ -4,9 +4,6 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.permissions-group-membership
-    :as perms-group-membership
-    :refer [:model/PermissionsGroupMembership]]
    [metabase.models.setting.multi-setting :refer [define-multi-setting
                                                   define-multi-setting-impl]]
    [metabase.public-settings.premium-features :as premium-features]

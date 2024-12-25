@@ -2,9 +2,6 @@
   "Tests for the Timeline model."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.collection :refer [:model/Collection]]
-   [metabase.models.timeline :as timeline :refer [:model/Timeline]]
-   [metabase.models.timeline-event :refer [:model/TimelineEvent] :as timeline-event]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]

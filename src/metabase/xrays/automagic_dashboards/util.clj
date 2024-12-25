@@ -8,7 +8,6 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.field :refer [:model/Field]]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.json :as json]

@@ -17,8 +17,6 @@
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.collection :as collection :refer [:model/Collection]]
    [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.root :as collection.root]

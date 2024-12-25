@@ -2,7 +2,6 @@
   "There are more e2e tests in [[metabase.api.card-test]]."
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:model/Card]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]

@@ -9,11 +9,6 @@
    [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
-(def :model/ParameterCard
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all these symbols in our codebase."
-  :model/ParameterCard)
-
 (methodical/defmethod t2/table-name :model/ParameterCard [_model] :parameter_card)
 
 (doto :model/ParameterCard

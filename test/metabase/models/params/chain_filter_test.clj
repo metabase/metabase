@@ -1,7 +1,6 @@
 (ns metabase.models.params.chain-filter-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:model/Field :model/FieldValues]]
    [metabase.models.field-values :as field-values]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.field-values :as params.field-values]
@@ -520,7 +519,7 @@
 
           (testing "should search for the values of linked-filter FieldValues"
             (t2/update! :model/FieldValues {:field_id field-id
-                                     :type     "linked-filter"}
+                                            :type     "linked-filter"}
                         {:values (json/encode ["Good" "Bad"])
                          ;; HACK: currently this is hardcoded to true for linked-filter
                          ;; in [[params.field-values/fetch-advanced-field-values]]
@@ -531,7 +530,7 @@
                    (chain-filter-search categories.name {venues.price 4} "o")))
             (testing "Shouldn't use cached FieldValues if has_more_values=true"
               (t2/update! :model/FieldValues {:field_id field-id
-                                       :type     "linked-filter"}
+                                              :type     "linked-filter"}
                           {:has_more_values true})
               (is (= {:values          [["Steakhouse"]]
                       :has_more_values false}

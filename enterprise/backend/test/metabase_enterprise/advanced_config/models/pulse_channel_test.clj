@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.models.pulse-channel :as advanced-config.models.pulse-channel]
-   [metabase.models :refer [model_:model/PulseChanneleChannel]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]

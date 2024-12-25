@@ -17,7 +17,6 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
-   [metabase.models :refer [:model/Database]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]

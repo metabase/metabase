@@ -2,7 +2,6 @@
   "Tests for visualization settings processing"
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:model/Card :model/Field]]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.middleware.visualization-settings
     :as viz-settings]

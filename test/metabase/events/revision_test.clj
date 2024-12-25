@@ -3,8 +3,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.events :as events]
-   [metabase.models
-    :refer [:model/Card :model/Dashboard :model/DashboardCard :model/Database :model/Revision :model/Segment :model/Table]]
    [metabase.models.dashboard :as dashboard]
    [metabase.test :as mt]
    [toucan2.core :as t2]

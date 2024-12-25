@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.models.field :refer [:model/Field]]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.util :as tu]

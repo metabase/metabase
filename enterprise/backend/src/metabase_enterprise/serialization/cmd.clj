@@ -13,17 +13,7 @@
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.db :as mdb]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.collection :refer [:model/Collection]]
-   [metabase.models.dashboard :refer [:model/Dashboard]]
-   [metabase.models.database :refer [:model/Database]]
-   [metabase.models.field :as field :refer [:model/Field]]
-   [metabase.models.native-query-snippet :refer [:model/NativeQuerySnippet]]
-   [metabase.models.pulse :refer [:model/Pulse]]
-   [metabase.models.segment :refer [:model/Segment]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.table :refer [:model/Table]]
-   [metabase.models.user :refer [:model/User]]
    [metabase.plugins :as plugins]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.setup :as setup]
@@ -183,10 +173,10 @@
                             :all nil
                             :active [:= :archived false])
          base-collections (t2/select :model/Collection {:where [:and [:= :location "/"]
-                                                                 [:or [:= :personal_owner_id nil]
-                                                                  [:= :personal_owner_id
-                                                                   (some-> users first u/the-id)]]
-                                                                 state-filter]})]
+                                                                [:or [:= :personal_owner_id nil]
+                                                                 [:= :personal_owner_id
+                                                                  (some-> users first u/the-id)]]
+                                                                state-filter]})]
      (if (empty? base-collections)
        []
        (-> (t2/select :model/Collection

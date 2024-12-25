@@ -7,8 +7,6 @@
     :as advanced-permissions.common]
    [metabase.api.database :as api.database]
    [metabase.driver :as driver]
-   [metabase.models
-    :refer [:model/Dashboard :model/DashboardCard :model/Database :model/Field :model/FieldValues :model/Table]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.permissions :as perms]

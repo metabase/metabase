@@ -14,10 +14,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.database :refer [:model/Database]]
-   [metabase.models.field :refer [:model/Field]]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync :as sync]
@@ -134,9 +130,9 @@
   (mt/test-driver :mongo
     (testing "Mbql query with nested native source query _returns correct results_ (#30112)"
       (mt/with-temp [:model/Card {:keys [id]} {:dataset_query {:type     :native
-                                                                :native   {:collection    "venues"
-                                                                           :query         native-query}
-                                                                :database (mt/id)}}]
+                                                               :native   {:collection    "venues"
+                                                                          :query         native-query}
+                                                               :database (mt/id)}}]
         (let [query (mt/mbql-query nil
                       {:source-table (str "card__" id)
                        :limit        1})]
@@ -160,9 +156,9 @@
                            "    \"price\": \"$price\"}\n"
                            "}]")]
         (mt/with-temp [:model/Card {:keys [id]} {:dataset_query {:type     :native
-                                                                  :native   {:collection    "venues"
-                                                                             :query         query-str}
-                                                                  :database (mt/id)}}]
+                                                                 :native   {:collection    "venues"
+                                                                            :query         query-str}
+                                                                 :database (mt/id)}}]
           (let [query (mt/mbql-query venues
                         {:source-table (str "card__" id)
                          :aggregation [:count]

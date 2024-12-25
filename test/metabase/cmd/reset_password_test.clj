@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.cmd.reset-password :as reset-password]
-   [metabase.models.user :refer [:model/User]]
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
 

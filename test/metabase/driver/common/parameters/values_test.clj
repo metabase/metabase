@@ -13,7 +13,6 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.models :refer [model:model/Collectionllection :model/NativeQuerySnippet]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -533,7 +532,7 @@
 (deftest snippet-happy-path-test
   (testing "Snippet parsing should work correctly for a valid Snippet"
     (t2.with-temp/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name    "expensive-venues"
-                                                                  :content "venues WHERE price = 4"}]
+                                                                         :content "venues WHERE price = 4"}]
       (let [expected {"expensive-venues" (params/map->ReferencedQuerySnippet {:snippet-id snippet-id
                                                                               :content    "venues WHERE price = 4"})}]
         (is (= expected

@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
-   [metabase.models :refer [:model/Collection :model/NativeQuerySnippet]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.native-query-snippet.permissions :as snippet.perms]

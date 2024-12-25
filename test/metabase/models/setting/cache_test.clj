@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.db :as mdb]
-   [metabase.models.setting :refer [:model/Setting]]
    [metabase.models.setting-test :as setting-test]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.public-settings :as public-settings]

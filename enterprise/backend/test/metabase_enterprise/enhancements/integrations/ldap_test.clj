@@ -4,7 +4,6 @@
    [metabase-enterprise.enhancements.integrations.ldap :as ldap-ee]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.integrations.ldap :as ldap]
-   [metabase.models.user :refer [:model/User]]
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]
    [metabase.test.integrations.ldap :as ldap.test]

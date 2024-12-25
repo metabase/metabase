@@ -18,7 +18,6 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models :refer [:model/Card :model/CardBookmark :model/Collection :model/Database :model/PersistedInfo :model/Table]]
    [metabase.models.card :as card]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
@@ -98,14 +97,14 @@
 (defmethod cards-for-filter-option* :using_model
   [_filter-option model-id]
   (->> (t2/select :model/Card {:select [:c.*]
-                                :from [[:report_card :m]]
-                                :join [[:report_card :c] [:and
-                                                          [:= :c.database_id :m.database_id]
-                                                          [:or
-                                                           [:like :c.dataset_query (format "%%card__%s%%" model-id)]
-                                                           [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
-                                :where [:and [:= :m.id model-id] [:not :c.archived]]
-                                :order-by [[[:lower :c.name] :asc]]})
+                               :from [[:report_card :m]]
+                               :join [[:report_card :c] [:and
+                                                         [:= :c.database_id :m.database_id]
+                                                         [:or
+                                                          [:like :c.dataset_query (format "%%card__%s%%" model-id)]
+                                                          [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
+                               :where [:and [:= :m.id model-id] [:not :c.archived]]
+                               :order-by [[[:lower :c.name] :asc]]})
        ;; now check if model-id really occurs as a card ID
        (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))))
 

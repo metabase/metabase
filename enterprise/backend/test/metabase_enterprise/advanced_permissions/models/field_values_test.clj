@@ -5,7 +5,6 @@
     :as advanced-perms.api.tu]
    [metabase-enterprise.advanced-permissions.driver.impersonation
     :as impersonation]
-   [metabase.models :refer [:model/Field :model/FieldValues]]
    [metabase.models.params.field-values :as params.field-values]
    [metabase.test :as mt]
    [metabase.util :as u]

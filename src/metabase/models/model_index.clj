@@ -7,7 +7,6 @@
    [metabase.lib.ident :as lib.ident]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.card :refer [:model/Card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.search.core :as search]
@@ -20,16 +19,6 @@
    [toucan2.core :as t2]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; model lifecycle ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(def :model/ModelIndex
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the ModelIndex symbol in our codebase."
-  :model/ModelIndex)
-
-(def :model/ModelIndexValue
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the ModelIndexValue symbol in our codebase."
-  :model/ModelIndexValue)
 
 (methodical/defmethod t2/table-name :model/ModelIndex [_model] :model_index)
 (methodical/defmethod t2/table-name :model/ModelIndexValue [_model] :model_index_value)
@@ -133,8 +122,8 @@
                                                          :model_index_id (:id model-index)))]
     (if-not (str/blank? error-message)
       (t2/update! :model/ModelIndex (:id model-index) {:state      "error"
-                                                        :error      error-message
-                                                        :indexed_at :%now})
+                                                       :error      error-message
+                                                       :indexed_at :%now})
       (try
         (t2/with-transaction [_conn]
           (let [{:keys [additions deletions]} (find-changes {:current-index current-index-values

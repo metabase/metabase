@@ -10,11 +10,9 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.config :as config]
    [metabase.http-client :as client]
-   [metabase.models.permissions-group :refer [:model/PermissionsGroup]]
    [metabase.models.permissions-group-membership
     :refer
     [:model/PermissionsGroupMembership]]
-   [metabase.models.user :refer [:model/User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
@@ -163,14 +161,14 @@
   (testing
    (str "JWT configured with a redirect-uri containing query params, "
         "a GET request should result in a redirect to the IdP as a correctly formatted URL (#13078)")
-    (with-jwt-default-setup!
-      (mt/with-temporary-setting-values
-        [jwt-identity-provider-uri "http://test.idp.metabase.com/login?some_param=yes"]
-        (let [result       (client/client-full-response :get 302 "/auth/sso"
-                                                        {:request-options {:redirect-strategy :none}}
-                                                        :redirect default-redirect-uri)
-              redirect-url (get-in result [:headers "Location"])]
-          (is (str/includes? redirect-url "&return_to=")))))))
+   (with-jwt-default-setup!
+     (mt/with-temporary-setting-values
+       [jwt-identity-provider-uri "http://test.idp.metabase.com/login?some_param=yes"]
+       (let [result       (client/client-full-response :get 302 "/auth/sso"
+                                                       {:request-options {:redirect-strategy :none}}
+                                                       :redirect default-redirect-uri)
+             redirect-url (get-in result [:headers "Location"])]
+         (is (str/includes? redirect-url "&return_to=")))))))
 
 (deftest jwt-saml-both-enabled-test
   (with-jwt-default-setup!
@@ -208,30 +206,30 @@
   (testing
    (str "Happy path login, valid JWT, checks to ensure the user was logged in successfully and the redirect to "
         "the right location")
-    (with-jwt-default-setup!
-      (let [response (client/client-real-response :get 302 "/auth/sso" {:request-options {:redirect-strategy :none}}
-                                                  :return_to default-redirect-uri
-                                                  :jwt
-                                                  (jwt/sign
-                                                   {:email      "rasta@metabase.com"
-                                                    :first_name "Rasta"
-                                                    :last_name  "Toucan"
-                                                    :extra      "keypairs"
-                                                    :are        "also present"
-                                                            ;; registerd claims should not be synced as login attributes
-                                                    :iss        "issuer"
-                                                    :exp        (+ (buddy-util/now) 3600)
-                                                    :iat        (buddy-util/now)}
-                                                   default-jwt-secret))]
-        (is (saml-test/successful-login? response))
-        (testing "redirect URI"
-          (is
-           (= default-redirect-uri
-              (get-in response [:headers "Location"]))))
-        (testing "login attributes"
-          (is
-           (= {"extra" "keypairs", "are" "also present"}
-              (t2/select-one-fn :login_attributes :model/User :email "rasta@metabase.com"))))))))
+   (with-jwt-default-setup!
+     (let [response (client/client-real-response :get 302 "/auth/sso" {:request-options {:redirect-strategy :none}}
+                                                 :return_to default-redirect-uri
+                                                 :jwt
+                                                 (jwt/sign
+                                                  {:email      "rasta@metabase.com"
+                                                   :first_name "Rasta"
+                                                   :last_name  "Toucan"
+                                                   :extra      "keypairs"
+                                                   :are        "also present"
+                                                          ;; registerd claims should not be synced as login attributes
+                                                   :iss        "issuer"
+                                                   :exp        (+ (buddy-util/now) 3600)
+                                                   :iat        (buddy-util/now)}
+                                                  default-jwt-secret))]
+       (is (saml-test/successful-login? response))
+       (testing "redirect URI"
+         (is
+          (= default-redirect-uri
+             (get-in response [:headers "Location"]))))
+       (testing "login attributes"
+         (is
+          (= {"extra" "keypairs", "are" "also present"}
+             (t2/select-one-fn :login_attributes :model/User :email "rasta@metabase.com"))))))))
 
 (deftest no-open-redirect-test
   (testing "Check that we prevent open redirects to untrusted sites"
@@ -284,45 +282,45 @@
         (letfn
          [(new-user-exists? []
             (boolean (seq (t2/select :model/User :%lower.email "newuser@metabase.com"))))]
-          (is (false? (new-user-exists?)))
-          (let [response (client/client-real-response :get 302 "/auth/sso"
-                                                      {:request-options {:redirect-strategy :none}}
-                                                      :return_to default-redirect-uri
-                                                      :jwt
-                                                      (jwt/sign
-                                                       {:email      "newuser@metabase.com"
-                                                        :first_name "New"
-                                                        :last_name  "User"
-                                                        :more       "stuff"
-                                                        :for        "the new user"}
-                                                       default-jwt-secret))]
-            (is (saml-test/successful-login? response))
-            (let [new-user (t2/select-one :model/User :email "newuser@metabase.com")]
-              (testing "new user"
-                (is
-                 (=
-                  {:email        "newuser@metabase.com"
-                   :first_name   "New"
-                   :is_qbnewb    true
-                   :is_superuser false
-                   :id           true
-                   :last_name    "User"
-                   :date_joined  true
-                   :common_name  "New User"}
-                  (-> (mt/boolean-ids-and-timestamps [new-user])
-                      first
-                      (dissoc :last_login)))))
-              (testing "User Invite Event is logged."
-                (is
-                 (= "newuser@metabase.com"
-                    (get-in (mt/latest-audit-log-entry :user-invited (:id new-user))
-                            [:details :email]))))
-              (testing "attributes"
-                (is
-                 (=
-                  {"more" "stuff"
-                   "for"  "the new user"}
-                  (t2/select-one-fn :login_attributes :model/User :email "newuser@metabase.com")))))))))))
+         (is (false? (new-user-exists?)))
+         (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                     {:request-options {:redirect-strategy :none}}
+                                                     :return_to default-redirect-uri
+                                                     :jwt
+                                                     (jwt/sign
+                                                      {:email      "newuser@metabase.com"
+                                                       :first_name "New"
+                                                       :last_name  "User"
+                                                       :more       "stuff"
+                                                       :for        "the new user"}
+                                                      default-jwt-secret))]
+           (is (saml-test/successful-login? response))
+           (let [new-user (t2/select-one :model/User :email "newuser@metabase.com")]
+             (testing "new user"
+               (is
+                (=
+                 {:email        "newuser@metabase.com"
+                  :first_name   "New"
+                  :is_qbnewb    true
+                  :is_superuser false
+                  :id           true
+                  :last_name    "User"
+                  :date_joined  true
+                  :common_name  "New User"}
+                 (-> (mt/boolean-ids-and-timestamps [new-user])
+                     first
+                     (dissoc :last_login)))))
+             (testing "User Invite Event is logged."
+               (is
+                (= "newuser@metabase.com"
+                   (get-in (mt/latest-audit-log-entry :user-invited (:id new-user))
+                           [:details :email]))))
+             (testing "attributes"
+               (is
+                (=
+                 {"more" "stuff"
+                  "for"  "the new user"}
+                 (t2/select-one-fn :login_attributes :model/User :email "newuser@metabase.com")))))))))))
 
 (deftest update-account-test
   (testing "A new account with 'Unknown' name will be created for a new JWT user without a first or last name."
@@ -331,54 +329,54 @@
         (letfn
          [(new-user-exists? []
             (boolean (seq (t2/select :model/User :%lower.email "newuser@metabase.com"))))]
-          (is
-           (= false
-              (new-user-exists?)))
-          (let [response (client/client-real-response :get 302 "/auth/sso"
-                                                      {:request-options {:redirect-strategy :none}}
-                                                      :return_to default-redirect-uri
-                                                      :jwt
-                                                      (jwt/sign {:email "newuser@metabase.com"}
-                                                                default-jwt-secret))]
-            (is (saml-test/successful-login? response))
-            (testing "new user with no first or last name"
-              (is
-               (=
-                [{:email        "newuser@metabase.com"
-                  :first_name   nil
-                  :is_qbnewb    true
-                  :is_superuser false
-                  :id           true
-                  :last_name    nil
-                  :date_joined  true
-                  :common_name  "newuser@metabase.com"}]
-                (->>
-                 (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
-                 (map #(dissoc % :last_login)))))))
-          (let [response (client/client-real-response :get 302 "/auth/sso"
-                                                      {:request-options {:redirect-strategy :none}}
-                                                      :return_to default-redirect-uri
-                                                      :jwt
-                                                      (jwt/sign
-                                                       {:email      "newuser@metabase.com"
-                                                        :first_name "New"
-                                                        :last_name  "User"}
-                                                       default-jwt-secret))]
-            (is (saml-test/successful-login? response))
-            (testing "update user first and last name"
-              (is
-               (=
-                [{:email        "newuser@metabase.com"
-                  :first_name   "New"
-                  :is_qbnewb    true
-                  :is_superuser false
-                  :id           true
-                  :last_name    "User"
-                  :date_joined  true
-                  :common_name  "New User"}]
-                (->>
-                 (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
-                 (map #(dissoc % :last_login))))))))))))
+         (is
+          (= false
+             (new-user-exists?)))
+         (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                     {:request-options {:redirect-strategy :none}}
+                                                     :return_to default-redirect-uri
+                                                     :jwt
+                                                     (jwt/sign {:email "newuser@metabase.com"}
+                                                               default-jwt-secret))]
+           (is (saml-test/successful-login? response))
+           (testing "new user with no first or last name"
+             (is
+              (=
+               [{:email        "newuser@metabase.com"
+                 :first_name   nil
+                 :is_qbnewb    true
+                 :is_superuser false
+                 :id           true
+                 :last_name    nil
+                 :date_joined  true
+                 :common_name  "newuser@metabase.com"}]
+               (->>
+                (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
+                (map #(dissoc % :last_login)))))))
+         (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                     {:request-options {:redirect-strategy :none}}
+                                                     :return_to default-redirect-uri
+                                                     :jwt
+                                                     (jwt/sign
+                                                      {:email      "newuser@metabase.com"
+                                                       :first_name "New"
+                                                       :last_name  "User"}
+                                                      default-jwt-secret))]
+           (is (saml-test/successful-login? response))
+           (testing "update user first and last name"
+             (is
+              (=
+               [{:email        "newuser@metabase.com"
+                 :first_name   "New"
+                 :is_qbnewb    true
+                 :is_superuser false
+                 :id           true
+                 :last_name    "User"
+                 :date_joined  true
+                 :common_name  "New User"}]
+               (->>
+                (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
+                (map #(dissoc % :last_login))))))))))))
 
 (deftest group-mappings-test
   (testing "make sure our setting for mapping group names -> IDs works"

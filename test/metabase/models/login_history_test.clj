@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.models :refer [:model/LoginHistory :model/User]]
    [metabase.models.login-history :as login-history]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]

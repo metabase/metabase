@@ -4,8 +4,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.models
-    :refer [:model/Card :model/Collection :model/Dashboard :model/DashboardCard :model/Revision :model/Segment]]
    [metabase.related :as related]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -54,13 +52,13 @@
                                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]
                                                                                              :breakout    [$category_id]})}
                  :model/Segment    {segment-id-a :id} (mt/$ids venues
-                                                 {:table_id   $$venues
-                                                  :definition {:source-table $$venues
-                                                               :filter       [:!= $category_id nil]}})
+                                                       {:table_id   $$venues
+                                                        :definition {:source-table $$venues
+                                                                     :filter       [:!= $category_id nil]}})
                  :model/Segment    {segment-id-b :id} (mt/$ids venues
-                                                 {:table_id   $$venues
-                                                  :definition {:source-table $$venues
-                                                               :filter       [:!= $name nil]}})
+                                                       {:table_id   $$venues
+                                                        :definition {:source-table $$venues
+                                                                     :filter       [:!= $name nil]}})
                  :model/Card       {card-id-a :id} {:table_id      (mt/id :venues)
                                                      :dataset_query (mt/mbql-query venues
                                                                       {:aggregation [[:sum $price]]

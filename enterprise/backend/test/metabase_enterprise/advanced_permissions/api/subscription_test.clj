@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [metabase.api.alert :as api.alert]
    [metabase.api.alert-test :as alert-test]
-   [metabase.models :refer [model:model/Collectionllection :model/Pulse :model/PulseCard :model/PulseChannel :model/PulseChannelRecipient]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as models.pulse]
@@ -97,9 +96,9 @@
                                                                      :pulse-channel :email}]
                       ;; manually add another user as recipient
                       (t2.with-temp/with-temp [:model/PulseChannelRecipient _ {:user_id (:id user)
-                                                                        :pulse_channel_id
-                                                                        (t2/select-one-pk
-                                                                         :model/PulseChannel :channel_type "email" :pulse_id (:id the-pulse))}]
+                                                                               :pulse_channel_id
+                                                                               (t2/select-one-pk
+                                                                                :model/PulseChannel :channel_type "email" :pulse_id (:id the-pulse))}]
                         (let [the-pulse   (models.pulse/retrieve-pulse (:id the-pulse))
                               channel     (api.alert/email-channel the-pulse)
                               new-channel (update channel :recipients rest)

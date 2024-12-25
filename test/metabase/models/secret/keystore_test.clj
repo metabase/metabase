@@ -3,7 +3,6 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.models :refer [:model/Database :model/Secret]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]

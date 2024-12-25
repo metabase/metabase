@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer [deftest is]]
    [metabase.events :as events]
-   [metabase.models :refer [:model/Card :model/Database :model/PersistedInfo]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

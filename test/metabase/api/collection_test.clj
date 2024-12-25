@@ -6,10 +6,6 @@
    [clojure.test :refer :all]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.collection :as api.collection]
-   [metabase.models
-    :refer [:model/Card :model/Collection :model/Dashboard :model/DashboardCard :model/ModerationReview
-            :model/NativeQuerySnippet :model/Permissio:model/PermissionsGroupMembershipmbership :model/Pulse
-            :model/PulseCard :model/PulseChannel :model/PulseChannelRecipient :model/Revision :model/Timeline :model/TimelineEvent :model/Userl___User]]
    [metabase.models.collection :as collection]
    [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection-test :as collection-test]
@@ -724,7 +720,7 @@
                                :model/Card       _ {:collection_id (u/the-id collection)
                                                      :name          "unpinned-card"}
                                :model/Timeline   _ {:collection_id (u/the-id collection)
-                                             :name          "timeline"}]
+                                                    :name          "timeline"}]
         (letfn [(fetch [pin-state]
                   (:data (mt/user-http-request :crowberto :get 200
                                                (str "collection/" (u/the-id collection) "/items")
@@ -2050,14 +2046,14 @@
                              :model/Collection coll-b {:name "Collection B"}
                              :model/Collection coll-c {:name "Collection C"}
                              :model/Timeline tl-a      {:name          "Timeline A"
-                                                 :collection_id (u/the-id coll-a)}
+                                                        :collection_id (u/the-id coll-a)}
                              :model/Timeline tl-b      {:name          "Timeline B"
-                                                 :collection_id (u/the-id coll-b)}
+                                                        :collection_id (u/the-id coll-b)}
                              :model/Timeline _tl-b-old {:name          "Timeline B-old"
-                                                 :collection_id (u/the-id coll-b)
-                                                 :archived      true}
+                                                        :collection_id (u/the-id coll-b)
+                                                        :archived      true}
                              :model/Timeline _tl-c     {:name          "Timeline C"
-                                                 :collection_id (u/the-id coll-c)}
+                                                        :collection_id (u/the-id coll-c)}
                              :model/TimelineEvent _event-aa {:name        "event-aa"
                                                               :timeline_id (u/the-id tl-a)}
                              :model/TimelineEvent _event-ab {:name        "event-ab"
@@ -2096,7 +2092,7 @@
   (testing "GET /api/collection/id/timelines"
     (t2.with-temp/with-temp [:model/Collection coll-a {:name "Collection A"}
                              :model/Timeline tl-a      {:name          "Timeline A"
-                                                 :collection_id (u/the-id coll-a)}
+                                                        :collection_id (u/the-id coll-a)}
                              :model/TimelineEvent _event-aa {:name        "event-aa"
                                                               :timeline_id (u/the-id tl-a)}]
       (testing "You can't query a collection's timelines if you don't have perms on it."
@@ -2108,7 +2104,7 @@
         (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id coll-a) "/timelines") :include "events"))))
   (testing "GET /api/collection/root/timelines"
     (t2.with-temp/with-temp [:model/Timeline tl-a      {:name          "Timeline A"
-                                                 :collection_id nil}
+                                                        :collection_id nil}
                              :model/TimelineEvent _event-aa {:name        "event-aa"
                                                               :timeline_id (u/the-id tl-a)}]
       (testing "You can't query a collection's timelines if you don't have perms on it."

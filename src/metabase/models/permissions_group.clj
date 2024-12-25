@@ -21,11 +21,6 @@
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
-(def :model/PermissionsGroup
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/PermissionsGroup)
-
 (methodical/defmethod t2/table-name :model/PermissionsGroup [_model] :permissions_group)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :permissions_group] [_original-model _k] :model/PermissionsGroup)
 (methodical/defmethod t2.hydrate/fk-keys-for-automagic-hydration [:default :permissions_group :default]
@@ -169,4 +164,4 @@
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group and the All Users group."
   []
   (t2/select :model/PermissionsGroup {:where [:and [:not= :name admin-group-name]
-                                               [:not= :name all-users-group-name]]}))
+                                              [:not= :name all-users-group-name]]}))

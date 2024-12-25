@@ -5,7 +5,6 @@
    [metabase.integrations.common :as integrations.common]
    [metabase.integrations.ldap.default-implementation :as default-impl]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.models.user :as user :refer [:model/User]]
    [metabase.public-settings.premium-features :refer [defenterprise-schema]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]

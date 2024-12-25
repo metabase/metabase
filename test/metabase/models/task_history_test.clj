@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.models :refer [:model/TaskHistory]]
    [metabase.models.task-history :as task-history]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -42,9 +41,9 @@
                      :model/TaskHistory t2 (make-10-millis-task t2-start)
                      :model/TaskHistory t3 (make-10-millis-task t3-start)
                      :model/TaskHistory t4 (assoc (make-10-millis-task t4-start)
-                                                   :task task-4)
+                                                  :task task-4)
                      :model/TaskHistory t5 (assoc (make-10-millis-task t5-start)
-                                                   :task task-5)]
+                                                  :task task-5)]
         ;; When the sync process runs, it creates several TaskHistory rows. We just want to work with the
         ;; temp ones created, so delete any stale ones from previous tests
         (t2/delete! :model/TaskHistory :id [:not-in (map u/the-id [t1 t2 t3 t4 t5])])
@@ -60,9 +59,9 @@
           t1-start (t/zoned-date-time)
           t2-start (add-second t1-start)]
       (mt/with-temp [:model/TaskHistory t1 (assoc (make-10-millis-task t1-start)
-                                                   :task task-1)
+                                                  :task task-1)
                      :model/TaskHistory t2 (assoc (make-10-millis-task t2-start)
-                                                   :task task-2)]
+                                                  :task task-2)]
         ;; Cleanup any stale TalkHistory entries that are not the two being tested
         (t2/delete! :model/TaskHistory :id [:not-in (map u/the-id [t1 t2])])
         ;; We're keeping 100 rows, but there are only 2 present, so there should be no affect on running this

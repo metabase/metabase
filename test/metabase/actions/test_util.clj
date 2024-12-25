@@ -8,7 +8,6 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.http-client :as client]
-   [metabase.models :refer [model__:model/Cardion Card :model/Database]]
    [metabase.models.action :as action]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data :as data]

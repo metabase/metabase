@@ -7,12 +7,6 @@
   (:require
    [compojure.core :refer [DELETE GET POST]]
    [metabase.api.common :as api]
-   [metabase.models.bookmark
-    :as bookmark
-    :refer [:model/CardBookmark :model/CollectionBookmark_DashboardBookmarkBookmark]]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.collection :refer [:model/Collection]]
-   [metabase.models.dashboard :refer [:model/Dashboard]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 

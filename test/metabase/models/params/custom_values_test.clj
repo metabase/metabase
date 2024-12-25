@@ -1,7 +1,6 @@
 (ns metabase.models.params.custom-values-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:model/Card :model/Collection]]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.test :as mt]
    [toucan2.core :as t2]

@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.advanced-config.api.logs :as ee.api.logs]
-   [metabase.models.query-execution :refer [:model/QueryExecution]]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]))
 

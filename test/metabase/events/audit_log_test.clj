@@ -8,8 +8,6 @@
    [metabase.events :as events]
    [metabase.events.audit-log :as events.audit-log]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models
-    :refer [:model/Card :model/Dashboard :model/DashboardCard :model/LegacyMetric :model/Pulse :model/Segment]]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -237,9 +235,9 @@
 (deftest subscription-events-test
   (t2.with-temp/with-temp [:model/Dashboard      {dashboard-id :id} {}
                            :model/Pulse          pulse {:archived     false
-                                                 :name         "name"
-                                                 :dashboard_id dashboard-id
-                                                 :parameters   ()}]
+                                                        :name         "name"
+                                                        :dashboard_id dashboard-id
+                                                        :parameters   ()}]
     (let [recipients [{:email "test@metabase.com"}
                       {:id    (mt/user->id :rasta)
                        :email "rasta@metabase.com"}]
@@ -282,9 +280,9 @@
   (t2.with-temp/with-temp [:model/Dashboard      {dashboard-id :id} {}
                            :model/Card           card {:name "card-name"}
                            :model/Pulse          pulse {:archived     false
-                                                 :name         "name"
-                                                 :dashboard_id dashboard-id
-                                                 :parameters   ()}]
+                                                        :name         "name"
+                                                        :dashboard_id dashboard-id
+                                                        :parameters   ()}]
     (let [pulse (-> pulse
                     (assoc :card card)
                     (assoc :channels [{:channel_type  :email

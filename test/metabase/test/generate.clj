@@ -5,11 +5,6 @@
    [clojure.test.check.generators :as gen]
    [java-time.api :as t]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.models :refer [:model/Action :model/Card :model/Collection :model/Dashboard
-                            :model/DashboardCard :model/DashboardCardSeries :model/Database :model/Dimension :model/Field
-                            :model/HTT:model/ImplicitActionitAction :model/LegacyMetric :model/NativeQuerySnippet :model/PermissionsGroup
-                            :model/PermissionsGroupMembership :model/Pulse :model/PulseCard :model/PulseChannel :model/PulseChannelRecipient :model/QueryAction
-                            :model/Segment :model/Table :model/Timeline :model/TimelineEvent :model/User]]
    [metabase.util.log :as log]
    [reifyhealth.specmonstah.core :as rs]
    [reifyhealth.specmonstah.spec-gen :as rsg]

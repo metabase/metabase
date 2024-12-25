@@ -2,11 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.sandbox.models.group-table-access-policy
-    :refer [GroupTableAccessPolicy]]
    [metabase-enterprise.test :as met]
-   [metabase.models
-    :refer [:model/Card :model/Database :model/Permissio:model/PersistedInfostedInfo :model/Table]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.query-processor.compile :as qp.compile]
@@ -129,8 +125,8 @@
     (testing "Queries from cache if not sandboxed"
       (mt/with-current-user (mt/user->id :rasta)
         (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)
-                                          :type :model
-                                          :database_id (mt/id)}]
+                                         :type :model
+                                         :database_id (mt/id)}]
           (fake-persist-card! card)
           (is (str/includes?
                (:query (qp.compile/compile
@@ -144,8 +140,8 @@
                           :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
          :attributes {"cat" 50}}
         (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)
-                                          :type :model
-                                          :database_id (mt/id)}]
+                                         :type :model
+                                         :database_id (mt/id)}]
           (fake-persist-card! card)
           (is (not (str/includes?
                     (:query (qp.compile/compile

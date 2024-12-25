@@ -7,9 +7,6 @@
    [metabase.api.embed-test :as embed-test]
    [metabase.api.pivots :as api.pivots]
    [metabase.api.preview-embed :as api.preview-embed]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.dashboard :refer [:model/Dashboard]]
-   [metabase.models.dashboard-card :refer [:model/DashboardCard]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -250,9 +247,9 @@
   (testing "Check that only ENABLED params that ARE NOT PRESENT IN THE JWT come back"
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (t2.with-temp/with-temp [:model/Dashboard dash {:parameters [{:id "_a", :slug "a", :name "a", :type "date"}
-                                                            {:id "_b", :slug "b", :name "b", :type "date"}
-                                                            {:id "_c", :slug "c", :name "c", :type "date"}
-                                                            {:id "_d", :slug "d", :name "d", :type "date"}]}]
+                                                                   {:id "_b", :slug "b", :name "b", :type "date"}
+                                                                   {:id "_c", :slug "c", :name "c", :type "date"}
+                                                                   {:id "_d", :slug "d", :name "d", :type "date"}]}]
         (is (=? [{:id "_d", :slug "d", :name "d", :type "date"}]
                 (:parameters (mt/user-http-request :crowberto :get 200 (dashboard-url dash
                                                                                       {:params            {:c 100}
@@ -376,13 +373,13 @@
   (testing "Make sure that editable params do not result in \"Invalid Parameter\" exceptions (#7212)"
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (t2.with-temp/with-temp [:model/Card card {:dataset_query {:database (mt/id)
-                                                                  :type     :native
-                                                                  :native   {:query         "SELECT {{num}} AS num"
-                                                                             :template-tags {:num {:name         "num"
-                                                                                                   :display_name "Num"
-                                                                                                   :type         "number"
-                                                                                                   :required     true
-                                                                                                   :default      "1"}}}}}]
+                                                                 :type     :native
+                                                                 :native   {:query         "SELECT {{num}} AS num"
+                                                                            :template-tags {:num {:name         "num"
+                                                                                                  :display_name "Num"
+                                                                                                  :type         "number"
+                                                                                                  :required     true
+                                                                                                  :default      "1"}}}}}]
         (embed-test/with-temp-dashcard [dashcard {:dash     {:parameters [{:name "Num"
                                                                            :slug "num"
                                                                            :id   "_NUM_"
@@ -499,16 +496,16 @@
     (mt/dataset test-data
       (embed-test/with-embedding-enabled-and-new-secret-key!
         (t2.with-temp/with-temp [:model/Card {card-id :id, :as card} {:dataset_query    (mt/native-query
-                                                                                           {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
-                                                                                            :template-tags {"NAME"
-                                                                                                            {:name         "NAME"
-                                                                                                             :display-name "Name"
-                                                                                                             :type         :dimension
-                                                                                                             :dimension    [:field (mt/id :people :name) nil]
-                                                                                                             :widget-type  :string/=
-                                                                                                             :default      nil}}})
-                                                                       :enable_embedding true
-                                                                       :embedding_params {"NAME" "enabled"}}]
+                                                                                          {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                                                                                           :template-tags {"NAME"
+                                                                                                           {:name         "NAME"
+                                                                                                            :display-name "Name"
+                                                                                                            :type         :dimension
+                                                                                                            :dimension    [:field (mt/id :people :name) nil]
+                                                                                                            :widget-type  :string/=
+                                                                                                            :default      nil}}})
+                                                                      :enable_embedding true
+                                                                      :embedding_params {"NAME" "enabled"}}]
           (testing "Card"
             (let [url (card-query-url card {:_embedding_params {:NAME "enabled"}})]
               (is (= [[1]]
@@ -516,19 +513,19 @@
                      (mt/rows (mt/user-http-request :crowberto :get 202 url :NAME "Hudson Borer" :NAME "x"))))))
           (testing "Dashcard"
             (mt/with-temp [:model/Dashboard {dashboard-id :id} {:enable_embedding true
-                                                         :embedding_params {:name "enabled"}
-                                                         :parameters       [{:name      "Name"
-                                                                             :slug      "name"
-                                                                             :id        "_name_"
-                                                                             :type      "string/="
-                                                                             :sectionId "string"}]}
+                                                                :embedding_params {:name "enabled"}
+                                                                :parameters       [{:name      "Name"
+                                                                                    :slug      "name"
+                                                                                    :id        "_name_"
+                                                                                    :type      "string/="
+                                                                                    :sectionId "string"}]}
 
                            :model/DashboardCard dashcard {:card_id            card-id
-                                                   :dashboard_id       dashboard-id
-                                                   :parameter_mappings [{:parameter_id "_name_"
-                                                                         :card_id      card-id
-                                                                         :type         "string/="
-                                                                         :target       [:dimension [:template-tag "NAME"]]}]}]
+                                                          :dashboard_id       dashboard-id
+                                                          :parameter_mappings [{:parameter_id "_name_"
+                                                                                :card_id      card-id
+                                                                                :type         "string/="
+                                                                                :target       [:dimension [:template-tag "NAME"]]}]}]
               (let [url (dashcard-url dashcard {:_embedding_params {:name "enabled"}})]
                 (is (= [[1]]
                        (mt/rows (mt/user-http-request :crowberto :get 202 url :name "Hudson Borer"))
@@ -566,8 +563,8 @@
     (with-embedding-enabled-and-new-secret-key!
       (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
         (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding false ;; works without enabling embedding on the dashboard (#44962)
-                                                    :embedding_params {"static_category"       "enabled"
-                                                                       "static_category_label" "enabled"}})
+                                                           :embedding_params {"static_category"       "enabled"
+                                                                              "static_category_label" "enabled"}})
         (let [signed-token (dash-token dashboard)
               url            (format "preview_embed/dashboard/%s/params/%s/values" signed-token "_STATIC_CATEGORY_")]
           (testing "Should work if the param we're fetching values for is enabled"

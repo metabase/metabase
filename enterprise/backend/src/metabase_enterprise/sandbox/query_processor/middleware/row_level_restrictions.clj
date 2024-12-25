@@ -15,7 +15,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.card :refer [:model/Card]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.query.permissions :as query-perms]

@@ -2,7 +2,6 @@
   "Tests for the test utils!"
   (:require
    [clojure.test :refer :all]
-   [metabase.models.field :refer [:model/Field]]
    [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.test.data :as data]

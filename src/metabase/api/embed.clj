@@ -22,8 +22,6 @@
    [metabase.api.embed.common :as api.embed.common]
    [metabase.api.public :as api.public]
    [metabase.events :as events]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.dashboard :refer [:model/Dashboard]]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]

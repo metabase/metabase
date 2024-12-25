@@ -6,8 +6,6 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.models.database :refer [:model/Database]]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]

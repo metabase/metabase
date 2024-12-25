@@ -2,7 +2,6 @@
   (:require
    [compojure.core :refer [GET]]
    [metabase.api.common :as api]
-   [metabase.models.login-history :as login-history :refer [:model/LoginHistory]]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 

@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.integrations.ldap :as ldap]
    [metabase.integrations.ldap.default-implementation :as default-impl]
-   [metabase.models.user :refer [:model/User]]
    [metabase.test :as mt]
    [metabase.test.integrations.ldap :as ldap.test]
    [toucan2.core :as t2])

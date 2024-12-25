@@ -6,7 +6,6 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models :refer [:model/Database :model/Field :model/FieldValues :model/Secret :model/Table]]
    [metabase.models.secret :as secret]
    [metabase.plugins.classloader :as classloader]
    [metabase.test.data.impl.get-or-create :as test.data.impl.get-or-create]

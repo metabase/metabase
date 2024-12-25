@@ -5,7 +5,6 @@
    [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
    [metabase-enterprise.sandbox.models.params.field-values :as ee-params.field-values]
    [metabase-enterprise.test :as met]
-   [metabase.models :refer [:model/Card :model/Field :model/FieldValues :model/Permissio:model/PermissionsGroupMembershipmbership :model/User]]
    [metabase.models.field-values :as field-values]
    [metabase.models.params.field-values :as params.field-values]
    [metabase.request.core :as request]
@@ -22,9 +21,9 @@
                                                                                         [:< $id 6]]})}}}
         ;; the categories-id doesn't have a field values, we fake it with a full fieldvalues to make it easier to test
         (t2/insert! :model/FieldValues {:type                  :full
-                                 :field_id              (mt/id :categories :id)
-                                 :values                (range 10)
-                                 :human_readable_values (map #(str "id_" %) (range 10))})
+                                        :field_id              (mt/id :categories :id)
+                                        :values                (range 10)
+                                        :human_readable_values (map #(str "id_" %) (range 10))})
         (let [categories-id (mt/id :categories :id)
               f             (t2/select-one :model/Field :id (mt/id :categories :id))
               card-id       (-> f :table_id (#'ee-params.field-values/table-id->gtap) :card :id)
@@ -121,9 +120,9 @@
                :model/User                       {user-id-1 :id} {}
                :model/User                       {user-id-2 :id} {}
                :model/PermissionsGroupMembership _ {:group_id group-id
-                                             :user_id user-id-1}
+                                                    :user_id user-id-1}
                :model/PermissionsGroupMembership _ {:group_id group-id
-                                             :user_id user-id-2}
+                                                    :user_id user-id-2}
                GroupTableAccessPolicy     _ {:card_id card-id
                                              :group_id group-id
                                              :table_id (mt/id :categories)
@@ -158,7 +157,7 @@
                :model/PermissionsGroup           {group-id :id} {}
                :model/User                       {user-id :id} {}
                :model/PermissionsGroupMembership _ {:group_id group-id
-                                             :user_id user-id}
+                                                    :user_id user-id}
                GroupTableAccessPolicy     _ {:card_id card-id
                                              :group_id group-id
                                              :table_id (mt/id :categories)
@@ -175,7 +174,7 @@
                :model/User                       {user-id-1 :id} {}
                :model/PermissionsGroup           {group-id-1 :id} {}
                :model/PermissionsGroupMembership _ {:group_id group-id-1
-                                             :user_id user-id-1}
+                                                    :user_id user-id-1}
                GroupTableAccessPolicy     _ {:card_id card-id
                                              :group_id group-id-1
                                              :table_id (mt/id :categories)
@@ -184,7 +183,7 @@
                :model/User                       {user-id-2 :id} {}
                :model/PermissionsGroup           {group-id-2 :id} {}
                :model/PermissionsGroupMembership _ {:group_id group-id-2
-                                             :user_id user-id-2}
+                                                    :user_id user-id-2}
                GroupTableAccessPolicy     _ {:card_id card-id
                                              :group_id group-id-2
                                              :table_id (mt/id :categories)
@@ -207,7 +206,7 @@
                :model/User                       {user-id-1 :id} {}
                :model/PermissionsGroup           {group-id-1 :id} {}
                :model/PermissionsGroupMembership _ {:group_id group-id-1
-                                             :user_id user-id-1}
+                                                    :user_id user-id-1}
                GroupTableAccessPolicy     _ {:card_id card-id-1
                                              :group_id group-id-1
                                              :table_id (mt/id :categories)
@@ -217,7 +216,7 @@
                :model/User                       {user-id-2 :id} {}
                :model/PermissionsGroup           {group-id-2 :id} {}
                :model/PermissionsGroupMembership _ {:group_id group-id-2
-                                             :user_id user-id-2}
+                                                    :user_id user-id-2}
                GroupTableAccessPolicy     _ {:card_id card-id-2
                                              :group_id group-id-2
                                              :table_id (mt/id :categories)

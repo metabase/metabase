@@ -6,7 +6,6 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.models :refer [:model/Card model__Database]]
    [metabase.models.action :as action]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]

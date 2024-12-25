@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.analyze :as analyze]
-   [metabase.models :refer [:model/Field :model/FieldValues :model/Table]]
    [metabase.models.field-values :as field-values]
    [metabase.sync :as sync]
    [metabase.sync.util-test :as sync.util-test]

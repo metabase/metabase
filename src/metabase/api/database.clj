@@ -17,16 +17,11 @@
    [metabase.events :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.card :as card :refer [:model/Card]]
-   [metabase.models.collection :as collection :refer [:model/Collection]]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.database :as database :refer [:model/Database protected-password]]
-   [metabase.models.field :refer [:model/Field readable-fields-only]]
    [metabase.models.interface :as mi]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.secret :as secret]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
@@ -258,8 +253,8 @@
              exclude-uneditable-details?
              include-only-uploadable?]}]
   (let [dbs (t2/select :model/Database (merge {:order-by [:%lower.name :%lower.engine]}
-                                               (when-not include-analytics?
-                                                 {:where [:= :is_audit false]})))
+                                              (when-not include-analytics?
+                                                {:where [:= :is_audit false]})))
         filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
     (cond-> (add-native-perms-info dbs)
       include-tables?              add-tables

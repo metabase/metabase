@@ -1,7 +1,6 @@
 (ns ^:mb/once metabase.xrays.automagic-dashboards.interesting-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:model/Card :model/Field]]
    [metabase.models.interface :as mi]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.test :as mt]

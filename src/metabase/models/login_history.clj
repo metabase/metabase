@@ -52,11 +52,6 @@
   :doc "This variable also controls the geocoding service that Metabase uses to know the location of your logged in users.
         Setting this variable to false also disables this reverse geocoding functionality.")
 
-(def :model/LoginHistory
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/LoginHistory)
-
 (methodical/defmethod t2/table-name :model/LoginHistory [_model] :login_history)
 
 (doto :model/LoginHistory

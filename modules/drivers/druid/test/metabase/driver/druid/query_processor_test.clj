@@ -8,7 +8,6 @@ jjj (ns ^:mb/driver-tests metabase.driver.druid.query-processor-test
        [metabase.db.metadata-queries :as metadata-queries]
        [metabase.driver :as driver]
        [metabase.driver.druid.query-processor :as druid.qp]
-       [metabase.models :refer [:model/Fiel:model/Tablele]]
        [metabase.query-processor :as qp]
        [metabase.query-processor.compile :as qp.compile]
        [metabase.test :as mt]

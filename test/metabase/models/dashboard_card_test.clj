@@ -1,14 +1,7 @@
 (ns metabase.models.dashboard-card-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card :refer [:model/Card]]
    [metabase.models.card-test :as card-test]
-   [metabase.models.collection :refer [:model/Collection]]
-   [metabase.models.dashboard :refer [:model/Dashboard] :as dashboard]
-   [metabase.models.dashboard-card
-    :as dashboard-card
-    :refer [:model/DashboardCard]]
-   [metabase.models.dashboard-card-series :refer [:model/DashboardCardSeries]]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
@@ -90,7 +83,7 @@
 
 (deftest update-dashboard-card-series!-test
   (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:name       "Test Dashboard"
-                                                   :creator_id (mt/user->id :rasta)}
+                                                          :creator_id (mt/user->id :rasta)}
                  :model/Card          {card-id :id} {}
                  :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}
                  :model/Card          {card-id-1 :id} {:name "card1"}
@@ -161,9 +154,9 @@
     (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
                    :model/Card          {card-id :id} {}
                    :model/DashboardCard {dashcard-id :id
-                                  :as dashboard-card} {:dashboard_id       dashboard-id
-                                                       :card_id            card-id
-                                                       :parameter_mappings [{:foo "bar"}]}
+                                         :as dashboard-card} {:dashboard_id       dashboard-id
+                                                              :card_id            card-id
+                                                              :parameter_mappings [{:foo "bar"}]}
                    :model/Card          {card-id-1 :id}   {:name "Test Card 1"}
                    :model/Card          {card-id-2 :id}   {:name "Test Card 2"}]
       (testing "unmodified dashcard"
@@ -254,15 +247,15 @@
 (deftest ^:parallel normalize-parameter-mappings-test
   (testing "DashboardCard parameter mappings should get normalized when coming out of the DB"
     (mt/with-temp [:model/Dashboard     dashboard {:parameters [{:name "Venue ID"
-                                                          :slug "venue_id"
-                                                          :id   "22486e00"
-                                                          :type "id"}]}
+                                                                 :slug "venue_id"
+                                                                 :id   "22486e00"
+                                                                 :type "id"}]}
                    :model/Card          card      {}
                    :model/DashboardCard dashcard  {:dashboard_id       (u/the-id dashboard)
-                                            :card_id            (u/the-id card)
-                                            :parameter_mappings [{:parameter_id "22486e00"
-                                                                  :card_id      (u/the-id card)
-                                                                  :target       [:dimension [:field-id (mt/id :venues :id)]]}]}]
+                                                   :card_id            (u/the-id card)
+                                                   :parameter_mappings [{:parameter_id "22486e00"
+                                                                         :card_id      (u/the-id card)
+                                                                         :target       [:dimension [:field-id (mt/id :venues :id)]]}]}]
       (is (= [{:parameter_id "22486e00"
                :card_id      (u/the-id card)
                :target       [:dimension [:field (mt/id :venues :id) nil]]}]
@@ -275,8 +268,8 @@
       (card-test/test-visualization-settings-normalization
        (fn [original expected]
          (t2.with-temp/with-temp [:model/DashboardCard dashcard {:dashboard_id           (u/the-id dashboard)
-                                                          :card_id                (u/the-id card)
-                                                          :visualization_settings original}]
+                                                                 :card_id                (u/the-id card)
+                                                                 :visualization_settings original}]
            (is (= expected
                   (t2/select-one-fn :visualization_settings :model/DashboardCard :id (u/the-id dashcard))))))))))
 
@@ -319,11 +312,11 @@
                      :model/Dashboard     dash     {:name "my dashboard"  :collection_id (:id c1) :created_at now}
                      :model/Card          card     {:name "some question" :collection_id (:id c1) :created_at now}
                      :model/DashboardCard dashcard {:card_id                (:id card)
-                                             :dashboard_id           (:id dash)
-                                             :visualization_settings {}
-                                             :row                    6
-                                             :col                    3
-                                             :created_at             now}]
+                                                    :dashboard_id           (:id dash)
+                                                    :visualization_settings {}
+                                                    :row                    6
+                                                    :col                    3
+                                                    :created_at             now}]
         (is (= "1311d6dc"
                (serdes/raw-hash [(serdes/identity-hash card) (serdes/identity-hash dash) {} 6 3 now])
                (serdes/identity-hash dashcard)))))))
@@ -334,15 +327,15 @@
     (mt/with-temp [:model/Dashboard     dash     {:name "my dashboard"}
                    :model/Card          card     {:name "some question"}
                    :model/DashboardCard dashcard {:card_id (:id card)
-                                           :dashboard_id (:id dash)
-                                           :visualization_settings {:click_behavior {:type         "link",
-                                                                                     :linkType     "url",
-                                                                                     :linkTemplate "/dashboard/1?year={{column:Year}}"}}
-                                           :parameter_mappings     [{:card_id (:id card)
-                                                                     :parameter_id "-1419866742"
-                                                                     :target [:dimension [:field 1 nil]]}]
-                                           :row                    4
-                                           :col                    3}]
+                                                  :dashboard_id (:id dash)
+                                                  :visualization_settings {:click_behavior {:type         "link",
+                                                                                            :linkType     "url",
+                                                                                            :linkTemplate "/dashboard/1?year={{column:Year}}"}}
+                                                  :parameter_mappings     [{:card_id (:id card)
+                                                                            :parameter_id "-1419866742"
+                                                                            :target [:dimension [:field 1 nil]]}]
+                                                  :row                    4
+                                                  :col                    3}]
       ;; NOTE: we need to remove `:created_at` and `:updated_at` because they are not
       ;; transformed by `from-parsed-json`
       (let [dashcard     (dissoc (t2/select-one :model/DashboardCard :id (u/the-id dashcard))

@@ -9,7 +9,6 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models :refer [model:model/DashboardCardoardCard :model/Database :model/Table]]
    [metabase.models.action :as action]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.query :as query]

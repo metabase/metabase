@@ -2,7 +2,6 @@
   "Tests for creating and updating Connection Impersonation configs via the permisisons API"
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:model/PermissionsGroup]]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.test :as mt]
    [metabase.util :as u]

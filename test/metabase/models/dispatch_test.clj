@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.interface :as mi]
-   [metabase.models.user :refer [:model/User]]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

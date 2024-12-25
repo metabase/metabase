@@ -14,7 +14,6 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
-   [metabase.models :refer [:model/Database :model/Setting]]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.encryption-test :as encryption-test]

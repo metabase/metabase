@@ -5,7 +5,6 @@
    [metabase.api.common :as api]
    [metabase.api.table :as api.table]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]

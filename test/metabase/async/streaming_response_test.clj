@@ -7,7 +7,6 @@
    [metabase.async.streaming-response.thread-pool :as thread-pool]
    [metabase.driver :as driver]
    [metabase.http-client :as client]
-   [metabase.models :refer [:model/Database]]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.server.protocols :as server.protocols]
    [metabase.test :as mt]

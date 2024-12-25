@@ -13,7 +13,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models :refer [:model/Card :model/Collection :model/Field :model/Table]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]

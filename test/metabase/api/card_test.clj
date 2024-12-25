@@ -19,10 +19,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models
-    :refer [:model/Card :model/CardBookmark :model/Collection :model/Dashboard :model/Database :model/ModerationReview
-            :model/Pulse :model/PulseCard :model/PulseChannel :model/PulseChannelRecipient :model/Table :model/Timeline
-            :model/TimelineEvent]]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
@@ -1935,14 +1931,14 @@
                    :model/Card card-c {:name          "Card C"
                                        :collection_id (u/the-id coll-c)}
                    :model/Timeline tl-a {:name          "Timeline A"
-                                  :collection_id (u/the-id coll-a)}
+                                         :collection_id (u/the-id coll-a)}
                    :model/Timeline tl-b {:name          "Timeline B"
-                                  :collection_id (u/the-id coll-b)}
+                                         :collection_id (u/the-id coll-b)}
                    :model/Timeline _ {:name          "Timeline B-old"
-                               :collection_id (u/the-id coll-b)
-                               :archived      true}
+                                      :collection_id (u/the-id coll-b)
+                                      :archived      true}
                    :model/Timeline _ {:name          "Timeline C"
-                               :collection_id (u/the-id coll-c)}
+                                      :collection_id (u/the-id coll-c)}
                    :model/TimelineEvent _ {:name        "event-aa"
                                             :timeline_id (u/the-id tl-a)}
                    :model/TimelineEvent _ {:name        "event-ab"
@@ -1983,7 +1979,7 @@
                    :model/Card card {:name          "Card A"
                                      :collection_id (u/the-id collection)}
                    :model/Timeline tl-a {:name          "Timeline A"
-                                  :collection_id (u/the-id collection)}
+                                         :collection_id (u/the-id collection)}
                    ;; the temp defaults set {:time_matters true}
                    :model/TimelineEvent _ {:name        "event-a"
                                             :timeline_id (u/the-id tl-a)

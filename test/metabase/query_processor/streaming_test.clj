@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.embed-test :as embed-test]
-   [metabase.models :refer [:model/Card :model/Dashboard :model/DashboardCard]]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -321,8 +320,8 @@
                                          enable-embedding-static true]
         (embed-test/with-new-secret-key!
           (t2.with-temp/with-temp [:model/Card          card      (if viz-settings
-                                                                     (assoc card-defaults :visualization_settings viz-settings)
-                                                                     card-defaults)
+                                                                    (assoc card-defaults :visualization_settings viz-settings)
+                                                                    card-defaults)
                                    :model/Dashboard     dashboard {:name "Test Dashboard"}
                                    :model/DashboardCard dashcard  {:card_id (u/the-id card) :dashboard_id (u/the-id dashboard)}]
             (doseq [export-format (keys assertions)

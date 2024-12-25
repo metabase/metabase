@@ -13,7 +13,6 @@
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.secret :as secret :refer [:model/Secret]]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
@@ -33,11 +32,6 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
-
-(def :model/Database
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all Database symbols in our codebase."
-  :model/Database)
 
 (methodical/defmethod t2/table-name :model/Database [_model] :metabase_database)
 

@@ -8,7 +8,6 @@
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models :refer [:model/PermissionsGroupMembership :model/Session :model/User]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.request.core :as request]
    [metabase.server.middleware.session :as mw.session]
@@ -203,7 +202,7 @@
         (t2/update! :model/PermissionsGroupMembership {:user_id (:id user), :group_id (:id group-2)}
                     {:is_group_manager true})
         (t2/insert! :model/Session {:id      (str test-uuid)
-                             :user_id (:id user)})
+                                    :user_id (:id user)})
         (testing "is `false` if advanced-permisison is disabled"
           (mt/with-premium-features #{}
             (is (= false
@@ -222,8 +221,8 @@
   (testing "full-app-embed sessions shouldn't come back if we don't explicitly specifiy the anti-csrf token"
     (try
       (t2/insert! :model/Session {:id              (str test-uuid)
-                           :user_id         (mt/user->id :lucky)
-                           :anti_csrf_token test-anti-csrf-token})
+                                  :user_id         (mt/user->id :lucky)
+                                  :anti_csrf_token test-anti-csrf-token})
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
@@ -232,8 +231,8 @@
     (testing "...but if we do specifiy the token, they should come back"
       (try
         (t2/insert! :model/Session {:id              (str test-uuid)
-                             :user_id         (mt/user->id :lucky)
-                             :anti_csrf_token test-anti-csrf-token})
+                                    :user_id         (mt/user->id :lucky)
+                                    :anti_csrf_token test-anti-csrf-token})
         (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
                (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token)))
         (finally
@@ -242,8 +241,8 @@
       (testing "(unless the token is wrong)"
         (try
           (t2/insert! :model/Session {:id              (str test-uuid)
-                               :user_id         (mt/user->id :lucky)
-                               :anti_csrf_token test-anti-csrf-token})
+                                      :user_id         (mt/user->id :lucky)
+                                      :anti_csrf_token test-anti-csrf-token})
           (is (= nil
                  (#'mw.session/current-user-info-for-session (str test-uuid) (str/join (reverse test-anti-csrf-token)))))
           (finally
@@ -253,7 +252,7 @@
   (testing "if we specify an anti-csrf token we shouldn't get back a session without that token"
     (try
       (t2/insert! :model/Session {:id      (str test-uuid)
-                           :user_id (mt/user->id :lucky)})
+                                  :user_id (mt/user->id :lucky)})
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token)))
       (finally
@@ -263,7 +262,7 @@
   (testing "shouldn't fetch expired sessions"
     (try
       (t2/insert! :model/Session {:id      (str test-uuid)
-                           :user_id (mt/user->id :lucky)})
+                                  :user_id (mt/user->id :lucky)})
         ;; use low-level `execute!` because updating is normally disallowed for Sessions
       (t2/query-one {:update :core_session, :set {:created_at (t/instant 1000)}, :where [:= :id (str test-uuid)]})
       (is (= nil

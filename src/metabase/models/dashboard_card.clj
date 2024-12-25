@@ -4,9 +4,7 @@
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
-   [metabase.models.dashboard-card-series :refer [:model/DashboardCardSeries]]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse-card :refer [:model/PulseCard]]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -14,11 +12,6 @@
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
-
-(def :model/DashboardCard
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-   We'll keep this till we replace all the DashboardCard symbol in our codebase."
-  :model/DashboardCard)
 
 (methodical/defmethod t2/table-name :model/DashboardCard [_model] :report_dashboardcard)
 

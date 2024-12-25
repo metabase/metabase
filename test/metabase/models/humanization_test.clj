@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.humanization :as humanization]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.test.util :as tu]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))

@@ -4,8 +4,6 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.model-index :as model-index :refer [:model/ModelIndex]]
    [metabase.task.index-values :as task.index-values]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]

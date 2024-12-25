@@ -6,7 +6,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.models :refer [:model/Database :model/Field :model/Table]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.humanization :as humanization]
    [metabase.models.permissions-group :as perms-group]

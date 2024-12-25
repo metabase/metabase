@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.llm.client :as llm-client]
-   [metabase.models :refer [:model/Card :model/Dashboard :model/DashboardCard]]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.tools.with-temp :as t2.with-temp]))

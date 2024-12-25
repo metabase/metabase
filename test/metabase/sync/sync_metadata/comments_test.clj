@@ -5,8 +5,6 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.models.field :refer [:model/Field]]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]

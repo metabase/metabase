@@ -8,10 +8,7 @@
    [metabase.analyze.classifiers.text-fingerprint
     :as classifiers.text-fingerprint]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
-   [metabase.models.database :refer [:model/Database]]
-   [metabase.models.field :refer [:model/Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.sync.interface :as i]
@@ -67,21 +64,21 @@
     (with-redefs [i/*latest-fingerprint-version* Short/MAX_VALUE]
       (t2.with-temp/with-temp [:model/Table table {}
                                :model/Field _ {:table_id            (u/the-id table)
-                                                :name                "Current fingerprint, not analyzed"
-                                                :fingerprint_version Short/MAX_VALUE
-                                                :last_analyzed       nil}
+                                               :name                "Current fingerprint, not analyzed"
+                                               :fingerprint_version Short/MAX_VALUE
+                                               :last_analyzed       nil}
                                :model/Field _ {:table_id            (u/the-id table)
-                                                :name                "Current fingerprint, already analzed"
-                                                :fingerprint_version Short/MAX_VALUE
-                                                :last_analyzed       #t "2017-08-09T00:00Z"}
+                                               :name                "Current fingerprint, already analzed"
+                                               :fingerprint_version Short/MAX_VALUE
+                                               :last_analyzed       #t "2017-08-09T00:00Z"}
                                :model/Field _ {:table_id            (u/the-id table)
-                                                :name                "Old fingerprint, not analyzed"
-                                                :fingerprint_version (dec Short/MAX_VALUE)
-                                                :last_analyzed       nil}
+                                               :name                "Old fingerprint, not analyzed"
+                                               :fingerprint_version (dec Short/MAX_VALUE)
+                                               :last_analyzed       nil}
                                :model/Field _ {:table_id            (u/the-id table)
-                                                :name                "Old fingerprint, already analzed"
-                                                :fingerprint_version (dec Short/MAX_VALUE)
-                                                :last_analyzed       #t "2017-08-09T00:00Z"}]
+                                               :name                "Old fingerprint, already analzed"
+                                               :fingerprint_version (dec Short/MAX_VALUE)
+                                               :last_analyzed       #t "2017-08-09T00:00Z"}]
         (#'analyze/update-fields-last-analyzed! table)
         (is (= #{"Current fingerprint, not analyzed"}
                (t2/select-fn-set :name :model/Field :table_id (u/the-id table), :last_analyzed [:> #t "2018-01-01"])))))))

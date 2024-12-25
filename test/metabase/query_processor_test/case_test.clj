@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.case-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:model/Card :model/Segment]]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
 

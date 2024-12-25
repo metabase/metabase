@@ -1,7 +1,6 @@
 (ns metabase.cmd.rotate-encryption-key
   (:require
    [metabase.db :as mdb]
-   [metabase.models :refer [:model/Database :model/Secret :model/Setting]]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]

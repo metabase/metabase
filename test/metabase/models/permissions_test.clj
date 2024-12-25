@@ -1,11 +1,6 @@
 (ns metabase.models.permissions-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.collection :as collection :refer [:model/Collection]]
-   [metabase.models.permissions :as perms :refer [:model/Permissions]]
-   [metabase.models.permissions-group
-    :as perms-group
-    :refer [:model/PermissionsGroup]]
    [metabase.permissions.util :as perms.u]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -228,8 +223,8 @@
 
     (testing "(should apply to descendants as well)"
       (t2.with-temp/with-temp [:model/Collection collection {:location (collection/children-location
-                                                                         (collection/user->personal-collection
-                                                                          (mt/user->id :lucky)))}]
+                                                                        (collection/user->personal-collection
+                                                                         (mt/user->id :lucky)))}]
         (is (thrown-with-msg?
              Exception
              #"You cannot edit permissions for a Personal Collection or its descendants."
@@ -244,8 +239,8 @@
 
 (deftest disallow-granting-personal-collection-perms-test
   (t2.with-temp/with-temp [:model/Collection collection {:location (collection/children-location
-                                                                     (collection/user->personal-collection
-                                                                      (mt/user->id :lucky)))}]
+                                                                    (collection/user->personal-collection
+                                                                     (mt/user->id :lucky)))}]
     (doseq [[perms-type f] {"read"  perms/grant-collection-read-permissions!
                             "write" perms/grant-collection-readwrite-permissions!}]
       (testing (format "Should throw Exception if you use the helper function to grant %s perms for a Personal Collection"
@@ -264,8 +259,8 @@
   (t2.with-temp/with-temp [:model/PermissionsGroup {group-id :id}]
     (letfn [(perms []
               (t2/select-fn-set :object :model/Permissions {:where [:and
-                                                                     [:like :object "/collection/%"]
-                                                                     [:= :group_id group-id]]}))]
+                                                                    [:like :object "/collection/%"]
+                                                                    [:= :group_id group-id]]}))]
       (is (= nil
              (perms)))
       (testing "Should be able to grant Root Collection perms"

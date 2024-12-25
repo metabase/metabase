@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
-   [metabase.models.field :refer [:model/Field]]
    [metabase.models.interface :as mi]))
 
 (def ^:private long-text-field

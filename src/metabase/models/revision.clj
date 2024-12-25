@@ -68,11 +68,6 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(def :model/Revision
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/Revision)
-
 (methodical/defmethod t2/table-name :model/Revision [_model] :revision)
 
 (doto :model/Revision

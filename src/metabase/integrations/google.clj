@@ -8,7 +8,6 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.setting.multi-setting
     :refer [define-multi-setting-impl]]
-   [metabase.models.user :as user :refer [:model/User]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]

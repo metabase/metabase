@@ -3,8 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.dashboard-test :as api.dashboard-test]
-   [metabase.models
-    :refer [:model/Card :model/Dashboard :model/DashboardCard :model/DashboardCardSeries]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -59,15 +57,15 @@
                                                      :default      nil}}})]
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}
                        :model/Dashboard {dashboard-id :id} {:parameters [{:name "param"
-                                                                   :slug "param"
-                                                                   :id   "_dash_id_"
-                                                                   :type :number/=}]}
+                                                                          :slug "param"
+                                                                          :id   "_dash_id_"
+                                                                          :type :number/=}]}
                        :model/DashboardCard {dashcard-id :id} {:parameter_mappings [{:parameter_id "_dash_id_"
-                                                                              :card_id card-id
-                                                                              :target [:variable [:template-tag "qty_locked"]]}]
-                                                        :card_id card-id
-                                                        :visualization_settings {}
-                                                        :dashboard_id dashboard-id}]
+                                                                                     :card_id card-id
+                                                                                     :target [:variable [:template-tag "qty_locked"]]}]
+                                                               :card_id card-id
+                                                               :visualization_settings {}
+                                                               :dashboard_id dashboard-id}]
           (let [params [{:id "_dash_id_" :value 4}]]
             (is (= [{:id "_dash_id_"
                      :type :number/=
@@ -140,15 +138,15 @@
                                                                   :default      ["Gizmo" "Gadget"]
                                                                   :required     false}}}}}
          :model/Dashboard {dashboard-id :id} {:parameters [{:name    "category"
-                                                     :slug    "category"
-                                                     :id      "abc123"
-                                                     :type    "string/="
-                                                     :default ["Widget"]}]}
+                                                            :slug    "category"
+                                                            :id      "abc123"
+                                                            :type    "string/="
+                                                            :default ["Widget"]}]}
          :model/DashboardCard {dashcard-id :id} {:dashboard_id       dashboard-id
-                                          :card_id            card-id
-                                          :parameter_mappings [{:parameter_id "abc123"
-                                                                :card_id      card-id
-                                                                :target       [:dimension [:template-tag "filter"]]}]}]
+                                                 :card_id            card-id
+                                                 :parameter_mappings [{:parameter_id "abc123"
+                                                                       :card_id      card-id
+                                                                       :target       [:dimension [:template-tag "filter"]]}]}]
         (testing "Sanity check: running Card query should use Card defaults"
           (is (= [["Gadget"] ["Gizmo"]]
                  (mt/rows (qp.card-test/run-query-for-card card-id)))))
@@ -178,26 +176,26 @@
                                                      :breakout     [$category_id
                                                                     $price]})}
        :model/Dashboard {dashboard-id :id} {:parameters
-                                     [{:slug      "venue_id"
-                                       :id        "_VENUE_ID_"
-                                       :name      "venue_id"
-                                       :type      "id"}
-                                      {:slug      "count"
-                                       :id        "_COUNT_"
-                                       :name      "count"
-                                       :type      "number/>="}]}
+                                            [{:slug      "venue_id"
+                                              :id        "_VENUE_ID_"
+                                              :name      "venue_id"
+                                              :type      "id"}
+                                             {:slug      "count"
+                                              :id        "_COUNT_"
+                                              :name      "count"
+                                              :type      "number/>="}]}
        :model/DashboardCard {dashcard-id :id} {:dashboard_id       dashboard-id
-                                        :card_id            card-id
-                                        :parameter_mappings [{:parameter_id "_VENUE_ID_"
-                                                              :card_id      card-id
-                                                              :target       [:dimension
-                                                                             [:field (mt/id :venues :id) {:base-type "type/BigInteger"}]
-                                                                             {:stage-number 0}]}
-                                                             {:parameter_id "_COUNT_"
-                                                              :card_id      card-id
-                                                              :target       [:dimension
-                                                                             [:field "count" {:base-type "type/Integer"}]
-                                                                             {:stage-number 1}]}]}]
+                                               :card_id            card-id
+                                               :parameter_mappings [{:parameter_id "_VENUE_ID_"
+                                                                     :card_id      card-id
+                                                                     :target       [:dimension
+                                                                                    [:field (mt/id :venues :id) {:base-type "type/BigInteger"}]
+                                                                                    {:stage-number 0}]}
+                                                                    {:parameter_id "_COUNT_"
+                                                                     :card_id      card-id
+                                                                     :target       [:dimension
+                                                                                    [:field "count" {:base-type "type/Integer"}]
+                                                                                    {:stage-number 1}]}]}]
       (are [count-filter rows] (= rows
                                   (mt/formatted-rows [str int int]
                                                      (run-query-for-dashcard
@@ -233,15 +231,15 @@
                                                                   :required     true
                                                                   :default      "Foo"}}}}}
          :model/Dashboard {dashboard-id :id} {:parameters [{:name    "Text"
-                                                     :slug    "text"
-                                                     :id      "5791ff38"
-                                                     :type    "string/="
-                                                     :default "Bar"}]}
+                                                            :slug    "text"
+                                                            :id      "5791ff38"
+                                                            :type    "string/="
+                                                            :default "Bar"}]}
          :model/DashboardCard {dashcard-id :id} {:dashboard_id       dashboard-id
-                                          :card_id            card-id
-                                          :parameter_mappings [{:parameter_id "5791ff38"
-                                                                :card_id      card-id
-                                                                :target       [:variable [:template-tag "filter"]]}]}]
+                                                 :card_id            card-id
+                                                 :parameter_mappings [{:parameter_id "5791ff38"
+                                                                       :card_id      card-id
+                                                                       :target       [:variable [:template-tag "filter"]]}]}]
         (testing "Sanity check: running Card query should use Card defaults"
           (is (= [["Foo"]]
                  (mt/rows (qp.card-test/run-query-for-card card-id)))))
@@ -270,23 +268,23 @@
       (mt/with-temp
         [:model/Card      {card-id :id}      {:dataset_query (mt/mbql-query products {:aggregation [[:count]]})}
          :model/Dashboard {dashboard-id :id} {:parameters [{:name "Category (DashCard 1)"
-                                                     :slug "category_1"
-                                                     :id   "CATEGORY_1"
-                                                     :type "string/="}
-                                                    {:name    "Category (DashCard 2)"
-                                                     :slug    "category_2"
-                                                     :id      "CATEGORY_2"
-                                                     :type    "string/="}]}
+                                                            :slug "category_1"
+                                                            :id   "CATEGORY_1"
+                                                            :type "string/="}
+                                                           {:name    "Category (DashCard 2)"
+                                                            :slug    "category_2"
+                                                            :id      "CATEGORY_2"
+                                                            :type    "string/="}]}
          :model/DashboardCard {dashcard-1-id :id} {:card_id            card-id
-                                            :dashboard_id       dashboard-id
-                                            :parameter_mappings [{:parameter_id "CATEGORY_1"
-                                                                  :card_id      card-id
-                                                                  :target       [:dimension (mt/$ids $products.category)]}]}
+                                                   :dashboard_id       dashboard-id
+                                                   :parameter_mappings [{:parameter_id "CATEGORY_1"
+                                                                         :card_id      card-id
+                                                                         :target       [:dimension (mt/$ids $products.category)]}]}
          :model/DashboardCard {dashcard-2-id :id} {:card_id            card-id
-                                            :dashboard_id       dashboard-id
-                                            :parameter_mappings [{:parameter_id "CATEGORY_2"
-                                                                  :card_id      card-id
-                                                                  :target       [:dimension (mt/$ids $products.category)]}]}]
+                                                   :dashboard_id       dashboard-id
+                                                   :parameter_mappings [{:parameter_id "CATEGORY_2"
+                                                                         :card_id      card-id
+                                                                         :target       [:dimension (mt/$ids $products.category)]}]}]
         (testing "DashCard 1 (Category = Doohickey)"
           (is (= [[42]]
                  (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-1-id
@@ -324,17 +322,17 @@
                  (mt/rows (qp/process-query query)))))
         (mt/with-temp [:model/Card          {card-id :id} {:dataset_query query}
                        :model/Dashboard     {dashboard-id :id} {:parameters [{:name      "Text"
-                                                                       :slug      "text"
-                                                                       :id        "_TEXT_"
-                                                                       :type      "string/="
-                                                                       :sectionId "string"
-                                                                       :default   ["Doohickey"]}]}
+                                                                              :slug      "text"
+                                                                              :id        "_TEXT_"
+                                                                              :type      "string/="
+                                                                              :sectionId "string"
+                                                                              :default   ["Doohickey"]}]}
                        :model/DashboardCard {dashcard-id :id} {:parameter_mappings     [{:parameter_id "_TEXT_"
-                                                                                  :card_id      card-id
-                                                                                  :target       [:dimension [:template-tag "cat"]]}]
-                                                        :card_id                card-id
-                                                        :visualization_settings {}
-                                                        :dashboard_id           dashboard-id}]
+                                                                                         :card_id      card-id
+                                                                                         :target       [:dimension [:template-tag "cat"]]}]
+                                                               :card_id                card-id
+                                                               :visualization_settings {}
+                                                               :dashboard_id           dashboard-id}]
           (testing "if the parameter is not specified"
             (is (= [[200]]
                    (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id)))))
@@ -351,9 +349,9 @@
           (mt/with-temp [:model/Card          {card-id :id} {:dataset_query query}
                          :model/Dashboard     {dashboard-id :id} {:parameters []}
                          :model/DashboardCard {dashcard-id :id} {:parameter_mappings     []
-                                                          :card_id                card-id
-                                                          :visualization_settings {}
-                                                          :dashboard_id           dashboard-id}]
+                                                                 :card_id                card-id
+                                                                 :visualization_settings {}
+                                                                 :dashboard_id           dashboard-id}]
             (is (= [[200]]
                    (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id))))))))))
 
@@ -373,17 +371,17 @@
                  (mt/rows (qp/process-query query)))))
         (mt/with-temp [:model/Card          {card-id :id} {:dataset_query query}
                        :model/Dashboard     {dashboard-id :id} {:parameters [{:name      "Text"
-                                                                       :slug      "text"
-                                                                       :id        "_text_"
-                                                                       :type      "string/="
-                                                                       :sectionId "string"
-                                                                       :default   ["Doohickey"]}]}
+                                                                              :slug      "text"
+                                                                              :id        "_text_"
+                                                                              :type      "string/="
+                                                                              :sectionId "string"
+                                                                              :default   ["Doohickey"]}]}
                        :model/DashboardCard {dashcard-id :id} {:parameter_mappings     [{:parameter_id "_text_"
-                                                                                  :card_id      card-id
-                                                                                  :target       [:dimension [:template-tag "cat"]]}]
-                                                        :card_id                card-id
-                                                        :visualization_settings {}
-                                                        :dashboard_id           dashboard-id}]
+                                                                                         :card_id      card-id
+                                                                                         :target       [:dimension [:template-tag "cat"]]}]
+                                                               :card_id                card-id
+                                                               :visualization_settings {}
+                                                               :dashboard_id           dashboard-id}]
           (testing "should apply the default if the parameter is not specified"
             (is (= [[51]]
                    (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id)))))
@@ -400,9 +398,9 @@
           (mt/with-temp [:model/Card          {card-id :id} {:dataset_query query}
                          :model/Dashboard     {dashboard-id :id} {:parameters []}
                          :model/DashboardCard {dashcard-id :id} {:parameter_mappings     []
-                                                          :card_id                card-id
-                                                          :visualization_settings {}
-                                                          :dashboard_id           dashboard-id}]
+                                                                 :card_id                card-id
+                                                                 :visualization_settings {}
+                                                                 :dashboard_id           dashboard-id}]
             (is (= [[51]]
                    (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id))))))))))
 
@@ -415,16 +413,16 @@
                                                                    :order-by [[:asc $id]]
                                                                    :limit    2})}
                      :model/Dashboard {dashboard-id :id} {:name       "20516 Dashboard"
-                                                   :parameters [{:name    "Category"
-                                                                 :slug    "category"
-                                                                 :id      "_CATEGORY_"
-                                                                 :type    "category"
-                                                                 :default ["Doohickey"]}]}
+                                                          :parameters [{:name    "Category"
+                                                                        :slug    "category"
+                                                                        :id      "_CATEGORY_"
+                                                                        :type    "category"
+                                                                        :default ["Doohickey"]}]}
                      :model/DashboardCard {dashcard-id :id} {:parameter_mappings [{:parameter_id "_CATEGORY_"
-                                                                            :card_id      card-id
-                                                                            :target       [:dimension [:field (mt/id :products :category) nil]]}]
-                                                      :card_id            card-id
-                                                      :dashboard_id       dashboard-id}]
+                                                                                   :card_id      card-id
+                                                                                   :target       [:dimension [:field (mt/id :products :category) nil]]}]
+                                                             :card_id            card-id
+                                                             :dashboard_id       dashboard-id}]
         (testing "No parameters -- ignore Dashboard default (#20493, #20503)"
           ;; [[metabase.query-processor.middleware.large-int-id]] middleware is converting the IDs to strings I guess
           (is (= [["1" "Rustic Paper Wallet" "Gizmo"]

@@ -9,7 +9,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models :refer [model:model/Collectionllection :model/Database :model/Field :model/FieldValues :model/Table]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]

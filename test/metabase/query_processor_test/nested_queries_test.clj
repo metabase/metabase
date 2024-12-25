@@ -17,9 +17,6 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
-   [metabase.models :refer [:model/Field :model/Table]]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.collection :as collection :refer [:model/Collection]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -778,10 +775,10 @@
             (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
             (mt/with-temp [:model/Collection collection {}
                            :model/Card       card-1 {:collection_id (u/the-id collection)
-                                                      :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 2})}
+                                                     :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 2})}
                            :model/Card       card-2 {:collection_id (u/the-id collection)
-                                                      :dataset_query (mt/mbql-query nil
-                                                                       {:source-table (format "card__%d" (u/the-id card-1))})}]
+                                                     :dataset_query (mt/mbql-query nil
+                                                                      {:source-table (format "card__%d" (u/the-id card-1))})}]
               (testing "read perms for both Cards should be the same as reading the parent collection")
               (is (= (mi/perms-objects-set collection :read)
                      (mi/perms-objects-set card-1 :read)
@@ -821,9 +818,9 @@
   group."
   [expected-status-code db-or-id source-collection-or-id-or-nil dest-collection-or-id-or-nil]
   (t2.with-temp/with-temp [:model/Card card {:collection_id (some-> source-collection-or-id-or-nil u/the-id)
-                                              :dataset_query {:database (u/the-id db-or-id)
-                                                              :type     :native
-                                                              :native   {:query "SELECT * FROM VENUES"}}}]
+                                             :dataset_query {:database (u/the-id db-or-id)
+                                                             :type     :native
+                                                             :native   {:query "SELECT * FROM VENUES"}}}]
     (mt/user-http-request :rasta :post expected-status-code "card"
                           {:name                   (mt/random-name)
                            :collection_id          (some-> dest-collection-or-id-or-nil u/the-id)

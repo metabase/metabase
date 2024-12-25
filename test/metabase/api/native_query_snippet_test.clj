@@ -3,8 +3,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.models :refer [:model/Collection]]
-   [metabase.models.native-query-snippet :refer [:model/NativeQuerySnippet]]
    [metabase.test :as mt]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
@@ -26,9 +24,9 @@
   (mt/with-full-data-perms-for-all-users!
     (testing "GET /api/native-query-snippet"
       (mt/with-temp [:model/NativeQuerySnippet snippet-1 {:content "1"
-                                                           :name    "snippet_1"}
+                                                          :name    "snippet_1"}
                      :model/NativeQuerySnippet snippet-2 {:content "2"
-                                                           :name    "snippet_2"}]
+                                                          :name    "snippet_2"}]
         (testing "list returns all snippets. Should work for all users"
           (doseq [test-user [:crowberto :rasta]]
             (testing (format "test user = %s" test-user)
@@ -42,7 +40,7 @@
   (mt/with-full-data-perms-for-all-users!
     (testing "GET /api/native-query-snippet/:id"
       (t2.with-temp/with-temp [:model/NativeQuerySnippet snippet {:content "-- SQL comment here"
-                                                                   :name    "comment"}]
+                                                                  :name    "comment"}]
         (testing "all users should be able to see all snippets in CE"
           (doseq [test-user [:crowberto :rasta]]
             (testing (format "with test user %s" test-user)
@@ -145,7 +143,7 @@
   (mt/with-full-data-perms-for-all-users!
     (testing "PUT /api/native-query-snippet/:id"
       (t2.with-temp/with-temp [:model/NativeQuerySnippet snippet {:content "-- SQL comment here"
-                                                                   :name    "comment"}]
+                                                                  :name    "comment"}]
         (testing "update stores updated snippet"
           (doseq [[message user] {"admin user should be able to update"     :crowberto
                                   "non-admin user should be able to update" :rasta}]

@@ -6,10 +6,8 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models :refer [:model/Database]]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
-   [metabase.models.secret :as secret :refer [:model/Secret]]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
@@ -251,9 +249,9 @@
                                            v)))))))]
           (testing "values for referenced secret IDs are resolved in a new DB"
             (t2.with-temp/with-temp [:model/Database {:keys [id details] :as database} {:engine  :secret-test-driver
-                                                                                         :name    "Test DB with secrets"
-                                                                                         :details {:host           "localhost"
-                                                                                                   :password-value "new-password"}}]
+                                                                                        :name    "Test DB with secrets"
+                                                                                        :details {:host           "localhost"
+                                                                                                  :password-value "new-password"}}]
               (testing " and saved db-details looks correct"
                 (check-db-fn database {:kind    :password
                                        :source  nil
@@ -262,9 +260,9 @@
                 (testing " updating the value works as expected"
                   (t2/update! :model/Database id {:details (assoc details :password-path  "/path/to/my/password-file")})
                   (check-db-fn (t2/select-one :model/Database :id id) {:kind    :password
-                                                                        :source  :file-path
-                                                                        :version 2
-                                                                        :value   "/path/to/my/password-file"}))))
+                                                                       :source  :file-path
+                                                                       :version 2
+                                                                       :value   "/path/to/my/password-file"}))))
             (testing "Secret instances are deleted from the app DB when the DatabaseInstance is deleted"
               (is (seq @secret-ids) "At least one Secret instance should have been created")
               (doseq [secret-id @secret-ids]
@@ -274,9 +272,9 @@
 
 (deftest user-may-not-update-sample-database-test
   (t2.with-temp/with-temp [:model/Database {:keys [id] :as _sample-database} {:engine    :h2
-                                                                               :is_sample true
-                                                                               :name      "Sample Database"
-                                                                               :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
+                                                                              :is_sample true
+                                                                              :name      "Sample Database"
+                                                                              :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
     (testing " updating the engine of a sample database is not allowed"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo

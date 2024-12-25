@@ -12,9 +12,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.permissions-group-membership
-    :as perms-group-membership
-    :refer [:model/PermissionsGroupMembership]]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
@@ -35,11 +32,6 @@
 (set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
-
-(def :model/User
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all these symbols in our codebase."
-  :model/User)
 
 (methodical/defmethod t2/table-name :model/User [_model] :core_user)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :author]     [_original-model _k] :model/User)

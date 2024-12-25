@@ -5,7 +5,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models :refer [:model/Card]]
    [metabase.models.query :as query]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))

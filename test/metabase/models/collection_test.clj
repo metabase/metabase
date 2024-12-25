@@ -7,7 +7,6 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.audit :as audit]
-   [metabase.models :refer [:model/Card :model/Collection :model/Dashboard :model/NativeQuery:model/Permissionsmissions :model/PermissionsGroup :model/Pulse :model/User]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]

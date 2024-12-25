@@ -3,7 +3,6 @@
    [compojure.core :refer [GET POST]]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
-   [metabase.models.revision :as revision :refer [:model/Revision]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 

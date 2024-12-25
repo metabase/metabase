@@ -2,11 +2,6 @@
   "Tests for TimelineEvent model namespace."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.collection :refer [:model/Collection]]
-   [metabase.models.timeline :refer [:model/Timeline]]
-   [metabase.models.timeline-event
-    :as timeline-event
-    :refer [:model/TimelineEvent]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -21,10 +16,10 @@
                    :model/Timeline tl-b {:name "tl-b"}
                    :model/TimelineEvent _ {:timeline_id (u/the-id tl-a) :name "un-1"}
                    :model/TimelineEvent _ {:timeline_id (u/the-id tl-a) :name "archived-1"
-                                            :archived true}
+                                           :archived true}
                    :model/TimelineEvent _ {:timeline_id (u/the-id tl-b) :name "un-2"}
                    :model/TimelineEvent _ {:timeline_id (u/the-id tl-b) :name "archived-2"
-                                            :archived true}]
+                                           :archived true}]
       (testing "only unarchived events by default"
         (is (= #{"un-1" "un-2"}
                (names (timeline-event/include-events [tl-a tl-b] {})))))

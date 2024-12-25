@@ -3,7 +3,6 @@
    [clojure.spec.alpha :as s]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.driver.util :as driver.u]
-   [metabase.models.database :refer [:model/Database]]
    [metabase.models.setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.log :as log]

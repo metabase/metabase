@@ -1,7 +1,6 @@
 (ns metabase.models.action
   (:require
    [medley.core :as m]
-   [metabase.models.card :refer [:model/Card]]
    [metabase.models.interface :as mi]
    [metabase.models.query :as query]
    [metabase.models.serialization :as serdes]

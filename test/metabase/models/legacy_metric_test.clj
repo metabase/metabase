@@ -1,8 +1,6 @@
 (ns metabase.models.legacy-metric-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:model/Database :model/Table]]
-   [metabase.models.legacy-metric :refer [:model/LegacyMetric]]
    [metabase.models.revision :as revision]
    [metabase.test :as mt]
    [toucan2.core :as t2]
@@ -23,7 +21,7 @@
 (deftest update-test
   (testing "Updating"
     (t2.with-temp/with-temp [:model/LegacyMetric {:keys [id]} {:creator_id (mt/user->id :rasta)
-                                                                :table_id   (mt/id :checkins)}]
+                                                               :table_id   (mt/id :checkins)}]
       (testing "you should not be able to change the creator_id of a Metric"
         (is (thrown-with-msg?
              Exception
@@ -47,8 +45,8 @@
     (mt/with-temp [:model/Database {database-id :id} {}
                    :model/Table    {table-id :id} {:db_id database-id}
                    :model/LegacyMetric   metric         {:table_id   table-id
-                                                          :definition {:aggregation [[:count]]
-                                                                       :filter      [:and [:> [:field 4 nil] "2014-10-19"]]}}]
+                                                         :definition {:aggregation [[:count]]
+                                                                      :filter      [:and [:> [:field 4 nil] "2014-10-19"]]}}]
       (is (= (merge metric-defaults
                     {:id          true
                      :table_id    true
@@ -68,7 +66,7 @@
     (mt/with-temp [:model/Database {database-id :id} {}
                    :model/Table    {table-id :id} {:db_id database-id}
                    :model/LegacyMetric   metric         {:table_id   table-id
-                                                          :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]
+                                                         :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]
       (is (= {:definition  {:before {:filter [:> [:field 4 nil] "2014-10-19"]}
                             :after  {:filter [:between [:field 4 nil] "2014-07-01" "2014-10-19"]}}
               :description {:before "Lookin' for a blueberry"
@@ -76,9 +74,9 @@
               :name        {:before "Toucans in the rainforest"
                             :after  "Something else"}}
              (revision/diff-map :model/LegacyMetric metric (assoc metric
-                                                                   :name        "Something else"
-                                                                   :description "BBB"
-                                                                   :definition  {:filter [:between [:field 4 nil] "2014-07-01" "2014-10-19"]})))))
+                                                                  :name        "Something else"
+                                                                  :description "BBB"
+                                                                  :definition  {:filter [:between [:field 4 nil] "2014-07-01" "2014-10-19"]})))))
 
     (testing "test case where definition doesn't change"
       (is (= {:name {:before "A"

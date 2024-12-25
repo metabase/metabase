@@ -26,7 +26,6 @@
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
-   [metabase.models.parameter-card :as parameter-card :refer [:model/ParameterCard]]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as models.pulse]

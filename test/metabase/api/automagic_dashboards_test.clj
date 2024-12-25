@@ -3,8 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.automagic-dashboards :as api.magic]
-   [metabase.models
-    :refer [:model/Card :model/Collection :model/Dashboard :model/LegacyMetric :model/ModelIndex :model/ModelIndexValue :model/Segment]]
    [metabase.models.model-index :as model-index]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -95,7 +93,7 @@
 
 (deftest segment-xray-test
   (t2.with-temp/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                     :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
+                                                            :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
     (testing "GET /api/automagic-dashboards/segment/:id"
       (is (some? (api-call! "segment/%s" [segment-id]))))
 
@@ -521,7 +519,7 @@
 (deftest segment-xray-show-param-test
   (testing "x-ray of a segment with show set reduces the number of returned cards"
     (t2.with-temp/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                       :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
+                                                              :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
       (let [show-limit 1
             {:keys [base-count show-count]} (card-count-check! show-limit "segment/%s" [segment-id])]
         (testing "The non-slimmed dashboard isn't already at \"limit\" cards"

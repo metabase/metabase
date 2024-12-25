@@ -3,9 +3,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.models
-    :refer [:model/Card :model/Collection :model/Dashboard :model/DashboardCard :model/Database :model/Pulse___Pulse :model/PulseCard
-            :model/PulseChannel :model/PulseChannelRecipient :model/Table :model/User]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as models.pulse]

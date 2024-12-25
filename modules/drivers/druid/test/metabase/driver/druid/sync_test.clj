@@ -6,7 +6,6 @@
    [metabase.driver :as driver]
    [metabase.driver.druid.client :as druid.client]
    [metabase.driver.druid.sync :as druid.sync]
-   [metabase.models.database :refer [:model/Database]]
    [metabase.models.secret :as secret]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
    [metabase.test :as mt]

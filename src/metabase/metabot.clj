@@ -7,7 +7,6 @@
    [metabase.metabot.feedback :as metabot-feedback]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.metabot.util :as metabot-util]
-   [metabase.models :refer [:model/Table]]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]

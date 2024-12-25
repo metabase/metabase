@@ -1,7 +1,6 @@
 (ns ^:mb/once metabase.api.login-history-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:model/LoginHistory :model/Session :model/User]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))

@@ -7,9 +7,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.models.database :refer [:model/Database]]
-   [metabase.models.field :refer [:model/Field]]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.sync :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
@@ -250,13 +247,13 @@
                 sync-util/*log-exceptions-and-continue?* false]
         (mt/with-temp [:model/Database db     {:engine ::sync-test}
                        :model/Table    movie  {:name        "movie"
-                                                :schema      (when *supports-schemas?* "default")
-                                                :db_id       (u/the-id db)
-                                                :description nil}
+                                               :schema      (when *supports-schemas?* "default")
+                                               :db_id       (u/the-id db)
+                                               :description nil}
                        :model/Table    studio {:name        "studio"
-                                                :schema      (when *supports-schemas?* "public")
-                                                :db_id       (u/the-id db)
-                                                :description ""}]
+                                               :schema      (when *supports-schemas?* "public")
+                                               :db_id       (u/the-id db)
+                                               :description ""}]
           (sync/sync-table! studio)
           (sync/sync-table! movie)
           (let [[movie studio] (mapv table-details (t2/select :model/Table :db_id (u/the-id db) {:order-by [:name]}))]

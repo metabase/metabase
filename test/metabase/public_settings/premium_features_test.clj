@@ -7,7 +7,6 @@
    [mb.hawk.parallel]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
-   [metabase.models.user :refer [:model/User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features
     :as premium-features

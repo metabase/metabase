@@ -5,8 +5,6 @@
    [metabase.analyze.fingerprint.insights :as insights]
    [metabase.analyze.query-results :as qr]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.field :refer [:model/Field]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]

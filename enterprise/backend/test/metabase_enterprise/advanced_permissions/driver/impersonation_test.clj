@@ -7,7 +7,6 @@
    [metabase-enterprise.advanced-permissions.driver.impersonation :as impersonation]
    [metabase.driver.postgres-test :as postgres-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.models.database :refer [:model/Database]]
    [metabase.query-processor :as qp]
    [metabase.request.core :as request]
    [metabase.sync :as sync]

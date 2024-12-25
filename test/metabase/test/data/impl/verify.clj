@@ -2,7 +2,6 @@
   "Logic for verifying that test data was loaded correctly."
   (:require
    [metabase.driver :as driver]
-   [metabase.models :refer [:model/Table]]
    [metabase.query-processor :as qp]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]

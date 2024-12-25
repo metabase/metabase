@@ -7,11 +7,6 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(def :model/Timeline
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/Timeline)
-
 (methodical/defmethod t2/table-name :model/Timeline  [_model] :timeline)
 
 (doto :model/Timeline

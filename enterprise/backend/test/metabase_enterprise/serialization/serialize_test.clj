@@ -4,8 +4,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.serialize :as serialize]
    [metabase-enterprise.serialization.test-util :as ts]
-   [metabase.models :refer [:model/Card :model/Collection :model/Dashboard :model/Database :model/Field :model/NativeQuerySnippet
-                            :model/Segment :model/Table]]))
 
 (defn- all-ids-are-fully-qualified-names?
   [m]

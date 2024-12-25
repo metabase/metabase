@@ -3,7 +3,6 @@
    A Mongo database is an example of such a DB."
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:model/Database :model/Table]]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.mock.toucanery :as toucanery]

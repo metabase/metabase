@@ -2,9 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.models.pulse :refer [:model/Pulse]]
-   [metabase.models.pulse-channel :as pulse-channel :refer [:model/PulseChannel]]
-   [metabase.models.pulse-channel-recipient :refer [:model/PulseChannelRecipient]]
    [metabase.task :as task]
    [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]

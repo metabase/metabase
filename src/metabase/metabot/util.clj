@@ -9,7 +9,6 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.metabot.client :as metabot-client]
    [metabase.metabot.settings :as metabot-settings]
-   [metabase.models :refer [:model/Card :model/Field :model/FieldValues :model/Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.setup :as qp.setup]

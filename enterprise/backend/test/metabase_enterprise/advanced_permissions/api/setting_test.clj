@@ -5,7 +5,6 @@
    [metabase.api.geojson-test :as geojson-test]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
-   [metabase.models :refer [:model/Card :model/Dashboard]]
    [metabase.models.permissions :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]

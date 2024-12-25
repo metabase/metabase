@@ -2,11 +2,6 @@
   "Tests for /api/bookmark endpoints."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.bookmark
-    :refer [:model/BookmarkOrdering :model/CardBookmark CollectionB:model/DashboardBookmarkBookmark]]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.collection :refer [:model/Collection]]
-   [metabase.models.dashboard :refer [:model/Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -78,7 +73,7 @@
 (deftest bookmarks-on-archived-items-test
   (testing "POST /api/bookmark/:model/:model-id"
     (mt/with-temp [:model/Collection archived-collection {:name "Test Collection"
-                                                   :archived true}
+                                                          :archived true}
                    :model/Card       archived-card {:name "Test Card" :archived true}
                    :model/Dashboard  archived-dashboard {:name "Test Dashboard" :archived true}]
       (bookmark-models (mt/user->id :rasta) archived-collection archived-card archived-dashboard)

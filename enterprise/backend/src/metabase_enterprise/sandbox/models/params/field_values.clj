@@ -9,7 +9,6 @@
     :as row-level-restrictions]
    [metabase.api.common :as api]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models :refer [:model/Field :model/PermissionsGroupMembership]]
    [metabase.models.field :as field]
    [metabase.models.field-values :as field-values]
    [metabase.models.params.field-values :as params.field-values]

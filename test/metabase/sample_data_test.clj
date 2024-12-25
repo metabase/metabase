@@ -8,7 +8,6 @@
    [metabase.api.database-test :as api.database-test]
    [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.models :refer [:model/Database :model/Field :model/Table]]
    [metabase.plugins :as plugins]
    [metabase.sample-data :as sample-data]
    [metabase.sync :as sync]

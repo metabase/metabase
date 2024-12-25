@@ -2,7 +2,6 @@
   "Tests for expression aggregations and for named aggregations."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card :refer [:model/Card]]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))

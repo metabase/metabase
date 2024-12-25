@@ -12,15 +12,6 @@
    [metabase.channel.render.style :as style]
    [metabase.http-client :as client]
    [metabase.integrations.slack :as slack]
-   [metabase.models
-    :refer [:model/Card
-            :model/Collection
-            :model/Dashboard
-            :model/DashboardCard
-            :model/Pulse
-            :model/PulseCard
-            :model/PulseChannel
-            :model/PulseChannelRecipient]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse-channel :as pulse-channel]
@@ -271,8 +262,8 @@
     (testing "Create a pulse with a HybridPulseCard and a CardRef, PUT accepts this format, we should make sure POST does as well"
       (mt/with-temp [:model/Card card-1 {}
                      :model/Card card-2 {:name        "The card"
-                                          :description "Info"
-                                          :display     :table}]
+                                         :description "Info"
+                                         :display     :table}]
         (api.card-test/with-cards-in-readable-collection! [card-1 card-2]
           (t2.with-temp/with-temp [:model/Collection collection]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -468,11 +459,11 @@
       ;; (the new card)
       (mt/with-temp [:model/Pulse                 pulse {:name "Original Pulse Name"}
                      :model/Card                  card-1 {:name        "Test"
-                                                           :description "Just Testing"}
+                                                          :description "Just Testing"}
                      :model/PulseCard             _      {:card_id  (u/the-id card-1)
-                                                           :pulse_id (u/the-id pulse)}
+                                                          :pulse_id (u/the-id pulse)}
                      :model/Card                  card-2 {:name        "Test2"
-                                                           :description "Just Testing2"}]
+                                                          :description "Just Testing2"}]
         (with-pulses-in-writeable-collection! [pulse]
           (api.card-test/with-cards-in-readable-collection! [card-1 card-2]
             ;; The FE will include the original HybridPulseCard, similar to how the API returns the card via GET
@@ -838,17 +829,17 @@
     ;; pulse-3 => created by admin; non-admin recipient
     (mt/with-temp [:model/Dashboard             {dashboard-id :id} {}
                    :model/Pulse                 {pulse-1-id :id :as pulse-1} {:name         "ABCDEF"
-                                                                               :dashboard_id dashboard-id
-                                                                               :creator_id   (mt/user->id :rasta)}
+                                                                              :dashboard_id dashboard-id
+                                                                              :creator_id   (mt/user->id :rasta)}
                    :model/Pulse                 {pulse-2-id :id :as pulse-2} {:name         "GHIJKL"
-                                                                               :dashboard_id dashboard-id
-                                                                               :creator_id   (mt/user->id :crowberto)}
+                                                                              :dashboard_id dashboard-id
+                                                                              :creator_id   (mt/user->id :crowberto)}
                    :model/Pulse                 {pulse-3-id :id :as pulse-3} {:name         "MNOPQR"
-                                                                               :dashboard_id dashboard-id
-                                                                               :creator_id   (mt/user->id :crowberto)}
+                                                                              :dashboard_id dashboard-id
+                                                                              :creator_id   (mt/user->id :crowberto)}
                    :model/PulseChannel          pc {:pulse_id pulse-3-id}
                    :model/PulseChannelRecipient _  {:pulse_channel_id (u/the-id pc)
-                                             :user_id          (mt/user->id :rasta)}]
+                                                    :user_id          (mt/user->id :rasta)}]
       (with-pulses-in-writeable-collection! [pulse-1 pulse-2 pulse-3]
         (testing "admins can see all pulses"
           (let [results (-> (mt/user-http-request :crowberto :get 200 "pulse")
@@ -901,7 +892,7 @@
       (mt/with-temp [:model/Pulse pulse-1 {:name "ABCDEF"}
                      :model/Pulse pulse-2 {:name "GHIJKL"}
                      :model/Pulse pulse-3 {:name            "AAAAAA"
-                                            :alert_condition "rows"}]
+                                           :alert_condition "rows"}]
         (with-pulses-in-readable-collection! [pulse-1 pulse-2 pulse-3]
           (is (= [(assoc (pulse-details pulse-1) :can_write true, :collection_id true)
                   (assoc (pulse-details pulse-2) :can_write true, :collection_id true)]
@@ -954,7 +945,7 @@
       (mt/with-temp [:model/Pulse                 pulse {:creator_id (mt/user->id :crowberto)}
                      :model/PulseChannel          pc    {:pulse_id (u/the-id pulse)}
                      :model/PulseChannelRecipient _     {:pulse_channel_id (u/the-id pc)
-                                                  :user_id          (mt/user->id :rasta)}]
+                                                         :user_id          (mt/user->id :rasta)}]
         (with-pulses-in-nonreadable-collection! [pulse]
           (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse))))))))
 
@@ -967,11 +958,11 @@
         (mt/dataset sad-toucan-incidents
           (mt/with-temp [:model/Collection collection {}
                          :model/Dashboard {dashboard-id :id} {:name       "Daily Sad Toucans"
-                                                               :parameters [{:name    "X"
-                                                                             :slug    "x"
-                                                                             :id      "__X__"
-                                                                             :type    "category"
-                                                                             :default 3}]}
+                                                              :parameters [{:name    "X"
+                                                                            :slug    "x"
+                                                                            :id      "__X__"
+                                                                            :type    "category"
+                                                                            :default 3}]}
                          :model/Card       card  {:dataset_query (mt/mbql-query incidents {:aggregation [[:count]]})}]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (api.card-test/with-cards-in-readable-collection! [card]
@@ -1074,24 +1065,24 @@
 (deftest send-test-pulse-native-query-default-parameters-test
   (testing "POST /api/pulse/test should work with a native query with default parameters"
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
-                                                               :type     :native
-                                                               :native   {:query         "SELECT {{x}}"
-                                                                          :template-tags {"x" {:id           "abc"
-                                                                                               :name         "x"
-                                                                                               :display-name "X"
-                                                                                               :type         :number
-                                                                                               :required     true}}}}}
+                                                              :type     :native
+                                                              :native   {:query         "SELECT {{x}}"
+                                                                         :template-tags {"x" {:id           "abc"
+                                                                                              :name         "x"
+                                                                                              :display-name "X"
+                                                                                              :type         :number
+                                                                                              :required     true}}}}}
                    :model/Dashboard {dashboard-id :id} {:name       "Daily Sad Toucans"
-                                                         :parameters [{:name    "X"
-                                                                       :slug    "x"
-                                                                       :id      "__X__"
-                                                                       :type    "category"
-                                                                       :default 3}]}
+                                                        :parameters [{:name    "X"
+                                                                      :slug    "x"
+                                                                      :id      "__X__"
+                                                                      :type    "category"
+                                                                      :default 3}]}
                    :model/DashboardCard _ {:card_id            card-id
-                                            :dashboard_id       dashboard-id
-                                            :parameter_mappings [{:parameter_id "__X__"
-                                                                  :card_id      card-id
-                                                                  :target       [:variable [:template-tag "x"]]}]}]
+                                           :dashboard_id       dashboard-id
+                                           :parameter_mappings [{:parameter_id "__X__"
+                                                                 :card_id      card-id
+                                                                 :target       [:variable [:template-tag "x"]]}]}]
       (mt/with-fake-inbox
         (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
                                  (is (= {:ok true}
@@ -1221,10 +1212,10 @@
   (testing "DELETE /api/pulse/:id/subscription"
     (mt/with-temp [:model/Pulse        {pulse-id :id}   {:name "Lodi Dodi" :creator_id (mt/user->id :crowberto)}
                    :model/PulseChannel {channel-id :id} {:pulse_id      pulse-id
-                                                  :channel_type  "email"
-                                                  :schedule_type "daily"
-                                                  :details       {:other  "stuff"
-                                                                  :emails ["foo@bar.com"]}}]
+                                                         :channel_type  "email"
+                                                         :schedule_type "daily"
+                                                         :details       {:other  "stuff"
+                                                                         :emails ["foo@bar.com"]}}]
       (testing "Should be able to delete your own subscription"
         (t2.with-temp/with-temp [:model/PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
           (is (= nil

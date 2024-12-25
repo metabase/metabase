@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models :refer [:model/Card :model/Collection :model/Database :model/Field :model/LegacyMetric :model/Segment :model/Table]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -466,8 +465,8 @@
         ;; Example: {:field_type [:type/CreationTimestamp]}
         ;; More context is needed (see below test) for two-element dimension definitions
         (let [context    {:source {:fields (t2/select :model/Field :id [:in [(mt/id :people :created_at)
-                                                                              (mt/id :people :latitude)
-                                                                              (mt/id :orders :created_at)]])}}
+                                                                             (mt/id :people :latitude)
+                                                                             (mt/id :orders :created_at)]])}}
               ;; Lifted from the GenericTable dimensions definition
               dimensions {"CreateTimestamp"       {:field_type [:type/CreationTimestamp]}
                           "Lat"                   {:field_type [:entity/GenericTable :type/Latitude]}

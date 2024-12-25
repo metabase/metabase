@@ -1,9 +1,6 @@
 (ns ^:mb/once metabase.sync.sync-metadata.fields.sync-instances-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.database :refer [:model/Database]]
-   [metabase.models.field :refer [:model/Field]]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.test :as mt]

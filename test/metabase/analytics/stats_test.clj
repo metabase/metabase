@@ -10,11 +10,6 @@
    [metabase.db :as mdb]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.pulse :refer [:model/Pulse]]
-   [metabase.models.pulse-card :refer [:model/PulseCard]]
-   [metabase.models.pulse-channel :refer [:model/PulseChannel]]
-   [metabase.models.query-execution :refer [:model/QueryExecution]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
@@ -220,9 +215,9 @@
 
 (deftest new-impl-test
   (mt/with-temp [:model/QueryExecution _ (merge query-execution-defaults
-                                                 {:error "some error"})
+                                                {:error "some error"})
                  :model/QueryExecution _ (merge query-execution-defaults
-                                                 {:error "some error"})
+                                                {:error "some error"})
                  :model/QueryExecution _ query-execution-defaults]
     (is (= (old-execution-metrics)
            (#'stats/execution-metrics))
@@ -236,16 +231,16 @@
           (let [get-executions #(:executions (#'stats/execution-metrics))
                 before         (get-executions)]
             (mt/with-temp [:model/QueryExecution _ (merge query-execution-defaults
-                                                           {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
-                                                                            (t/minus (t/days 30))
-                                                                            (t/plus (t/minutes 10)))})]
+                                                          {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
+                                                                           (t/minus (t/days 30))
+                                                                           (t/plus (t/minutes 10)))})]
               (is (= (inc before)
                      (get-executions))
                   "execution metrics include query executions since 30 days ago"))
             (mt/with-temp [:model/QueryExecution _ (merge query-execution-defaults
-                                                           {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
-                                                                            (t/minus (t/days 30))
-                                                                            (t/minus (t/minutes 10)))})]
+                                                          {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
+                                                                           (t/minus (t/days 30))
+                                                                           (t/minus (t/minutes 10)))})]
               (is (= before
                      (get-executions))
                   "the executions metrics exclude query executions before 30 days ago"))))))))

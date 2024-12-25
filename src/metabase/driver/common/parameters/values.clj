@@ -17,7 +17,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.models.native-query-snippet :refer [:model/NativeQuerySnippet]]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.limit :as limit]

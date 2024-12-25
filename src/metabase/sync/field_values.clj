@@ -4,8 +4,6 @@
    [java-time.api :as t]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models.field :refer [:model/Field]]
-   [metabase.models.field-values :as field-values :refer [:model/FieldValues]]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]

@@ -18,10 +18,6 @@
    [metabase.embed.settings :as embed.settings]
    [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
-   [metabase.models
-    :refer [:model/Card :model/Collection :model/Dashboard :model/DashboardCard :model/Database :model/Field
-            :model/LegacyMetric :model/PermissionsGroup :model/Pulse :model/PulseCard :model/PulseChannel
-            :model/QueryCache :model/Segment :model/Table :model/User]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]

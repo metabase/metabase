@@ -9,22 +9,6 @@
    [metabase-enterprise.serialization.v2.round-trip-test :as round-trip-test]
    [metabase.audit :as audit]
    [metabase.core :as mbc]
-   [metabase.models
-    :refer [:model/Action
-            :model/Card
-            :model/Collection
-            :model/Dashboard
-            :model/DashboardCard
-            :model/Database
-            :model/Dimension
-            :model/Field
-            :model/FieldValues
-            :model/NativeQuerySnippet
-            :model/Segment
-            :model/Table
-            :model/Timeline
-            :model/TimelineEvent
-            :model/User]]
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor :as qp]
@@ -615,13 +599,13 @@
                        ;; Dimension.field_id (Customers.id) is the foreign ID field;
                        ;; Dimension.human_readable_field_id (Customers.name) is what we want to render.
                        :model/Table      {customers    :id}        {:name        "Customers"
-                                                             :db_id       db-id
-                                                             :schema      "PUBLIC"}
+                                                                    :db_id       db-id
+                                                                    :schema      "PUBLIC"}
                        :model/Field      {cust-id      :id}        {:name "id" :table_id customers}
                        :model/Field      {cust-name    :id}        {:name "name" :table_id customers}
                        :model/Table      {orders       :id}        {:name        "Orders"
-                                                             :db_id       db-id
-                                                             :schema      "PUBLIC"}
+                                                                    :db_id       db-id
+                                                                    :schema      "PUBLIC"}
                        :model/Field      {fk-id        :id}        {:name     "customer_id"
                                                                      :table_id orders
                                                                      :fk_target_field_id cust-id}
@@ -1104,8 +1088,8 @@
                        :model/Table      {no-schema-id :id}         {:name "Schemaless Table" :db_id db-id}
                        :model/Field      _                          {:name "Some Field" :table_id no-schema-id}
                        :model/Table      {schema-id    :id}         {:name        "Schema'd Table"
-                                                              :db_id       db-id
-                                                              :schema      "PUBLIC"}
+                                                                     :db_id       db-id
+                                                                     :schema      "PUBLIC"}
                        :model/Field      {field-id :id}             {:name "Other Field" :table_id schema-id}
                        :model/Field      {field-id2 :id}            {:name "Field To Click 1" :table_id schema-id}
                        :model/Field      {field-id3 :id}            {:name "Field To Click 2" :table_id schema-id}

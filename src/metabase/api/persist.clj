@@ -7,9 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.models.database :refer [:model/Database]]
    [metabase.models.interface :as mi]
-   [metabase.models.persisted-info :refer [:model/PersistedInfo]]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.task.persist-refresh :as task.persist-refresh]
@@ -72,11 +70,11 @@
     {:data   persisted-infos
      :total  (if (seq writable-db-ids)
                (t2/count :model/PersistedInfo {:from [[:persisted_info :p]]
-                                                :join [[:report_card :c] [:= :c.id :p.card_id]]
-                                                :where [:and
-                                                        [:in :p.database_id writable-db-ids]
-                                                        [:= :c.type "model"]
-                                                        [:not :c.archived]]})
+                                               :join [[:report_card :c] [:= :c.id :p.card_id]]
+                                               :where [:and
+                                                       [:in :p.database_id writable-db-ids]
+                                                       [:= :c.type "model"]
+                                                       [:not :c.archived]]})
                0)
      :limit  (request/limit)
      :offset (request/offset)}))

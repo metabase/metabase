@@ -2,9 +2,6 @@
   "Tests for the logic that syncs the `_metabase_metadata` Table."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.database :refer [:model/Database]]
-   [metabase.models.field :refer [:model/Field]]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
    [metabase.test :as mt]
    [metabase.test.mock.moviedb :as moviedb]

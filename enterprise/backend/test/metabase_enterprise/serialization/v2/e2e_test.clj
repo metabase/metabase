@@ -9,14 +9,6 @@
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
-   [metabase.models :refer [:model/Card
-                            :model/Collection
-                            :model/Dashboard
-                            :model/DashboardCard
-                            :model/Database
-                            :model/Field
-                            :model/ParameterCard
-                            :model/Table]]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
    [metabase.test :as mt]
@@ -385,7 +377,7 @@
               [:model/Database   db1s {:name "my-db"}
                :model/Collection coll1s {:name "My Collection"}
                :model/Table      table1s {:name  "CUSTOMERS"
-                                   :db_id (:id db1s)}
+                                          :db_id (:id db1s)}
                :model/Field      field1s {:name     (mt/random-name)
                                            :table_id (:id table1s)}
                :model/Card       card1s  {:name (mt/random-name)}
@@ -488,10 +480,10 @@
                                     db-name :name}           {:name        "Linked database"
                                                               :description "Linked database desc"}
              :model/Table         {table-id   :id
-                            table-name :name}        {:db_id        db-id
-                                                      :schema      "Public"
-                                                      :name        "Linked table"
-                                                      :description "Linked table desc"}
+                                   table-name :name}        {:db_id        db-id
+                                                             :schema      "Public"
+                                                             :name        "Linked table"
+                                                             :description "Linked table desc"}
              :model/Card          {card-id   :id
                                     card-name :name
                                     card-eid  :entity_id}    {:name          "Linked card"

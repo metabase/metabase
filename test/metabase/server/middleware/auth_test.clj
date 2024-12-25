@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.models.session :refer [:model/Session]]
    [metabase.request.core :as request]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.session :as mw.session]

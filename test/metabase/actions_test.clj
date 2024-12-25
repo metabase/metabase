@@ -5,7 +5,6 @@
    [metabase.actions.execution :as actions.execution]
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
-   [metabase.models :refer [model__Database :model/Table]]
    [metabase.models.action :as action]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]

@@ -2,7 +2,6 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.models.database :refer [:model/Database]]
    [metabase.sync.interface :as i]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]

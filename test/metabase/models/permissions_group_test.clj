@@ -5,15 +5,7 @@
    [metabase.config :as config]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
-   [metabase.models.database :refer [:model/Database]]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :refer [:model/Permissions]]
-   [metabase.models.permissions-group
-    :as perms-group
-    :refer [:model/PermissionsGroup]]
-   [metabase.models.permissions-group-membership
-    :refer [:model/PermissionsGroupMembership]]
-   [metabase.models.user :refer [:model/User]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]

@@ -6,7 +6,6 @@
    [metabase.driver.postgres-test :as postgres-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.http-client :as client]
-   [metabase.models.database :as database :refer [:model/Database]]
    [metabase.request.core :as request]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.sync :as sync]
@@ -168,8 +167,8 @@
             (postgres-test/drop-if-exists-and-create-db! db-name)
             (let [details (mt/dbdef->connection-details :postgres :db {:database-name db-name})]
               (mt/with-temp [:model/Database database {:engine :postgres
-                                                        :details (assoc details :dbname db-name)
-                                                        :is_attached_dwh true}]
+                                                       :details (assoc details :dbname db-name)
+                                                       :is_attached_dwh true}]
                 (let [spec     (sql-jdbc.conn/connection-details->spec :postgres details)
                       exec!    (fn [spec statements] (doseq [statement statements] (jdbc/execute! spec [statement])))
                       tableset #(set (map (fn [{:keys [schema name]}] (format "%s.%s" schema name)) (t2/select 'Table :db_id (:id %))))

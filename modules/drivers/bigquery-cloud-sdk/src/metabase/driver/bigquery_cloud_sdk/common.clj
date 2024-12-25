@@ -1,7 +1,6 @@
 (ns metabase.driver.bigquery-cloud-sdk.common
   "Common utility functions and utilities for the bigquery-cloud-sdk driver and related namespaces."
   (:require
-   [metabase.models :refer [:model/Database]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}

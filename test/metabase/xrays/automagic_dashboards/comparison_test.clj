@@ -1,7 +1,6 @@
 (ns ^:mb/once metabase.xrays.automagic-dashboards.comparison-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:model/Card :model/Segment :model/Table]]
    [metabase.models.query :as query]
    [metabase.test :as mt]
    [metabase.xrays.automagic-dashboards.comparison :as c]
@@ -36,7 +35,7 @@
 (deftest test-2
   (mt/with-temp [:model/Segment {segment1-id :id} @segment
                  :model/Segment {segment2-id :id} {:table_id   (mt/id :venues)
-                                                    :definition {:filter [:< [:field (mt/id :venues :price) nil] 4]}}]
+                                                   :definition {:filter [:< [:field (mt/id :venues :price) nil] 4]}}]
     (mt/with-test-user :rasta
       (with-dashboard-cleanup!
         (is (some? (test-comparison (t2/select-one :model/Segment :id segment1-id) (t2/select-one :model/Segment :id segment2-id))))))))
@@ -52,10 +51,10 @@
 
 (deftest test-4
   (t2.with-temp/with-temp [:model/Card {card-id :id} {:table_id      (mt/id :venues)
-                                                       :dataset_query {:query    {:filter       (-> @segment :definition :filter)
-                                                                                  :source-table (mt/id :venues)}
-                                                                       :type     :query
-                                                                       :database (mt/id)}}]
+                                                      :dataset_query {:query    {:filter       (-> @segment :definition :filter)
+                                                                                 :source-table (mt/id :venues)}
+                                                                      :type     :query
+                                                                      :database (mt/id)}}]
     (mt/with-test-user :rasta
       (with-dashboard-cleanup!
         (is (some? (test-comparison (t2/select-one :model/Table :id (mt/id :venues)) (t2/select-one :model/Card :id card-id))))))))

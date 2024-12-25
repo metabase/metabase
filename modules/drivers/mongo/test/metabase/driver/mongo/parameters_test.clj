@@ -6,7 +6,6 @@
    [java-time.api :as t]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.mongo.parameters :as mongo.params]
-   [metabase.models :refer [:model/NativeQuerySnippet]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -418,7 +417,7 @@
 (deftest e2e-snippet-test
   (mt/test-driver :mongo
     (t2.with-temp/with-temp [:model/NativeQuerySnippet snippet {:name    "first 3 checkins"
-                                                                 :content (to-bson {:_id {:$in [1 2 3]}})}]
+                                                                :content (to-bson {:_id {:$in [1 2 3]}})}]
       (is (= [[1 "African"]
               [2 "American"]
               [3 "Artisan"]]

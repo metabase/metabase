@@ -14,8 +14,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models
-    :refer [:model/Card :model/Collection :model/Database :model/Field :model/FieldValues :model/Segment Table]]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :refer [protected-password]]

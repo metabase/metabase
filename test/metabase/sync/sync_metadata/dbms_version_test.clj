@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.models.database :refer [:model/Database]]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
    [metabase.test :as mt]
    [metabase.util :as u]

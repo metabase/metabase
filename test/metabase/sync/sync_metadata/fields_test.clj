@@ -6,7 +6,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.models :refer [:model/Field :model/Table]]
    [metabase.query-processor :as qp]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata.fields :as sync-fields]

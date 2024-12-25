@@ -3,16 +3,12 @@
    [clojure.string :as str]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
-   [metabase.models.card :as card :refer [:model/Card]]
-   [metabase.models.collection :refer [:model/Collection]]
-   [metabase.models.dashboard :refer [:model/Dashboard]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-;; Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
 ;; We'll keep this till we replace all the symbols in our codebase."
 (def :model/CardBookmark       "CardBookmark model"       :model/CardBookmark)
 (def :model/DashboardBookmark  "DashboardBookmark model"  :model/DashboardBookmark)

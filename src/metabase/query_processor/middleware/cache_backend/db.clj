@@ -3,7 +3,6 @@
    [java-time.api :as t]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
-   [metabase.models.query-cache :refer [:model/QueryCache]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.util.date-2 :as u.date]

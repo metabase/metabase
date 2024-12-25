@@ -2,10 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.models.card :refer [:model/Card]]
-   [metabase.models.collection :refer [:model/Collection]]
    [metabase.models.interface :as mi]
-   [metabase.models.table :refer [:model/Table]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]

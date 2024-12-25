@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.events :as events]
-   [metabase.models :refer [model:model/Dashboardashboard :model/Table]]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

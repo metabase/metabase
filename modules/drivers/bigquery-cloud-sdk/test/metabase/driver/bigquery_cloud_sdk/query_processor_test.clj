@@ -15,7 +15,6 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models :refer [:model/Database]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.store :as qp.store]
@@ -205,8 +204,8 @@
 
     (test.tz/with-system-timezone-id! "America/Chicago"
       (t2.with-temp/with-temp [:model/Database db {:engine  :bigquery-cloud-sdk
-                                                    :details (assoc (:details (mt/db))
-                                                                    :use-jvm-timezone true)}]
+                                                   :details (assoc (:details (mt/db))
+                                                                   :use-jvm-timezone true)}]
         (is (= "2018-08-31T00:00:00-05:00"
                (native-timestamp-query db "2018-08-31 00:00:00-05" "America/Chicago"))
             (str "This test includes a `use-jvm-timezone` flag of true that will assume that the date coming from BigQuery "
@@ -215,8 +214,8 @@
 
     (test.tz/with-system-timezone-id! "Asia/Jakarta"
       (t2.with-temp/with-temp [:model/Database db {:engine  :bigquery-cloud-sdk
-                                                    :details (assoc (:details (mt/db))
-                                                                    :use-jvm-timezone true)}]
+                                                   :details (assoc (:details (mt/db))
+                                                                   :use-jvm-timezone true)}]
         (is (= "2018-08-31T00:00:00+07:00"
                (native-timestamp-query db "2018-08-31 00:00:00+07" "Asia/Jakarta"))
             "Similar to the above test, but covers a positive offset")))))

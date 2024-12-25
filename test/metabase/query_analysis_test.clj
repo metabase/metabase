@@ -5,7 +5,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models :refer [:model/Card]]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.public-settings :as public-settings]
    [metabase.query-analysis :as query-analysis]

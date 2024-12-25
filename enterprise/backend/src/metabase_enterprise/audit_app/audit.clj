@@ -6,7 +6,6 @@
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.audit :as audit]
    [metabase.db :as mdb]
-   [metabase.models.database :refer [:model/Database]]
    [metabase.models.setting :refer [defsetting]]
    [metabase.plugins :as plugins]
    [metabase.public-settings.premium-features :refer [defenterprise]]

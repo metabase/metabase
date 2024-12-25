@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.models.database :refer [:model/Database]]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data :as data]

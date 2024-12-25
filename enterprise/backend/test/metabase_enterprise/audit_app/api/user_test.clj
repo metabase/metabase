@@ -3,8 +3,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.permissions-test :as ee-perms-test]
    [metabase.audit :as audit]
-   [metabase.models :refer [:model/Card :model/Dashboard :model/DashboardCard :model/Pulse___Pulse :model/PulseCard
-                            :model/PulseChannel :model/PulseChannelRecipient :model/User]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]

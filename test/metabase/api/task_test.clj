@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.models.task-history :refer [:model/TaskHistory]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]

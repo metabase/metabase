@@ -22,11 +22,6 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(def :model/Secret
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/Secret)
-
 (methodical/defmethod t2/table-name :model/Secret [_model] :secret)
 
 (doto :model/Secret

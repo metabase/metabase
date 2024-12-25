@@ -2,7 +2,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.models.database :refer [:model/Database]]
    [metabase.plugins :as plugins]
    [metabase.sync :as sync]
    [metabase.util.files :as u.files]

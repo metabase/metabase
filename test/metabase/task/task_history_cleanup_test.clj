@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.models.task-history :refer [:model/TaskHistory]]
    [metabase.models.task-history-test :as tht]
    [metabase.task.task-history-cleanup :as cleanup-task]
    [metabase.test :as mt]
@@ -19,11 +18,11 @@
         t3-start (tht/add-second t2-start)] ; 2 seconds from now
     (letfn [(do-with-tasks [{:keys [rows-to-keep]} thunk]
               (mt/with-temp [:model/TaskHistory t1 (assoc (tht/make-10-millis-task t1-start)
-                                                           :task task-1)
+                                                          :task task-1)
                              :model/TaskHistory t2 (assoc (tht/make-10-millis-task t2-start)
-                                                           :task task-2)
+                                                          :task task-2)
                              :model/TaskHistory t3 (assoc (tht/make-10-millis-task t3-start)
-                                                           :task task-3)]
+                                                          :task task-3)]
                 (t2/delete! :model/TaskHistory :id [:not-in (map u/the-id [t1 t2 t3])])
                 (with-redefs [cleanup-task/history-rows-to-keep rows-to-keep]
                   (#'cleanup-task/task-history-cleanup!))

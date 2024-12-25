@@ -12,7 +12,6 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
-   [metabase.models :refer [:model/Card :model/Collection :model/Pulse___Pulse :model/PulseCard :model/PulseChannel :model/PulseChannelRecipient]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as models.pulse]
@@ -84,7 +83,7 @@
                                                     :channel_id   chn-id})]
     (if (= pulse-channel :email)
       (t2.with-temp/with-temp [:model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
-                                                        :pulse_channel_id pc-id}]
+                                                               :pulse_channel_id pc-id}]
         (f pulse))
       (f pulse))))
 
@@ -389,7 +388,7 @@
       :fixture
       (fn [{:keys [pulse-id]} thunk]
         (t2.with-temp/with-temp [:model/PulseChannelRecipient _ {:user_id          (mt/user->id :crowberto)
-                                                          :pulse_channel_id (t2/select-one-pk :model/PulseChannel :pulse_id pulse-id)}]
+                                                                 :pulse_channel_id (t2/select-one-pk :model/PulseChannel :pulse_id pulse-id)}]
           (thunk)))
 
       :assert
@@ -684,11 +683,11 @@
                      :model/Pulse___Pulse                 {pulse-id :id} {:name            "Pulse Name"
                                                                            :alert_condition "rows"}
                      :model/PulseCard             _ {:pulse_id pulse-id
-                                              :card_id  card-id}
+                                                     :card_id  card-id}
                      :model/PulseChannel          {pc-id :id} {:pulse_id pulse-id
-                                                        :details  {:emails ["nonuser@metabase.com"]}}
+                                                               :details  {:emails ["nonuser@metabase.com"]}}
                      :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
-                                              :pulse_channel_id pc-id}]
+                                                     :pulse_channel_id pc-id}]
         (pulse.test-util/email-test-setup!
          (pulse.send/send-pulse! (models.pulse/retrieve-notification pulse-id))
          (is (mt/received-email-body? :rasta #"Manage your subscriptions"))
@@ -910,10 +909,10 @@
                                                    :result_metadata result-metadata}
                        :model/Pulse___Pulse {pulse-id :id :as p} {:name "Test Pulse" :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
-                                    :card_id  card-id}
+                                           :card_id  card-id}
                        :model/PulseChannel _ {:channel_type :email
-                                       :pulse_id     pulse-id
-                                       :enabled      true}]
+                                              :pulse_id     pulse-id
+                                              :enabled      true}]
           (pulse.send/send-pulse! p)
           (testing "The custom columns defined in the result-metadata (:display_name and :description) are still present after the alert has run."
             (is (= (-> result-metadata
@@ -932,13 +931,13 @@
          :model/Pulse___Pulse        {pulse-id :id} {:name "Test Pulse"
                                                       :alert_condition "rows"}
          :model/PulseCard    _              {:pulse_id pulse-id
-                                      :card_id  card-id}
+                                             :card_id  card-id}
          :model/PulseChannel _              {:pulse_id pulse-id
-                                      :channel_type "email"
-                                      :details      {:emails ["foo@metabase.com"]}}
+                                             :channel_type "email"
+                                             :details      {:emails ["foo@metabase.com"]}}
          :model/PulseChannel _              {:pulse_id     pulse-id
-                                      :channel_type "slack"
-                                      :details      {:channel "#general"}}]
+                                             :channel_type "slack"
+                                             :details      {:channel "#general"}}]
         (let [original-render-noti (var-get #'channel/render-notification)]
           (with-redefs [channel/render-notification (fn [& args]
                                                       (if (= :channel/slack (first args))

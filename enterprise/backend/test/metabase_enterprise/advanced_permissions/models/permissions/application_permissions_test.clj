@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as g-perms]
-   [metabase.models :refer [:model/ApplicationPermissionsRevision :model/PermissionsGroup]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]

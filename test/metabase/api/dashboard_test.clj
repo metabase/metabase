@@ -19,22 +19,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.models
-    :refer [:model/Action
-            :model/Card
-            Collection
-            :model/Dashboard
-            :model/DashboardCard
-            :model/DashboardCardSeries
-            :model/Database
-            :model/Field
-            :model/FieldValues
-            :model/PermissionsGroup
-            :model/PermissionsGroupMembership
-            :model/Pulse
-            :model/Revision
-            :model/Table
-            :model/User]]
    [metabase.models.collection :as collection]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-test :as dashboard-test]
@@ -365,9 +349,9 @@
                                                                               :default      nil}}}
                                                        :database (mt/id)}}
            :model/DashboardCard _ {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}
-                                                         {:parameter_id "b", :card_id card-id, :target [:dimension [:template-tag "name"]]}
-                                                         {:parameter_id "c", :card_id card-id, :target [:dimension [:template-tag "source"]]}
-                                                         {:parameter_id "d", :card_id card-id, :target [:dimension [:template-tag "user_id"]]}]
+                                                        {:parameter_id "b", :card_id card-id, :target [:dimension [:template-tag "name"]]}
+                                                        {:parameter_id "c", :card_id card-id, :target [:dimension [:template-tag "source"]]}
+                                                        {:parameter_id "d", :card_id card-id, :target [:dimension [:template-tag "user_id"]]}]
                                     :card_id            card-id
                                     :dashboard_id       dashboard-id}]
           (is (#'api.dashboard/get-dashboard dashboard-id)))))))
@@ -2761,48 +2745,48 @@
                                                             :slug "category_name"
                                                             :id   "_CATEGORY_NAME_"
                                                             :type "category"}
-                                                           {:name "Category ID"
-                                                            :slug "category_id"
-                                                            :id   "_CATEGORY_ID_"
-                                                            :type "category"}
-                                                           {:name "Price"
-                                                            :slug "price"
-                                                            :id   "_PRICE_"
-                                                            :type "category"}
-                                                           {:name "ID"
-                                                            :slug "id"
-                                                            :id   "_ID_"
-                                                            :type "category"}
-                                                           {:name                 "Static Category"
-                                                            :slug                 "static_category"
-                                                            :id                   "_STATIC_CATEGORY_"
-                                                            :type                 "category"
-                                                            :values_source_type   "static-list"
-                                                            :values_source_config {:values ["African" "American" "Asian"]}}
-                                                           {:name                 "Static Category label"
-                                                            :slug                 "static_category_label"
-                                                            :id                   "_STATIC_CATEGORY_LABEL_"
-                                                            :type                 "category"
-                                                            :values_source_type   "static-list"
-                                                            :values_source_config {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}
-                                                           {:id                   "_CARD_"
-                                                            :type                 "category"
-                                                            :name                 "CATEGORY"
-                                                            :values_source_type   "card"
-                                                            :values_source_config {:card_id     source-card-id
-                                                                                   :value_field (mt/$ids $categories.name)}}
-                                                           {:name "Not Category Name"
-                                                            :slug "not_category_name"
-                                                            :id   "_NOT_CATEGORY_NAME_"
-                                                            :type :string/!=}
-                                                           {:name    "Category Contains"
-                                                            :slug    "category_contains"
-                                                            :id      "_CATEGORY_CONTAINS_"
-                                                            :type    :string/contains
-                                                            :options {:case-sensitive false}}
-                                                           {:name "Name", :slug "name", :id "_name_", :type :string/=}
-                                                           {:name "Not Name", :slug "notname", :id "_notname_", :type :string/!=}
-                                                           {:name "Contains", :slug "contains", :id "_contains_", :type :string/contains}]}
+                                                          {:name "Category ID"
+                                                           :slug "category_id"
+                                                           :id   "_CATEGORY_ID_"
+                                                           :type "category"}
+                                                          {:name "Price"
+                                                           :slug "price"
+                                                           :id   "_PRICE_"
+                                                           :type "category"}
+                                                          {:name "ID"
+                                                           :slug "id"
+                                                           :id   "_ID_"
+                                                           :type "category"}
+                                                          {:name                 "Static Category"
+                                                           :slug                 "static_category"
+                                                           :id                   "_STATIC_CATEGORY_"
+                                                           :type                 "category"
+                                                           :values_source_type   "static-list"
+                                                           :values_source_config {:values ["African" "American" "Asian"]}}
+                                                          {:name                 "Static Category label"
+                                                           :slug                 "static_category_label"
+                                                           :id                   "_STATIC_CATEGORY_LABEL_"
+                                                           :type                 "category"
+                                                           :values_source_type   "static-list"
+                                                           :values_source_config {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}
+                                                          {:id                   "_CARD_"
+                                                           :type                 "category"
+                                                           :name                 "CATEGORY"
+                                                           :values_source_type   "card"
+                                                           :values_source_config {:card_id     source-card-id
+                                                                                  :value_field (mt/$ids $categories.name)}}
+                                                          {:name "Not Category Name"
+                                                           :slug "not_category_name"
+                                                           :id   "_NOT_CATEGORY_NAME_"
+                                                           :type :string/!=}
+                                                          {:name    "Category Contains"
+                                                           :slug    "category_contains"
+                                                           :id      "_CATEGORY_CONTAINS_"
+                                                           :type    :string/contains
+                                                           :options {:case-sensitive false}}
+                                                          {:name "Name", :slug "name", :id "_name_", :type :string/=}
+                                                          {:name "Not Name", :slug "notname", :id "_notname_", :type :string/!=}
+                                                          {:name "Contains", :slug "contains", :id "_contains_", :type :string/contains}]}
                                        dashboard-values)
       :model/Card          card {:database_id   (mt/id)
                                   :table_id      (mt/id :venues)

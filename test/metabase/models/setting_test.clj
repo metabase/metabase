@@ -10,7 +10,6 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :as setting :refer [defsetting :model/Setting]]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]

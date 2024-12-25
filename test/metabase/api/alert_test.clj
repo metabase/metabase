@@ -6,9 +6,6 @@
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.email-test :as et]
    [metabase.http-client :as client]
-   [metabase.models
-    :refer [:model/Card :model/Collection :model/Pulse___Pulse :model/PulseCard :model/PulseChannel :model/PulseChannelRecipient
-            :model/User]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as models.pulse]
@@ -750,10 +747,10 @@
 (deftest get-alert-question-test
   (mt/with-temp [:model/Card                 card  (basic-alert-query)
                  :model/Pulse___Pulse                alert {:alert_condition  "rows"
-                                                     :alert_first_only false
-                                                     :alert_above_goal nil
-                                                     :skip_if_empty    true
-                                                     :name             nil}
+                                                            :alert_first_only false
+                                                            :alert_above_goal nil
+                                                            :skip_if_empty    true
+                                                            :name             nil}
                  :model/PulseCard             _    (pulse-card alert card)
                  :model/PulseChannel          pc   (pulse-channel alert)
                  :model/PulseChannelRecipient _    (recipient pc :rasta)]
@@ -789,14 +786,14 @@
             :crowberto 2}
            (mt/with-temp [:model/Card                  card    (basic-alert-query)
                           :model/Pulse___Pulse                 alert-1 (assoc (basic-alert)
-                                                                 :alert_above_goal false)
+                                                                        :alert_above_goal false)
                           :model/PulseCard             _       (pulse-card alert-1 card)
                           :model/PulseChannel          pc-1    (pulse-channel alert-1)
                           :model/PulseChannelRecipient _       (recipient pc-1 :rasta)
                           ;; A separate admin created alert
                           :model/Pulse___Pulse                 alert-2 (assoc (basic-alert)
-                                                                 :alert_above_goal false
-                                                                 :creator_id       (mt/user->id :crowberto))
+                                                                        :alert_above_goal false
+                                                                        :creator_id       (mt/user->id :crowberto))
                           :model/PulseCard             _       (pulse-card alert-2 card)
                           :model/PulseChannel          pc-2    (pulse-channel alert-2)
                           :model/PulseChannelRecipient _       (recipient pc-2 :crowberto)
@@ -810,16 +807,16 @@
   (testing "Archived alerts are excluded by default, unless `archived` parameter is sent"
     (mt/with-temp [:model/Card                  card    (basic-alert-query)
                    :model/Pulse___Pulse                 alert-1 (assoc (basic-alert)
-                                                          :alert_above_goal false
-                                                          :archived         true)
+                                                                 :alert_above_goal false
+                                                                 :archived         true)
                    :model/PulseCard             _       (pulse-card alert-1 card)
                    :model/PulseChannel          pc-1    (pulse-channel alert-1)
                    :model/PulseChannelRecipient _       (recipient pc-1 :rasta)
                    ;; A separate admin created alert
                    :model/Pulse___Pulse                 alert-2 (assoc (basic-alert)
-                                                          :alert_above_goal false
-                                                          :archived         true
-                                                          :creator_id       (mt/user->id :crowberto))
+                                                                 :alert_above_goal false
+                                                                 :archived         true
+                                                                 :creator_id       (mt/user->id :crowberto))
                    :model/PulseCard             _       (pulse-card alert-2 card)
                    :model/PulseChannel          pc-2    (pulse-channel alert-2)
                    :model/PulseChannelRecipient _       (recipient pc-2 :crowberto)
