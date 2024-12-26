@@ -1,13 +1,13 @@
 import type { ComponentMeta, Story } from "@storybook/react";
 import { userEvent, within } from "@storybook/testing-library";
-import cx from "classnames";
 import { merge } from "icepick";
-import type { ComponentProps } from "react";
+import { type ComponentProps, useEffect } from "react";
 
-import { Popover } from "metabase/ui";
+import { Box, Popover } from "metabase/ui";
 
 import { DatePicker } from "./DatePicker";
-import StoryStyle from "./DatePicker.stories.module.css";
+
+import "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 export default {
   title: "Parameters/DatePicker",
@@ -16,25 +16,42 @@ export default {
 
 type CustomStoryProps = {
   theme?: "light" | "dark";
+  snapshotSize?: {
+    width: number;
+    height: number;
+  };
 };
 const Template: Story<
   ComponentProps<typeof DatePicker> & CustomStoryProps
 > = args => {
   const isDarkTheme = args.theme === "dark";
 
+  useEffect(() => {
+    if (isDarkTheme) {
+      document.documentElement.setAttribute("data-metabase-theme", "night");
+    }
+  }, [isDarkTheme]);
+
   return (
-    <Popover opened position="bottom-start" withinPortal={false}>
-      <Popover.Target>
-        <div></div>
-      </Popover.Target>
-      <Popover.Dropdown
-        className={cx({
-          [StoryStyle.darkTheme]: isDarkTheme,
-        })}
-      >
-        <DatePicker {...args} />
-      </Popover.Dropdown>
-    </Popover>
+    <>
+      <Popover opened position="bottom-start" withinPortal={false}>
+        <Popover.Target>
+          <div></div>
+        </Popover.Target>
+        <Popover.Dropdown>
+          <DatePicker {...args} />
+        </Popover.Dropdown>
+      </Popover>
+      {args.snapshotSize && (
+        <Box
+          // the space between the popover and the target element
+          pos="absolute"
+          mt="8px"
+          w={args.snapshotSize.width}
+          h={args.snapshotSize.height}
+        />
+      )}
+    </>
   );
 };
 
@@ -117,7 +134,12 @@ export const RelativeCurrentDarkTheme = merge(RelativeCurrent, {
 export const RelativePrevious = {
   render: Template,
   args: {
-    value: { type: "relative", unit: "month", value: -12 },
+    value: {
+      options: { includeCurrent: true },
+      type: "relative",
+      unit: "month",
+      value: -12,
+    },
   },
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
@@ -137,6 +159,10 @@ export const RelativeNext = {
   render: Template,
   args: {
     value: { type: "relative", unit: "day", value: 30 },
+    snapshotSize: {
+      width: 365,
+      height: 415,
+    },
   },
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
@@ -144,6 +170,7 @@ export const RelativeNext = {
       name: "Next",
     });
     next.classList.add("pseudo-hover");
+    await userEvent.click(canvas.getByRole("searchbox", { name: "Unit" }));
   },
 };
 export const RelativeNextDarkTheme = merge(RelativeNext, {
