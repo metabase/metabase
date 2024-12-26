@@ -60,7 +60,6 @@
    [metabase.search.core :as search]
    [metabase.util :as u]
    [methodical.core :as methodical]
-   [potemkin :as p]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
@@ -97,6 +96,7 @@
          pulse-channel-recipient/keep-me
          pulse-channel/keep-me
          models.pulse/keep-me
+         model-index/keep-me
          query-cache/keep-me
          query-execution/keep-me
          query-analysis/keep-me
