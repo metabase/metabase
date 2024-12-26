@@ -31,10 +31,10 @@
           (t2/update! :conn _conn :setting
                       {:key key}
                       {:value (encrypt-str-fn value)})))
-                         ;; update all secret values according to the new encryption key
-                         ;; fortunately, we don't need to fetch the latest secret instance per ID, as we would need to in order to update
-                         ;; a secret value through the regular database save API path; instead, ALL secret values in the app DB (regardless
-                         ;; of whether they are the "current version" or not), should be updated with the new key
+      ;; update all secret values according to the new encryption key
+      ;; fortunately, we don't need to fetch the latest secret instance per ID, as we would need to in order to update
+      ;; a secret value through the regular database save API path; instead, ALL secret values in the app DB (regardless
+      ;; of whether they are the "current version" or not), should be updated with the new key
       (doseq [[id value] (t2/select-pk->fn :value :model/Secret)]
         (when (encryption/possibly-encrypted-string? value)
           (throw (ex-info (trs "Can''t decrypt secret value with MB_ENCRYPTION_SECRET_KEY") {:secret-id id})))
@@ -56,5 +56,4 @@
 (defn decrypt-db
   "Decrypts the database usign the current `MB_ENCRYPTION_SECRET_KEY` to read existing data"
   [db-type data-source]
-  (do-encryption db-type data-source false (fn [_]
-                                             identity)))
+  (do-encryption db-type data-source false (constantly identity)))

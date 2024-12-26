@@ -128,15 +128,14 @@
   "Ensure encryption env variable is correctly set if needed, and encrypt the database if it needs to be
   Encryption status is tracked by an 'encryption-check' value in the settings table.
   NOTE: the encryption-check setting is not managed like most settings with 'defsetting' so we can manage checking the raw values in the database"
-  [db-type :- :keyword
-   data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
+  []
   (when (or
-         (liquibase/table-exists? "setting" (.getConnection ^javax.sql.DataSource data-source))
-         (liquibase/table-exists? "SETTING" (.getConnection ^javax.sql.DataSource data-source)))
+         (liquibase/table-exists? "setting" (.getConnection ^javax.sql.DataSource (:data-source mdb.connection/*application-db*)))
+         (liquibase/table-exists? "SETTING" (.getConnection ^javax.sql.DataSource (:data-source mdb.connection/*application-db*))))
     (try
-      (t2/insert! :conn data-source :setting {:key "encryption-check" :value "unencrypted"})
+      (t2/insert! :setting {:key "encryption-check" :value "unencrypted"})
       (catch Exception e (log/debug "encryption-check already exists" (.getMessage e))))
-    (let [raw (-> (t2/select-one :conn data-source :setting :key "encryption-check")
+    (let [raw (-> (t2/select-one :setting :key "encryption-check")
                   :value)
           looks-encrypted (not= raw "unencrypted")]
       (log/debug "Checking encryption configuration")
@@ -150,7 +149,7 @@
         (if (encryption/default-encryption-enabled?)
           (do
             (log/info "New MB_ENCRYPTION_SECRET_KEY environment variable set. Encrypting database...")
-            (mdb.encryption/encrypt-db db-type data-source nil)
+            (mdb.encryption/encrypt-db (:db-type mdb.connection/*application-db*) (:data-source mdb.connection/*application-db*) nil)
             (log/info "Database encrypted..." (u/emoji "✅")))
           (log/debug "Database not encrypted and MB_ENCRYPTION_SECRET_KEY env variable not set."))))))
 
@@ -199,7 +198,7 @@
         (verify-db-connection db-type data-source)
         (error-if-downgrade-required! data-source)
         (run-schema-migrations! data-source auto-migrate?)
-        (check-encryption db-type data-source))))
+        (check-encryption))))
   :done)
 
 (defn release-migration-locks!

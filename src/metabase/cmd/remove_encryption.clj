@@ -8,7 +8,7 @@
    The current encryption key must be set in the `MB_ENCRYPTION_SECRET_KEY` env var."
   []
   (when-not (mdb/db-is-set-up?)
-    (log/warnf "Database not found. Metabase will create a new database at %s and proceed encrypting." "2")
+    (log/info "Checking database configuration prior to decryption")
     (mdb/setup-db! :create-sample-content? true))
   (log/infof "Connected to: %s | %s" (mdb/db-type) (mdb/db-file))
   (mdb/decrypt-db (mdb/db-type) (mdb/data-source)))
