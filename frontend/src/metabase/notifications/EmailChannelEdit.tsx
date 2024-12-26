@@ -1,39 +1,47 @@
 import { t } from "ttag";
 
+import { isNotNull } from "metabase/lib/types";
 import { ChannelSettingsBlock } from "metabase/notifications/ChannelSettingsBlock";
-import type { ChannelType, CreateAlertRequest, User } from "metabase-types/api";
+import type { NotificationHandlerEmail, User } from "metabase-types/api";
 
 import { RecipientPicker } from "./RecipientPicker";
 
 export const EmailChannelEdit = ({
-  alert,
+  channel,
   users,
   invalidRecipientText,
   onRemoveChannel,
-  onChannelPropertyChange,
+  onChange,
 }: {
-  alert: CreateAlertRequest;
+  channel: NotificationHandlerEmail;
   users: User[];
   invalidRecipientText: (domains: string) => string;
-  onRemoveChannel: (type: ChannelType, index: number) => void;
-  onChannelPropertyChange: (index: number, name: string, value: any) => void;
+  onRemoveChannel: () => void;
+  onChange: (newConfig: NotificationHandlerEmail) => void;
 }) => {
-  const channelIndex = alert.channels.findIndex(
-    channel => channel.channel_type === "email",
-  );
-  const channel = alert.channels[channelIndex];
+  const mappedUsers = channel.recipients
+    .map(({ user_id }) => users.find(({ id }) => id === user_id))
+    .filter(isNotNull); // TODO: optimize this?
 
   const handleRecipientsChange = (recipients: User[]) =>
-    onChannelPropertyChange(channelIndex, "recipients", recipients);
+    onChange({
+      ...channel,
+      recipients: recipients.map(({ id }) => ({
+        type: "notification-recipient/user",
+        user_id: id,
+        permissions_group_id: null,
+        details: null,
+      })),
+    });
 
   return (
     <ChannelSettingsBlock
       title={t`Email`}
       iconName="mail"
-      onRemoveChannel={() => onRemoveChannel("email", channelIndex)}
+      onRemoveChannel={onRemoveChannel}
     >
       <RecipientPicker
-        recipients={channel.recipients}
+        recipients={mappedUsers}
         users={users}
         onRecipientsChange={handleRecipientsChange}
         invalidRecipientText={invalidRecipientText}

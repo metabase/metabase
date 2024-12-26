@@ -3,39 +3,31 @@ import { t } from "ttag";
 import { ChannelSettingsBlock } from "metabase/notifications/ChannelSettingsBlock";
 import { SlackChannelField } from "metabase/notifications/SlackChannelField";
 import type {
-  ChannelType,
-  CreateAlertRequest,
+  NotificationHandlerSlack,
   SlackChannelSpec,
 } from "metabase-types/api";
 
 export const SlackChannelEdit = ({
+  channel,
   channelSpec,
-  alert,
   onRemoveChannel,
-  onChannelPropertyChange,
+  onChange,
 }: {
+  channel: NotificationHandlerSlack;
   channelSpec: SlackChannelSpec;
-  alert: CreateAlertRequest;
-  onRemoveChannel: (type: ChannelType, index: number) => void;
-  onChannelPropertyChange: (index: number, name: string, value: any) => void;
+  onRemoveChannel: () => void;
+  onChange: (newConfig: NotificationHandlerSlack) => void;
 }) => {
-  const channelIndex = alert.channels.findIndex(
-    channel => channel.channel_type === "slack",
-  );
-  const channel = alert.channels[channelIndex];
-
   return (
     <ChannelSettingsBlock
       title={t`Slack`}
       iconName="slack"
-      onRemoveChannel={() => onRemoveChannel("slack", channelIndex)}
+      onRemoveChannel={onRemoveChannel}
     >
       <SlackChannelField
         channel={channel}
         channelSpec={channelSpec}
-        onChannelPropertyChange={(name: string, value: any) =>
-          onChannelPropertyChange(channelIndex, name, value)
-        }
+        onChange={onChange}
       />
     </ChannelSettingsBlock>
   );

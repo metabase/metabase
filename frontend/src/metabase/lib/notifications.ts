@@ -4,9 +4,15 @@ import {
   formatDateTimeWithUnit,
   formatTimeWithUnit,
 } from "metabase/lib/formatting";
+import { recipientIsValid, scheduleIsValid } from "metabase/lib/pulse";
 import Settings from "metabase/lib/settings";
 import { formatFrame } from "metabase/lib/time";
 import * as Urls from "metabase/lib/urls";
+import type {
+  ChannelApiResponse,
+  CreateNotificationRequest,
+  NotificationHandler,
+} from "metabase-types/api";
 
 export const formatTitle = (item, type) => {
   switch (type) {
@@ -132,3 +138,38 @@ export const canArchive = (item, user) => {
 
   return isCreator && (!isSubscribed || isOnlyRecipient);
 };
+
+export function channelIsValid(channel: NotificationHandler) {
+  switch (channel.channel_type) {
+    case "channel/email":
+      return (
+        channel.recipients &&
+        channel.recipients.length > 0 &&
+        channel.recipients.every(recipientIsValid)
+      );
+    case "channel/slack":
+      return channel.details;
+    case "channel/http":
+      return channel.channel_id;
+    default:
+      return false;
+  }
+}
+
+export function channelIsEnabled(channel) {
+  return channel.enabled;
+}
+
+export function alertIsValid(
+  notification: CreateNotificationRequest,
+  channelSpec: ChannelApiResponse,
+) {
+  const handlers = notification.handlers;
+
+  return (
+    channelSpec?.channels &&
+    handlers.length > 0 &&
+    handlers.every(channel => channelIsValid(channel)) &&
+    handlers.every(c => channelSpec?.channels[c.channel_type]?.configured)
+  );
+}

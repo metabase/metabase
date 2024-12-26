@@ -8,7 +8,7 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Button from "metabase/core/components/Button";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { channelIsEnabled } from "metabase/lib/alert";
+import { channelIsEnabled } from "metabase/lib/notifications";
 import type { Alert } from "metabase-types/api";
 
 import AlertModalsS from "./AlertModals.module.css";

@@ -45,6 +45,7 @@ import {
   SEARCH_MODELS,
 } from "metabase-types/api";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
+import type { Notification } from "metabase-types/api/notification";
 
 import type { TagType } from "./constants";
 import { TAG_TYPE_MAPPING } from "./constants";
@@ -366,6 +367,24 @@ export function provideFieldDimensionTags(
 
 export function provideFieldValuesTags(id: FieldId): TagDescription<TagType>[] {
   return [idTag("field-values", id)];
+}
+
+export function provideNotificationListTags(
+  notifications: Notification[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("notification"),
+    ...notifications.flatMap(provideNotificationTags),
+  ];
+}
+
+export function provideNotificationTags(
+  notification: Notification,
+): TagDescription<TagType>[] {
+  return [
+    idTag("notification", notification.id),
+    ...(notification.creator ? provideUserTags(notification.creator) : []),
+  ];
 }
 
 export function providePermissionsGroupListTags(
