@@ -9,6 +9,7 @@ import {
   leftSidebar,
   modal,
   moveDnDKitElement,
+  openVizType,
   popover,
   restore,
   sidebar,
@@ -92,7 +93,7 @@ describe("issue 45255", () => {
   });
 
   it("should work on native queries with null dimension values (metabase#45255)", () => {
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
 
     // Has (empty) in the settings sidebar
     sidebar().findByText("(empty)");
@@ -175,7 +176,7 @@ describe("issue 49529", () => {
 
     visitQuestionAdhoc(question);
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
 
     cy.findAllByTestId("select-button").eq(0).as("dimensionSelect").click();
     popover().findByText("ID").click();

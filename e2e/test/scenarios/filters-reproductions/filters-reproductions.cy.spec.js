@@ -19,6 +19,7 @@ import {
   filterWidget,
   getNotebookStep,
   modal,
+  notebookButton,
   openNativeEditor,
   openNotebook,
   openOrdersTable,
@@ -1481,7 +1482,7 @@ describe("issue 47887", () => {
       },
     });
 
-    cy.findByTestId("notebook-button").click();
+    notebookButton().click();
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
     popover().within(() => {

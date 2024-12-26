@@ -7,6 +7,7 @@ import {
   createNativeQuestion,
   echartsContainer,
   modal,
+  openVizType,
   popover,
   restore,
   sankeyEdge,
@@ -59,14 +60,13 @@ describe("scenarios > visualizations > sankey", () => {
     });
 
     // Select Sankey viz type
-    cy.findByTestId("viz-type-button").click();
+    openVizType();
     cy.findByTestId("Sankey-button").click();
 
     // Ensure it shows node labels
     echartsContainer().findByText("Social Media");
 
     // Edit viz settings
-    cy.findByTestId("viz-settings-button").click();
     cy.findByTestId("chartsettings-sidebar")
       .as("settings-sidebar")
       .findByText("Display")

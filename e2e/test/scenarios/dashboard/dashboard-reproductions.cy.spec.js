@@ -36,6 +36,7 @@ import {
   openDashboardInfoSidebar,
   openDashboardSettingsSidebar,
   openQuestionsSidebar,
+  openVizType,
   popover,
   queryBuilderHeader,
   removeDashboardCard,
@@ -726,7 +727,7 @@ describeEE("issue 29076", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").click();
-    cy.findByTestId("viz-type-button").should("be.visible");
+    cy.findByTestId("viz-settings-button").should("be.visible");
 
     assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
     assertDatasetReqIsSandboxed({
@@ -920,7 +921,7 @@ describe("issue 31766", () => {
 
     cy.log("Update viz settings");
 
-    cy.findByTestId("viz-type-button").click();
+    openVizType();
     cy.findByTestId("Detail-button").click();
 
     saveUpdatedQuestion();

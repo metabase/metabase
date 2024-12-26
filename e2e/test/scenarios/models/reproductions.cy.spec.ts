@@ -27,6 +27,7 @@ import {
   openColumnOptions,
   openNotebook,
   openQuestionActions,
+  openVizType,
   popover,
   questionInfoButton,
   renameColumn,
@@ -1302,7 +1303,7 @@ describe("issue 46221", () => {
       .and("contain", modelDetails.name);
 
     cy.log("Change the viz type");
-    cy.findByTestId("viz-type-button").click();
+    openVizType();
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTestId("Table-button").click();
     });

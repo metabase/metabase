@@ -19,6 +19,7 @@ import {
   modal,
   modifyPermission,
   navigationSidebar,
+  notebookButton,
   openNavigationSidebar,
   popover,
   resetSnowplow,
@@ -622,7 +623,7 @@ describe("scenarios > collections > trash", () => {
       cy.findAllByTestId("qb-header-action-panel").within(() => {
         cy.findByText("Filter").should("not.exist");
         cy.findByText("Summarize").should("not.exist");
-        cy.findByTestId("notebook-button").should("not.exist");
+        notebookButton().should("not.exist");
         cy.icon("bookmark").should("not.exist");
         cy.icon("ellipsis").should("not.exist");
         sharingMenuButton().should("not.exist");

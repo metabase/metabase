@@ -24,6 +24,7 @@ import * as Lib from "metabase-lib";
 import DatasetEditor from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
+import { ViewFooter } from "../../ViewFooter";
 import ViewSidebar from "../../ViewSidebar";
 import { NotebookContainer } from "../NotebookContainer";
 import { ViewHeaderContainer } from "../ViewHeaderContainer";
@@ -208,6 +209,7 @@ const ViewInner = props => {
             />
           )}
           <ViewSidebar side="left" isOpen={showLeftSidebar}>
+            {/* TODO: most of the passed props can be removed */}
             <ViewLeftSidebarContainer
               question={question}
               result={result}
@@ -225,6 +227,7 @@ const ViewInner = props => {
             />
           </ViewSidebar>
           <ViewMainContainer
+            /* TODO: pass props explicitly */
             showLeftSidebar={showLeftSidebar}
             showRightSidebar={showRightSidebar}
             {...props}
@@ -237,6 +240,18 @@ const ViewInner = props => {
             <ViewRightSidebarContainer {...props} />
           </ViewSidebar>
         </QueryBuilderContentContainer>
+        <ViewFooter
+          hasVisualizeButton={hasVisualizeButton}
+          isResultDirty={isResultDirty}
+          setQueryBuilderMode={setQueryBuilderMode}
+          isDirty={isDirty}
+          runQuestionQuery={runQuestionQuery}
+          updateQuestion={updateQuestion}
+          className={CS.flexNoShrink}
+          isNotebook={queryBuilderMode === "notebook"}
+          isNative={isNative}
+          isRunning={isRunning}
+        />
       </QueryBuilderViewRoot>
 
       {isShowingNewbModal && (

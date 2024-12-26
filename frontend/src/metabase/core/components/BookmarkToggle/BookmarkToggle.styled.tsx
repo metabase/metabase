@@ -23,7 +23,10 @@ export interface BookmarkIconProps {
   onAnimationEnd: () => void;
 }
 
-export const BookmarkIcon = styled(Icon)<BookmarkIconProps>`
+export const BookmarkIcon = styled(Icon, {
+  shouldForwardProp: propName =>
+    propName !== "isBookmarked" && propName !== "isAnimating",
+})<BookmarkIconProps>`
   color: ${props => (props.isBookmarked ? color("brand") : "")};
   animation-name: ${props =>
     props.isBookmarked ? expandKeyframes : shrinkKeyframes};

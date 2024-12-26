@@ -31,6 +31,7 @@ import {
   openProductsTable,
   openQuestionActions,
   openTable,
+  openVizType,
   popover,
   queryBuilderFooter,
   queryBuilderHeader,
@@ -152,7 +153,7 @@ describe("issue 32964", () => {
 
   it("should not overflow chart settings sidebar with long column name (metabase#32964)", () => {
     visitQuestionAdhoc(QUESTION);
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
     cy.findByTestId("sidebar-left").within(([sidebar]) => {
       const maxX = sidebar.getBoundingClientRect().right;
       cy.findByText(`Sum of ${LONG_NAME}`).then(([el]) => {
@@ -480,7 +481,7 @@ describe("issue 39795", () => {
         type: "query",
       },
     });
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
     moveColumnDown(getDraggableElements().first(), 2);
 
     // We are not able to re-order because the dataset will also contain values a column for Product ID
@@ -553,7 +554,7 @@ describe("issue 40435", () => {
     });
     getNotebookStep("data").button("Pick columns").click();
     visualize();
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTestId("ID-hide-button").click();
       cy.findByTestId("ID-show-button").click();
@@ -566,7 +567,7 @@ describe("issue 40435", () => {
     queryBuilderHeader().findByText("Save").click();
     modal().last().findByText("Save").click();
     cy.wait("@updateCard");
-    visualize();
+    cy.findByLabelText("Switch to visualization").click();
 
     cy.findByRole("columnheader", { name: "ID" }).should("be.visible");
     cy.findByRole("columnheader", { name: "User ID" }).should("be.visible");
@@ -1069,15 +1070,17 @@ describe("issue 37374", () => {
     cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
 
     cy.log("changing the viz type to pivot table and running the query works");
-    cy.findByTestId("viz-type-button").click();
-    cy.findByTestId("chart-type-sidebar")
+    openVizType();
+    cy.findByTestId("chartsettings-sidebar")
       .findByTestId("Pivot Table-button")
       .click();
     cy.wait("@cardPivotQuery");
     cy.findByTestId("pivot-table").should("be.visible");
 
     cy.log("changing the viz type back to table and running the query works");
-    cy.findByTestId("chart-type-sidebar").findByTestId("Table-button").click();
+    cy.findByTestId("chartsettings-sidebar")
+      .findByTestId("Table-button")
+      .click();
     cy.wait("@cardQuery");
     tableInteractive().should("be.visible");
   });
@@ -1274,6 +1277,8 @@ describe("issue 43294", () => {
       cy.findByText("Created At: Month").click();
       cy.findByText("Year").click();
     });
+
+    cy.findByLabelText("Switch to data").click();
 
     cy.log("combine action");
     cy.button("Add column").click();
@@ -1501,7 +1506,7 @@ describe("issue 44637", () => {
 
     assertQueryBuilderRowCount(0);
     queryBuilderMain().findByText("No results!").should("exist");
-    cy.findByTestId("viz-type-button").click();
+    openVizType();
     leftSidebar().icon("bar").click();
     queryBuilderMain().within(() => {
       cy.findByText("No results!").should("exist");
@@ -1565,7 +1570,7 @@ describe("issue 44668", () => {
     // Ensure custom columns weren't added as series automatically
     queryBuilderMain().findByLabelText("Legend").should("not.exist");
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
 
     // Ensure can use Custom Number as series
     leftSidebar().findByText("Add another series").click();
@@ -2125,7 +2130,7 @@ describe("issue 41612", () => {
       { visitQuestion: true },
     );
 
-    queryBuilderMain().findByLabelText("Switch to data").click();
+    cy.findByLabelText("Switch to data").click();
     queryBuilderHeader().button("Save").click();
     modal().button("Save").click();
 
@@ -2286,7 +2291,8 @@ describe("issue 48829", () => {
       cy.findByText("Add filter").click();
     });
 
-    queryBuilderHeader().button("Show Editor").click();
+    openNotebook();
+
     getNotebookStep("filter")
       .findAllByTestId("notebook-cell-item")
       .icon("close")
@@ -2307,7 +2313,7 @@ describe("issue 48829", () => {
       cy.button("Apply filters").click();
     });
 
-    queryBuilderHeader().button("Show Editor").click();
+    openNotebook();
     getNotebookStep("filter")
       .findAllByTestId("notebook-cell-item")
       .icon("close")
@@ -2345,7 +2351,7 @@ describe("issue 48829", () => {
     // Navigate to question using click action in dashboard
     main().findByText("Rustic Paper Wallet").click();
 
-    queryBuilderHeader().button("Show Editor").click();
+    openNotebook();
     getNotebookStep("filter")
       .findAllByTestId("notebook-cell-item")
       .icon("close")

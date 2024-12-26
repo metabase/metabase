@@ -90,6 +90,8 @@ describe("scenarios > notebook > link to data source", () => {
       "Deselecting columns should have no effect on the linked data source in new tab/window",
     );
     openNotebook();
+    // manually hide tooltip
+    cy.get("body").click();
 
     cy.log("Make sure tooltip is being shown on hover");
     getNotebookStep("data")

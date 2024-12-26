@@ -51,7 +51,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // enter "notebook" and visualize without changing anything
     openNotebook();
 
-    cy.button("Visualize").click();
+    cy.findByLabelText("Switch to visualization").click();
 
     // there were no changes to the question, so we shouldn't have the option to "Save"
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

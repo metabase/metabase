@@ -22,6 +22,7 @@ import {
   openNotebook,
   openOrdersTable,
   openProductsTable,
+  openVizType,
   popover,
   queryBuilderMain,
   resetTestTable,
@@ -536,7 +537,7 @@ describe("issue 19745", () => {
         openNotebook();
         updateExpressions();
         visualize();
-        cy.findByTestId("viz-settings-button").click();
+        openVizType("Columns");
         cy.findByRole("button", { name: "Add or remove columns" }).click();
         cy.findByLabelText("Count").should("not.be.checked").click();
         updateQuestion();

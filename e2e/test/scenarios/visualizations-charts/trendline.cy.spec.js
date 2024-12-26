@@ -1,5 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { leftSidebar, restore, trendLine } from "e2e/support/helpers";
+import {
+  leftSidebar,
+  openVizType,
+  restore,
+  trendLine,
+} from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -25,7 +30,7 @@ describe("scenarios > question > trendline", () => {
     });
 
     // Change settings to trendline
-    cy.findByTestId("viz-settings-button").click();
+    openVizType();
     leftSidebar().within(() => {
       cy.findByText("Display").click();
       cy.findByText("Trend line").click();
@@ -38,8 +43,9 @@ describe("scenarios > question > trendline", () => {
     leftSidebar().within(() => {
       cy.findByText("Data").click();
       cy.icon("close").last().click();
-      cy.findByText("Done").click();
     });
+
+    cy.button("Done").click();
 
     // Graph should still exist
     cy.findByPlaceholderText("Created At").should("not.exist");

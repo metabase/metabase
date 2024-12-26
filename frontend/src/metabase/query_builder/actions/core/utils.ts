@@ -1,11 +1,13 @@
 import _ from "underscore";
 
 import { onCloseQuestionInfo } from "metabase/query_builder/actions";
+import { getIsShowingRawTable } from "metabase/query_builder/selectors";
 import { syncVizSettingsWithQuery } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Series } from "metabase-types/api";
+import type { GetState, QueryBuilderMode } from "metabase-types/store";
 
 /**
  * Saves to `visualization_settings` property of a question those visualization settings that
@@ -69,3 +71,18 @@ export function getAdHocQuestionWithVizSettings(options: {
 
   return question;
 }
+
+export const getViewFooterControlInitialState = (
+  { queryBuilderMode }: { queryBuilderMode: QueryBuilderMode },
+  getState: GetState,
+) => {
+  const isShowingRawTable = getIsShowingRawTable(getState());
+  const viewFooterControlState =
+    queryBuilderMode === "notebook"
+      ? "editor"
+      : isShowingRawTable
+        ? "results"
+        : "visualization";
+
+  return viewFooterControlState;
+};

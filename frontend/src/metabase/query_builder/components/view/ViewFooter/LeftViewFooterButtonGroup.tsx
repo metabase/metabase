@@ -1,58 +1,83 @@
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   onCloseChartSettings,
-  onCloseChartType,
   onOpenChartSettings,
-  onOpenChartType,
 } from "metabase/query_builder/actions";
-import ViewButton from "metabase/query_builder/components/view/ViewButton";
-import { FooterButtonGroup } from "metabase/query_builder/components/view/ViewFooter.styled";
-import { getUiControls } from "metabase/query_builder/selectors";
-import { Group } from "metabase/ui";
+import {
+  getIsShowingRawTable,
+  getUiControls,
+} from "metabase/query_builder/selectors";
+import { Button, Flex, rem } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderUIControls } from "metabase-types/store";
 
-export const LeftViewFooterButtonGroup = () => {
-  const {
-    isShowingChartSettingsSidebar,
-    isShowingChartTypeSidebar,
-  }: QueryBuilderUIControls = useSelector(getUiControls);
+import { ViewFooterControl } from "./ViewFooterControl";
+
+interface LeftViewFooterButtonGroupProps {
+  question: Question;
+  hideChartSettings?: boolean;
+  isResultLoaded: boolean;
+  isNotebook: boolean;
+  isRunning: boolean;
+}
+
+export const LeftViewFooterButtonGroup = ({
+  question,
+  hideChartSettings = false,
+  isResultLoaded,
+  isNotebook,
+  isRunning,
+}: LeftViewFooterButtonGroupProps) => {
+  const { isShowingChartSettingsSidebar }: QueryBuilderUIControls =
+    useSelector(getUiControls);
+  const isShowingRawTable = useSelector(getIsShowingRawTable);
 
   const dispatch = useDispatch();
 
+  const shouldShowChartSettingsButton =
+    !isNotebook &&
+    !hideChartSettings &&
+    (!isShowingRawTable || isShowingChartSettingsSidebar) &&
+    isResultLoaded;
+
   return (
-    <Group className={CS.flex1}>
-      <FooterButtonGroup>
-        <ViewButton
-          medium
-          labelBreakpoint="sm"
-          data-testid="viz-type-button"
-          active={isShowingChartTypeSidebar}
-          onClick={
-            isShowingChartTypeSidebar
-              ? () => dispatch(onCloseChartType())
-              : () => dispatch(onOpenChartType())
-          }
-        >
-          {t`Visualization type`}
-        </ViewButton>
-        <ViewButton
-          active={isShowingChartSettingsSidebar}
-          icon="gear"
-          iconSize={16}
-          medium
-          iconWithText
-          labelBreakpoint="sm"
+    <Flex gap="0.75rem">
+      <ViewFooterControl
+        question={question}
+        isNotebook={isNotebook}
+        isRunning={isRunning}
+      />
+      {shouldShowChartSettingsButton && (
+        <Button
+          variant={isShowingChartSettingsSidebar ? "filled" : "default"}
+          radius="xl"
+          pt={rem(7)}
+          pb={rem(7)}
+          styles={{
+            ...(!isShowingChartSettingsSidebar && {
+              root: {
+                backgroundColor: "var(--mb-color-brand-lighter)",
+                color: "var(--mb-color-brand)",
+                border: 0,
+
+                "&:hover": {
+                  backgroundColor: "var(--mb-color-focus)",
+                },
+              },
+            }),
+          }}
           data-testid="viz-settings-button"
           onClick={
             isShowingChartSettingsSidebar
               ? () => dispatch(onCloseChartSettings())
               : () => dispatch(onOpenChartSettings())
           }
-        >{t`Settings`}</ViewButton>
-      </FooterButtonGroup>
-    </Group>
+        >
+          {isShowingChartSettingsSidebar ? t`Done` : t`Chart settings`}
+        </Button>
+      )}
+    </Flex>
   );
 };

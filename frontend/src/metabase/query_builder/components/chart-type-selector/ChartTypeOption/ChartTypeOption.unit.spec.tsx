@@ -58,18 +58,16 @@ const setup = ({
   selectedVisualization = "table",
   onSelectVisualization = jest.fn(),
   visualizationType = "bar",
-  onOpenSettings = jest.fn(),
 }: Partial<ChartTypeOptionProps> = {}) => {
   renderWithProviders(
     <ChartTypeOption
       selectedVisualization={selectedVisualization}
       onSelectVisualization={onSelectVisualization}
       visualizationType={visualizationType}
-      onOpenSettings={onOpenSettings}
     />,
   );
 
-  return { onSelectVisualization, onOpenSettings };
+  return { onSelectVisualization };
 };
 
 describe("ChartTypeOption", () => {
@@ -103,17 +101,6 @@ describe("ChartTypeOption", () => {
         expect(onSelectVisualization).toHaveBeenCalledWith(visualizationType);
       });
 
-      it("should call 'onOpenSettings' when the button is clicked and the visualization has been selected", async () => {
-        const { onOpenSettings } = setup({
-          visualizationType,
-          selectedVisualization: visualizationType,
-        });
-
-        await userEvent.click(screen.getByTestId(`${displayName}-button`));
-
-        expect(onOpenSettings).toHaveBeenCalled();
-      });
-
       it("should have aria-selected attribute if selectedVisualization=visualizationType", () => {
         setup({
           selectedVisualization: visualizationType,
@@ -129,19 +116,6 @@ describe("ChartTypeOption", () => {
   );
 
   describe("when onOpenSettings is set", () => {
-    it("should display a gear icon when the type is selected and user is hovering over it", async () => {
-      const { onOpenSettings } = setup({
-        visualizationType: "bar",
-        selectedVisualization: "bar",
-      });
-
-      expect(screen.getByTestId("Bar-button")).toBeInTheDocument();
-      await userEvent.hover(screen.getByTestId("Bar-button"));
-
-      await userEvent.click(getIcon("gear"));
-      expect(onOpenSettings).toHaveBeenCalled();
-    });
-
     it("should not display a gear icon when the type is not selected and the user is hovering over it", async () => {
       setup({
         visualizationType: "bar",
@@ -159,7 +133,6 @@ describe("ChartTypeOption", () => {
     setup({
       visualizationType: "bar",
       selectedVisualization: "table",
-      onOpenSettings: undefined,
     });
 
     expect(screen.getByTestId("Bar-button")).toBeInTheDocument();

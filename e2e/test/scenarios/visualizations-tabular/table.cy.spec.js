@@ -13,6 +13,7 @@ import {
   openNativeEditor,
   openOrdersTable,
   openPeopleTable,
+  openVizType,
   popover,
   resetTestTable,
   restore,
@@ -71,11 +72,11 @@ describe("scenarios > visualizations > table", () => {
     openNativeEditor().type("select * from orders LIMIT 2");
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
 
     cy.findByTestId(/subtotal-hide-button/i).click();
     cy.findByTestId(/tax-hide-button/i).click();
-    cy.findByTestId("sidebar-left").findByText("Done").click();
+    cy.button("Done").click();
 
     headerCells().eq(3).should("contain.text", "TOTAL").as("total");
 

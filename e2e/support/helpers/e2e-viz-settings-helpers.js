@@ -13,3 +13,10 @@ export function openSeriesSettings(field, isBreakout = false) {
       .click();
   }
 }
+
+export function openVizType(tabName = "Chart") {
+  cy.findByTestId("viz-settings-button").click();
+  if (tabName) {
+    cy.findByTestId("chartsettings-sidebar").findByText(tabName).click();
+  }
+}

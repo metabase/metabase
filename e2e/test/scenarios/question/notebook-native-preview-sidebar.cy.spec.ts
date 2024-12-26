@@ -55,6 +55,9 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.findByTestId("native-query-preview-sidebar").within(() => {
       cy.findByText("SQL for this question").should("exist");
       cy.get(".ace_content").should("not.exist");
+    });
+
+    cy.findByTestId("view-footer").within(() => {
       cy.button("Convert this question to SQL").should("be.disabled");
     });
   });
@@ -73,6 +76,8 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       cy.get(".ace_content")
         .should("contain", "SELECT")
         .and("contain", queryLimit);
+    });
+    cy.findByTestId("view-footer").within(() => {
       cy.button("Convert this question to SQL").should("exist");
     });
 
@@ -149,14 +154,10 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     const toleranceDelta = 0.5;
 
     const borderWidth = 1;
-    const sidebarMargin = 4;
     const minNotebookWidth = 640;
     const minSidebarWidth = 428 - borderWidth;
     const maxSidebarWidth =
-      Cypress.config("viewportWidth") -
-      minNotebookWidth -
-      borderWidth -
-      sidebarMargin;
+      Cypress.config("viewportWidth") - minNotebookWidth - borderWidth;
 
     cy.intercept("POST", "/api/dataset/query_metadata").as("metadata");
     cy.intercept("GET", "/api/session/properties").as("sessionProperties");
@@ -301,7 +302,9 @@ describe(
         cy.get(".ace_content")
           .should("contain", "$project")
           .and("contain", "$limit");
+      });
 
+      cy.findByTestId("view-footer").within(() => {
         cy.button("Convert this question to a native query").click();
       });
 
@@ -327,7 +330,9 @@ describe(
           .and("contain", "$limit")
           .and("not.contain", "BsonString")
           .and("not.contain", "BsonInt32");
+      });
 
+      cy.findByTestId("view-footer").within(() => {
         cy.button("Convert this question to a native query").click();
       });
 
@@ -379,7 +384,9 @@ describe(
           .and("contain", "$limit")
           .and("not.contain", "BsonString")
           .and("not.contain", "BsonInt32");
+      });
 
+      cy.findByTestId("view-footer").within(() => {
         cy.button("Convert this question to a native query").click();
       });
 

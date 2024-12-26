@@ -8,6 +8,7 @@ import {
   focusNativeEditor,
   modal,
   openNativeEditor,
+  openVizType,
   popover,
   restore,
   runNativeQuery,
@@ -73,7 +74,7 @@ describe("issue 12439", () => {
     });
 
     // Make sure buttons are clickable
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
 
     sidebar().contains("X-axis");
     sidebar().contains("Y-axis");
@@ -146,7 +147,7 @@ describe("issue 16914", () => {
       visualization_settings: {},
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
     cy.findByTestId("sidebar-left")
       .contains(/hidden/i)
       .siblings("[data-testid$=hide-button]")
@@ -205,7 +206,8 @@ describe("issue 17060", () => {
       visualization_settings: {},
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
+
     cy.findByTestId("sidebar-left").within(() => {
       rearrangeColumns();
     });
