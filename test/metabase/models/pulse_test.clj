@@ -58,8 +58,8 @@
   (testing "this should cover all the basic Pulse attributes"
     (t2.with-temp/with-temp [:model/Pulse        {pulse-id :id}   {:name "Lodi Dodi"}
                              :model/PulseChannel {channel-id :id} {:pulse_id pulse-id
-                                                                    :details  {:other  "stuff"
-                                                                               :emails ["foo@bar.com"]}}
+                                                                   :details  {:other  "stuff"
+                                                                              :emails ["foo@bar.com"]}}
                              :model/Card         {card-id :id}    {:name "Test Card"}]
       (t2/insert! :model/PulseCard, :pulse_id pulse-id, :card_id card-id, :position 0)
       (t2/insert! :model/PulseChannelRecipient, :pulse_channel_id channel-id, :user_id (mt/user->id :rasta))
@@ -356,8 +356,8 @@
         (do-with-objects
          (fn [{:keys [archived? user-id pulse-id]}]
            (t2.with-temp/with-temp [:model/PulseChannel _ {:channel_type "slack"
-                                                            :details      {:channel "#general"}
-                                                            :pulse_id     pulse-id}]
+                                                           :details      {:channel "#general"}
+                                                           :pulse_id     pulse-id}]
              (testing "make the User inactive"
                (is (pos? (t2/update! :model/User user-id {:is_active false}))))
              (testing "Pulse should not be archived"
@@ -375,8 +375,8 @@
           (do-with-objects
            (fn [{:keys [archived? user-id pulse-id]}]
              (t2.with-temp/with-temp [:model/PulseChannel _ {:channel_type "email"
-                                                              :details      {:emails ["foo@bar.com"]}
-                                                              :pulse_id     pulse-id}]
+                                                             :details      {:emails ["foo@bar.com"]}
+                                                             :pulse_id     pulse-id}]
                (testing "make the User inactive"
                  (is (pos? (t2/update! :model/User user-id {:is_active false}))))
                (testing "Pulse should not be archived"
@@ -418,8 +418,8 @@
                    :model/Database   db    {:engine :h2}
                    :model/Table      table {:db_id (u/the-id db)}
                    :model/Card       card  {:dataset_query {:database (u/the-id db)
-                                                             :type     :query
-                                                             :query    {:source-table (u/the-id table)}}}
+                                                            :type     :query
+                                                            :query    {:source-table (u/the-id table)}}}
                    :model/PulseCard  _ {:pulse_id (u/the-id pulse) :card_id (u/the-id card)}]
       (f db collection pulse card))))
 
@@ -439,7 +439,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Pulse can only go in Collections in the \"default\" or :analytics namespace."
-               (t2/insert! :model/Pulse (assoc (t2.with-temp/with-temp :model/Pulse) :collection_id collection-id, :name pulse-name))))
+               (t2/insert! :model/Pulse (assoc (t2.with-temp/with-temp-defaults :model/Pulse) :collection_id collection-id, :name pulse-name))))
           (finally
             (t2/delete! :model/Pulse :name pulse-name)))))
 
@@ -459,8 +459,8 @@
     (mt/with-temp [:model/Collection collection {}
                    :model/Dashboard  dashboard {:collection_id (u/the-id collection)}
                    :model/Pulse      pulse     {:collection_id (u/the-id collection)
-                                                         :dashboard_id  (u/the-id dashboard)
-                                                         :creator_id    (mt/user->id :rasta)}
+                                                :dashboard_id  (u/the-id dashboard)
+                                                :creator_id    (mt/user->id :rasta)}
                    :model/Database   db        {:engine :h2}]
       (f db collection dashboard pulse))))
 
@@ -488,17 +488,17 @@
         (testing "A non-admin has read-only access to a subscription they are a recipient of"
           ;; Create a new Dashboard Subscription with an admin creator but non-admin recipient
           (mt/with-temp [:model/Pulse                subscription            {:collection_id (u/the-id collection)
-                                                                                       :dashboard_id  (u/the-id dashboard)
-                                                                                       :creator_id    (mt/user->id :crowberto)}
+                                                                              :dashboard_id  (u/the-id dashboard)
+                                                                              :creator_id    (mt/user->id :crowberto)}
                          :model/PulseChannel          {pulse-channel-id :id} {:pulse_id (u/the-id subscription)}
                          :model/PulseChannelRecipient _                      {:pulse_channel_id pulse-channel-id
-                                                                               :user_id (mt/user->id :rasta)}]
+                                                                              :user_id (mt/user->id :rasta)}]
             (is (mi/can-read? subscription))
             (is (not (mi/can-write? subscription)))))
 
         (testing "A non-admin doesn't have read or write access to a subscription they aren't a creator or recipient of"
           (mt/with-temp [:model/Pulse subscription {:collection_id (u/the-id collection)
-                                                             :dashboard_id  (u/the-id dashboard)
-                                                             :creator_id    (mt/user->id :crowberto)}]
+                                                    :dashboard_id  (u/the-id dashboard)
+                                                    :creator_id    (mt/user->id :crowberto)}]
             (is (not (mi/can-read? subscription)))
             (is (not (mi/can-write? subscription)))))))))
