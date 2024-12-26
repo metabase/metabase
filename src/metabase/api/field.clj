@@ -78,7 +78,7 @@
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
     (when (and dimension-id (= :external dimension-type))
-      (t2/delete! :model/Dimensions :id dimension-id))))
+      (t2/delete! :model/Dimension :id dimension-id))))
 
 (defn- removed-fk-semantic-type? [old-semantic-type new-semantic-type]
   (and (not= old-semantic-type new-semantic-type)
@@ -101,7 +101,7 @@
     (when (and old-dim-id
                (= :internal old-dim-type)
                (not (internal-remapping-allowed? base-type new-semantic-type)))
-      (t2/delete! :model/Dimensions :id old-dim-id))))
+      (t2/delete! :model/Dimension :id old-dim-id))))
 
 (defn- update-nested-fields-on-json-unfolding-change!
   "If JSON unfolding was enabled for a JSON field, it activates previously synced nested fields from the JSON field.
@@ -164,7 +164,7 @@
     (when (and display_name
                (not removed-fk?)
                (not= (:display_name field) display_name))
-      (t2/update! :model/Dimensions :field_id id {:name display_name}))
+      (t2/update! :model/Dimension :field_id id {:name display_name}))
     ;; everything checks out, now update the field
     (api/check-500
      (t2/with-transaction [_conn]
@@ -213,24 +213,24 @@
                  (and (= dimension-type "external")
                       human_readable_field_id))
              [400 "Foreign key based remappings require a human readable field id"])
-  (if-let [dimension (t2/select-one :model/Dimensions :field_id id)]
-    (t2/update! :model/Dimensions (u/the-id dimension)
+  (if-let [dimension (t2/select-one :model/Dimension :field_id id)]
+    (t2/update! :model/Dimension (u/the-id dimension)
                 {:type                    dimension-type
                  :name                    dimension-name
                  :human_readable_field_id human_readable_field_id})
-    (t2/insert! :model/Dimensions
+    (t2/insert! :model/Dimension
                 {:field_id                id
                  :type                    dimension-type
                  :name                    dimension-name
                  :human_readable_field_id human_readable_field_id}))
-  (t2/select-one :model/Dimensions :field_id id))
+  (t2/select-one :model/Dimension :field_id id))
 
 (api/defendpoint DELETE "/:id/dimension"
   "Remove the dimension associated to field at ID"
   [id]
   {id ms/PositiveInt}
   (api/write-check :model/Field id)
-  (t2/delete! :model/Dimensions :field_id id)
+  (t2/delete! :model/Dimension :field_id id)
   api/generic-204-no-content)
 
 ;;; -------------------------------------------------- FieldValues ---------------------------------------------------

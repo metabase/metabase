@@ -15,7 +15,7 @@
                      :model/Table     table  {:schema "PUBLIC" :name "widget" :db_id (:id db)}
                      :model/Field     field1 {:name "sku" :table_id (:id table)}
                      :model/Field     field2 {:name "human" :table_id (:id table)}
-                     :model/Dimensions dim    {:field_id                (:id field1)
+                     :model/Dimension dim    {:field_id                (:id field1)
                                                :human_readable_field_id (:id field2)
                                                :created_at              now}]
         (is (= "c52f8889"

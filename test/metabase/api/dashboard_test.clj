@@ -1584,24 +1584,24 @@
   (testing "POST /api/dashboard/:id/copy"
     (testing "Ensure dashboard cards and parameters are copied (#23685)"
       (mt/with-temp [:model/Dashboard     {dashboard-id :id}  {:name       "Test Dashboard"
-                                                                :parameters [{:name "Category ID"
-                                                                              :slug "category_id"
-                                                                              :id   "_CATEGORY_ID_"
-                                                                              :type :category}
-                                                                             {:name "Unit"
-                                                                              :slug "unit"
-                                                                              :id   "_unit_"
-                                                                              :type :temporal-unit}]}
+                                                               :parameters [{:name "Category ID"
+                                                                             :slug "category_id"
+                                                                             :id   "_CATEGORY_ID_"
+                                                                             :type :category}
+                                                                            {:name "Unit"
+                                                                             :slug "unit"
+                                                                             :id   "_unit_"
+                                                                             :type :temporal-unit}]}
                      :model/Card          {card-id :id} {}
                      :model/Card          {card-id2 :id} {}
                      :model/DashboardCard {dashcard-id :id} {:dashboard_id       dashboard-id
-                                                              :card_id            card-id
-                                                              :parameter_mappings [{:parameter_id "random-id"
-                                                                                    :card_id      card-id
-                                                                                    :target       [:dimension [:field (mt/id :venues :name) nil]]}
-                                                                                   {:parameter_id "also-random"
-                                                                                    :card_id      card-id
-                                                                                    :target       [:dimension [:field (mt/id :orders :created_at) {:temporal-unit "month"}]]}]}
+                                                             :card_id            card-id
+                                                             :parameter_mappings [{:parameter_id "random-id"
+                                                                                   :card_id      card-id
+                                                                                   :target       [:dimension [:field (mt/id :venues :name) nil]]}
+                                                                                  {:parameter_id "also-random"
+                                                                                   :card_id      card-id
+                                                                                   :target       [:dimension [:field (mt/id :orders :created_at) {:temporal-unit "month"}]]}]}
                      :model/DashboardCard _ {:dashboard_id dashboard-id, :card_id card-id2}] {}
         (let [copy-id (u/the-id (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" dashboard-id)))]
           (try

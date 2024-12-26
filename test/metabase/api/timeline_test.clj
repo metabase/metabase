@@ -27,9 +27,9 @@
                         (into #{} (comp (filter (comp #{id} :collection_id))
                                         (map :name))
                               tls))]
-        (mt/with-temp [:model/TimelineTimeline _ {:name "Timeline A" :collection_id id}
-                       :model/TimelineTimeline _ {:name "Timeline B" :collection_id id}
-                       :model/TimelineTimeline _ {:name "Timeline C" :collection_id id :archived true}]
+        (mt/with-temp [:model/Timeline _ {:name "Timeline A" :collection_id id}
+                       :model/Timeline _ {:name "Timeline B" :collection_id id}
+                       :model/Timeline _ {:name "Timeline C" :collection_id id :archived true}]
           (testing "check that we only get un-archived timelines"
             (is (= #{"Timeline A" "Timeline B"}
                    (events-of (mt/user-http-request :rasta :get 200 "timeline")))))
@@ -50,8 +50,8 @@
                       :collection)))))))
     (testing "checks permissions"
       (mt/with-temp [:model/Collection    {coll-id :id} {:name "private collection"}
-                     :model/TimelineTimeline      tl-a {:name "Timeline A" :collection_id coll-id}
-                     :model/TimelineTimeline      tl-b {:name "Timeline B" :collection_id coll-id}
+                     :model/Timeline      tl-a {:name "Timeline A" :collection_id coll-id}
+                     :model/Timeline      tl-b {:name "Timeline B" :collection_id coll-id}
                      :model/TimelineEvent _    {:name "Event 1" :timeline_id (u/the-id tl-a)}
                      :model/TimelineEvent _    {:name "Event 2" :timeline_id (u/the-id tl-b)}]
         (letfn [(events-for [user events?]
@@ -72,8 +72,8 @@
 
 (deftest get-timeline-test
   (testing "GET /api/timeline/:id"
-    (mt/with-temp [:model/TimelineTimeline tl-a {:name "Timeline A"}
-                   :model/TimelineTimeline tl-b {:name "Timeline B" :archived true}]
+    (mt/with-temp [:model/Timeline tl-a {:name "Timeline A"}
+                   :model/Timeline tl-b {:name "Timeline B" :archived true}]
       (testing "check that we get the timeline with the id specified"
         (is (= "Timeline A"
                (->> (mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id tl-a)))
@@ -106,21 +106,21 @@
 (deftest timelines-range-test
   (testing "GET /api/timeline/:id?include=events&start=TIME&end=TIME"
     (mt/with-temp [:model/Collection    collection {:name "Collection"}
-                   :model/TimelineTimeline      tl-a       {:name          "Timeline A"
-                                                             :collection_id (u/the-id collection)}
+                   :model/Timeline      tl-a       {:name          "Timeline A"
+                                                    :collection_id (u/the-id collection)}
                    ;; the temp defaults set {:time_matters true}
                    :model/TimelineEvent _          {:name        "event-a"
-                                                     :timeline_id (u/the-id tl-a)
-                                                     :timestamp   #t "2020-01-01T10:00:00.0Z"}
+                                                    :timeline_id (u/the-id tl-a)
+                                                    :timestamp   #t "2020-01-01T10:00:00.0Z"}
                    :model/TimelineEvent _          {:name        "event-b"
-                                                     :timeline_id (u/the-id tl-a)
-                                                     :timestamp   #t "2021-01-01T10:00:00.0Z"}
+                                                    :timeline_id (u/the-id tl-a)
+                                                    :timestamp   #t "2021-01-01T10:00:00.0Z"}
                    :model/TimelineEvent _          {:name        "event-c"
-                                                     :timeline_id (u/the-id tl-a)
-                                                     :timestamp   #t "2022-01-01T10:00:00.0Z"}
+                                                    :timeline_id (u/the-id tl-a)
+                                                    :timestamp   #t "2022-01-01T10:00:00.0Z"}
                    :model/TimelineEvent _          {:name        "event-d"
-                                                     :timeline_id (u/the-id tl-a)
-                                                     :timestamp   #t "2023-01-01T10:00:00.0Z"}]
+                                                    :timeline_id (u/the-id tl-a)
+                                                    :timestamp   #t "2023-01-01T10:00:00.0Z"}]
       (testing "Events are properly filtered when given only `start=` parameter"
         (is (= #{"event-c" "event-d"}
                (event-names (timelines-range-request tl-a {:start "2022-01-01T10:00:00.0Z"})))))
@@ -132,9 +132,9 @@
                (event-names (timelines-range-request tl-a {:start "2020-12-01T10:00:00.0Z"
                                                            :end   "2022-12-01T10:00:00.0Z"})))))
       (t2.with-temp/with-temp [:model/TimelineEvent _event-a2 {:name         "event-a2"
-                                                                :timeline_id  (u/the-id tl-a)
-                                                                :timestamp    #t "2020-01-01T10:00:00.0Z"
-                                                                :time_matters false}]
+                                                               :timeline_id  (u/the-id tl-a)
+                                                               :timestamp    #t "2020-01-01T10:00:00.0Z"
+                                                               :time_matters false}]
         (testing "Events are properly filtered considering the `time_matters` state."
           ;; notice that event-a and event-a2 have the same timestamp, but different time_matters states.
           ;; time_matters = false effectively means "We care only about the DATE of this event", so
@@ -145,7 +145,7 @@
 
 (deftest create-timeline-test
   (testing "POST /api/timeline"
-    (mt/with-model-cleanup [:model/TimelineTimeline]
+    (mt/with-model-cleanup [:model/Timeline]
       (t2.with-temp/with-temp [:model/Collection collection {:name "Important Data"}]
         (let [id (u/the-id collection)]
           (testing "Create a new timeline"
@@ -157,20 +157,20 @@
                                    :collection_id id})
             (testing "check the collection to see if the timeline is there"
               (is (= "Rasta's TL"
-                     (-> (t2/select-one :model/TimelineTimeline :collection_id id) :name))))
+                     (-> (t2/select-one :model/Timeline :collection_id id) :name))))
             (testing "Check that the icon is 'star' by default"
               (is (= "star"
-                     (t2/select-one-fn :icon :model/TimelineTimeline :collection_id id))))))))))
+                     (t2/select-one-fn :icon :model/Timeline :collection_id id))))))))))
 
 (deftest update-timeline-test
   (testing "PUT /api/timeline/:id"
     (t2.with-temp/with-temp [:model/Collection _ {:name "Important Data"}
-                             :model/TimelineTimeline tl-a {:name "Timeline A" :archived true}
-                             :model/TimelineTimeline tl-b {:name "Timeline B"}
+                             :model/Timeline tl-a {:name "Timeline A" :archived true}
+                             :model/Timeline tl-b {:name "Timeline B"}
                              :model/TimelineEvent _ {:name        "event-a"
-                                                      :timeline_id (u/the-id tl-b)}
+                                                     :timeline_id (u/the-id tl-b)}
                              :model/TimelineEvent _ {:name        "event-b"
-                                                      :timeline_id (u/the-id tl-b)}]
+                                                     :timeline_id (u/the-id tl-b)}]
       (testing "check that we successfully updated a timeline"
         (is (false?
              (->> (mt/user-http-request :rasta :put 200 (str "timeline/" (u/the-id tl-a)) {:archived false})
@@ -198,29 +198,29 @@
 (deftest timeline-hydration-test
   (testing "GET /api/timeline/:id?include=events"
     (t2.with-temp/with-temp [:model/Collection collection {:name "Important Data"}
-                             :model/TimelineTimeline empty-tl {:name          "Empty TL"
-                                                                :collection_id (u/the-id collection)}
-                             :model/TimelineTimeline unarchived-tl {:name          "Un-archived Events TL"
-                                                                     :collection_id (u/the-id collection)}
-                             :model/TimelineTimeline archived-tl {:name          "Archived Events TL"
-                                                                   :collection_id (u/the-id collection)}
-                             :model/TimelineTimeline timeline {:name          "All Events TL"
-                                                                :collection_id (u/the-id collection)}
+                             :model/Timeline empty-tl {:name          "Empty TL"
+                                                       :collection_id (u/the-id collection)}
+                             :model/Timeline unarchived-tl {:name          "Un-archived Events TL"
+                                                            :collection_id (u/the-id collection)}
+                             :model/Timeline archived-tl {:name          "Archived Events TL"
+                                                          :collection_id (u/the-id collection)}
+                             :model/Timeline timeline {:name          "All Events TL"
+                                                       :collection_id (u/the-id collection)}
                              :model/TimelineEvent _ {:name        "event-a"
-                                                      :timeline_id (u/the-id unarchived-tl)}
+                                                     :timeline_id (u/the-id unarchived-tl)}
                              :model/TimelineEvent _ {:name        "event-b"
-                                                      :timeline_id (u/the-id unarchived-tl)}
+                                                     :timeline_id (u/the-id unarchived-tl)}
                              :model/TimelineEvent _ {:name        "event-c"
-                                                      :timeline_id (u/the-id archived-tl)
-                                                      :archived    true}
+                                                     :timeline_id (u/the-id archived-tl)
+                                                     :archived    true}
                              :model/TimelineEvent _ {:name        "event-d"
-                                                      :timeline_id (u/the-id archived-tl)
-                                                      :archived    true}
+                                                     :timeline_id (u/the-id archived-tl)
+                                                     :archived    true}
                              :model/TimelineEvent _ {:name        "event-e"
-                                                      :timeline_id (u/the-id timeline)}
+                                                     :timeline_id (u/the-id timeline)}
                              :model/TimelineEvent _ {:name        "event-f"
-                                                      :timeline_id (u/the-id timeline)
-                                                      :archived    true}]
+                                                     :timeline_id (u/the-id timeline)
+                                                     :archived    true}]
       (testing "a timeline with no events returns an empty list"
         (is (= '() (:events (include-events-request empty-tl false)))))
       (testing "a timeline with both (un-)archived events"

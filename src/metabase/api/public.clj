@@ -441,7 +441,7 @@
   {:pre [(integer? field-id) (integer? search-field-id)]}
   (api/check-400
    (or (= field-id search-field-id)
-       (t2/exists? :model/Dimensions :field_id field-id, :human_readable_field_id search-field-id)
+       (t2/exists? :model/Dimension :field_id field-id, :human_readable_field_id search-field-id)
        ;; just do a couple small queries to figure this out, we could write a fancy query to join Field against itself
        ;; and do this in one but the extra code complexity isn't worth it IMO
        (when-let [table-id (t2/select-one-fn :table_id :model/Field :id field-id, :semantic_type (mdb.query/isa :type/PK))]

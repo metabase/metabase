@@ -92,7 +92,7 @@
                                                                                   [{:parameter_id "_VENUE_ID_"
                                                                                     :card_id      (u/the-id card)
                                                                                     :target       [:dimension [:field (mt/id :venues :id) nil]]}])}
-                                                   dashcard)]
+                                                         dashcard)]
       (f dashcard))))
 
 (defmacro with-temp-dashcard
@@ -1785,15 +1785,15 @@
     (mt/dataset test-data
       (with-embedding-enabled-and-new-secret-key!
         (t2.with-temp/with-temp [:model/Card {card-id :id, :as card} {:dataset_query    (mt/native-query
-                                                                                         {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
-                                                                                          :template-tags {"NAME"
-                                                                                                          {:id           "9ddca4ca-3906-83fd-bc6b-8480ae9ab05e"
-                                                                                                           :name         "NAME"
-                                                                                                           :display-name "Name"
-                                                                                                           :type         :dimension
-                                                                                                           :dimension    [:field (mt/id :people :name) nil]
-                                                                                                           :widget-type  :string/=
-                                                                                                           :default      nil}}})
+                                                                                          {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                                                                                           :template-tags {"NAME"
+                                                                                                           {:id           "9ddca4ca-3906-83fd-bc6b-8480ae9ab05e"
+                                                                                                            :name         "NAME"
+                                                                                                            :display-name "Name"
+                                                                                                            :type         :dimension
+                                                                                                            :dimension    [:field (mt/id :people :name) nil]
+                                                                                                            :widget-type  :string/=
+                                                                                                            :default      nil}}})
                                                                       :enable_embedding true
                                                                       :embedding_params {:NAME "enabled"}}]
           (testing "Card"
@@ -1823,10 +1823,10 @@
     (mt/dataset test-data
       (with-embedding-enabled-and-new-secret-key!
         (t2.with-temp/with-temp [:model/Card card {:dataset_query    (mt/native-query
-                                                                      {:query         "SELECT count(*) FROM orders WHERE quantity = {{qty_locked}}"
-                                                                       :template-tags {"qty_locked" {:name         "qty_locked"
-                                                                                                     :display-name "Quantity (Locked)"
-                                                                                                     :type         :number}}})
+                                                                       {:query         "SELECT count(*) FROM orders WHERE quantity = {{qty_locked}}"
+                                                                        :template-tags {"qty_locked" {:name         "qty_locked"
+                                                                                                      :display-name "Quantity (Locked)"
+                                                                                                      :type         :number}}})
                                                    :enable_embedding true
                                                    :embedding_params {:qty_locked "locked"}}]
           (is (= [3443]

@@ -342,7 +342,7 @@
           (testing "Should have no FieldValues initially"
             (is (= nil
                    (field-values))))
-          (t2.with-temp/with-temp [:model/Dimensions _ {:field_id                (mt/id :orders :product_id)
+          (t2.with-temp/with-temp [:model/Dimension _ {:field_id                (mt/id :orders :product_id)
                                                         :human_readable_field_id (mt/id :products :title)
                                                         :type                    "external"}]
             (mt/with-temp-vals-in-db :model/Field (mt/id :orders :product_id) {:has_field_values "list"}

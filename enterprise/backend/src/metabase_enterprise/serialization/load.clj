@@ -199,7 +199,7 @@
 (defn- load-dimensions!
   [path context]
   (maybe-upsert-many!
-   context :model/Dimensions
+   context :model/Dimension
    (for [dimension (yaml/from-file (str path "/dimensions.yaml"))]
      (-> dimension
          (update :human_readable_field_id (comp :field fully-qualified-name->context))

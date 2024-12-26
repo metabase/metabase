@@ -100,7 +100,7 @@
   "Combine all dimensions into a vector and dump it into YAML at in the directory for the
    corresponding schema starting at `path`."
   [path]
-  (doseq [[table-id dimensions] (group-by (comp :table_id :model/Field :field_id) (t2/select :model/Dimensions))
+  (doseq [[table-id dimensions] (group-by (comp :table_id :model/Field :field_id) (t2/select :model/Dimension))
           :let [table (t2/select-one :model/Table :id table-id)]]
     (spit-yaml! (if (:schema table)
                   (format "%s%s/schemas/%s/dimensions.yaml"

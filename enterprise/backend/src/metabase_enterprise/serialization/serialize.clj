@@ -217,7 +217,7 @@
   [user]
   (select-keys user [:first_name :last_name :email :is_superuser]))
 
-(defmethod serialize-one :model/Dimensions
+(defmethod serialize-one :model/Dimension
   [dimension]
   (-> dimension
       (update :field_id (partial fully-qualified-name :model/Field))

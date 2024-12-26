@@ -22,7 +22,7 @@
    :model/DashboardCard       [:card_id :dashboard_id :visualization_settings]
    :model/DashboardCardSeries [:dashboardcard_id :card_id]
    :model/FieldValues         [:field_id]
-   :model/Dimensions           [:field_id :human_readable_field_id]
+   :model/Dimension           [:field_id :human_readable_field_id]
    :model/Setting             [:key]
    :model/Pulse               [:name :collection_id]
    :model/PulseCard           [:pulse_id :card_id]
