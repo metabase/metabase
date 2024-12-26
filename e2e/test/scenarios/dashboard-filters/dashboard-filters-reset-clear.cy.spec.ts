@@ -1089,7 +1089,9 @@ function addDateFilter(label: string, value: string) {
 function updateDateFilter(label: string, value: string) {
   filter(label).click();
   H.popover().findByRole("textbox").clear().type(value).blur();
-  H.popover().button("Update filter").click();
+  H.popover()
+    .button(/(Add|Update) filter/)
+    .click();
 }
 
 function addRangeFilter(

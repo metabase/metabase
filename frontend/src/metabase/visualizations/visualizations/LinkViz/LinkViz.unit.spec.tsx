@@ -17,16 +17,20 @@ import * as domUtils from "metabase/lib/dom";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
   LinkCardSettings,
+  Parameter,
   VirtualDashboardCard,
 } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
+  createMockDashboard,
   createMockLinkDashboardCard,
+  createMockParameter,
   createMockRecentCollectionItem,
   createMockRecentTableItem,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import type { LinkVizProps } from "./LinkViz";
 import { LinkViz } from "./LinkViz";
@@ -95,6 +99,7 @@ const setup = (options?: Partial<LinkVizProps>) => {
 
   renderWithProviders(
     <LinkViz
+      dashboard={createMockDashboard()}
       dashcard={linkDashcard}
       isEditing={true}
       onUpdateVisualizationSettings={changeSpy}
@@ -342,6 +347,110 @@ describe("LinkViz", () => {
 
       expect(getIcon("key")).toBeInTheDocument();
       expect(screen.getByText(/don't have permission/i)).toBeInTheDocument();
+    });
+  });
+
+  describe("parameters", () => {
+    const setupParameterTest = ({
+      parameters,
+      linkUrl,
+      parameterValues,
+    }: {
+      parameters: Parameter[];
+      linkUrl: string;
+      parameterValues?: Record<string, string>;
+    }) => {
+      const dashboard = createMockDashboard({
+        parameters,
+      });
+
+      const dashcard = createMockLinkDashboardCard({
+        dashboard_id: dashboard.id,
+        visualization_settings: {
+          link: { url: linkUrl },
+        },
+        parameter_mappings: parameters.map(param => ({
+          parameter_id: param.id,
+          target: ["text-tag", param.slug],
+        })),
+      });
+
+      renderWithProviders(
+        <LinkViz
+          dashcard={dashcard}
+          dashboard={dashboard}
+          isEditing={false}
+          onUpdateVisualizationSettings={jest.fn()}
+          settings={dashcard.visualization_settings as LinkCardVizSettings}
+        />,
+        {
+          storeInitialState: {
+            dashboard: createMockDashboardState({
+              dashboardId: dashboard.id,
+              dashboards: {
+                [dashboard.id]: {
+                  ...dashboard,
+                  dashcards: [dashcard.id],
+                },
+              },
+              dashcards: {
+                [dashcard.id]: dashcard,
+              },
+              parameterValues:
+                dashboard.parameters?.reduce(
+                  (acc, param) => ({
+                    ...acc,
+                    [param.id]: parameterValues?.[param.slug] ?? "",
+                  }),
+                  {},
+                ) ?? {},
+            }),
+          },
+        },
+      );
+    };
+
+    it("should substitute single parameter value in URL", () => {
+      const parameters = [
+        createMockParameter({
+          id: "1",
+          name: "Parameter 1",
+          slug: "param1",
+        }),
+      ];
+
+      setupParameterTest({
+        parameters,
+        linkUrl: "https://example.com/{{param1}}",
+        parameterValues: { param1: "foo" },
+      });
+
+      expect(screen.getByText("https://example.com/foo")).toBeInTheDocument();
+    });
+
+    it("should substitute multiple parameter values in URL", () => {
+      const parameters = [
+        createMockParameter({
+          id: "1",
+          name: "Parameter 1",
+          slug: "param1",
+        }),
+        createMockParameter({
+          id: "2",
+          name: "Parameter 2",
+          slug: "param2",
+        }),
+      ];
+
+      setupParameterTest({
+        parameters,
+        linkUrl: "https://example.com/{{param1}}?q={{param2}}",
+        parameterValues: { param1: "foo", param2: "bar" },
+      });
+
+      expect(
+        screen.getByText("https://example.com/foo?q=bar"),
+      ).toBeInTheDocument();
     });
   });
 });
