@@ -15,9 +15,9 @@
         (testing "with simple mbql"
           (mt/with-temp
             [:model/Card {card-id :id} (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues))
-                                         {:database_id     (mt/id)
-                                          :type            (if model? :model :question)
-                                          :table_id        (mt/id :venues)})]
+                                              {:database_id     (mt/id)
+                                               :type            (if model? :model :question)
+                                               :table_id        (mt/id :venues)})]
             (testing "get values"
               (is (= {:has_more_values true
                       :values          [["20th Century Cafe"] ["25°"] ["33 Taps"]]}
@@ -38,12 +38,12 @@
       (testing "has aggregation column"
         (mt/with-temp
           [:model/Card {card-id :id} (merge (mt/card-with-source-metadata-for-query
-                                              (mt/mbql-query venues
-                                                {:aggregation [[:sum $venues.price]]
-                                                 :breakout    [[:field %categories.name {:source-field %venues.category_id}]]}))
-                                       {:database_id     (mt/id)
-                                        :type            :model
-                                        :table_id        (mt/id :venues)})]
+                                             (mt/mbql-query venues
+                                               {:aggregation [[:sum $venues.price]]
+                                                :breakout    [[:field %categories.name {:source-field %venues.category_id}]]}))
+                                            {:database_id     (mt/id)
+                                             :type            :model
+                                             :table_id        (mt/id :venues)})]
           (testing "get values from breakout columns"
             (is (= {:has_more_values true
                     :values          [["American"] ["Artisan"] ["Asian"]]}
@@ -76,12 +76,12 @@
       (testing "has aggregation column"
         (mt/with-temp
           [:model/Card {card-id :id} (merge (mt/card-with-source-metadata-for-query
-                                              (mt/mbql-query venues
-                                                {:aggregation [[:sum $venues.price]]
-                                                 :breakout    [[:field %categories.name {:source-field %venues.category_id}]]}))
-                                       {:database_id     (mt/id)
-                                        :type            :question
-                                        :table_id        (mt/id :venues)})]
+                                             (mt/mbql-query venues
+                                               {:aggregation [[:sum $venues.price]]
+                                                :breakout    [[:field %categories.name {:source-field %venues.category_id}]]}))
+                                            {:database_id     (mt/id)
+                                             :type            :question
+                                             :table_id        (mt/id :venues)})]
           (testing "get values from breakout columns"
             (is (= {:has_more_values true
                     :values          [["American"] ["Artisan"] ["Asian"]]}
@@ -104,11 +104,11 @@
           (mt/with-column-remappings [venues.category_id categories.name]
             (mt/with-temp
               [:model/Card {card-id :id} (merge (mt/card-with-source-metadata-for-query
-                                                  (mt/mbql-query venues
-                                                    {:joins [{:source-table $$categories
-                                                              :alias        "Categories"
-                                                              :condition    [:= $venues.category_id &Categories.categories.id]}]}))
-                                           {:type (if model? :model :question)})]
+                                                 (mt/mbql-query venues
+                                                   {:joins [{:source-table $$categories
+                                                             :alias        "Categories"
+                                                             :condition    [:= $venues.category_id &Categories.categories.id]}]}))
+                                                {:type (if model? :model :question)})]
               (testing "get values returns the value, not remapped values"
                 (is (= {:has_more_values true
                         :values          [[2] [3] [4]]}
@@ -129,12 +129,12 @@
       (mt/with-column-remappings [venues.category_id categories.name]
         (mt/with-temp
           [:model/Card {card-id :id} (merge (mt/card-with-source-metadata-for-query
-                                              (mt/mbql-query venues
-                                                {:joins [{:source-table $$categories
-                                                          :alias        "Categories"
-                                                          :fields       :all
-                                                          :condition    [:= $venues.category_id &Categories.categories.id]}]}))
-                                       {:type :question})]
+                                             (mt/mbql-query venues
+                                               {:joins [{:source-table $$categories
+                                                         :alias        "Categories"
+                                                         :fields       :all
+                                                         :condition    [:= $venues.category_id &Categories.categories.id]}]}))
+                                            {:type :question})]
           (is (= {:values [["American"] ["Artisan"] ["Asian"]]
                   :has_more_values true}
                  (custom-values/values-from-card
@@ -148,10 +148,10 @@
       (binding [custom-values/*max-rows* 3]
         (mt/with-temp
           [:model/Card {card-id :id} (merge (mt/card-with-source-metadata-for-query
-                                              (mt/native-query {:query "select * from venues where lower(name) like '%red%'"}))
-                                       {:database_id     (mt/id)
-                                        :type            (if model? :model :question)
-                                        :table_id        (mt/id :venues)})]
+                                             (mt/native-query {:query "select * from venues where lower(name) like '%red%'"}))
+                                            {:database_id     (mt/id)
+                                             :type            (if model? :model :question)
+                                             :table_id        (mt/id :venues)})]
           (testing "get values from breakout columns"
             (is (= {:has_more_values false
                     :values          [["Fred 62"] ["Red Medicine"]]}
@@ -171,7 +171,7 @@
     (testing "the values list should not contains duplicated and empty values"
       (testing "with native query"
         (mt/with-temp [:model/Card {card-id :id} (mt/card-with-source-metadata-for-query
-                                                   (mt/native-query {:query "select * from people"}))]
+                                                  (mt/native-query {:query "select * from people"}))]
           (testing "get values from breakout columns"
             (is (= {:has_more_values false
                     :values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]}
@@ -191,7 +191,7 @@
     (testing "the values list should not contains duplicated and empty values"
       (testing "with mbql query"
         (mt/with-temp [:model/Card {card-id :id} (mt/card-with-source-metadata-for-query
-                                                   (mt/mbql-query people))]
+                                                  (mt/mbql-query people))]
           (testing "get values from breakout columns"
             (is (= {:has_more_values false
                     :values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]}
@@ -277,10 +277,10 @@
                                                   {:aggregation [[:count]]
                                                    :breakout    [$category !month.created_at]
                                                    :order-by    [[:asc [:aggregation 0]]]})
-                                              mt/card-with-source-metadata-for-query)
-                                       {:database_id     (mt/id)
-                                        :type            (if model? :model :question)
-                                        :table_id        (mt/id :products)})]
+                                                mt/card-with-source-metadata-for-query)
+                                            {:database_id     (mt/id)
+                                             :type            (if model? :model :question)
+                                             :table_id        (mt/id :products)})]
           (is (= {:has_more_values false
                   :values          [["Doohickey"] ["Gadget"] ["Gizmo"] ["Widget"]]}
                  (custom-values/values-from-card

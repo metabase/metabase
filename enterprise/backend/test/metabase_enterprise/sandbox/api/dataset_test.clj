@@ -10,8 +10,8 @@
       (testing "with values_source_type=card"
         (mt/with-temp
           [:model/Card {source-card-id :id} {:database_id   (mt/id)
-                                              :table_id      (mt/id :categories)
-                                              :dataset_query (mt/mbql-query categories)}]
+                                             :table_id      (mt/id :categories)
+                                             :dataset_query (mt/mbql-query categories)}]
 
           (testing "when getting values"
             (let [get-values (fn [user]

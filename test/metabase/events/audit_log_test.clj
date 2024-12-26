@@ -39,13 +39,13 @@
   (testing :card-create
     (testing "when I save a Card that uses a NESTED query, is the activity recorded? :D"
       (mt/with-temp [:model/Card card-1 {:name          "My Cool Card"
-                                          :dataset_query {:database (mt/id)
-                                                          :type     :query
-                                                          :query    {:source-table (mt/id :venues)}}}
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :query
+                                                         :query    {:source-table (mt/id :venues)}}}
                      :model/Card card-2 {:name          "My Cool NESTED Card"
-                                          :dataset_query {:database lib.schema.id/saved-questions-virtual-database-id
-                                                          :type     :query
-                                                          :query    {:source-table (str "card__" (u/the-id card-1))}}}]
+                                         :dataset_query {:database lib.schema.id/saved-questions-virtual-database-id
+                                                         :type     :query
+                                                         :query    {:source-table (str "card__" (u/the-id card-1))}}}]
         (is (= {:object card-2 :user-id (mt/user->id :rasta)}
                (events/publish-event! :event/card-create {:object card-2 :user-id (mt/user->id :rasta)})))
         (is (partial=

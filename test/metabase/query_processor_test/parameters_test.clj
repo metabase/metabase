@@ -104,7 +104,7 @@
   (testing "Generating template tags produces correct types for running process-query (#31252)"
     (t2.with-temp/with-temp
       [:model/Card {card-id :id} {:type          :model
-                                   :dataset_query (mt/native-query {:query "select * from checkins"})}]
+                                  :dataset_query (mt/native-query {:query "select * from checkins"})}]
       (let [q   (str "SELECT * FROM {{#" card-id "}} LIMIT 2")
             tt  (lib-native/extract-template-tags q)
             res (qp/process-query

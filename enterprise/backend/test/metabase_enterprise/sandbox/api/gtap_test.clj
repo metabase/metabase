@@ -110,8 +110,8 @@
       (testing "Meaningful errors should be returned if you create an invalid GTAP"
         (mt/with-temp [:model/Field _ {:name "My field" :table_id table-id :base_type :type/Integer}
                        :model/Card  {card-id :id} {:dataset_query (mt/mbql-query venues
-                                                                     {:fields      [[:expression "My field"]]
-                                                                      :expressions {"My field" [:ltrim "wow"]}})}]
+                                                                    {:fields      [[:expression "My field"]]
+                                                                     :expressions {"My field" [:ltrim "wow"]}})}]
           (with-gtap-cleanup!
             (is (=? {:message  "Sandbox Questions can't return columns that have different types than the Table they are sandboxing."
                      :expected "type/Integer"
@@ -145,8 +145,8 @@
       (testing "An invalid sandbox results in a 400 error being returned"
         (mt/with-temp [:model/Field _ {:name "My field", :table_id table-id, :base_type :type/Integer}
                        :model/Card  {card-id :id} {:dataset_query (mt/mbql-query venues
-                                                                     {:fields      [[:expression "My field"]]
-                                                                      :expressions {"My field" [:ltrim "wow"]}})}]
+                                                                    {:fields      [[:expression "My field"]]
+                                                                     :expressions {"My field" [:ltrim "wow"]}})}]
           (with-gtap-cleanup!
             (is (=? {:message  "Sandbox Questions can't return columns that have different types than the Table they are sandboxing."
                      :expected "type/Integer"

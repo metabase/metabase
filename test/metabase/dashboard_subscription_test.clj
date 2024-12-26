@@ -1001,7 +1001,7 @@
                                                                     :card_id                card-id
                                                                     :visualization_settings viz}
                            :model/Pulse         {pulse-id :id, :as pulse}  {:name         "just pulse"
-                                                                                    :dashboard_id dash-id}
+                                                                            :dashboard_id dash-id}
                            :model/PulseCard     _ {:pulse_id          pulse-id
                                                    :card_id           card-id
                                                    :position          0
@@ -1041,7 +1041,7 @@
                    :model/DashboardCard         {dashboard-card-id :id} {:dashboard_id dashboard-id
                                                                          :card_id      card-id}
                    :model/Pulse                 {pulse-id :id} {:name         "Pulse Name"
-                                                                        :dashboard_id dashboard-id}
+                                                                :dashboard_id dashboard-id}
                    :model/PulseCard             _ {:pulse_id          pulse-id
                                                    :card_id           card-id
                                                    :dashboard_card_id dashboard-card-id}

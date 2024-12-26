@@ -20,17 +20,17 @@
        :model/Card     deletable {:type :model, :database_id (u/the-id db)}
        :model/Card     off       {:type :model, :database_id (u/the-id db)}
        :model/PersistedInfo pcreating  {:card_id (u/the-id creating)
-                                         :database_id (u/the-id db)
-                                         :state "creating"
-                                         :state_change_at two-hours-ago}
+                                        :database_id (u/the-id db)
+                                        :state "creating"
+                                        :state_change_at two-hours-ago}
        :model/PersistedInfo pdeletable {:card_id (u/the-id deletable)
-                                         :database_id (u/the-id db)
-                                         :state "deletable"
-                                         :state_change_at two-hours-ago}
+                                        :database_id (u/the-id db)
+                                        :state "deletable"
+                                        :state_change_at two-hours-ago}
        :model/PersistedInfo poff       {:card_id (u/the-id off)
-                                         :database_id (u/the-id db)
-                                         :state "off"
-                                         :state_change_at two-hours-ago}]
+                                        :database_id (u/the-id db)
+                                        :state "off"
+                                        :state_change_at two-hours-ago}]
       (f {:db         db
           :creating   creating
           :deletable  deletable
@@ -58,9 +58,9 @@
       [:model/Database db {:settings {:persist-models-enabled true}}
        :model/Card          refreshing  {:type :model, :database_id (u/the-id db)}
        :model/PersistedInfo prefreshing {:card_id         (u/the-id refreshing)
-                                          :database_id     (u/the-id db)
-                                          :state           "refreshing"
-                                          :state_change_at two-hours-ago}]
+                                         :database_id     (u/the-id db)
+                                         :state           "refreshing"
+                                         :state_change_at two-hours-ago}]
       (let [card-ids       (atom #{})
             test-refresher (reify task.persist-refresh/Refresher
                              (refresh! [_ _database _definition card]

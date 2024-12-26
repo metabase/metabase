@@ -46,7 +46,7 @@
                               {:filter [:and [:> $id 1] [:< $id 4]]})]
               (Thread/sleep 1)
               (t2/update! :model/Card card-id {:dataset_query new-query
-                                                :updated_at    (t/local-date-time)}))
+                                               :updated_at    (t/local-date-time)}))
             (params.field-values/get-or-create-advanced-field-values!
              fv-type
              (t2/select-one :model/Field :id (mt/id :categories :id)))
@@ -142,17 +142,17 @@
           (testing "gtap with native question"
             (mt/with-temp
               [:model/Card                       {card-id :id} {:query_type :native
-                                                                 :name "A native query"
-                                                                 :dataset_query
-                                                                 {:type :native
-                                                                  :database (mt/id)
-                                                                  :native
-                                                                  {:query "SELECT * FROM People WHERE state = {{STATE}}"
-                                                                   :template-tags
-                                                                   {"STATE" {:id "72461b3b-3877-4538-a5a3-7a3041924517"
-                                                                             :name "STATE"
-                                                                             :display-name "STATE"
-                                                                             :type "text"}}}}}
+                                                                :name "A native query"
+                                                                :dataset_query
+                                                                {:type :native
+                                                                 :database (mt/id)
+                                                                 :native
+                                                                 {:query "SELECT * FROM People WHERE state = {{STATE}}"
+                                                                  :template-tags
+                                                                  {"STATE" {:id "72461b3b-3877-4538-a5a3-7a3041924517"
+                                                                            :name "STATE"
+                                                                            :display-name "STATE"
+                                                                            :type "text"}}}}}
                :model/PermissionsGroup           {group-id :id} {}
                :model/User                       {user-id :id} {}
                :model/PermissionsGroupMembership _ {:group_id group-id

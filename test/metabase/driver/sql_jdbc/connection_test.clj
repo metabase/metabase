@@ -189,10 +189,10 @@
 (deftest connection-pool-invalidated-on-details-change-postgres-secrets-are-stable-test
   (testing "postgres secrets are stable (#23034)"
     (mt/with-temp [:model/Secret secret {:name       "file based secret"
-                                          :kind       :perm-cert
-                                          :source     nil
-                                          :value      (.getBytes "super secret")
-                                          :creator_id (mt/user->id :crowberto)}]
+                                         :kind       :perm-cert
+                                         :source     nil
+                                         :value      (.getBytes "super secret")
+                                         :creator_id (mt/user->id :crowberto)}]
       (let [db {:engine  :postgres
                 :details {:ssl                      true
                           :ssl-mode                 "verify-ca"

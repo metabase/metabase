@@ -237,13 +237,13 @@
   [existing-id nm kind src value]
   (let [insert-new     (fn [id v]
                          (let [inserted (first (t2/insert-returning-instances! :model/Secret (cond-> {:version    v
-                                                                                                       :name       nm
-                                                                                                       :kind       kind
-                                                                                                       :source     src
-                                                                                                       :value      value
-                                                                                                       :creator_id api/*current-user-id*}
-                                                                                                id
-                                                                                                (assoc :id id))))]
+                                                                                                      :name       nm
+                                                                                                      :kind       kind
+                                                                                                      :source     src
+                                                                                                      :value      value
+                                                                                                      :creator_id api/*current-user-id*}
+                                                                                               id
+                                                                                               (assoc :id id))))]
                            ;; Toucan doesn't support composite primary keys, so adding a new record with incremented
                            ;; version for an existing ID won't return a result from t2/insert!, hence we may need to
                            ;; manually select it here

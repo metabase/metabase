@@ -19,7 +19,7 @@
   {:parameterized_object_type mi/transform-keyword})
 
 (defonce ^{:doc "Set of valid parameterized_object_type for a ParameterCard"}
- valid-parameterized-object-type #{"dashboard" "card"})
+  valid-parameterized-object-type #{"dashboard" "card"})
 
 (defn- validate-parameterized-object-type
   [{:keys [parameterized_object_type] :as _parameter-card}]

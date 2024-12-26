@@ -235,8 +235,8 @@
     (mt/with-temp [:model/Database {database-id :id} {}
                    :model/Table    {table-id :id}    {:db_id database-id}
                    :model/Segment  {:keys [id]}      {:creator_id (mt/user->id :crowberto)
-                                                       :table_id   table-id
-                                                       :definition {:filter [:= [:field 2 nil] "cans"]}}]
+                                                      :table_id   table-id
+                                                      :definition {:filter [:= [:field 2 nil] "cans"]}}]
       (mt/with-full-data-perms-for-all-users!
         (is (= {:name                    "Toucans in the rainforest"
                 :description             "Lookin' for a blueberry"
@@ -272,20 +272,20 @@
       [:model/Database {database-id :id} {}
        :model/Table    {table-id :id}    {:db_id database-id}
        :model/Segment  {:keys [id]}      {:creator_id (mt/user->id :crowberto)
-                                           :table_id   table-id
-                                           :definition {:database 123
-                                                        :query    {:filter [:= [:field 2 nil] "cans"]}}}
+                                          :table_id   table-id
+                                          :definition {:database 123
+                                                       :query    {:filter [:= [:field 2 nil] "cans"]}}}
        :model/Revision _                 {:model       "Segment"
-                                           :model_id    id
-                                           :object      {:name       "b"
-                                                         :definition {:filter [:and [:> 1 25]]}}
-                                           :is_creation true}
+                                          :model_id    id
+                                          :object      {:name       "b"
+                                                        :definition {:filter [:and [:> 1 25]]}}
+                                          :is_creation true}
        :model/Revision _                 {:model    "Segment"
-                                           :model_id id
-                                           :user_id  (mt/user->id :crowberto)
-                                           :object   {:name       "c"
-                                                      :definition {:filter [:and [:> 1 25]]}}
-                                           :message  "updated"}]
+                                          :model_id id
+                                          :user_id  (mt/user->id :crowberto)
+                                          :object   {:name       "c"
+                                                     :definition {:filter [:and [:> 1 25]]}}
+                                          :message  "updated"}]
       (mt/with-full-data-perms-for-all-users!
         (is (=? [{:is_reversion false
                   :is_creation  false
@@ -328,36 +328,36 @@
       [:model/Database {database-id :id} {}
        :model/Table    {table-id :id}    {:db_id database-id}
        :model/Segment  {:keys [id]}      {:creator_id              (mt/user->id :crowberto)
-                                           :table_id                table-id
-                                           :name                    "One Segment to rule them all, one segment to define them"
-                                           :description             "One segment to bring them all, and in the DataModel bind them"
-                                           :show_in_getting_started false
-                                           :caveats                 nil
-                                           :points_of_interest      nil
-                                           :definition              {:filter [:= [:field 2 nil] "cans"]}}
+                                          :table_id                table-id
+                                          :name                    "One Segment to rule them all, one segment to define them"
+                                          :description             "One segment to bring them all, and in the DataModel bind them"
+                                          :show_in_getting_started false
+                                          :caveats                 nil
+                                          :points_of_interest      nil
+                                          :definition              {:filter [:= [:field 2 nil] "cans"]}}
        :model/Revision {revision-id :id} {:model       "Segment"
-                                           :model_id    id
-                                           :object      {:creator_id              (mt/user->id :crowberto)
-                                                         :table_id                table-id
-                                                         :name                    "One Segment to rule them all, one segment to define them"
-                                                         :description             "One segment to bring them all, and in the DataModel bind them"
-                                                         :show_in_getting_started false
-                                                         :caveats                 nil
-                                                         :points_of_interest      nil
-                                                         :definition              {:filter [:= [:field 2 nil] "cans"]}}
-                                           :is_creation true}
+                                          :model_id    id
+                                          :object      {:creator_id              (mt/user->id :crowberto)
+                                                        :table_id                table-id
+                                                        :name                    "One Segment to rule them all, one segment to define them"
+                                                        :description             "One segment to bring them all, and in the DataModel bind them"
+                                                        :show_in_getting_started false
+                                                        :caveats                 nil
+                                                        :points_of_interest      nil
+                                                        :definition              {:filter [:= [:field 2 nil] "cans"]}}
+                                          :is_creation true}
        :model/Revision _                 {:model    "Segment"
-                                           :model_id id
-                                           :user_id  (mt/user->id :crowberto)
-                                           :object   {:creator_id              (mt/user->id :crowberto)
-                                                      :table_id                table-id
-                                                      :name                    "Changed Segment Name"
-                                                      :description             "One segment to bring them all, and in the DataModel bind them"
-                                                      :show_in_getting_started false
-                                                      :caveats                 nil
-                                                      :points_of_interest      nil
-                                                      :definition              {:filter [:= [:field 2 nil] "cans"]}}
-                                           :message  "updated"}]
+                                          :model_id id
+                                          :user_id  (mt/user->id :crowberto)
+                                          :object   {:creator_id              (mt/user->id :crowberto)
+                                                     :table_id                table-id
+                                                     :name                    "Changed Segment Name"
+                                                     :description             "One segment to bring them all, and in the DataModel bind them"
+                                                     :show_in_getting_started false
+                                                     :caveats                 nil
+                                                     :points_of_interest      nil
+                                                     :definition              {:filter [:= [:field 2 nil] "cans"]}}
+                                          :message  "updated"}]
       (testing "the api response"
         (is (=? {:is_reversion true
                  :is_creation  false
@@ -402,13 +402,13 @@
 (deftest list-test
   (testing "GET /api/segment/"
     (t2.with-temp/with-temp [:model/Segment {id-1 :id} {:name     "Segment 1"
-                                                         :table_id (mt/id :users)}
+                                                        :table_id (mt/id :users)}
                              :model/Segment {id-2 :id} {:name       "Segment 2"
-                                                         :definition (:query (mt/mbql-query venues
-                                                                               {:filter
-                                                                                [:and
-                                                                                 [:= $price 4]
-                                                                                 [:= $category_id->categories.name "BBQ"]]}))}
+                                                        :definition (:query (mt/mbql-query venues
+                                                                              {:filter
+                                                                               [:and
+                                                                                [:= $price 4]
+                                                                                [:= $category_id->categories.name "BBQ"]]}))}
                              ;; inactive segments shouldn't show up
                              :model/Segment {id-3 :id} {:archived true}]
       (mt/with-full-data-perms-for-all-users!

@@ -197,9 +197,9 @@
               (mt/with-actions-enabled
                 (is (not= (mt/id) test-data-id))
                 (mt/with-temp [:model/Card model {:type :model
-                                                   :dataset_query
-                                                   (mt/native-query
-                                                     {:query "select * from checkins limit 1"})}]
+                                                  :dataset_query
+                                                  (mt/native-query
+                                                    {:query "select * from checkins limit 1"})}]
                   (let [action (cross-db-action (:id model) test-data-id)
                         response (mt/user-http-request :rasta :post 400 "action"
                                                        action)]
@@ -313,7 +313,7 @@
   (testing "Implicit actions are not supported on models that have clauses (aggregation, sort, breakout, ...)"
     (mt/with-actions-enabled
       (t2.with-temp/with-temp [:model/Card {model-id :id} {:dataset_query (mt/mbql-query users {:aggregation [[:count]]})
-                                                            :type          :model}]
+                                                           :type          :model}]
         (is (= "Implicit actions are not supported for models with clauses."
                (mt/user-http-request :crowberto :post 400 "action"
                                      {:name       "Implicit example"

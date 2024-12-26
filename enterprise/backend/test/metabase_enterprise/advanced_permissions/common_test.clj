@@ -385,8 +385,8 @@
                    :model/Table    table2 {:db_id db-id, :schema "schema2"}
                    :model/Field    fk-field {:table_id (:id table1)}
                    :model/Field    field {:table_id           (:id table2)
-                                           :semantic_type      :type/FK
-                                           :fk_target_field_id (:id fk-field)}]
+                                          :semantic_type      :type/FK
+                                          :fk_target_field_id (:id fk-field)}]
       (let [expected-target (-> fk-field
                                 (update :base_type u/qualified-name)
                                 (update :visibility_type u/qualified-name))
@@ -419,8 +419,8 @@
                    :model/Field    fk-field-1 {:table_id (:id table1)}
                    :model/Field    fk-field-2 {:table_id (:id table2)}
                    :model/Field    field {:table_id           (:id table3)
-                                           :semantic_type      :type/FK
-                                           :fk_target_field_id (:id fk-field-1)}]
+                                          :semantic_type      :type/FK
+                                          :fk_target_field_id (:id fk-field-1)}]
       (let [expected-target (-> fk-field-2
                                 (update :base_type u/qualified-name)
                                 (update :visibility_type u/qualified-name))
@@ -769,8 +769,8 @@
         (testing "Executing dashcard with action"
           (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                          :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
-                                                                  :action_id    action-id
-                                                                  :card_id      model-id}]
+                                                                 :action_id    action-id
+                                                                 :card_id      model-id}]
             (mt/with-full-data-perms-for-all-users!
               (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
                                          dashboard-id

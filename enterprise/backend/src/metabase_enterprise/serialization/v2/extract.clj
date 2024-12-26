@@ -48,10 +48,10 @@
   Does not export ee-only analytics collections."
   [user-id]
   (let [roots (t2/select :model/Collection {:where [:and [:= :location "/"]
-                                             [:or [:= :personal_owner_id nil]
-                                              [:= :personal_owner_id user-id]]
-                                             [:or [:= :namespace nil]
-                                              [:!= :namespace "analytics"]]]})]
+                                                    [:or [:= :personal_owner_id nil]
+                                                     [:= :personal_owner_id user-id]]
+                                                    [:or [:= :namespace nil]
+                                                     [:!= :namespace "analytics"]]]})]
     ;; start with the special "nil" root collection ID
     (-> #{nil}
         (into (map :id) roots)
@@ -79,9 +79,9 @@
   (log/tracef "Running escape analysis for %d colls and %d cards" (count colls) (count cards))
   (when-let [colls (-> colls set not-empty)]
     (let [known-cards (t2/select-pks-set :model/Card {:where [:or
-                                                               [:in :collection_id colls]
-                                                               (when (contains? colls nil)
-                                                                 [:= :collection_id nil])]})
+                                                              [:in :collection_id colls]
+                                                              (when (contains? colls nil)
+                                                                [:= :collection_id nil])]})
           escaped     (->> (set/difference (set cards) known-cards)
                            (mapv (fn [id]
                                    (-> (get nodes ["Card" id])

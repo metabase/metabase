@@ -39,7 +39,7 @@
     (let [session-id (random-session-id)]
       (try
         (t2/insert! :model/Session {:id      session-id
-                                     :user_id (test.users/user->id :rasta)})
+                                    :user_id (test.users/user->id :rasta)})
         (is (= (test.users/user->id :rasta)
                (-> (auth-enforced-handler (request-with-session-id session-id))
                    :metabase-user-id)))
@@ -57,7 +57,7 @@
       (let [session-id (random-session-id)]
         (try
           (t2/insert! :model/Session {:id      session-id
-                                       :user_id (test.users/user->id :rasta)})
+                                      :user_id (test.users/user->id :rasta)})
           (t2/update! (t2/table-name :model/Session) {:id session-id}
                       {:created_at (t/instant 1000)})
           (is (= request/response-unauthentic
@@ -71,7 +71,7 @@
       (let [session-id (random-session-id)]
         (try
           (t2/insert! :model/Session {:id      session-id
-                                       :user_id (test.users/user->id :trashbird)})
+                                      :user_id (test.users/user->id :trashbird)})
           (is (= request/response-unauthentic
                  (auth-enforced-handler
                   (request-with-session-id session-id))))

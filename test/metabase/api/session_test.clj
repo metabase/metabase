@@ -516,7 +516,7 @@
   (ldap.test/with-ldap-server!
     (testing "Test that we can login with LDAP"
       (t2.with-temp/with-temp [:model/User _ {:email    "ngoc@metabase.com"
-                                                       :password "securedpassword"}]
+                                              :password "securedpassword"}]
         (is (malli= SessionResponse
                     (mt/client :post 200 "session" {:username "ngoc@metabase.com"
                                                     :password "securedpassword"})))))
@@ -538,8 +538,8 @@
 
     (testing "Test that a deactivated user cannot login with LDAP"
       (t2.with-temp/with-temp [:model/User _ {:email    "ngoc@metabase.com"
-                                                       :password "securedpassword"
-                                                       :is_active false}]
+                                              :password "securedpassword"
+                                              :is_active false}]
         (is (= {:errors {:_error "Your account is disabled."}}
                (mt/client :post 401 "session" {:username "ngoc@metabase.com"
                                                :password "securedpassword"})))))
@@ -547,7 +547,7 @@
     (testing "Test that login will fallback to local for broken LDAP settings"
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
         (t2.with-temp/with-temp [:model/User _ {:email    "ngoc@metabase.com"
-                                                         :password "securedpassword"}]
+                                                :password "securedpassword"}]
           (is (malli= SessionResponse
                       (mt/client :post 200 "session" {:username "ngoc@metabase.com"
                                                       :password "securedpassword"}))))))

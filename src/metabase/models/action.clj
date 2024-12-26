@@ -121,11 +121,11 @@
                                   (assoc :action_id (:id action))
                                   (cond->
                                    (= (:type action) :implicit)
-                                   (dissoc :database_id)
-                                   (= (:type action) :http)
-                                   (update :template json/encode)
-                                   (= (:type action) :query)
-                                   (update :dataset_query json/encode)))]})
+                                    (dissoc :database_id)
+                                    (= (:type action) :http)
+                                    (update :template json/encode)
+                                    (= (:type action) :query)
+                                    (update :dataset_query json/encode)))]})
       (:id action))))
 
 (defn update!

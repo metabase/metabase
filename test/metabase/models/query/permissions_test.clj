@@ -289,7 +289,7 @@
                                             (format "/collection/%d/read/" collection-2-id)}}
                    (query-perms/required-perms-for-query
                     (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                      (lib/->pMBQL native-query)))))))))))
+                               (lib/->pMBQL native-query)))))))))))
 
 (deftest ^:parallel native-query-source-card-id-join-permissions-test
   (testing "MBQL query with native source card (#30077)"

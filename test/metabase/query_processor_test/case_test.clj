@@ -47,8 +47,8 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Can we use segments in case"
       (t2.with-temp/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                                 :definition {:source-table (mt/id :venues)
-                                                                              :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
+                                                                :definition {:source-table (mt/id :venues)
+                                                                             :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
         (is (=  179.0  (test-case [:sum [:case [[[:segment segment-id] [:field (mt/id :venues :price) nil]]]]])))))))
 
 (deftest ^:parallel test-case-aggregations-in-metric

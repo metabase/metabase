@@ -1283,7 +1283,7 @@
   (if-not collection-symb
     `(do ~@body)
     `(t2.with-temp/with-temp [:model/Collection ~collection-symb {:name     ~(u/upper-case-en (name collection-symb))
-                                                                   :location ~parent-location}]
+                                                                  :location ~parent-location}]
        (with-collection-hierarchy-in (collection/children-location ~collection-symb) ~more ~@body))))
 
 (defmacro ^:private with-personal-and-impersonal-collections {:style/indent 1}
@@ -1655,17 +1655,17 @@
   (testing "Collection hashes are composed of the name, namespace, and parent collection's hash"
     (let [now #t "2022-09-01T12:34:56"]
       (t2.with-temp/with-temp [:model/Collection c1 {:name       "top level"
-                                                      :created_at now
-                                                      :namespace  "yolocorp"
-                                                      :location   "/"}
+                                                     :created_at now
+                                                     :namespace  "yolocorp"
+                                                     :location   "/"}
                                :model/Collection c2 {:name       "nested"
-                                                      :created_at now
-                                                      :namespace  "yolocorp"
-                                                      :location   (format "/%s/" (:id c1))}
+                                                     :created_at now
+                                                     :namespace  "yolocorp"
+                                                     :location   (format "/%s/" (:id c1))}
                                :model/Collection c3 {:name       "grandchild"
-                                                      :created_at now
-                                                      :namespace  "yolocorp"
-                                                      :location   (format "/%s/%s/" (:id c1) (:id c2))}]
+                                                     :created_at now
+                                                     :namespace  "yolocorp"
+                                                     :location   (format "/%s/%s/" (:id c1) (:id c2))}]
         (let [c1-hash (serdes/identity-hash c1)
               c2-hash (serdes/identity-hash c2)]
           (is (= "f2620cc6"

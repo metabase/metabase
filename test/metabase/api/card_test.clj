@@ -1268,11 +1268,11 @@
                                   (update :user #(select-keys % [:id]))
                                   (select-keys [:status :text :user])))]
             (mt/with-temp [:model/ModerationReview review {:moderated_item_id   (:id card)
-                                                            :moderated_item_type "card"
-                                                            :moderator_id        (mt/user->id :rasta)
-                                                            :most_recent         true
-                                                            :status              "verified"
-                                                            :text                "lookin good"}]
+                                                           :moderated_item_type "card"
+                                                           :moderator_id        (mt/user->id :rasta)
+                                                           :most_recent         true
+                                                           :status              "verified"
+                                                           :text                "lookin good"}]
               (is (= [(clean (assoc review :user {:id true}))]
                      (->> (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))
                           mt/boolean-ids-and-timestamps
@@ -1821,18 +1821,18 @@
         (mt/with-temp
           [:model/Card           card  card
            :model/Pulse                 pulse {:alert_condition  "rows"
-                                                :alert_first_only false
-                                                :creator_id       (mt/user->id :rasta)
-                                                :name             "Original Alert Name"}
+                                               :alert_first_only false
+                                               :creator_id       (mt/user->id :rasta)
+                                               :name             "Original Alert Name"}
 
            :model/PulseCard             _     {:pulse_id (u/the-id pulse)
-                                                :card_id  (u/the-id card)
-                                                :position 0}
+                                               :card_id  (u/the-id card)
+                                               :position 0}
            :model/PulseChannel          pc    {:pulse_id (u/the-id pulse)}
            :model/PulseChannelRecipient _     {:user_id          (mt/user->id :crowberto)
-                                                :pulse_channel_id (u/the-id pc)}
+                                               :pulse_channel_id (u/the-id pc)}
            :model/PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
-                                                :pulse_channel_id (u/the-id pc)}]
+                                               :pulse_channel_id (u/the-id pc)}]
           (mt/with-temporary-setting-values [site-url "https://metabase.com"]
             (with-cards-in-writeable-collection! card
               (mt/with-fake-inbox
@@ -1858,15 +1858,15 @@
          (mt/with-temp [:model/Card           card  {:display                :line
                                                      :visualization_settings {:graph.goal_value 10}}
                         :model/Pulse                 pulse {:alert_condition  "goal"
-                                                             :alert_first_only false
-                                                             :creator_id       (mt/user->id :rasta)
-                                                             :name             "Original Alert Name"}
+                                                            :alert_first_only false
+                                                            :creator_id       (mt/user->id :rasta)
+                                                            :name             "Original Alert Name"}
                         :model/PulseCard             _     {:pulse_id (u/the-id pulse)
-                                                             :card_id  (u/the-id card)
-                                                             :position 0}
+                                                            :card_id  (u/the-id card)
+                                                            :position 0}
                         :model/PulseChannel          pc    {:pulse_id (u/the-id pulse)}
                         :model/PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
-                                                             :pulse_channel_id (u/the-id pc)}]
+                                                            :pulse_channel_id (u/the-id pc)}]
            (with-cards-in-writeable-collection! card
              (mt/with-fake-inbox
                (array-map
@@ -1940,14 +1940,14 @@
                    :model/Timeline _ {:name          "Timeline C"
                                       :collection_id (u/the-id coll-c)}
                    :model/TimelineEvent _ {:name        "event-aa"
-                                            :timeline_id (u/the-id tl-a)}
+                                           :timeline_id (u/the-id tl-a)}
                    :model/TimelineEvent _ {:name        "event-ab"
-                                            :timeline_id (u/the-id tl-a)}
+                                           :timeline_id (u/the-id tl-a)}
                    :model/TimelineEvent _ {:name        "event-ba"
-                                            :timeline_id (u/the-id tl-b)}
+                                           :timeline_id (u/the-id tl-b)}
                    :model/TimelineEvent _ {:name        "event-bb"
-                                            :timeline_id (u/the-id tl-b)
-                                            :archived    true}]
+                                           :timeline_id (u/the-id tl-b)
+                                           :archived    true}]
       (testing "Timelines in the collection of the card are returned"
         (is (= #{"Timeline A"}
                (timeline-names (timelines-request card-a false)))))
@@ -1982,17 +1982,17 @@
                                          :collection_id (u/the-id collection)}
                    ;; the temp defaults set {:time_matters true}
                    :model/TimelineEvent _ {:name        "event-a"
-                                            :timeline_id (u/the-id tl-a)
-                                            :timestamp   #t "2020-01-01T10:00:00.0Z"}
+                                           :timeline_id (u/the-id tl-a)
+                                           :timestamp   #t "2020-01-01T10:00:00.0Z"}
                    :model/TimelineEvent _ {:name        "event-b"
-                                            :timeline_id (u/the-id tl-a)
-                                            :timestamp   #t "2021-01-01T10:00:00.0Z"}
+                                           :timeline_id (u/the-id tl-a)
+                                           :timestamp   #t "2021-01-01T10:00:00.0Z"}
                    :model/TimelineEvent _ {:name        "event-c"
-                                            :timeline_id (u/the-id tl-a)
-                                            :timestamp   #t "2022-01-01T10:00:00.0Z"}
+                                           :timeline_id (u/the-id tl-a)
+                                           :timestamp   #t "2022-01-01T10:00:00.0Z"}
                    :model/TimelineEvent _ {:name        "event-d"
-                                            :timeline_id (u/the-id tl-a)
-                                            :timestamp   #t "2023-01-01T10:00:00.0Z"}]
+                                           :timeline_id (u/the-id tl-a)
+                                           :timestamp   #t "2023-01-01T10:00:00.0Z"}]
       (testing "Events are properly filtered when given only `start=` parameter"
         (is (= #{"event-c" "event-d"}
                (event-names (timelines-range-request card {:start "2022-01-01T10:00:00.0Z"})))))
@@ -2004,9 +2004,9 @@
                (event-names (timelines-range-request card {:start "2020-12-01T10:00:00.0Z"
                                                            :end   "2022-12-01T10:00:00.0Z"})))))
       (t2.with-temp/with-temp [:model/TimelineEvent _ {:name         "event-a2"
-                                                        :timeline_id  (u/the-id tl-a)
-                                                        :timestamp    #t "2020-01-01T10:00:00.0Z"
-                                                        :time_matters false}]
+                                                       :timeline_id  (u/the-id tl-a)
+                                                       :timestamp    #t "2020-01-01T10:00:00.0Z"
+                                                       :time_matters false}]
         (testing "Events are properly filtered considering the `time_matters` state."
           ;; notice that event-a and event-a2 have the same timestamp, but different time_matters states.
           ;; time_matters = false effectively means "We care only about the DATE of this event", so
@@ -2089,44 +2089,44 @@
                                               "[\"ref\",[\"expression\",\"Tax Rate\"]]"
                                               {:column_title "Effective Tax Rate"}}}]
         (t2.with-temp/with-temp [:model/Card {base-card-id :id} {:dataset_query          {:database (mt/id)
-                                                                                           :type     :query
-                                                                                           :query    query}
-                                                                  :visualization_settings viz-settings}
-                                 :model/Card {model-card-id  :id
-                                               model-metadata :result_metadata} {:type          :model
-                                                                                 :dataset_query {:database (mt/id)
-                                                                                                 :type     :query
-                                                                                                 :query    {:source-table
-                                                                                                            (format "card__%s" base-card-id)}}}
-                                 :model/Card {meta-model-card-id :id} {:type            :model
-                                                                        :dataset_query   {:database (mt/id)
                                                                                           :type     :query
-                                                                                          :query    {:source-table
-                                                                                                     (format "card__%s" model-card-id)}}
-                                                                        :result_metadata (mapv
-                                                                                          (fn [{column-name :name :as col}]
-                                                                                            (cond-> col
-                                                                                              (= "DISCOUNT" column-name)
-                                                                                              (assoc :display_name "Amount of Discount")
-                                                                                              (= "TOTAL" column-name)
-                                                                                              (assoc :display_name "Grand Total")
-                                                                                              (= "QUANTITY" column-name)
-                                                                                              (assoc :display_name "N")))
-                                                                                          model-metadata)}
+                                                                                          :query    query}
+                                                                 :visualization_settings viz-settings}
+                                 :model/Card {model-card-id  :id
+                                              model-metadata :result_metadata} {:type          :model
+                                                                                :dataset_query {:database (mt/id)
+                                                                                                :type     :query
+                                                                                                :query    {:source-table
+                                                                                                           (format "card__%s" base-card-id)}}}
+                                 :model/Card {meta-model-card-id :id} {:type            :model
+                                                                       :dataset_query   {:database (mt/id)
+                                                                                         :type     :query
+                                                                                         :query    {:source-table
+                                                                                                    (format "card__%s" model-card-id)}}
+                                                                       :result_metadata (mapv
+                                                                                         (fn [{column-name :name :as col}]
+                                                                                           (cond-> col
+                                                                                             (= "DISCOUNT" column-name)
+                                                                                             (assoc :display_name "Amount of Discount")
+                                                                                             (= "TOTAL" column-name)
+                                                                                             (assoc :display_name "Grand Total")
+                                                                                             (= "QUANTITY" column-name)
+                                                                                             (assoc :display_name "N")))
+                                                                                         model-metadata)}
                                  :model/Card {question-card-id :id} {:dataset_query          {:database (mt/id)
-                                                                                               :type     :query
-                                                                                               :query    {:source-table
-                                                                                                          (format "card__%s" meta-model-card-id)}}
-                                                                      :visualization_settings {:table.pivot_column "DISCOUNT",
-                                                                                               :table.cell_column  "TAX",
-                                                                                               :column_settings    {(format
-                                                                                                                     "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
-                                                                                                                     (mt/id :orders :quantity))
-                                                                                                                    {:column_title "Count"}
-                                                                                                                    (format
-                                                                                                                     "[\"ref\",[\"field\",%s,{\"base-type\":\"type/BigInteger\"}]]"
-                                                                                                                     (mt/id :orders :id))
-                                                                                                                    {:column_title "IDENTIFIER"}}}}]
+                                                                                              :type     :query
+                                                                                              :query    {:source-table
+                                                                                                         (format "card__%s" meta-model-card-id)}}
+                                                                     :visualization_settings {:table.pivot_column "DISCOUNT",
+                                                                                              :table.cell_column  "TAX",
+                                                                                              :column_settings    {(format
+                                                                                                                    "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
+                                                                                                                    (mt/id :orders :quantity))
+                                                                                                                   {:column_title "Count"}
+                                                                                                                   (format
+                                                                                                                    "[\"ref\",[\"field\",%s,{\"base-type\":\"type/BigInteger\"}]]"
+                                                                                                                    (mt/id :orders :id))
+                                                                                                                   {:column_title "IDENTIFIER"}}}}]
           (letfn [(col-names [card-id]
                     (->> (mt/user-http-request :crowberto :post 200
                                                (format "card/%d/query/json" card-id)
@@ -2182,13 +2182,13 @@
 (deftest xlsx-timestamp-formatting-test
   (testing "A timestamp should format correctly in an excel export (#14393)"
     (t2.with-temp/with-temp [:model/Card card {:dataset_query {:database (mt/id)
-                                                                :type     :native
-                                                                :native   {:query "select (TIMESTAMP '2023-01-01 12:34:56') as T"}}
-                                                :display :table
-                                                :visualization_settings {:table.pivot_column "T",
-                                                                         :column_settings {"[\"name\",\"T\"]" {:date_style "YYYY/M/D",
-                                                                                                               :date_separator "-",
-                                                                                                               :time_enabled nil}}}}]
+                                                               :type     :native
+                                                               :native   {:query "select (TIMESTAMP '2023-01-01 12:34:56') as T"}}
+                                               :display :table
+                                               :visualization_settings {:table.pivot_column "T",
+                                                                        :column_settings {"[\"name\",\"T\"]" {:date_style "YYYY/M/D",
+                                                                                                              :date_separator "-",
+                                                                                                              :time_enabled nil}}}}]
       (testing "Removing the time portion of the timestamp should only show the date"
         (is (= [["T"] ["2023-1-1"]]
                (parse-xlsx-results-to-strings
@@ -2198,12 +2198,12 @@
 (deftest xlsx-default-currency-formatting-test
   (testing "The default currency is USD"
     (t2.with-temp/with-temp [:model/Card card {:dataset_query          {:database (mt/id)
-                                                                         :type     :native
-                                                                         :native   {:query "SELECT 123.45 AS MONEY"}}
-                                                :display                :table
-                                                :visualization_settings {:column_settings {"[\"name\",\"MONEY\"]"
-                                                                                           {:number_style       "currency"
-                                                                                            :currency_in_header false}}}}]
+                                                                        :type     :native
+                                                                        :native   {:query "SELECT 123.45 AS MONEY"}}
+                                               :display                :table
+                                               :visualization_settings {:column_settings {"[\"name\",\"MONEY\"]"
+                                                                                          {:number_style       "currency"
+                                                                                           :currency_in_header false}}}}]
       (is (= [["MONEY"]
               ["[$$]123.45"]]
              (parse-xlsx-results-to-strings
@@ -2215,12 +2215,12 @@
     (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}
                                                           :type/Currency {:currency "EUR", :currency_style "symbol"}}]
       (t2.with-temp/with-temp [:model/Card card {:dataset_query          {:database (mt/id)
-                                                                           :type     :native
-                                                                           :native   {:query "SELECT 123.45 AS MONEY"}}
-                                                  :display                :table
-                                                  :visualization_settings {:column_settings {"[\"name\",\"MONEY\"]"
-                                                                                             {:number_style       "currency"
-                                                                                              :currency_in_header false}}}}]
+                                                                          :type     :native
+                                                                          :native   {:query "SELECT 123.45 AS MONEY"}}
+                                                 :display                :table
+                                                 :visualization_settings {:column_settings {"[\"name\",\"MONEY\"]"
+                                                                                            {:number_style       "currency"
+                                                                                             :currency_in_header false}}}}]
         (is (= [["MONEY"]
                 ["[$€]123.45"]]
                (parse-xlsx-results-to-strings
@@ -2239,10 +2239,10 @@
                            {}
                            currencies)]
       (t2.with-temp/with-temp [:model/Card card {:dataset_query          {:database (mt/id)
-                                                                           :type     :native
-                                                                           :native   {:query q}}
-                                                  :display                :table
-                                                  :visualization_settings {:column_settings settings}}]
+                                                                          :type     :native
+                                                                          :native   {:query q}}
+                                                 :display                :table
+                                                 :visualization_settings {:column_settings settings}}]
         (testing "Removing the time portion of the timestamp should only show the date"
           (is (= [currencies
                   ["[$$]123.45" "[$CA$]123.45" "[$€]123.45" "[$¥]123.45"]]
@@ -2360,10 +2360,10 @@
       (testing "The default settings (USD) are applied correctly"
         (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}}]
           (t2.with-temp/with-temp [:model/Card card {:dataset_query          {:database (mt/id)
-                                                                               :type     :native
-                                                                               :native   {:query excel-data-query}}
-                                                      :display                :table
-                                                      :visualization_settings viz-settings}]
+                                                                              :type     :native
+                                                                              :native   {:query excel-data-query}}
+                                                     :display                :table
+                                                     :visualization_settings viz-settings}]
             ;; The following formatting has been applied:
             ;; - All columns renamed
             ;; - Column reordering
@@ -2392,10 +2392,10 @@
         (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}
                                                               :type/Currency {:currency "EUR", :currency_style "symbol"}}]
           (t2.with-temp/with-temp [:model/Card card {:dataset_query          {:database (mt/id)
-                                                                               :type     :native
-                                                                               :native   {:query excel-data-query}}
-                                                      :display                :table
-                                                      :visualization_settings viz-settings}]
+                                                                              :type     :native
+                                                                              :native   {:query excel-data-query}}
+                                                     :display                :table
+                                                     :visualization_settings viz-settings}]
             (testing "All formatting is applied correctly in a complex situation."
               (is (= [["No Formatting TS" "DATE-ONLY TS" "TS W/FORMATTING" "Date" "Time" "Plain Currency (€)" "Col $" "USD Col" "DOL Col" "EXPO" "Scaled PCT" "3D PCT"]
                       ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "1,234.05" "[$€]1,234.05" "[$EUR] 2345.05" "4,321.05 euros" "7180.64E+0" "0.05%" "19.200%"]
@@ -2583,72 +2583,72 @@
                                      :status              "verified"
                                      :text                "lookin good"}]))
          ~@body))]
-   (letfn [(verified? [card]
-             (-> card (t2/hydrate [:moderation_reviews :moderator_details])
-                 :moderation_reviews first :status #{"verified"} boolean))
-           (reviews [card]
-             (t2/select :model/ModerationReview
-                        :moderated_item_type "card"
-                        :moderated_item_id (u/the-id card)
-                        {:order-by [[:id :desc]]}))
-           (update-card [card diff]
-             (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) (merge card diff)))]
-     (testing "Changing core attributes un-verifies the card"
-       (with-card :verified
-         (is (verified? card))
-         (update-card card (update-in card [:dataset_query :query :source-table] inc))
-         (is (not (verified? card)))
-         (testing "The unverification edit has explanatory text"
-           (is (= "Unverified due to edit"
-                  (-> (reviews card) first :text))))))
-     (testing "Changing some attributes does not unverify"
-       (tools.macro/macrolet [(remains-verified [& body]
-                                `(~'with-card :verified
-                                              (is (~'verified? ~'card) "Not verified initially")
-                                              ~@body
-                                              (is (~'verified? ~'card) "Not verified after action")))]
-         (testing "changing collection"
-           (remains-verified
-            (update-card card {:collection_id (u/the-id collection2)})))
-         (testing "pinning"
-           (remains-verified
-            (update-card card {:collection_position 1})))
-         (testing "making public"
-           (remains-verified
-            (update-card card {:made_public_by_id (mt/user->id :rasta)
-                               :public_uuid (random-uuid)})))
-         (testing "Changing description"
-           (remains-verified
-            (update-card card {:description "foo"})))
-         (testing "Changing name"
-           (remains-verified
-            (update-card card {:name "foo"})))
-         (testing "Changing archived"
-           (remains-verified
-            (update-card card {:archived true})))
-         (testing "Changing display"
-           (remains-verified
-            (update-card card {:display :line})))
-         (testing "Changing visualization settings"
-           (remains-verified
-            (update-card card {:visualization_settings {:table.cell_column "FOO"}})))))
-     (testing "Does not add a new nil moderation review when not verified"
-       (with-card :not-verified
-         (is (empty? (reviews card)))
-         (update-card card {:description "a new description"})
-         (is (empty? (reviews card)))))
-     (testing "Does not add nil moderation reviews when there are reviews but not verified"
+    (letfn [(verified? [card]
+              (-> card (t2/hydrate [:moderation_reviews :moderator_details])
+                  :moderation_reviews first :status #{"verified"} boolean))
+            (reviews [card]
+              (t2/select :model/ModerationReview
+                         :moderated_item_type "card"
+                         :moderated_item_id (u/the-id card)
+                         {:order-by [[:id :desc]]}))
+            (update-card [card diff]
+              (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) (merge card diff)))]
+      (testing "Changing core attributes un-verifies the card"
+        (with-card :verified
+          (is (verified? card))
+          (update-card card (update-in card [:dataset_query :query :source-table] inc))
+          (is (not (verified? card)))
+          (testing "The unverification edit has explanatory text"
+            (is (= "Unverified due to edit"
+                   (-> (reviews card) first :text))))))
+      (testing "Changing some attributes does not unverify"
+        (tools.macro/macrolet [(remains-verified [& body]
+                                 `(~'with-card :verified
+                                               (is (~'verified? ~'card) "Not verified initially")
+                                               ~@body
+                                               (is (~'verified? ~'card) "Not verified after action")))]
+          (testing "changing collection"
+            (remains-verified
+             (update-card card {:collection_id (u/the-id collection2)})))
+          (testing "pinning"
+            (remains-verified
+             (update-card card {:collection_position 1})))
+          (testing "making public"
+            (remains-verified
+             (update-card card {:made_public_by_id (mt/user->id :rasta)
+                                :public_uuid (random-uuid)})))
+          (testing "Changing description"
+            (remains-verified
+             (update-card card {:description "foo"})))
+          (testing "Changing name"
+            (remains-verified
+             (update-card card {:name "foo"})))
+          (testing "Changing archived"
+            (remains-verified
+             (update-card card {:archived true})))
+          (testing "Changing display"
+            (remains-verified
+             (update-card card {:display :line})))
+          (testing "Changing visualization settings"
+            (remains-verified
+             (update-card card {:visualization_settings {:table.cell_column "FOO"}})))))
+      (testing "Does not add a new nil moderation review when not verified"
+        (with-card :not-verified
+          (is (empty? (reviews card)))
+          (update-card card {:description "a new description"})
+          (is (empty? (reviews card)))))
+      (testing "Does not add nil moderation reviews when there are reviews but not verified"
      ;; testing that we aren't just adding a nil moderation each time we update a card
-       (with-card :verified
-         (is (verified? card))
-         (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
-                                            :moderated_item_type "card"
-                                            :moderator_id        (mt/user->id :rasta)
-                                            :status              nil})
-         (is (not (verified? card)))
-         (is (= 2 (count (reviews card))))
-         (update-card card {:description "a new description"})
-         (is (= 2 (count (reviews card)))))))))
+        (with-card :verified
+          (is (verified? card))
+          (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
+                                             :moderated_item_type "card"
+                                             :moderator_id        (mt/user->id :rasta)
+                                             :status              nil})
+          (is (not (verified? card)))
+          (is (= 2 (count (reviews card))))
+          (update-card card {:description "a new description"})
+          (is (= 2 (count (reviews card)))))))))
 
 (deftest test-that-we-can-bulk-move-some-cards-with-no-collection-into-a-collection
   (mt/with-temp [:model/Collection  collection {:name "Pog Collection"}
@@ -2712,7 +2712,7 @@
 (deftest bulk-move-cards
   (mt/with-temp [:model/Collection   {coll-id-1 :id}      {:name "Old Collection"}
                  :model/Collection   {coll-id-2 :id
-                                       :as new-collection} {:name "New Collection"}
+                                      :as new-collection} {:name "New Collection"}
                  :model/Card  card-a               {:name "a" :collection_id coll-id-1 :collection_position 1}
                  :model/Card  card-b               {:name "b" :collection_id coll-id-1 :collection_position 2}
                  :model/Card  _                    {:name "c" :collection_id coll-id-1 :collection_position 3}
@@ -2736,7 +2736,7 @@
 (deftest moving-a-card-without-a-collection-position-keeps-the-collection-position-nil
   (mt/with-temp [:model/Collection  {coll-id-1 :id}      {:name "Old Collection"}
                  :model/Collection  {coll-id-2 :id
-                                      :as new-collection} {:name "New Collection"}
+                                     :as new-collection} {:name "New Collection"}
                  :model/Card card-a               {:name "a" :collection_id coll-id-1}
                  :model/Card card-b               {:name "b" :collection_id coll-id-2 :collection_position 1}
                  :model/Card _card-c              {:name "c" :collection_id coll-id-2 :collection_position 2}]
@@ -3581,11 +3581,11 @@
           output-helper {:csv  (fn [output] (->> output csv/read-csv))
                          :json (fn [[row]] [(map name (keys row)) (vals row)])}]
       (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query q
-                                                           :display       :table
-                                                           :visualization_settings
-                                                           {:column_settings
-                                                            {"[\"name\",\"NUMBER\"]" {:column_title "Custom Title"}
-                                                             "[\"name\",\"DATE\"]"   {:column_title "Custom Title 2"}}}}]
+                                                          :display       :table
+                                                          :visualization_settings
+                                                          {:column_settings
+                                                           {"[\"name\",\"NUMBER\"]" {:column_title "Custom Title"}
+                                                            "[\"name\",\"DATE\"]"   {:column_title "Custom Title 2"}}}}]
         (doseq [[export-format apply-formatting? expected] [[:csv true [["Custom Title" "Custom Title 2"]
                                                                         ["2,000" "March 26, 2024"]]]
                                                             [:csv false [["NUMBER" "DATE"]
@@ -3694,38 +3694,38 @@
 (deftest query-metadata-test
   (mt/with-temp
     [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)
-                                   :database_id (mt/id)}
+                                  :database_id (mt/id)}
      :model/Card {card-id-2 :id} {:dataset_query
-                                   {:type     :native
-                                    :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */"
-                                               :template-tags
-                                               {"id"      {:name         "id"
-                                                           :display-name "Id"
-                                                           :type         :dimension
-                                                           :dimension    [:field (mt/id :people :id) nil]
-                                                           :widget-type  :id
-                                                           :default      nil}
-                                                "name"    {:name         "name"
-                                                           :display-name "Name"
-                                                           :type         :dimension
-                                                           :dimension    [:field (mt/id :people :name) nil]
-                                                           :widget-type  :category
-                                                           :default      nil}
-                                                "source"  {:name         "source"
-                                                           :display-name "Source"
-                                                           :type         :dimension
-                                                           :dimension    [:field (mt/id :people :source) nil]
-                                                           :widget-type  :category
-                                                           :default      nil}
-                                                "user_id" {:name         "user_id"
-                                                           :display-name "User"
-                                                           :type         :dimension
-                                                           :dimension    [:field (mt/id :orders :user_id) nil]
-                                                           :widget-type  :id
-                                                           :default      nil}}}
-                                    :database (mt/id)}
-                                   :query_type :native
-                                   :database_id (mt/id)}]
+                                  {:type     :native
+                                   :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */"
+                                              :template-tags
+                                              {"id"      {:name         "id"
+                                                          :display-name "Id"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :people :id) nil]
+                                                          :widget-type  :id
+                                                          :default      nil}
+                                               "name"    {:name         "name"
+                                                          :display-name "Name"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :people :name) nil]
+                                                          :widget-type  :category
+                                                          :default      nil}
+                                               "source"  {:name         "source"
+                                                          :display-name "Source"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :people :source) nil]
+                                                          :widget-type  :category
+                                                          :default      nil}
+                                               "user_id" {:name         "user_id"
+                                                          :display-name "User"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :orders :user_id) nil]
+                                                          :widget-type  :id
+                                                          :default      nil}}}
+                                   :database (mt/id)}
+                                  :query_type :native
+                                  :database_id (mt/id)}]
     (testing "Simple card"
       (is (=?
            {:fields empty?
@@ -3751,7 +3751,7 @@
     (mt/with-temp
       [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
        :model/Card {card-id-2 :id} {:dataset_query {:type  :query
-                                                     :query {:source-table (str "card__" card-id-1)}}}]
+                                                    :query {:source-table (str "card__" card-id-1)}}}]
       (letfn [(query-metadata [expected-status card-id]
                 (-> (mt/user-http-request :crowberto :get expected-status (str "card/" card-id "/query_metadata"))
                     (api.test-util/select-query-metadata-keys-for-debugging)))]

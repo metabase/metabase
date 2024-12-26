@@ -686,9 +686,9 @@
   (mt/test-driver :snowflake
     (testing "details should be normalized coming out of the DB"
       (t2.with-temp/with-temp [:model/Database db {:name    "Legacy Snowflake DB"
-                                                    :engine  :snowflake,
-                                                    :details {:account  "my-instance"
-                                                              :regionid "us-west-1"}}]
+                                                   :engine  :snowflake,
+                                                   :details {:account  "my-instance"
+                                                             :regionid "us-west-1"}}]
         (is (= {:account "my-instance.us-west-1"}
                (:details db)))))))
 

@@ -67,10 +67,10 @@
               ks        (create-test-jks-instance ks-pw {key-alias key-value})]
           (.store ks baos (.toCharArray ks-pw))
           (t2.with-temp/with-temp [:model/Database {:keys [details] :as database} {:engine  :secret-test-driver
-                                                                                    :name    "Test DB with keystore"
-                                                                                    :details {:host                    "localhost"
-                                                                                              :keystore-value          (.toByteArray baos)
-                                                                                              :keystore-password-value ks-pw}}]
+                                                                                   :name    "Test DB with keystore"
+                                                                                   :details {:host                    "localhost"
+                                                                                             :keystore-value          (.toByteArray baos)
+                                                                                             :keystore-password-value ks-pw}}]
             (is (some? database))
             (is (not (contains? details :keystore-value)) "keystore-value was removed from details")
             (is (contains? details :keystore-id) "keystore-id was added to details")

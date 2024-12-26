@@ -177,7 +177,7 @@
                 (delete-public-dashboard! [user status]
                   (testing (format "delete public dashboard with %s user" (mt/user-descriptor user))
                     (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid       (str (random-uuid))
-                                                                           :made_public_by_id (mt/user->id :crowberto)}]
+                                                                                  :made_public_by_id (mt/user->id :crowberto)}]
                       (mt/user-http-request user :delete status (format "dashboard/%d/public_link" dashboard-id)))))]
 
           (testing "if `advanced-permissions` is disabled, require admins,"
@@ -256,7 +256,7 @@
                 (delete-public-card! [user status]
                   (testing (format "delete public card with %s user" (mt/user-descriptor user))
                     (t2.with-temp/with-temp [:model/Card {card-id :id} {:public_uuid       (str (random-uuid))
-                                                                         :made_public_by_id (mt/user->id :crowberto)}]
+                                                                        :made_public_by_id (mt/user->id :crowberto)}]
                       (mt/user-http-request user :delete status (format "card/%d/public_link" card-id)))))]
 
           (testing "if `advanced-permissions` is disabled, require admins,"

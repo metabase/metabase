@@ -130,9 +130,9 @@
           (fake-persist-card! card)
           (is (str/includes?
                (:query (qp.compile/compile
-                         {:database (mt/id)
-                          :query {:source-table (str "card__" (u/the-id card))}
-                          :type :query}))
+                        {:database (mt/id)
+                         :query {:source-table (str "card__" (u/the-id card))}
+                         :type :query}))
                "metabase_cache")))))
     (testing "Queries from source if sandboxed"
       (met/with-gtaps!
@@ -145,7 +145,7 @@
           (fake-persist-card! card)
           (is (not (str/includes?
                     (:query (qp.compile/compile
-                              {:database (mt/id)
-                               :query {:source-table (str "card__" (u/the-id card))}
-                               :type :query}))
+                             {:database (mt/id)
+                              :query {:source-table (str "card__" (u/the-id card))}
+                              :type :query}))
                     "metabase_cache"))))))))

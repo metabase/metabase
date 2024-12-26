@@ -334,12 +334,12 @@
                           (comp first #(magic.util/filter-tables % tables) dashboard-templates/->entity)
                           identity)]
     (str/replace s #"\[\[(\w+)(?:\.([\w\-]+))?\]\]"
-      (fn [[_ identifier attribute]]
-        (let [entity    (bindings identifier)
-              attribute (some-> attribute qp.util/normalize-token)]
-          (str (or (and (ifn? entity) (entity attribute))
-                   (root attribute)
-                   (interesting/->reference template-type entity))))))))
+                 (fn [[_ identifier attribute]]
+                   (let [entity    (bindings identifier)
+                         attribute (some-> attribute qp.util/normalize-token)]
+                     (str (or (and (ifn? entity) (entity attribute))
+                              (root attribute)
+                              (interesting/->reference template-type entity))))))))
 
 (defn- instantiate-visualization
   [[k v] dimensions metrics]

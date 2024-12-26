@@ -716,7 +716,7 @@
       (cond-> #_changes
        (or (empty? (:result_metadata card))
            (not verified-result-metadata?))
-       card.metadata/populate-result-metadata)
+        card.metadata/populate-result-metadata)
       pre-update
       populate-query-fields
       maybe-populate-initially-published-at))

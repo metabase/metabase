@@ -180,7 +180,7 @@
       :headers
       (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
       (update "Content-Disposition" #(some-> % (str/replace #"query_result_.+(\.\w+)"
-                                                 "query_result_<timestamp>$1")))))
+                                                            "query_result_<timestamp>$1")))))
 
 (deftest download-response-headers-test
   (testing "Make sure CSV/etc. download requests come back with the correct headers"
@@ -206,8 +206,8 @@
 (deftest check-that-we-can-export-the-results-of-a-nested-query
   (mt/with-temp-copy-of-db
     (t2.with-temp/with-temp [:model/Card card {:dataset_query {:database (mt/id)
-                                                                :type     :native
-                                                                :native   {:query "SELECT * FROM USERS;"}}}]
+                                                               :type     :native
+                                                               :native   {:query "SELECT * FROM USERS;"}}}]
       (letfn [(do-test []
                 (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
                                                    :query (json/encode
@@ -579,7 +579,7 @@
 
 (deftest ^:parallel parameter-values-test-2
   (mt/with-temp [:model/Card {card-id :id} {:database_id (mt/id)
-                                             :dataset_query (mt/mbql-query products)}]
+                                            :dataset_query (mt/mbql-query products)}]
     (let [parameter {:values_query_type "list",
                      :values_source_type "card",
                      :values_source_config {:card_id card-id,
@@ -759,7 +759,7 @@
     (mt/with-temp
       [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
        :model/Card {card-id-2 :id} {:dataset_query {:type  :query
-                                                     :query {:source-table (str "card__" card-id-1)}}}]
+                                                    :query {:source-table (str "card__" card-id-1)}}}]
       (letfn [(query-metadata [expected-status card-id]
                 (-> (mt/user-http-request :crowberto :post expected-status
                                           "dataset/query_metadata"

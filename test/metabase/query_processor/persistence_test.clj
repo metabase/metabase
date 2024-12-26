@@ -71,11 +71,11 @@
         (mt/dataset daily-bird-counts
           (mt/with-persistence-enabled! [persist-models!]
             (mt/with-temp [:model/Card model {:type          :model
-                                               :database_id   (mt/id)
-                                               :query_type    :query
-                                               :dataset_query {:database (mt/id)
-                                                               :type     :query
-                                                               :query    {:source-table (mt/id :bird-count)}}}]
+                                              :database_id   (mt/id)
+                                              :query_type    :query
+                                              :dataset_query {:database (mt/id)
+                                                              :type     :query
+                                                              :query    {:source-table (mt/id :bird-count)}}}]
               (let [;; Get the number of rows before the model is persisted
                     query-on-top       (mt/mbql-query nil
                                          {:aggregation  [[:count]]
@@ -111,9 +111,9 @@
                                                 (mt/mbql-query products)))]]]
           (mt/with-persistence-enabled! [persist-models!]
             (mt/with-temp [:model/Card model {:type          :model
-                                               :database_id   (mt/id)
-                                               :query_type    query-type
-                                               :dataset_query query}]
+                                              :database_id   (mt/id)
+                                              :query_type    query-type
+                                              :dataset_query query}]
               (when (= query-type :native)
                 ;; mbql we figure out metadata from query itself. native is opaque and must have metadata in order to
                 ;; know which fields are in the model.
@@ -152,15 +152,15 @@
       (mt/dataset test-data
         (mt/with-persistence-enabled! [persist-models!]
           (mt/with-temp [:model/Card model {:type        :model
-                                             :database_id (mt/id)
-                                             :query_type  :query
-                                             :dataset_query
-                                             (mt/mbql-query orders
-                                               {:fields [$total &products.products.category]
-                                                :joins [{:source-table $$products
-                                                         :condition [:= $product_id &products.products.id]
-                                                         :strategy :left-join
-                                                         :alias "products"}]})}]
+                                            :database_id (mt/id)
+                                            :query_type  :query
+                                            :dataset_query
+                                            (mt/mbql-query orders
+                                              {:fields [$total &products.products.category]
+                                               :joins [{:source-table $$products
+                                                        :condition [:= $product_id &products.products.id]
+                                                        :strategy :left-join
+                                                        :alias "products"}]})}]
             (persist-models!)
             (let [query   {:type :query
                            :database (mt/id)

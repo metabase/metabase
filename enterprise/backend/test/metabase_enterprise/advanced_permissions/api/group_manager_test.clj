@@ -37,7 +37,7 @@
                        :model/PermissionsGroupMembership _              {:group_id group-id :user_id user-id}]
                       (when group-manager?
                         (t2/update! :model/PermissionsGroupMembership {:user_id  user-id
-                                                                :group_id group-id}
+                                                                       :group_id group-id}
                                     {:is_group_manager true}))
                       (mt/user-http-request user
                                             :delete status
@@ -68,7 +68,7 @@
 
             (testing "succeed if users access group that they are manager of"
               (t2/update! :model/PermissionsGroupMembership {:user_id  (:id user)
-                                                      :group_id (:id group)}
+                                                             :group_id (:id group)}
                           {:is_group_manager true})
               (testing "non-admin user can only view groups that are manager of"
                 (is (= #{(:id group)}
@@ -98,7 +98,7 @@
   (testing (format ", update membership with %s user" (mt/user-descriptor user))
     (t2.with-temp/with-temp [:model/User                       user-info    {}
                              :model/PermissionsGroupMembership {:keys [id]} {:user_id  (:id user-info)
-                                                                      :group_id (:id group-info)}]
+                                                                             :group_id (:id group-info)}]
       (mt/user-http-request user :put status (format "permissions/membership/%d" id)
                             {:is_group_manager is-group-manager}))))
 
@@ -106,7 +106,7 @@
   (testing (format ", delete membership with %s user" (mt/user-descriptor user))
     (t2.with-temp/with-temp [:model/User                       user-info    {}
                              :model/PermissionsGroupMembership {pgm-id :id} {:user_id  (:id user-info)
-                                                                      :group_id (:id group-info)}]
+                                                                             :group_id (:id group-info)}]
       (mt/user-http-request user :delete status (format "permissions/membership/%d" pgm-id)))))
 
 (defn- clear-memberships! [user status group-info]
@@ -114,9 +114,9 @@
     (t2.with-temp/with-temp [:model/User                       user-info-1 {}
                              :model/User                       user-info-2 {}
                              :model/PermissionsGroupMembership _           {:user_id  (:id user-info-1)
-                                                                     :group_id (:id group-info)}
+                                                                            :group_id (:id group-info)}
                              :model/PermissionsGroupMembership _           {:user_id  (:id user-info-2)
-                                                                     :group_id (:id group-info)}]
+                                                                            :group_id (:id group-info)}]
       (mt/user-http-request user :put status (format "permissions/membership/%d/clear" (:id group-info))))))
 
 (defn- membership->groups-ids [membership]
@@ -167,7 +167,7 @@
              user-2   [group-2]]
             (testing "succeed if users access group that they are manager of"
               (t2/update! :model/PermissionsGroupMembership {:user_id  (:id user-2)
-                                                      :group_id (:id group-2)}
+                                                             :group_id (:id group-2)}
                           {:is_group_manager true})
               (get-membership user-2 200)
               (add-membership! user-2 200 group-2 false)
@@ -190,7 +190,7 @@
         (mt/with-premium-features #{:advanced-permissions}
           (testing "succeed if users access group that they are manager of,"
             (t2/update! :model/PermissionsGroupMembership {:user_id  (:id user)
-                                                    :group_id (:id group)}
+                                                           :group_id (:id group)}
                         {:is_group_manager true})
             (testing "can set is_group_manager=true"
               (add-membership! :crowberto 200 group true)
@@ -202,8 +202,8 @@
           (testing "admin cant be group manager"
             (t2.with-temp/with-temp [:model/User                       new-user {:is_superuser true}
                                      :model/PermissionsGroupMembership _        {:user_id          (:id new-user)
-                                                                          :group_id         (:id group)
-                                                                          :is_group_manager false}]
+                                                                                 :group_id         (:id group)
+                                                                                 :is_group_manager false}]
               (is (= "Admin cant be a group manager."
                      (mt/user-http-request user :post 400 "permissions/membership"
                                            {:group_id         (:id group)
@@ -234,7 +234,7 @@
               (get-users :crowberto 200))
             (testing "succeed if users is a group manager and returns additional fields"
               (t2/update! :model/PermissionsGroupMembership {:user_id  (:id user)
-                                                      :group_id (:id group)}
+                                                             :group_id (:id group)}
                           {:is_group_manager true})
               (is (subset? (set user/group-manager-visible-columns)
                            (-> (:data (get-users user 200))
@@ -246,22 +246,22 @@
   (testing "GET /api/user?group_id=:group_id"
     (testing "should sort by admins -> group managers -> normal users when filter by group_id"
       (t2.with-temp/with-temp [:model/User                       user-a {:first_name "A"
-                                                                          :last_name  "A"}
+                                                                         :last_name  "A"}
                                :model/User                       user-b {:first_name "B"
-                                                                          :last_name  "B"}
+                                                                         :last_name  "B"}
                                :model/User                       user-c {:first_name   "C"
-                                                                          :last_name    "C"
-                                                                          :is_superuser true}
+                                                                         :last_name    "C"
+                                                                         :is_superuser true}
                                :model/PermissionsGroup           group  {}
                                :model/PermissionsGroupMembership _      {:user_id          (:id user-a)
-                                                                  :group_id         (:id group)
-                                                                  :is_group_manager false}
+                                                                         :group_id         (:id group)
+                                                                         :is_group_manager false}
                                :model/PermissionsGroupMembership _      {:user_id          (:id user-b)
-                                                                  :group_id         (:id group)
-                                                                  :is_group_manager true}
+                                                                         :group_id         (:id group)
+                                                                         :is_group_manager true}
                                :model/PermissionsGroupMembership _      {:user_id          (:id user-c)
-                                                                  :group_id         (:id group)
-                                                                  :is_group_manager false}]
+                                                                         :group_id         (:id group)
+                                                                         :is_group_manager false}]
         (is (=? {:data [{:first_name "C"}
                         {:first_name "B"}
                         {:first_name "A"}]}
@@ -290,7 +290,7 @@
 
             (testing "succeed if users is a group manager and returns additional fields"
               (t2/update! :model/PermissionsGroupMembership {:user_id  (:id user)
-                                                      :group_id (:id group)}
+                                                             :group_id (:id group)}
                           {:is_group_manager true})
               (is (= [{:id               (:id (perms-group/all-users))
                        :is_group_manager false}]
@@ -345,7 +345,7 @@
               (mt/with-premium-features #{:advanced-permissions}
                 (testing "Group Managers"
                   (t2/update! :model/PermissionsGroupMembership {:user_id  (:id user)
-                                                          :group_id (:id group)}
+                                                                 :group_id (:id group)}
                               {:is_group_manager true})
 
                   (testing "Can't edit users' info"

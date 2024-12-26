@@ -133,301 +133,301 @@
                   :model/Field      {longitude-field-id :id}   (temp-field (data/id :venues :longitude) table-id)
                   :model/Field      {category-field-id :id}    (temp-field (data/id :venues :category_id) table-id)
                   :model/Field      {category-pk-field-id :id} (temp-field
-                                                                 (data/id :categories :id)
-                                                                 table-id-categories)
+                                                                (data/id :categories :id)
+                                                                table-id-categories)
                   :model/Field      {date-field-id :id}        (temp-field (data/id :checkins :date) table-id-checkins)
                   :model/Field      {users-pk-field-id :id}    (temp-field (data/id :users :id)
-                                                                    table-id-users)
+                                                                           table-id-users)
                   :model/Field      {user-id-field-id :id}     (-> (temp-field (data/id :checkins :user_id)
-                                                                        table-id-checkins)
-                                                                 (assoc :fk_target_field_id users-pk-field-id))
+                                                                               table-id-checkins)
+                                                                   (assoc :fk_target_field_id users-pk-field-id))
                   :model/Field      {checkins->venues-field-id :id} (-> (temp-field (data/id :checkins :venue_id)
-                                                                             table-id-checkins)
-                                                                      (assoc :fk_target_field_id venues-pk-field-id))
+                                                                                    table-id-checkins)
+                                                                        (assoc :fk_target_field_id venues-pk-field-id))
                   :model/Field      {last-login-field-id :id}  (temp-field (data/id :users :last_login)
                                                                            table-id-users)
                   :model/Collection {collection-id :id} {:name "My Collection"}
                   :model/Collection {collection-id-nested :id} {:name "My Nested Collection"
-                                                                 :location (format "/%s/" collection-id)}
+                                                                :location (format "/%s/" collection-id)}
                   :model/User       {user-id-temp :id} {:email          "felicia@metabase.com"
-                                                         :first_name     "Felicia"
-                                                         :last_name      "Temp"
-                                                         :password       "fiddlesticks"}
+                                                        :first_name     "Felicia"
+                                                        :last_name      "Temp"
+                                                        :password       "fiddlesticks"}
                   :model/Collection {personal-collection-id :id} {:name              "Felicia's Personal Collection"
-                                                                   :personal_owner_id user-id-temp}
+                                                                  :personal_owner_id user-id-temp}
                   :model/Collection {pc-felicia-nested-id :id} {:name     "Felicia's Nested Collection"
-                                                                 :location (format "/%d/" personal-collection-id)}
+                                                                :location (format "/%d/" personal-collection-id)}
                   :model/Collection {pc-nested-id :id} {:name     "Nested Personal Collection"
-                                                         :location (format "/%d/" (crowberto-pc-id))}
+                                                        :location (format "/%d/" (crowberto-pc-id))}
                   :model/Collection {pc-deeply-nested-id :id} {:name
-                                                                "Deeply Nested Personal Collection"
-                                                                :location
-                                                                (format "/%d/%d/" (crowberto-pc-id) pc-nested-id)}
+                                                               "Deeply Nested Personal Collection"
+                                                               :location
+                                                               (format "/%d/%d/" (crowberto-pc-id) pc-nested-id)}
                   :model/Segment    {segment-id :id} {:name "My Segment"
-                                                       :table_id table-id
-                                                       :definition {:source-table table-id
-                                                                    :filter [:!= [:field category-field-id nil] nil]}}
+                                                      :table_id table-id
+                                                      :definition {:source-table table-id
+                                                                   :filter [:!= [:field category-field-id nil] nil]}}
                   :model/Dashboard  {dashboard-id :id} {:name "My Dashboard"
-                                                         :collection_id collection-id}
+                                                        :collection_id collection-id}
                   :model/Dashboard  {root-dashboard-id :id} {:name "Root Dashboard"}
                   :model/Card       {card-id :id} {:table_id table-id
-                                                    :name "My Card"
-                                                    :collection_id collection-id
-                                                    :dataset_query {:type :query
-                                                                    :database db-id
-                                                                    :query {:source-table table-id
-                                                                            :filter [:= [:field category-field-id nil] 2]
-                                                                            :aggregation [:sum [:field numeric-field-id nil]]
-                                                                            :aggregation-idents {0 "ptB0TYWlsl8qVQGLMXknK"}
-                                                                            :breakout [[:field category-field-id nil]]
-                                                                            :breakout-idents {0 "v2gFszquoclWC505vvmhY"}
-                                                                            :joins [{:source-table table-id-categories
-                                                                                     :alias "cat"
-                                                                                     :ident     "-7CAEDVYQlvLuiikYiCxf"
-                                                                                     :fields    "all"
-                                                                                     :condition [:=
-                                                                                                 [:field category-field-id nil]
-                                                                                                 [:field
-                                                                                                  category-pk-field-id
-                                                                                                  {:join-alias "cat"}]]}]}}}
+                                                   :name "My Card"
+                                                   :collection_id collection-id
+                                                   :dataset_query {:type :query
+                                                                   :database db-id
+                                                                   :query {:source-table table-id
+                                                                           :filter [:= [:field category-field-id nil] 2]
+                                                                           :aggregation [:sum [:field numeric-field-id nil]]
+                                                                           :aggregation-idents {0 "ptB0TYWlsl8qVQGLMXknK"}
+                                                                           :breakout [[:field category-field-id nil]]
+                                                                           :breakout-idents {0 "v2gFszquoclWC505vvmhY"}
+                                                                           :joins [{:source-table table-id-categories
+                                                                                    :alias "cat"
+                                                                                    :ident     "-7CAEDVYQlvLuiikYiCxf"
+                                                                                    :fields    "all"
+                                                                                    :condition [:=
+                                                                                                [:field category-field-id nil]
+                                                                                                [:field
+                                                                                                 category-pk-field-id
+                                                                                                 {:join-alias "cat"}]]}]}}}
                   :model/Card       {card-arch-id :id} {;:archived true
-                                                         :table_id table-id
-                                                         :name "My Arch Card"
-                                                         :collection_id collection-id
-                                                         :dataset_query {:type :query
-                                                                         :database db-id
-                                                                         :query {:source-table table-id
-                                                                                 :aggregation [:sum [:field numeric-field-id nil]]
-                                                                                 :aggregation-idents {0 "ptB0TYWlsl8qVQGLMXknK"}
-                                                                                 :breakout [[:field category-field-id nil]]
-                                                                                 :breakout-idents {0 "v2gFszquoclWC505vvmhY"}}}}
+                                                        :table_id table-id
+                                                        :name "My Arch Card"
+                                                        :collection_id collection-id
+                                                        :dataset_query {:type :query
+                                                                        :database db-id
+                                                                        :query {:source-table table-id
+                                                                                :aggregation [:sum [:field numeric-field-id nil]]
+                                                                                :aggregation-idents {0 "ptB0TYWlsl8qVQGLMXknK"}
+                                                                                :breakout [[:field category-field-id nil]]
+                                                                                :breakout-idents {0 "v2gFszquoclWC505vvmhY"}}}}
                   :model/Card       {card-id-root :id} {:table_id table-id
                                                  ;; https://en.wikipedia.org/wiki/Filename#Reserved_characters_and_words
-                                                         :name root-card-name
-                                                         :dataset_query {:type :query
-                                                                         :database db-id
-                                                                         :query {:source-table table-id
-                                                                                 :expressions  {"Price Known" [:> [:field numeric-field-id nil] 0]}
-                                                                                 :expression-idents {"Price Known" "ptB0TYWlsl8qVQGLMXknK"}}}}
+                                                        :name root-card-name
+                                                        :dataset_query {:type :query
+                                                                        :database db-id
+                                                                        :query {:source-table table-id
+                                                                                :expressions  {"Price Known" [:> [:field numeric-field-id nil] 0]}
+                                                                                :expression-idents {"Price Known" "ptB0TYWlsl8qVQGLMXknK"}}}}
                   :model/Card       {card-id-nested :id} {:table_id table-id
-                                                           :name "My Nested Card"
-                                                           :collection_id collection-id
-                                                           :dataset_query {:type :query
-                                                                           :database db-id
-                                                                           :query {:source-table (str "card__" card-id)}}
-                                                           :visualization_settings
-                                                           {:table.columns [{:name "Venue Category"
-                                                                             :fieldRef [:field category-field-id nil]
-                                                                             :enabled true}]
-                                                            :column_settings {(keyword (format
-                                                                                        "[\"ref\",[\"field\",%d,null]]"
-                                                                                        latitude-field-id))
-                                                                              {:show_mini_bar true
-                                                                               :column_title "Parallel"}}}}
+                                                          :name "My Nested Card"
+                                                          :collection_id collection-id
+                                                          :dataset_query {:type :query
+                                                                          :database db-id
+                                                                          :query {:source-table (str "card__" card-id)}}
+                                                          :visualization_settings
+                                                          {:table.columns [{:name "Venue Category"
+                                                                            :fieldRef [:field category-field-id nil]
+                                                                            :enabled true}]
+                                                           :column_settings {(keyword (format
+                                                                                       "[\"ref\",[\"field\",%d,null]]"
+                                                                                       latitude-field-id))
+                                                                             {:show_mini_bar true
+                                                                              :column_title "Parallel"}}}}
                   :model/Card       {card-id-nested-query :id} {:table_id table-id
-                                                                 :name "My Nested Query Card"
-                                                                 :collection_id collection-id
-                                                                 :dataset_query
-                                                                 {:type :query
-                                                                  :database db-id
-                                                                  :query
+                                                                :name "My Nested Query Card"
+                                                                :collection_id collection-id
+                                                                :dataset_query
+                                                                {:type :query
+                                                                 :database db-id
+                                                                 :query
+                                                                 {:source-query
                                                                   {:source-query
-                                                                   {:source-query
-                                                                    {:source-table table-id}}}}}
+                                                                   {:source-table table-id}}}}}
                   :model/Card       {card-id-native-query :id} {:query_type :native
-                                                                 :name "My Native Nested Query Card"
-                                                                 :collection_id collection-id
-                                                                 :dataset_query
-                                                                 {:type :native
-                                                                  :database db-id
-                                                                  :native
-                                                                  {:query "SELECT * FROM {{#1}} AS subquery"
-                                                                   :template-tags
-                                                                   {"#1" {:id "72461b3b-3877-4538-a5a3-7a3041924517"
-                                                                          :name "#1"
-                                                                          :display-name "#1"
-                                                                          :type "card"
-                                                                          :card-id card-id}}}}}
+                                                                :name "My Native Nested Query Card"
+                                                                :collection_id collection-id
+                                                                :dataset_query
+                                                                {:type :native
+                                                                 :database db-id
+                                                                 :native
+                                                                 {:query "SELECT * FROM {{#1}} AS subquery"
+                                                                  :template-tags
+                                                                  {"#1" {:id "72461b3b-3877-4538-a5a3-7a3041924517"
+                                                                         :name "#1"
+                                                                         :display-name "#1"
+                                                                         :type "card"
+                                                                         :card-id card-id}}}}}
                   :model/DashboardCard       {dashcard-id :id} {:dashboard_id dashboard-id
-                                                                 :card_id card-id}
+                                                                :card_id card-id}
                   :model/DashboardCard       {dashcard-top-level-click-id :id} {:dashboard_id dashboard-id
-                                                                                 :card_id card-id-nested
+                                                                                :card_id card-id-nested
                                                                          ;; this is how click actions on a non-table card work (ex: a chart)
-                                                                                 :visualization_settings {:click_behavior {:targetId card-id-nested-query
-                                                                                                                           :linkType :question
-                                                                                                                           :type     :link}}}
+                                                                                :visualization_settings {:click_behavior {:targetId card-id-nested-query
+                                                                                                                          :linkType :question
+                                                                                                                          :type     :link}}}
                   :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id
-                                                 :card_id card-id
-                                                 :position 0}
+                                                :card_id card-id
+                                                :position 0}
                   :model/DashboardCardSeries _ {:dashboardcard_id dashcard-top-level-click-id
-                                                 :card_id card-id-nested
-                                                 :position 1}
+                                                :card_id card-id-nested
+                                                :position 1}
                   :model/DashboardCard       {dashcard-with-click-actions :id} {:dashboard_id           dashboard-id
-                                                                                 :card_id                card-id-root
-                                                                                 :visualization_settings (-> (mb.viz/visualization-settings)
-                                                                                                             (mb.viz/with-entity-click-action
-                                                                                                               numeric-field-id
-                                                                                                               ::mb.viz/card
-                                                                                                               card-id
-                                                                                                               (mb.viz/fk-parameter-mapping
-                                                                                                                "Category"
-                                                                                                                category-field-id
-                                                                                                                numeric-field-id))
-                                                                                                             (mb.viz/with-entity-click-action
-                                                                                                               name-field-id
-                                                                                                               ::mb.viz/dashboard
-                                                                                                               root-dashboard-id)
-                                                                                                             (mb.viz/with-click-action
-                                                                                                               (mb.viz/column-name->column-ref "Price Known")
-                                                                                                               (mb.viz/url-click-action "/price-info"))
-                                                                                                             (mb.viz/with-click-action
-                                                                                                               (mb.viz/field-id->column-ref latitude-field-id)
-                                                                                                               (mb.viz/crossfilter-click-action {}))
-                                                                                                             mb.viz/norm->db)}
+                                                                                :card_id                card-id-root
+                                                                                :visualization_settings (-> (mb.viz/visualization-settings)
+                                                                                                            (mb.viz/with-entity-click-action
+                                                                                                              numeric-field-id
+                                                                                                              ::mb.viz/card
+                                                                                                              card-id
+                                                                                                              (mb.viz/fk-parameter-mapping
+                                                                                                               "Category"
+                                                                                                               category-field-id
+                                                                                                               numeric-field-id))
+                                                                                                            (mb.viz/with-entity-click-action
+                                                                                                              name-field-id
+                                                                                                              ::mb.viz/dashboard
+                                                                                                              root-dashboard-id)
+                                                                                                            (mb.viz/with-click-action
+                                                                                                              (mb.viz/column-name->column-ref "Price Known")
+                                                                                                              (mb.viz/url-click-action "/price-info"))
+                                                                                                            (mb.viz/with-click-action
+                                                                                                              (mb.viz/field-id->column-ref latitude-field-id)
+                                                                                                              (mb.viz/crossfilter-click-action {}))
+                                                                                                            mb.viz/norm->db)}
                   :model/DashboardCardSeries _ {:dashboardcard_id   dashcard-with-click-actions
-                                                 :card_id            card-id-root
-                                                 :position           2}
+                                                :card_id            card-id-root
+                                                :position           2}
                   :model/DashboardCard       {dashcard-with-textbox-id :id} {:dashboard_id           dashboard-id
-                                                                              :card_id                nil
-                                                                              :visualization_settings {:virtual_card virtual-card
-                                                                                                       :text         "Textbox Card"}}
+                                                                             :card_id                nil
+                                                                             :visualization_settings {:virtual_card virtual-card
+                                                                                                      :text         "Textbox Card"}}
                   :model/Card                {card-id-root-to-collection :id} {:table_id table-id
-                                                                                :name "Root card based on one in collection"
-                                                                                :dataset_query {:type :query
-                                                                                                :database db-id
-                                                                                                :query {:source-table (str "card__" card-id)}}}
+                                                                               :name "Root card based on one in collection"
+                                                                               :dataset_query {:type :query
+                                                                                               :database db-id
+                                                                                               :query {:source-table (str "card__" card-id)}}}
                   :model/Card                {card-id-collection-to-root :id} {:table_id table-id
-                                                                                :name "Card in collection based on root one"
-                                                                                :collection_id collection-id
-                                                                                :dataset_query {:type :query
-                                                                                                :database db-id
-                                                                                                :query {:source-table (str "card__" card-id-root)}}}
+                                                                               :name "Card in collection based on root one"
+                                                                               :collection_id collection-id
+                                                                               :dataset_query {:type :query
+                                                                                               :database db-id
+                                                                                               :query {:source-table (str "card__" card-id-root)}}}
                   :model/Pulse               {pulse-id :id} {:name          "Serialization Pulse"
-                                                              :collection_id collection-id}
+                                                             :collection_id collection-id}
                   :model/PulseCard           {pulsecard-root-id :id} {:pulse_id pulse-id
-                                                                       :card_id  card-id-root}
+                                                                      :card_id  card-id-root}
                   :model/PulseCard           {pulsecard-collection-id :id} {:pulse_id pulse-id
-                                                                             :card_id  card-id}
+                                                                            :card_id  card-id}
                   :model/Card                {card-id-template-tags :id} {:query_type    :native
-                                                                           :name          "My Native Card With Template Tags"
-                                                                           :collection_id collection-id
-                                                                           :dataset_query
-                                                                           {:type     :native
-                                                                            :database db-id
-                                                                            :native {:query "SELECT * FROM venues WHERE {{category-id}}"
-                                                                                     :template-tags
-                                                                                     {"category-id" {:id           "751880ce-ad1a-11eb-8529-0242ac130003"
-                                                                                                     :name         "category-id"
-                                                                                                     :display-name "Category ID"
-                                                                                                     :type         "dimension"
-                                                                                                     :dimension    [:field category-field-id nil]
-                                                                                                     :widget-type  "id"
-                                                                                                     :required     true
-                                                                                                     :default      40}}}}}
+                                                                          :name          "My Native Card With Template Tags"
+                                                                          :collection_id collection-id
+                                                                          :dataset_query
+                                                                          {:type     :native
+                                                                           :database db-id
+                                                                           :native {:query "SELECT * FROM venues WHERE {{category-id}}"
+                                                                                    :template-tags
+                                                                                    {"category-id" {:id           "751880ce-ad1a-11eb-8529-0242ac130003"
+                                                                                                    :name         "category-id"
+                                                                                                    :display-name "Category ID"
+                                                                                                    :type         "dimension"
+                                                                                                    :dimension    [:field category-field-id nil]
+                                                                                                    :widget-type  "id"
+                                                                                                    :required     true
+                                                                                                    :default      40}}}}}
                   :model/Card       {card-id-filter-agg :id} {:table_id table-id
-                                                               :name "Card With Filter After Aggregation"
-                                                               :collection_id collection-id
-                                                               :dataset_query {:type     :query
-                                                                               :database db-id
-                                                                               :query    {:source-query {:source-table
-                                                                                                         table-id
-                                                                                                         :aggregation
-                                                                                                         [[:aggregation-options
-                                                                                                           [:count]
-                                                                                                           {:name "num_per_type"}]]
-                                                                                                         :aggregation-idents
-                                                                                                         {0 "vb1xlvyOHJQSJJGEiDgYx"}
-                                                                                                         :breakout
-                                                                                                         [[:field category-field-id nil]]
-                                                                                                         :breakout-idents
-                                                                                                         {0 "VZQg03VY_GHx1R-d9PVd8"}}
-                                                                                          :filter [:>
-                                                                                                   [:field-literal "num_per_type" :type/Integer]
-                                                                                                   4]}}}
+                                                              :name "Card With Filter After Aggregation"
+                                                              :collection_id collection-id
+                                                              :dataset_query {:type     :query
+                                                                              :database db-id
+                                                                              :query    {:source-query {:source-table
+                                                                                                        table-id
+                                                                                                        :aggregation
+                                                                                                        [[:aggregation-options
+                                                                                                          [:count]
+                                                                                                          {:name "num_per_type"}]]
+                                                                                                        :aggregation-idents
+                                                                                                        {0 "vb1xlvyOHJQSJJGEiDgYx"}
+                                                                                                        :breakout
+                                                                                                        [[:field category-field-id nil]]
+                                                                                                        :breakout-idents
+                                                                                                        {0 "VZQg03VY_GHx1R-d9PVd8"}}
+                                                                                         :filter [:>
+                                                                                                  [:field-literal "num_per_type" :type/Integer]
+                                                                                                  4]}}}
                   :model/Card       {card-id-temporal-unit :id} {:table_id table-id
-                                                                  :name "Card With Temporal Unit in Field Clause"
-                                                                  :collection_id collection-id
-                                                                  :dataset_query {:type     :query
-                                                                                  :database db-id
-                                                                                  :query    {:source-query {:source-table
-                                                                                                            table-id-checkins
-                                                                                                            :aggregation
-                                                                                                            [[:count]]
-                                                                                                            :aggregation-idents
-                                                                                                            {0 "iTOso6duTmJp2Kl__jlLp"}
-                                                                                                            :breakout
-                                                                                                            [[:field last-login-field-id {:source-field
-                                                                                                                                          user-id-field-id
-                                                                                                                                          :temporal-unit
-                                                                                                                                          :month}]]
-                                                                                                            :breakout-idents
-                                                                                                            {0 "ufD_PFrEGPQExr_lVpw6u"}}}}}
-                  :model/NativeQuerySnippet {snippet-id :id} {:content     "price > 2"
-                                                               :description "Predicate on venues table for price > 2"
-                                                               :name        "Pricey Venues"}
-                  :model/Collection         {snippet-collection-id :id} {:name "Snippet Collection"
-                                                                          :namespace "snippets"}
-                  :model/Collection         {snippet-nested-collection-id :id} {:name "Nested Snippet Collection"
-                                                                                 :location (format "/%d/" snippet-collection-id)
-                                                                                 :namespace "snippets"}
-                  :model/NativeQuerySnippet {nested-snippet-id :id} {:content       "name LIKE 'A%'"
-                                                                      :description   "Predicate on venues table for name starting with A"
-                                                                      :name          "A Venues"
-                                                                      :collection_id snippet-nested-collection-id}
-                  :model/Card               {card-id-with-native-snippet :id} {:query_type    :native
-                                                                                :name          "Card with Native Query Snippet"
-                                                                                :collection_id collection-id
-                                                                                :dataset_query
-                                                                                {:type     :native
+                                                                 :name "Card With Temporal Unit in Field Clause"
+                                                                 :collection_id collection-id
+                                                                 :dataset_query {:type     :query
                                                                                  :database db-id
-                                                                                 :native {:query (str "SELECT * FROM venues WHERE {{snippet: Pricey Venues}}"
-                                                                                                      " AND {{snippet: A Venues}}")
-                                                                                          :template-tags {"snippet: Pricey Venues"
-                                                                                                          {:id           "d34baf40-b35a-11eb-8529-0242ac130003"
-                                                                                                           :name         "Snippet: Pricey Venues"
-                                                                                                           :display-name "Snippet: Pricey Venues"
-                                                                                                           :type         "snippet"
-                                                                                                           :snippet-name "Pricey Venues"
-                                                                                                           :snippet-id   snippet-id}
-                                                                                                          "snippet: A Venues"
-                                                                                                          {:id           "c0775274-b45a-11eb-8529-0242ac130003"
-                                                                                                           :name         "Snippet: A Venues"
-                                                                                                           :display-name "Snippet: A Venues"
-                                                                                                           :type         "snippet"
-                                                                                                           :snippet-name "A Venues"
-                                                                                                           :snippet-id   nested-snippet-id}}}}}
+                                                                                 :query    {:source-query {:source-table
+                                                                                                           table-id-checkins
+                                                                                                           :aggregation
+                                                                                                           [[:count]]
+                                                                                                           :aggregation-idents
+                                                                                                           {0 "iTOso6duTmJp2Kl__jlLp"}
+                                                                                                           :breakout
+                                                                                                           [[:field last-login-field-id {:source-field
+                                                                                                                                         user-id-field-id
+                                                                                                                                         :temporal-unit
+                                                                                                                                         :month}]]
+                                                                                                           :breakout-idents
+                                                                                                           {0 "ufD_PFrEGPQExr_lVpw6u"}}}}}
+                  :model/NativeQuerySnippet {snippet-id :id} {:content     "price > 2"
+                                                              :description "Predicate on venues table for price > 2"
+                                                              :name        "Pricey Venues"}
+                  :model/Collection         {snippet-collection-id :id} {:name "Snippet Collection"
+                                                                         :namespace "snippets"}
+                  :model/Collection         {snippet-nested-collection-id :id} {:name "Nested Snippet Collection"
+                                                                                :location (format "/%d/" snippet-collection-id)
+                                                                                :namespace "snippets"}
+                  :model/NativeQuerySnippet {nested-snippet-id :id} {:content       "name LIKE 'A%'"
+                                                                     :description   "Predicate on venues table for name starting with A"
+                                                                     :name          "A Venues"
+                                                                     :collection_id snippet-nested-collection-id}
+                  :model/Card               {card-id-with-native-snippet :id} {:query_type    :native
+                                                                               :name          "Card with Native Query Snippet"
+                                                                               :collection_id collection-id
+                                                                               :dataset_query
+                                                                               {:type     :native
+                                                                                :database db-id
+                                                                                :native {:query (str "SELECT * FROM venues WHERE {{snippet: Pricey Venues}}"
+                                                                                                     " AND {{snippet: A Venues}}")
+                                                                                         :template-tags {"snippet: Pricey Venues"
+                                                                                                         {:id           "d34baf40-b35a-11eb-8529-0242ac130003"
+                                                                                                          :name         "Snippet: Pricey Venues"
+                                                                                                          :display-name "Snippet: Pricey Venues"
+                                                                                                          :type         "snippet"
+                                                                                                          :snippet-name "Pricey Venues"
+                                                                                                          :snippet-id   snippet-id}
+                                                                                                         "snippet: A Venues"
+                                                                                                         {:id           "c0775274-b45a-11eb-8529-0242ac130003"
+                                                                                                          :name         "Snippet: A Venues"
+                                                                                                          :display-name "Snippet: A Venues"
+                                                                                                          :type         "snippet"
+                                                                                                          :snippet-name "A Venues"
+                                                                                                          :snippet-id   nested-snippet-id}}}}}
                   :model/Card               {card-join-card-id :id} {:table_id table-id-checkins
-                                                                      :name "Card Joining to Another Card"
-                                                                      :collection_id collection-id
-                                                                      :dataset_query {:type    :query
-                                                                                      :database db-id
-                                                                                      :query   {:source-table table-id-checkins
-                                                                                                :joins [{:source-table (str "card__" card-id-root)
-                                                                                                         :alias        "v"
-                                                                                                         :ident        "rfuo5Et_zy91PhOIyMOsS"
-                                                                                                         :fields       "all"
-                                                                                                         :condition    [:=
-                                                                                                                        [:field
-                                                                                                                         checkins->venues-field-id
-                                                                                                                         nil]
-                                                                                                                        [:field
-                                                                                                                         venues-pk-field-id
-                                                                                                                         {:join-alias "v"}]]}]}}}
+                                                                     :name "Card Joining to Another Card"
+                                                                     :collection_id collection-id
+                                                                     :dataset_query {:type    :query
+                                                                                     :database db-id
+                                                                                     :query   {:source-table table-id-checkins
+                                                                                               :joins [{:source-table (str "card__" card-id-root)
+                                                                                                        :alias        "v"
+                                                                                                        :ident        "rfuo5Et_zy91PhOIyMOsS"
+                                                                                                        :fields       "all"
+                                                                                                        :condition    [:=
+                                                                                                                       [:field
+                                                                                                                        checkins->venues-field-id
+                                                                                                                        nil]
+                                                                                                                       [:field
+                                                                                                                        venues-pk-field-id
+                                                                                                                        {:join-alias "v"}]]}]}}}
                   :model/Card               {card-id-pivot-table :id} {:table_id table-id
-                                                                        :name "Pivot Table Card"
-                                                                        :collection_id collection-id
-                                                                        :dataset_query {:type :query
-                                                                                        :database db-id
-                                                                                        :query {:source-table table-id
-                                                                                                :aggregation [:sum [:field latitude-field-id nil]]
-                                                                                                :aggregation-idents {0 "Nmb2tQjRgQ5PZybzMnHo3"}
-                                                                                                :breakout [[:field category-field-id nil]]
-                                                                                                :breakout-idents {0 "WSlL0FYI9ANx1fiokqzG-"}}}
+                                                                       :name "Pivot Table Card"
+                                                                       :collection_id collection-id
+                                                                       :dataset_query {:type :query
+                                                                                       :database db-id
+                                                                                       :query {:source-table table-id
+                                                                                               :aggregation [:sum [:field latitude-field-id nil]]
+                                                                                               :aggregation-idents {0 "Nmb2tQjRgQ5PZybzMnHo3"}
+                                                                                               :breakout [[:field category-field-id nil]]
+                                                                                               :breakout-idents {0 "WSlL0FYI9ANx1fiokqzG-"}}}
 
-                                                                        :visualization_settings
-                                                                        {:pivot_table.column_split {:columns ["LATITUDE"]
-                                                                                                    :rows    ["LONGITUDE"]
-                                                                                                    :values  ["sum"]}}}]
+                                                                       :visualization_settings
+                                                                       {:pivot_table.column_split {:columns ["LATITUDE"]
+                                                                                                   :rows    ["LONGITUDE"]
+                                                                                                   :values  ["sum"]}}}]
     (f {:card-arch-id                 card-arch-id
         :card-id                      card-id
         :card-id-collection-to-root   card-id-collection-to-root

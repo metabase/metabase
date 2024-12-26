@@ -304,7 +304,7 @@
    [:audit [:maybe [:enum :never :no-value :raw-value :getter]]]])
 
 (defonce ^{:doc "Map of loaded defsettings"}
- registered-settings
+  registered-settings
   (atom {}))
 
 (defprotocol ^:private Resolvable

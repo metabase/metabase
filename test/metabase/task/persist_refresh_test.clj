@@ -190,9 +190,9 @@
                      :model/PersistedInfo parchived {:card_id (u/the-id archived) :database_id (u/the-id db)}
                      :model/PersistedInfo punmodeled {:card_id (u/the-id unmodeled) :database_id (u/the-id db)}
                      :model/PersistedInfo deletable {:card_id (u/the-id model3) :database_id (u/the-id db)
-                                                      :state "deletable"
+                                                     :state "deletable"
                                               ;; need an "old enough" state change
-                                                      :state_change_at (t/minus (t/local-date-time) (t/hours 2))}
+                                                     :state_change_at (t/minus (t/local-date-time) (t/hours 2))}
                      ;; Record not in "deletable" state, but with nil card_id
                      :model/PersistedInfo deletable2 {:card_id nil :database_id (u/the-id db)}]
         (let [called-on (atom #{})

@@ -57,10 +57,10 @@
   (testing "Ensure enum-cardinality-threshold is respected in model denormalization"
     (mt/dataset test-data
       (mt/with-temp [:model/Card model {:dataset_query
-                                         {:database (mt/id)
-                                          :type     :query
-                                          :query    {:source-table (mt/id :people)}}
-                                         :type :model}]
+                                        {:database (mt/id)
+                                         :type     :query
+                                         :query    {:source-table (mt/id :people)}}
+                                        :type :model}]
         (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 0]
           (let [{:keys [result_metadata]} (metabot-util/denormalize-model model)]
             (is (zero? (count (filter :possible_values result_metadata))))))
@@ -75,10 +75,10 @@
   (testing "Basic denormalized model test"
     (mt/dataset test-data
       (mt/with-temp [:model/Card model {:dataset_query
-                                         {:database (mt/id)
-                                          :type     :query
-                                          :query    {:source-table (mt/id :people)}}
-                                         :type :model}]
+                                        {:database (mt/id)
+                                         :type     :query
+                                         :query    {:source-table (mt/id :people)}}
+                                        :type :model}]
         (let [{:keys [create_table_ddl inner_query sql_name result_metadata]} (metabot-util/denormalize-model model)]
           (is (string? create_table_ddl))
           (is (string? sql_name))
@@ -98,10 +98,10 @@
   (testing "Basic denormalized database test"
     (mt/dataset test-data
       (mt/with-temp [:model/Card _ {:dataset_query
-                                     {:database (mt/id)
-                                      :type     :query
-                                      :query    {:source-table (mt/id :orders)}}
-                                     :type :model}]
+                                    {:database (mt/id)
+                                     :type     :query
+                                     :query    {:source-table (mt/id :orders)}}
+                                    :type :model}]
         (let [database (t2/select-one :model/Database :id (mt/id))
               {:keys [models sql_name model_json_summary]} (metabot-util/denormalize-database database)]
           (is (=
@@ -162,10 +162,10 @@
     (mt/test-drivers #{:h2 :postgres :redshift}
       (mt/dataset test-data
         (mt/with-temp [:model/Card {model-name :name :as model} {:dataset_query
-                                                                  {:database (mt/id)
-                                                                   :type     :query
-                                                                   :query    {:source-table (mt/id :people)}}
-                                                                  :type :model}]
+                                                                 {:database (mt/id)
+                                                                  :type     :query
+                                                                  :query    {:source-table (mt/id :people)}}
+                                                                 :type :model}]
           (let [{:keys [inner_query] :as denormalized-model} (metabot-util/denormalize-model model)
                 sql     (metabot-util/bot-sql->final-sql
                          denormalized-model
@@ -185,11 +185,11 @@
       (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 0]
         (t2.with-temp/with-temp
           [:model/Card orders-model {:name    "Orders Model"
-                                      :dataset_query
-                                      {:database (mt/id)
-                                       :type     :query
-                                       :query    {:source-table (mt/id :orders)}}
-                                      :type :model}]
+                                     :dataset_query
+                                     {:database (mt/id)
+                                      :type     :query
+                                      :query    {:source-table (mt/id :orders)}}
+                                     :type :model}]
           (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
             (is (= 9 (count (re-seq #"\s+AS\s+" column_aliases))))
             (is (= 10 (count (re-seq #"\s+AS\s+" inner_query))))
@@ -214,9 +214,9 @@
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
         (t2.with-temp/with-temp
           [:model/Card orders-model {:name            "Orders Model"
-                                      :dataset_query   q
-                                      :result_metadata result-metadata
-                                      :type            :model}]
+                                     :dataset_query   q
+                                     :result_metadata result-metadata
+                                     :type            :model}]
           (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
             (is (= (mdb.query/format-sql
                     (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column_aliases (:id orders-model)))
@@ -243,9 +243,9 @@
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
         (t2.with-temp/with-temp
           [:model/Card orders-model {:name            "Orders Model"
-                                      :dataset_query   q
-                                      :result_metadata result-metadata
-                                      :type            :model}]
+                                     :dataset_query   q
+                                     :result_metadata result-metadata
+                                     :type            :model}]
           (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
             (is (= (mdb.query/format-sql
                     (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column_aliases (:id orders-model)))
@@ -267,9 +267,9 @@
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
         (t2.with-temp/with-temp
           [:model/Card orders-model {:name            "Orders Model"
-                                      :dataset_query   q
-                                      :result_metadata result-metadata
-                                      :type            :model}]
+                                     :dataset_query   q
+                                     :result_metadata result-metadata
+                                     :type            :model}]
           (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
             (is (= (mdb.query/format-sql
                     (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column_aliases (:id orders-model)))
@@ -286,15 +286,15 @@
     (mt/dataset test-data
       (t2.with-temp/with-temp
         [:model/Card joined-model {:type        :model
-                                    :database_id (mt/id)
-                                    :query_type  :query
-                                    :dataset_query
-                                    (mt/mbql-query orders
-                                      {:fields [$total &products.products.category]
-                                       :joins  [{:source-table $$products
-                                                 :condition    [:= $product_id &products.products.id]
-                                                 :strategy     :left-join
-                                                 :alias        "products"}]})}]
+                                   :database_id (mt/id)
+                                   :query_type  :query
+                                   :dataset_query
+                                   (mt/mbql-query orders
+                                     {:fields [$total &products.products.category]
+                                      :joins  [{:source-table $$products
+                                                :condition    [:= $product_id &products.products.id]
+                                                :strategy     :left-join
+                                                :alias        "products"}]})}]
         (let [{:keys [column_aliases create_table_ddl sql_name]} (metabot-util/denormalize-model joined-model)]
           (is (= "\"TOTAL\" AS TOTAL, \"products__CATEGORY\" AS PRODUCTS_CATEGORY"
                  column_aliases))
@@ -311,15 +311,15 @@
     (mt/dataset test-data
       (t2.with-temp/with-temp
         [:model/Card joined-model {:type        :model
-                                    :database_id (mt/id)
-                                    :query_type  :query
-                                    :dataset_query
-                                    (mt/mbql-query products
-                                      {:fields [$id $category &self.products.category]
-                                       :joins  [{:source-table $$products
-                                                 :condition    [:= $id &self.products.id]
-                                                 :strategy     :left-join
-                                                 :alias        "self"}]})}]
+                                   :database_id (mt/id)
+                                   :query_type  :query
+                                   :dataset_query
+                                   (mt/mbql-query products
+                                     {:fields [$id $category &self.products.category]
+                                      :joins  [{:source-table $$products
+                                                :condition    [:= $id &self.products.id]
+                                                :strategy     :left-join
+                                                :alias        "self"}]})}]
         (let [{:keys [column_aliases create_table_ddl sql_name]} (metabot-util/denormalize-model joined-model)]
           (is (= "\"ID\" AS ID, \"CATEGORY\" AS CATEGORY, \"self__CATEGORY\" AS SELF_CATEGORY"
                  column_aliases))
@@ -338,12 +338,12 @@
     (mt/dataset test-data
       (t2.with-temp/with-temp
         [:model/Card aggregated-model {:type        :model
-                                        :database_id (mt/id)
-                                        :query_type  :query
-                                        :dataset_query
-                                        (mt/mbql-query orders
-                                          {:aggregation [[:sum $total]]
-                                           :breakout    [$user_id]})}]
+                                       :database_id (mt/id)
+                                       :query_type  :query
+                                       :dataset_query
+                                       (mt/mbql-query orders
+                                         {:aggregation [[:sum $total]]
+                                          :breakout    [$user_id]})}]
         (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model aggregated-model)]
           (is (= (mdb.query/format-sql
                   (format "SELECT USER_ID, SUM_OF_TOTAL FROM {{#%s}} AS INNER_QUERY" (:id aggregated-model)))
@@ -359,11 +359,11 @@
       (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 0]
         (t2.with-temp/with-temp
           [:model/Card orders-model {:name    "Orders Model"
-                                      :dataset_query
-                                      {:database (mt/id)
-                                       :type     :query
-                                       :query    {:source-table (mt/id :orders)}}
-                                      :type :model}]
+                                     :dataset_query
+                                     {:database (mt/id)
+                                      :type     :query
+                                      :query    {:source-table (mt/id :orders)}}
+                                     :type :model}]
           (let [orders-model (update orders-model :result_metadata
                                      (fn [v]
                                        (map #(assoc % :display_name "ABC") v)))
@@ -378,19 +378,19 @@
       (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 10]
         (t2.with-temp/with-temp
           [:model/Card model {:type        :model
-                               :database_id (mt/id)
-                               :query_type  :query
-                               :dataset_query
-                               (mt/mbql-query orders
-                                 {:fields [$total &products.products.category &self.products.category]
-                                  :joins  [{:source-table $$products
-                                            :condition    [:= $product_id &products.products.id]
-                                            :strategy     :left-join
-                                            :alias        "products"}
-                                           {:source-table $$products
-                                            :condition    [:= $id &self.products.id]
-                                            :strategy     :left-join
-                                            :alias        "self"}]})}]
+                              :database_id (mt/id)
+                              :query_type  :query
+                              :dataset_query
+                              (mt/mbql-query orders
+                                {:fields [$total &products.products.category &self.products.category]
+                                 :joins  [{:source-table $$products
+                                           :condition    [:= $product_id &products.products.id]
+                                           :strategy     :left-join
+                                           :alias        "products"}
+                                          {:source-table $$products
+                                           :condition    [:= $id &self.products.id]
+                                           :strategy     :left-join
+                                           :alias        "self"}]})}]
           (let [model (update model :result_metadata
                               (fn [v]
                                 (map #(assoc % :display_name "FOO") v)))

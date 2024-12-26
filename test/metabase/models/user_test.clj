@@ -66,10 +66,10 @@
 
       (testing "...and for any descendant Collections of my Personal Collection?"
         (t2.with-temp/with-temp [:model/Collection child-collection      {:name     "child"
-                                                                           :location (collection/children-location
-                                                                                      (collection/user->personal-collection (mt/user->id :lucky)))}
+                                                                          :location (collection/children-location
+                                                                                     (collection/user->personal-collection (mt/user->id :lucky)))}
                                  :model/Collection grandchild-collection {:name     "grandchild"
-                                                                           :location (collection/children-location child-collection)}]
+                                                                          :location (collection/children-location child-collection)}]
           (is (set/subset?
                #{(perms/collection-readwrite-path (collection/user->personal-collection (mt/user->id :lucky)))
                  "/collection/child/"
@@ -559,8 +559,8 @@
 (deftest common-name-test
   (testing "common_name should be present depending on what is selected"
     (mt/with-temp [:model/User user {:first_name "John"
-                                      :last_name  "Smith"
-                                      :email      "john.smith@gmail.com"}]
+                                     :last_name  "Smith"
+                                     :email      "john.smith@gmail.com"}]
       (is (= "John Smith"
              (:common_name (t2/select-one [:model/User :first_name :last_name] (:id user)))))
       (is (= "John Smith"
@@ -570,8 +570,8 @@
 
   (testing "common_name should be present if first_name and last_name are selected but nil and email is also selected"
     (mt/with-temp [:model/User user {:first_name nil
-                                      :last_name  nil
-                                      :email      "john.smith@gmail.com"}]
+                                     :last_name  nil
+                                     :email      "john.smith@gmail.com"}]
       (is (= "john.smith@gmail.com"
              (:common_name (t2/select-one [:model/User :email :first_name :last_name] (:id user)))))
       (is (nil? (:common_name (t2/select-one [:model/User :first_name :last_name] (:id user))))))))

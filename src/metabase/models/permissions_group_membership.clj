@@ -17,7 +17,7 @@
 
 (defonce ^:dynamic ^{:doc "Should we allow people to be added to or removed from the All Users permissions group? By
   default, this is `false`, but enable it when adding or deleting users."}
- *allow-changing-all-users-group-members*
+  *allow-changing-all-users-group-members*
   false)
 
 (defn- check-not-all-users-group

@@ -113,11 +113,11 @@
                                                        {:database_id     (mt/id)
                                                         :table_id        (mt/id :categories)})
          :model/Dashboard {dashboard-id :id}    {:parameters [{:id                   "abc"
-                                                                :type                 "category"
-                                                                :name                 "CATEGORY"
-                                                                :values_source_type   "card"
-                                                                :values_source_config {:card_id     card-id
-                                                                                       :value_field (mt/$ids $categories.name)}}]}]
+                                                               :type                 "category"
+                                                               :name                 "CATEGORY"
+                                                               :values_source_type   "card"
+                                                               :values_source_config {:card_id     card-id
+                                                                                      :value_field (mt/$ids $categories.name)}}]}]
 
         (testing "when getting values"
           (let [get-values (fn [user]

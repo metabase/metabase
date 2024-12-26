@@ -62,9 +62,9 @@
                   :collection  "attempts"
                   :mbql?       true}
                  (qp.compile/compile
-                   (mt/mbql-query attempts
-                     {:aggregation [[:count]]
-                      :filter      [:time-interval $datetime :last :month]})))))))))
+                  (mt/mbql-query attempts
+                    {:aggregation [[:count]]
+                     :filter      [:time-interval $datetime :last :month]})))))))))
 
 (deftest ^:parallel absolute-datetime-test
   (mt/test-driver :mongo
@@ -103,9 +103,9 @@
                     :collection  "attempts"
                     :mbql?       true}
                    (qp.compile/compile
-                     (mt/mbql-query attempts
-                       {:aggregation [[:count]]
-                        :filter      [:time-interval $datetime :last :month]}))))))))))
+                    (mt/mbql-query attempts
+                      {:aggregation [[:count]]
+                       :filter      [:time-interval $datetime :last :month]}))))))))))
 
 (deftest ^:parallel no-initial-projection-test-2
   (mt/test-driver :mongo
@@ -117,11 +117,11 @@
               (let [tz    (qp.timezone/results-timezone-id :mongo mt/db)
                     query (mt/with-metadata-provider (mt/id)
                             (qp.compile/compile
-                              (mt/mbql-query attempts
-                                {:aggregation [[:count]]
-                                 :breakout    [[:field %datetime {:temporal-unit :month}]
-                                               [:field %datetime {:temporal-unit :day}]]
-                                 :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
+                             (mt/mbql-query attempts
+                               {:aggregation [[:count]]
+                                :breakout    [[:field %datetime {:temporal-unit :month}]
+                                              [:field %datetime {:temporal-unit :day}]]
+                                :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
                 (is (= {:projections ["datetime" "datetime_2" "count"]
                         :query       [{"$match"
                                        {"$and"
@@ -227,9 +227,9 @@
                   :collection  "tips",
                   :mbql?       true}
                  (qp.compile/compile
-                   (mt/mbql-query tips
-                     {:aggregation [[:count]]
-                      :filter      [:= $tips.source.username "tupac"]}))))
+                  (mt/mbql-query tips
+                    {:aggregation [[:count]]
+                     :filter      [:= $tips.source.username "tupac"]}))))
 
           (is (= {:projections ["source.username" "count"]
                   :query       [{"$group" {"_id"   {"source" {"username" "$source.username"}}
@@ -240,9 +240,9 @@
                   :collection  "tips"
                   :mbql?       true}
                  (qp.compile/compile
-                   (mt/mbql-query tips
-                     {:aggregation [[:count]]
-                      :breakout    [$tips.source.username]}))))
+                  (mt/mbql-query tips
+                    {:aggregation [[:count]]
+                     :breakout    [$tips.source.username]}))))
           (testing "Parent fields are removed from projections when child fields are included (#19135)"
             (let [table       (t2/select-one :model/Table :db_id (mt/id))
                   fields      (t2/select :model/Field :table_id (u/the-id table))
@@ -279,10 +279,10 @@
               :collection  "venues"
               :mbql?       true}
              (qp.compile/compile
-               (mt/mbql-query venues
-                 {:aggregation [[:distinct $name]
-                                [:distinct $price]]
-                  :limit       5})))))))
+              (mt/mbql-query venues
+                {:aggregation [[:distinct $name]
+                               [:distinct $price]]
+                 :limit       5})))))))
 
 (deftest ^:parallel multiple-aggregations-with-distinct-count-expression-test
   (mt/test-driver
@@ -305,10 +305,10 @@
               :collection "venues",
               :mbql? true}
              (qp.compile/compile
-               (mt/mbql-query venues
-                 {:aggregation [[:+ [:distinct $name] [:distinct $price]]
-                                [:- [:distinct $name] [:distinct $price]]]
-                  :limit       5})))))))
+              (mt/mbql-query venues
+                {:aggregation [[:+ [:distinct $name] [:distinct $price]]
+                               [:- [:distinct $name] [:distinct $price]]]
+                 :limit       5})))))))
 
 (defn- extract-projections [projections q]
   (select-keys (get-in q [:query 0 "$project"]) projections))
@@ -320,11 +320,11 @@
              (extract-projections
               ["bob" "cobb"]
               (qp.compile/compile
-                (mt/mbql-query venues
-                  {:fields      [[:expression "bob"] [:expression "cobb"]]
-                   :expressions {:bob   [:field $latitude nil]
-                                 :cobb [:field $name nil]}
-                   :limit       5}))))))))
+               (mt/mbql-query venues
+                 {:fields      [[:expression "bob"] [:expression "cobb"]]
+                  :expressions {:bob   [:field $latitude nil]
+                                :cobb [:field $name nil]}
+                  :limit       5}))))))))
 
 (deftest ^:parallel expressions-test-2
   (mt/test-driver :mongo
@@ -334,11 +334,11 @@
              (extract-projections
               ["bob" "cobb"]
               (qp.compile/compile
-                (mt/mbql-query venues
-                  {:fields      [[:expression "bob"] [:expression "cobb"]]
-                   :expressions {:bob   [:abs $latitude]
-                                 :cobb [:upper $name]}
-                   :limit       5}))))))))
+               (mt/mbql-query venues
+                 {:fields      [[:expression "bob"] [:expression "cobb"]]
+                  :expressions {:bob   [:abs $latitude]
+                                :cobb [:upper $name]}
+                  :limit       5}))))))))
 
 (deftest ^:parallel expressions-test-3
   (mt/test-driver :mongo
@@ -347,10 +347,10 @@
              (extract-projections
               ["bob"]
               (qp.compile/compile
-                (mt/mbql-query venues
-                  {:fields      [[:expression "bob"]]
-                   :expressions {:bob   [:+ $price 300]}
-                   :limit       5}))))))))
+               (mt/mbql-query venues
+                 {:fields      [[:expression "bob"]]
+                  :expressions {:bob   [:+ $price 300]}
+                  :limit       5}))))))))
 
 (deftest ^:parallel expressions-test-4
   (mt/test-driver :mongo
@@ -359,10 +359,10 @@
              (extract-projections
               ["bob"]
               (qp.compile/compile
-                (mt/mbql-query venues
-                  {:fields      [[:expression "bob"]]
-                   :expressions {:bob   [:abs [:- $price 300]]}
-                   :limit       5}))))))))
+               (mt/mbql-query venues
+                 {:fields      [[:expression "bob"]]
+                  :expressions {:bob   [:abs [:- $price 300]]}
+                  :limit       5}))))))))
 
 (deftest ^:parallel expressions-test-5
   (mt/test-driver :mongo
@@ -372,11 +372,11 @@
              (extract-projections
               ["bob" "cobb"]
               (qp.compile/compile
-                (mt/mbql-query venues
-                  {:fields      [[:expression "bob"] [:expression "cobb"]]
-                   :expressions {:bob  [:abs $latitude]
-                                 :cobb [:ceil [:expression "bob"]]}
-                   :limit       5}))))))))
+               (mt/mbql-query venues
+                 {:fields      [[:expression "bob"] [:expression "cobb"]]
+                  :expressions {:bob  [:abs $latitude]
+                                :cobb [:ceil [:expression "bob"]]}
+                  :limit       5}))))))))
 
 (deftest ^:parallel expressions-test-6
   (mt/test-driver :mongo
@@ -385,9 +385,9 @@
              (extract-projections
               ["bob"]
               (qp.compile/compile
-                (mt/mbql-query venues
-                  {:expressions {:bob [:coalesce [:field $latitude nil] [:field $price nil]]}
-                   :limit       5}))))))))
+               (mt/mbql-query venues
+                 {:expressions {:bob [:coalesce [:field $latitude nil] [:field $price nil]]}
+                  :limit       5}))))))))
 
 (deftest ^:parallel expressions-test-7
   (mt/test-driver :mongo
@@ -399,10 +399,10 @@
                       {"$sort" {"_id" 1}}
                       {"$project" {"_id" false, "asdf" "$_id.asdf", "count" true}}]}
              (qp.compile/compile
-               (mt/mbql-query venues
-                 {:expressions {:asdf ["field" $price nil]},
-                  :aggregation [["count"]],
-                  :breakout [["expression" "asdf"]]})))))))
+              (mt/mbql-query venues
+                {:expressions {:asdf ["field" $price nil]},
+                 :aggregation [["count"]],
+                 :breakout [["expression" "asdf"]]})))))))
 
 (deftest ^:parallel compile-time-interval-test
   (mt/test-driver :mongo
@@ -434,9 +434,9 @@
                   {"$limit" 1048575}]
                  (:query
                   (qp.compile/compile
-                    (mt/mbql-query checkins
-                      {:filter   [:time-interval $date -4 :month]
-                       :breakout [!day.date]}))))))))))
+                   (mt/mbql-query checkins
+                     {:filter   [:time-interval $date -4 :month]
+                      :breakout [!day.date]}))))))))))
 
 ;;; TODO: I don't think MongoDB syncs its version, or at least we're not USING the synced version info. If we used it
 ;;; then we could use a mock Database here and parallelize this test.

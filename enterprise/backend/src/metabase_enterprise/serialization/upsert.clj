@@ -62,7 +62,7 @@
     (when-let [entity-id (if (= :abort on-error)
                            (first (t2/insert-returning-pks! model entity))
                            (with-error-handling
-                            (trs "Error inserting {0}" (name-for-logging model entity))
+                             (trs "Error inserting {0}" (name-for-logging model entity))
                              (first (t2/insert-returning-pks! model entity))))]
       entity-id)))
 
@@ -130,7 +130,7 @@
                      (if (= on-error :abort)
                        (t2/update! model id entity)
                        (with-error-handling
-                        (trs "Error updating {0}" (name-for-logging (name model) entity))
+                         (trs "Error updating {0}" (name-for-logging (name model) entity))
                          (t2/update! model id entity)))
                      [id position])))
          (sort-by second)

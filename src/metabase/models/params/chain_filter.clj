@@ -662,19 +662,19 @@
   (and (use-cached-field-values? field-id)
        (isa? (t2/select-one-fn :base_type :model/Field :id field-id) :type/Text)
        (apply t2/exists? :model/FieldValues (mapcat
-                                              identity
-                                              (merge {:field_id field-id, :values [:not= nil], :human_readable_values nil}
+                                             identity
+                                             (merge {:field_id field-id, :values [:not= nil], :human_readable_values nil}
                                                       ;; if we are doing a search, make sure we only use field values
                                                       ;; when we're certain the fieldvalues we stored are all the possible values.
                                                       ;; otherwise, we should search directly from DB
-                                                     {:has_more_values false}
-                                                     (if-not (empty? constraints)
-                                                       {:type     "linked-filter"
-                                                        :hash_key (params.field-values/hash-key-for-advanced-field-values :linked-filter field-id constraints)}
-                                                       (if-let [hash-key (params.field-values/hash-key-for-advanced-field-values :sandbox field-id nil)]
-                                                         {:type    "sandbox"
-                                                          :hash_key hash-key}
-                                                         {:type "full"})))))))
+                                                    {:has_more_values false}
+                                                    (if-not (empty? constraints)
+                                                      {:type     "linked-filter"
+                                                       :hash_key (params.field-values/hash-key-for-advanced-field-values :linked-filter field-id constraints)}
+                                                      (if-let [hash-key (params.field-values/hash-key-for-advanced-field-values :sandbox field-id nil)]
+                                                        {:type    "sandbox"
+                                                         :hash_key hash-key}
+                                                        {:type "full"})))))))
 
 (defn- cached-field-values-search
   [field-id query constraints {:keys [limit]}]

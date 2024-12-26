@@ -93,8 +93,8 @@
                 "as it's just an integer flowing through, similarly Price isn't found to be a category as we're inferring by name "
                 "only")
     (t2.with-temp/with-temp [:model/Card card {:dataset_query {:database (mt/id)
-                                                                :type     :native
-                                                                :native   {:query "select * from venues"}}}]
+                                                               :type     :native
+                                                               :native   {:query "select * from venues"}}}]
       (is (= (assoc venue-name->semantic-types :category_id nil :price nil)
              (name->semantic-type (query->result-metadata (query-for-card card))))))))
 

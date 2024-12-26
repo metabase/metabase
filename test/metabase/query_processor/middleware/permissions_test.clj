@@ -143,7 +143,7 @@
                    :model/Table    _       {:db_id (u/the-id db)}
                    :model/Table    table-2 {:db_id (u/the-id db)}
                    :model/Card     card    {:dataset_query {:database (u/the-id db), :type :query,
-                                                             :query {:source-table (u/the-id table-2)}}}]
+                                                            :query {:source-table (u/the-id table-2)}}}]
       ;; All users get perms for all new DBs by default
       (mt/with-no-data-perms-for-all-users!
         (let [card-id  (:id card)
@@ -165,7 +165,7 @@
                    :model/Table    _       {:db_id (u/the-id db)}
                    :model/Table    table-2 {:db_id (u/the-id db)}
                    :model/Card     card    {:dataset_query {:database (u/the-id db), :type :query,
-                                                             :query    {:source-table (u/the-id table-2)}}}]
+                                                            :query    {:source-table (u/the-id table-2)}}}]
       (let [card-id   (:id card)
             tag-name  (str "#" card-id)
             query-sql (format "SELECT * FROM {{%s}} AS x" tag-name)]
@@ -193,8 +193,8 @@
   (testing "Fails for native query referenced in template tag, when user has no perms to referenced query"
     (mt/with-temp [:model/Database db   {}
                    :model/Card     card {:dataset_query
-                                          {:database (u/the-id db), :type :native,
-                                           :native {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]
+                                         {:database (u/the-id db), :type :native,
+                                          :native {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]
       ;; All users get perms for all new DBs by default
       (mt/with-no-data-perms-for-all-users!
         (let [card-id  (:id card)
@@ -214,8 +214,8 @@
   (testing "...but it should work if user has perms [template tag referenced query]"
     (mt/with-temp [:model/Database db   {}
                    :model/Card     card {:dataset_query
-                                          {:database (u/the-id db), :type :native,
-                                           :native   {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]
+                                         {:database (u/the-id db), :type :native,
+                                          :native   {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]
       (let [card-id   (:id card)
             tag-name  (str "#" card-id)
             query-sql (format "SELECT * FROM {{%s}} AS x" tag-name)]
@@ -253,7 +253,7 @@
                              (qp.perms/check-query-action-permissions* query))))]
             (t2.with-temp/with-temp [:model/Collection collection]
               (t2.with-temp/with-temp [:model/Card {model-id :id} {:collection_id (u/the-id collection)
-                                                                    :dataset_query query}]
+                                                                   :dataset_query query}]
                 (testing "are granted by default"
                   (check! query))
                 (testing "are revoked without access to the model"
@@ -430,7 +430,7 @@
         (mt/with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
           (mt/with-temp [:model/Collection collection {}
                          :model/Card       card {:collection_id (u/the-id collection)
-                                                  :dataset_query (mt/mbql-query venues {:fields [$id], :order-by [[:asc $id]], :limit 2})}]
+                                                 :dataset_query (mt/mbql-query venues {:fields [$id], :order-by [[:asc $id]], :limit 2})}]
             ;; Since the collection derives from the root collection this grant shouldn't really be needed, but better to
             ;; be extra-sure in this case that the user is getting rejected for data perms and not card/collection perms
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)

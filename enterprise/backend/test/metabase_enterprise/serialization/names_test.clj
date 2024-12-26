@@ -47,13 +47,13 @@
       (mt/with-temp [:model/Collection {collection-id :id :as coll} {:name "A Collection" :location "/"}
                      :model/Card       root-card {:name "Root Card"}
                      :model/Card       collection-card {:name         "Collection Card"
-                                                         :collection_id collection-id}
+                                                        :collection_id collection-id}
                      :model/Collection {sub-collection-id :id :as coll2} {:name "Sub Collection"
-                                                                           :location (format "/%d/" collection-id)}
+                                                                          :location (format "/%d/" collection-id)}
                      :model/Collection coll3 {:name "Deep Collection"
-                                               :location (format "/%d/%d/"
-                                                                 collection-id
-                                                                 sub-collection-id)}]
+                                              :location (format "/%d/%d/"
+                                                                collection-id
+                                                                sub-collection-id)}]
         (let [card1-name "/collections/root/cards/Root Card"
               card2-name "/collections/root/collections/A Collection/cards/Collection Card"
               coll-name  "/collections/root/collections/A Collection"
@@ -67,14 +67,14 @@
           (is (= coll3-name (names/fully-qualified-name coll3))))))
     (testing " with snippets in a collection"
       (mt/with-temp [:model/Collection {base-collection-id :id} {:name "Base Collection"
-                                                                  :namespace "snippets"}
+                                                                 :namespace "snippets"}
                      :model/Collection {collection-id :id}      {:name "Nested Collection"
-                                                                  :location (format "/%s/" base-collection-id)
-                                                                  :namespace "snippets"}
+                                                                 :location (format "/%s/" base-collection-id)
+                                                                 :namespace "snippets"}
                      :model/NativeQuerySnippet snippet {:content "price > 2"
-                                                         :name "Price > 2"
-                                                         :description "Price more than 2"
-                                                         :collection_id collection-id}]
+                                                        :name "Price > 2"
+                                                        :description "Price more than 2"
+                                                        :collection_id collection-id}]
         (let [fully-qualified-name (str "/collections/root/collections/:snippets/Base Collection/collections"
                                         "/:snippets/Nested Collection/snippets/Price %3E 2")]
           (is (= fully-qualified-name
@@ -99,7 +99,7 @@
   (testing "serialization logging name generation from Toucan 2 records (#29322)"
     (mt/with-temp [:model/Collection {collection-id :id} {:name         "A Collection"}
                    :model/Card       {card-id :id}       {:name         "A Card"
-                                                           :collection_id collection-id}]
+                                                          :collection_id collection-id}]
       (are [model s id] (= (format s id) (names/name-for-logging (t2/select-one model :id id)))
         'Collection ":model/Collection \"A Collection\" (ID %d)" collection-id
         'Card       ":model/Card \"A Card\" (ID %d)" card-id))))

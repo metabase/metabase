@@ -404,12 +404,12 @@
                             :type     :query}]
           (mt/with-temp
             [:model/Card card {:table_id        (mt/id :products)
-                                :dataset_query   source-query
-                                :result_metadata (mt/with-test-user
-                                                   :rasta
-                                                   (result-metadata-for-query
-                                                    source-query))
-                                :type            :model}]
+                               :dataset_query   source-query
+                               :result_metadata (mt/with-test-user
+                                                  :rasta
+                                                  (result-metadata-for-query
+                                                   source-query))
+                               :type            :model}]
             (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
                   base-context       (#'magic/make-base-context root)
                   dimensions         [{"GenericNumber" {:field_type [:type/Number], :score 70}}
@@ -445,12 +445,12 @@
                             :type     :query}]
           (mt/with-temp
             [:model/Card card {:table_id        (mt/id :products)
-                                :dataset_query   source-query
-                                :result_metadata (mt/with-test-user
-                                                   :rasta
-                                                   (result-metadata-for-query
-                                                    source-query))
-                                :type            :model}]
+                               :dataset_query   source-query
+                               :result_metadata (mt/with-test-user
+                                                  :rasta
+                                                  (result-metadata-for-query
+                                                   source-query))
+                               :type            :model}]
             (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
                   base-context       (#'magic/make-base-context root)
                   ;; These typically come from the dashboard templates, but can be mocked (injected dyamically if desired) easily.

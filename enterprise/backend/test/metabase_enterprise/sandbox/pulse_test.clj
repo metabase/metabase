@@ -43,14 +43,14 @@
   "Results for creating and running an Alert"
   [query]
   (mt/with-temp [:model/Card                  pulse-card {:name          "Test card"
-                                                           :dataset_query query}
+                                                          :dataset_query query}
                  :model/Pulse                 pulse {:alert_condition "rows"}
                  :model/PulseCard             _ {:pulse_id (:id pulse), :card_id (:id pulse-card)}
                  :model/PulseChannel          pc {:channel_type :email
-                                           :pulse_id     (:id pulse)
-                                           :enabled      true}
+                                                  :pulse_id     (:id pulse)
+                                                  :enabled      true}
                  :model/PulseChannelRecipient _ {:pulse_channel_id (:id pc)
-                                          :user_id          (mt/user->id :rasta)}]
+                                                 :user_id          (mt/user->id :rasta)}]
     (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
       (let [pulse (models.pulse/retrieve-pulse pulse)]
         (-> (notification.payload.execute/execute-card (:creator_id pulse) (-> pulse :cards first :id)) :result)))))
@@ -90,15 +90,15 @@
     (mt/with-premium-features #{:audit-app}
       (t2.with-temp/with-temp [:model/Card                  pulse-card {:dataset_query (mt/mbql-query venues)}
                                :model/Pulse                 pulse {:creator_id (mt/user->id :crowberto)
-                                                                    :name "Test Pulse"
-                                                                    :alert_condition "rows"}
+                                                                   :name "Test Pulse"
+                                                                   :alert_condition "rows"}
                                :model/PulseCard             _ {:pulse_id (:id pulse)
-                                                        :card_id (:id pulse-card)}
+                                                               :card_id (:id pulse-card)}
                                :model/PulseChannel          pc {:channel_type :email
-                                                         :pulse_id     (:id pulse)
-                                                         :enabled      true}
+                                                                :pulse_id     (:id pulse)
+                                                                :enabled      true}
                                :model/PulseChannelRecipient _ {:pulse_channel_id (:id pc)
-                                                        :user_id          (mt/user->id :rasta)}]
+                                                               :user_id          (mt/user->id :rasta)}]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
           (mt/with-fake-inbox
             (mt/with-test-user :lucky
@@ -197,15 +197,15 @@
         (mt/with-test-user :rasta
           (mt/with-temp [:model/Card                 {card-id :id}  {:dataset_query query}
                          :model/Pulse                {pulse-id :id} {:name            "Pulse Name"
-                                                                      :skip_if_empty   false
-                                                                      :alert_condition "rows"}
+                                                                     :skip_if_empty   false
+                                                                     :alert_condition "rows"}
                          :model/PulseCard             _             {:pulse_id pulse-id
-                                                              :card_id  card-id
-                                                              :position 0
-                                                              :include_csv true}
+                                                                     :card_id  card-id
+                                                                     :position 0
+                                                                     :include_csv true}
                          :model/PulseChannel          {pc-id :id}   {:pulse_id pulse-id}
                          :model/PulseChannelRecipient _             {:user_id          (mt/user->id :rasta)
-                                                              :pulse_channel_id pc-id}]
+                                                                     :pulse_channel_id pc-id}]
             (mt/with-fake-inbox
               (mt/with-test-user nil
                 (pulse.send/send-pulse! (models.pulse/retrieve-alert pulse-id)))
@@ -222,7 +222,7 @@
   (testing "When sandboxed users fetch a pulse hydrated with recipients, they should only see themselves"
     (mt/with-temp [:model/Pulse        {pulse-id :id} {:name "my pulse"}
                    :model/PulseChannel {pc-id :id} {:pulse_id     pulse-id
-                                             :channel_type :email}
+                                                    :channel_type :email}
                    :model/PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :crowberto)}
                    :model/PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :rasta)}]
       (let [recipient-ids (fn [pulses]
@@ -254,10 +254,10 @@
   (testing "When sandboxed users update a pulse, Metabase users in the recipients list are not deleted, even if they
            are not included in the request."
     (mt/with-temp [:model/Pulse        {pulse-id :id} {:name            "my pulse"
-                                                        :alert_condition "rows"}
+                                                       :alert_condition "rows"}
                    :model/PulseChannel {pc-id :id :as pc} {:pulse_id     pulse-id
-                                                    :channel_type :email
-                                                    :details      {:emails "asdf@metabase.com"}}
+                                                           :channel_type :email
+                                                           :details      {:emails "asdf@metabase.com"}}
                    :model/PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :crowberto)}
                    :model/PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :rasta)}]
 

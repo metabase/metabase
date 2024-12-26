@@ -147,11 +147,11 @@
       (mt/with-premium-features #{:snippet-collections}
         (mt/with-temp [:model/Collection         collection {:namespace "snippets" :name "My Snippet Collection"}
                        :model/Collection         sub-collection {:namespace "snippets"
-                                                                  :name      "Nested Snippet Collection"
-                                                                  :location  (collection/location-path collection)}
+                                                                 :name      "Nested Snippet Collection"
+                                                                 :location  (collection/location-path collection)}
                        :model/NativeQuerySnippet snippet {:collection_id (:id collection) :name "My Snippet"}
                        :model/NativeQuerySnippet _ {:collection_id (:id sub-collection)
-                                                     :name          "Nested Snippet"}]
+                                                    :name          "Nested Snippet"}]
           (is (=?
                [{:id (:id snippet) :name "My Snippet"}
                 {:id (:id sub-collection) :name "Nested Snippet Collection"}]

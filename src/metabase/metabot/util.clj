@@ -98,7 +98,7 @@
                       (< 0
                          (get-in field [:fingerprint :global :distinct-count] 0)
                          (inc enum-cardinality-threshold)))
-                     (t2/select-one-fn :values :model/FieldValues :field_id id))]
+                      (t2/select-one-fn :values :model/FieldValues :field_id id))]
      (-> (cond-> field
            (seq field-vals)
            (assoc :possible_values (vec field-vals)))
@@ -398,15 +398,15 @@
   [{:keys [messages]} context]
   (letfn [(update-contents [s]
             (str/replace s #"%%([^%]+)%%"
-              (fn [[_ path]]
-                (let [kw (->> (str/split path #":")
-                              (mapv (comp keyword u/lower-case-en)))]
-                  (or (get-in context kw)
-                      (let [message (format "No value found in context for key path '%s'" kw)]
-                        (throw (ex-info
-                                message
-                                {:message     message
-                                 :status-code 400}))))))))]
+                         (fn [[_ path]]
+                           (let [kw (->> (str/split path #":")
+                                         (mapv (comp keyword u/lower-case-en)))]
+                             (or (get-in context kw)
+                                 (let [message (format "No value found in context for key path '%s'" kw)]
+                                   (throw (ex-info
+                                           message
+                                           {:message     message
+                                            :status-code 400}))))))))]
     (map (fn [prompt] (update prompt :content update-contents)) messages)))
 
 (defn- default-prompt-templates

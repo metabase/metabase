@@ -326,7 +326,7 @@
                                        :cache_field_values_schedule fv-default
                                        :details                     {:let-user-control-scheduling true}}]
       (t2/update! :model/Database (u/the-id db) {:details (assoc (:details db)
-                                                           :let-user-control-scheduling true)})
+                                                                 :let-user-control-scheduling true)})
       (let [before (t2/select-one :model/Database :id (u/the-id db))]
         (#'task.sync-databases/randomize-db-schedules-if-needed!)
         (let [after (t2/select-one :model/Database :id (u/the-id db))]

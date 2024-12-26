@@ -172,7 +172,7 @@
   (testing "Make sure TIMESTAMP WITH TIME ZONEs come back as OffsetDateTimes."
     (is (= [{:t #t "2020-05-28T18:06-07:00"}]
            (jdbc/query (mdb/spec :h2 {:db "mem:test_db"})
-             "SELECT TIMESTAMP WITH TIME ZONE '2020-05-28 18:06:00.000 America/Los_Angeles' AS t")))))
+                       "SELECT TIMESTAMP WITH TIME ZONE '2020-05-28 18:06:00.000 America/Los_Angeles' AS t")))))
 
 (deftest ^:parallel native-query-parameters-test
   (testing "Native query parameters should work with filters."

@@ -28,37 +28,37 @@
   [[base-card-id model-card-id question-card-id] & body]
   `(mt/dataset ~'test-data
      (mt/with-temp [:model/Card {~base-card-id :id} {:name          "Base question - no special metadata"
-                                                      :dataset_query {:database (mt/id)
-                                                                      :type     :query
-                                                                      :query    {:source-table (mt/id :orders)
-                                                                                 :expressions  {"Tax Rate" [:/
-                                                                                                            [:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                                                                            [:field (mt/id :orders :total) {:base-type :type/Float}]]},
-                                                                                 :expression-idents {"Tax Rate" "BDpp6yH1r645cmTpDov7e"}
-                                                                                 :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                                                                [:field (mt/id :orders :total) {:base-type :type/Float}]
-                                                                                                [:expression "Tax Rate"]]
-                                                                                 :limit        10}}}
+                                                     :dataset_query {:database (mt/id)
+                                                                     :type     :query
+                                                                     :query    {:source-table (mt/id :orders)
+                                                                                :expressions  {"Tax Rate" [:/
+                                                                                                           [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                                           [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                                                                                :expression-idents {"Tax Rate" "BDpp6yH1r645cmTpDov7e"}
+                                                                                :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                               [:field (mt/id :orders :total) {:base-type :type/Float}]
+                                                                                               [:expression "Tax Rate"]]
+                                                                                :limit        10}}}
                     :model/Card {~model-card-id :id} {:name            "Model with percent semantic type"
-                                                       :type            :model
-                                                       :dataset_query   {:type     :query
-                                                                         :database (mt/id)
-                                                                         :query    {:source-table (format "card__%s" ~base-card-id)}}
-                                                       :result_metadata [{:name         "TAX"
-                                                                          :display_name "Tax"
-                                                                          :base_type    :type/Float}
-                                                                         {:name         "TOTAL"
-                                                                          :display_name "Total"
-                                                                          :base_type    :type/Float}
-                                                                         {:name          "Tax Rate"
-                                                                          :display_name  "Tax Rate"
-                                                                          :base_type     :type/Float
-                                                                          :semantic_type :type/Percentage
-                                                                          :field_ref     [:field "Tax Rate" {:base-type :type/Float}]}]}
+                                                      :type            :model
+                                                      :dataset_query   {:type     :query
+                                                                        :database (mt/id)
+                                                                        :query    {:source-table (format "card__%s" ~base-card-id)}}
+                                                      :result_metadata [{:name         "TAX"
+                                                                         :display_name "Tax"
+                                                                         :base_type    :type/Float}
+                                                                        {:name         "TOTAL"
+                                                                         :display_name "Total"
+                                                                         :base_type    :type/Float}
+                                                                        {:name          "Tax Rate"
+                                                                         :display_name  "Tax Rate"
+                                                                         :base_type     :type/Float
+                                                                         :semantic_type :type/Percentage
+                                                                         :field_ref     [:field "Tax Rate" {:base-type :type/Float}]}]}
                     :model/Card {~question-card-id :id} {:name          "Query based on model"
-                                                          :dataset_query {:type     :query
-                                                                          :database (mt/id)
-                                                                          :query    {:source-table (format "card__%s" ~model-card-id)}}}]
+                                                         :dataset_query {:type     :query
+                                                                         :database (mt/id)
+                                                                         :query    {:source-table (format "card__%s" ~model-card-id)}}}]
        ~@body)))
 
 (defn- run-pulse-and-return-last-data-columns!
@@ -99,14 +99,14 @@
     (with-metadata-data-cards [base-card-id model-card-id question-card-id]
       (mt/with-temp [:model/Dashboard {dash-id :id} {:name "just dash"}
                      :model/DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
-                                                                    :card_id      base-card-id}
+                                                                   :card_id      base-card-id}
                      :model/DashboardCard {model-dash-card-id :id} {:dashboard_id dash-id
-                                                                     :card_id      model-card-id}
+                                                                    :card_id      model-card-id}
                      :model/DashboardCard {question-dash-card-id :id} {:dashboard_id dash-id
-                                                                        :card_id      question-card-id}
+                                                                       :card_id      question-card-id}
                      :model/Pulse {pulse-id :id
-                                            :as      pulse} {:name         "Test Pulse"
-                                                             :dashboard_id dash-id}
+                                   :as      pulse} {:name         "Test Pulse"
+                                                    :dashboard_id dash-id}
                      :model/PulseCard _ {:pulse_id          pulse-id
                                          :card_id           base-card-id
                                          :dashboard_card_id base-dash-card-id}
@@ -140,8 +140,8 @@
     (with-metadata-data-cards [base-card-id model-card-id question-card-id]
       (testing "The data from the first question is just numbers."
         (mt/with-temp [:model/Pulse {pulse-id :id
-                                              :as      pulse} {:name            "Test Pulse"
-                                                               :alert_condition "rows"}
+                                     :as      pulse} {:name            "Test Pulse"
+                                                      :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
                                            :card_id  base-card-id}
                        :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -152,8 +152,8 @@
           (is (all-float? (first (run-pulse-and-return-last-data-columns! pulse))))))
       (testing "The data from the second question (a model) is percent formatted"
         (mt/with-temp [:model/Pulse {pulse-id :id
-                                              :as      pulse} {:name "Test Pulse"
-                                                               :alert_condition "rows"}
+                                     :as      pulse} {:name "Test Pulse"
+                                                      :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
                                            :card_id  model-card-id}
                        :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -164,8 +164,8 @@
           (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns! pulse))))))
       (testing "The data from the last question (based on a a model) is percent formatted"
         (mt/with-temp [:model/Pulse {pulse-id :id
-                                              :as      pulse} {:name "Test Pulse"
-                                                               :alert_condition "rows"}
+                                     :as      pulse} {:name "Test Pulse"
+                                                      :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
                                            :card_id  question-card-id}
                        :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -212,14 +212,14 @@
     (with-metadata-data-cards [base-card-id model-card-id question-card-id]
       (mt/with-temp [:model/Dashboard {dash-id :id} {:name "just dash"}
                      :model/DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
-                                                                    :card_id      base-card-id}
+                                                                   :card_id      base-card-id}
                      :model/DashboardCard {model-dash-card-id :id} {:dashboard_id dash-id
-                                                                     :card_id      model-card-id}
+                                                                    :card_id      model-card-id}
                      :model/DashboardCard {question-dash-card-id :id} {:dashboard_id dash-id
-                                                                        :card_id      question-card-id}
+                                                                       :card_id      question-card-id}
                      :model/Pulse {pulse-id :id
-                                            :as      pulse} {:name         "Test Pulse"
-                                                             :dashboard_id dash-id}
+                                   :as      pulse} {:name         "Test Pulse"
+                                                    :dashboard_id dash-id}
                      :model/PulseCard _ {:pulse_id          pulse-id
                                          :card_id           base-card-id
                                          :dashboard_card_id base-dash-card-id}
@@ -247,8 +247,8 @@
     (with-metadata-data-cards [base-card-id model-card-id question-card-id]
       (testing "The attached data from the first question is just numbers."
         (mt/with-temp [:model/Pulse {pulse-id :id
-                                              :as      pulse} {:name "Test Pulse"
-                                                               :alert_condition "rows"}
+                                     :as      pulse} {:name "Test Pulse"
+                                                      :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
                                            :card_id  base-card-id}
                        :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -260,8 +260,8 @@
             (is (all-float? (get-in parsed-data ["Base question - no special metadata.csv" "Tax Rate"]))))))
       (testing "The attached data from the second question (a model) is percent formatted"
         (mt/with-temp [:model/Pulse {pulse-id :id
-                                              :as      pulse} {:name "Test Pulse"
-                                                               :alert_condition "rows"}
+                                     :as      pulse} {:name "Test Pulse"
+                                                      :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
                                            :card_id  model-card-id}
                        :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -273,8 +273,8 @@
             (is (all-pct-2d? (get-in parsed-data ["Model with percent semantic type.csv" "Tax Rate"]))))))
       (testing "The attached data from the last question (based on a a model) is percent formatted"
         (mt/with-temp [:model/Pulse {pulse-id :id
-                                              :as      pulse} {:name "Test Pulse"
-                                                               :alert_condition "rows"}
+                                     :as      pulse} {:name "Test Pulse"
+                                                      :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
                                            :card_id  question-card-id}
                        :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -337,51 +337,51 @@
   (mt/with-temporary-setting-values [custom-formatting nil]
     (let [q (sql-time-query "2023-12-11 15:30:45.123" 20)]
       (mt/with-temp [:model/Card {native-card-id :id} {:name          "NATIVE"
-                                                        :dataset_query {:database (mt/id)
-                                                                        :type     :native
-                                                                        :native   {:query q}}}
+                                                       :dataset_query {:database (mt/id)
+                                                                       :type     :native
+                                                                       :native   {:query q}}}
                      :model/Card {model-card-id  :id
-                                   model-metadata :result_metadata} {:name          "MODEL"
-                                                                     :type          :model
-                                                                     :dataset_query {:database (mt/id)
-                                                                                     :type     :query
-                                                                                     :query    (model-query native-card-id)}}
+                                  model-metadata :result_metadata} {:name          "MODEL"
+                                                                    :type          :model
+                                                                    :dataset_query {:database (mt/id)
+                                                                                    :type     :query
+                                                                                    :query    (model-query native-card-id)}}
                      :model/Card {meta-model-card-id :id} {:name                   "METAMODEL"
-                                                            :type                   :model
-                                                            :dataset_query          {:database (mt/id)
-                                                                                     :type     :query
-                                                                                     :query    {:source-table
-                                                                                                (format "card__%s" model-card-id)}}
-                                                            :result_metadata        (mapv
-                                                                                     (fn [{column-name :name :as col}]
-                                                                                       (cond-> col
-                                                                                         (= "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE" column-name)
-                                                                                         (assoc :settings {:date_separator "-"
-                                                                                                           :date_style     "YYYY/M/D"
-                                                                                                           :time_style     "HH:mm"})
-                                                                                         (= "EXAMPLE_TIMESTAMP" column-name)
-                                                                                         (assoc :settings {:time_enabled "seconds"})))
-                                                                                     model-metadata)
-                                                            :visualization_settings {:column_settings {"[\"name\",\"FULL_DATETIME_UTC\"]"
-                                                                                                       {:date_abbreviate true
-                                                                                                        :time_enabled    "milliseconds"
-                                                                                                        :time_style      "HH:mm"}
-                                                                                                       "[\"name\",\"EXAMPLE_TIMESTAMP\"]"
-                                                                                                       {:time_enabled "milliseconds"}
-                                                                                                       "[\"name\",\"EXAMPLE_TIME\"]"
-                                                                                                       {:time_enabled nil}
-                                                                                                       "[\"name\",\"FULL_DATETIME_PACIFIC\"]"
-                                                                                                       {:time_enabled nil}}}}
+                                                           :type                   :model
+                                                           :dataset_query          {:database (mt/id)
+                                                                                    :type     :query
+                                                                                    :query    {:source-table
+                                                                                               (format "card__%s" model-card-id)}}
+                                                           :result_metadata        (mapv
+                                                                                    (fn [{column-name :name :as col}]
+                                                                                      (cond-> col
+                                                                                        (= "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE" column-name)
+                                                                                        (assoc :settings {:date_separator "-"
+                                                                                                          :date_style     "YYYY/M/D"
+                                                                                                          :time_style     "HH:mm"})
+                                                                                        (= "EXAMPLE_TIMESTAMP" column-name)
+                                                                                        (assoc :settings {:time_enabled "seconds"})))
+                                                                                    model-metadata)
+                                                           :visualization_settings {:column_settings {"[\"name\",\"FULL_DATETIME_UTC\"]"
+                                                                                                      {:date_abbreviate true
+                                                                                                       :time_enabled    "milliseconds"
+                                                                                                       :time_style      "HH:mm"}
+                                                                                                      "[\"name\",\"EXAMPLE_TIMESTAMP\"]"
+                                                                                                      {:time_enabled "milliseconds"}
+                                                                                                      "[\"name\",\"EXAMPLE_TIME\"]"
+                                                                                                      {:time_enabled nil}
+                                                                                                      "[\"name\",\"FULL_DATETIME_PACIFIC\"]"
+                                                                                                      {:time_enabled nil}}}}
                      :model/Dashboard {dash-id :id} {:name "The Dashboard"}
                      :model/DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
-                                                                    :card_id      native-card-id}
+                                                                   :card_id      native-card-id}
                      :model/DashboardCard {model-dash-card-id :id} {:dashboard_id dash-id
-                                                                     :card_id      model-card-id}
+                                                                    :card_id      model-card-id}
                      :model/DashboardCard {metamodel-dash-card-id :id} {:dashboard_id dash-id
-                                                                         :card_id      meta-model-card-id}
+                                                                        :card_id      meta-model-card-id}
                      :model/Pulse {pulse-id :id
-                                            :as      pulse} {:name "Consistent Time Formatting Pulse"
-                                                             :dashboard_id dash-id}
+                                   :as      pulse} {:name "Consistent Time Formatting Pulse"
+                                                    :dashboard_id dash-id}
                      :model/PulseCard _ {:pulse_id          pulse-id
                                          :card_id           native-card-id
                                          :dashboard_card_id base-dash-card-id
@@ -487,62 +487,62 @@
                                               "[\"ref\",[\"expression\",\"Tax Rate\"]]"
                                               {:column_title "Effective Tax Rate"}}}]
         (mt/with-temp [:model/Card {base-card-name :name
-                                     base-card-id   :id} {:name                   "RENAMED"
-                                                          :dataset_query          query
-                                                          :visualization_settings viz-settings}
+                                    base-card-id   :id} {:name                   "RENAMED"
+                                                         :dataset_query          query
+                                                         :visualization_settings viz-settings}
                        :model/Card {model-card-name :name
-                                     model-card-id   :id
-                                     model-metadata  :result_metadata} {:name          "MODEL"
-                                                                        :type          :model
-                                                                        :dataset_query {:database (mt/id)
-                                                                                        :type     :query
-                                                                                        :query    {:source-table
-                                                                                                   (format "card__%s" base-card-id)}}}
-                       :model/Card {meta-model-card-name :name
-                                     meta-model-card-id   :id} {:name            "MODEL_WITH_META"
-                                                                :type            :model
-                                                                :dataset_query   {:database (mt/id)
-                                                                                  :type     :query
-                                                                                  :query    {:source-table
-                                                                                             (format "card__%s" model-card-id)}}
-                                                                :result_metadata (mapv
-                                                                                  (fn [{column-name :name :as col}]
-                                                                                    (cond-> col
-                                                                                      (= "DISCOUNT" column-name)
-                                                                                      (assoc :display_name "Amount of Discount")
-                                                                                      (= "TOTAL" column-name)
-                                                                                      (assoc :display_name "Grand Total")
-                                                                                      (= "QUANTITY" column-name)
-                                                                                      (assoc :display_name "N")))
-                                                                                  model-metadata)}
-                       :model/Card {question-card-name :name
-                                     question-card-id   :id} {:name                   "FINAL_QUESTION"
-                                                              :dataset_query          {:database (mt/id)
+                                    model-card-id   :id
+                                    model-metadata  :result_metadata} {:name          "MODEL"
+                                                                       :type          :model
+                                                                       :dataset_query {:database (mt/id)
                                                                                        :type     :query
                                                                                        :query    {:source-table
-                                                                                                  (format "card__%s" meta-model-card-id)}}
-                                                              :visualization_settings {:table.pivot_column "DISCOUNT",
-                                                                                       :table.cell_column  "TAX",
-                                                                                       :column_settings    {(format
-                                                                                                             "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
-                                                                                                             (mt/id :orders :quantity))
-                                                                                                            {:column_title "Count"}
-                                                                                                            (format
-                                                                                                             "[\"ref\",[\"field\",%s,{\"base-type\":\"type/BigInteger\"}]]"
-                                                                                                             (mt/id :orders :id))
-                                                                                                            {:column_title "IDENTIFIER"}}}}
+                                                                                                  (format "card__%s" base-card-id)}}}
+                       :model/Card {meta-model-card-name :name
+                                    meta-model-card-id   :id} {:name            "MODEL_WITH_META"
+                                                               :type            :model
+                                                               :dataset_query   {:database (mt/id)
+                                                                                 :type     :query
+                                                                                 :query    {:source-table
+                                                                                            (format "card__%s" model-card-id)}}
+                                                               :result_metadata (mapv
+                                                                                 (fn [{column-name :name :as col}]
+                                                                                   (cond-> col
+                                                                                     (= "DISCOUNT" column-name)
+                                                                                     (assoc :display_name "Amount of Discount")
+                                                                                     (= "TOTAL" column-name)
+                                                                                     (assoc :display_name "Grand Total")
+                                                                                     (= "QUANTITY" column-name)
+                                                                                     (assoc :display_name "N")))
+                                                                                 model-metadata)}
+                       :model/Card {question-card-name :name
+                                    question-card-id   :id} {:name                   "FINAL_QUESTION"
+                                                             :dataset_query          {:database (mt/id)
+                                                                                      :type     :query
+                                                                                      :query    {:source-table
+                                                                                                 (format "card__%s" meta-model-card-id)}}
+                                                             :visualization_settings {:table.pivot_column "DISCOUNT",
+                                                                                      :table.cell_column  "TAX",
+                                                                                      :column_settings    {(format
+                                                                                                            "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
+                                                                                                            (mt/id :orders :quantity))
+                                                                                                           {:column_title "Count"}
+                                                                                                           (format
+                                                                                                            "[\"ref\",[\"field\",%s,{\"base-type\":\"type/BigInteger\"}]]"
+                                                                                                            (mt/id :orders :id))
+                                                                                                           {:column_title "IDENTIFIER"}}}}
                        :model/Dashboard {dash-id :id} {:name "The Dashboard"}
                        :model/DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
-                                                                      :card_id      base-card-id}
+                                                                     :card_id      base-card-id}
                        :model/DashboardCard {model-dash-card-id :id} {:dashboard_id dash-id
-                                                                       :card_id      model-card-id}
+                                                                      :card_id      model-card-id}
                        :model/DashboardCard {meta-model-dash-card-id :id} {:dashboard_id dash-id
-                                                                            :card_id      meta-model-card-id}
+                                                                           :card_id      meta-model-card-id}
                        :model/DashboardCard {question-dash-card-id :id} {:dashboard_id dash-id
-                                                                          :card_id      question-card-id}
+                                                                         :card_id      question-card-id}
                        :model/Pulse {pulse-id :id
-                                              :as      pulse} {:name "Consistent Column Names"
-                                                               :dashboard_id dash-id}
+                                     :as      pulse} {:name "Consistent Column Names"
+                                                      :dashboard_id dash-id}
                        :model/PulseCard _ {:pulse_id          pulse-id
                                            :card_id           base-card-id
                                            :dashboard_card_id base-dash-card-id
@@ -631,11 +631,11 @@
                        :model/Card          {card-id2 :id} test-card2
                        :model/Dashboard     {dash-id :id} {:name "just dash"}
                        :model/DashboardCard {dash-card-id1 :id} {:dashboard_id dash-id
-                                                                  :card_id      card-id1}
+                                                                 :card_id      card-id1}
                        :model/DashboardCard {dash-card-id2 :id} {:dashboard_id dash-id
-                                                                  :card_id      card-id2}
+                                                                 :card_id      card-id2}
                        :model/Pulse         {pulse-id :id :as pulse} {:name         "Test Pulse"
-                                                                               :dashboard_id dash-id}
+                                                                      :dashboard_id dash-id}
                        :model/PulseCard             _             {:pulse_id          pulse-id
                                                                    :card_id           card-id1
                                                                    :dashboard_card_id dash-card-id1}
@@ -681,21 +681,21 @@
   on the presence or absence of card data."
   [[result skip-if-empty? query1 query2] & body]
   `(mt/with-temp [:model/Card {~'base-card-id :id} {:name          "Card1"
+                                                    :dataset_query {:database (mt/id)
+                                                                    :type     :query
+                                                                    :query    ~query1}}
+                  :model/Card {~'empty-card-id :id} {:name          "Card2"
                                                      :dataset_query {:database (mt/id)
                                                                      :type     :query
-                                                                     :query    ~query1}}
-                  :model/Card {~'empty-card-id :id} {:name          "Card2"
-                                                      :dataset_query {:database (mt/id)
-                                                                      :type     :query
-                                                                      :query    ~query2}}
+                                                                     :query    ~query2}}
                   :model/Dashboard {~'dash-id :id} {:name "The Dashboard"}
                   :model/DashboardCard {~'base-dash-card-id :id} {:dashboard_id ~'dash-id
-                                                                   :card_id      ~'base-card-id}
+                                                                  :card_id      ~'base-card-id}
                   :model/DashboardCard {~'empty-dash-card-id :id} {:dashboard_id ~'dash-id
-                                                                    :card_id      ~'empty-card-id}
+                                                                   :card_id      ~'empty-card-id}
                   :model/Pulse {~'pulse-id :id :as ~'pulse} {:name          "Only populated pulse"
-                                                                      :dashboard_id  ~'dash-id
-                                                                      :skip_if_empty ~skip-if-empty?}
+                                                             :dashboard_id  ~'dash-id
+                                                             :skip_if_empty ~skip-if-empty?}
                   :model/PulseCard ~'_ {:pulse_id          ~'pulse-id
                                         :card_id           ~'base-card-id
                                         :dashboard_card_id ~'base-dash-card-id
@@ -771,29 +771,29 @@
         (doseq [[skip? expected-count] [[false 2] [true 1]]]
           (mt/with-temp
             [:model/Card {base-card-id :id} {:name          "Card1"
+                                             :dataset_query {:database (mt/id)
+                                                             :type     :query
+                                                             :query    {:source-table (mt/id :orders)
+                                                                        :fields       [[:field (mt/id :orders :id) {:base-type :type/BigInteger}]
+                                                                                       [:field (mt/id :orders :tax) {:base-type :type/Float}]]
+                                                                        :limit        2}}}
+             :model/Card {empty-card-id :id} {:name          "Card1"
                                               :dataset_query {:database (mt/id)
                                                               :type     :query
-                                                              :query    {:source-table (mt/id :orders)
-                                                                         :fields       [[:field (mt/id :orders :id) {:base-type :type/BigInteger}]
-                                                                                        [:field (mt/id :orders :tax) {:base-type :type/Float}]]
-                                                                         :limit        2}}}
-             :model/Card {empty-card-id :id} {:name          "Card1"
-                                               :dataset_query {:database (mt/id)
-                                                               :type     :query
-                                                               :query    {:source-table (format "card__%s" base-card-id)
-                                                                          :filter       [:= [:field "TAX" {:base-type :type/Float}] -1]}}}
+                                                              :query    {:source-table (format "card__%s" base-card-id)
+                                                                         :filter       [:= [:field "TAX" {:base-type :type/Float}] -1]}}}
              :model/Dashboard {dash-id :id} {:name "The Dashboard"}
              :model/DashboardCard _ {:dashboard_id dash-id
-                                      :visualization_settings
-                                      {:virtual_card {:display :text}
-                                       :text         card-text}}
+                                     :visualization_settings
+                                     {:virtual_card {:display :text}
+                                      :text         card-text}}
              :model/DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
-                                                            :card_id      base-card-id}
+                                                           :card_id      base-card-id}
              :model/DashboardCard {empty-dash-card-id :id} {:dashboard_id dash-id
-                                                             :card_id      empty-card-id}
+                                                            :card_id      empty-card-id}
              :model/Pulse {pulse-id :id :as pulse} {:name          "Only populated pulse"
-                                                             :dashboard_id  dash-id
-                                                             :skip_if_empty skip?}
+                                                    :dashboard_id  dash-id
+                                                    :skip_if_empty skip?}
              :model/PulseCard _ {:pulse_id          pulse-id
                                  :card_id           base-card-id
                                  :dashboard_card_id base-dash-card-id
@@ -833,7 +833,7 @@
             (is (= 11 (count dashcards)))
             (is (= "A look at Orders" title)))
           (mt/with-temp [:model/Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
-                                                                         :dashboard_id dash-id}
+                                                                :dashboard_id dash-id}
                          :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
                                                                      :pulse_id     pulse-id
                                                                      :enabled      true}
@@ -876,11 +876,11 @@
                        :model/Card {model-id :id} model
                        :model/Dashboard {dash-id :id} {}
                        :model/DashboardCard {dash-card-id :id} {:dashboard_id dash-id
-                                                                 :card_id      card-id}
+                                                                :card_id      card-id}
                        :model/DashboardCard {model-card-id :id} {:dashboard_id dash-id
-                                                                  :card_id      model-id}
+                                                                 :card_id      model-id}
                        :model/Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
-                                                                       :dashboard_id dash-id}
+                                                              :dashboard_id dash-id}
                        :model/PulseCard _ {:pulse_id          pulse-id
                                            :card_id           card-id
                                            :dashboard_card_id dash-card-id}
@@ -911,7 +911,7 @@
       (mt/dataset test-data
         (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Completely empty dashboard"}
                        :model/Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
-                                                                       :dashboard_id dash-id}
+                                                              :dashboard_id dash-id}
                        :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
                                                                    :pulse_id     pulse-id
                                                                    :enabled      true}

@@ -34,7 +34,7 @@
   (mt/with-temp [:model/Database {database-id :id} {}
                  :model/Table    {table-id :id} {:db_id database-id}
                  :model/Segment  segment        {:table_id   table-id
-                                                  :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]
+                                                 :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]
     (is (= {:id                      true
             :table_id                true
             :creator_id              (mt/user->id :rasta)
@@ -54,7 +54,7 @@
   (mt/with-temp [:model/Database {database-id :id} {}
                  :model/Table    {table-id :id} {:db_id database-id}
                  :model/Segment  segment        {:table_id   table-id
-                                                  :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]
+                                                 :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]
     (is (= {:definition  {:before {:filter [:> [:field 4 nil] "2014-10-19"]}
                           :after  {:filter [:between [:field 4 nil] "2014-07-01" "2014-10-19"]}}
             :description {:before "Lookin' for a blueberry"
@@ -117,42 +117,42 @@
 (deftest definition-description-missing-definition-test
   (testing "Do not hydrate definition description if definition is nil"
     (t2.with-temp/with-temp [:model/Segment segment {:name     "Segment"
-                                                      :table_id (mt/id :users)}]
+                                                     :table_id (mt/id :users)}]
       (is (=? {:definition_description nil}
               (t2/hydrate segment :definition_description))))))
 
 (deftest ^:parallel definition-description-test
   (t2.with-temp/with-temp [:model/Segment segment {:name       "Expensive BBQ Spots"
-                                                    :definition (:query (mt/mbql-query venues
-                                                                          {:filter
-                                                                           [:and
-                                                                            [:= $price 4]
-                                                                            [:= $category_id->categories.name "BBQ"]]}))}]
+                                                   :definition (:query (mt/mbql-query venues
+                                                                         {:filter
+                                                                          [:and
+                                                                           [:= $price 4]
+                                                                           [:= $category_id->categories.name "BBQ"]]}))}]
     (is (= "Filtered by Price is equal to 4 and Category → Name is BBQ"
            (:definition_description (t2/hydrate segment :definition_description))))
     (testing "Segments that reference other Segments (inception)"
       (t2.with-temp/with-temp [:model/Segment segment-2 {:name "Segment 2"
-                                                          :definition (:query (mt/mbql-query categories
-                                                                                {:filter
-                                                                                 [:and
-                                                                                  [:segment (:id segment)]
-                                                                                  [:not-null $id]]}))}]
+                                                         :definition (:query (mt/mbql-query categories
+                                                                               {:filter
+                                                                                [:and
+                                                                                 [:segment (:id segment)]
+                                                                                 [:not-null $id]]}))}]
         (is (= "Filtered by Expensive BBQ Spots and ID is not empty"
                (:definition_description (t2/hydrate segment-2 :definition_description))))))))
 
 (deftest definition-description-missing-source-table-test
   (testing "Should work if `:definition` does not include `:source-table`"
     (t2.with-temp/with-temp [:model/Segment segment {:name       "Expensive BBQ Spots"
-                                                      :definition (mt/$ids venues
-                                                                    {:filter
-                                                                     [:= $price 4]})}]
+                                                     :definition (mt/$ids venues
+                                                                   {:filter
+                                                                    [:= $price 4]})}]
       (is (= "Filtered by Price is equal to 4"
              (:definition_description (t2/hydrate segment :definition_description)))))))
 
 (deftest definition-description-invalid-query-test
   (testing "Should return `nil` if query is invalid"
     (t2.with-temp/with-temp [:model/Segment segment {:name       "Expensive BBQ Spots"
-                                                      :definition (:query (mt/mbql-query venues
-                                                                            {:filter
-                                                                             [:= [:field Integer/MAX_VALUE nil] 4]}))}]
+                                                     :definition (:query (mt/mbql-query venues
+                                                                           {:filter
+                                                                            [:= [:field Integer/MAX_VALUE nil] 4]}))}]
       (is (nil? (:definition_description (t2/hydrate segment :definition_description)))))))

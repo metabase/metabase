@@ -62,11 +62,11 @@
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db
       (ts/with-temp-dpc [:model/Collection  grandparent {:name     "Grandparent Collection"
-                                                          :location "/"}
+                                                         :location "/"}
                          :model/Collection  parent      {:name     "Parent Collection"
-                                                          :location (str "/" (:id grandparent) "/")}
+                                                         :location (str "/" (:id grandparent) "/")}
                          :model/Collection  child       {:name     "Child Collection"
-                                                          :location (str "/" (:id grandparent) "/" (:id parent) "/")}
+                                                         :location (str "/" (:id grandparent) "/" (:id parent) "/")}
                          :model/Card        c1          {:name "root card" :collection_id nil}
                          :model/Card        c2          {:name "grandparent card" :collection_id (:id grandparent)}
                          :model/Card        c3          {:name "parent card" :collection_id (:id parent)}
@@ -92,14 +92,14 @@
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db
       (ts/with-temp-dpc [:model/Collection         grandparent {:name      "Grandparent Collection"
-                                                                 :namespace :snippets
-                                                                 :location  "/"}
+                                                                :namespace :snippets
+                                                                :location  "/"}
                          :model/Collection         parent      {:name      "Parent Collection"
-                                                                 :namespace :snippets
-                                                                 :location  (str "/" (:id grandparent) "/")}
+                                                                :namespace :snippets
+                                                                :location  (str "/" (:id grandparent) "/")}
                          :model/Collection         child       {:name      "Child Collection"
-                                                                 :namespace :snippets
-                                                                 :location  (str "/" (:id grandparent) "/" (:id parent) "/")}
+                                                                :namespace :snippets
+                                                                :location  (str "/" (:id grandparent) "/" (:id parent) "/")}
                          :model/NativeQuerySnippet c1          {:name "root snippet" :collection_id nil}
                          :model/NativeQuerySnippet c2          {:name "grandparent snippet" :collection_id (:id grandparent)}
                          :model/NativeQuerySnippet c3          {:name "parent snippet" :collection_id (:id parent)}

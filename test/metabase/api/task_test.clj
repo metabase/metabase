@@ -109,7 +109,7 @@
 (deftest fetch-test
   (testing "Superusers querying for specific TaskHistory will get that task info"
     (t2.with-temp/with-temp [:model/TaskHistory task {:task     "Test Task"
-                                                       :duration 100}]
+                                                      :duration 100}]
       (is (= (merge default-task-history {:task "Test Task", :duration 100})
              (mt/boolean-ids-and-timestamps
               (mt/user-http-request :crowberto :get 200 (format "task/%s" (u/the-id task)))))))))

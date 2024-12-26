@@ -376,8 +376,8 @@
          (mt/with-non-admin-groups-no-root-collection-perms
            (mt/with-temp [:model/Collection collection {}
                           :model/Card       card {:name          "My question"
-                                                   :display       "line"
-                                                   :collection_id (u/the-id collection)}]
+                                                  :display       "line"
+                                                  :collection_id (u/the-id collection)}]
              (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
              (with-alert-setup!
                (et/with-expected-messages 1
@@ -398,8 +398,8 @@
          (mt/with-non-admin-groups-no-root-collection-perms
            (mt/with-temp [:model/Collection collection {}
                           :model/Card       card {:name          "My question"
-                                                   :display       "bar"
-                                                   :collection_id (u/the-id collection)}]
+                                                  :display       "bar"
+                                                  :collection_id (u/the-id collection)}]
              (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
              (with-alert-setup!
                (et/with-expected-messages 1
@@ -684,8 +684,8 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (t2.with-temp/with-temp [:model/Collection collection {}
                                :model/Card       card {:name          "My question"
-                                                        :display       "bar"
-                                                        :collection_id (u/the-id collection)}]
+                                                       :display       "bar"
+                                                       :collection_id (u/the-id collection)}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (with-alert-setup!
           (et/with-expected-messages 1
@@ -747,10 +747,10 @@
 (deftest get-alert-question-test
   (mt/with-temp [:model/Card                 card  (basic-alert-query)
                  :model/Pulse                alert {:alert_condition  "rows"
-                                                            :alert_first_only false
-                                                            :alert_above_goal nil
-                                                            :skip_if_empty    true
-                                                            :name             nil}
+                                                    :alert_first_only false
+                                                    :alert_above_goal nil
+                                                    :skip_if_empty    true
+                                                    :name             nil}
                  :model/PulseCard             _    (pulse-card alert card)
                  :model/PulseChannel          pc   (pulse-channel alert)
                  :model/PulseChannelRecipient _    (recipient pc :rasta)]
@@ -786,14 +786,14 @@
             :crowberto 2}
            (mt/with-temp [:model/Card                  card    (basic-alert-query)
                           :model/Pulse                 alert-1 (assoc (basic-alert)
-                                                                        :alert_above_goal false)
+                                                                      :alert_above_goal false)
                           :model/PulseCard             _       (pulse-card alert-1 card)
                           :model/PulseChannel          pc-1    (pulse-channel alert-1)
                           :model/PulseChannelRecipient _       (recipient pc-1 :rasta)
                           ;; A separate admin created alert
                           :model/Pulse                 alert-2 (assoc (basic-alert)
-                                                                        :alert_above_goal false
-                                                                        :creator_id       (mt/user->id :crowberto))
+                                                                      :alert_above_goal false
+                                                                      :creator_id       (mt/user->id :crowberto))
                           :model/PulseCard             _       (pulse-card alert-2 card)
                           :model/PulseChannel          pc-2    (pulse-channel alert-2)
                           :model/PulseChannelRecipient _       (recipient pc-2 :crowberto)
@@ -807,16 +807,16 @@
   (testing "Archived alerts are excluded by default, unless `archived` parameter is sent"
     (mt/with-temp [:model/Card                  card    (basic-alert-query)
                    :model/Pulse                 alert-1 (assoc (basic-alert)
-                                                                 :alert_above_goal false
-                                                                 :archived         true)
+                                                               :alert_above_goal false
+                                                               :archived         true)
                    :model/PulseCard             _       (pulse-card alert-1 card)
                    :model/PulseChannel          pc-1    (pulse-channel alert-1)
                    :model/PulseChannelRecipient _       (recipient pc-1 :rasta)
                    ;; A separate admin created alert
                    :model/Pulse                 alert-2 (assoc (basic-alert)
-                                                                 :alert_above_goal false
-                                                                 :archived         true
-                                                                 :creator_id       (mt/user->id :crowberto))
+                                                               :alert_above_goal false
+                                                               :archived         true
+                                                               :creator_id       (mt/user->id :crowberto))
                    :model/PulseCard             _       (pulse-card alert-2 card)
                    :model/PulseChannel          pc-2    (pulse-channel alert-2)
                    :model/PulseChannelRecipient _       (recipient pc-2 :crowberto)

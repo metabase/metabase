@@ -385,9 +385,9 @@
           (mt/with-persistence-enabled! [persist-models!]
             (let [mbql-query (mt/mbql-query categories)]
               (mt/with-temp [:model/Card model {:name "model"
-                                                 :type :model
-                                                 :dataset_query mbql-query
-                                                 :database_id (mt/id)}]
+                                                :type :model
+                                                :dataset_query mbql-query
+                                                :database_id (mt/id)}]
                 (persist-models!)
                 (testing "tag uses persisted table"
                   (let [pi (t2/select-one 'PersistedInfo :card_id (u/the-id model))]
@@ -481,15 +481,15 @@
           (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
           (mt/with-temp [:model/Collection collection {}
                          :model/Card       {card-1-id :id} {:collection_id (u/the-id collection)
-                                                             :dataset_query (mt/mbql-query venues
-                                                                              {:order-by [[:asc $id]] :limit 2})}
+                                                            :dataset_query (mt/mbql-query venues
+                                                                             {:order-by [[:asc $id]] :limit 2})}
                          :model/Card       card-2 {:collection_id (u/the-id collection)
-                                                    :dataset_query (mt/native-query
-                                                                     {:query         "SELECT * FROM {{card}}"
-                                                                      :template-tags {"card" {:name         "card"
-                                                                                              :display-name "card"
-                                                                                              :type         :card
-                                                                                              :card-id      card-1-id}}})}]
+                                                   :dataset_query (mt/native-query
+                                                                    {:query         "SELECT * FROM {{card}}"
+                                                                     :template-tags {"card" {:name         "card"
+                                                                                             :display-name "card"
+                                                                                             :type         :card
+                                                                                             :card-id      card-1-id}}})}]
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
             (mt/with-test-user :rasta
               (binding [qp.perms/*card-id* (u/the-id card-2)]

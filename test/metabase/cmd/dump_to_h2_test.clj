@@ -84,28 +84,28 @@
               (testing "decodes settings and dashboard.details"
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-plaintext))]
                   (is (= "baz" (:value (first (jdbc/query {:connection target-conn}
-                                                "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';")))))
+                                                          "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';")))))
                   (is (= "{\"db\":\"/tmp/test.db\"}"
                          (:details (first (jdbc/query {:connection target-conn}
-                                            "select details from metabase_database where id=1;")))))))
+                                                      "select details from metabase_database where id=1;")))))))
 
               (testing "when flag is set to false, encrypted settings and dashboard.details are still encrypted"
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-enc))]
                   (is (not (= "baz"
                               (:value (first (jdbc/query {:connection target-conn}
-                                               "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';"))))))
+                                                         "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';"))))))
                   (is (not (= "{\"db\":\"/tmp/test.db\"}"
                               (:details (first (jdbc/query {:connection target-conn}
-                                                 "select details from metabase_database where id=1;"))))))))
+                                                           "select details from metabase_database where id=1;"))))))))
 
               (testing "defaults to not decrypting"
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-default-enc))]
                   (is (not (= "baz"
                               (:value (first (jdbc/query {:connection target-conn}
-                                               "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';"))))))
+                                                         "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';"))))))
                   (is (not (= "{\"db\":\"/tmp/test.db\"}"
                               (:details (first (jdbc/query {:connection target-conn}
-                                                 "select details from metabase_database where id=1;")))))))))))))))
+                                                           "select details from metabase_database where id=1;")))))))))))))))
 
 (deftest dump-to-h2-dump-is-attached-dwh-test
   (testing "dump-to-h2 --dump-plaintext with is_attached_dwh"
@@ -124,20 +124,20 @@
                 (load-from-h2/load-from-h2! h2-fixture-db-file)
                 (encryption-test/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
                   (t2/insert! :model/Database {:engine          "h2"
-                                                :name            "normal-db"
-                                                :details         {:db "/tmp/test.db"}
-                                                :is_attached_dwh false})
+                                               :name            "normal-db"
+                                               :details         {:db "/tmp/test.db"}
+                                               :is_attached_dwh false})
                   (t2/insert! :model/Database {:engine          "h2"
-                                                :name            "attached-dwh"
-                                                :details         {:db "/tmp/test.db"}
-                                                :is_attached_dwh true})
+                                               :name            "attached-dwh"
+                                               :details         {:db "/tmp/test.db"}
+                                               :is_attached_dwh true})
                   (dump-to-h2/dump-to-h2! h2-file {:dump-plaintext? true})))
               (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file))]
                 (testing "preserves details when is_attached_dwh is not set"
                   (is (= "{\"db\":\"/tmp/test.db\"}"
                          (:details (first (jdbc/query {:connection target-conn}
-                                            "select details from metabase_database where name='normal-db';"))))))
+                                                      "select details from metabase_database where name='normal-db';"))))))
                 (testing "preserves details when is_attached_dwh is not set"
                   (is (= "{}"
                          (:details (first (jdbc/query {:connection target-conn}
-                                            "select details from metabase_database where name='attached-dwh';"))))))))))))))
+                                                      "select details from metabase_database where name='attached-dwh';"))))))))))))))

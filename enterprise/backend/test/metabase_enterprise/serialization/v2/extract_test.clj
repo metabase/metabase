@@ -223,15 +223,15 @@
                          {(str "[\"ref\",[\"field\"," field2-id ",null]]") {:column_title "Locus"}}}}
 
                        :model/Card       {c4-id  :id
-                                           c4-eid :entity_id}        {:name          "Referenced Question"
-                                                                      :database_id   db-id
-                                                                      :table_id      schema-id
-                                                                      :collection_id coll-id
-                                                                      :creator_id    mark-id
-                                                                      :dataset_query
-                                                                      {:query {:source-table no-schema-id
-                                                                               :filter [:>= [:field field-id nil] 18]}
-                                                                       :database db-id}}
+                                          c4-eid :entity_id}        {:name          "Referenced Question"
+                                                                     :database_id   db-id
+                                                                     :table_id      schema-id
+                                                                     :collection_id coll-id
+                                                                     :creator_id    mark-id
+                                                                     :dataset_query
+                                                                     {:query {:source-table no-schema-id
+                                                                              :filter [:>= [:field field-id nil] 18]}
+                                                                      :database db-id}}
                        :model/Card
                        {c5-id  :id
                         c5-eid :entity_id}
@@ -590,10 +590,10 @@
                        :model/Table      {no-schema-id :id}        {:name "Schemaless Table" :db_id db-id}
                        :model/Field      {email-id     :id}        {:name "email" :table_id no-schema-id}
                        :model/Dimension  {dim1-eid     :entity_id} {:name       "Vanilla Dimension"
-                                                                     :field_id   email-id
-                                                                     :type       "internal"
-                                                                     :created_at (t/minus (t/offset-date-time)
-                                                                                          (t/days 3))}
+                                                                    :field_id   email-id
+                                                                    :type       "internal"
+                                                                    :created_at (t/minus (t/offset-date-time)
+                                                                                         (t/days 3))}
                        ;; Advanced case: Dimension capturing a foreign relationship.
                        ;; The parent field (Orders.customer_id) is the foreign key.
                        ;; Dimension.field_id (Customers.id) is the foreign ID field;
@@ -607,12 +607,12 @@
                                                                     :db_id       db-id
                                                                     :schema      "PUBLIC"}
                        :model/Field      {fk-id        :id}        {:name     "customer_id"
-                                                                     :table_id orders
-                                                                     :fk_target_field_id cust-id}
+                                                                    :table_id orders
+                                                                    :fk_target_field_id cust-id}
                        :model/Dimension  _                         {:name     "Customer Name"
-                                                                     :type     "external"
-                                                                     :field_id fk-id
-                                                                     :human_readable_field_id cust-name}]
+                                                                    :type     "external"
+                                                                    :field_id fk-id
+                                                                    :human_readable_field_id cust-name}]
       (testing "dimensions without foreign keys are inlined into their Fields\n"
         (let [ser (ts/extract-one "Field" email-id)]
           (is (malli= [:map
@@ -797,8 +797,8 @@
 (deftest segments-test
   (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [:model/User       {ann-id :id}        {:first_name "Ann"
-                                                               :last_name  "Wilson"
-                                                               :email      "ann@heart.band"}
+                                                              :last_name  "Wilson"
+                                                              :email      "ann@heart.band"}
                        :model/Database   {db-id :id}        {:name "My Database"}
                        :model/Table      {no-schema-id :id} {:name "Schemaless Table" :db_id db-id}
                        :model/Field      {field-id :id}     {:name "Some Field" :table_id no-schema-id}
@@ -837,8 +837,8 @@
 (deftest implicit-action-test
   (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"
-                                                      :last_name  "Wilson"
-                                                      :email      "ann@heart.band"}
+                                                     :last_name  "Wilson"
+                                                     :email      "ann@heart.band"}
                        :model/Database {db-id :id :as db} {:name "My Database"}]
       (mt/with-db db
         (mt/with-actions [{card-id-1  :id
@@ -875,8 +875,8 @@
 (deftest http-action-test
   (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"
-                                                      :last_name  "Wilson"
-                                                      :email      "ann@heart.band"}
+                                                     :last_name  "Wilson"
+                                                     :email      "ann@heart.band"}
                        :model/Database {db-id :id :as db} {:name "My Database"}]
       (mt/with-db db
         (mt/with-actions [{card-id-1  :id
@@ -913,8 +913,8 @@
 (deftest query-action-test
   (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"
-                                                      :last_name  "Wilson"
-                                                      :email      "ann@heart.band"}
+                                                     :last_name  "Wilson"
+                                                     :email      "ann@heart.band"}
                        :model/Database {db-id :id :as db} {:name "My Database"}]
       (mt/with-db db
         (mt/with-actions [{card-id-1  :id
@@ -959,13 +959,13 @@
     (ts/with-temp-dpc [:model/Database {db-id        :id} {:name "My Database"}
                        :model/Table    {no-schema-id :id} {:name "Schemaless Table" :db_id db-id}
                        :model/Field    {field-id     :id} {:name "Some Field"
-                                                            :table_id no-schema-id
-                                                            :fingerprint {:global {:distinct-count 75 :nil% 0.0}
-                                                                          :type   {:type/Text {:percent-json   0.0
-                                                                                               :percent-url    0.0
-                                                                                               :percent-email  0.0
-                                                                                               :percent-state  0.0
-                                                                                               :average-length 8.333333333333334}}}}
+                                                           :table_id no-schema-id
+                                                           :fingerprint {:global {:distinct-count 75 :nil% 0.0}
+                                                                         :type   {:type/Text {:percent-json   0.0
+                                                                                              :percent-url    0.0
+                                                                                              :percent-email  0.0
+                                                                                              :percent-state  0.0
+                                                                                              :average-length 8.333333333333334}}}}
 
                        :model/FieldValues
                        {fv-id       :id
@@ -1011,8 +1011,8 @@
   (mt/with-empty-h2-app-db
     (ts/with-temp-dpc
       [:model/User       {mark-id :id}    {:first_name "Mark"
-                                            :last_name  "Knopfler"
-                                            :email      "mark@direstrai.ts"}
+                                           :last_name  "Knopfler"
+                                           :email      "mark@direstrai.ts"}
        :model/Database   {db-id    :id}   {:name "My Database"}
        :model/Table      {table-id :id}   {:name "Schemaless Table" :db_id db-id}
        :model/Field      {field-id :id}   {:name "A Field" :table_id table-id}
@@ -1073,16 +1073,16 @@
 (deftest selective-serialization-basic-test
   (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [:model/User       {mark-id :id}              {:first_name "Mark"
-                                                                      :last_name  "Knopfler"
-                                                                      :email      "mark@direstrai.ts"}
+                                                                     :last_name  "Knopfler"
+                                                                     :email      "mark@direstrai.ts"}
                        :model/Collection {coll1-id   :id
-                                           coll1-eid  :entity_id}    {:name "Some Collection"}
+                                          coll1-eid  :entity_id}    {:name "Some Collection"}
                        :model/Collection {coll2-id   :id
-                                           coll2-eid  :entity_id}    {:name     "Nested Collection"
-                                                                      :location (str "/" coll1-id "/")}
+                                          coll2-eid  :entity_id}    {:name     "Nested Collection"
+                                                                     :location (str "/" coll1-id "/")}
                        :model/Collection {coll3-id   :id
-                                           coll3-eid  :entity_id}    {:name     "Grandchild Collection"
-                                                                      :location (str "/" coll1-id "/" coll2-id "/")}
+                                          coll3-eid  :entity_id}    {:name     "Grandchild Collection"
+                                                                     :location (str "/" coll1-id "/" coll2-id "/")}
 
                        :model/Database   {db-id      :id}           {:name "My Database"}
                        :model/Table      {no-schema-id :id}         {:name "Schemaless Table" :db_id db-id}
@@ -1097,178 +1097,178 @@
                        ;; One dashboard and three cards in each of the three collections:
                        ;; Two cards contained in the dashboard and one freestanding.
                        :model/Dashboard  {dash1-id     :id
-                                           dash1-eid    :entity_id}  {:name          "Dashboard 1"
-                                                                      :collection_id coll1-id
-                                                                      :creator_id    mark-id}
+                                          dash1-eid    :entity_id}  {:name          "Dashboard 1"
+                                                                     :collection_id coll1-id
+                                                                     :creator_id    mark-id}
                        :model/Card       {c1-1-id  :id
-                                           c1-1-eid :entity_id}      {:name          "Question 1-1"
-                                                                      :database_id   db-id
-                                                                      :table_id      no-schema-id
-                                                                      :collection_id coll1-id
-                                                                      :creator_id    mark-id}
+                                          c1-1-eid :entity_id}      {:name          "Question 1-1"
+                                                                     :database_id   db-id
+                                                                     :table_id      no-schema-id
+                                                                     :collection_id coll1-id
+                                                                     :creator_id    mark-id}
                        :model/Card       {c1-2-id  :id
-                                           c1-2-eid :entity_id}      {:name          "Question 1-2"
-                                                                      :database_id   db-id
-                                                                      :table_id      schema-id
-                                                                      :collection_id coll1-id
-                                                                      :creator_id    mark-id}
+                                          c1-2-eid :entity_id}      {:name          "Question 1-2"
+                                                                     :database_id   db-id
+                                                                     :table_id      schema-id
+                                                                     :collection_id coll1-id
+                                                                     :creator_id    mark-id}
                        :model/Card       {c1-3-eid :entity_id}      {:name          "Question 1-3"
-                                                                      :database_id   db-id
-                                                                      :table_id      schema-id
-                                                                      :collection_id coll1-id
-                                                                      :creator_id    mark-id}
+                                                                     :database_id   db-id
+                                                                     :table_id      schema-id
+                                                                     :collection_id coll1-id
+                                                                     :creator_id    mark-id}
 
                        :model/DashboardCard _                       {:card_id      c1-1-id
-                                                                      :dashboard_id dash1-id}
+                                                                     :dashboard_id dash1-id}
                        :model/DashboardCard _                       {:card_id      c1-2-id
-                                                                      :dashboard_id dash1-id}
+                                                                     :dashboard_id dash1-id}
 
                        ;; Second dashboard, in the middle collection.
                        :model/Dashboard  {dash2-id     :id
-                                           dash2-eid    :entity_id}  {:name          "Dashboard 2"
-                                                                      :collection_id coll2-id
-                                                                      :creator_id    mark-id}
+                                          dash2-eid    :entity_id}  {:name          "Dashboard 2"
+                                                                     :collection_id coll2-id
+                                                                     :creator_id    mark-id}
                        :model/Card       {c2-1-id  :id
-                                           c2-1-eid :entity_id}      {:name          "Question 2-1"
-                                                                      :database_id   db-id
-                                                                      :table_id      no-schema-id
-                                                                      :collection_id coll2-id
-                                                                      :creator_id    mark-id}
+                                          c2-1-eid :entity_id}      {:name          "Question 2-1"
+                                                                     :database_id   db-id
+                                                                     :table_id      no-schema-id
+                                                                     :collection_id coll2-id
+                                                                     :creator_id    mark-id}
                        :model/Card       {c2-2-id  :id
-                                           c2-2-eid :entity_id}      {:name          "Question 2-2"
-                                                                      :database_id   db-id
-                                                                      :table_id      schema-id
-                                                                      :collection_id coll2-id
-                                                                      :creator_id    mark-id}
+                                          c2-2-eid :entity_id}      {:name          "Question 2-2"
+                                                                     :database_id   db-id
+                                                                     :table_id      schema-id
+                                                                     :collection_id coll2-id
+                                                                     :creator_id    mark-id}
                        :model/Card       {c2-3-eid :entity_id}      {:name          "Question 2-3"
-                                                                      :database_id   db-id
-                                                                      :table_id      schema-id
-                                                                      :collection_id coll2-id
-                                                                      :creator_id    mark-id}
+                                                                     :database_id   db-id
+                                                                     :table_id      schema-id
+                                                                     :collection_id coll2-id
+                                                                     :creator_id    mark-id}
 
                        :model/DashboardCard _                       {:card_id      c2-1-id
-                                                                      :dashboard_id dash2-id}
+                                                                     :dashboard_id dash2-id}
                        :model/DashboardCard _                       {:card_id      c2-2-id
-                                                                      :dashboard_id dash2-id}
+                                                                     :dashboard_id dash2-id}
 
                        ;; Third dashboard, in the grandchild collection.
                        :model/Dashboard  {dash3-id     :id
-                                           dash3-eid    :entity_id}  {:name          "Dashboard 3"
-                                                                      :collection_id coll3-id
-                                                                      :creator_id    mark-id}
+                                          dash3-eid    :entity_id}  {:name          "Dashboard 3"
+                                                                     :collection_id coll3-id
+                                                                     :creator_id    mark-id}
 
                        :model/Card       {c3-1-id  :id
-                                           c3-1-eid :entity_id}      {:name          "Question 3-1"
-                                                                      :database_id   db-id
-                                                                      :table_id      no-schema-id
-                                                                      :collection_id coll3-id
-                                                                      :creator_id    mark-id}
+                                          c3-1-eid :entity_id}      {:name          "Question 3-1"
+                                                                     :database_id   db-id
+                                                                     :table_id      no-schema-id
+                                                                     :collection_id coll3-id
+                                                                     :creator_id    mark-id}
                        :model/Card       {c3-2-id  :id
-                                           c3-2-eid :entity_id}      {:name          "Question 3-2"
-                                                                      :database_id   db-id
-                                                                      :table_id      schema-id
-                                                                      :collection_id coll3-id
-                                                                      :creator_id    mark-id}
+                                          c3-2-eid :entity_id}      {:name          "Question 3-2"
+                                                                     :database_id   db-id
+                                                                     :table_id      schema-id
+                                                                     :collection_id coll3-id
+                                                                     :creator_id    mark-id}
                        :model/Card       {c3-3-eid :entity_id}      {:name          "Question 3-3"
-                                                                      :database_id   db-id
-                                                                      :table_id      schema-id
-                                                                      :collection_id coll3-id
-                                                                      :creator_id    mark-id}
+                                                                     :database_id   db-id
+                                                                     :table_id      schema-id
+                                                                     :collection_id coll3-id
+                                                                     :creator_id    mark-id}
 
                        :model/DashboardCard _                       {:card_id      c3-1-id
-                                                                      :dashboard_id dash3-id}
+                                                                     :dashboard_id dash3-id}
                        :model/DashboardCard _                       {:card_id      c3-2-id
-                                                                      :dashboard_id dash3-id}
+                                                                     :dashboard_id dash3-id}
 
                        ;; Fourth dashboard where its parameter's source is another card
                        :model/Collection   {coll4-id   :id
-                                             _coll4-eid :entity_id}    {:name     "Forth collection"}
+                                            _coll4-eid :entity_id}    {:name     "Forth collection"}
                        :model/Card         {c4-id  :id
-                                             c4-eid :entity_id}        {:name          "Question 4-1"
-                                                                        :database_id   db-id
-                                                                        :table_id      no-schema-id
-                                                                        :collection_id coll4-id
-                                                                        :creator_id    mark-id
-                                                                        :parameters    [{:id                   "abc"
-                                                                                         :type                 "category"
-                                                                                         :name                 "CATEGORY"
-                                                                                         :values_source_type   "card"
+                                            c4-eid :entity_id}        {:name          "Question 4-1"
+                                                                       :database_id   db-id
+                                                                       :table_id      no-schema-id
+                                                                       :collection_id coll4-id
+                                                                       :creator_id    mark-id
+                                                                       :parameters    [{:id                   "abc"
+                                                                                        :type                 "category"
+                                                                                        :name                 "CATEGORY"
+                                                                                        :values_source_type   "card"
                                                                                          ;; card_id is in a different collection with dashboard's collection
-                                                                                         :values_source_config {:card_id     c1-1-id
-                                                                                                                :value_field [:field field-id nil]}}]}
+                                                                                        :values_source_config {:card_id     c1-1-id
+                                                                                                               :value_field [:field field-id nil]}}]}
 
                        :model/Dashboard    {dash4-id     :id
-                                             dash4-eid    :entity_id}  {:name          "Dashboard 4"
-                                                                        :collection_id coll4-id
-                                                                        :creator_id    mark-id
-                                                                        :parameters    [{:id                   "def"
-                                                                                         :type                 "category"
-                                                                                         :name                 "CATEGORY"
-                                                                                         :values_source_type   "card"
+                                            dash4-eid    :entity_id}  {:name          "Dashboard 4"
+                                                                       :collection_id coll4-id
+                                                                       :creator_id    mark-id
+                                                                       :parameters    [{:id                   "def"
+                                                                                        :type                 "category"
+                                                                                        :name                 "CATEGORY"
+                                                                                        :values_source_type   "card"
                                                                                          ;; card_id is in a different collection with dashboard's collection
-                                                                                         :values_source_config {:card_id     c1-2-id
-                                                                                                                :value_field [:field field-id nil]}}]}
+                                                                                        :values_source_config {:card_id     c1-2-id
+                                                                                                               :value_field [:field field-id nil]}}]}
                        :model/DashboardCard _                       {:card_id      c4-id
-                                                                      :dashboard_id dash4-id}
+                                                                     :dashboard_id dash4-id}
 
                        ;; Fifth dashboard which has :click_behavior defined.
                        :model/Collection    {coll5-id      :id}        {:name          "Fifth collection"}
                        :model/Dashboard     {clickdash-id  :id
-                                              clickdash-eid :entity_id} {:name          "Dashboard with click behavior"
-                                                                         :collection_id coll5-id
-                                                                         :creator_id    mark-id}
+                                             clickdash-eid :entity_id} {:name          "Dashboard with click behavior"
+                                                                        :collection_id coll5-id
+                                                                        :creator_id    mark-id}
                        :model/DashboardCard _                          {:card_id      c3-1-id
-                                                                         :dashboard_id clickdash-id
-                                                                         :visualization_settings
+                                                                        :dashboard_id clickdash-id
+                                                                        :visualization_settings
                                                                  ;; Top-level click behavior for the card.
-                                                                         (let [dimension  [:dimension [:field "something" {:base-type "type/Text"}]]
-                                                                               mapping-id (json/encode dimension)]
-                                                                           {:click_behavior {:type     "link"
-                                                                                             :linkType "question"
-                                                                                             :targetId c3-2-id
-                                                                                             :parameterMapping
-                                                                                             {mapping-id {:id     mapping-id
-                                                                                                          :source {:type "column"
-                                                                                                                   :id   "whatever"
-                                                                                                                   :name "Just to serialize"}
-                                                                                                          :target {:type      "dimension"
-                                                                                                                   :id        mapping-id
-                                                                                                                   :dimension dimension}}}}})}
+                                                                        (let [dimension  [:dimension [:field "something" {:base-type "type/Text"}]]
+                                                                              mapping-id (json/encode dimension)]
+                                                                          {:click_behavior {:type     "link"
+                                                                                            :linkType "question"
+                                                                                            :targetId c3-2-id
+                                                                                            :parameterMapping
+                                                                                            {mapping-id {:id     mapping-id
+                                                                                                         :source {:type "column"
+                                                                                                                  :id   "whatever"
+                                                                                                                  :name "Just to serialize"}
+                                                                                                         :target {:type      "dimension"
+                                                                                                                  :id        mapping-id
+                                                                                                                  :dimension dimension}}}}})}
                        ;;; stress-test that exporting various visualization_settings does not break
                        :model/DashboardCard _                          {:card_id c3-1-id
-                                                                         :dashboard_id clickdash-id
-                                                                         :visualization_settings
-                                                                         {:column_settings
-                                                                          {(str "[\"ref\",[\"field\"," field-id ",null]]")
-                                                                           {:click_behavior
-                                                                            {:type     "link"
-                                                                             :linkType "dashboard"
-                                                                             :targetId dash4-id}}
-                                                                           (str "[\"ref\",[\"field\"," field-id2 ",null]]")
-                                                                           {:click_behavior
-                                                                            {:type "crossfilter"
-                                                                             :parameterMapping
-                                                                             {"abcdef" {:id "abcdef"
-                                                                                        :source {:type "column"
-                                                                                                 :id field-id2
-                                                                                                 :name "Field To Click 1"}
-                                                                                        :target {:type "parameter"
-                                                                                                 :id "abcdef"}}}}}
-                                                                           (str "[\"ref\",[\"field\"," field-id3 ",null]]")
-                                                                           (let [mapping-id (format "[\"dimension\",[\"fk->\",[\"field\",%d,null],[\"field\",%d,null]]]" field-id3 field-id)
-                                                                                 dimension [:dimension [:field field-id {:source-field field-id3}]]]
-                                                                             {:click_behavior
-                                                                              {:type "link"
-                                                                               :linkType "question"
-                                                                               :targetId c4-id
-                                                                               :parameterMapping
-                                                                               {mapping-id {:id mapping-id
-                                                                                            :source {:type "column"
-                                                                                                     :id   "Category_ID"
-                                                                                                     :name "Category ID"}
-                                                                                            :target {:type      "dimension"
-                                                                                                     :id        mapping-id
-                                                                                                     :dimension dimension}}}}})}}}]
+                                                                        :dashboard_id clickdash-id
+                                                                        :visualization_settings
+                                                                        {:column_settings
+                                                                         {(str "[\"ref\",[\"field\"," field-id ",null]]")
+                                                                          {:click_behavior
+                                                                           {:type     "link"
+                                                                            :linkType "dashboard"
+                                                                            :targetId dash4-id}}
+                                                                          (str "[\"ref\",[\"field\"," field-id2 ",null]]")
+                                                                          {:click_behavior
+                                                                           {:type "crossfilter"
+                                                                            :parameterMapping
+                                                                            {"abcdef" {:id "abcdef"
+                                                                                       :source {:type "column"
+                                                                                                :id field-id2
+                                                                                                :name "Field To Click 1"}
+                                                                                       :target {:type "parameter"
+                                                                                                :id "abcdef"}}}}}
+                                                                          (str "[\"ref\",[\"field\"," field-id3 ",null]]")
+                                                                          (let [mapping-id (format "[\"dimension\",[\"fk->\",[\"field\",%d,null],[\"field\",%d,null]]]" field-id3 field-id)
+                                                                                dimension [:dimension [:field field-id {:source-field field-id3}]]]
+                                                                            {:click_behavior
+                                                                             {:type "link"
+                                                                              :linkType "question"
+                                                                              :targetId c4-id
+                                                                              :parameterMapping
+                                                                              {mapping-id {:id mapping-id
+                                                                                           :source {:type "column"
+                                                                                                    :id   "Category_ID"
+                                                                                                    :name "Category ID"}
+                                                                                           :target {:type      "dimension"
+                                                                                                    :id        mapping-id
+                                                                                                    :dimension dimension}}}}})}}}]
 
       (testing "selecting a collection includes settings and data model by default"
         (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting"}
@@ -1454,15 +1454,15 @@
                        :model/Table      {no-schema-id   :id}        {:name "Schemaless Table" :db_id db-id}
                        :model/Field      {some-field-id  :id}        {:name "Some Field" :table_id no-schema-id}
                        :model/Table      {schema-id      :id}        {:name        "Schema'd Table"
-                                                                       :db_id       db-id
-                                                                       :schema      "PUBLIC"}
+                                                                      :db_id       db-id
+                                                                      :schema      "PUBLIC"}
                        :model/Field      {other-field-id :id}        {:name "Other Field" :table_id schema-id}
                        :model/Field      {fk-id          :id}        {:name     "Foreign Key"
-                                                                       :table_id schema-id
-                                                                       :fk_target_field_id some-field-id}
+                                                                      :table_id schema-id
+                                                                      :fk_target_field_id some-field-id}
                        :model/Field      {nested-id      :id}        {:name "Nested Field"
-                                                                       :table_id schema-id
-                                                                       :parent_id other-field-id}]
+                                                                      :table_id schema-id
+                                                                      :parent_id other-field-id}]
 
       (testing "fields that reference foreign keys are properly exported as Field references"
         (is (= ["My Database" nil "Schemaless Table" "Some Field"]
@@ -1487,21 +1487,21 @@
                        :model/Card          {card1-id :id} {:name "Some Card"}
                        :model/DashboardCard _              {:card_id card1-id :dashboard_id dash-id}
                        :model/Card          _              {:name          "Dependent Card"
-                                                             :collection_id coll2-id
-                                                             :dataset_query {:query {:source-table (str "card__" card1-id)}}}
+                                                            :collection_id coll2-id
+                                                            :dataset_query {:query {:source-table (str "card__" card1-id)}}}
                        :model/User          user           {:email "dirk@kirk.ir"}
                        :model/Collection    pcoll          {:name              "Personal Collection"
-                                                             :personal_owner_id (:id user)}
+                                                            :personal_owner_id (:id user)}
                        :model/Card          pcard          {:name          "Personal Card"
-                                                             :collection_id (:id pcoll)}
+                                                            :collection_id (:id pcoll)}
                        :model/Card          _              {:name          "External Card"
-                                                             :dataset_query {:query {:source-table (str "card__" (:id pcard))}}}
+                                                            :dataset_query {:query {:source-table (str "card__" (:id pcard))}}}
                        :model/Card          _              {:name          "Card with parameters"
-                                                             :collection_id coll3-id
-                                                             :parameters    [{:id                   "abc"
-                                                                              :type                 "category"
-                                                                              :values_source_type   "card"
-                                                                              :values_source_config {:card_id card1-id}}]}]
+                                                            :collection_id coll3-id
+                                                            :parameters    [{:id                   "abc"
+                                                                             :type                 "category"
+                                                                             :values_source_type   "card"
+                                                                             :values_source_config {:card_id card1-id}}]}]
       (testing "Complain about card not available for exporting"
         (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
           (extract/extract {:targets       [["Collection" coll1-id]]
@@ -1543,17 +1543,17 @@
 (deftest recursive-colls-test
   (mt/with-empty-h2-app-db
     (mt/with-temp [:model/Collection {parent-id  :id
-                                       parent-eid :entity_id} {:name "Top-Level Collection"}
+                                      parent-eid :entity_id} {:name "Top-Level Collection"}
                    :model/Collection {middle-id  :id
-                                       middle-eid :entity_id} {:name     "Nested Collection"
-                                                               :location (format "/%s/" parent-id)}
+                                      middle-eid :entity_id} {:name     "Nested Collection"
+                                                              :location (format "/%s/" parent-id)}
                    :model/Collection {nested-id  :id
-                                       nested-eid :entity_id} {:name     "Nested Collection"
-                                                               :location (format "/%s/%s/" parent-id middle-id)}
+                                      nested-eid :entity_id} {:name     "Nested Collection"
+                                                              :location (format "/%s/%s/" parent-id middle-id)}
                    :model/Card       _                       {:name          "Card To Skip"
-                                                               :collection_id parent-id}
+                                                              :collection_id parent-id}
                    :model/Card       {ncard-eid :entity_id}  {:name          "Card To Export"
-                                                               :collection_id nested-id}]
+                                                              :collection_id nested-id}]
       (let [ser (extract/extract {:targets       [["Collection" nested-id]]
                                   :no-settings   true
                                   :no-data-model true})]

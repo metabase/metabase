@@ -460,11 +460,11 @@
            :where  [:= [:raw "\"source\".\"BIRD.ID\""] [:inline 1]]
            :limit  [:inline 10]})
          (qp.compile/compile
-           {:database (mt/id)
-            :type     :query
-            :query    {:source-query {:source-table (mt/id :venues)}
-                       :filter       [:= [:field "BIRD.ID" {:base-type :type/Integer}] 1]
-                       :limit        10}}))
+          {:database (mt/id)
+           :type     :query
+           :query    {:source-query {:source-table (mt/id :venues)}
+                      :filter       [:= [:field "BIRD.ID" {:base-type :type/Integer}] 1]
+                      :limit        10}}))
       (str "make sure that dots in field literal identifiers get handled properly so you can't reference fields "
            "from other tables using them")))
 
@@ -483,10 +483,10 @@
                       [:< [:raw "\"source\".\"BIRD.ID\""]  (t/local-date-time "2017-01-08T00:00")]]
              :limit  [:inline 10]})
            (qp.compile/compile
-             (mt/mbql-query venues
-               {:source-query {:source-table $$venues}
-                :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
-                :limit        10})))
+            (mt/mbql-query venues
+              {:source-query {:source-table $$venues}
+               :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
+               :limit        10})))
         "make sure that field-literals work as DateTimeFields")))
 
 (deftest ^:parallel aggregatation-references-test
@@ -561,10 +561,10 @@
                       [:= :source.text nil]]
              :limit  [:inline 10]})
            (qp.compile/compile
-             (mt/mbql-query nil
-               {:source-query {:source-table $$venues}
-                :limit        10
-                :filter       [:!= [:field "text" {:base-type :type/Text}] "Coo"]}))))))
+            (mt/mbql-query nil
+              {:source-query {:source-table $$venues}
+               :limit        10
+               :filter       [:!= [:field "text" {:base-type :type/Text}] "Coo"]}))))))
 
 (deftest ^:parallel filter-by-number-fields-test
   (testing "Make sure we can filter by number fields form a source query"
@@ -579,10 +579,10 @@
              :where  [:> :source.sender_id [:inline 3]]
              :limit  [:inline 10]})
            (qp.compile/compile
-             (mt/mbql-query nil
-               {:source-query {:source-table $$venues}
-                :limit        10
-                :filter       [:> *sender_id/Integer 3]}))))))
+            (mt/mbql-query nil
+              {:source-query {:source-table $$venues}
+               :limit        10
+               :filter       [:> *sender_id/Integer 3]}))))))
 
 (deftest ^:parallel native-query-with-default-params-as-source-test
   (testing "make sure using a native query with default params as a source works"
@@ -599,9 +599,9 @@
       (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = ? LIMIT 10) AS \"source\" LIMIT 1048575"
               :params ["Widget"]}
              (qp.compile/compile
-               {:database (meta/id)
-                :type     :query
-                :query    {:source-table "card__1"}}))))))
+              {:database (meta/id)
+               :type     :query
+               :query    {:source-table "card__1"}}))))))
 
 (deftest ^:parallel correct-column-metadata-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)

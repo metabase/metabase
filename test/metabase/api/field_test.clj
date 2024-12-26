@@ -353,8 +353,8 @@
 
       (testing "should be able to unset just the human-readable values"
         (t2.with-temp/with-temp [:model/FieldValues _ {:values                (range 1 5)
-                                                        :field_id              field-id
-                                                        :human_readable_values ["$" "$$" "$$$" "$$$$"]}]
+                                                       :field_id              field-id
+                                                       :human_readable_values ["$" "$$" "$$$" "$$$$"]}]
           (testing "before updating values"
             (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true, :has_more_values false}
                    (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))
@@ -389,14 +389,14 @@
        :model/Table     table1 {:schema "PUBLIC" :name "widget" :db_id (:id db)}
        :model/Table     table2 {:schema "PUBLIC" :name "orders" :db_id (:id db)}
        :model/Field     field {:name          "WIDGET_ID"
-                                :display_name  "Widget ID"
-                                :table_id      (:id table2)
-                                :semantic_type :type/FK}
+                               :display_name  "Widget ID"
+                               :table_id      (:id table2)
+                               :semantic_type :type/FK}
        :model/Field     human-readable-field {:name "Name" :table_id (:id table1)}
        :model/Dimension _dim  {:field_id                (:id field)
-                                :name                    (:display_name field)
-                                :type                    :external
-                                :human_readable_field_id (:id human-readable-field)}]
+                               :name                    (:display_name field)
+                               :type                    :external
+                               :human_readable_field_id (:id human-readable-field)}]
       (testing "before update"
         (is (= "Widget ID"
                (:name (dimension-for-field (:id field))))))
@@ -504,7 +504,7 @@
   (testing "PUT /api/field/:id"
     (testing "When an FK field gets it's semantic_type removed, we should clear the external dimension"
       (mt/with-temp [:model/Field {field-id-1 :id} {:name          "Field Test 1"
-                                                     :semantic_type :type/FK}
+                                                    :semantic_type :type/FK}
                      :model/Field {field-id-2 :id} {:name "Field Test 2"}]
         (create-dimension-via-API! field-id-1
                                    {:name "fk-remove-dimension", :type "external" :human_readable_field_id field-id-2})
@@ -527,7 +527,7 @@
   (testing "PUT /api/field/:id"
     (testing "Updating unrelated properties should not affect a Field's `:dimensions`"
       (mt/with-temp [:model/Field {field-id-1 :id} {:name          "Field Test 1"
-                                                     :semantic_type :type/FK}
+                                                    :semantic_type :type/FK}
                      :model/Field {field-id-2 :id} {:name "Field Test 2"}]
         ;; create the Dimension
         (create-dimension-via-API! field-id-1
@@ -554,8 +554,8 @@
   (testing "When removing the FK semantic type, the fk_target_field_id should be cleared as well"
     (mt/with-temp [:model/Field {field-id-1 :id} {:name "Field Test 1"}
                    :model/Field {field-id-2 :id} {:name               "Field Test 2"
-                                                   :semantic_type      :type/FK
-                                                   :fk_target_field_id field-id-1}]
+                                                  :semantic_type      :type/FK
+                                                  :fk_target_field_id field-id-1}]
       (testing "before change"
         (is (= {:name               "Field Test 2"
                 :display_name       "Field Test 2"
@@ -583,8 +583,8 @@
     (mt/with-temp [:model/Field {field-id-1 :id} {:name "Field Test 1"}
                    :model/Field {field-id-2 :id} {:name "Field Test 2"}
                    :model/Field {field-id-3 :id} {:name               "Field Test 3"
-                                                   :semantic_type      :type/FK
-                                                   :fk_target_field_id field-id-1}]
+                                                  :semantic_type      :type/FK
+                                                  :fk_target_field_id field-id-1}]
       (let [before-change (simple-field-details (t2/select-one :model/Field :id field-id-3))]
         (testing "before change"
           (is (= {:name               "Field Test 3"
@@ -644,8 +644,8 @@
     (testing "fk_target_field_id and FK should remain unchanged on updates of other fields"
       (mt/with-temp [:model/Field {field-id-1 :id} {:name "Field Test 1"}
                      :model/Field {field-id-2 :id} {:name               "Field Test 2"
-                                                     :semantic_type      :type/FK
-                                                     :fk_target_field_id field-id-1}]
+                                                    :semantic_type      :type/FK
+                                                    :fk_target_field_id field-id-1}]
         (testing "before change"
           (is (= {:name               "Field Test 2"
                   :display_name       "Field Test 2"
@@ -672,7 +672,7 @@
   (testing "PUT /api/field/:id"
     (testing "Changing a remapped field's type to something that can't be remapped will clear the dimension"
       (t2.with-temp/with-temp [:model/Field {field-id :id} {:name      "Field Test"
-                                                             :base_type "type/Integer"}]
+                                                            :base_type "type/Integer"}]
         (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
         (testing "before API request"
           (is (= {:id                      true
@@ -691,7 +691,7 @@
 
     (testing "Change from supported type to supported type will leave the dimension"
       (t2.with-temp/with-temp [:model/Field {field-id :id} {:name      "Field Test"
-                                                             :base_type "type/Integer"}]
+                                                            :base_type "type/Integer"}]
         (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
         (let [expected {:id                      true
                         :entity_id               true

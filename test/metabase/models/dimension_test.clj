@@ -16,8 +16,8 @@
                      :model/Field     field1 {:name "sku" :table_id (:id table)}
                      :model/Field     field2 {:name "human" :table_id (:id table)}
                      :model/Dimension dim    {:field_id                (:id field1)
-                                               :human_readable_field_id (:id field2)
-                                               :created_at              now}]
+                                              :human_readable_field_id (:id field2)
+                                              :created_at              now}]
         (is (= "c52f8889"
                (serdes/raw-hash [(serdes/identity-hash field1) (serdes/identity-hash field2) now])
                (serdes/identity-hash dim)))))))

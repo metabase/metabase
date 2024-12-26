@@ -297,8 +297,8 @@
          :model/DashboardTab  dashtab   {:dashboard_id (:id dashboard)}
          :model/Card          card      {:name "A Card" :type :model}
          :model/Action               action    {:model_id (:id card)
-                                                 :type     :implicit
-                                                 :name     "An action"}]
+                                                :type     :implicit
+                                                :name     "An action"}]
         (let [columns    (disj (set/difference (set (keys dashcard)) (set @#'dashboard/excluded-columns-for-dashcard-revision))
                                :dashboard_id :id)
               update-col (fn [col value]
@@ -458,7 +458,7 @@
   [model model-id n]
   (assert (> n 1), "n = 1 means revert to the current revision, which is a no-op.")
   (let [ids (t2/select-pks-vec :model/Revision :model (name model) :model_id model-id {:order-by [[:id :desc]]
-                                                                                        :limit    n})]
+                                                                                       :limit    n})]
     (assert (= n (count ids)), "There are less revisions than required to revert")
     (revision/revert! {:entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids)})))
 
@@ -803,8 +803,8 @@
   (testing "A new dashboard creates a new ParameterCard"
     (t2.with-temp/with-temp [:model/Card      {card-id :id}      {}
                              :model/Dashboard {dashboard-id :id} {:parameters [(merge default-parameter
-                                                                                       {:values_source_type    "card"
-                                                                                        :values_source_config {:card_id card-id}})]}]
+                                                                                      {:values_source_type    "card"
+                                                                                       :values_source_config {:card_id card-id}})]}]
       (is (=? {:card_id                   card-id
                :parameterized_object_type :dashboard
                :parameterized_object_id   dashboard-id
@@ -816,8 +816,8 @@
                              :model/Dashboard {dashboard-id :id} {:parameters [default-parameter]}]
       (is (nil? (t2/select-one 'ParameterCard :card_id card-id)))
       (t2/update! :model/Dashboard dashboard-id {:parameters [(merge default-parameter
-                                                                      {:values_source_type    "card"
-                                                                       :values_source_config {:card_id card-id}})]})
+                                                                     {:values_source_type    "card"
+                                                                      :values_source_config {:card_id card-id}})]})
       (is (=? {:card_id                   card-id
                :parameterized_object_type :dashboard
                :parameterized_object_id   dashboard-id
@@ -827,8 +827,8 @@
   (testing "Removing a card_id deletes old ParameterCards"
     (t2.with-temp/with-temp [:model/Card      {card-id :id}      {}
                              :model/Dashboard {dashboard-id :id} {:parameters [(merge default-parameter
-                                                                                       {:values_source_type    "card"
-                                                                                        :values_source_config {:card_id card-id}})]}]
+                                                                                      {:values_source_type    "card"
+                                                                                       :values_source_config {:card_id card-id}})]}]
         ;; same setup as earlier test, we know the ParameterCard exists right now
       (t2/delete! :model/Dashboard :id dashboard-id)
       (is (nil? (t2/select-one 'ParameterCard :card_id card-id))))))
@@ -856,8 +856,8 @@
                              :model/Database      db         {:engine :h2}
                              :model/Table         table      {:db_id (u/the-id db)}
                              :model/Card          card       {:dataset_query {:database (u/the-id db)
-                                                                               :type     :query
-                                                                               :query    {:source-table (u/the-id table)}}}
+                                                                              :type     :query
+                                                                              :query    {:source-table (u/the-id table)}}}
                              :model/DashboardCard _          {:dashboard_id (u/the-id dash), :card_id (u/the-id card)}]
       (f db collection dash))))
 
@@ -940,14 +940,14 @@
       (testing (format "target = %s" (pr-str target))
         (mt/with-temp [:model/Card      {card-id :id} {}
                        :model/Dashboard {dashboard-id :id} {:parameters [{:name   "Category Name"
-                                                                           :slug   "category_name"
-                                                                           :id     "_CATEGORY_NAME_"
-                                                                           :type   "category"
-                                                                           :values_query_type    "list"
-                                                                           :values_source_type   "card"
-                                                                           :values_source_config {:card_id card-id
-                                                                                                  :value_field [:field 2 nil]}
-                                                                           :target target}]}]
+                                                                          :slug   "category_name"
+                                                                          :id     "_CATEGORY_NAME_"
+                                                                          :type   "category"
+                                                                          :values_query_type    "list"
+                                                                          :values_source_type   "card"
+                                                                          :values_source_config {:card_id card-id
+                                                                                                 :value_field [:field 2 nil]}
+                                                                          :target target}]}]
           (is (= [{:name   "Category Name"
                    :slug   "category_name"
                    :id     "_CATEGORY_NAME_"
@@ -961,9 +961,9 @@
 (deftest should-add-default-values-source-test
   (testing "shoudld add default if not exists"
     (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id} {:parameters [{:name   "Category Name"
-                                                                                 :slug   "category_name"
-                                                                                 :id     "_CATEGORY_NAME_"
-                                                                                 :type   "category"}]}]
+                                                                                :slug   "category_name"
+                                                                                :id     "_CATEGORY_NAME_"
+                                                                                :type   "category"}]}]
       (is (=? [{:name                 "Category Name"
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"
@@ -973,13 +973,13 @@
   (testing "shoudld not override if existsed "
     (mt/with-temp [:model/Card      {card-id :id} {}
                    :model/Dashboard {dashboard-id :id} {:parameters [{:name   "Category Name"
-                                                                       :slug   "category_name"
-                                                                       :id     "_CATEGORY_NAME_"
-                                                                       :type   "category"
-                                                                       :values_query_type    "list"
-                                                                       :values_source_type   "card"
-                                                                       :values_source_config {:card_id card-id
-                                                                                              :value_field [:field 2 nil]}}]}]
+                                                                      :slug   "category_name"
+                                                                      :id     "_CATEGORY_NAME_"
+                                                                      :type   "category"
+                                                                      :values_query_type    "list"
+                                                                      :values_source_type   "card"
+                                                                      :values_source_config {:card_id card-id
+                                                                                             :value_field [:field 2 nil]}}]}]
       (is (=? [{:name                 "Category Name"
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"
@@ -1004,11 +1004,11 @@
       [:model/Field     field     {:name "A field"}
        :model/Card      card      {:name "A card"}
        :model/Dashboard dashboard {:name       "A dashboard"
-                                    :parameters [{:id                   "abc"
-                                                  :type                 "category"
-                                                  :values_source_type   "card"
-                                                  :values_source_config {:card_id     (:id card)
-                                                                         :value_field [:field (:id field) nil]}}]}]
+                                   :parameters [{:id                   "abc"
+                                                 :type                 "category"
+                                                 :values_source_type   "card"
+                                                 :values_source_config {:card_id     (:id card)
+                                                                        :value_field [:field (:id field) nil]}}]}]
       (is (= {["Card" (:id card)] {"Dashboard" (:id dashboard)}}
              (serdes/descendants "Dashboard" (:id dashboard))))))
 
@@ -1017,8 +1017,8 @@
       (mt/with-temp
         [:model/Dashboard     dashboard {:name "A dashboard"}
          :model/DashboardCard dc        {:action_id          action-id
-                                          :dashboard_id       (:id dashboard)
-                                          :parameter_mappings []}]
+                                         :dashboard_id       (:id dashboard)
+                                         :parameter_mappings []}]
         (is (= {["Action" action-id] {"Dashboard"     (:id dashboard)
                                       "DashboardCard" (:id dc)}}
                (serdes/descendants "Dashboard" (:id dashboard)))))))
@@ -1028,14 +1028,14 @@
       [:model/Card          card1     {:name "Card attached to dashcard"}
        :model/Card          card2     {:name "Card attached to parameters"}
        :model/Dashboard     dashboard {:parameters [{:name "Category Name"
-                                                      :slug "category_name"
-                                                      :id   "_CATEGORY_NAME_"
-                                                      :type "category"}]}
+                                                     :slug "category_name"
+                                                     :id   "_CATEGORY_NAME_"
+                                                     :type "category"}]}
        :model/DashboardCard dc        {:card_id            (:id card1)
-                                        :dashboard_id       (:id dashboard)
-                                        :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
-                                                              :card_id      (:id card2)
-                                                              :target       [:dimension (mt/$ids $categories.name)]}]}]
+                                       :dashboard_id       (:id dashboard)
+                                       :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                                             :card_id      (:id card2)
+                                                             :target       [:dimension (mt/$ids $categories.name)]}]}]
       (is (= {["Card" (:id card1)] {"Dashboard"     (:id dashboard)
                                     "DashboardCard" (:id dc)}
               ["Card" (:id card2)] {"Dashboard"     (:id dashboard)
@@ -1048,9 +1048,9 @@
        :model/Card                card2     {:name "Card attached to series in 1st position"}
        :model/Card                card3     {:name "Card attached to series in 2nd position"}
        :model/Dashboard           dashboard {:parameters [{:name "Category Name"
-                                                            :slug "category_name"
-                                                            :id   "_CATEGORY_NAME_"
-                                                            :type "category"}]}
+                                                           :slug "category_name"
+                                                           :id   "_CATEGORY_NAME_"
+                                                           :type "category"}]}
        :model/DashboardCard       dashcard {:card_id (:id card1), :dashboard_id (:id dashboard)}
        :model/DashboardCardSeries s2       {:dashboardcard_id (:id dashcard), :card_id (:id card2), :position 0}
        :model/DashboardCardSeries s3       {:dashboardcard_id (:id dashcard), :card_id (:id card3), :position 1}]

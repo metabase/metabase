@@ -332,7 +332,7 @@
                   (testing "sense check: there are results matching some schemas in the schema-filters-patterns"
                     (is (some #(re-matches #"20(.*)" %) synced-schemas)))
                   (let [all-schemas (map :table_schema (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                                                         "select distinct table_schema from information_schema.tables;"))]
+                                                                   "select distinct table_schema from information_schema.tables;"))]
                     (testing "metabase_cache_ tables are excluded from results"
                       (let [match? #(re-matches #"metabase_cache(.*)" %)]
                         (is (some match? all-schemas))

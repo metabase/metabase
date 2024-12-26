@@ -94,15 +94,15 @@
 
 (defn add-card-to-dashboard! [card dashboard & {parameter-mappings :parameter_mappings, :as kvs}]
   (first (t2/insert-returning-instances! :model/DashboardCard (merge {:dashboard_id       (u/the-id dashboard)
-                                                                       :card_id            (u/the-id card)
-                                                                       :row                0
-                                                                       :col                0
-                                                                       :size_x             4
-                                                                       :size_y             4
-                                                                       :parameter_mappings (or parameter-mappings
-                                                                                               [{:parameter_id "_VENUE_ID_"
-                                                                                                 :card_id      (u/the-id card)
-                                                                                                 :target       [:dimension [:field (mt/id :venues :id) nil]]}])}
+                                                                      :card_id            (u/the-id card)
+                                                                      :row                0
+                                                                      :col                0
+                                                                      :size_x             4
+                                                                      :size_y             4
+                                                                      :parameter_mappings (or parameter-mappings
+                                                                                              [{:parameter_id "_VENUE_ID_"
+                                                                                                :card_id      (u/the-id card)
+                                                                                                :target       [:dimension [:field (mt/id :venues :id) nil]]}])}
                                                                      kvs))))
 
 ;; TODO -- we can probably use [[metabase.api.dashboard-test/with-chain-filter-fixtures]] for mocking this stuff
@@ -162,19 +162,19 @@
 (deftest make-sure-param-values-get-returned-as-expected
   (let [category-name-id (mt/id :categories :name)]
     (t2.with-temp/with-temp [:model/Card card {:dataset_query
-                                                {:database (mt/id)
-                                                 :type     :native
-                                                 :native   {:query         (str "SELECT COUNT(*) "
-                                                                                "FROM venues "
-                                                                                "LEFT JOIN categories ON venues.category_id = categories.id "
-                                                                                "WHERE {{category}}")
-                                                            :collection    "CATEGORIES"
-                                                            :template-tags {:category {:name         "category"
-                                                                                       :display-name "Category"
-                                                                                       :type         "dimension"
-                                                                                       :dimension    ["field" category-name-id nil]
-                                                                                       :widget-type  "category"
-                                                                                       :required     true}}}}}]
+                                               {:database (mt/id)
+                                                :type     :native
+                                                :native   {:query         (str "SELECT COUNT(*) "
+                                                                               "FROM venues "
+                                                                               "LEFT JOIN categories ON venues.category_id = categories.id "
+                                                                               "WHERE {{category}}")
+                                                           :collection    "CATEGORIES"
+                                                           :template-tags {:category {:name         "category"
+                                                                                      :display-name "Category"
+                                                                                      :type         "dimension"
+                                                                                      :dimension    ["field" category-name-id nil]
+                                                                                      :widget-type  "category"
+                                                                                      :required     true}}}}}]
       (is (= {(mt/id :categories :name) {:values                (t2/select-one-fn (comp count :values)
                                                                                   'FieldValues :field_id category-name-id
                                                                                   :type :full)
@@ -394,18 +394,18 @@
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (t2.with-temp/with-temp
         [:model/Card card (merge {:enable_embedding true
-                                   :dataset_query
-                                   {:database (mt/id)
-                                    :type     :native
-                                    :native   {:query         "SELECT count(*) AS Count FROM venues where {{venue_id}}"
-                                               :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil],
-                                                                           :display-name "Venue ID",
-                                                                           :id           "_VENUE_ID_",
-                                                                           :name         "venue_id",
-                                                                           :required     false,
-                                                                           :default      1
-                                                                           :type         :dimension,
-                                                                           :widget-type  :id}}}}}
+                                  :dataset_query
+                                  {:database (mt/id)
+                                   :type     :native
+                                   :native   {:query         "SELECT count(*) AS Count FROM venues where {{venue_id}}"
+                                              :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil],
+                                                                          :display-name "Venue ID",
+                                                                          :id           "_VENUE_ID_",
+                                                                          :name         "venue_id",
+                                                                          :required     false,
+                                                                          :default      1
+                                                                          :type         :dimension,
+                                                                          :widget-type  :id}}}}}
                                  (shared-obj))]
         (is (=? {:status     "completed"
                  :json_query {:parameters [{:id    "_VENUE_ID_"
@@ -609,8 +609,8 @@
             (let [dashboard-uuid (str (random-uuid))]
               (mt/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid dashboard-uuid}
                              :model/DashboardCard dashcard {:dashboard_id dashboard-id
-                                                             :action_id    action-id
-                                                             :card_id      card-id}]
+                                                            :action_id    action-id
+                                                            :card_id      card-id}]
                 (testing "Dashcard should only have id and name params"
                   (is (partial= {:dashcards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
                                 (mt/user-http-request :crowberto :get 200 (format "public/dashboard/%s" dashboard-uuid)))))
@@ -634,8 +634,8 @@
                                                                                             "name" {:id     "name"
                                                                                                     :hidden false}}}}]
             (mt/with-temp [:model/DashboardCard _ {:dashboard_id (:id dash)
-                                                    :action_id action-id
-                                                    :card_id model-id}]
+                                                   :action_id action-id
+                                                   :card_id model-id}]
               (let [public-action (-> (client/client :get 200 (format "public/dashboard/%s" (:public_uuid dash)))
                                       :dashcards first :action)]
                 (testing "hidden action fields should not be included in the response"
@@ -713,18 +713,18 @@
       (with-temp-public-dashboard [dash]
         (t2.with-temp/with-temp
           [:model/Card card (merge {:enable_embedding true
-                                     :dataset_query
-                                     {:database (mt/id)
-                                      :type     :native
-                                      :native   {:query         "SELECT count(*) AS Count FROM venues where {{venue_id}}"
-                                                 :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil]
-                                                                             :display-name "Venue ID"
-                                                                             :id           "_VENUE_ID_"
-                                                                             :name         "venue_id"
-                                                                             :required     false
-                                                                             :default      1
-                                                                             :type         :dimension
-                                                                             :widget-type  :id}}}}}
+                                    :dataset_query
+                                    {:database (mt/id)
+                                     :type     :native
+                                     :native   {:query         "SELECT count(*) AS Count FROM venues where {{venue_id}}"
+                                                :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil]
+                                                                            :display-name "Venue ID"
+                                                                            :id           "_VENUE_ID_"
+                                                                            :name         "venue_id"
+                                                                            :required     false
+                                                                            :default      1
+                                                                            :type         :dimension
+                                                                            :widget-type  :id}}}}}
                                    (shared-obj))]
           (let [dashcard (add-card-to-dashboard! card dash {:parameter_mappings [{:parameter_id "_VENUE_ID_"
                                                                                   :card_id      (u/the-id card)
@@ -799,9 +799,9 @@
         (with-temp-public-dashboard-and-card [dash card dashcard]
           (with-temp-public-card [card-2]
             (t2.with-temp/with-temp [:model/DashboardCardSeries _ {:dashboardcard_id (t2/select-one-pk :model/DashboardCard
-                                                                                                        :card_id      (u/the-id card)
-                                                                                                        :dashboard_id (u/the-id dash))
-                                                                    :card_id          (u/the-id card-2)}]
+                                                                                                       :card_id      (u/the-id card)
+                                                                                                       :dashboard_id (u/the-id dash))
+                                                                   :card_id          (u/the-id card-2)}]
               (is (= [[100]]
                      (mt/rows (client/client :get 202 (dashcard-url dash card-2 dashcard))))))))))))
 
@@ -811,13 +811,13 @@
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (testing "with native queries and template tag params"
           (t2.with-temp/with-temp [:model/Card card {:dataset_query {:database (mt/id)
-                                                                      :type     :native
-                                                                      :native   {:query         "SELECT {{num}} AS num"
-                                                                                 :template-tags {:num {:name         "num"
-                                                                                                       :display-name "Num"
-                                                                                                       :type         "number"
-                                                                                                       :required     true
-                                                                                                       :default      "1"}}}}}]
+                                                                     :type     :native
+                                                                     :native   {:query         "SELECT {{num}} AS num"
+                                                                                :template-tags {:num {:name         "num"
+                                                                                                      :display-name "Num"
+                                                                                                      :type         "number"
+                                                                                                      :required     true
+                                                                                                      :default      "1"}}}}}]
             (with-temp-public-dashboard [dash {:parameters [{:name "Num"
                                                              :slug "num"
                                                              :id   "_NUM_"
@@ -841,7 +841,7 @@
         (testing "with MBQL queries"
           (testing "`:id` parameters"
             (t2.with-temp/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues
-                                                                         {:aggregation [:count]})}]
+                                                                        {:aggregation [:count]})}]
               (with-temp-public-dashboard [dash {:parameters [{:name "venue_id"
                                                                :slug "venue_id"
                                                                :id   "_VENUE_ID_"
@@ -865,7 +865,7 @@
           (testing "temporal parameters"
             (mt/with-temporary-setting-values [enable-public-sharing true]
               (t2.with-temp/with-temp [:model/Card card {:dataset_query (mt/mbql-query checkins
-                                                                           {:aggregation [:count]})}]
+                                                                          {:aggregation [:count]})}]
                 (with-temp-public-dashboard [dash {:parameters [{:name "Date Filter"
                                                                  :slug "date_filter"
                                                                  :id   "_DATE_"
@@ -894,15 +894,15 @@
                   "for some reason as part of the query (#7253)")
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (t2.with-temp/with-temp [:model/Card card {:dataset_query {:database (mt/id)
-                                                                    :type     :native
-                                                                    :native   {:query         "SELECT {{msg}} AS message"
-                                                                               :template-tags {:msg {:id           "_MSG_
+                                                                   :type     :native
+                                                                   :native   {:query         "SELECT {{msg}} AS message"
+                                                                              :template-tags {:msg {:id           "_MSG_
 "
-                                                                                                     :name         "msg"
-                                                                                                     :display-name "Message"
-                                                                                                     :type         "text"
-                                                                                                     :required     true
-                                                                                                     :default      "Wow"}}}}}]
+                                                                                                    :name         "msg"
+                                                                                                    :display-name "Message"
+                                                                                                    :type         "text"
+                                                                                                    :required     true
+                                                                                                    :default      "Wow"}}}}}]
           (with-temp-public-dashboard [dash {:parameters [{:name "Message"
                                                            :slug "msg"
                                                            :id   "_MSG_"
@@ -938,7 +938,7 @@
 
 (defn- add-dimension-param-mapping-to-dashcard! [dashcard card dimension]
   (t2/update! :model/DashboardCard (u/the-id dashcard) {:parameter_mappings [{:card_id (u/the-id card)
-                                                                               :target  ["dimension" dimension]}]}))
+                                                                              :target  ["dimension" dimension]}]}))
 
 (defn- GET-param-values! [dashboard]
   (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -1222,11 +1222,11 @@
     (mt/with-temp [:model/Dashboard     dashboard (shared-obj)
                    :model/Card          card      (mbql-card-referencing table-kw field-kw)
                    :model/DashboardCard dashcard  {:dashboard_id       (u/the-id dashboard)
-                                                    :card_id            (u/the-id card)
-                                                    :parameter_mappings [{:card_id (u/the-id card)
-                                                                          :target  [:dimension
-                                                                                    [:field
-                                                                                     (mt/id table-kw field-kw) nil]]}]}]
+                                                   :card_id            (u/the-id card)
+                                                   :parameter_mappings [{:card_id (u/the-id card)
+                                                                         :target  [:dimension
+                                                                                   [:field
+                                                                                    (mt/id table-kw field-kw) nil]]}]}]
       (f dashboard card dashcard))))
 
 (defmacro with-sharing-enabled-and-temp-dashcard-referencing!
@@ -1714,8 +1714,8 @@
       (with-temp-public-dashboard [dash {:parameters []}]
         (mt/with-actions [{:keys [action-id model-id]} {}]
           (mt/with-temp [:model/DashboardCard {dashcard-id :id} {:dashboard_id (:id dash)
-                                                                  :action_id action-id
-                                                                  :card_id model-id}]
+                                                                 :action_id action-id
+                                                                 :card_id model-id}]
             (with-redefs [api.public/dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 1)]
               (is (partial= {:rows-affected 1}
                             (client/client
@@ -1741,8 +1741,8 @@
           (with-temp-public-dashboard [dash {:parameters []}]
             (mt/with-actions [{:keys [action-id model-id]} {}]
               (mt/with-temp [:model/DashboardCard {dashcard-id :id} {:dashboard_id (:id dash)
-                                                                      :action_id action-id
-                                                                      :card_id model-id}]
+                                                                     :action_id action-id
+                                                                     :card_id model-id}]
                 (is (partial= {:rows-affected 1}
                               (client/client
                                :post 200
@@ -1757,8 +1757,8 @@
       (with-temp-public-dashboard [dash {:parameters []}]
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit}]
           (mt/with-temp [:model/DashboardCard {dashcard-id :id} {:dashboard_id (:id dash)
-                                                                  :action_id action-id
-                                                                  :card_id model-id}]
+                                                                 :action_id action-id
+                                                                 :card_id model-id}]
             (is (partial= {:id 1 :name "African"}
                           (client/client
                            :get 200

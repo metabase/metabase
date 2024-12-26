@@ -397,8 +397,8 @@
   (testing "GET /api/user/current"
     (testing "check that fetching current user will return extra fields like `is_active`"
       (mt/with-temp [:model/LoginHistory _ {:user_id   (mt/user->id :rasta)
-                                             :device_id (str (random-uuid))
-                                             :timestamp #t "2021-03-18T19:52:41.808482Z"}
+                                            :device_id (str (random-uuid))
+                                            :timestamp #t "2021-03-18T19:52:41.808482Z"}
                      :model/Card _ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]
         (is (= (-> (merge
                     @user-defaults
@@ -455,15 +455,15 @@
           (mt/with-non-admin-groups-no-root-collection-perms
             (mt/with-temp [:model/Collection {coll-id :id} {:name "Collection"}
                            :model/Dashboard  {dash-id :id} {:name          "Dashboard Homepage"
-                                                             :collection_id coll-id}]
+                                                            :collection_id coll-id}]
               (mt/with-temporary-setting-values [custom-homepage true
                                                  custom-homepage-dashboard dash-id]
                 (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current"))))))))
         (testing "Dashboard is archived"
           (mt/with-temp [:model/Collection {coll-id :id} {:name "Collection"}
                          :model/Dashboard  {dash-id :id} {:name          "Dashboard Homepage"
-                                                           :archived      true
-                                                           :collection_id coll-id}]
+                                                          :archived      true
+                                                          :collection_id coll-id}]
             (mt/with-temporary-setting-values [custom-homepage true
                                                custom-homepage-dashboard dash-id]
               (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current")))))))
@@ -475,7 +475,7 @@
       (testing "Otherwise is set"
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Collection"}
                        :model/Dashboard  {dash-id :id} {:name          "Dashboard Homepage"
-                                                         :collection_id coll-id}]
+                                                        :collection_id coll-id}]
           (mt/with-temporary-setting-values [custom-homepage true
                                              custom-homepage-dashboard dash-id]
             (is (=? {:first_name      "Rasta"
@@ -688,9 +688,9 @@
   (testing "PUT /api/user/:id"
     (testing "test that admins can edit other Users\n"
       (mt/with-temp [:model/User {user-id :id} {:first_name   "Cam"
-                                                 :last_name    "Era"
-                                                 :email        "cam.era@metabase.com"
-                                                 :is_superuser true}
+                                                :last_name    "Era"
+                                                :email        "cam.era@metabase.com"
+                                                :is_superuser true}
                      :model/Collection _ {}]
         (letfn [(user [] (into {} (-> (t2/select-one [:model/User :id :first_name :last_name :is_superuser :email], :id user-id)
                                       (t2/hydrate :personal_collection_id ::personal-collection-name)
@@ -733,9 +733,9 @@
   (testing "PUT /api/user/:id"
     (testing "Test that we can update login attributes after a user has been created"
       (t2.with-temp/with-temp [:model/User {user-id :id} {:first_name   "Test"
-                                                           :last_name    "User"
-                                                           :email        "testuser@metabase.com"
-                                                           :is_superuser true}]
+                                                          :last_name    "User"
+                                                          :email        "testuser@metabase.com"
+                                                          :is_superuser true}]
         (is (= (merge
                 @user-defaults
                 {:is_superuser           true
@@ -782,9 +782,9 @@
   (testing "PUT /api/user/:id"
     (testing "Test that we can update a user's first and last names"
       (t2.with-temp/with-temp [:model/User {user-id :id} {:first_name   "Blue Ape"
-                                                           :last_name    "Ron"
-                                                           :email        "blueronny@metabase.com"
-                                                           :is_superuser true}]
+                                                          :last_name    "Ron"
+                                                          :email        "blueronny@metabase.com"
+                                                          :is_superuser true}]
         (letfn [(change-user-via-api! [m]
                   (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id) m)
                       (t2/hydrate :personal_collection_id ::personal-collection-name)
@@ -837,10 +837,10 @@
   (testing "PUT /api/user/:id"
     (testing "Test that we do not update a user's first and last names if they are an SSO user."
       (t2.with-temp/with-temp [:model/User {user-id :id} {:first_name   "SSO"
-                                                           :last_name    "User"
-                                                           :email        "sso-user@metabase.com"
-                                                           :sso_source   :jwt
-                                                           :is_superuser true}]
+                                                          :last_name    "User"
+                                                          :email        "sso-user@metabase.com"
+                                                          :sso_source   :jwt
+                                                          :is_superuser true}]
         (letfn [(change-user-via-api! [expected-status m]
                   (mt/user-http-request :crowberto :put expected-status (str "user/" user-id) m))]
           (testing "`:first_name` changes are rejected"
@@ -897,8 +897,8 @@
 
     (testing "Google auth users shouldn't be able to change their own password as we get that from Google"
       (t2.with-temp/with-temp [:model/User user {:email       "anemail@metabase.com"
-                                                  :password    "def123"
-                                                  :sso_source  "google"}]
+                                                 :password    "def123"
+                                                 :sso_source  "google"}]
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -908,8 +908,8 @@
     (testing (str "Similar to Google auth accounts, we should not allow LDAP users to change their own email address "
                   "as we get that from the LDAP server")
       (t2.with-temp/with-temp [:model/User user {:email     "anemail@metabase.com"
-                                                  :password  "def123"
-                                                  :sso_source "ldap"}]
+                                                 :password  "def123"
+                                                 :sso_source "ldap"}]
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -1190,7 +1190,7 @@
     (testing "Check that the last non-archived superuser cannot deactivate themselves"
       (mt/with-single-admin-user [{id :id}]
         (t2.with-temp/with-temp [:model/User _ {:is_active    false
-                                                 :is_superuser true}]
+                                                :is_superuser true}]
           (is (= "You cannot remove the last member of the 'Admin' group!"
                  (mt/user-http-request id :delete 400 (format "user/%d" id)))))))
 
@@ -1208,9 +1208,9 @@
     (testing (str "PUT /api/user/:id/modal/" endpoint)
       (testing "Test that we can set the QB newb status of ourselves"
         (t2.with-temp/with-temp [:model/User {:keys [id]} {:first_name (mt/random-name)
-                                                            :last_name  (mt/random-name)
-                                                            :email      "def@metabase.com"
-                                                            :password   "def123"}]
+                                                           :last_name  (mt/random-name)
+                                                           :email      "def@metabase.com"
+                                                           :password   "def123"}]
           (let [creds {:username "def@metabase.com"
                        :password "def123"}]
             (testing "defaults to true"
@@ -1232,7 +1232,7 @@
   (testing "User Deactivate/Reactivate events via the API are recorded in the audit log"
     (mt/with-premium-features #{:audit-app}
       (t2.with-temp/with-temp [:model/User {:keys [id]} {:first_name "John"
-                                                          :last_name  "Cena"}]
+                                                         :last_name  "Cena"}]
         (testing "DELETE /api/user/:id and PUT /api/user/:id/reactivate"
           (mt/user-http-request :crowberto :delete 200 (format "user/%s" id))
           (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" id))
@@ -1252,7 +1252,7 @@
 (deftest user-update-event-test
   (testing "User Updates via the API are recorded in the audit log"
     (t2.with-temp/with-temp [:model/User {:keys [id]} {:first_name "John"
-                                                        :last_name  "Cena"}]
+                                                       :last_name  "Cena"}]
       (mt/with-premium-features #{:audit-app}
         (testing "PUT /api/user/:id"
           (mt/user-http-request :crowberto :put 200 (format "user/%s" id)

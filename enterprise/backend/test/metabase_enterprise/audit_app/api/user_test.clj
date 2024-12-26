@@ -27,27 +27,27 @@
                        :model/Card                  {card-id :id} {}
                        ;; Alert, created by a different User
                        :model/Pulse                 {alert-id :id}         {:alert_condition  "rows"
-                                                                             :alert_first_only false
-                                                                             :name             nil}
+                                                                            :alert_first_only false
+                                                                            :name             nil}
                        :model/PulseCard             _                      {:pulse_id alert-id
-                                                                     :card_id  card-id}
+                                                                            :card_id  card-id}
                        :model/PulseChannel          {alert-chan-id :id}    {:pulse_id alert-id}
                        :model/PulseChannelRecipient _                      {:user_id          user-id
-                                                                     :pulse_channel_id alert-chan-id}
+                                                                            :pulse_channel_id alert-chan-id}
                        ;; DashboardSubscription, created by this User; multiple recipients
                        :model/Dashboard             {dashboard-id :id}      {}
                        :model/DashboardCard         {dashcard-id :id}      {:dashboard_id dashboard-id
-                                                                             :card_id      card-id}
+                                                                            :card_id      card-id}
                        :model/Pulse                 {dash-sub-id :id}      {:dashboard_id dashboard-id
-                                                                             :creator_id   user-id}
+                                                                            :creator_id   user-id}
                        :model/PulseCard             _                      {:pulse_id          dash-sub-id
-                                                                     :card_id           card-id
-                                                                     :dashboard_card_id dashcard-id}
+                                                                            :card_id           card-id
+                                                                            :dashboard_card_id dashcard-id}
                        :model/PulseChannel          {dash-sub-chan-id :id} {:pulse_id dash-sub-id}
                        :model/PulseChannelRecipient _                      {:user_id          user-id
-                                                                     :pulse_channel_id dash-sub-chan-id}
+                                                                            :pulse_channel_id dash-sub-chan-id}
                        :model/PulseChannelRecipient _                      {:user_id          (mt/user->id :rasta)
-                                                                     :pulse_channel_id dash-sub-chan-id}]
+                                                                            :pulse_channel_id dash-sub-chan-id}]
           (letfn [(describe-objects []
                     {:num-subscriptions                (t2/count :model/PulseChannelRecipient :user_id user-id)
                      :alert-archived?                  (t2/select-one-fn :archived :model/Pulse :id alert-id)

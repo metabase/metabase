@@ -270,7 +270,7 @@
     (t2.with-temp/with-temp [:model/Database {database-id :id} {}
                              :model/Table    {:keys [id]}      {:db_id database-id}
                              :model/Segment  segment           {:table_id   id
-                                                                 :definition {:a "b"}}]
+                                                                :definition {:a "b"}}]
       (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :rasta)})
       (let [revision (-> (t2/select-one :model/Revision :model "Segment", :model_id (:id segment))
                          (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
@@ -295,7 +295,7 @@
     (t2.with-temp/with-temp [:model/Database {database-id :id} {}
                              :model/Table    {:keys [id]}      {:db_id database-id}
                              :model/Segment  segment           {:table_id   id
-                                                                 :definition {:a "b"}}]
+                                                                :definition {:a "b"}}]
       (events/publish-event! :event/segment-update
                              (assoc {:object segment}
                                     :revision-message "updated"
@@ -324,8 +324,8 @@
     (t2.with-temp/with-temp [:model/Database {database-id :id} {}
                              :model/Table    {:keys [id]}      {:db_id database-id}
                              :model/Segment  segment           {:table_id   id
-                                                                 :definition {:a "b"}
-                                                                 :archived   true}]
+                                                                :definition {:a "b"}
+                                                                :archived   true}]
       (events/publish-event! :event/segment-delete {:object segment :user-id (mt/user->id :rasta)})
       (is (= {:model        "Segment"
               :user_id      (mt/user->id :rasta)

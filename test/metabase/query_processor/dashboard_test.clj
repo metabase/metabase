@@ -122,21 +122,21 @@
     (mt/dataset test-data
       (mt/with-temp
         [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
-                                                     :type     :native
-                                                     :native   {:query (str "SELECT distinct category "
-                                                                            "FROM products "
-                                                                            "WHERE {{filter}} "
-                                                                            "ORDER BY category ASC")
-                                                                :template-tags
-                                                                {"filter"
-                                                                 {:id           "xyz456"
-                                                                  :name         "filter"
-                                                                  :display-name "Filter"
-                                                                  :type         :dimension
-                                                                  :dimension    [:field (mt/id :products :category) nil]
-                                                                  :widget-type  :category
-                                                                  :default      ["Gizmo" "Gadget"]
-                                                                  :required     false}}}}}
+                                                    :type     :native
+                                                    :native   {:query (str "SELECT distinct category "
+                                                                           "FROM products "
+                                                                           "WHERE {{filter}} "
+                                                                           "ORDER BY category ASC")
+                                                               :template-tags
+                                                               {"filter"
+                                                                {:id           "xyz456"
+                                                                 :name         "filter"
+                                                                 :display-name "Filter"
+                                                                 :type         :dimension
+                                                                 :dimension    [:field (mt/id :products :category) nil]
+                                                                 :widget-type  :category
+                                                                 :default      ["Gizmo" "Gadget"]
+                                                                 :required     false}}}}}
          :model/Dashboard {dashboard-id :id} {:parameters [{:name    "category"
                                                             :slug    "category"
                                                             :id      "abc123"
@@ -170,11 +170,11 @@
   (testing "GET /api/card/:id/query with parameters with default values"
     (mt/with-temp
       [:model/Card {card-id :id} {:database_id   (mt/id)
-                                   :table_id      (mt/id :venues)
-                                   :dataset_query (mt/mbql-query venues
-                                                    {:aggregation  [:count]
-                                                     :breakout     [$category_id
-                                                                    $price]})}
+                                  :table_id      (mt/id :venues)
+                                  :dataset_query (mt/mbql-query venues
+                                                   {:aggregation  [:count]
+                                                    :breakout     [$category_id
+                                                                   $price]})}
        :model/Dashboard {dashboard-id :id} {:parameters
                                             [{:slug      "venue_id"
                                               :id        "_VENUE_ID_"
@@ -220,16 +220,16 @@
     (mt/dataset test-data
       (mt/with-temp
         [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
-                                                     :type     :native
-                                                     :native   {:query "SELECT {{filter}}"
-                                                                :template-tags
-                                                                {"filter"
-                                                                 {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
-                                                                  :name         "filter"
-                                                                  :display-name "Filter"
-                                                                  :type         "text"
-                                                                  :required     true
-                                                                  :default      "Foo"}}}}}
+                                                    :type     :native
+                                                    :native   {:query "SELECT {{filter}}"
+                                                               :template-tags
+                                                               {"filter"
+                                                                {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
+                                                                 :name         "filter"
+                                                                 :display-name "Filter"
+                                                                 :type         "text"
+                                                                 :required     true
+                                                                 :default      "Foo"}}}}}
          :model/Dashboard {dashboard-id :id} {:parameters [{:name    "Text"
                                                             :slug    "text"
                                                             :id      "5791ff38"
@@ -408,10 +408,10 @@
   (testing "Parameters passed in from the request with only default values (but no actual values) should get ignored (#20516)"
     (mt/dataset test-data
       (mt/with-temp [:model/Card {card-id :id} {:name          "Orders"
-                                                 :dataset_query (mt/mbql-query products
-                                                                  {:fields   [$id $title $category]
-                                                                   :order-by [[:asc $id]]
-                                                                   :limit    2})}
+                                                :dataset_query (mt/mbql-query products
+                                                                 {:fields   [$id $title $category]
+                                                                  :order-by [[:asc $id]]
+                                                                  :limit    2})}
                      :model/Dashboard {dashboard-id :id} {:name       "20516 Dashboard"
                                                           :parameters [{:name    "Category"
                                                                         :slug    "category"

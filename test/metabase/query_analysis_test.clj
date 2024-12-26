@@ -51,8 +51,8 @@
                                                                    [:distinct $price]]
                                                      :limit       5})}
                    :model/Card c2 {:dataset_query {:query    {:source-table (str "card__" (:id c1))}
-                                                    :database (:id (mt/db))
-                                                    :type     :query}}
+                                                   :database (:id (mt/db))
+                                                   :type     :query}}
                    :model/Card c3 {:dataset_query (mt/mbql-query checkins
                                                     {:joins [{:source-table (str "card__" (:id c2))
                                                               :alias        "Venues"
@@ -82,10 +82,10 @@
 (deftest parse-native-test
   (testing "Parsing Native queries that reference models do not return cache tables"
     (mt/with-temp [:model/Card c1 {:type          :model
-                                    :dataset_query (mt/mbql-query venues
-                                                     {:aggregation [[:distinct $name]
-                                                                    [:distinct $price]]
-                                                      :limit       5})}
+                                   :dataset_query (mt/mbql-query venues
+                                                    {:aggregation [[:distinct $name]
+                                                                   [:distinct $price]]
+                                                     :limit       5})}
                    :model/Card c2 {:dataset_query (let [tag-name (str "#" (:id c1) "-some-card")]
                                                     (mt/native-query {:query         (format "SELECT * FROM t JOIN {{%s}} ON true" tag-name)
                                                                       :template-tags {tag-name {:name         tag-name
@@ -137,8 +137,8 @@
       (let [long-column (monstrous-name)
             long-table  (monstrous-name)]
         (mt/with-temp [:model/Card {c-id :id} {:dataset_query (mt/native-query {:query (format "SELECT c, %s FROM t, %s"
-                                                                                         long-column
-                                                                                         long-table)})}]
+                                                                                               long-column
+                                                                                               long-table)})}]
           (let [columns (t2/select-fn-set :column :model/QueryField :card_id c-id)
                 tables  (t2/select-fn-set :table :model/QueryTable :card_id c-id)]
             (is (= 2 (count columns)))

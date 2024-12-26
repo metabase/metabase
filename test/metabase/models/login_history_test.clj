@@ -58,10 +58,10 @@
                                 ;; block in tests
                                 (u/deref-with-timeout futur 10000)))]
                 (mt/with-temp [:model/LoginHistory _ {:user_id   user-id
-                                                       :device_id (str (random-uuid))}
+                                                      :device_id (str (random-uuid))}
                                :model/LoginHistory _ {:user_id   user-id
-                                                       :device_id device
-                                                       :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"}]
+                                                      :device_id device
+                                                      :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"}]
 
                   (is (malli= [:map-of [:= email]
                                [:sequential

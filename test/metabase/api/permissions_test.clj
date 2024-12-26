@@ -352,7 +352,7 @@
     (t2.with-temp/with-temp [:model/User                       user     {}
                              :model/PermissionsGroup           group    {}
                              :model/PermissionsGroupMembership {id :id} {:group_id (:id group)
-                                                                          :user_id  (:id user)}]
+                                                                         :user_id  (:id user)}]
       (testing "This API is for EE only"
         (mt/with-premium-features #{}
           (is (= "The group manager permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
@@ -363,7 +363,7 @@
     (t2.with-temp/with-temp [:model/User                       {user-id :id}  {}
                              :model/PermissionsGroup           {group-id :id} {}
                              :model/PermissionsGroupMembership _              {:group_id group-id
-                                                                                :user_id  user-id}]
+                                                                               :user_id  user-id}]
       (testing "requires superuser permisisons"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (format "permissions/membership/%d/clear" group-id)))))
@@ -382,7 +382,7 @@
     (t2.with-temp/with-temp [:model/User                       user     {}
                              :model/PermissionsGroup           group    {}
                              :model/PermissionsGroupMembership {id :id} {:group_id (:id group)
-                                                                          :user_id  (:id user)}]
+                                                                         :user_id  (:id user)}]
       (testing "requires superuser"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :delete 403 (format "permissions/membership/%d" id)))))

@@ -119,8 +119,8 @@
     (testing (format "sent to %s channel" channel-type)
       (notification.tu/with-notification-testing-setup
         (mt/with-temp [:model/Card          {card-id :id} (merge {:name    pulse.test-util/card-name
-                                                                   :display (or display :line)}
-                                                            card)]
+                                                                  :display (or display :line)}
+                                                                 card)]
           (with-pulse-for-card [{pulse-id :id}
                                 {:card          card-id
                                  :pulse         pulse
@@ -654,16 +654,16 @@
 (deftest native-query-with-user-specified-axes-test
   (testing "Native query with user-specified x and y axis"
     (t2.with-temp/with-temp [:model/Card {card-id :id} {:name                   "Test card"
-                                                         :dataset_query          {:database (mt/id)
-                                                                                  :type     :native
-                                                                                  :native   {:query (str "select count(*) as total_per_day, date as the_day "
-                                                                                                         "from checkins "
-                                                                                                         "group by date")}}
-                                                         :display                :line
-                                                         :visualization_settings {:graph.show_goal  true
-                                                                                  :graph.goal_value 5.9
-                                                                                  :graph.dimensions ["THE_DAY"]
-                                                                                  :graph.metrics    ["TOTAL_PER_DAY"]}}]
+                                                        :dataset_query          {:database (mt/id)
+                                                                                 :type     :native
+                                                                                 :native   {:query (str "select count(*) as total_per_day, date as the_day "
+                                                                                                        "from checkins "
+                                                                                                        "group by date")}}
+                                                        :display                :line
+                                                        :visualization_settings {:graph.show_goal  true
+                                                                                 :graph.goal_value 5.9
+                                                                                 :graph.dimensions ["THE_DAY"]
+                                                                                 :graph.metrics    ["TOTAL_PER_DAY"]}}]
       (with-pulse-for-card [{pulse-id :id} {:card card-id, :pulse {:alert_condition  "goal"
                                                                    :alert_first_only false
                                                                    :alert_above_goal true}}]
@@ -676,12 +676,12 @@
   (testing "Both users and Nonusers get an email, with unsubscribe text for nonusers"
     (notification.tu/with-send-notification-sync
       (mt/with-temp [:model/Card                  {card-id :id} {:name          "Test card"
-                                                                  :dataset_query {:database (mt/id)
-                                                                                  :type     :native
-                                                                                  :native   {:query "select * from checkins"}}
-                                                                  :display       :table}
+                                                                 :dataset_query {:database (mt/id)
+                                                                                 :type     :native
+                                                                                 :native   {:query "select * from checkins"}}
+                                                                 :display       :table}
                      :model/Pulse                 {pulse-id :id} {:name            "Pulse Name"
-                                                                           :alert_condition "rows"}
+                                                                  :alert_condition "rows"}
                      :model/PulseCard             _ {:pulse_id pulse-id
                                                      :card_id  card-id}
                      :model/PulseChannel          {pc-id :id} {:pulse_id pulse-id
@@ -700,7 +700,7 @@
                              :model/Card       card {:dataset_query (mt/mbql-query checkins
                                                                       {:order-by [[:asc $id]]
                                                                        :limit    1})
-                                                      :collection_id (:id coll)}]
+                                                     :collection_id (:id coll)}]
                 (perms/revoke-collection-permissions! (perms-group/all-users) coll)
                 (pulse.test-util/send-alert-created-by-user! user-kw card)))]
       (is (= [[1 "2014-04-07T00:00:00Z" 5 12]]
@@ -904,9 +904,9 @@
                               :field_ref         [:aggregation 0]
                               :aggregation_index 0}]]
         (mt/with-temp [:model/Card {card-id :id} {:display         :table
-                                                   :dataset_query   q
-                                                   :type            :model
-                                                   :result_metadata result-metadata}
+                                                  :dataset_query   q
+                                                  :type            :model
+                                                  :result_metadata result-metadata}
                        :model/Pulse {pulse-id :id :as p} {:name "Test Pulse" :alert_condition "rows"}
                        :model/PulseCard _ {:pulse_id pulse-id
                                            :card_id  card-id}
@@ -927,9 +927,9 @@
     (notification.tu/with-send-notification-sync
       (mt/with-temp
         [:model/Card         {card-id :id}  (pulse.test-util/checkins-query-card {:breakout [!day.date]
-                                                                                   :limit    1})
+                                                                                  :limit    1})
          :model/Pulse        {pulse-id :id} {:name "Test Pulse"
-                                                      :alert_condition "rows"}
+                                             :alert_condition "rows"}
          :model/PulseCard    _              {:pulse_id pulse-id
                                              :card_id  card-id}
          :model/PulseChannel _              {:pulse_id pulse-id

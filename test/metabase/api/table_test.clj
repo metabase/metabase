@@ -132,10 +132,10 @@
     (testing "Schema is \"\" rather than nil, if not set"
       (mt/with-temp [:model/Database {database-id :id} {}
                      :model/Table    {}                {:db_id        database-id
-                                                         :name         "schemaless_table"
-                                                         :display_name "Schemaless"
-                                                         :entity_type  "entity/GenericTable"
-                                                         :schema       nil}]
+                                                        :name         "schemaless_table"
+                                                        :display_name "Schemaless"
+                                                        :entity_type  "entity/GenericTable"
+                                                        :schema       nil}]
         (is (= [""]
                (->> (mt/user-http-request :rasta :get 200 "table")
                     (filter #(= (:db_id %) database-id))
@@ -170,10 +170,10 @@
     (testing " returns schema as \"\" not nil"
       (mt/with-temp [:model/Database {database-id :id} {}
                      :model/Table    {table-id :id}    {:db_id        database-id
-                                                         :name         "schemaless_table"
-                                                         :display_name "Schemaless"
-                                                         :entity_type  "entity/GenericTable"
-                                                         :schema       nil}]
+                                                        :name         "schemaless_table"
+                                                        :display_name "Schemaless"
+                                                        :entity_type  "entity/GenericTable"
+                                                        :schema       nil}]
         (is (= (merge
                 (dissoc (table-defaults) :segments :field_values :metrics :db)
                 (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status :view_count]
@@ -432,8 +432,8 @@
     (testing "Table should get synced when it gets unhidden"
       (t2.with-temp/with-temp [:model/Database db    {:details (:details (mt/db))}
                                :model/Table    table (-> (t2/select-one :model/Table (mt/id :venues))
-                                                       (dissoc :id)
-                                                       (assoc :db_id (:id db)))]
+                                                         (dissoc :id)
+                                                         (assoc :db_id (:id db)))]
         (let [called (atom 0)
               ;; original is private so a var will pick up the redef'd. need contents of var before
               original (var-get #'api.table/sync-unhidden-tables)]
@@ -647,10 +647,10 @@
   (testing "GET /api/table/:id/query_metadata"
     (testing "Make sure metadata for 'virtual' tables comes back as expected"
       (t2.with-temp/with-temp [:model/Card card {:name          "Go Dubs!"
-                                                  :database_id   (mt/id)
-                                                  :dataset_query {:database (mt/id)
-                                                                  :type     :native
-                                                                  :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]
+                                                 :database_id   (mt/id)
+                                                 :dataset_query {:database (mt/id)
+                                                                 :type     :native
+                                                                 :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]
         ;; run the Card which will populate its result_metadata column
         (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
         ;; Now fetch the metadata for this "table"
@@ -708,7 +708,7 @@
     (mt/with-temp
       [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
        :model/Card {card-id-2 :id} {:dataset_query {:type     :query
-                                                     :query    {:source-table (str "card__" card-id-1)}}}]
+                                                    :query    {:source-table (str "card__" card-id-1)}}}]
       (letfn [(query-metadata [expected-status card-id]
                 (->> (format "table/card__%d/query_metadata" card-id)
                      (mt/user-http-request :crowberto :get expected-status)))]
@@ -728,10 +728,10 @@
   (testing "GET /api/table/:id/query_metadata"
     (testing "Test date dimensions being included with a nested query"
       (t2.with-temp/with-temp [:model/Card card {:name          "Users"
-                                                  :database_id   (mt/id)
-                                                  :dataset_query {:database (mt/id)
-                                                                  :type     :native
-                                                                  :native   {:query (format "SELECT NAME, LAST_LOGIN FROM USERS")}}}]
+                                                 :database_id   (mt/id)
+                                                 :dataset_query {:database (mt/id)
+                                                                 :type     :native
+                                                                 :native   {:query (format "SELECT NAME, LAST_LOGIN FROM USERS")}}}]
         (let [card-virtual-table-id (str "card__" (u/the-id card))]
           ;; run the Card which will populate its result_metadata column
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
@@ -774,9 +774,9 @@
 (deftest include-metrics-for-card-test
   (testing "GET /api/table/:id/query_metadata"
     (t2.with-temp/with-temp [:model/Card model {:name          "Venues model"
-                                                 :database_id   (mt/id)
-                                                 :type          :model
-                                                 :dataset_query (mt/mbql-query venues)}]
+                                                :database_id   (mt/id)
+                                                :type          :model
+                                                :dataset_query (mt/mbql-query venues)}]
       (let [card-virtual-table-id (str "card__" (:id model))
             metric-query          {:database 2
                                    :type     "query"
@@ -784,10 +784,10 @@
                                               :aggregation  [["count"]]}}]
         (t2.with-temp/with-temp [:model/Collection coll   {:name "My Collection"}
                                  :model/Card       metric {:name          "Venues metric"
-                                                            :database_id   (mt/id)
-                                                            :collection_id (:id coll)
-                                                            :type          :metric
-                                                            :dataset_query metric-query}]
+                                                           :database_id   (mt/id)
+                                                           :collection_id (:id coll)
+                                                           :type          :metric
+                                                           :dataset_query metric-query}]
           (perms/revoke-collection-permissions! (perms-group/all-users) (:id coll))
           (testing "Test metrics being included with cards"
             (is (=? {:display_name "Venues model"
@@ -1018,9 +1018,9 @@
     (testing "binning options for nested queries"
       (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
         (t2.with-temp/with-temp [:model/Card card {:database_id   (mt/id)
-                                                    :dataset_query {:database (mt/id)
-                                                                    :type    :query
-                                                                    :query    {:source-query {:source-table (mt/id :venues)}}}}]
+                                                   :dataset_query {:database (mt/id)
+                                                                   :type    :query
+                                                                   :query    {:source-query {:source-table (mt/id :venues)}}}}]
           (letfn [(dimension-options []
                     (let [response (mt/user-http-request :crowberto :get 200 (format "table/card__%d/query_metadata" (u/the-id card)))]
                       (map #(dimension-options-for-field response %) ["latitude" "longitude"])))]

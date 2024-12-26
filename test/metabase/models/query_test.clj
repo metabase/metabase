@@ -11,8 +11,8 @@
 
 (deftest ^:parallel query->database-and-table-ids-test
   (t2.with-temp/with-temp [:model/Card card {:dataset_query {:database (mt/id)
-                                                              :type     :query
-                                                              :query    {:source-table (mt/id :venues)}}}]
+                                                             :type     :query
+                                                             :query    {:source-table (mt/id :venues)}}}]
     (doseq [[message {:keys [expected query]}]
             {"A basic query"
              {:expected {:database-id 1, :table-id 1}

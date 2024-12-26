@@ -462,13 +462,13 @@
                                :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis"
                                :metabase.query-processor.util.add-alias-info/position      1}]
               compile-res    (qp.compile/compile
-                               (mt/query nil
-                                 {:database 1
-                                  :type     :query
-                                  :query    {:source-table 1
-                                             :aggregation  [[:count]]
-                                             :breakout     [field-bucketed]
-                                             :order-by     [[:asc field-bucketed]]}}))]
+                              (mt/query nil
+                                {:database 1
+                                 :type     :query
+                                 :query    {:source-table 1
+                                            :aggregation  [[:count]]
+                                            :breakout     [field-bucketed]
+                                            :order-by     [[:asc field-bucketed]]}}))]
           (is (= ["SELECT"
                   "  DATE_TRUNC("
                   "    'month',"
@@ -494,10 +494,10 @@
       (qp.store/with-metadata-provider json-alias-mock-metadata-provider
         (let [field-ordinary [:field 1 nil]
               only-order     (qp.compile/compile
-                               {:database 1
-                                :type     :query
-                                :query    {:source-table 1
-                                           :order-by     [[:asc field-ordinary]]}})]
+                              {:database 1
+                               :type     :query
+                               :query    {:source-table 1
+                                          :order-by     [[:asc field-ordinary]]}})]
           (is (= ["SELECT"
                   "  (\"json_alias_test\".\"bob\" #>> array [ ?, ? ] :: text [ ]) :: VARCHAR AS \"json_alias_test\""
                   "FROM"
@@ -526,9 +526,9 @@
     (testing "JSON columns in inner queries are referenced properly in outer queries #34930"
       (qp.store/with-metadata-provider json-alias-in-model-mock-metadata-provider
         (let [nested (qp.compile/compile
-                       {:database (meta/id)
-                        :type     :query
-                        :query    {:source-table "card__123"}})]
+                      {:database (meta/id)
+                       :type     :query
+                       :query    {:source-table "card__123"}})]
           (is (= ["SELECT"
                   "  \"json_alias_test\" AS \"json_alias_test\","
                   "  \"source\".\"count\" AS \"count\""
@@ -1466,8 +1466,8 @@
               get-privileges (fn []
                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                 [spec [:postgres (assoc (:details (mt/db)) :user "privilege_rows_test_example_role")]]
-                                (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                  (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
+                                 (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
+                                   (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
           (try
             (jdbc/execute! conn-spec (str
                                       "DROP SCHEMA IF EXISTS \"dotted.schema\" CASCADE;"

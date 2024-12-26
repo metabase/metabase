@@ -12,9 +12,9 @@
                                                            :db_id db-id
                                                            :schema "public"}
                        :model/Field      {created-id :id} {:name "created_at"
-                                                            :table_id crm-id}
+                                                           :table_id crm-id}
                        :model/Field      {nps-id     :id} {:name "nps"
-                                                            :table_id crm-id}]
+                                                           :table_id crm-id}]
       (is (= {:database db-id
               :type     "query"
               :query    {:source-table crm-id

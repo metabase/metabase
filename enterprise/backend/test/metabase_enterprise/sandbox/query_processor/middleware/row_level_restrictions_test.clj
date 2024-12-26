@@ -1094,11 +1094,11 @@
                                                 nil]]}}}}
         (mt/with-persistence-enabled! [persist-models!]
           (mt/with-temp [:model/Card model {:type          :model
-                                             :dataset_query (mt/mbql-query
-                                                              products
+                                            :dataset_query (mt/mbql-query
+                                                             products
                                                               ;; note does not include the field we have to filter on. No way
                                                               ;; to use the sandbox filter on the cached table
-                                                              {:fields [$id $price]})}]
+                                                             {:fields [$id $price]})}]
             ;; persist model (as admin, so sandboxing is not applied to the persisted query)
             (mt/with-test-user :crowberto
               (persist-models!))
@@ -1139,8 +1139,8 @@
   (testing "Integration test that checks that is_sandboxed is recorded in query_execution correctly for a sandboxed query"
     (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
       (t2.with-temp/with-temp [:model/Card card {:database_id   (mt/id)
-                                                  :table_id      (mt/id :categories)
-                                                  :dataset_query (mt/mbql-query categories)}]
+                                                 :table_id      (mt/id :categories)
+                                                 :dataset_query (mt/mbql-query categories)}]
         (let [query (:dataset_query card)]
           (process-userland-query-test/with-query-execution! [qe query]
             (qp/process-query (qp/userland-query query))

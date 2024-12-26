@@ -77,10 +77,10 @@
             (t2.with-temp/with-temp [:model/Collection collection          {}
                                      :model/Collection {collection-id :id} {:name "Collection with Items"}
                                      :model/Collection _                   {:name            "subcollection"
-                                                                     :location        (format "/%d/" collection-id)
-                                                                     :authority_level "official"}
+                                                                            :location        (format "/%d/" collection-id)
+                                                                            :authority_level "official"}
                                      :model/Collection _                   {:name     "Crowberto's Child Collection"
-                                                                     :location (collection/location-path crowberto-root)}]
+                                                                            :location (collection/location-path crowberto-root)}]
               (let [public-collection-names  #{"Our analytics"
                                                (:name collection)
                                                "Collection with Items"

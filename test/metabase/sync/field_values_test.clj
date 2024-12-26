@@ -154,8 +154,8 @@
 
     ;; Manually add an advanced field values to test whether or not it got deleted later
     (t2/insert! :model/FieldValues {:field_id (mt/id :blueberries_consumed :str)
-                                     :type :sandbox
-                                     :hash_key "random-key"})
+                                    :type :sandbox
+                                    :hash_key "random-key"})
 
     (testing (str "if the number grows past the cardinality threshold & we sync again it should get unmarked as auto-list "
                   "and set back to `nil` (#3215)\n")
@@ -208,8 +208,8 @@
                (t2/select-one-fn :has_more_values :model/FieldValues :field_id (mt/id :blueberries_consumed :str)))))
       ;; Manually add an advanced field values to test whether or not it got deleted later
       (t2/insert! :model/FieldValues {:field_id (mt/id :blueberries_consumed :str)
-                                       :type :sandbox
-                                       :hash_key "random-key"})
+                                      :type :sandbox
+                                      :hash_key "random-key"})
       (testing "adding more values even if it's exceed our cardinality limit, "
         (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 field-values/*absolute-max-distinct-values-limit*)))
         (testing "has_field_values shouldn't change and has_more_values should be true"

@@ -43,36 +43,36 @@
 (defn- do-with-world [f]
   (mt/with-temp [:model/Collection {collection-id :id} {}
                  :model/Card       {metric-id-a :id} {:table_id      (mt/id :venues)
-                                                       :collection_id collection-id
-                                                       :type          :metric
-                                                       :dataset_query (mt/mbql-query venues {:aggregation [[:sum $price]]})}
+                                                      :collection_id collection-id
+                                                      :type          :metric
+                                                      :dataset_query (mt/mbql-query venues {:aggregation [[:sum $price]]})}
                  :model/Card       {metric-id-b :id} {:table_id      (mt/id :venues)
-                                                       :collection_id collection-id
-                                                       :type          :metric
-                                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]
-                                                                                             :breakout    [$category_id]})}
+                                                      :collection_id collection-id
+                                                      :type          :metric
+                                                      :dataset_query (mt/mbql-query venues {:aggregation [[:count]]
+                                                                                            :breakout    [$category_id]})}
                  :model/Segment    {segment-id-a :id} (mt/$ids venues
-                                                       {:table_id   $$venues
-                                                        :definition {:source-table $$venues
-                                                                     :filter       [:!= $category_id nil]}})
+                                                        {:table_id   $$venues
+                                                         :definition {:source-table $$venues
+                                                                      :filter       [:!= $category_id nil]}})
                  :model/Segment    {segment-id-b :id} (mt/$ids venues
-                                                       {:table_id   $$venues
-                                                        :definition {:source-table $$venues
-                                                                     :filter       [:!= $name nil]}})
+                                                        {:table_id   $$venues
+                                                         :definition {:source-table $$venues
+                                                                      :filter       [:!= $name nil]}})
                  :model/Card       {card-id-a :id} {:table_id      (mt/id :venues)
-                                                     :dataset_query (mt/mbql-query venues
-                                                                      {:aggregation [[:sum $price]]
-                                                                       :breakout    [$category_id]})}
+                                                    :dataset_query (mt/mbql-query venues
+                                                                     {:aggregation [[:sum $price]]
+                                                                      :breakout    [$category_id]})}
                  :model/Card       {card-id-b :id} {:table_id      (mt/id :venues)
-                                                     :collection_id collection-id
-                                                     :dataset_query (mt/mbql-query venues
-                                                                      {:aggregation [[:sum $longitude]]
-                                                                       :breakout    [$category_id]})}
+                                                    :collection_id collection-id
+                                                    :dataset_query (mt/mbql-query venues
+                                                                     {:aggregation [[:sum $longitude]]
+                                                                      :breakout    [$category_id]})}
                  :model/Card       {card-id-c :id} {:table_id      (mt/id :venues)
-                                                     :dataset_query (mt/mbql-query venues
-                                                                      {:aggregation [[:sum $longitude]]
-                                                                       :breakout    [$name
-                                                                                     $latitude]})}]
+                                                    :dataset_query (mt/mbql-query venues
+                                                                     {:aggregation [[:sum $longitude]]
+                                                                      :breakout    [$name
+                                                                                    $latitude]})}]
     (binding [*world* {:collection-id collection-id
                        :metric-id-a   metric-id-a
                        :metric-id-b   metric-id-b
@@ -154,9 +154,9 @@
                            :model/Card          card-3        {}
                            :model/Dashboard     {dash-id :id} {}
                            :model/Revision      _             {:model    "Dashboard"
-                                                                :model_id dash-id
-                                                                :user_id  (mt/user->id :rasta)
-                                                                :object   {}}
+                                                               :model_id dash-id
+                                                               :user_id  (mt/user->id :rasta)
+                                                               :object   {}}
                            :model/DashboardCard _             {:card_id (:id card-1), :dashboard_id dash-id}
                            :model/DashboardCard _             {:card_id (:id card-2), :dashboard_id dash-id}]
     (binding [api/*current-user-id*              (mt/user->id :rasta)

@@ -647,8 +647,8 @@
                   {:pivot_table.column_sort_order "ascending"}}}]
         (mt/dataset test-data
           (mt/with-temp [:model/Card                 {card-id :id} {:display                :pivot
-                                                                     :dataset_query          q
-                                                                     :visualization_settings viz}]
+                                                                    :dataset_query          q
+                                                                    :visualization_settings viz}]
             (testing "the render succeeds with unknown column settings keys"
               (is (seq (render.tu/render-card-as-hickory! card-id))))))))))
 

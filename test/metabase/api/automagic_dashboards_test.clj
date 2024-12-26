@@ -88,7 +88,7 @@
 (deftest metric-xray-test
   (testing "GET /api/automagic-dashboards/metric/:id"
     (t2.with-temp/with-temp [:model/LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
-                                                                   :definition {:query {:aggregation ["count"]}}}]
+                                                                  :definition {:query {:aggregation ["count"]}}}]
       (is (some? (api-call! "metric/%s" [metric-id]))))))
 
 (deftest segment-xray-test
@@ -129,9 +129,9 @@
                                          #(revoke-collection-permissions! collection-id))))))]]
         (t2.with-temp/with-temp [:model/Collection {collection-id :id} {}
                                  :model/Card       {card-id :id}       {:table_id      (mt/id :venues)
-                                                                         :collection_id collection-id
-                                                                         :dataset_query (mt/mbql-query venues
-                                                                                          {:filter [:> $price 10]})}]
+                                                                        :collection_id collection-id
+                                                                        :dataset_query (mt/mbql-query venues
+                                                                                         {:filter [:> $price 10]})}]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-fn collection-id card-id))))))
 
@@ -158,10 +158,10 @@
                                            #(revoke-collection-permissions! collection-id))))))]]
           (t2.with-temp/with-temp [:model/Collection {collection-id :id} {}
                                    :model/Card       {card-id :id}       {:table_id      (mt/id :venues)
-                                                                           :collection_id collection-id
-                                                                           :dataset_query (mt/mbql-query venues
-                                                                                            {:filter [:> $price 10]})
-                                                                           :type          :model}]
+                                                                          :collection_id collection-id
+                                                                          :dataset_query (mt/mbql-query venues
+                                                                                           {:filter [:> $price 10]})
+                                                                          :type          :model}]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (test-fn collection-id card-id)))))))
 
@@ -216,9 +216,9 @@
             result-metadata (get-in (qp/process-query card-query) [:data :results_metadata :columns])]
         (mt/with-temp [:model/Collection {collection-id :id} {}
                        :model/Card       {card-id :id} {:name            "15655_Q1"
-                                                         :collection_id   collection-id
-                                                         :dataset_query   card-query
-                                                         :result_metadata result-metadata}]
+                                                        :collection_id   collection-id
+                                                        :dataset_query   card-query
+                                                        :result_metadata result-metadata}]
           (let [query      {:database (mt/id)
                             :type     :query
                             :query    {:source-table (format "card__%d" card-id)
@@ -286,7 +286,7 @@
 (defn- do-with-indexed-model!
   [{:keys [query pk-ref value-ref]} f]
   (t2.with-temp/with-temp [:model/Card model {:type          :model
-                                               :dataset_query query}]
+                                              :dataset_query query}]
     (mt/with-model-cleanup [:model/ModelIndex]
       (let [model-index (model-index/create {:model-id   (:id model)
                                              :pk-ref     pk-ref
@@ -508,7 +508,7 @@
 (deftest metric-xray-show-param-test
   (testing "x-ray of a metric with show set reduces the number of returned cards"
     (t2.with-temp/with-temp [:model/LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
-                                                                   :definition {:query {:aggregation ["count"]}}}]
+                                                                  :definition {:query {:aggregation ["count"]}}}]
       (let [show-limit 1
             {:keys [base-count show-count]} (card-count-check! show-limit "metric/%s" [metric-id])]
         (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
@@ -539,8 +539,8 @@
 (deftest cell-query-xray-show-param-test
   (testing "x-ray of a cell-query with show set reduces the number of returned cards"
     (t2.with-temp/with-temp [:model/Card {card-id :id} {:table_id      (mt/id :venues)
-                                                         :dataset_query (mt/mbql-query venues
-                                                                          {:filter [:> $price 10]})}]
+                                                        :dataset_query (mt/mbql-query venues
+                                                                         {:filter [:> $price 10]})}]
       (let [cell-query (magic.util/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])
             show-limit 2
             {:keys [base-count show-count]} (card-count-check! show-limit "question/%s/cell/%s" [card-id cell-query])]

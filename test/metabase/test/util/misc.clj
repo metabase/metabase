@@ -42,8 +42,8 @@
         _                          (when (seq existing-admin-ids)
                                      (t2/update! (t2/table-name :model/User) {:id [:in existing-admin-ids]} {:is_superuser false}))
         temp-admin                 (first (t2/insert-returning-instances! :model/User (merge (t2.with-temp/with-temp-defaults :model/User)
-                                                                                        attributes
-                                                                                        {:is_superuser true})))]
+                                                                                             attributes
+                                                                                             {:is_superuser true})))]
     (try
       (thunk temp-admin)
       (finally

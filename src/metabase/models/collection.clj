@@ -17,8 +17,8 @@
    [metabase.models.api-key :as api-key]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.models.permissions :as perms]
+   [metabase.models.serialization :as serdes]
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings.premium-features :as premium-features]
    ;; Trying to use metabase.search would cause a circular reference ;_;
@@ -1321,7 +1321,7 @@
   in the single case of deleting a User themselves, we need to allow this. (Note that in normal usage, Users never get
   deleted, but rather archived; thus this code is used solely by our test suite, by things such as the `with-temp`
   macros.)"}
- *allow-deleting-personal-collections*
+  *allow-deleting-personal-collections*
   false)
 
 (t2/define-before-delete :model/Collection
