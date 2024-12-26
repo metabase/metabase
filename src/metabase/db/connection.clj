@@ -145,7 +145,7 @@
                 (catch Throwable e
                   (try
                     (.rollback connection savepoint)
-                    (catch Exception rollback-e (throw (ex-info (ex-message e) { :cause e :rollback-error rollback-e}))))
+                    (catch Exception rollback-e (throw (ex-info (ex-message e) {:cause e :rollback-error rollback-e}))))
 
                   (throw e)))))]
     ;; optimization: don't set and unset autocommit if it's already false
