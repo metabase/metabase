@@ -10,7 +10,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-
 (set! *warn-on-reflection* true)
 
 (defn- get-notification

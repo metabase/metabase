@@ -13,10 +13,10 @@
    [toucan2.core :as t2]))
 
 (use-fixtures
- :each
- (fn [thunk]
-   (binding [notification/*default-options* {:notification/sync? true}]
-     (thunk))))
+  :each
+  (fn [thunk]
+    (binding [notification/*default-options* {:notification/sync? true}]
+      (thunk))))
 
 (defn- construct-email
   [& [data]]
@@ -94,7 +94,6 @@
                                                        :raw_data      {:cols ["MESSAGE"], :rows [["Hello world!!!"]]}}
                                   :sent_at            (mt/malli=? :any)}}
                           req)))}))))))))
-
 
 (deftest basic-line-graph-test
   (testing "card notification of a simple line graph"
@@ -417,3 +416,9 @@
        {:channel/email
         (fn [emails]
           (is (empty? emails)))}))))
+
+#_(notification.tu/with-card-notification
+    [notification {:handlers [{:channel_type :channel/discord
+                               :recipients [{:type :notification-recipient/raw-value
+                                             :details {:value "https://discordapp.com/api/webhooks/1321811046196838511/Ctmgo0NBx0t3aN0MXjhEhk17QMbFlqtRlYSDYU7rlsYlDYYKtYP_nbWrLQ4JWY6VtWzr"}}]}]}]
+    (notification/send-notification! notification :notification/sync? true))
