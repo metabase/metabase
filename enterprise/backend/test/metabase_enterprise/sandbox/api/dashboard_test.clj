@@ -24,21 +24,21 @@
         (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
                        :model/Card          {card-id :id}      {:name "Dashboard Test Card"}
                        :model/DashboardCard {_ :id}            {:dashboard_id       dashboard-id
-                                                                 :card_id            card-id
-                                                                 :parameter_mappings [{:card_id      card-id
-                                                                                       :parameter_id "foo"
-                                                                                       :target       [:dimension
-                                                                                                      [:field (mt/id :venues :name) nil]]}
-                                                                                      ;; should be returned normally since user has non-sandbox perms
-                                                                                      {:card_id      card-id
-                                                                                       :parameter_id "bar"
-                                                                                       :target       [:dimension
-                                                                                                      [:field (mt/id :categories :name) nil]]}
-                                                                                      ;; shouldn't be returned since user has no perms
-                                                                                      {:card_id      card-id
-                                                                                       :parameter_id "bax"
-                                                                                       :target       [:dimension
-                                                                                                      [:field (mt/id :users :name) nil]]}]}]
+                                                                :card_id            card-id
+                                                                :parameter_mappings [{:card_id      card-id
+                                                                                      :parameter_id "foo"
+                                                                                      :target       [:dimension
+                                                                                                     [:field (mt/id :venues :name) nil]]}
+                                                                                     ;; should be returned normally since user has non-sandbox perms
+                                                                                     {:card_id      card-id
+                                                                                      :parameter_id "bar"
+                                                                                      :target       [:dimension
+                                                                                                     [:field (mt/id :categories :name) nil]]}
+                                                                                     ;; shouldn't be returned since user has no perms
+                                                                                     {:card_id      card-id
+                                                                                      :parameter_id "bax"
+                                                                                      :target       [:dimension
+                                                                                                     [:field (mt/id :users :name) nil]]}]}]
           (is (= {(mt/id :venues :name) {:values   ["Garaje"
                                                     "Gordo Taqueria"
                                                     "La Tortilla"]
@@ -110,8 +110,8 @@
     (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
       (mt/with-temp
         [:model/Card      {card-id         :id} (merge (mt/card-with-source-metadata-for-query (mt/mbql-query categories))
-                                                        {:database_id     (mt/id)
-                                                         :table_id        (mt/id :categories)})
+                                                       {:database_id     (mt/id)
+                                                        :table_id        (mt/id :categories)})
          :model/Dashboard {dashboard-id :id}    {:parameters [{:id                   "abc"
                                                                 :type                 "category"
                                                                 :name                 "CATEGORY"

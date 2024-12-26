@@ -251,7 +251,7 @@
   vector with the matching Dimension, or an empty vector. At least the response shape is consistent now. Maybe in the
   future we can change this key to `:dimension` and return it that way. -- Cam"
   [fields]
-  (let [id->dimensions (select-field-id->instance fields :model/Dimensions)]
+  (let [id->dimensions (select-field-id->instance fields :model/Dimension)]
     (for [field fields
           :let  [dimension (get id->dimensions (:id field))]]
       (assoc field :dimensions (if dimension [dimension] [])))))
