@@ -1,0 +1,28 @@
+/* Values are from `EmbedFrame.module.css` */
+.darkTheme {
+  --mb-color-text-primary: color-mix(
+    in srgb,
+    var(--mb-color-text-white) 90%,
+    transparent
+  );
+  --mb-color-text-secondary: color-mix(
+    in srgb,
+    var(--mb-color-text-white) 65%,
+    transparent
+  );
+  --mb-color-text-tertiary: color-mix(
+    in srgb,
+    var(--mb-color-text-white) 45%,
+    transparent
+  );
+  --mb-color-bg-light: var(--mb-base-color-gray-70);
+  --mb-color-text-selected: var(--mb-base-color-white);
+  --mb-color-text-hover: var(--mb-base-color-brand-30);
+  --mb-color-border: var(--mb-color-text-medium);
+  --mb-color-bg-dashboard: var(--mb-color-bg-black);
+  --mb-color-background: var(--mb-color-bg-black);
+  --mb-color-background-selected: var(--mb-base-color-brand-60);
+  --mb-color-background-hover: var(--mb-base-color-brand-70);
+  --mb-color-background-disabled: var(--mb-base-color-gray-70);
+  --mb-color-background-brand: var(--mb-base-color-brand-60);
+}
