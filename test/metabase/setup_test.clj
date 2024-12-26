@@ -106,7 +106,7 @@
 (deftest encryption-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (testing "Database can start with no encryption"
-      (encryption-test/with-secret-key ""
+      (encryption-test/with-secret-key nil
         (mt/with-temp-empty-app-db [_conn driver/*driver*]
           (mdb/setup-db! :create-sample-content? true)
           (is (= "unencrypted" (t2/select-one-fn :value "setting" :key "encryption-check")))
@@ -116,8 +116,8 @@
             (encryption-test/with-secret-key "key1"
               (reset! (:status mdb.connection/*application-db*) ::setup-finished)
               (mdb/setup-db! :create-sample-content? false)
-              (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check")))
-                  (is (encryption/possibly-encrypted-string? (:details (t2/select-one "metabase_database"))))))))))
+              (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check"))))
+              (is (encryption/possibly-encrypted-string? (:details (t2/select-one "metabase_database")))))))))
     (testing "Database created with encryption configured is encrypted"
       (encryption-test/with-secret-key "key2"
         (mt/with-temp-empty-app-db [_conn driver/*driver*]

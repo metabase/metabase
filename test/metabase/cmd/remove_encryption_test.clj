@@ -16,8 +16,10 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- raw-value [data-source keyy]
-  (:value (first (jdbc/query {:connection data-source}
-                             ["select \"VALUE\" from setting where setting.\"KEY\"=?;" keyy]))))
+  (-> (jdbc/query {:connection data-source}
+                  ["select \"VALUE\" from setting where setting.\"KEY\"=?;" keyy])
+      first
+      :value))
 
 (deftest cmd-remove-encryption-errors-when-failed-test
   (with-redefs [remove-encryption! #(throw (Exception. "err"))
