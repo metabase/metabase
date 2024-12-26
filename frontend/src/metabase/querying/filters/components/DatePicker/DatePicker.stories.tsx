@@ -63,6 +63,9 @@ export const Exclude = {
         name: "Exclude…",
       }),
     );
+    canvas
+      .getByRole("button", { name: "Days of the week…" })
+      .classList.add("pseudo-hover");
   },
 };
 export const ExcludeDarkTheme = merge(Exclude, {
