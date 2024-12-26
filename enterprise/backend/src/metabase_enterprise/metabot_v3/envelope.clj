@@ -24,14 +24,23 @@
    :dummy-history []
    :query-id->query {}})
 
+(defn- decode-json
+  [s]
+  (try
+    (json/decode s true)
+    (catch Exception _e
+      s)))
+
 (defn full-history
   "History including the dummy tool invocations"
-  [e]
-  (map (fn [{:keys [content] :as msg}]
-         (assoc msg :content (cond-> content
-                               (map? content) json/encode)))
-       (into (:dummy-history e)
-             (:history e))))
+  ([e] (full-history e nil))
+  ([e {:keys [stringify-content?] :or {stringify-content? true}}]
+   (map (fn [{:keys [content] :as msg}]
+          (assoc msg :content (cond-> content
+                                (and stringify-content? (map? content)) json/encode
+                                (and (not stringify-content?) (string? content)) decode-json)))
+        (into (:dummy-history e)
+              (:history e)))))
 
 (defn session-id
   "Get the session ID from the envelope"
@@ -130,12 +139,13 @@
 (defn find-query
   "Given an envelope and a query-id, find the query in the history."
   [e query-id]
-  (->> e
-       full-history
+  (->> (full-history e {:stringify-content? false})
        (filter is-tool-call-response?)
        (keep :content)
+
        (filter #(contains? #{:query "query"} (:type %)))
-       (filter #(= (:query_id %) query-id))
+       (filter #(or (= (:query-id %) query-id)
+                    (= (:query_id %) query-id)))
        first
        :query))
 

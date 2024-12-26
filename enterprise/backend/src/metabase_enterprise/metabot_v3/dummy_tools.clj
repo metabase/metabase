@@ -13,7 +13,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -50,30 +49,6 @@
                                              :metadata-provider metadata-provider})))
            not-empty))))
 
-(comment
-  (mi/can-read? (t2/select-one :model/Table 27))
-  (binding [api/*current-user-permissions-set* (delay #{"/"})
-            api/*current-user-id* 2
-            api/*is-superuser?* true]
-    (mi/can-read? (t2/select-one :model/Table 27))
-    #_(metabot-v3.tools.u/get-table 27))
-
-  (t2/select :model/User)
-
-  (let [id 27
-        mp (lib.metadata.jvm/application-database-metadata-provider 5)
-        base (lib.metadata/table mp id)
-        table-query (lib/query mp (lib.metadata/table mp id))
-        cols (lib/returned-columns table-query)
-        field-id-prefix (str "field_[" id "]_")]
-    (some-> base
-            (dissoc :db_id)
-            (assoc :fields (mapv #(metabot-v3.tools.u/->result-column % field-id-prefix) cols)
-                   :name (lib/display-name table-query))
-            (assoc :metrics (mapv convert-metric (lib/available-metrics table-query)))
-            (assoc :queryable-foreign-key-tables (foreign-key-tables mp cols))))
-  -)
-
 (defn- table-details
   [id {:keys [include-foreign-key-tables? metadata-provider]}]
   (when-let [base (if metadata-provider
@@ -83,9 +58,9 @@
                  (lib.metadata.jvm/application-database-metadata-provider (:db_id base)))
           table-query (lib/query mp (lib.metadata/table mp id))
           cols (lib/returned-columns table-query)
-          field-id-prefix (str "field_[" id "]_")]
+          field-id-prefix (metabot-v3.tools.u/table-field-id-prefix id)]
       (-> {:id id
-           :fields (mapv #(metabot-v3.tools.u/->result-column % field-id-prefix) cols)
+           :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column %2 %1 field-id-prefix)) cols)
            :name (lib/display-name table-query)}
           (m/assoc-some :description (:description base)
                         :metrics (not-empty (mapv convert-metric (lib/available-metrics table-query)))
@@ -99,9 +74,9 @@
           card-query (lib/query mp (lib.metadata/card mp id))
           cols (lib/returned-columns card-query)
           external-id (str "card__" id)
-          field-id-prefix (str "field_[" external-id "]_")]
+          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
       (-> {:id external-id
-           :fields (mapv #(metabot-v3.tools.u/->result-column % field-id-prefix) cols)
+           `:fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column %2 %1 field-id-prefix)) cols)
            :name (lib/display-name card-query)}
           (m/assoc-some :description (:description base)
                         :metrics (not-empty (mapv convert-metric (lib/available-metrics card-query)))
@@ -130,20 +105,21 @@
           metric-query (lib/query mp (lib.metadata/card mp id))
           breakouts (lib/breakouts metric-query)
           base-query (lib/remove-all-breakouts metric-query)
+          visible-cols (lib/visible-columns base-query)
           filterable-cols (lib/filterable-columns base-query)
-          breakoutable-cols (lib/breakoutable-columns base-query)
           default-temporal-breakout (->> breakouts
-                                         (map #(lib/find-matching-column % breakoutable-cols))
+                                         (map #(lib/find-matching-column % visible-cols))
                                          (m/find-first lib.types.isa/temporal?))
           external-id (str "card__" id)
-          field-id-prefix (str "field_[" external-id "]_")]
+          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
       {:id external-id
        :name (:name card)
        :description (:description card)
        :default-time-dimension-field-id (some-> default-temporal-breakout
-                                                (metabot-v3.tools.u/->result-column field-id-prefix)
+                                                (metabot-v3.tools.u/->result-column visible-cols field-id-prefix)
                                                 :id)
-       :queryable-dimensions (mapv #(metabot-v3.tools.u/->result-column % field-id-prefix) filterable-cols)})))
+       :queryable-dimensions (mapv #(metabot-v3.tools.u/->result-column % visible-cols field-id-prefix)
+                                   filterable-cols)})))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]
@@ -224,13 +200,16 @@
 
 (defn- execute-query
   [query-id legacy-query]
-  (let [field-id-prefix (str "field_[" query-id "]_")
+  (let [field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         mp (lib.metadata.jvm/application-database-metadata-provider (:database legacy-query))
-        query (lib/query mp legacy-query)]
+        query (lib/query mp legacy-query)
+        returned-cols (lib/returned-columns query)]
     {:type :query
      :query-id query-id
      :query legacy-query
-     :result-columns (mapv #(metabot-v3.tools.u/->result-column % field-id-prefix) (lib/returned-columns query))}))
+     :result-columns (into []
+                           (map-indexed #(metabot-v3.tools.u/->result-column %2 %1 field-id-prefix))
+                           returned-cols)}))
 
 (defn- dummy-run-query
   [{:keys [context] :as env}]
