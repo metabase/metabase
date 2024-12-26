@@ -624,7 +624,7 @@
              :authority_level nil
              :entity_id       true
              :name            collection-name}
-             personal-collection (assoc :personal_owner_id personal-collection))
+            personal-collection (assoc :personal_owner_id personal-collection))
            extra-keypairs)))
 
 (deftest collection-items-return-cards-test
