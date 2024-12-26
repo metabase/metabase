@@ -112,7 +112,7 @@
   ;; actually, only filter for current year
   (mt/with-test-user :crowberto
     (user-repl-with-context
-     {:user_is_viewing [{:type :report :ref 111}]}))
+     {:user_is_viewing [{:type :report :id 111}]}))
 
   ;; any outliers?
   ;; breakout by plan

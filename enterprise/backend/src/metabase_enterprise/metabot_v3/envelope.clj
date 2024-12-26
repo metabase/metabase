@@ -35,21 +35,39 @@
   (and (= role :tool)
        tool-call-id))
 
-(defn- is-query? [content]
-  (and (map? content)
-       (contains? #{:query "query"} (:type content))))
+(defn- tool-call-response-for-llm [content]
+  (cond-> content
+    (map? content) (-> (dissoc :query)
+                       (update :result-columns (fn [result-columns]
+                                                 (mapv #(dissoc % :internal-id) result-columns))))))
 
 (defn llm-history
   "History shaped for the LLM"
   [e]
   (->> (full-history e)
-       (mapv (fn [{:as msg :keys [content]}]
+       (mapv (fn [msg]
                (cond-> msg
-                 (and (is-tool-call-response? msg)
-                      (is-query? content)) (update :content dissoc :query))))
+                 (is-tool-call-response? msg) (update :content tool-call-response-for-llm))))
        (mapv (fn [{:keys [content] :as msg}]
                (assoc msg :content (cond-> content
                                      (map? content) json/encode))))))
+
+(defn- result-columns [e]
+  (->> (full-history e)
+       (filter is-tool-call-response?)
+       (map :content)
+       (mapcat :result-columns)))
+
+(defn resolve-field-id
+  "our actual field IDs are a mess, we want to hide them from the LLM. So we send nano-ids, and then find the *actual*
+  field ID in the full history."
+  [e field-id]
+  (or (->> (result-columns e)
+           (filter #(= (:id %) field-id))
+           first
+           :internal-id)
+      (throw (ex-info (str "Field id " field-id " was not found")
+                      {:result-column (result-columns e)}))))
 
 (defn session-id
   "Get the session ID from the envelope"

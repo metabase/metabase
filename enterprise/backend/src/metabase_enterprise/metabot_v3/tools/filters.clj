@@ -18,12 +18,13 @@
    [metabase.util.malli :as mu]))
 
 (defn- resolve-column
-  [{:keys [field_id] :as item} field-id-prefix columns]
-  (when-not (str/starts-with? field_id field-id-prefix)
-    (throw (ex-info (str "field " field_id " not found") {:expected-prefix field-id-prefix})))
-  (let [field-ref (-> field_id (subs (count field-id-prefix)) edn/read-string lib.options/ensure-uuid)
-        column (lib/find-matching-column field-ref columns)]
-    (assoc item :column column)))
+  [env {:keys [field_id] :as item} field-id-prefix columns]
+  (let [field-id (metabot-v3.envelope/resolve-field-id env field_id)]
+    (when-not (str/starts-with? field-id field-id-prefix)
+      (throw (ex-info (str "field " field-id " not found") {:expected-prefix field-id-prefix})))
+    (let [field-ref (-> field-id (subs (count field-id-prefix)) edn/read-string lib.options/ensure-uuid)
+          column (lib/find-matching-column field-ref columns)]
+      (assoc item :column column))))
 
 (defn- add-filter
   [query {:keys [column operation value]}]
@@ -80,7 +81,7 @@
     (lib/breakout query expr)))
 
 (defn- query-metric
-  [{:keys [metric-id filters group-by] :as _arguments}]
+  [env {:keys [metric-id filters group-by] :as _arguments}]
   (if-let [card (api.card/get-card metric-id)]
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
           base-query (->> (lib/query mp (lib.metadata/card mp metric-id))
@@ -89,8 +90,8 @@
           breakoutable-cols (lib/breakoutable-columns base-query)
           filter-field-id-prefix (str "field_[card__" metric-id "]_")
           query (as-> base-query $q
-                  (reduce add-filter $q (map #(resolve-column % filter-field-id-prefix filterable-cols) filters))
-                  (reduce add-breakout $q (map #(resolve-column % filter-field-id-prefix breakoutable-cols) group-by)))
+                  (reduce add-filter $q (map #(resolve-column env % filter-field-id-prefix filterable-cols) filters))
+                  (reduce add-breakout $q (map #(resolve-column env % filter-field-id-prefix breakoutable-cols) group-by)))
           query-id (u/generate-nano-id)
           query-field-id-prefix (str "field_[query__" query-id "]_")]
       {:type :query
@@ -102,24 +103,24 @@
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]
     (let [id 135]
-      (query-metric {:metric-id id})))
+      (query-metric {} {:metric-id id})))
   -)
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/query-metric
-  [_tool-name arguments _e]
-  (let [result (query-metric arguments)]
+  [_tool-name arguments e]
+  (let [result (query-metric e arguments)]
     {:output result}))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})
             api/*current-user-id* 2
             api/*is-superuser?* true]
-    (query-metric {:metric-id 135,
-                   :filters
-                   [{:operation "number-greater-than",
-                     :field_id "field_[27]_[:field {:base-type :type/Float, :effective-type :type/Float} 257]",
-                     :value 35}],
-                   :group-by nil}))
+    (query-metric {} {:metric-id 135,
+                      :filters
+                      [{:operation "number-greater-than",
+                        :field_id "field_[27]_[:field {:base-type :type/Float, :effective-type :type/Float} 257]",
+                        :value 35}],
+                      :group-by nil}))
   -)
 
 (defn- base-query
@@ -149,7 +150,7 @@
   [{:keys [data-source filters] :as _arguments} e]
   (let [[filter-field-id-prefix base] (base-query data-source e)
         filterable-cols (lib/filterable-columns base)
-        query (reduce add-filter base (map #(resolve-column % filter-field-id-prefix filterable-cols) filters))
+        query (reduce add-filter base (map #(resolve-column e % filter-field-id-prefix filterable-cols) filters))
         query-id (u/generate-nano-id)
         query-field-id-prefix (str "field_[query__" query-id "]_")]
     {:type :query

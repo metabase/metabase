@@ -21,10 +21,11 @@
 (defn ->result-column
   "Return an tool result columns for `column` prefixing :id with `field-id-prefix`."
   [column field-id-prefix]
-  (-> {:id (str field-id-prefix (-> column
-                                    lib/ref
-                                    (lib.options/update-options dissoc :lib/uuid)
-                                    pr-str))
+  (-> {:id (u/generate-nano-id)
+       :internal-id (str field-id-prefix (-> column
+                                             lib/ref
+                                             (lib.options/update-options dissoc :lib/uuid)
+                                             pr-str))
        :name (get column :display-name)
        :type (convert-field-type column)}
       (m/assoc-some :description (get column :description))))
