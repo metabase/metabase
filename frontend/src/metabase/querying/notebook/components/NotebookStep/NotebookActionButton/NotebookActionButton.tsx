@@ -9,11 +9,9 @@ import S from "./NotebookActionButton.module.css";
 
 interface NotebookActionButtonProps {
   className?: string;
-
   icon?: IconName;
   title: string;
   color: string;
-  transparent?: boolean;
   large?: boolean;
   onClick: () => void;
 }
@@ -23,7 +21,6 @@ export function NotebookActionButton({
   icon,
   title,
   color,
-  transparent,
   large,
   onClick,
   ...props
@@ -32,13 +29,7 @@ export function NotebookActionButton({
 
   const button = (
     <Button
-      className={cx(
-        S.ColorButton,
-        {
-          [S.transparent]: transparent,
-        },
-        className,
-      )}
+      className={cx(S.ColorButton, className)}
       icon={icon}
       small={!large}
       iconVertical={large}
