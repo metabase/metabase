@@ -8,6 +8,18 @@
     transparent 80%
   );
 
+  &.transparent {
+    background-color: transparent;
+
+    &:hover {
+      background-color: color-mix(
+        in srgb,
+        var(--notebook-action-button-color),
+        white 50%
+      );
+    }
+  }
+
   &:hover {
     background-color: color-mix(
       in srgb,
