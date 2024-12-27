@@ -80,7 +80,7 @@
   (if-not context
     (log/warn "Cannot save QueryExecution, missing :context")
     (let [qe-id (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query))]
-      (when (and enable-field-usage-analysis pmbql)
+      (when (and (enable-field-usage-analysis) pmbql)
         (grouper/submit! @field-usages-queue {:query_execution_id qe-id
                                               :pmbql              pmbql})))))
 
