@@ -21,9 +21,12 @@ export function openSeriesSettings(field, isBreakout = false) {
 }
 
 export function openVizTypeSidebar() {
-  cy.findByTestId("viz-type-button").click();
+  cy.findByTestId("viz-settings-button").click();
 }
 
 export function openVizSettingsSidebar() {
   cy.findByTestId("viz-settings-button").click();
+
+  // we open Chart Type selector by default, so clicking on the next tab actually opens settings
+  cy.findByTestId("chartsettings-sidebar").findAllByRole("tab").eq(1).click();
 }
