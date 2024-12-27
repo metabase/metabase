@@ -219,7 +219,7 @@ describe("binning related reproductions", () => {
         .icon("eye_outline")
         .click({ force: true });
     });
-    cy.button("Done").click();
+    H.closeVizSettingsSidebar();
 
     H.summarize();
 

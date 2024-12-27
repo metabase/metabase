@@ -53,7 +53,7 @@ it("should create questions", () => {
 
   cy.get(".bar").should("have.length", 4);
 
-  H.openVizSettingsSidebar();
+  H.openVizTypeSidebar();
 
   //NOTE: In older versions of Metabase, Display is selected by default. Newer
   // versions default to Data. This will ensure we've selected the right tab
