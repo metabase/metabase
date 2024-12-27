@@ -1018,14 +1018,16 @@ describe("issue 37374", () => {
 
     cy.log("changing the viz type to pivot table and running the query works");
     H.openVizTypeSidebar();
-    cy.findByTestId("chart-type-sidebar")
+    cy.findByTestId("chartsettings-sidebar")
       .findByTestId("Pivot Table-button")
       .click();
     cy.wait("@cardPivotQuery");
     cy.findByTestId("pivot-table").should("be.visible");
 
     cy.log("changing the viz type back to table and running the query works");
-    cy.findByTestId("chart-type-sidebar").findByTestId("Table-button").click();
+    cy.findByTestId("chartsettings-sidebar")
+      .findByTestId("Table-button")
+      .click();
     cy.wait("@cardQuery");
     H.tableInteractive().should("be.visible");
   });

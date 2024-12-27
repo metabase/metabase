@@ -804,15 +804,11 @@ describe("issue 18207", () => {
     H.visualize();
 
     // Why is it not a table?
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Visualization").click();
+    H.openVizTypeSidebar();
     H.leftSidebar().within(() => {
       cy.icon("table2").click();
-      cy.findByTestId("Table-button").realHover();
-      cy.icon("gear").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Done").click();
+    H.closeVizSettingsSidebar();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Zemlak-Wiegand");
