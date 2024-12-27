@@ -876,7 +876,7 @@ describe("issue 31766", () => {
 
     cy.log("Update viz settings");
 
-    H.openVizSettingsSidebar();
+    H.openVizTypeSidebar();
     cy.findByTestId("Detail-button").click();
 
     saveUpdatedQuestion();

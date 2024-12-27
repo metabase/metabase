@@ -20,8 +20,12 @@ export function openSeriesSettings(field, isBreakout = false) {
   }
 }
 
-export function openVizTypeSidebar() {
-  cy.findByTestId("viz-settings-button").click();
+export function openVizTypeSidebar({ isSidebarOpen = false } = {}) {
+  if (isSidebarOpen) {
+    cy.findByTestId("chartsettings-sidebar").findAllByRole("tab").eq(0).click();
+  } else {
+    cy.findByTestId("viz-settings-button").click();
+  }
 }
 
 export function openVizSettingsSidebar({ isSidebarOpen = false } = {}) {

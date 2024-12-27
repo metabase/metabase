@@ -1450,7 +1450,7 @@ describe("issue 44637", () => {
 
     H.assertQueryBuilderRowCount(0);
     H.queryBuilderMain().findByText("No results!").should("exist");
-    H.queryBuilderFooter().button("Visualization").click();
+    H.openVizTypeSidebar();
     H.leftSidebar().icon("bar").click();
     H.queryBuilderMain().within(() => {
       cy.findByText("No results!").should("exist");
@@ -2080,7 +2080,7 @@ describe("issue 41612", () => {
       { visitQuestion: true },
     );
 
-    H.queryBuilderMain().findByLabelText("Switch to data").click();
+    H.queryBuilderFooter().findByLabelText("Switch to data").click();
     H.queryBuilderHeader().button("Save").click();
     H.modal().button("Save").click();
 
