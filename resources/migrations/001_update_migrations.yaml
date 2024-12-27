@@ -10428,42 +10428,25 @@ databaseChangeLog:
   - changeSet:
       id: v53.2024-12-27T17:33:54
       author: nvoxland
-      comment: Adds encryption-check setting to encryption management (postgresql only)
+      comment: Adds encryption-check setting to encryption management
       dbms: postgresql
       changes:
-        insert:
-          tableName: setting
-          columns:
-            - column:
-                name: key
-                value: encryption-check
-            - column:
-                name: value
-                value: "unencrypted"
-      rollback:
-        - delete:
+        - insert:
             tableName: setting
-            where: "\"key\"='encryption-check'"
-
-  - changeSet:
-      id: v53.2024-12-27T17:33:55
-      author: nvoxland
-      comment: Adds encryption-check setting to encryption management (non-postgresql)
-      dbms: "!postgresql"
-      changes:
-        insert:
-          tableName: setting
-          columns:
-            - column:
-                name: key
-                value: encryption-check
-            - column:
-                name: value
-                value: "unencrypted"
+            columns:
+              - column:
+                  name: key
+                  value: encryption-check
+              - column:
+                  name: value
+                  value: "unencrypted"
       rollback:
-        - delete:
-            tableName: setting
-            where: "\"KEY\"='encryption-check'"
+        - sql:
+            sql: "delete from setting where \"key\"='encryption-check'"
+            dbms: postgresql
+        - sql:
+            sql: "delete from setting where \"KEY\"='encryption-check'"
+            dbms: "!postgresql"
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
