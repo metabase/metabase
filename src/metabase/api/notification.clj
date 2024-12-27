@@ -2,11 +2,9 @@
   "/api/notification endpoints"
   (:require
    [compojure.core :refer [DELETE GET POST PUT]]
-   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -23,13 +21,10 @@
   {id  ms/PositiveInt}
   (api/check-404 (get-notification id)))
 
-(mr/def ::FullyHydratedNotificationAPI
-  (mut/dissoc ::models.notification/FullyHydratedNotification :creator_id))
-
 (api/defendpoint POST "/"
   "Create a new notification, return the created notification."
   [:as {body :body}]
-  {body ::FullyHydratedNotificationAPI}
+  {body ::models.notification/FullyHydratedNotification}
   (and (:creator_id body)
        (not= api/*current-user-id* (:creator_id body))
        (throw (ex-info "Invalid creator_id" {:status-code 400})))
