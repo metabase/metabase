@@ -21,7 +21,7 @@ export const SlackChannelEdit = ({
   return (
     <ChannelSettingsBlock
       title={t`Slack`}
-      iconName="slack"
+      iconName="int"
       onRemoveChannel={onRemoveChannel}
     >
       <SlackChannelField

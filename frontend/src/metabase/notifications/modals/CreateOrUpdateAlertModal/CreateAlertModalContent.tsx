@@ -17,9 +17,9 @@ import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { alertIsValid } from "metabase/lib/notifications";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { NotificationChannelsPicker } from "metabase/notifications/NotificationChannelsPicker";
 import { AlertModalSettingsBlock } from "metabase/notifications/modals/CreateOrUpdateAlertModal/AlertModalSettingsBlock";
 import { AlertTriggerIcon } from "metabase/notifications/modals/CreateOrUpdateAlertModal/AlertTriggerIcon";
+import { NotificationChannelsPicker } from "metabase/notifications/modals/components/NotificationChannelsPicker";
 import {
   DEFAULT_ALERT_SCHEDULE,
   getDefaultQuestionAlertRequest,

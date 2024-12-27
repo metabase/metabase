@@ -57,6 +57,11 @@ type NotificationHandlerBase = {
   active?: boolean;
 };
 
+export type NotificationChannelType =
+  | "channel/email"
+  | "channel/slack"
+  | "channel/http";
+
 export type NotificationHandlerEmail = {
   channel_type: "channel/email";
   recipients: NotificationRecipient[];
@@ -68,6 +73,7 @@ export type NotificationHandlerSlack = {
 } & NotificationHandlerBase;
 
 export type NotificationHandlerHttp = {
+  channel_id: number;
   channel_type: "channel/http";
   recipients: NotificationRecipient[];
 } & NotificationHandlerBase;

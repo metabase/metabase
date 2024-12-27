@@ -1,19 +1,26 @@
 import { t } from "ttag";
 
 import { useListChannelsQuery } from "metabase/api";
-import { Button, Menu, Stack } from "metabase/ui";
+import { useSelector } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
+import {
+  type ChannelToAddOption,
+  NotificationChannelsAddMenu,
+} from "metabase/notifications/modals/components/NotificationChannelsAddMenu";
+import { getUser } from "metabase/selectors/user";
+import { Stack } from "metabase/ui";
 import type {
   ChannelApiResponse,
-  NotificationChannel,
   NotificationHandler,
   NotificationHandlerEmail,
+  NotificationHandlerHttp,
   NotificationHandlerSlack,
   User,
 } from "metabase-types/api";
 
-import { EmailChannelEdit } from "./EmailChannelEdit";
-import { SlackChannelEdit } from "./SlackChannelEdit";
-import { WebhookChannelEdit } from "./WebhookChannelEdit";
+import { EmailChannelEdit } from "../../EmailChannelEdit";
+import { SlackChannelEdit } from "../../SlackChannelEdit";
+import { WebhookChannelEdit } from "../../WebhookChannelEdit";
 
 const DEFAULT_CHANNELS_CONFIG = {
   email: { name: t`Email`, type: "email" },
@@ -40,6 +47,7 @@ export const NotificationChannelsPicker = ({
   isAdminUser,
 }: NotificationChannelsPickerProps) => {
   const { data: notificationChannels = [] } = useListChannelsQuery();
+  const user = useSelector(getUser);
 
   console.log("NotificationChannelsPicker", {
     notificationHandlers,
@@ -47,15 +55,19 @@ export const NotificationChannelsPicker = ({
     notificationChannels,
   });
 
-  const addChannel = (channel: NotificationChannel) => {
-    // const channelSpec = channels[type];
-    // if (!channelSpec) {
-    //   return;
-    // }
-
+  const addChannel = (channel: ChannelToAddOption) => {
     const newChannel: NotificationHandler = {
-      channel_type: "channel/http",
-      recipients: [],
+      channel_type: channel.type,
+      channel_id: channel.channel_id,
+      recipients:
+        channel.type === "channel/email" && user
+          ? [
+              {
+                type: "notification-recipient/user",
+                user_id: user.id,
+              },
+            ]
+          : [],
     };
 
     onChange(notificationHandlers.concat(newChannel));
@@ -90,10 +102,36 @@ export const NotificationChannelsPicker = ({
   const slackChannel = notificationHandlers.find(
     ({ channel_type }) => channel_type === "channel/slack",
   ) as NotificationHandlerSlack | undefined;
-  // const hookChannels = notificationHandlers.filter(
-  //   ({ channel_type }) =>
-  //     channel_type !== "channel/email" && channel_type !== "channel/slack",
-  // );
+  const hookChannels = notificationHandlers.filter(
+    ({ channel_type }) => channel_type === "channel/http",
+  ) as NotificationHandlerHttp[];
+
+  const channelsToAdd: ChannelToAddOption[] = [
+    channels.email.configured && !emailChannel
+      ? {
+          type: "channel/email" as const,
+          name: t`Email`,
+        }
+      : null,
+    channels.slack.configured && !slackChannel
+      ? {
+          type: "channel/slack" as const,
+          name: t`Slack`,
+        }
+      : null,
+    ...(channels.http.configured
+      ? notificationChannels
+          .filter(
+            ({ id }) =>
+              !hookChannels.find(({ channel_id }) => id === channel_id),
+          )
+          .map(({ id, type, name }) => ({
+            channel_id: id,
+            type,
+            name,
+          }))
+      : []),
+  ].filter(isNotNull);
 
   return (
     <Stack spacing="xl" align="start">
@@ -116,34 +154,22 @@ export const NotificationChannelsPicker = ({
         />
       )}
 
-      {/*
-      TODO: implement webhook channels
-      {isAdminUser &&
-        hookChannels.map(channel => (
-          <WebhookChannelEdit
-            key={`webhook-${channel.id}`}
-            channel={channel}
-            channelSpec={channels.http}
-            onRemoveChannel={onRemoveChannel}
-          />
-        ))}*/}
+      {hookChannels.map(channel => (
+        <WebhookChannelEdit
+          key={`webhook-${channel.channel_id}`}
+          notificationChannel={
+            notificationChannels.find(({ id }) => id === channel.channel_id)!
+          }
+          onRemoveChannel={() => onRemoveChannel(channel)}
+        />
+      ))}
 
-      <Menu position="bottom-start">
-        {/* TODO: this doesn't close on click outside */}
-        <Menu.Target>
-          <Button variant="subtle">{t`Add another destination`}</Button>
-        </Menu.Target>
-        <Menu.Dropdown>
-          {notificationChannels.map(httpChannel => (
-            <Menu.Item
-              key={httpChannel.id}
-              onClick={() => addChannel(httpChannel)}
-            >
-              {httpChannel.type} | {httpChannel.name}
-            </Menu.Item>
-          ))}
-        </Menu.Dropdown>
-      </Menu>
+      {!!channelsToAdd.length && (
+        <NotificationChannelsAddMenu
+          channelsToAdd={channelsToAdd}
+          onAddChannel={addChannel}
+        />
+      )}
     </Stack>
   );
 };

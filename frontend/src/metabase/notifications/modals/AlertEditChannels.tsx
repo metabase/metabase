@@ -7,7 +7,7 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import Users from "metabase/entities/users";
 import { connect } from "metabase/lib/redux";
-import { NotificationChannelsPicker } from "metabase/notifications/NotificationChannelsPicker";
+import { NotificationChannelsPicker } from "metabase/notifications/modals/components/NotificationChannelsPicker";
 import { fetchPulseFormInput } from "metabase/notifications/pulse/actions";
 import { getPulseFormInput } from "metabase/notifications/pulse/selectors";
 import { getUser } from "metabase/selectors/user";
