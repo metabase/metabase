@@ -1,4 +1,5 @@
-import type { ComponentMeta, Story } from "@storybook/react";
+import FakeTimers from "@sinonjs/fake-timers";
+import type { ComponentMeta, Story, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/testing-library";
 import { merge } from "icepick";
 import { type ComponentProps, useEffect } from "react";
@@ -13,6 +14,26 @@ export default {
   title: "Parameters/DatePicker",
   component: DatePicker,
 } as ComponentMeta<typeof DatePicker>;
+
+let clock: FakeTimers.InstalledClock | undefined;
+function withMockDate(StoryFn: StoryFn) {
+  if (!clock) {
+    clock = FakeTimers.install({
+      toFake: ["Date"],
+      // Happy new year 2025! 🥳
+      now: new Date("2025-01-01T00:00:00.000Z"),
+    });
+  }
+
+  useEffect(() => {
+    return () => {
+      clock?.uninstall();
+      clock = undefined;
+    };
+  }, []);
+
+  return <StoryFn />;
+}
 
 type CustomStoryProps = {
   theme?: "light" | "dark";
@@ -29,6 +50,8 @@ const Template: Story<
   useEffect(() => {
     if (isDarkTheme) {
       document.documentElement.setAttribute("data-metabase-theme", "night");
+    } else {
+      document.documentElement.setAttribute("data-metabase-theme", "light");
     }
   }, [isDarkTheme]);
 
@@ -148,6 +171,7 @@ export const RelativePrevious = {
     });
     next.classList.add("pseudo-hover");
   },
+  decorators: [withMockDate],
 };
 export const RelativePreviousDarkTheme = merge(RelativePrevious, {
   args: {
@@ -172,6 +196,7 @@ export const RelativeNext = {
     next.classList.add("pseudo-hover");
     await userEvent.click(canvas.getByRole("searchbox", { name: "Unit" }));
   },
+  decorators: [withMockDate],
 };
 export const RelativeNextDarkTheme = merge(RelativeNext, {
   args: {
