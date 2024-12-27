@@ -10413,7 +10413,6 @@ databaseChangeLog:
       id: v53.2024-12-27T17:33:54
       author: nvoxland
       comment: Adds encryption-check setting to encryption management
-      dbms: postgresql
       changes:
         - insert:
             tableName: setting
