@@ -5,7 +5,7 @@ import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper"
 
 import { StaticQuestion } from "./StaticQuestion";
 
-const ENTITY_ID = "evd6f3MoDUtTNsoXHwu0T";
+const ENTITY_ID = "VFCGVYPVtLzCtt4teeoW4";
 const ONE_TOO_MANY_ENTITY_ID = ENTITY_ID + "1";
 const WRONG_ENTITY_ID = ENTITY_ID.slice(0, -1) + "1";
 const NUMBER_ID = 12;
