@@ -275,7 +275,7 @@ describe(
       });
 
       cy.log("Simple question");
-      cy.findByLabelText("View the native query").click();
+      cy.findByLabelText("View native query").click();
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
         H.nativeEditor()
@@ -358,7 +358,7 @@ describe(
 
       cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
       H.openNotebook();
-      cy.findByLabelText("View the native query").click();
+      cy.findByLabelText("View native query").click();
 
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
