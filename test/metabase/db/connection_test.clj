@@ -147,7 +147,7 @@
     (let [real-conn (.getConnection ^DataSource mdb.connection/*application-db*)
           mock-conn (reify Connection
                       (rollback [_ _savepoint]
-                        (throw (ex-info "Rollback error", {})))
+                        (throw (ex-info "Rollback error" {})))
                       (setAutoCommit [_ auto?]
                         (.setAutoCommit real-conn auto?))
                       (getAutoCommit [_]
@@ -157,7 +157,8 @@
                       (commit [_]
                         (.commit real-conn)))]
       (binding [t2.connection/*current-connectable* mock-conn]
-        (let [e (is (thrown? Exception (t2/with-transaction [_t-conn] (throw (ex-info "Original error" {})))))]
-          (is (= "Original error" (ex-message e)))
-          (is (= "Rollback error" (ex-message (:rollback-error (ex-data e)))))
-          (is (= "Original error" (ex-message (:cause (ex-data e))))))))))
+        (let [e (is (thrown? Exception
+                             (t2/with-transaction [_t-conn] (throw (ex-info "Original error" {})))))]
+          (is (= "Error rolling back after previous error: Original error" (ex-message e)))
+          (is (= "Rollback error" (-> e ex-data :rollback-error ex-message)))
+          (is (= "Original error" (-> e ex-cause ex-message))))))))
