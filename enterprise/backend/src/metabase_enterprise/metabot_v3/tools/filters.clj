@@ -108,7 +108,8 @@
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/query-metric
   [_tool-name arguments _e]
-  {:output (query-metric arguments)})
+  (let [result (query-metric arguments)]
+    {:output result}))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})

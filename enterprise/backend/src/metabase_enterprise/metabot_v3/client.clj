@@ -118,8 +118,8 @@
   #_(premium-features/assert-has-feature :metabot-v3 "MetaBot")
   (try
     (let [url      (agent-endpoint-url)
-          body     (doto (build-request-body context messages session-id tools)
-                     (metabot-v3.context/log :llm.log/be->llm))
+          body     (u/prog1 (build-request-body context messages session-id tools)
+                     (metabot-v3.context/log (last (:messages <>)) :llm.log/be->llm))
           _        (log/debugf "Request to AI Proxy:\n%s" (u/pprint-to-str body))
           options  (build-request-options body)
           response (post! url options)]
