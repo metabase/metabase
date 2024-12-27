@@ -695,7 +695,8 @@
     (let [collection-ids (visible-collection-ids {:include-archived-items :all
                                                   :include-trash-collection? true})]
       (for [collection collections]
-        (assoc collection :effective_location
+        (assoc collection
+               :effective_location
                (when-not (or (nil? collection) (collection.root/is-root-collection? collection))
                  (let [real-location-path (if (:archived_directly collection)
                                             (trash-path)
@@ -725,7 +726,7 @@
   effective location. (i.e. the most recent ancestor the current user has read access to). If :effective_location is not
   present on any collections, it is hydrated as well, as it is needed to compute the effective parent."
   [collections]
-  (let [collections     (map #(t2/hydrate % :effective_location) collections)
+  (let [collections     (t2/hydrate collections :effective_location)
         parent-ids      (->> collections
                              (map :effective_location)
                              (keep location-path->parent-id))
