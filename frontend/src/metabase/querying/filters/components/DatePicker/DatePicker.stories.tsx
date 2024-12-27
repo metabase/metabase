@@ -44,8 +44,8 @@ const Template: Story<
       </Popover>
       {args.snapshotSize && (
         <Box
-          // the space between the popover and the target element
           pos="absolute"
+          // the space between the popover and the target element
           mt="8px"
           w={args.snapshotSize.width}
           h={args.snapshotSize.height}
