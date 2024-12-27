@@ -121,7 +121,7 @@
   [instance]
   (validate-notification instance)
   (when-let [unallowed-key (some #{:payload_type :payload_id :creator_id} (keys (t2/changes instance)))]
-    (throw (ex-info (format "Update %s is not allowed." unallowed-key)
+    (throw (ex-info (format "Update %s is not allowed." (name unallowed-key))
                     {:status-code 400
                      :changes     (t2/changes instance)})))
   instance)
