@@ -13,7 +13,9 @@ export const ViewLeftSidebarContainer = ({
   }
 
   if (isShowingChartTypeSidebar) {
-    <ChartTypeSidebar question={question} result={result} />;
+    // TODO: this sidebar now a part of ChartSettingsSidebar
+    // consider removing it
+    return <ChartTypeSidebar question={question} result={result} />;
   }
 
   return null;
