@@ -11,7 +11,6 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
 (defn- date-filter?

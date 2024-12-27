@@ -76,9 +76,9 @@
   (binding [metabase.api.common/*current-user-permissions-set* (delay #{"/"})
             metabase.api.common/*current-user-id* 2
             metabase.api.common/*is-superuser?* true]
-    (user-repl))
+    (user-repl [] {} (str (random-uuid))))
 
-  (defn- test-context
+  (defn test-context
     []
     (let [test-query {:dataset_query {:database 1, :type "query", :query {:source-table 27}},
                       :display "table",
