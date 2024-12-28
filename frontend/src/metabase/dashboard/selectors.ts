@@ -37,6 +37,7 @@ import type {
 import type {
   ClickBehaviorSidebarState,
   EditParameterSidebarState,
+  Locale,
   State,
   StoreDashboard,
 } from "metabase-types/store";
@@ -49,6 +50,9 @@ import {
   isQuestionCard,
   isQuestionDashCard,
 } from "./utils";
+import { getLocale } from "metabase/setup/selectors";
+import { I18nDictionaryEntry } from "metabase/i18n/types";
+import { localizeDynamicContent, parseDictionary } from "metabase/i18n/utils";
 
 type SidebarState = State["dashboard"]["sidebar"];
 
@@ -208,6 +212,59 @@ export const getDashboardComplete = createSelector(
     );
   },
 );
+
+const getDynamicContentDictionaryFromSettings = (_state: State) => {
+  // For now let's hard-code this.
+  //
+  // Later we'll use the settings
+  // return getSetting(state, "dynamic-dictionary");
+
+  const dict = [
+    ["es", "Insights", "Perspectivas", "name"],
+    ["es", "Ideas", "Conceptos", "name"],
+    ["fr", "Insights", "Perspectives", "name"],
+    ["fr", "Cats", "Chats", "name"],
+    ["it", "Cats", "Gatti", "name"],
+  ];
+  return JSON.stringify(dict);
+};
+
+/** This is a 'dynamic content dictionary', i.e. a lookup table for
+ * user-generated strings that appear in the database, as opposed to the
+ * dictionary we use to translate our own strings. */
+export const getParsedDynamicContentDictionary = createSelector(
+  [getLocale, getDynamicContentDictionaryFromSettings],
+  (locale, dictionaryJson) => {
+    if (!locale) {
+      return undefined;
+    }
+    return parseDictionary(dictionaryJson);
+  },
+);
+
+// FIXME: the selectors aren't memoizing properly and this causes reloads and crashes :-(
+/** Get a dashboard with dynamically localized content */
+export const getDashboardCompleteLocalized = createSelector(
+  [getLocale, getDashboardComplete, getParsedDynamicContentDictionary],
+  (locale, dashboard, dictionary) => {
+    const dashboardCopy = { ...dashboard };
+    if (dashboard?.name) {
+      dashboardCopy.name_localized = localizeDynamicContent({
+        dictionary,
+        localeCode: "fr", // hard-code this for now -- locale?.code,
+        msgid: dashboard?.name,
+        contexts: [
+          "name",
+          "dashboard",
+          "dashboard name",
+          `dashboard #${dashboard.id}`,
+        ],
+      });
+    }
+    return dashboardCopy;
+  },
+);
+// FIXME: I'm not sure getLocale is right. It gets its data from state.setup - should it??
 
 export const getDashcardHref = createSelector(
   [getMetadata, getDashboardComplete, getParameterValues, getDashCardById],

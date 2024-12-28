@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { t } from "ttag";
+import { L } from "metabase/i18n/utils";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -32,7 +33,7 @@ export function DashboardBackButton({
     return null;
   }
 
-  const label = t`Back to ${dashboard.name}`;
+  const label = t`Back to ${L(dashboard, "name")}`;
 
   return (
     <Tooltip label={label}>

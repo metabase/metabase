@@ -229,7 +229,8 @@ function Dashboard(props: DashboardProps) {
   const canRestore = Boolean(dashboard?.can_restore);
   const canDelete = Boolean(dashboard?.can_delete);
   const tabHasCards = currentTabDashcards.length > 0;
-  const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
+  const dashboardHasCards =
+    dashboard && dashboard.dashcards && dashboard.dashcards.length > 0;
 
   const shouldRenderAsNightMode = isNightMode && isFullscreen;
 

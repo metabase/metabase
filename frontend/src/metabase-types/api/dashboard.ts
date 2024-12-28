@@ -45,7 +45,9 @@ export interface Dashboard {
   collection?: Collection | null;
   collection_id: CollectionId | null;
   name: string;
+  name_localized?: string | null;
   description: string | null;
+  description_localized?: string | null;
   model?: string;
   dashcards: DashboardCard[];
   tabs?: DashboardTab[];

@@ -73,6 +73,9 @@ export function DashboardTabs({
               <TabButton.Renameable
                 value={tab.id}
                 label={tab.name}
+                // We could localize as follows:
+                // label={L(tab,'name')}
+                // but this is meant to be renameable..
                 onRename={name => renameTab(tab.id, name)}
                 canRename={isEditing && hasMultipleTabs}
                 showMenu={isEditing}

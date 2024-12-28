@@ -19,7 +19,7 @@ export const getStep = (state: State): SetupStep => {
 };
 
 export const getLocale = (state: State): Locale | undefined => {
-  return state.setup.locale;
+  return { code: "fr", name: "French" }; // hard-code this for now -- state.setup.locale;
 };
 
 export const getUser = (state: State): UserInfo | undefined => {
