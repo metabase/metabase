@@ -84,6 +84,7 @@ export function suggest({
 }: SuggestArgs): {
   helpText?: HelpText;
   suggestions?: Suggestion[];
+  prefix: string;
 } {
   let suggestions: Suggestion[] = [];
 
@@ -104,7 +105,7 @@ export function suggest({
           const isSupported =
             !clause || database?.hasFeature(clause.requiresFeature);
           if (isSupported) {
-            return { suggestions, helpText };
+            return { suggestions, helpText, prefix: matchPrefix };
           }
         }
       }
@@ -158,7 +159,7 @@ export function suggest({
       );
     }
 
-    return { suggestions };
+    return { suggestions, prefix: matchPrefix };
   }
 
   suggestions.push(
@@ -336,7 +337,7 @@ export function suggest({
         const helpText = getHelpText(name, database, reportTimezone);
 
         if (helpText) {
-          return { helpText };
+          return { helpText, prefix: matchPrefix };
         }
       }
     }
@@ -355,7 +356,7 @@ export function suggest({
     });
   }
 
-  return { suggestions };
+  return { suggestions, prefix: matchPrefix };
 }
 
 function getDatabase(query: Lib.Query, metadata: Metadata) {
