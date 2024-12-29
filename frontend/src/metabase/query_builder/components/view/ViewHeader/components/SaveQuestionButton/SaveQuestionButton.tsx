@@ -6,17 +6,17 @@ import { Button, Tooltip } from "metabase/ui";
 
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 
-interface QuestionSaveButtonProps {
+interface SaveQuestionButtonProps {
   onOpenModal: (modalType: QueryModalType) => void;
   isDisabled: boolean;
-  tooltip?: string;
+  permissionTooltip?: string;
 }
 
-export function QuestionSaveButton({
+export function SaveQuestionButton({
   onOpenModal,
   isDisabled,
-  tooltip,
-}: QuestionSaveButtonProps) {
+  permissionTooltip,
+}: SaveQuestionButtonProps) {
   const button = (
     <Button
       className={ViewTitleHeaderS.SaveButton}
@@ -31,9 +31,9 @@ export function QuestionSaveButton({
     </Button>
   );
 
-  if (tooltip) {
+  if (permissionTooltip) {
     return (
-      <Tooltip label={tooltip} position="left">
+      <Tooltip label={permissionTooltip} position="left">
         {button}
       </Tooltip>
     );
@@ -46,6 +46,6 @@ interface RenderCheckOpts {
   hasSaveButton: boolean;
 }
 
-QuestionSaveButton.shouldRender = ({ hasSaveButton }: RenderCheckOpts) => {
+SaveQuestionButton.shouldRender = ({ hasSaveButton }: RenderCheckOpts) => {
   return hasSaveButton;
 };

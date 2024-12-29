@@ -21,8 +21,8 @@ import { ExploreResultsLink } from "../ExploreResultsLink";
 import { FilterHeaderButton } from "../FilterHeaderButton";
 import { QuestionActions } from "../QuestionActions";
 import { QuestionNotebookButton } from "../QuestionNotebookButton";
-import { QuestionSaveButton } from "../QuestionSaveButton";
 import { QuestionSummarizeWidget } from "../QuestionSummarizeWidget";
+import { SaveQuestionButton } from "../SaveQuestionButton";
 import { ToggleNativeQueryPreview } from "../ToggleNativeQueryPreview";
 
 interface ViewTitleHeaderRightSideProps {
@@ -221,11 +221,13 @@ export function ViewTitleHeaderRightSide({
           onInfoClick={handleInfoClick}
         />
       )}
-      {QuestionSaveButton.shouldRender({ hasSaveButton }) && (
-        <QuestionSaveButton
+      {SaveQuestionButton.shouldRender({
+        hasSaveButton,
+      }) && (
+        <SaveQuestionButton
           onOpenModal={onOpenModal}
           isDisabled={isSaveDisabled}
-          tooltip={disabledSaveTooltip}
+          permissionTooltip={disabledSaveTooltip}
         />
       )}
     </Flex>
