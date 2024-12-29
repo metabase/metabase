@@ -222,7 +222,11 @@ export function ViewTitleHeaderRightSide({
         />
       )}
       {hasSaveButton && (
-        <Tooltip label={disabledSaveTooltip} disabled={canSave} position="left">
+        <Tooltip
+          label={disabledSaveTooltip}
+          disabled={!canSave}
+          position="left"
+        >
           <Button
             className={ViewTitleHeaderS.SaveButton}
             data-testid="qb-save-button"
