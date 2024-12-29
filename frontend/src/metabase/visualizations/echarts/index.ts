@@ -5,6 +5,7 @@ import {
   SankeyChart,
   ScatterChart,
   SunburstChart,
+  TreemapChart,
 } from "echarts/charts";
 import {
   BrushComponent,
@@ -39,5 +40,6 @@ export const registerEChartsModules = () => {
     SankeyChart,
     LabelLayout,
     TooltipComponent,
+    TreemapChart,
   ]);
 };
