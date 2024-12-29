@@ -8,6 +8,7 @@
    [buddy.core.nonce :as nonce]
    [clojure.string :as str]
    [environ.core :as env]
+   [metabase.config :as config]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -32,10 +33,17 @@
               (str (trs "MB_ENCRYPTION_SECRET_KEY must be at least 16 characters.")))
       (secret-key->hash secret-key))))
 
+(def ^:dynamic *use-default-secret-key*
+  "Whether to use the default secret key when `MB_ENCRYPTION_SECRET_KEY` is not set. This is enabled in dev and test
+   mode by default to reduce the risk of accidentally not handling encrypted data correctly."
+  true)
+
 ;; apperently if you're not tagging in an arglist, `^bytes` will set the `:tag` metadata to `clojure.core/bytes` (ick)
 ;; so you have to do `^{:tag 'bytes}` instead
 (defonce ^:private ^{:tag 'bytes} default-secret-key
-  (validate-and-hash-secret-key (env/env :mb-encryption-secret-key)))
+  (validate-and-hash-secret-key (or (env/env :mb-encryption-secret-key)
+                                    (when (and *use-default-secret-key* (or config/is-dev? config/is-test?))
+                                      "DEFAULT_SECRET_KEY"))))
 
 (defn default-encryption-enabled?
   "Is the `MB_ENCRYPTION_SECRET_KEY` set, enabling encryption?"
