@@ -10,5 +10,7 @@
                       (t2/select [:model/Card :id :name :description]
                                  :type [:= "metric"])
                       message)]
-    {:output (or (some-> id dummy-tools/metric-details)
-                 "Metric not found.")}))
+    (if-let [result (when id
+                       (dummy-tools/metric-details id))]
+      {:structured-output result}
+      {:output "Metric not found."})))

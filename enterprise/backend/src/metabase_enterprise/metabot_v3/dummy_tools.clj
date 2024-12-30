@@ -18,18 +18,19 @@
 
 (defn- get-current-user
   [_tool-id _arguments _e]
-  {:output (if-let [{:keys [id email first_name last_name]}
-                    (or (some-> api/*current-user* deref)
-                        (t2/select-one [:model/User :id :email :first_name :last_name] api/*current-user-id*))]
-             {:id id
-              :name (str first_name " " last_name)
-              :email-address email}
-             "current user not found")})
+  (if-let [{:keys [id email first_name last_name]}
+           (or (some-> api/*current-user* deref)
+               (t2/select-one [:model/User :id :email :first_name :last_name] api/*current-user-id*))]
+    {:structured-output {:id id
+                         :name (str first_name " " last_name)
+                         :email-address email}}
+    {:output  "current user not found"}))
 
 (defn- get-dashboard-details
   [_tool-id {:keys [dashboard-id]} _e]
-  {:output (or (t2/select-one [:model/Dashboard :id :description :name] dashboard-id)
-               "dashboard not found")})
+  (if-let [dashboard (t2/select-one [:model/Dashboard :id :description :name] dashboard-id)]
+    {:structured-output dashboard}
+    {:output "dashboard not found"}))
 
 (defn- convert-metric
   [db-metric]
@@ -87,7 +88,9 @@
   (let [details (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
                   (card-details (parse-long card-id))
                   (table-details (parse-long table-id) {:include-foreign-key-tables? true}))]
-    {:output (or details "table not found")}))
+    (if (map? details)
+      {:structured-output details}
+      {:output (or details "table not found")})))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})
@@ -127,8 +130,13 @@
 
 (defn- get-metric-details
   [_tool-id {:keys [metric-id]} _e]
-  {:output (or (metric-details metric-id)
-               "metric not found")})
+  (let [details (if-let [[_ card-id] (when (string? metric-id)
+                                       (re-matches #"card__(\d+)" metric-id))]
+                  (metric-details (parse-long card-id))
+                  "invalid metric_id")]
+    (if (map? details)
+      {:structured-output details}
+      {:output (or details "metric not found")})))
 
 (defn- get-report-details
   [_tool-id {:keys [report-id]} _e]
@@ -139,7 +147,9 @@
                             (select-keys [:id :description :name])
                             (assoc :result-columns (:fields details))))
                   "invalid report_id")]
-    {:output (or details "report not found")}))
+    (if (map? details)
+      {:structured-output details}
+      {:output (or details "report not found")})))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]
@@ -148,7 +158,7 @@
   -)
 
 (defn- dummy-tool-messages
-  [tool-id arguments content]
+  [tool-id arguments {:keys [output structured-output]}]
   (let [call-id (str "call_" (u/generate-nano-id))]
     [{:content    nil
       :role       :assistant
@@ -156,13 +166,14 @@
                     :name      tool-id
                     :arguments arguments}]}
 
-     {:content      content
-      :role         :tool
-      :tool-call-id call-id}]))
+     (-> {:role :tool
+          :tool-call-id call-id}
+         (m/assoc-some :content output)
+         (m/assoc-some :structured-content structured-output))]))
 
 (defn- dummy-get-current-user
   [env]
-  (let [content (:output (get-current-user :get-current-user {} env))]
+  (let [content (get-current-user :get-current-user {} env)]
     (reduce envelope/add-dummy-message env (dummy-tool-messages :get-current-user {} content))))
 
 (def ^:private detail-getters
@@ -187,9 +198,8 @@
   (reduce (fn [env viewed]
             (if-let [{getter-id :id, getter-fn :fn, :keys [arg-fn]} (some-> viewed :type keyword detail-getters)]
               (let [arguments (arg-fn (:id viewed))
-                    content (-> (getter-fn getter-id arguments (envelope/context env))
-                                :output)]
-                (reduce envelope/add-dummy-message env (dummy-tool-messages getter-id arguments content)))
+                    tool-response (getter-fn getter-id arguments (envelope/context env))]
+                (reduce envelope/add-dummy-message env (dummy-tool-messages getter-id arguments tool-response)))
               env))
           env
           (:user_is_viewing context)))
@@ -213,8 +223,10 @@
              (completing (fn [env {:keys [query]}]
                            (let [query-id (u/generate-nano-id)
                                  arguments {:query-id query-id}
-                                 content (execute-query query-id (mbql.normalize/normalize query))]
-                             (reduce envelope/add-dummy-message env (dummy-tool-messages :run-query arguments content)))))
+                                 result (execute-query query-id (mbql.normalize/normalize query))]
+                             (reduce envelope/add-dummy-message
+                                     env
+                                     (dummy-tool-messages :run-query arguments {:structured-output result})))))
              env
              (:user_is_viewing context)))
 

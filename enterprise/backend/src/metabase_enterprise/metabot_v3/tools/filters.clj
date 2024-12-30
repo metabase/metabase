@@ -80,7 +80,7 @@
 
 (defn- query-metric
   [{:keys [metric-id filters group-by] :as _arguments}]
-  (if-let [card (api.card/get-card metric-id)]
+  (when-let [card (api.card/get-card metric-id)]
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
           base-query (->> (lib/query mp (lib.metadata/card mp metric-id))
                           lib/remove-all-breakouts)
@@ -97,8 +97,7 @@
        :query (lib.convert/->legacy-MBQL query)
        :result_columns (into []
                              (map-indexed #(metabot-v3.tools.u/->result-column %2 %1 query-field-id-prefix))
-                             returned-cols)})
-    "metric not found"))
+                             returned-cols)})))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]
@@ -108,7 +107,9 @@
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/query-metric
   [_tool-name arguments _e]
-  {:output (query-metric arguments)})
+  (if-let [result (query-metric arguments)]
+    {:structured-output result}
+    {:output "metric not found"}))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})
@@ -176,4 +177,4 @@
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/filter-records
   [_tool-name arguments e]
-  {:output (filter-records arguments e)})
+  {:structured-output (filter-records arguments e)})
