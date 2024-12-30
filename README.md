@@ -35,6 +35,14 @@ Take a [tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of
 
 Metabase can be run just about anywhere. Check out our [Installation Guides](https://www.metabase.com/docs/latest/operations-guide/installing-metabase).
 
+## Self-Hosting Options
+
+### Elestio
+
+You can deploy Metabase on Elestio using one-click deployment.
+
+[![Deploy on Elestio](https://elest.io/images/logos/deploy-to-elestio-btn.png)](https://elest.io/open-source/metabase)
+
 ## Contributing
 
 ## Quick Setup: Dev environment
