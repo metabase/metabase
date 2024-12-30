@@ -2,10 +2,9 @@
   (:require
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [metabase.premium-features.premium-features :as premium-features]
+   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
-   [metabase.plugins.classloader :as classloader]))
+   [metabase.util.i18n :refer [trs tru]]))
 
 (defn- in-ee?
   "Is the current namespace an Enterprise Edition namespace?"
@@ -33,7 +32,10 @@
 (defn- check-feature
   [feature]
   (or (= feature :none)
-      (premium-features/has-feature? feature)))
+      ((requiring-resolve 'metabase.premium-features.core/has-feature?) feature)))
+      ; #_(do)))
+        ; (classloader/require 'metabase.premium-features.token-check)
+        ; ((resolve 'metabase.premium-features.token-check/has-feature?) feature))))
 
 (defn dynamic-ee-oss-fn
   "Dynamically tries to require an enterprise namespace and determine the correct implementation to call, based on the
@@ -160,6 +162,7 @@
         args        (assoc parsed-args :fn-name fn-name)]
     `(defenterprise-impl ~args)))
 
+;; TODO: migrate to malli
 (defmacro defenterprise-schema
   "A version of defenterprise which allows for schemas to be defined for the args and return value. Schema syntax is
   the same as when using `mu/defn`. Otherwise identical to `defenterprise`; see the docstring of that macro for

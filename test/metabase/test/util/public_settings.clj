@@ -2,7 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test.util.thread-local :as tu.thread-local]))
 
 ;;; This is actually thread-safe by default unless you're using [[metabase.test/test-helpers-set-global-values!]]

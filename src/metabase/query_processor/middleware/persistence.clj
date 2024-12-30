@@ -3,7 +3,7 @@
    [metabase.api.common :as api]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.query.permissions :as query-perms]
-   [metabase.public-settings.premium-features :as premium-features]))
+   [metabase.permissions.util :as perms-util]))
 
 (defn substitute-persisted-query
   "Removes persisted information if user is sandboxed or uses connection impersonation. `:persisted-info/native` is set
@@ -16,7 +16,7 @@
   [{::query-perms/keys [perms] :as query}]
   (if (and api/*current-user-id*
            (or perms ;; sandboxed?
-               (premium-features/impersonation-enforced-for-db? (:database query))))
+               (perms-util/impersonation-enforced-for-db? (:database query))))
     (lib.util.match/replace query
       (x :guard (every-pred map? :persisted-info/native))
       (dissoc x :persisted-info/native))

@@ -13,7 +13,7 @@
    [metabase.api.embed.common :as api.embed.common]
    [metabase.config :as config]
    [metabase.logger :as logger]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.troubleshooting :as troubleshooting]
    [metabase.util.json :as json]
    [metabase.util.log :as log]

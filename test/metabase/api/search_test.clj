@@ -16,8 +16,8 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
+   [metabase.permissions.util :as perms-util]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.appdb.core :as search.engines.appdb]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
@@ -757,9 +757,9 @@
                            (search! "rom" :rasta))))))
 
           (testing "Sandboxed users do not see indexed entities in search"
-            (with-redefs [premium-features/impersonated-user? (constantly true)]
+            (with-redefs [perms-util/impersonated-user? (constantly true)]
               (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))
-            (with-redefs [premium-features/sandboxed-user? (constantly true)]
+            (with-redefs [perms-util/sandboxed-user? (constantly true)]
               (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
 
 (defn- archived-collection [m]
@@ -1330,31 +1330,31 @@
        [_                         {:type :model :dataset_query (mt/mbql-query venues)}
         {http-action :action-id}  {:type :http :name search-term}
         {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
-        (testing "by default do not search for native content"
-          (is (= #{["card" mbql-card]
-                   ["card" native-card-in-name]
-                   ["dataset" mbql-model]
-                   ["dataset" native-model-in-name]
-                   ["action" http-action]}
-                 (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term)
-                      :data
-                      (map (juxt :model :id))
-                      set))))
+       (testing "by default do not search for native content"
+         (is (= #{["card" mbql-card]
+                  ["card" native-card-in-name]
+                  ["dataset" mbql-model]
+                  ["dataset" native-model-in-name]
+                  ["action" http-action]}
+                (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term)
+                     :data
+                     (map (juxt :model :id))
+                     set))))
 
-        (testing "if search-native-query is true, search both dataset_query and the name"
-          (is (= #{["card" mbql-card]
-                   ["card" native-card-in-name]
-                   ["dataset" mbql-model]
-                   ["dataset" native-model-in-name]
-                   ["action" http-action]
+       (testing "if search-native-query is true, search both dataset_query and the name"
+         (is (= #{["card" mbql-card]
+                  ["card" native-card-in-name]
+                  ["dataset" mbql-model]
+                  ["dataset" native-model-in-name]
+                  ["action" http-action]
 
-                   ["card" native-card-in-query]
-                   ["dataset" native-model-in-query]
-                   ["action" query-action]}
-                 (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :search_native_query true)
-                      :data
-                      (map (juxt :model :id))
-                      set))))))))
+                  ["card" native-card-in-query]
+                  ["dataset" native-model-in-query]
+                  ["action" query-action]}
+                (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :search_native_query true)
+                     :data
+                     (map (juxt :model :id))
+                     set))))))))
 
 (deftest search-result-with-user-metadata-test
   (let [search-term "with-user-metadata"]

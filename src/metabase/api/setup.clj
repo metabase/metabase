@@ -17,7 +17,7 @@
    [metabase.models.setting.cache :as setting.cache]
    [metabase.models.user :as user]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.setup :as setup]
    [metabase.util :as u]

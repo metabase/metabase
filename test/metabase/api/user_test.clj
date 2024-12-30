@@ -10,7 +10,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.user :as user]
    [metabase.models.user-test :as user-test]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.permissions.util :as perms-util]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -227,7 +227,7 @@
                             (map :email))))
 
                 (testing "But returns self if the user is sandboxed"
-                  (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
+                  (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
                     (is (= [rasta]
                            (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
                                 (map :email)))))))))

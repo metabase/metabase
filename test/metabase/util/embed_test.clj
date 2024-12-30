@@ -5,7 +5,7 @@
    [crypto.random :as crypto-random]
    [java-time.api :as t]
    [metabase.config :as config]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
    [metabase.test :as mt]

@@ -340,6 +340,3 @@
   []
   (or (sandboxed-user?)
       (impersonated-user?)))
-
-(defenterprise decode-airgap-token "In OSS, this returns an empty map." metabase-enterprise.airgap [_] {})
-(defenterprise token-valid-now? "In OSS, this returns false." metabase-enterprise.airgap [_] false)

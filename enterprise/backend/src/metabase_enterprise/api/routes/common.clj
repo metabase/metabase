@@ -1,12 +1,12 @@
 (ns metabase-enterprise.api.routes.common
   "Shared stuff used by various EE-only API routes."
   (:require
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :as i18n]))
 
 (defn +require-premium-feature
-  "Wraps Ring `handler`. Check that we have a premium token with `feature` (a keyword; see [[metabase.public-settings.premium-features]] for a
-  current known features) or return a 401 if it is not.
+  "Wraps Ring `handler`. Check that we have a premium token with `feature` (a keyword; see
+  [[metabase.premium-features.core]] for a list of current features) or return a 401 if it is not.
 
     (context \"/whatever\" [] (+require-premium-feature :sandboxes (deferred-tru \"Sandboxes\") whatever/routes))
 

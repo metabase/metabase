@@ -1,6 +1,6 @@
 (ns metabase-enterprise.util-test
   (:require
-   [metabase.public-settings.premium-features :refer [defenterprise defenterprise-schema]]))
+   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Defenterprise Macro                                                  |
