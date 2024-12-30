@@ -14,22 +14,30 @@ The display name for the database in the Metabase interface.
 
 ## Host
 
-Your database's IP address, or its domain name (e.g., esc.mydatabase.com). This is the value of your Databrick's compute resource's Server Hostname.
+Your database's IP address, or its domain name (e.g., `xxxxxxxxxx.cloud.databricks.com` or `adb-xxxxx.azuredatabricks.net`). This is the value of your Databrick's compute resource's Server Hostname.
 
 See [Compute settings for the Databricks JDBC Driver](https://docs.databricks.com/en/integrations/jdbc/compute.html).
 
 ## HTTP path
 
-This is the Databrick's compute resources HTTP Path value.
+This is the Databrick's compute resources HTTP Path value. This value is often a SQL warehouse endpoint in the format `/sql/1.0/endpoints/abcdef1234567890`. See [Connect to a SQL warehouse](https://docs.databricks.com/en/compute/sql-warehouse/index.html).
 
-See [Compute settings for the Databricks JDBC Driver](https://docs.databricks.com/en/integrations/jdbc/compute.html).
+Additionally, see [Compute settings for the Databricks JDBC Driver](https://docs.databricks.com/en/integrations/jdbc/compute.html).
 
-## Personal access token
+## Authentication
 
+There are two ways to authenticate with Databricks. You can use a personal access token (PAT) or a service principal using OAuth (OAuth M2M).
+
+The Databricks driver supports both options. Use the toggle to select the authentication method you want to use.
+
+### Personal access token authentication
 See [Personal Access Token (PAT)](https://docs.databricks.com/en/dev-tools/auth/pat.html).
 
-## Catalog
+### Authenticate access with a service principal using OAuth (OAuth M2M)
 
+See [Authenticate access with a service principal using OAuth](https://docs.databricks.com/en/dev-tools/auth/oauth-m2m.html).
+
+## Catalog
 For now, you can only select one catalog. Metabase doesn't support multi-catalog connections. If you want to use more than one catalog in Metabase, you can set up multiple connections, each selecting a different catalog.
 
 You can't sync Databricks's legacy catalogs, however, including the `samples` or `hive_metastore` catalogs.
