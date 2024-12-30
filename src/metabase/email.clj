@@ -187,7 +187,7 @@
   [:and
    [:map {:closed true}
     [:subject      :string]
-    [:recipients   [:sequential ms/Email]]
+    [:recipients   [:or [:sequential ms/Email] [:set ms/Email]]]
     [:message-type [:enum :text :html :attachments]]
     [:message      [:or :string [:sequential :map]]]
     [:bcc?         {:optional true} [:maybe :boolean]]]
@@ -202,7 +202,7 @@
   "Send an email to one or more `recipients`. Upon success, this returns the `message` that was just sent. This function
   does not catch and swallow thrown exceptions, it will bubble up. Should prefer to use [[send-email-retrying!]] unless
   the caller has its own retry logic."
-  [{:keys [subject recipients message-type message bcc?] :as email}]
+  [{:keys [subject recipients message-type message bcc?] :as _email}]
   (try
     (when-not (email-smtp-host)
       (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))

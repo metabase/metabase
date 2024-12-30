@@ -1,6 +1,7 @@
 (ns metabase.api.notification
   "/api/notification endpoints"
   (:require
+   [clojure.data :refer [diff]]
    [compojure.core :refer [DELETE GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
@@ -73,16 +74,16 @@
        (mapcat :recipients)
        (filter #(#{:notification-recipient/user :notification-recipient/raw-value} ((comp keyword :type) %)))
        (map (fn [recipient]
-              {:email (if (= :notification-recipient/user ((comp keyword :type) recipient))
-                        (-> recipient :user :email)
-                        (-> recipient :details :value))}))
+              (if (= :notification-recipient/user ((comp keyword :type) recipient))
+                (-> recipient :user :email)
+                (-> recipient :details :value))))
+       (remove nil?)
        set))
 
 (defn- send-you-were-added-card-notification-email! [notification]
   (when (email/email-configured?)
-    (let [recipients-except-creator (remove #(= (:email %) (-> notification :creator :email)) (all-email-recipients notification))]
-      (messages/send-you-were-added-card-notification-email!
-       (update notification :payload t2/hydrate :card) recipients-except-creator @api/*current-user*))))
+    (messages/send-you-were-added-card-notification-email!
+     (update notification :payload t2/hydrate :card) (all-email-recipients notification) @api/*current-user*)))
 
 (api/defendpoint POST "/"
   "Create a new notification, return the created notification."
@@ -98,6 +99,44 @@
       (send-you-were-added-card-notification-email! notification))
     notification))
 
+(defn- notify-notification-updates!
+  "Send notification emails based on changes between updated and existing notification"
+  [updated-notification existing-notification]
+  (when (email/email-configured?)
+    (let [was-active? (:active existing-notification)
+          is-active?  (:active updated-notification)
+          current-user @api/*current-user*
+          old-emails  (all-email-recipients existing-notification)
+          new-emails  (all-email-recipients updated-notification)]
+      (cond
+        ;; Notification was just archived - notify all users they were unsubscribed
+        (and was-active? (not is-active?))
+        (messages/send-you-were-removed-notification-card-email!
+         (update existing-notification :payload t2/hydrate :card)
+         old-emails
+         current-user)
+
+        ;; Notification was just unarchived - notify all users they were added
+        (and (not was-active?) is-active?)
+        (messages/send-you-were-added-card-notification-email!
+         (update updated-notification :payload t2/hydrate :card)
+         new-emails
+         @api/*current-user*)
+
+        (not= old-emails new-emails)
+        (let [[removed-recipients added-recipients _] (diff old-emails new-emails)
+              notification                            (update existing-notification :payload t2/hydrate :card)]
+          (when (seq removed-recipients)
+            (messages/send-you-were-removed-notification-card-email!
+             notification
+             removed-recipients
+             current-user))
+          (when (seq added-recipients)
+            (messages/send-you-were-added-card-notification-email!
+             notification
+             added-recipients
+             @api/*current-user*)))))))
+
 (api/defendpoint PUT "/:id"
   "Update a notification, can also update its subscriptions, handlers.
   Return the updated notification."
@@ -107,6 +146,8 @@
   (let [existing-notification (get-notification id)]
     (api/update-check existing-notification body)
     (models.notification/update-notification! existing-notification body)
+    (when (card-notification? existing-notification)
+      (notify-notification-updates! body existing-notification))
     (get-notification id)))
 
 (api/defendpoint POST "/:id/send"
@@ -141,7 +182,8 @@
       (when (card-notification? notification)
         (u/ignore-exceptions
           (messages/send-you-unsubscribed-notification-card-email!
-           (update notification :payload t2/hydrate :card) @api/*current-user*)))
+           (update notification :payload t2/hydrate :card)
+           [(:email @api/*current-user*)])))
       notification)))
 
 (api/define-routes)

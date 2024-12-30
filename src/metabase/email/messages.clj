@@ -372,29 +372,27 @@
 
 ;; Paths to the templates for all of the alerts emails
 (def ^:private you-unsubscribed-template   (template-path "notification_card_unsubscribed"))
-(def ^:private admin-unsubscribed-template (template-path "alert_admin_unsubscribed_you"))
+(def ^:private removed-template            (template-path "notification_card_you_were_removed"))
 (def ^:private added-template              (template-path "notification_card_you_were_added"))
 (def ^:private stopped-template            (template-path "alert_stopped_working"))
 (def ^:private archived-template           (template-path "alert_archived"))
 
 (defn send-you-unsubscribed-notification-card-email!
   "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `alert`"
-  [notification who-unsubscribed]
-  (send-email! [(:email who-unsubscribed)] "You unsubscribed from an alert" you-unsubscribed-template
-               notification))
+  [notification unsubscribed-emails]
+  (send-email! unsubscribed-emails "You unsubscribed from an alert" you-unsubscribed-template notification true))
 
-(defn send-admin-unsubscribed-alert-email!
-  "Send an email to `user-added` letting them know `admin` has unsubscribed them from `alert`"
-  [alert user-added {:keys [first_name last_name] :as _admin}]
-  (let [admin-name (format "%s %s" first_name last_name)]
-    (send-email! [(:email user-added)] "You’ve been unsubscribed from an alert" admin-unsubscribed-template
-                 (assoc (common-alert-context alert) :adminName admin-name))))
+(defn send-you-were-removed-notification-card-email!
+  "Send an email to `removed-users` letting them know `admin` has removed them from `alert`"
+  [notification removed-emails {:keys [first_name last_name] :as _actor}]
+  (let [actor-name (format "%s %s" first_name last_name)]
+    (send-email! removed-emails "You’ve been unsubscribed from an alert" removed-template (assoc notification :actor_name actor-name) true)))
 
 (defn send-you-were-added-card-notification-email!
   "Send an email to `added-users` letting them know `admin-adder` has added them to `alert`"
-  [notification added-users {:keys [first_name last_name] :as _adder}]
+  [notification added-user-emails {:keys [first_name last_name] :as _adder}]
   (let [subject (format "%s %s added you to an alert" first_name last_name)]
-    (send-email! (map :email added-users) subject added-template notification true)))
+    (send-email! added-user-emails subject added-template notification true)))
 
 (def ^:private not-working-subject "One of your alerts has stopped working")
 
