@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.config :as config]
    [metabase.email :as email]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
@@ -57,19 +58,12 @@
             ;; This will block the calling thread (i.e. the test) waiting for the promise to be delivered. There is a
             ;; very high timeout (30 seconds) that we should never reach, but without it, if we do hit that scenario, it
             ;; should at least not hang forever in CI
-            promise-value (deref p 30000 ::timeout)]
+            promise-value (deref p (if config/is-dev? 3000 30000) ::timeout)]
         (if (= promise-value ::timeout)
           (throw (Exception. "Timed out while waiting for messages in the inbox"))
           result))
       (finally
         (remove-watch inbox ::inbox-watcher)))))
-
-(defmacro with-expected-messages
-  "Invokes `body`, waiting until `n` messages are found in the inbox before returning. This is useful if the code you
-  are testing sends emails via a future or background thread. Using this will block the test, waiting for the messages
-  to arrive before continuing."
-  [n & body]
-  `(do-with-expected-messages ~n (fn [] ~@body)))
 
 (defn do-with-fake-inbox!
   "Impl for `with-fake-inbox` macro; prefer using that rather than calling this directly."
@@ -94,6 +88,14 @@
   [& body]
   {:style/indent 0}
   `(do-with-fake-inbox! (fn [] ~@body)))
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defmacro with-expected-messages
+  "Invokes `body`, waiting until `n` messages are found in the inbox before returning. This is useful if the code you
+  are testing sends emails via a future or background thread. Using this will block the test, waiting for the messages
+  to arrive before continuing."
+  [n & body]
+  `(do-with-expected-messages ~n (fn [] ~@body)))
 
 (defn- create-email-body->regex-fn
   "Returns a function expecting the email body structure. It will apply the regexes in `regex-seq` over the body and
@@ -236,8 +238,8 @@
 (defn temp-csv
   [file-basename content]
   (prog1 (File/createTempFile file-basename ".csv")
-         (with-open [file (io/writer <>)]
-           (.write ^java.io.Writer file ^String content))))
+    (with-open [file (io/writer <>)]
+      (.write ^java.io.Writer file ^String content))))
 
 (defn mock-send-email!
   "To stub out email sending, instead returning the would-be email contents as a string"

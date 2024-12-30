@@ -4,12 +4,13 @@
    [compojure.core :refer [DELETE GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
+   [metabase.email :as email]
+   [metabase.email.messages :as messages]
    [metabase.models.interface :as mi]
    [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
 
 (set! *warn-on-reflection* true)
 
@@ -61,16 +62,34 @@
   (-> (get-notification id)
       api/read-check))
 
+(defn- all-email-recipients [notification]
+  (->> (:handlers notification)
+       (filter #(= :channel/email ((comp keyword :channel_type) %)))
+       (mapcat :recipients)
+       (filter #(#{:notification-recipient/user :notification-recipient/raw-value} ((comp keyword :type) %)))
+       (map (fn [recipient]
+              {:email (if (= :notification-recipient/user ((comp keyword :type) recipient))
+                        (-> recipient :user :email)
+                        (-> recipient :details :value))}))
+       set))
+
+(defn- send-you-were-added-alert-email! [notification]
+  (when (email/email-configured?)
+    (let [recipients-except-creator (remove #(= (:email %) (-> notification :creator :email)) (all-email-recipients notification))]
+      (messages/send-you-were-added-alert-email! (update notification :payload t2/hydrate :card) recipients-except-creator @api/*current-user*))))
+
 (api/defendpoint POST "/"
   "Create a new notification, return the created notification."
   [:as {body :body}]
   {body ::models.notification/FullyHydratedNotification}
   (api/create-check :model/Notification body)
-  (models.notification/hydrate-notification
-   (models.notification/create-notification!
-    (dissoc body :handlers :subscriptions)
-    (:subscriptions body)
-    (:handlers body))))
+  (let [notification (models.notification/hydrate-notification
+                      (models.notification/create-notification!
+                       (dissoc body :handlers :subscriptions)
+                       (:subscriptions body)
+                       (:handlers body)))]
+    (send-you-were-added-alert-email! notification)
+    notification))
 
 (api/defendpoint PUT "/:id"
   "Update a notification, can also update its subscriptions, handlers.
