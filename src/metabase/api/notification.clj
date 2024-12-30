@@ -9,6 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
+   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -19,6 +20,10 @@
   (-> (t2/select-one :model/Notification id)
       api/check-404
       models.notification/hydrate-notification))
+
+(defn- card-notification?
+  [notification]
+  (= :notification/card (:payload_type notification)))
 
 (api/defendpoint GET "/"
   "List notifications.
@@ -73,10 +78,11 @@
                         (-> recipient :details :value))}))
        set))
 
-(defn- send-you-were-added-alert-email! [notification]
+(defn- send-you-were-added-card-notification-email! [notification]
   (when (email/email-configured?)
     (let [recipients-except-creator (remove #(= (:email %) (-> notification :creator :email)) (all-email-recipients notification))]
-      (messages/send-you-were-added-alert-email! (update notification :payload t2/hydrate :card) recipients-except-creator @api/*current-user*))))
+      (messages/send-you-were-added-card-notification-email!
+       (update notification :payload t2/hydrate :card) recipients-except-creator @api/*current-user*))))
 
 (api/defendpoint POST "/"
   "Create a new notification, return the created notification."
@@ -88,7 +94,8 @@
                        (dissoc body :handlers :subscriptions)
                        (:subscriptions body)
                        (:handlers body)))]
-    (send-you-were-added-alert-email! notification)
+    (when (card-notification? notification)
+      (send-you-were-added-card-notification-email! notification))
     notification))
 
 (api/defendpoint PUT "/:id"
@@ -130,6 +137,11 @@
   (let [notification (get-notification id)]
     (api/check-403 (models.notification/can-unsubscribe? notification))
     (models.notification/unsubscribe-user! id api/*current-user-id*)
-    (get-notification id)))
+    (let [notification (get-notification id)]
+      (when (card-notification? notification)
+        (u/ignore-exceptions
+          (messages/send-you-unsubscribed-notification-card-email!
+           (update notification :payload t2/hydrate :card) @api/*current-user*)))
+      notification)))
 
 (api/define-routes)

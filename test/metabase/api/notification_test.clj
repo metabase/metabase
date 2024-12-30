@@ -109,30 +109,33 @@
 (deftest create-notification-send-you-were-added-email-test
   (mt/with-model-cleanup [:model/Notification]
     (mt/with-temp [:model/Card {card-id :id} {:name "My Card"}]
-      (let [notification {:payload_type  "notification/card"
-                          :active        true
-                          :payload       {:card_id card-id
-                                          :send_condition "goal_above"}
-                          :creator_id    (mt/user->id :crowberto)
-                          :handlers      [{:channel_type :channel/email
-                                           :recipients   [{:type    :notification-recipient/user
-                                                           :user_id (mt/user->id :rasta)}
-                                                          {:type    :notification-recipient/user
-                                                           :user_id (mt/user->id :crowberto)}
-                                                          {:type    :notification-recipient/raw-value
-                                                           :details {:value "ngoc@metabase.com"}}]}]}]
-        (let [[email] (notification.tu/with-mock-inbox-email!
-                        (with-send-messages-sync!
-                          (mt/user-http-request :crowberto :post 200 "notification" notification)))
-              a-card-url (format "<a href=\"http://localhost:3000/question/%d\">My Card</a>." card-id)]
-          (testing "send email to all recipients except the creator using bcc"
-            (is (=? {:bcc     #{"rasta@metabase.com" "ngoc@metabase.com"}
-                     :subject "Crowberto Corv added you to an alert"
-                     :body    [{a-card-url true
-                                "when this question meets its goal" true}]}
-                    (mt/summarize-multipart-single-email email
-                                                         (re-pattern a-card-url)
-                                                         #"when this question meets its goal")))))))))
+      (doseq [[send_condition expected_text] [["has_result" "whenever this question has any results"]
+                                              ["goal_above" "when this question meets its goal"]
+                                              ["goal_below" "when this question goes below its goal"]]]
+        (let [notification {:payload_type  "notification/card"
+                            :active        true
+                            :payload       {:card_id card-id
+                                            :send_condition send_condition}
+                            :creator_id    (mt/user->id :crowberto)
+                            :handlers      [{:channel_type :channel/email
+                                             :recipients   [{:type    :notification-recipient/user
+                                                             :user_id (mt/user->id :rasta)}
+                                                            {:type    :notification-recipient/user
+                                                             :user_id (mt/user->id :crowberto)}
+                                                            {:type    :notification-recipient/raw-value
+                                                             :details {:value "ngoc@metabase.com"}}]}]}]
+          (let [[email] (notification.tu/with-mock-inbox-email!
+                          (with-send-messages-sync!
+                            (mt/user-http-request :crowberto :post 200 "notification" notification)))
+                a-card-url (format "<a href=\"http://localhost:3000/question/%d\">My Card</a>." card-id)]
+            (testing (format "send email with %s condition" send_condition)
+              (is (=? {:bcc     #{"rasta@metabase.com" "ngoc@metabase.com"}
+                       :subject "Crowberto Corv added you to an alert"
+                       :body    [{a-card-url true
+                                  expected_text true}]}
+                      (mt/summarize-multipart-single-email email
+                                                           (re-pattern a-card-url)
+                                                           (re-pattern expected_text)))))))))))
 
 (deftest create-notification-error-test
   (testing "require auth"
@@ -706,9 +709,31 @@
             (mt/user-http-request :lucky :post 200 (format "notification/%d/unsubscribe" noti-1))
 
             ;; Check first notification has no recipients
-              ;; First notification should have no recipients
+            ;; First notification should have no recipients
             (is (empty? (email-recipients noti-1)))
-              ;; Second notification should still have lucky as recipient
+            ;; Second notification should still have lucky as recipient
             (is (=? [{:type    :notification-recipient/user
                       :user_id (mt/user->id :lucky)}]
                     (email-recipients noti-2)))))))))
+
+(deftest unsubscribe-receive-email-test
+  (testing "test that unsubscribe will not receive email"
+    (mt/with-model-cleanup [:model/Notification]
+      (notification.tu/with-card-notification [{noti-1 :id
+                                                :as notification} {:notification {:creator_id (mt/user->id :rasta)}
+                                                                   :card         {:name "My Card"}
+                                                                   :handlers     [{:channel_type "channel/email"
+                                                                                   :recipients   [{:type    :notification-recipient/user
+                                                                                                   :user_id (mt/user->id :lucky)}]}]}]
+        (let [[email] (notification.tu/with-mock-inbox-email!
+                        (with-send-messages-sync!
+                          (mt/user-http-request :lucky :post 200 (format "notification/%d/unsubscribe" noti-1))))
+              a-href (format "<a href=\"http://localhost:3000/question/%d\">My Card</a>." (-> notification :payload :card_id))]
+          (testing "sends unsubscribe confirmation email"
+            (is (=? {:to      #{"lucky@metabase.com"}
+                     :subject "You unsubscribed from an alert"
+                     :body    [{"You’re no longer receiving alerts about" true
+                                a-href                                    true}]}
+                    (mt/summarize-multipart-single-email email
+                                                         #"You’re no longer receiving alerts about"
+                                                         (re-pattern a-href))))))))))

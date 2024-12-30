@@ -371,17 +371,17 @@
   (str "metabase/email/" template-name ".hbs"))
 
 ;; Paths to the templates for all of the alerts emails
-(def ^:private you-unsubscribed-template   (template-path "alert_unsubscribed"))
+(def ^:private you-unsubscribed-template   (template-path "notification_card_unsubscribed"))
 (def ^:private admin-unsubscribed-template (template-path "alert_admin_unsubscribed_you"))
-(def ^:private added-template              (template-path "alert_you_were_added"))
+(def ^:private added-template              (template-path "notification_card_you_were_added"))
 (def ^:private stopped-template            (template-path "alert_stopped_working"))
 (def ^:private archived-template           (template-path "alert_archived"))
 
-(defn send-you-unsubscribed-alert-email!
+(defn send-you-unsubscribed-notification-card-email!
   "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `alert`"
-  [alert who-unsubscribed]
+  [notification who-unsubscribed]
   (send-email! [(:email who-unsubscribed)] "You unsubscribed from an alert" you-unsubscribed-template
-               (common-alert-context alert)))
+               notification))
 
 (defn send-admin-unsubscribed-alert-email!
   "Send an email to `user-added` letting them know `admin` has unsubscribed them from `alert`"
@@ -390,7 +390,7 @@
     (send-email! [(:email user-added)] "You’ve been unsubscribed from an alert" admin-unsubscribed-template
                  (assoc (common-alert-context alert) :adminName admin-name))))
 
-(defn send-you-were-added-alert-email!
+(defn send-you-were-added-card-notification-email!
   "Send an email to `added-users` letting them know `admin-adder` has added them to `alert`"
   [notification added-users {:keys [first_name last_name] :as _adder}]
   (let [subject (format "%s %s added you to an alert" first_name last_name)]

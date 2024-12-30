@@ -84,7 +84,7 @@
 
 (defn- notify-email-enabled! [alert recipients]
   (doseq [user recipients]
-    (messages/send-you-were-added-alert-email! alert user @api/*current-user*)))
+    (messages/send-you-were-added-card-notification-email! alert user @api/*current-user*)))
 
 (defn- notify-email-recipient-diffs! [old-alert old-recipients new-alert new-recipients]
   (let [old-ids->users (key-by :id old-recipients)
@@ -97,7 +97,7 @@
 
     (doseq [new-id added-ids
             :let [added-user (get new-ids->users new-id)]]
-      (messages/send-you-were-added-alert-email! new-alert added-user @api/*current-user*))))
+      (messages/send-you-were-added-card-notification-email! new-alert added-user @api/*current-user*))))
 
 (defn- notify-recipient-changes!
   "This function compares `OLD-ALERT` and `UPDATED-ALERT` to determine if there have been any channel or recipient
@@ -120,14 +120,6 @@
 
 (defn- collect-alert-recipients [alert]
   (set (:recipients (email-channel alert))))
-
-(defn- non-creator-recipients [{{creator-id :id} :creator :as alert}]
-  (remove #(= creator-id (:id %)) (collect-alert-recipients alert)))
-
-(defn- notify-new-alert-created! [alert]
-  (when (email/email-configured?)
-    (doseq [recipient (non-creator-recipients alert)]
-      (messages/send-you-were-added-alert-email! alert recipient @api/*current-user*))))
 
 (defn- maybe-include-csv [card alert-condition]
   (if (= "rows" alert-condition)
@@ -153,7 +145,6 @@
                         only-alert-keys
                         (models.pulse/create-alert! api/*current-user-id* alert-card channels)))]
     (events/publish-event! :event/alert-create {:object new-alert :user-id api/*current-user-id*})
-    (notify-new-alert-created! new-alert)
     ;; return our new Alert
     new-alert))
 
@@ -257,7 +248,7 @@
     ;; Send emails letting people know they have been unsubscribed
     (let [user @api/*current-user*]
       (when (email/email-configured?)
-        (messages/send-you-unsubscribed-alert-email! alert user))
+        (messages/send-you-unsubscribed-notification-card-email! alert user))
       (events/publish-event! :event/alert-unsubscribe {:object {:email (:email user)}
                                                        :user-id api/*current-user-id*}))
     ;; finally, return a 204 No Content
