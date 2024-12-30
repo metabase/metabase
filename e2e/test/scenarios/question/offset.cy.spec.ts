@@ -297,7 +297,7 @@ describe("scenarios > question > offset", () => {
 
       H.openNotebook();
 
-      cy.findByLabelText("View the SQL").click();
+      cy.findByLabelText("View SQL").click();
       cy.wait("@sqlPreview");
 
       cy.findByTestId("native-query-preview-sidebar").should(
