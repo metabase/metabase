@@ -25,12 +25,11 @@
   "Create a new notification, return the created notification."
   [:as {body :body}]
   {body ::models.notification/FullyHydratedNotification}
-  (and (:creator_id body)
-       (not= api/*current-user-id* (:creator_id body))
-       (throw (ex-info "Invalid creator_id" {:status-code 400})))
   (models.notification/hydrate-notification
    (models.notification/create-notification!
-    (dissoc body :handlers :subscriptions)
+    (-> body
+        (assoc :creator_id api/*current-user-id*)
+        (dissoc body :handlers :subscriptions))
     (:subscriptions body)
     (:handlers body))))
 

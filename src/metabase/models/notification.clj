@@ -105,7 +105,7 @@
      [:map
       ;; optional during creation
       [:payload_id {:optional true} int?]
-      [:creator_id int?]]]
+      [:creator_id {:optional true} int?]]]
     [:notification/testing :any]]])
 
 (defn- validate-notification

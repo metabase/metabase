@@ -99,11 +99,16 @@
                                                                        :payload      {}
                                                                        :payload_type "notification/card"}))))
 
-  (testing "creator_id must be the same as the current user's id"
-    (is (= "Invalid creator_id"
-           (mt/user-http-request :crowberto :post 400 "notification" {:creator_id   (mt/user->id :rasta)
-                                                                      :payload      {:card_id 1}
-                                                                      :payload_type "notification/card"})))))
+  (testing "creator id is not required"
+    (is (some? (mt/user-http-request :crowberto :post 200 "notification" {:payload      {:card_id 1}
+                                                                          :payload_type "notification/card"}))))
+  (testing "automatically override creator_id to current user"
+    (is (= (mt/user->id :crowberto)
+           (-> (mt/user-http-request :crowberto :post 200 "notification" {:creator_id   (mt/user->id :rasta)
+                                                                          :payload      {:card_id 1}
+                                                                          :payload_type "notification/card"})
+               :creator_id)))))
+
 (defn- update-cron-subscription
   [{:keys [subscriptions] :as notification} new-schedule]
   (assert (= 1 (count subscriptions)))
