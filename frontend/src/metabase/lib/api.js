@@ -283,6 +283,7 @@ export class Api extends EventEmitter {
       headers,
       body: requestBody,
       signal,
+      keepalive: true,
     });
 
     return fetch(request)
