@@ -1584,7 +1584,7 @@ describe("issue 44665", () => {
   });
 
   it("should use the correct widget for the default value picker (metabase#44665)", () => {
-    H.openNativeEditor().type("select * from {{param");
+    H.startNewNativeQuestion().type("select * from {{param");
     H.sidebar()
       .last()
       .within(() => {
