@@ -65,9 +65,19 @@ Click Done, and your alert will be all set up! You'll get an email confirmation,
 
 _Requires the [progress bar visualization](./visualizations/progress-bar.md)._
 
-Setting up this kind of alert is really similar to setting up a goal line alert. First, create a question that returns a single number as its result, then choose the Progress Bar chart type from the Visualization menu. Open the settings menu to select a goal value, click Done, then save your question.
+If you want to set up an alert when a single number reaches a goal, you can use a progress bar visualization.
 
-Next, click the bell icon in the bottom-right and you'll see that same screen of options for when you want to get alerts about this progress bar.
+1. Create a question that returns a single number as its result,
+2. Choose the Progress Bar chart type,
+3. In Visualization settings, select a goal value
+4. Save your question,
+5. Create an alert by clicking on the Sharing icon in top right
+
+You'll see the options for when you want to get alerts about this progress bar:
+
+- Whether to alert when the progress bar reaches the goal line or below the goal,
+- Whether to alert only the first time the progress bar reaches the goal line, or every time
+- How often you want Metabase to check to see if the goal has been reached.
 
 ## Results alerts
 
