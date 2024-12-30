@@ -24,7 +24,7 @@ describe("issue 9357", () => {
   });
 
   it("should reorder template tags by drag and drop (metabase#9357)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     SQLFilter.enterParameterizedQuery(
       "{{firstparameter}} {{nextparameter}} {{lastparameter}}",
     );
@@ -52,7 +52,7 @@ describe("issue 11480", () => {
   });
 
   it("should clear a template tag's default value when the type changes (metabase#11480)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     // Parameter `x` defaults to a text parameter.
     SQLFilter.enterParameterizedQuery(
       "select * from orders where total = {{x}}",
@@ -92,7 +92,7 @@ describe("issue 11580", () => {
   });
 
   it("shouldn't reorder template tags when updated (metabase#11580)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     SQLFilter.enterParameterizedQuery("{{foo}} {{bar}}");
 
     cy.findAllByText("Variable name").next().as("variableLabels");
@@ -450,7 +450,7 @@ describe("issue 15444", () => {
   });
 
   it("should run with the default field filter set (metabase#15444)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     SQLFilter.enterParameterizedQuery(
       "select * from products where {{category}}",
     );
@@ -541,7 +541,7 @@ describe("issue 15700", () => {
   });
 
   it("should be able to select 'Field Filter' category in native query (metabase#15700)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     SQLFilter.enterParameterizedQuery("{{filter}}");
 
     SQLFilter.openTypePickerFromDefaultFilterType();
@@ -561,7 +561,7 @@ describe("issue 15981", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
 
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
@@ -776,7 +776,7 @@ describe("issue 17490", () => {
   });
 
   it.skip("nav bar shouldn't cut off the popover with the tables for field filter selection (metabase#17490)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     SQLFilter.enterParameterizedQuery("{{f}}");
 
     SQLFilter.openTypePickerFromDefaultFilterType();
@@ -929,7 +929,7 @@ describe("issue 27257", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     SQLFilter.enterParameterizedQuery("SELECT {{number}}");
 
     H.filterWidget().within(() => {
@@ -1004,7 +1004,7 @@ describe("issue 31606", { tags: "@external" }, () => {
   });
 
   it("should clear values on UI for Text, Number, Date and Field Filter Types (metabase#31606)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
 
     SQLFilter.enterParameterizedQuery(SQL_QUERY);
 
@@ -1184,7 +1184,7 @@ describe("issue 31606", () => {
   });
 
   it("should not start drag and drop from clicks on popovers", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
 
     SQLFilter.enterParameterizedQuery("{{foo}} {{bar}}");
 
@@ -1209,7 +1209,7 @@ describe("issue 49577", () => {
   });
 
   it("should not show the values initially when using a single select search box (metabase#49577)", () => {
-    H.openNativeEditor().type("select * from {{param");
+    H.startNewNativeQuestion().type("select * from {{param");
     H.sidebar()
       .last()
       .within(() => {

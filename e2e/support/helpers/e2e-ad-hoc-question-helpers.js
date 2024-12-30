@@ -73,7 +73,7 @@ function newNativeCardHash(
       native: { query: config.query, "template-tags": {} },
       type: "native",
     },
-    display: "table",
+    display: "scalar",
     parameters: [],
     visualization_settings: {},
     type,

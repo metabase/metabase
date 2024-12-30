@@ -71,7 +71,7 @@ describe("issue 15029", () => {
   });
 
   it("should allow dots in the variable reference (metabase#15029)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     cy.realType(
       `select * from products where RATING = ${DOUBLE_LEFT_BRACKET}number.of.stars}}`,
       {
@@ -96,8 +96,7 @@ describe("issue 16886", () => {
     "shouldn't remove parts of the query when choosing 'Run selected text' (metabase#16886)",
     { tags: "@flaky" },
     () => {
-      H.openNativeEditor();
-      cy.wait(1000); // attempt to decrease flakiness
+      H.startNewNativeQuestion().as("editor");
       cy.realType(ORIGINAL_QUERY);
       cy.realPress("Home");
       Cypress._.range(SELECTED_TEXT.length).forEach(() =>
@@ -369,7 +368,7 @@ describe("issue 20625", { tags: "@quarantine" }, () => {
 
   // realpress messes with cypress 13
   it("should continue to request more prefix matches (metabase#20625)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     cy.realType("s");
 
     // autocomplete_suggestions?prefix=s
@@ -387,7 +386,7 @@ describe("issue 21034", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     cy.intercept(
       "GET",
       "/api/database/**/autocomplete_suggestions?**",
@@ -418,7 +417,7 @@ describe("issue 21550", () => {
   });
 
   it("should not show scrollbars for very short snippet (metabase#21550)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
 
     cy.icon("snippet").click();
     cy.wait("@rootCollection");
@@ -585,7 +584,7 @@ describe("issue 34330", { tags: "@flaky" }, () => {
   });
 
   it("should only call the autocompleter with all text typed (metabase#34330)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     cy.realType("USER");
 
     cy.wait("@autocomplete").then(({ request }) => {
@@ -598,7 +597,7 @@ describe("issue 34330", { tags: "@flaky" }, () => {
   });
 
   it("should call the autocompleter eventually, even when only 1 character was typed (metabase#34330)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     cy.realType("U");
 
     cy.wait("@autocomplete").then(({ request }) => {
@@ -611,7 +610,7 @@ describe("issue 34330", { tags: "@flaky" }, () => {
   });
 
   it("should call the autocompleter when backspacing to a 1-character prefix(metabase#34330)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     cy.realType("SE{backspace}");
 
     cy.wait("@autocomplete").then(({ request }) => {
@@ -748,7 +747,7 @@ describe("issue 22991", () => {
     cy.signOut();
     cy.signInAsNormalUser();
 
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     cy.get("@questionId").then(questionId => {
       // can't use cy.type because it does not simulate the bug
       cy.realType(`select * from ${DOUBLE_LEFT_BRACKET}#${questionId}`);
