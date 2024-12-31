@@ -43,8 +43,8 @@ describe("scenarios > question > native", () => {
 
   it("should suggest the currently viewed collection when saving question if the user has not recently visited a dashboard", () => {
     H.visitCollection(THIRD_COLLECTION_ID);
+    H.startNewNativeQuestion({ collection_id: THIRD_COLLECTION_ID});
 
-    H.openNativeEditor({ fromCurrentPage: true });
     cy.realType("select count(*) from orders");
 
     cy.findByTestId("qb-header").within(() => {
@@ -70,7 +70,7 @@ describe("scenarios > question > native", () => {
 
     cy.visit("/");
 
-    H.openNativeEditor({ fromCurrentPage: true });
+    H.startNewNativeQuestion();
     cy.realType("select count(*) from orders");
 
     cy.findByTestId("qb-header").within(() => {
@@ -416,8 +416,9 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       H.restore("mongo-5");
       cy.signInAsNormalUser();
 
-      H.openNativeEditor({ newMenuItemTitle: "Native query" });
-      H.popover().findByText(MONGO_DB_NAME).click();
+      H.startNewNativeQuestion()
+      cy.findByTestId("gui-builder-data").click()
+      cy.findByLabelText(MONGO_DB_NAME).click();
       cy.findByLabelText("Format query").should("not.exist");
 
       cy.findByTestId("native-query-top-bar").findByText(MONGO_DB_NAME).click();

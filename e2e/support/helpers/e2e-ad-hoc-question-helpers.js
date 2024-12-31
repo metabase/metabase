@@ -60,17 +60,20 @@ export function startNewMetric() {
 
 /**
  * @param {("question" | "model")} type
- * @param {("number" | null)} config.database
- * @param {string} config.query
+ * @param {Object} [config]
+ * @param {("number" | null)} [config.database]
+ * @param {string} [config.query]
+ * @param {number} [config.collection_id]
  */
 function newNativeCardHash(
   type,
-  config = { database: SAMPLE_DB_ID, query: "" },
+  { database = SAMPLE_DB_ID, query = "", collection_id = null } = {},
 ) {
   const card = {
+    collection_id,
     dataset_query: {
-      database: config.database,
-      native: { query: config.query, "template-tags": {} },
+      database,
+      native: { query, "template-tags": {} },
       type: "native",
     },
     display: "scalar",
@@ -90,6 +93,7 @@ function newNativeCardHash(
  * @param {object} config
  * @param {number} config.database
  * @param {string} config.query
+ * @param {number} config.collection_id
  */
 export function startNewNativeQuestion(config) {
   const hash = newNativeCardHash("question", config);
