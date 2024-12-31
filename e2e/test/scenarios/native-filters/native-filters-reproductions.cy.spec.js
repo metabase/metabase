@@ -971,7 +971,12 @@ describe("issue 29786", { tags: "@external" }, () => {
     "should allow using field filters with null schema (metabase#29786)",
     { tags: "@flaky" },
     () => {
-      H.openNativeEditor({ databaseName: "QA MySQL8" });
+
+      H.startNewNativeQuestion()
+
+      cy.findByTestId("gui-builder-data").click()
+      cy.findByLabelText("QA MySQL8").click();
+
       SQLFilter.enterParameterizedQuery(SQL_QUERY);
 
       cy.findAllByTestId("variable-type-select").first().click();

@@ -249,7 +249,12 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
 
   it("can write a native MySQL query with a field filter", () => {
     // Write Native query that includes a filter
-    H.openNativeEditor({ databaseName: MYSQL_DB_NAME }).type(
+    H.startNewNativeQuestion().as("editor");
+
+    cy.findByTestId("gui-builder-data").click()
+    cy.findByLabelText(MYSQL_DB_NAME).click();
+
+    cy.get("@editor").type(
       "SELECT TOTAL, CATEGORY FROM ORDERS LEFT JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID [[WHERE PRODUCTS.ID = {{id}}]];",
       {
         parseSpecialCharSequences: false,
@@ -274,7 +279,12 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
   });
 
   it("can save a native MySQL query", () => {
-    H.openNativeEditor({ databaseName: MYSQL_DB_NAME }).type(
+    H.startNewNativeQuestion().as("editor");
+
+    cy.findByTestId("gui-builder-data").click()
+    cy.findByLabelText(MYSQL_DB_NAME).click();
+
+    cy.get("@editor").type(
       "SELECT * FROM ORDERS",
     );
     cy.findByTestId("native-query-editor-container").icon("play").click();
