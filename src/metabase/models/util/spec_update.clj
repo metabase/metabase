@@ -74,14 +74,14 @@
   (into row (for [[k {:keys [fk-column multi-row?]}] nested-specs
                   :when fk-column]
               [k (if multi-row?
-                  (map #(assoc % fk-column parent-id) (get row k))
-                  (when-let [nested-row (get row k)]
-                    (assoc nested-row fk-column parent-id)))])))
+                   (map #(assoc % fk-column parent-id) (get row k))
+                   (when-let [nested-row (get row k)]
+                     (assoc nested-row fk-column parent-id)))])))
 
 (defn- sanitize-row-fn
   "Return a function that sanitizes the row to be inserted/updated."
-  [{:keys [compare-cols extra-cols fk-column id-col] :as _spec}]
-  #(select-keys % (filter some? (concat compare-cols extra-cols [fk-column id-col]))))
+  [{:keys [compare-cols extra-cols fk-column] :as _spec}]
+  #(select-keys % (filter some? (concat compare-cols extra-cols [fk-column]))))
 
 (defn- handle-sequential-updates!
   [existing-rows new-rows {:keys [model nested-specs id-col] :as spec} path]
@@ -98,7 +98,7 @@
           (log/tracef "%s nested spec found, creating rows one by one" (format-path path))
           (doseq [row to-create]
             (let [parent-id (t2/insert-returning-pk! model (sanitize-row row))]
-              (log/debugf "%s created a new entity %s %d" (format-path path) model parent-id)
+              (log/debugf "%s created a new entity %s %s" (format-path path) model parent-id)
               (handle-nested-updates! nil (with-parent-id row nested-specs parent-id) nested-specs (conj path parent-id)))))
         (do
           (log/tracef "%s no nested spec found, batch creating %d new rows of %s" (format-path path) (count to-create) model)
@@ -111,7 +111,7 @@
       (t2/delete! model id-col [:in (map id-col to-delete)]))
 
     (when (seq to-update)
-      (log/tracef "%s Attempt updating %d rows of %s" (format-path path) (count to-update) model)
+      (log/tracef "%s Attempt updating %s rows of %s" (format-path path) (count to-update) model)
       (doseq [row to-update]
         (let [path (conj path (id-col row))]
           (log/debugf "%s Updating" (format-path path))
@@ -137,14 +137,14 @@
         existing-data-sanitized (sanitize-row existing-data)
         existing-id             (id-col existing-data)
         handle-nested!          (fn [existing-data new-data parent-id]
-                                 (when nested-specs
-                                   (log/tracef "%s nested models detected, updating nested models %s %d"
-                                             (format-path path) model parent-id)
-                                   (handle-nested-updates!
-                                    existing-data
-                                    (with-parent-id new-data nested-specs parent-id)
-                                    nested-specs
-                                    (conj path parent-id))))]
+                                  (when nested-specs
+                                    (log/tracef "%s nested models detected, updating nested models %s %s"
+                                                (format-path path) model parent-id)
+                                    (handle-nested-updates!
+                                     existing-data
+                                     (with-parent-id new-data nested-specs parent-id)
+                                     nested-specs
+                                     (conj path parent-id))))]
     (cond
       ;; delete
       (nil? new-data)
@@ -157,18 +157,18 @@
       (nil? existing-data)
       (let [parent-id (t2/insert-returning-pk! model new-data-sanitized)
             path      (conj path parent-id)]
-        (log/debugf "%s Created a new entity %s %d" (format-path path) model parent-id)
+        (log/debugf "%s Created a new entity %s %s" (format-path path) model parent-id)
         (handle-nested! nil new-data parent-id))
 
       ;; delete and create when id changes
       (not= (id-col new-data) existing-id)
       (do
-        (log/debugf "%s ID changed from %d to %d - deleting and recreating"
+        (log/debugf "%s ID changed from %s to %s - deleting and recreating"
                     (format-path path) existing-id (id-col new-data))
         (t2/delete! model existing-id)
         (let [parent-id (t2/insert-returning-pk! model new-data-sanitized)
               path      (conj path parent-id)]
-          (log/debugf "%s Created a new entity %s %d" (format-path path) model parent-id)
+          (log/debugf "%s Created a new entity %s %s" (format-path path) model parent-id)
           (handle-nested! nil new-data parent-id)))
 
       ;; update
@@ -180,7 +180,7 @@
 
       :else
       (do
-        (log/debugf "%s no change detected for %s %d" (format-path path) model existing-id)
+        (log/debugf "%s no change detected for %s %s" (format-path path) model existing-id)
         (handle-nested! existing-data new-data existing-id)))))
 
 (defn- check-id-exists

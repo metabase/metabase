@@ -10,8 +10,8 @@
   (let [operations (atom [])
         id-counter (atom 1)
         track!     (fn [op args]
-                       (swap! operations conj (cons op args))
-                       1)]
+                     (swap! operations conj (cons op args))
+                     1)]
     (with-redefs [t2/insert!              (fn [& args] (track! :insert! args))
                   t2/insert-returning-pk! (fn [& args] (track! :insert-returning-pk! args) (swap! id-counter inc) @id-counter)
                   t2/update!              (fn [& args] (track! :update! args))
@@ -39,8 +39,8 @@
                     :name "Test"
                     :foo  {:id -1
                            :name "Foo 1"}}]
-      (is (= [[:insert-returning-pk! :root {:id -1 :name "Test"}]
-              [:insert-returning-pk! :foo {:id -1 :name "Foo 1" :root_id 2}]]
+      (is (= [[:insert-returning-pk! :root {:name "Test"}]
+              [:insert-returning-pk! :foo {:name "Foo 1" :root_id 2}]]
              (with-tracked-operations!
                (spec-update/do-update! nil new-data basic-spec)))))))
 
@@ -53,7 +53,7 @@
                                 :root_id 1}}
           new-data      (-> existing-data
                             (assoc :name "Updated Test"))]
-      (is (= [[:update! :root 1 {:id 1 :name "Updated Test"}]]
+      (is (= [[:update! :root 1 {:name "Updated Test"}]]
              (with-tracked-operations!
                (spec-update/do-update! existing-data new-data basic-spec)))))))
 
@@ -67,8 +67,8 @@
           new-data      (-> existing-data
                             (assoc :name "Updated Test")
                             (assoc-in [:foo :name] "Updated Foo"))]
-      (is (= [[:update! :root 1 {:id 1 :name "Updated Test"}]
-              [:update! :foo 2 {:id 2 :name "Updated Foo" :root_id 1}]]
+      (is (= [[:update! :root 1 {:name "Updated Test"}]
+              [:update! :foo 2 {:name "Updated Foo" :root_id 1}]]
              (with-tracked-operations!
                (spec-update/do-update! existing-data new-data basic-spec)))))))
 
@@ -111,7 +111,7 @@
                                                    :name    "New Foo"
                                                    :root_id 1})]
       (is (= [[:delete! :foo 2]
-              [:insert-returning-pk! :foo {:id 3 :name "New Foo" :root_id 1}]]
+              [:insert-returning-pk! :foo {:name "New Foo" :root_id 1}]]
              (with-tracked-operations!
                (spec-update/do-update! existing-data new-data basic-spec)))))))
 
@@ -159,9 +159,9 @@
                            {:id 3
                             :name "Bar 2"
                             :unrelated "abc"}]}]
-      (is (= [[:insert-returning-pk! :root {:id 1 :name "Test"}]
-              [:insert! :bar [{:id 2 :name "Bar 1" :root_id 2 :unrelated "xyz"}
-                              {:id 3 :name "Bar 2" :root_id 2 :unrelated "abc"}]]]
+      (is (= [[:insert-returning-pk! :root {:name "Test"}]
+              [:insert! :bar [{:name "Bar 1" :root_id 2 :unrelated "xyz"}
+                              {:name "Bar 2" :root_id 2 :unrelated "abc"}]]]
              (with-tracked-operations!
                (spec-update/do-update! nil new-data multi-row-spec)))))))
 
@@ -178,11 +178,11 @@
                                  :name "Bar 2"
                                  :unrelated "abc"}]}
           new-data      (-> existing-data
-                           (assoc-in [:bars 0 :name] "Updated Bar 1")
-                           (assoc-in [:bars 0 :unrelated] "changed")
-                           (update :bars conj {:id 3 :name "Bar 3" :unrelated "def"}))]
-      (is (= [[:insert! :bar [{:id 3 :name "Bar 3" :root_id 1 :unrelated "def"}]]
-              [:update! :bar 1 {:id 1 :name "Updated Bar 1" :root_id 1 :unrelated "changed"}]]
+                            (assoc-in [:bars 0 :name] "Updated Bar 1")
+                            (assoc-in [:bars 0 :unrelated] "changed")
+                            (update :bars conj {:id 3 :name "Bar 3" :unrelated "def"}))]
+      (is (= [[:insert! :bar [{:name "Bar 3" :root_id 1 :unrelated "def"}]]
+              [:update! :bar 1 {:name "Updated Bar 1" :root_id 1 :unrelated "changed"}]]
              (with-tracked-operations!
                (spec-update/do-update! existing-data new-data multi-row-spec)))))))
 
@@ -197,8 +197,8 @@
                                  :name "Bar 2"
                                  :unrelated "abc"}]}
           new-data      (update existing-data :bars
-                               (fn [bars]
-                                 [(first bars)]))]
+                                (fn [bars]
+                                  [(first bars)]))]
       (is (= [[:delete! :bar :id [:in [3]]]]
              (with-tracked-operations!
                (spec-update/do-update! existing-data new-data multi-row-spec)))))))
@@ -214,8 +214,8 @@
                                  :name "Bar 2"
                                  :unrelated "abc"}]}
           new-data      (-> existing-data
-                           (assoc-in [:bars 0 :unrelated] "changed")
-                           (assoc-in [:bars 1 :unrelated] "changed"))]
+                            (assoc-in [:bars 0 :unrelated] "changed")
+                            (assoc-in [:bars 1 :unrelated] "changed"))]
       (is (= []
              (with-tracked-operations!
                (spec-update/do-update! existing-data new-data multi-row-spec)))))))
@@ -242,30 +242,30 @@
       (is (= []
              (with-tracked-operations!
                (spec-update/do-update! existing-data
-                 (-> existing-data
-                     (assoc :unrelated "changed")
-                     (assoc-in [:bars 0 :unrelated] "changed"))
-                 spec))))
+                                       (-> existing-data
+                                           (assoc :unrelated "changed")
+                                           (assoc-in [:bars 0 :unrelated] "changed"))
+                                       spec))))
       ;; Operations include extra-cols when other columns change
       (is (= [[:update! :foo 1 {:name "Updated Test" :unrelated "changed"}]
-              [:insert! :bar [{:name "Bar 2" :unrelated "def"}]]
-              [:update! :bar 2 {:name "Updated Bar 1" :unrelated "changed"}]]
+              [:insert! :bar [{:name "Bar 2" :unrelated "def" :foo_id 1}]]
+              [:update! :bar 2 {:name "Updated Bar 1" :unrelated "changed" :foo_id 1}]]
              (with-tracked-operations!
                (spec-update/do-update! existing-data
-                 (-> existing-data
-                     (assoc :name "Updated Test")
-                     (assoc :unrelated "changed")
-                     (assoc-in [:bars 0 :name] "Updated Bar 1")
-                     (assoc-in [:bars 0 :unrelated] "changed")
-                     (update :bars conj {:id 3
-                                         :name "Bar 2"
-                                         :unrelated "def"}))
-                 spec)))))))
-
+                                       (-> existing-data
+                                           (assoc :name "Updated Test")
+                                           (assoc :unrelated "changed")
+                                           (assoc-in [:bars 0 :name] "Updated Bar 1")
+                                           (assoc-in [:bars 0 :unrelated] "changed")
+                                           (update :bars conj {:id 3
+                                                               :name "Bar 2"
+                                                               :unrelated "def"}))
+                                       spec)))))))
 
 (spec-update/define-spec complex-model-spec
   "A complex nested model spec with multiple levels"
   {:model :foo
+   :id-col :uuid
    :compare-cols [:name]
    :nested-specs {:bars {:model :bar
                          :compare-cols [:name]
@@ -284,29 +284,29 @@
 
 (deftest complex-nested-model-test
   (testing "Complex nested model with multiple levels"
-    (let [existing-data {:id 1
+    (let [existing-data {:uuid "abc-123"
                          :name "Foo"
                          :bars [{:id 10
-                                  :name "Bar 1"
-                                  :foo_id 1
-                                  :quxes [{:id 100
-                                           :name "qux1"
-                                           :bar_id 10}
-                                          {:id 101
-                                           :name "qux2"
-                                           :bar_id 10}]}
+                                 :name "Bar 1"
+                                 :foo_id "abc-123"
+                                 :quxes [{:id 100
+                                          :name "qux1"
+                                          :bar_id 10}
+                                         {:id 101
+                                          :name "qux2"
+                                          :bar_id 10}]}
                                 {:id 11
                                  :name "Bar 2"
-                                 :foo_id 1
+                                 :foo_id "abc-123"
                                  :quxes [{:id 102
                                           :name "qux3"
                                           :bar_id 11}]}]
                          :qux {:id 20
-                                  :name "Qux 1"
-                                  :foo_id 1
-                                  :bar {:id 200
-                                            :name "bar1"
-                                            :qux_id 20}}}
+                               :name "Qux 1"
+                               :foo_id "abc-123"
+                               :bar {:id 200
+                                     :name "bar1"
+                                     :qux_id 20}}}
           new-data (-> existing-data
                        ;; update foo name
                        (assoc :name "Updated Foo")
@@ -330,15 +330,15 @@
                                           (assoc :name "Updated Qux")
                                           (assoc-in [:bar :name] "updated bar")))))]
       (testing "Complex update with additions updates and deletions at multiple levels"
-        (is (= [[:update! :foo 1 {:id 1 :name "Updated Foo"}]
-                [:insert-returning-pk! :bar {:id 12 :name "New Bar" :foo_id 1}]
-                [:insert! :bar_qux [{:id 104 :name "qux4" :bar_id 2}]]
+        (is (= [[:update! :foo "abc-123" {:name "Updated Foo"}]
+                [:insert-returning-pk! :bar {:name "New Bar" :foo_id "abc-123"}]
+                [:insert! :bar_qux [{:name "qux4" :bar_id 2}]]
                 [:delete! :bar :id [:in [11]]]
-                [:update! :bar 10 {:id 10 :name "Updated Bar 1" :foo_id 1}]
-                [:insert! :bar_qux [{:id 103 :name "new qux"}]]
+                [:update! :bar 10 {:name "Updated Bar 1" :foo_id "abc-123"}]
+                [:insert! :bar_qux [{:name "new qux"}]]
                 [:delete! :bar_qux :id [:in [101]]]
-                [:update! :bar_qux 100 {:id 100 :name "updated qux1" :bar_id 10}]
-                [:update! :qux 20 {:id 20 :name "Updated Qux" :foo_id 1}]
-                [:update! :qux_bar 200 {:id 200 :name "updated bar" :qux_id 20}]]
-              (with-tracked-operations!
-                (spec-update/do-update! existing-data new-data complex-model-spec))))))))
+                [:update! :bar_qux 100 {:name "updated qux1" :bar_id 10}]
+                [:update! :qux 20 {:name "Updated Qux" :foo_id "abc-123"}]
+                [:update! :qux_bar 200 {:name "updated bar" :qux_id 20}]]
+               (with-tracked-operations!
+                 (spec-update/do-update! existing-data new-data complex-model-spec))))))))
