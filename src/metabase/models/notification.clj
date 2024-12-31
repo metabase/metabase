@@ -93,7 +93,7 @@
    :id
    {:default []}))
 
-(mr/def ::notification
+(mr/def ::Notification
   [:merge
    [:map
     [:payload_type (ms/enum-decode-keyword notification-types)]]
@@ -105,12 +105,12 @@
      [:map
       ;; optional during creation
       [:payload_id {:optional true} int?]
-      [:creator_id int?]]]
+      [:creator_id {:optional true} int?]]]
     [:notification/testing :any]]])
 
 (defn- validate-notification
   [notification]
-  (mu/validate-throw ::notification notification))
+  (mu/validate-throw ::Notification notification))
 
 (t2/define-before-insert :model/Notification
   [instance]
@@ -120,8 +120,8 @@
 (t2/define-before-update :model/Notification
   [instance]
   (validate-notification instance)
-  (when (some #{:payload_type :payload_id} (keys (t2/changes instance)))
-    (throw (ex-info "Update notification payload is not allowed."
+  (when-let [unallowed-key (some #{:payload_type :payload_id :creator_id} (keys (t2/changes instance)))]
+    (throw (ex-info (format "Update %s is not allowed." (name unallowed-key))
                     {:status-code 400
                      :changes     (t2/changes instance)})))
   instance)
@@ -377,7 +377,7 @@
 (mr/def ::FullyHydratedNotification
   "Fully hydrated notification."
   [:merge
-   ::notification
+   ::Notification
    [:map
     [:creator       {:optional true} [:maybe :map]]
     [:subscriptions {:optional true} [:sequential ::NotificationSubscription]]

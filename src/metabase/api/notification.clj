@@ -27,7 +27,9 @@
   {body ::models.notification/FullyHydratedNotification}
   (models.notification/hydrate-notification
    (models.notification/create-notification!
-    (dissoc body :handlers :subscriptions)
+    (-> body
+        (assoc :creator_id api/*current-user-id*)
+        (dissoc body :handlers :subscriptions))
     (:subscriptions body)
     (:handlers body))))
 
