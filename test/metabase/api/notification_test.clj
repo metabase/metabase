@@ -5,7 +5,10 @@
    [medley.core :as m]
    [metabase.models.permissions-group :as perms-group]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (deftest get-notication-card-test
   (mt/with-temp [:model/Channel {chn-id :id} notification.tu/default-can-connect-channel
@@ -99,15 +102,16 @@
                                                                        :payload      {}
                                                                        :payload_type "notification/card"}))))
 
-  (testing "creator id is not required"
-    (is (some? (mt/user-http-request :crowberto :post 200 "notification" {:payload      {:card_id 1}
-                                                                          :payload_type "notification/card"}))))
-  (testing "automatically override creator_id to current user"
-    (is (= (mt/user->id :crowberto)
-           (-> (mt/user-http-request :crowberto :post 200 "notification" {:creator_id   (mt/user->id :rasta)
-                                                                          :payload      {:card_id 1}
-                                                                          :payload_type "notification/card"})
-               :creator_id)))))
+  (mt/with-temp [:model/Card {card-id :id}]
+    (testing "creator id is not required"
+      (is (some? (mt/user-http-request :crowberto :post 200 "notification" {:payload      {:card_id card-id}
+                                                                            :payload_type "notification/card"}))))
+    (testing "automatically override creator_id to current user"
+      (is (= (mt/user->id :crowberto)
+             (-> (mt/user-http-request :crowberto :post 200 "notification" {:creator_id   (mt/user->id :rasta)
+                                                                            :payload      {:card_id card-id}
+                                                                            :payload_type "notification/card"})
+                 :creator_id))))))
 
 (defn- update-cron-subscription
   [{:keys [subscriptions] :as notification} new-schedule]
