@@ -12,9 +12,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.permissions-group-membership
-    :as perms-group-membership
-    :refer [PermissionsGroupMembership]]
+   [metabase.models.permissions-group-membership :as perms-group-membership]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
@@ -35,11 +33,6 @@
 (set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
-
-(def User
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all these symbols in our codebase."
-  :model/User)
 
 (methodical/defmethod t2/table-name :model/User [_model] :core_user)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :author]     [_original-model _k] :model/User)
@@ -84,7 +77,7 @@
   (when user-or-user-id
     (or
      (if (integer? user-or-user-id)
-       (:settings (t2/select-one [User :settings] :id user-or-user-id))
+       (:settings (t2/select-one [:model/User :settings] :id user-or-user-id))
        (:settings user-or-user-id))
      {})))
 
@@ -146,7 +139,7 @@
          superuser? :is_superuser
          active? :is_active
          :keys [email locale]}    (t2/changes user)
-        in-admin-group?           (t2/exists? PermissionsGroupMembership
+        in-admin-group?           (t2/exists? :model/PermissionsGroupMembership
                                               :group_id (:id (perms-group/admin))
                                               :user_id  id)]
     ;; Do not let the last admin archive themselves
@@ -157,14 +150,14 @@
       (cond
         (and superuser?
              (not in-admin-group?))
-        (t2/insert! (t2/table-name PermissionsGroupMembership)
+        (t2/insert! (t2/table-name :model/PermissionsGroupMembership)
                     :group_id (u/the-id (perms-group/admin))
                     :user_id  id)
         ;; don't use [[t2/delete!]] here because that does the opposite and tries to update this user which leads to a
         ;; stack overflow of calls between the two. TODO - could we fix this issue by using a `post-delete` method?
         (and (not superuser?)
              in-admin-group?)
-        (t2/delete! (t2/table-name PermissionsGroupMembership)
+        (t2/delete! (t2/table-name :model/PermissionsGroupMembership)
                     :group_id (u/the-id (perms-group/admin))
                     :user_id  id)))
     ;; make sure email and locale are valid if set
@@ -222,7 +215,7 @@
 
 (t2.default-fields/define-default-fields :model/User default-user-columns)
 
-(defmethod serdes/hash-fields User
+(defmethod serdes/hash-fields :model/User
   [_user]
   [:email])
 
@@ -230,7 +223,7 @@
   "Fetch set of IDs of PermissionsGroup a User belongs to."
   [user-or-id]
   (when user-or-id
-    (t2/select-fn-set :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id))))
+    (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (u/the-id user-or-id))))
 
 (def UserGroupMembership
   "Group Membership info of a User.
@@ -271,7 +264,7 @@
   In which `is_group_manager` is only added when `advanced-permissions` is enabled."
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (t2/select [PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager]
+    (let [user-id->memberships (group-by :user_id (t2/select [:model/PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager]
                                                              :user_id [:in (set (map u/the-id users))]))
           membership->group    (fn [membership]
                                  (select-keys membership
@@ -290,7 +283,7 @@
   TODO: deprecate :group_ids and use :user_group_memberships instead"
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (t2/select [PermissionsGroupMembership :user_id :group_id]
+    (let [user-id->memberships (group-by :user_id (t2/select [:model/PermissionsGroupMembership :user_id :group_id]
                                                              :user_id [:in (set (map u/the-id users))]))]
       (for [user users]
         (assoc user :group_ids (set (map :group_id (user-id->memberships (u/the-id user)))))))))
@@ -302,7 +295,7 @@
   the wording for this user on a homepage banner that prompts them to add their database."
   [users]
   (when (seq users)
-    (let [user-count (t2/count User)]
+    (let [user-count (t2/count :model/User)]
       (for [user users]
         (assoc user :has_invited_second_user (and (= (:id user) 1)
                                                   (> user-count 1)))))))
@@ -403,7 +396,7 @@
   ;; when changing/resetting the password, kill any existing sessions
   (t2/delete! (t2/table-name :model/Session) :user_id user-id)
   ;; NOTE: any password change expires the password reset token
-  (t2/update! User user-id
+  (t2/update! :model/User user-id
               {:password        password
                :reset_token     nil
                :reset_triggered nil}))
@@ -413,7 +406,7 @@
   [user-id]
   {:pre [(integer? user-id)]}
   (u/prog1 (str user-id \_ (random-uuid))
-    (t2/update! User user-id
+    (t2/update! :model/User user-id
                 {:reset_token     <>
                  :reset_triggered (System/currentTimeMillis)})))
 
@@ -434,13 +427,13 @@
     (when (seq (concat to-remove to-add))
       (t2/with-transaction [_conn]
         (when (seq to-remove)
-          (t2/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
+          (t2/delete! :model/PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
        ;; a little inefficient, but we need to do a separate `insert!` for each group we're adding membership to,
        ;; because `insert-many!` does not currently trigger methods such as `pre-insert`. We rely on those methods to
        ;; do things like automatically set the `is_superuser` flag for a User
        ;; TODO use multipel insert here
         (doseq [group-id to-add]
-          (t2/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
+          (t2/insert! :model/PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
     true))
 
 ;;; ## ---------------------------------------- USER SETTINGS ----------------------------------------

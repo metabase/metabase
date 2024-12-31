@@ -147,11 +147,6 @@
 
 (declare admin-writable-site-wide-settings get-value-of-type set-value-of-type!)
 
-(def Setting
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/Setting)
-
 (methodical/defmethod t2/table-name :model/Setting [_model] :setting)
 
 (doto :model/Setting
@@ -514,7 +509,7 @@
     (get setting-definition-or-name)))
 
 (defn- db-value [setting-definition-or-name]
-  (t2/select-one-fn :value Setting :key (setting-name setting-definition-or-name)))
+  (t2/select-one-fn :value :model/Setting :key (setting-name setting-definition-or-name)))
 
 (defn- db-is-set-up? []
   ;; this should never be hit. it is just overly cautious against a NPE here. But no way this cannot resolve
@@ -723,12 +718,12 @@
   (assert (not= setting-name setting.cache/settings-last-updated-key)
           (tru "You cannot update `settings-last-updated` yourself! This is done automatically."))
   ;; Toucan 2 version of `update!` will do transforms and stuff like that
-  (t2/update! Setting :key setting-name {:value new-value}))
+  (t2/update! :model/Setting :key setting-name {:value new-value}))
 
 (defn- set-new-setting!
   "Insert a new row for a Setting. Used internally by [[set-value-of-type!]] for `:string` below; do not use directly."
   [setting-name new-value]
-  (try (first (t2/insert-returning-instances! Setting
+  (try (first (t2/insert-returning-instances! :model/Setting
                                               :key   setting-name
                                               :value new-value))
        ;; if for some reason inserting the new value fails it almost certainly means the cache is out of date
@@ -795,7 +790,7 @@
             ;; write to DB
             (cond
               (nil? new-value)
-              (t2/delete! (t2/table-name Setting) :key setting-name)
+              (t2/delete! (t2/table-name :model/Setting) :key setting-name)
 
               ;; if there's a value in the cache then the row already exists in the DB; update that
               (contains? (setting.cache/cache) setting-name)

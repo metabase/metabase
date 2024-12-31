@@ -17,7 +17,6 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
-   [metabase.models :refer [Database]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
@@ -180,7 +179,7 @@
 (defn current-database
   "The database being used for uploads."
   []
-  (t2/select-one Database :uploads_enabled true))
+  (t2/select-one :model/Database :uploads_enabled true))
 
 (mu/defn table-identifier :- :string
   "Returns a string that can be used as a table identifier in SQL, including a schema if provided."
@@ -582,7 +581,7 @@
        [:db-id ms/PositiveInt]
        [:schema-name {:optional true} [:maybe :string]]
        [:table-prefix {:optional true} [:maybe :string]]]]
-  (let [database (or (t2/select-one Database :id db-id)
+  (let [database (or (t2/select-one :model/Database :id db-id)
                      (throw (ex-info (tru "The uploads database does not exist.")
                                      {:status-code 422})))]
     (check-can-create-upload database schema-name)
