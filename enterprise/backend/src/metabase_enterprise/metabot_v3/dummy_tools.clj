@@ -76,7 +76,7 @@
           external-id (str "card__" id)
           field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
       (-> {:id external-id
-           `:fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column %2 %1 field-id-prefix)) cols)
+           :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column %2 %1 field-id-prefix)) cols)
            :name (lib/display-name card-query)}
           (m/assoc-some :description (:description base)
                         :metrics (not-empty (mapv convert-metric (lib/available-metrics card-query)))
