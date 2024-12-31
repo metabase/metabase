@@ -4,6 +4,7 @@
    [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.email.messages :as messages]
    [metabase.models.notification :as models.notification]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -70,29 +71,72 @@
 
 (deftest create-simple-card-notification-test
   (mt/with-model-cleanup [:model/Notification]
-      (mt/with-temp [:model/Card {card-id :id} {}]
-        (testing "card notification with 1 subscription and 2 handlers"
-          (let [notification {:payload_type  "notification/card"
-                              :active        true
-                              :creator_id    (mt/user->id :crowberto)
-                              :payload       {:card_id        card-id
-                                              :send_condition "goal_above"
-                                              :send_once      true}
-                              :subscriptions [{:type          "notification-subscription/cron"
-                                               :cron_schedule "0 0 0 * * ?"}]
-                              :handlers      [{:channel_type "channel/email"
-                                               :recipients   [{:type    "notification-recipient/user"
-                                                               :user_id (mt/user->id :crowberto)}]}]}]
-            (is (=? (assoc notification :id (mt/malli=? int?))
-                    (mt/user-http-request :crowberto :post 200 "notification" notification)))))
+    (mt/with-temp [:model/Card {card-id :id} {}]
+      (testing "card notification with 1 subscription and 2 handlers"
+        (let [notification {:payload_type  "notification/card"
+                            :active        true
+                            :creator_id    (mt/user->id :crowberto)
+                            :payload       {:card_id        card-id
+                                            :send_condition "goal_above"
+                                            :send_once      true}
+                            :subscriptions [{:type          "notification-subscription/cron"
+                                             :cron_schedule "0 0 0 * * ?"}]
+                            :handlers      [{:channel_type "channel/email"
+                                             :recipients   [{:type    "notification-recipient/user"
+                                                             :user_id (mt/user->id :crowberto)}]}]}]
+          (is (=? (assoc notification :id (mt/malli=? int?))
+                  (mt/user-http-request :crowberto :post 200 "notification" notification)))))
 
-        (testing "card notification with no subscriptions and handler is ok"
+      (testing "card notification with no subscriptions and handler is ok"
+        (let [notification {:payload_type  "notification/card"
+                            :active        true
+                            :creator_id    (mt/user->id :crowberto)
+                            :payload       {:card_id card-id}}]
+          (is (=? (assoc notification :id (mt/malli=? int?))
+                  (mt/user-http-request :crowberto :post 200 "notification" notification))))))))
+
+(defn- do-with-send-messages-sync!
+  [f]
+  (let [orig-send-email! @#'messages/send-email!]
+    (with-redefs [messages/send-email! (fn [& args]
+                                         (deref (apply orig-send-email! args)))]
+      (f))))
+
+(defmacro with-send-messages-sync!
+  [& body]
+  `(do-with-send-messages-sync! (fn [] ~@body)))
+
+(deftest create-notification-send-you-were-added-email-test
+  (mt/with-model-cleanup [:model/Notification]
+    (notification.tu/with-channel-fixtures [:channel/email]
+      (mt/with-temp [:model/Card {card-id :id} {:name "My Card"}]
+        (doseq [[send_condition expected_text] [["has_result" "whenever this question has any results"]
+                                                ["goal_above" "when this question meets its goal"]
+                                                ["goal_below" "when this question goes below its goal"]]]
           (let [notification {:payload_type  "notification/card"
                               :active        true
+                              :payload       {:card_id card-id
+                                              :send_condition send_condition}
                               :creator_id    (mt/user->id :crowberto)
-                              :payload       {:card_id card-id}}]
-            (is (=? (assoc notification :id (mt/malli=? int?))
-                    (mt/user-http-request :crowberto :post 200 "notification" notification))))))))
+                              :handlers      [{:channel_type :channel/email
+                                               :recipients   [{:type    :notification-recipient/user
+                                                               :user_id (mt/user->id :rasta)}
+                                                              {:type    :notification-recipient/user
+                                                               :user_id (mt/user->id :crowberto)}
+                                                              {:type    :notification-recipient/raw-value
+                                                               :details {:value "ngoc@metabase.com"}}]}]}]
+            (let [[email] (notification.tu/with-mock-inbox-email!
+                            (with-send-messages-sync!
+                              (mt/user-http-request :crowberto :post 200 "notification" notification)))
+                  a-card-url (format "<a href=\"https://metabase.com/testmb/question/%d\">My Card</a>." card-id)]
+              (testing (format "send email with %s condition" send_condition)
+                (is (=? {:bcc     #{"rasta@metabase.com" "ngoc@metabase.com" "crowberto@metabase.com"}
+                         :subject "Crowberto Corv added you to an alert"
+                         :body    [{a-card-url true
+                                    expected_text true}]}
+                        (mt/summarize-multipart-single-email email
+                                                             (re-pattern a-card-url)
+                                                             (re-pattern expected_text))))))))))))
 
 (deftest create-notification-error-test
   (testing "require auth"
@@ -239,7 +283,7 @@
       (notification.tu/with-card-notification
         [notification {:handlers [{:channel_type :channel/email
                                    :recipients   [{:type    :notification-recipient/user
-                                                     :user_id (mt/user->id :crowberto)}]}
+                                                   :user_id (mt/user->id :crowberto)}]}
                                   {:channel_type :channel/slack
                                    :recipients   [{:type    :notification-recipient/raw-value
                                                    :details {:value "#general"}}]}
@@ -382,7 +426,7 @@
                                      :recipients   [{:type    :notification-recipient/user
                                                      :user_id (mt/user->id :lucky)}]}]}]
       (let [send-notification (fn [user-or-id expected-status]
-                               (mt/user-http-request user-or-id :get expected-status (format "notification/%d" (:id notification))))]
+                                (mt/user-http-request user-or-id :get expected-status (format "notification/%d" (:id notification))))]
         (testing "admin can send"
           (send-notification :crowberto 200))
         (testing "creator can send"
@@ -523,9 +567,9 @@
                                                                                  :recipients   [{:type    :notification-recipient/user
                                                                                                  :user_id (mt/user->id :lucky)}]}]}]
         (let [card-id (-> (t2/select-one :model/Notification rasta-noti)
-                         models.notification/hydrate-notification
-                         :payload
-                         :card_id)]
+                          models.notification/hydrate-notification
+                          :payload
+                          :card_id)]
           (letfn [(get-notification-ids [user & params]
                     (->> (apply mt/user-http-request user :get 200 "notification" params)
                          (map :id)
@@ -561,9 +605,9 @@
                                                                                  :recipients   [{:type    :notification-recipient/user
                                                                                                  :user_id (mt/user->id :lucky)}]}]}]
         (let [card-id (-> (t2/select-one :model/Notification rasta-noti)
-                         models.notification/hydrate-notification
-                         :payload
-                         :card_id)]
+                          models.notification/hydrate-notification
+                          :payload
+                          :card_id)]
           (letfn [(get-notification-ids [user & params]
                     (->> (apply mt/user-http-request user :get 200 "notification" params)
                          (map :id)
@@ -573,35 +617,34 @@
             (testing "can filter by creator_id and recipient_id"
               (is (= #{rasta-noti}
                      (get-notification-ids :crowberto
-                                         :creator_id (mt/user->id :rasta)
-                                         :recipient_id (mt/user->id :lucky)))))
+                                           :creator_id (mt/user->id :rasta)
+                                           :recipient_id (mt/user->id :lucky)))))
 
             (testing "can filter by creator_id and card_id"
               (is (= #{rasta-noti}
                      (get-notification-ids :crowberto
-                                         :creator_id (mt/user->id :rasta)
-                                         :card_id card-id))))
+                                           :creator_id (mt/user->id :rasta)
+                                           :card_id card-id))))
 
             (testing "can filter by recipient_id and card_id"
               (is (= #{rasta-noti}
                      (get-notification-ids :crowberto
-                                         :recipient_id (mt/user->id :lucky)
-                                         :card_id card-id))))
+                                           :recipient_id (mt/user->id :lucky)
+                                           :card_id card-id))))
 
             (testing "can filter by all three"
               (is (= #{rasta-noti}
                      (get-notification-ids :crowberto
-                                         :creator_id (mt/user->id :rasta)
-                                         :recipient_id (mt/user->id :lucky)
-                                         :card_id card-id))))
+                                           :creator_id (mt/user->id :rasta)
+                                           :recipient_id (mt/user->id :lucky)
+                                           :card_id card-id))))
 
             (testing "returns empty set when any filter doesn't match"
               (is (= #{}
                      (get-notification-ids :crowberto
-                                         :creator_id (mt/user->id :rasta)
-                                         :recipient_id Integer/MAX_VALUE
-                                         :card_id card-id))))))))))
-
+                                           :creator_id (mt/user->id :rasta)
+                                           :recipient_id Integer/MAX_VALUE
+                                           :card_id card-id))))))))))
 
 (deftest unsubscribe-notification-test
   (mt/with-model-cleanup [:model/Notification]
@@ -646,31 +689,132 @@
                   :user_id (mt/user->id :lucky)}]
                 (email-recipients noti)))))))))
 
-
 (deftest unsubscribe-notification-only-current-notification-test
   (testing "test that unsubscribe will only unsubscribe from the specified notification"
-    (mt/with-model-cleanup [:model/Notification]
-      (let [email-recipients (fn [noti-id]
-                               (->> (t2/select-one :model/Notification noti-id)
-                                    models.notification/hydrate-notification
-                                    :handlers
-                                    (m/find-first #(= :channel/email (:channel_type %)))
-                                    :recipients))]
-        (notification.tu/with-card-notification [{noti-1 :id} {:notification {:creator_id (mt/user->id :rasta)}
-                                                               :handlers     [{:channel_type "channel/email"
-                                                                               :recipients   [{:type    :notification-recipient/user
-                                                                                               :user_id (mt/user->id :lucky)}]}]}]
-          (notification.tu/with-card-notification [{noti-2 :id} {:notification {:creator_id (mt/user->id :rasta)}
+    (notification.tu/with-channel-fixtures [:channel/email]
+      (mt/with-model-cleanup [:model/Notification]
+        (let [email-recipients (fn [noti-id]
+                                 (->> (t2/select-one :model/Notification noti-id)
+                                      models.notification/hydrate-notification
+                                      :handlers
+                                      (m/find-first #(= :channel/email (:channel_type %)))
+                                      :recipients))]
+          (notification.tu/with-card-notification [{noti-1 :id} {:notification {:creator_id (mt/user->id :rasta)}
                                                                  :handlers     [{:channel_type "channel/email"
                                                                                  :recipients   [{:type    :notification-recipient/user
                                                                                                  :user_id (mt/user->id :lucky)}]}]}]
-            ;; Unsubscribe from first notification
-            (mt/user-http-request :lucky :post 200 (format "notification/%d/unsubscribe" noti-1))
+            (notification.tu/with-card-notification [{noti-2 :id} {:notification {:creator_id (mt/user->id :rasta)}
+                                                                   :handlers     [{:channel_type "channel/email"
+                                                                                   :recipients   [{:type    :notification-recipient/user
+                                                                                                   :user_id (mt/user->id :lucky)}]}]}]
+              ;; Unsubscribe from first notification
+              (mt/user-http-request :lucky :post 200 (format "notification/%d/unsubscribe" noti-1))
 
-            ;; Check first notification has no recipients
+              ;; Check first notification has no recipients
               ;; First notification should have no recipients
-            (is (empty? (email-recipients noti-1)))
+              (is (empty? (email-recipients noti-1)))
               ;; Second notification should still have lucky as recipient
-            (is (=? [{:type    :notification-recipient/user
-                      :user_id (mt/user->id :lucky)}]
-                    (email-recipients noti-2)))))))))
+              (is (=? [{:type    :notification-recipient/user
+                        :user_id (mt/user->id :lucky)}]
+                      (email-recipients noti-2))))))))))
+
+(deftest unsubscribe-receive-email-test
+  (testing "test that unsubscribe will not receive email"
+    (mt/with-model-cleanup [:model/Notification]
+      (notification.tu/with-channel-fixtures [:channel/email]
+        (notification.tu/with-card-notification [{noti-1 :id
+                                                  :as notification} {:notification {:creator_id (mt/user->id :rasta)}
+                                                                     :card         {:name "My Card"}
+                                                                     :handlers     [{:channel_type "channel/email"
+                                                                                     :recipients   [{:type    :notification-recipient/user
+                                                                                                     :user_id (mt/user->id :lucky)}]}]}]
+          (let [[email] (notification.tu/with-mock-inbox-email!
+                          (with-send-messages-sync!
+                            (mt/user-http-request :lucky :post 200 (format "notification/%d/unsubscribe" noti-1))))
+                a-href (format "<a href=\"https://metabase.com/testmb/question/%d\">My Card</a>."
+                               (-> notification :payload :card_id))]
+            (testing "sends unsubscribe confirmation email"
+              (is (=? {:bcc     #{"lucky@metabase.com"}
+                       :subject "You unsubscribed from an alert"
+                       :body    [{"You’re no longer receiving alerts about" true
+                                  a-href                                    true}]}
+                      (mt/summarize-multipart-single-email email
+                                                           #"You’re no longer receiving alerts about"
+                                                           (re-pattern a-href)))))))))))
+
+(deftest notify-notification-updates-email-test
+  (testing "notify-notification-updates! sends appropriate emails based on notification changes"
+    (mt/with-model-cleanup [:model/Notification]
+      (notification.tu/with-channel-fixtures [:channel/email]
+        (let [base-notification {:notification {:creator_id (mt/user->id :crowberto)}
+                                 :card         {:name "Test Card"}
+                                 :handlers     [{:channel_type "channel/email"
+                                                 :recipients   [{:type    :notification-recipient/user
+                                                                 :user_id  (mt/user->id :rasta)}
+                                                                {:type    :notification-recipient/raw-value
+                                                                 :details {:value "test@metabase.com"}}]}]}
+              make-card-url-tag (fn [notification]
+                                  (format "<a href=\"https://metabase.com/testmb/question/%d\">Test Card</a>."
+                                          (-> notification :payload :card_id)))
+              update-notification! (fn [noti-id notification updates]
+                                     (notification.tu/with-mock-inbox-email!
+                                       (with-send-messages-sync!
+                                         (mt/user-http-request :crowberto :put 200
+                                                               (format "notification/%d" noti-id)
+                                                               (merge notification updates)))))
+              check-email (fn [email expected-bcc expected-subject card-url-tag]
+                            (is (=? {:bcc     expected-bcc
+                                     :subject expected-subject
+                                     :body    [{card-url-tag true}]}
+                                    (mt/summarize-multipart-single-email email (re-pattern card-url-tag)))))]
+
+          (testing "when notification is archived (active -> inactive)"
+            (notification.tu/with-card-notification
+              [{noti-id :id :as notification} base-notification]
+              (let [[email] (update-notification! noti-id notification {:active false})
+                    card-url-tag (make-card-url-tag notification)]
+                (check-email email #{"rasta@metabase.com" "test@metabase.com"}
+                             "You’ve been unsubscribed from an alert"
+                             card-url-tag))))
+
+          (testing "when notification is unarchived (inactive -> active)"
+            (notification.tu/with-card-notification
+              [{noti-id :id :as notification} (assoc-in base-notification [:notification :active] false)]
+              (let [[email] (update-notification! noti-id notification {:active true})
+                    card-url-tag (make-card-url-tag notification)]
+                (check-email email #{"rasta@metabase.com" "test@metabase.com"}
+                             "Crowberto Corv added you to an alert"
+                             card-url-tag))))
+
+          (testing "when recipients are modified"
+            (notification.tu/with-card-notification
+              [{noti-id :id :as notification} base-notification]
+              (let [handler-id (->> notification :handlers (m/find-first #(= :channel/email (:channel_type %))) :id)
+                    updated-recipients [{:id                      -1
+                                         :notification_handler_id handler-id
+                                         :type                    :notification-recipient/user
+                                         :user_id                 (mt/user->id :lucky)}
+                                        {:id                      -2
+                                         :notification_handler_id handler-id
+                                         :type                    :notification-recipient/raw-value
+                                         :details                 {:value "new@metabase.com"}}]
+                    [removed-email added-email] (update-notification! noti-id notification
+                                                                      (assoc-in notification [:handlers 0 :recipients] updated-recipients))
+                    card-url-tag (make-card-url-tag notification)]
+
+                (testing "sends unsubscribe email to removed recipients"
+                  (check-email removed-email #{"rasta@metabase.com" "test@metabase.com"}
+                               "You’ve been unsubscribed from an alert"
+                               card-url-tag))
+
+                (testing "sends subscription email to new recipients"
+                  (check-email added-email #{"lucky@metabase.com" "new@metabase.com"}
+                               "Crowberto Corv added you to an alert"
+                               card-url-tag)))))
+
+          (testing "no emails sent when recipients haven't changed"
+            (notification.tu/with-card-notification
+              [{noti-id :id :as notification} base-notification]
+              (let [emails (update-notification! noti-id notification
+                                                 (assoc-in notification [:payload :send_condition] "goal_above"))]
+                (is (empty? emails))))))))))
