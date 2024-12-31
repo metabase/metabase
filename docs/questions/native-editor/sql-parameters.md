@@ -375,7 +375,7 @@ FROM
   products
 WHERE
   TRUE
-  [[AND id = {{id}}]
+  [[AND id = {{id}}]]
   [[AND {{category}}]]
 {% endraw %}
 ```
