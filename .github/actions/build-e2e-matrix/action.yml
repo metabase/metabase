@@ -41,6 +41,7 @@ runs:
             ["filters", {} ],
             ["filters-reproductions", {}],
             ["joins", {} ],
+            ["metabot", {} ],
             ["metrics", {} ],
             ["models", {} ],
             ["native", {} ],

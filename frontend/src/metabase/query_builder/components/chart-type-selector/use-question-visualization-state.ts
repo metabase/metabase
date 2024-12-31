@@ -17,6 +17,22 @@ export type UseQuestionVisualizationStateProps = {
   onUpdateQuestion: (question: Question) => void;
 };
 
+export const setQuestionDisplayType = (
+  question: Question,
+  display: CardDisplayType,
+) => {
+  let newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
+  const visualization = visualizations.get(display);
+  if (visualization?.onDisplayUpdate) {
+    const updatedSettings = visualization.onDisplayUpdate(
+      newQuestion.settings(),
+    );
+    newQuestion = newQuestion.setSettings(updatedSettings);
+  }
+
+  return newQuestion;
+};
+
 export const useQuestionVisualizationState = ({
   question,
   onUpdateQuestion,

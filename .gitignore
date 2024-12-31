@@ -116,3 +116,6 @@ modules/drivers/*/.lsp/*
 
 # swc
 .swc/
+
+# metabot
+llm-payloads

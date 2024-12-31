@@ -9,7 +9,6 @@ import { createMockAuthState } from "./auth";
 import { createMockDashboardState } from "./dashboard";
 import { createMockEmbedState } from "./embed";
 import { createMockNormalizedEntitiesState } from "./entities";
-import { createMockMetabotState } from "./metabot";
 import { createMockParametersState } from "./parameters";
 import { createMockQueryBuilderState } from "./qb";
 import { createMockRequestsState } from "./requests";
@@ -33,7 +32,6 @@ export function createMockState(opts: any) {
     dashboard: createMockDashboardState(),
     embed: createMockEmbedState(),
     entities: createMockNormalizedEntitiesState(),
-    metabot: createMockMetabotState(),
     parameters: createMockParametersState(),
     qb: createMockQueryBuilderState(),
     requests: createMockRequestsState(),
