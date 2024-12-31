@@ -11,6 +11,6 @@
                                  :type [:= "metric"])
                       message)]
     (if-let [result (when id
-                       (dummy-tools/metric-details id))]
+                      (dummy-tools/metric-details id))]
       {:structured-output result}
       {:output "Metric not found."})))

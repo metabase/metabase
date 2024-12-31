@@ -32,11 +32,11 @@
    (map (fn [{:keys [content structured-content] :as msg}]
           (cond-> msg
             stringify-content?
-            (-> #_msg
-                (dissoc :structured-content)
-                (assoc :content (or content
-                                    (when structured-content
-                                      (json/encode structured-content)))))))
+            (->
+             (dissoc :structured-content)
+             (assoc :content (or content
+                                 (when structured-content
+                                   (json/encode structured-content)))))))
         (concat (:dummy-history e)
                 (:history e)))))
 
