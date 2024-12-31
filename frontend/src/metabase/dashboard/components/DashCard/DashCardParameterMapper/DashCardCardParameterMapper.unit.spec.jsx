@@ -85,17 +85,16 @@ describe("DashCardCardParameterMapper", () => {
   });
 
   describe("Virtual cards", () => {
-    it("should render an informative error state for link cards", () => {
-      const dashcard = createMockLinkDashboardCard();
-
+    it("should render an informative parameter mapping state for link cards without variables", () => {
+      const dashcard = createMockLinkDashboardCard({ size_y: 3 });
       setup({
-        card: dashcard.card,
         dashcard,
       });
-
       expect(getIcon("info")).toBeInTheDocument();
       expect(
-        screen.getByLabelText(/cannot connect variables to link cards/i),
+        screen.getByText(
+          "You can connect widgets to {{variables}} in link cards.",
+        ),
       ).toBeInTheDocument();
     });
 

@@ -6,13 +6,11 @@
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.models.dimension :refer [Dimension]]
-   [metabase.models.field :as field :refer [Field]]
-   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.models.field :as field]
+   [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.field-values :as params.field-values]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.related :as related]
    [metabase.request.core :as request]
@@ -44,7 +42,7 @@
 (defn get-field
   "Get `Field` with ID."
   [id {:keys [include-editable-data-model?]}]
-  (let [field (-> (api/check-404 (t2/select-one Field :id id))
+  (let [field (-> (api/check-404 (t2/select-one :model/Field :id id))
                   (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
         field (if include-editable-data-model?
                 (field/hydrate-target-with-write-perms field)
@@ -58,7 +56,7 @@
     ;;
     ;; Check for permissions and throw 403 if we don't have them...
     (if include-editable-data-model?
-      (api/write-check Table (:table_id field))
+      (api/write-check :model/Table (:table_id field))
       (api/check-403 (mi/can-read? field)))
     ;; ...but if we do, return the Field <3
     field))
@@ -67,7 +65,7 @@
   "Get `Field`s with IDs in `ids`."
   [ids]
   (when (seq ids)
-    (-> (filter mi/can-read? (t2/select Field :id [:in ids]))
+    (-> (filter mi/can-read? (t2/select :model/Field :id [:in ids]))
         (t2/hydrate :has_field_values :dimensions :name_field))))
 
 (api/defendpoint GET "/:id"
@@ -80,7 +78,7 @@
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
     (when (and dimension-id (= :external dimension-type))
-      (t2/delete! Dimension :id dimension-id))))
+      (t2/delete! :model/Dimension :id dimension-id))))
 
 (defn- removed-fk-semantic-type? [old-semantic-type new-semantic-type]
   (and (not= old-semantic-type new-semantic-type)
@@ -103,7 +101,7 @@
     (when (and old-dim-id
                (= :internal old-dim-type)
                (not (internal-remapping-allowed? base-type new-semantic-type)))
-      (t2/delete! Dimension :id old-dim-id))))
+      (t2/delete! :model/Dimension :id old-dim-id))))
 
 (defn- update-nested-fields-on-json-unfolding-change!
   "If JSON unfolding was enabled for a JSON field, it activates previously synced nested fields from the JSON field.
@@ -112,7 +110,7 @@
   [old-field new-json-unfolding]
   (when (not= new-json-unfolding (:json_unfolding old-field))
     (if new-json-unfolding
-      (let [update-result (t2/update! Field
+      (let [update-result (t2/update! :model/Field
                                       :table_id (:table_id old-field)
                                       :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
                                       {:active true})]
@@ -122,7 +120,7 @@
           ;; JSON unfolding enabled.
           (let [table (field/table old-field)]
             (sync.concurrent/submit-task (fn [] (sync/sync-table! table))))))
-      (t2/update! Field
+      (t2/update! :model/Field
                   :table_id (:table_id old-field)
                   :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
                   {:active false})))
@@ -146,7 +144,7 @@
    settings           [:maybe ms/Map]
    nfc_path           [:maybe [:sequential ms/NonBlankString]]
    json_unfolding     [:maybe :boolean]}
-  (let [field             (t2/hydrate (api/write-check Field id) :dimensions)
+  (let [field             (t2/hydrate (api/write-check :model/Field id) :dimensions)
         new-semantic-type (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
         (or (when-let [coercion_strategy (keyword coercion_strategy)]
@@ -161,19 +159,19 @@
     ;; validate that fk_target_field_id is a valid Field
     ;; TODO - we should also check that the Field is within the same database as our field
     (when fk-target-field-id
-      (api/checkp (t2/exists? Field :id fk-target-field-id)
+      (api/checkp (t2/exists? :model/Field :id fk-target-field-id)
                   :fk_target_field_id "Invalid target field"))
     (when (and display_name
                (not removed-fk?)
                (not= (:display_name field) display_name))
-      (t2/update! Dimension :field_id id {:name display_name}))
+      (t2/update! :model/Dimension :field_id id {:name display_name}))
     ;; everything checks out, now update the field
     (api/check-500
      (t2/with-transaction [_conn]
        (when removed-fk?
          (clear-dimension-on-fk-change! field))
        (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
-       (t2/update! Field id
+       (t2/update! :model/Field id
                    (u/select-keys-when (assoc body
                                               :fk_target_field_id (when-not removed-fk? fk-target-field-id)
                                               :effective_type effective-type
@@ -185,7 +183,7 @@
       (update-nested-fields-on-json-unfolding-change! field json_unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
-    (u/prog1 (-> (t2/select-one Field :id id)
+    (u/prog1 (-> (t2/select-one :model/Field :id id)
                  (t2/hydrate :dimensions :has_field_values)
                  (field/hydrate-target-with-write-perms))
       (when (not= effective-type (:effective_type field))
@@ -197,7 +195,7 @@
   "Get the count and distinct count of `Field` with ID."
   [id]
   {id ms/PositiveInt}
-  (let [field (api/read-check Field id)]
+  (let [field (api/read-check :model/Field id)]
     [[:count     (metadata-queries/field-count field)]
      [:distincts (metadata-queries/field-distinct-count field)]]))
 
@@ -210,29 +208,29 @@
    dimension-type          [:enum "internal" "external"]
    dimension-name          ms/NonBlankString
    human_readable_field_id [:maybe ms/PositiveInt]}
-  (api/write-check Field id)
+  (api/write-check :model/Field id)
   (api/check (or (= dimension-type "internal")
                  (and (= dimension-type "external")
                       human_readable_field_id))
              [400 "Foreign key based remappings require a human readable field id"])
-  (if-let [dimension (t2/select-one Dimension :field_id id)]
-    (t2/update! Dimension (u/the-id dimension)
+  (if-let [dimension (t2/select-one :model/Dimension :field_id id)]
+    (t2/update! :model/Dimension (u/the-id dimension)
                 {:type                    dimension-type
                  :name                    dimension-name
                  :human_readable_field_id human_readable_field_id})
-    (t2/insert! Dimension
+    (t2/insert! :model/Dimension
                 {:field_id                id
                  :type                    dimension-type
                  :name                    dimension-name
                  :human_readable_field_id human_readable_field_id}))
-  (t2/select-one Dimension :field_id id))
+  (t2/select-one :model/Dimension :field_id id))
 
 (api/defendpoint DELETE "/:id/dimension"
   "Remove the dimension associated to field at ID"
   [id]
   {id ms/PositiveInt}
-  (api/write-check Field id)
-  (t2/delete! Dimension :field_id id)
+  (api/write-check :model/Field id)
+  (t2/delete! :model/Dimension :field_id id)
   api/generic-204-no-content)
 
 ;;; -------------------------------------------------- FieldValues ---------------------------------------------------
@@ -247,7 +245,7 @@
   (if-let [remapped-field-id (when (= has-field-values-type :list)
                                (chain-filter/remapped-field-id field-id))]
     {:values          (search-values (api/check-404 field)
-                                     (api/check-404 (t2/select-one Field :id remapped-field-id)))
+                                     (api/check-404 (t2/select-one :model/Field :id remapped-field-id)))
      :field_id        field-id
      :has_more_values (boolean has_more_values)}
     (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
@@ -255,9 +253,9 @@
 (mu/defn search-values-from-field-id :- ms/FieldValuesResult
   "Search for values of a field given by `field-id` that contain `query`."
   [field-id query]
-  (let [field        (api/read-check (t2/select-one Field :id field-id))
+  (let [field        (api/read-check (t2/select-one :model/Field :id field-id))
         search-field (or (some->> (chain-filter/remapped-field-id field-id)
-                                  (t2/select-one Field :id))
+                                  (t2/select-one :model/Field :id))
                          field)]
     {:values          (search-values field search-field query)
      ;; assume there are more if doing a search, otherwise there are no more values
@@ -270,7 +268,7 @@
   `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them."
   [id]
   {id ms/PositiveInt}
-  (let [field (api/read-check (t2/select-one Field :id id))]
+  (let [field (api/read-check (t2/select-one :model/Field :id id))]
     (field->values field)))
 
 (defn- validate-human-readable-pairs
@@ -290,7 +288,7 @@
   [id :as {{value-pairs :values} :body}]
   {id          ms/PositiveInt
    value-pairs [:sequential [:or [:tuple :any] [:tuple :any ms/NonBlankString]]]}
-  (let [field (api/write-check Field id)]
+  (let [field (api/write-check :model/Field id)]
     (api/check (field-values/field-should-have-field-values? field)
                [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
                          "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
@@ -298,7 +296,7 @@
           update-map             {:values                (map first value-pairs)
                                   :human_readable_values (when human-readable-values?
                                                            (map second value-pairs))}
-          updated-pk             (mdb.query/update-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
+          updated-pk             (mdb.query/update-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
                                                               (constantly update-map))]
       (api/check-500 (pos? updated-pk))))
   {:status :success})
@@ -308,7 +306,7 @@
    FieldValues."
   [id]
   {id ms/PositiveInt}
-  (let [field (api/write-check (t2/select-one Field :id id))]
+  (let [field (api/write-check (t2/select-one :model/Field :id id))]
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
@@ -321,7 +319,7 @@
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
   {id ms/PositiveInt}
-  (field-values/clear-field-values-for-field! (api/write-check (t2/select-one Field :id id)))
+  (field-values/clear-field-values-for-field! (api/write-check (t2/select-one :model/Field :id id)))
   {:status :success})
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
@@ -330,7 +328,7 @@
   (u/the-id (:table_id field)))
 
 (defn- db-id [field]
-  (u/the-id (t2/select-one-fn :db_id Table :id (table-id field))))
+  (u/the-id (t2/select-one-fn :db_id :model/Table :id (table-id field))))
 
 (defn- follow-fks
   "Automatically follow the target IDs in an FK `field` until we reach the PK it points to, and return that. For
@@ -344,7 +342,7 @@
   [{semantic-type :semantic_type, fk-target-field-id :fk_target_field_id, :as field}]
   (if (and (isa? semantic-type :type/FK)
            fk-target-field-id)
-    (t2/select-one Field :id fk-target-field-id)
+    (t2/select-one :model/Field :id fk-target-field-id)
     field))
 
 (mu/defn search-values :- [:maybe ms/FieldValuesList]
@@ -387,8 +385,8 @@
   {id        ms/PositiveInt
    search-id ms/PositiveInt
    value     ms/NonBlankString}
-  (let [field        (api/check-404 (t2/select-one Field :id id))
-        search-field (api/check-404 (t2/select-one Field :id search-id))]
+  (let [field        (api/check-404 (t2/select-one :model/Field :id id))
+        search-field (api/check-404 (t2/select-one :model/Field :id search-id))]
     (api/check-403 (mi/can-read? field))
     (api/check-403 (mi/can-read? search-field))
     (search-values field search-field value (request/limit))))
@@ -436,8 +434,8 @@
   {id          ms/PositiveInt
    remapped-id ms/PositiveInt
    value       ms/NonBlankString}
-  (let [field          (api/read-check Field id)
-        remapped-field (api/read-check Field remapped-id)
+  (let [field          (api/read-check :model/Field id)
+        remapped-field (api/read-check :model/Field remapped-id)
         value          (parse-query-param-value-for-field field value)]
     (remapped-value field remapped-field value)))
 
@@ -445,6 +443,6 @@
   "Return related entities."
   [id]
   {id ms/PositiveInt}
-  (-> (t2/select-one Field :id id) api/read-check related/related))
+  (-> (t2/select-one :model/Field :id id) api/read-check related/related))
 
 (api/define-routes)

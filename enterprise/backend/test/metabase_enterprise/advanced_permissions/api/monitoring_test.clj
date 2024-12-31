@@ -2,7 +2,6 @@
   "Permisisons tests for API that needs to be enforced by Application Permissions of type `:monitoring`."
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [TaskHistory]]
    [metabase.models.permissions :as perms]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -11,7 +10,7 @@
   (testing "/api/task/*"
     (mt/with-user-in-groups [group {:name "New Group"}
                              user  [group]]
-      (t2.with-temp/with-temp [TaskHistory task]
+      (t2.with-temp/with-temp [:model/TaskHistory task]
         (letfn [(get-tasks [user status]
                   (testing (format "get task with %s user" (mt/user-descriptor user))
                     (mt/user-http-request user :get status "task")))

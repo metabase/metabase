@@ -3,7 +3,6 @@
   details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
-   [metabase.models :refer [ApplicationPermissionsRevision Permissions]]
    [metabase.models.application-permissions-revision :as a-perm-revision]
    [metabase.models.permissions :as perms]
    [metabase.permissions.util :as perms.u]
@@ -30,7 +29,7 @@
   "Returns a map of group-id -> application permissions paths.
   Only groups that has at least one application permission enabled will be included."
   []
-  (let [application-permissions (t2/select Permissions
+  (let [application-permissions (t2/select :model/Permissions
                                            {:where [:or
                                                     [:= :object "/"]
                                                     [:like :object (h2x/literal "/application/%")]]})]
@@ -91,4 +90,4 @@
        (t2/with-transaction [_conn]
          (doseq [[group-id changes] changes]
            (update-application-permissions! group-id changes))
-         (perms.u/save-perms-revision! ApplicationPermissionsRevision (:revision old-graph) (:groups old-graph) changes))))))
+         (perms.u/save-perms-revision! :model/ApplicationPermissionsRevision (:revision old-graph) (:groups old-graph) changes))))))

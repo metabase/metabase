@@ -9,7 +9,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.field :as field]
    [metabase.models.table :as table]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync.interface :as i]
@@ -39,7 +39,7 @@
   [field       :- i/FieldInstance
    fingerprint :- [:maybe analyze/Fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
-  (t2/update! Field (u/the-id field) (merge (incomplete-analysis-kvs) {:fingerprint fingerprint})))
+  (t2/update! :model/Field (u/the-id field) (merge (incomplete-analysis-kvs) {:fingerprint fingerprint})))
 
 (mr/def ::FingerprintStats
   [:map
@@ -191,7 +191,7 @@
   "Return a sequences of Fields belonging to `table` for which we should generate (and save) fingerprints.
    This should include NEW fields that are active and visible."
   [table :- i/TableInstance]
-  (seq (t2/select Field
+  (seq (t2/select :model/Field
                   (honeysql-for-fields-that-need-fingerprint-updating table))))
 
 ;; TODO - `fingerprint-fields!` and `fingerprint-table!` should probably have their names switched

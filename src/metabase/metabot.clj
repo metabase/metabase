@@ -7,7 +7,6 @@
    [metabase.metabot.feedback :as metabot-feedback]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.metabot.util :as metabot-util]
-   [metabase.models :refer [Table]]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -129,7 +128,7 @@
     :keys             [user_prompt prompt_template_versions] :as context}]
   (log/infof "Metabot is inferring sql for database '%s' with prompt '%s'." database-id user_prompt)
   (if (metabot-settings/is-metabot-enabled)
-    (let [prompt-objects (->> (t2/select [Table :name :schema :id] :db_id database-id)
+    (let [prompt-objects (->> (t2/select [:model/Table :name :schema :id] :db_id database-id)
                               (map metabot-util/memoized-create-table-embedding)
                               (filter identity))
           ddl            (metabot-util/generate-prompt prompt-objects user_prompt)
