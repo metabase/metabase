@@ -76,6 +76,7 @@ export default class PublicQuestion extends Component {
     super(props);
     this.state = {
       card: null,
+      isLoading: false,
       result: null,
       initialized: false,
       parameterValues: {},
@@ -140,11 +141,17 @@ export default class PublicQuestion extends Component {
           [parameterId]: value,
         },
       },
-      this.run,
     );
   };
 
+  onSubmit = () => {
+    this.run();
+  };
+
   run = async (): void => {
+    this.setState({
+      isLoading: true,
+    })
     const {
       setErrorPage,
       params: { uuid, token },
@@ -189,13 +196,16 @@ export default class PublicQuestion extends Component {
       console.error("error", error);
       setErrorPage(error);
     }
+    this.setState({
+      isLoading: false,
+    })
   };
 
   render() {
     const {
       params: { uuid, token },
     } = this.props;
-    const { card, result, initialized, parameterValues } = this.state;
+    const { card, result, initialized, parameterValues, isLoading } = this.state;
 
     const actionButtons = result && (
       <QueryDownloadWidget
@@ -217,6 +227,8 @@ export default class PublicQuestion extends Component {
         actionButtons={actionButtons}
         parameterValues={parameterValues}
         setParameterValue={this.setParameterValue}
+        isLoading={isLoading}
+        onSubmit={this.onSubmit}
       >
         <LoadingAndErrorWrapper
           className="flex-full"
