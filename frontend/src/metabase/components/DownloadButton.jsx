@@ -45,25 +45,36 @@ const DownloadButton = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    let downloadUrl = url;
     if (params) {
       const qs = querystring.stringify(params);
       downloadUrl += `?${qs}`;
     }
 
     try {
-      const response = await fetch(downloadUrl, { raw: true });
-      const blob = new Blob([response], { type: response.headers.get('content-type') });
+      const response = await fetch(downloadUrl);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Read the CSV data as text
+      const csvText = await response.text();
       const contentDisposition = response.headers.get('Content-Disposition');
       let filename = 'shipx_analytics.csv';
 
-      if (contentDisposition && contentDisposition.indexOf('attachment') !== -1) {
-          var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-          var matches = filenameRegex.exec(contentDisposition);
-          if (matches != null && matches[1]) {
-            filename = matches[1].replace(/['"]/g, '');
-          }
+      if (contentDisposition && contentDisposition.includes('attachment')) {
+        const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+        const matches = filenameRegex.exec(contentDisposition);
+        if (matches && matches[1]) {
+          filename = matches[1].replace(/['"]/g, '');
+        }
       }
 
+      // Create a Blob with the CSV text
+      const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+
+      // Generate a download link
       const downloadLink = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.style.display = 'none';
@@ -71,7 +82,10 @@ const DownloadButton = ({
       a.download = filename;
       document.body.appendChild(a);
       a.click();
+
+      // Cleanup
       window.URL.revokeObjectURL(downloadLink);
+      document.body.removeChild(a);
     } catch (error) {
       console.error('There was a problem with the fetch operation:', error);
     } finally {
