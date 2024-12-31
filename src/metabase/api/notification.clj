@@ -75,7 +75,7 @@
        (filter #(#{:notification-recipient/user :notification-recipient/raw-value} ((comp keyword :type) %)))
        (map (fn [recipient]
               (if (= :notification-recipient/user ((comp keyword :type) recipient))
-                (-> recipient :user :email)
+                (or (-> recipient :user :email) (t2/select-one-fn :email :model/User (:user_id recipient)))
                 (-> recipient :details :value))))
        (remove nil?)
        set))
@@ -103,39 +103,27 @@
   "Send notification emails based on changes between updated and existing notification"
   [updated-notification existing-notification]
   (when (email/email-configured?)
-    (let [was-active? (:active existing-notification)
-          is-active?  (:active updated-notification)
+    (let [was-active?  (:active existing-notification)
+          is-active?   (:active updated-notification)
           current-user @api/*current-user*
-          old-emails  (all-email-recipients existing-notification)
-          new-emails  (all-email-recipients updated-notification)]
+          old-emails   (all-email-recipients existing-notification)
+          new-emails   (all-email-recipients updated-notification)
+          notification (update existing-notification :payload t2/hydrate :card)]
       (cond
         ;; Notification was just archived - notify all users they were unsubscribed
         (and was-active? (not is-active?))
-        (messages/send-you-were-removed-notification-card-email!
-         (update existing-notification :payload t2/hydrate :card)
-         old-emails
-         current-user)
+        (messages/send-you-were-removed-notification-card-email! notification old-emails current-user)
 
         ;; Notification was just unarchived - notify all users they were added
         (and (not was-active?) is-active?)
-        (messages/send-you-were-added-card-notification-email!
-         (update updated-notification :payload t2/hydrate :card)
-         new-emails
-         @api/*current-user*)
+        (messages/send-you-were-added-card-notification-email! notification new-emails @api/*current-user*)
 
         (not= old-emails new-emails)
-        (let [[removed-recipients added-recipients _] (diff old-emails new-emails)
-              notification                            (update existing-notification :payload t2/hydrate :card)]
+        (let [[removed-recipients added-recipients _] (diff old-emails new-emails)]
           (when (seq removed-recipients)
-            (messages/send-you-were-removed-notification-card-email!
-             notification
-             removed-recipients
-             current-user))
+            (messages/send-you-were-removed-notification-card-email! notification removed-recipients current-user))
           (when (seq added-recipients)
-            (messages/send-you-were-added-card-notification-email!
-             notification
-             added-recipients
-             @api/*current-user*)))))))
+            (messages/send-you-were-added-card-notification-email! notification added-recipients @api/*current-user*)))))))
 
 (api/defendpoint PUT "/:id"
   "Update a notification, can also update its subscriptions, handlers.
