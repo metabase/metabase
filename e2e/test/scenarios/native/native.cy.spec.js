@@ -43,7 +43,7 @@ describe("scenarios > question > native", () => {
 
   it("should suggest the currently viewed collection when saving question if the user has not recently visited a dashboard", () => {
     H.visitCollection(THIRD_COLLECTION_ID);
-    H.startNewNativeQuestion({ collection_id: THIRD_COLLECTION_ID});
+    H.startNewNativeQuestion({ collection_id: THIRD_COLLECTION_ID });
 
     cy.realType("select count(*) from orders");
 
@@ -416,8 +416,8 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       H.restore("mongo-5");
       cy.signInAsNormalUser();
 
-      H.startNewNativeQuestion()
-      cy.findByTestId("gui-builder-data").click()
+      H.startNewNativeQuestion();
+      cy.findByTestId("gui-builder-data").click();
       cy.findByLabelText(MONGO_DB_NAME).click();
       cy.findByLabelText("Format query").should("not.exist");
 

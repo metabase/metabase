@@ -251,7 +251,7 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
     // Write Native query that includes a filter
     H.startNewNativeQuestion().as("editor");
 
-    cy.findByTestId("gui-builder-data").click()
+    cy.findByTestId("gui-builder-data").click();
     cy.findByLabelText(MYSQL_DB_NAME).click();
 
     cy.get("@editor").type(
@@ -281,12 +281,10 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
   it("can save a native MySQL query", () => {
     H.startNewNativeQuestion().as("editor");
 
-    cy.findByTestId("gui-builder-data").click()
+    cy.findByTestId("gui-builder-data").click();
     cy.findByLabelText(MYSQL_DB_NAME).click();
 
-    cy.get("@editor").type(
-      "SELECT * FROM ORDERS",
-    );
+    cy.get("@editor").type("SELECT * FROM ORDERS");
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.wait("@dataset");

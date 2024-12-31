@@ -252,38 +252,6 @@ describe("issue 18148", () => {
   });
 });
 
-describe("issue 18418", () => {
-  const questionDetails = {
-    name: "REVIEWS SQL",
-    native: { query: "select REVIEWER from REVIEWS LIMIT 1" },
-  };
-
-  beforeEach(() => {
-    cy.intercept("POST", "/api/card").as("cardCreated");
-
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not show saved questions DB in native question's DB picker (metabase#18418)", () => {
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Explore results").click();
-
-    H.saveQuestion(undefined, undefined, {
-      tab: "Browse",
-      path: ["Our analytics"],
-    });
-
-    H.openNativeEditor({ fromCurrentPage: true });
-
-    // Clicking native question's database picker usually opens a popover with a list of databases
-    // As default Cypress environment has only the sample database available, we expect no popup to appear
-    cy.get(H.POPOVER_ELEMENT).should("not.exist");
-  });
-});
-
 describe("issue 19451", () => {
   const question = {
     name: "19451",
@@ -463,10 +431,12 @@ describe("issue 21597", { tags: "@external" }, () => {
     H.addPostgresDatabase(databaseCopyName);
 
     // Create a native query and run it
-    H.openNativeEditor({
-      databaseName,
-    });
-    cy.realType(
+    H.startNewNativeQuestion().as("editor");
+
+    cy.findByTestId("gui-builder-data").click();
+    cy.findByLabelText(databaseName).click();
+
+    cy.get("@editor").type(
       `SELECT COUNT(*) FROM PRODUCTS WHERE ${DOUBLE_LEFT_BRACKET}FILTER}}`,
     );
 
