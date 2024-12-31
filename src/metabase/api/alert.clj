@@ -3,7 +3,6 @@
 
   Deprecated: will soon be migrated to notification APIs."
   (:require
-   [clojure.data :as data]
    [clojure.set :refer [difference]]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
@@ -75,52 +74,6 @@
   [alert]
   (m/find-first #(= :slack (keyword (:channel_type %))) (:channels alert)))
 
-(defn- key-by [key-fn coll]
-  (zipmap (map key-fn coll) coll))
-
-(defn- notify-email-disabled! [alert recipients]
-  (doseq [user recipients]
-    (messages/send-admin-unsubscribed-alert-email! alert user @api/*current-user*)))
-
-(defn- notify-email-enabled! [alert recipients]
-  (doseq [user recipients]
-    (messages/send-you-were-added-card-notification-email! alert user @api/*current-user*)))
-
-(defn- notify-email-recipient-diffs! [old-alert old-recipients new-alert new-recipients]
-  (let [old-ids->users (key-by :id old-recipients)
-        new-ids->users (key-by :id new-recipients)
-        [removed-ids added-ids _] (data/diff (set (keys old-ids->users))
-                                             (set (keys new-ids->users)))]
-    (doseq [old-id removed-ids
-            :let [removed-user (get old-ids->users old-id)]]
-      (messages/send-admin-unsubscribed-alert-email! old-alert removed-user @api/*current-user*))
-
-    (doseq [new-id added-ids
-            :let [added-user (get new-ids->users new-id)]]
-      (messages/send-you-were-added-card-notification-email! new-alert added-user @api/*current-user*))))
-
-(defn- notify-recipient-changes!
-  "This function compares `OLD-ALERT` and `UPDATED-ALERT` to determine if there have been any channel or recipient
-  related changes. Recipients that have been added or removed will be notified."
-  [old-alert updated-alert]
-  (let [{old-recipients :recipients, old-enabled :enabled} (email-channel old-alert)
-        {new-recipients :recipients, new-enabled :enabled} (email-channel updated-alert)]
-    (cond
-      ;; Did email notifications just get disabled?
-      (and old-enabled (not new-enabled))
-      (notify-email-disabled! old-alert old-recipients)
-
-      ;; Did a disabled email notifications just get re-enabled?
-      (and (not old-enabled) new-enabled)
-      (notify-email-enabled! updated-alert new-recipients)
-
-      ;; No need to notify recipients if emails are disabled
-      new-enabled
-      (notify-email-recipient-diffs! old-alert old-recipients updated-alert new-recipients))))
-
-(defn- collect-alert-recipients [alert]
-  (set (:recipients (email-channel alert))))
-
 (defn- maybe-include-csv [card alert-condition]
   (if (= "rows" alert-condition)
     (assoc card :include_csv true)
@@ -147,13 +100,6 @@
     (events/publish-event! :event/alert-create {:object new-alert :user-id api/*current-user-id*})
     ;; return our new Alert
     new-alert))
-
-(defn- notify-on-archive-if-needed!
-  "When an alert is archived, we notify all recipients that they are no longer receiving that alert."
-  [alert]
-  (when (email/email-configured?)
-    (doseq [recipient (collect-alert-recipients alert)]
-      (messages/send-admin-unsubscribed-alert-email! alert recipient @api/*current-user*))))
 
 (api/defendpoint PUT "/:id"
   "Update a `Alert` with ID."
@@ -224,13 +170,6 @@
                             {:archived true})))]
       ;; Only admins or users has subscription or monitoring perms
       ;; can update recipients or explicitly archive an alert
-      (when (and (or api/*is-superuser?*
-                     has-subscription-perms?
-                     has-monitoring-permissions?)
-                 (email/email-configured?))
-        (if archived
-          (notify-on-archive-if-needed! updated-alert)
-          (notify-recipient-changes! alert-before-update updated-alert)))
       ;; Finally, return the updated Alert
       updated-alert)))
 
