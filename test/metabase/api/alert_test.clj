@@ -64,7 +64,9 @@
     :details       {}}))
 
 (defn- alert-response [response]
-  (m/dissoc-in response [:creator :last_login]))
+  (-> response
+      (m/dissoc-in [:creator :last_login])
+      (m/dissoc-in [:card :collection])))
 
 (defmacro ^:private with-test-email! [& body]
   `(mt/with-temporary-setting-values [~'site-url "https://metabase.com/testmb"]
