@@ -4,6 +4,7 @@
   The 'envelope' holds the context for our conversation with the LLM. Specifically, it bundles up the history, and the
   context into one convenient location, with a simple API for querying and modifying."
   (:require
+   [medley.core :as m]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase.util :as u]
    [metabase.util.json :as json]))
@@ -24,23 +25,20 @@
    :dummy-history []
    :query-id->query {}})
 
-(defn- decode-json
-  [s]
-  (try
-    (json/decode s true)
-    (catch Exception _e
-      s)))
-
 (defn full-history
   "History including the dummy tool invocations"
   ([e] (full-history e nil))
   ([e {:keys [stringify-content?] :or {stringify-content? true}}]
-   (map (fn [{:keys [content] :as msg}]
-          (assoc msg :content (cond-> content
-                                (and stringify-content? (map? content)) json/encode
-                                (and (not stringify-content?) (string? content)) decode-json)))
-        (into (:dummy-history e)
-              (:history e)))))
+   (map (fn [{:keys [content structured-content] :as msg}]
+          (cond-> msg
+            stringify-content?
+            (->
+             (dissoc :structured-content)
+             (assoc :content (or content
+                                 (when structured-content
+                                   (json/encode structured-content)))))))
+        (concat (:dummy-history e)
+                (:history e)))))
 
 (defn session-id
   "Get the session ID from the envelope"
@@ -117,11 +115,12 @@
 
 (defn add-tool-response
   "Given an output string and new context, adds them to the envelope."
-  [e tool-call-id {:keys [output context reactions]}]
+  [e tool-call-id {:keys [output structured-output context reactions]}]
   (-> e
-      (add-message {:role :tool
-                    :tool-call-id tool-call-id
-                    :content output})
+      (add-message (-> {:role :tool
+                        :tool-call-id tool-call-id}
+                       (m/assoc-some :content output)
+                       (m/assoc-some :structured-content structured-output)))
       (update-context context)
       (update-reactions reactions)))
 
@@ -141,8 +140,7 @@
   [e query-id]
   (->> (full-history e {:stringify-content? false})
        (filter is-tool-call-response?)
-       (keep :content)
-
+       (keep :structured-content)
        (filter #(contains? #{:query "query"} (:type %)))
        (filter #(or (= (:query-id %) query-id)
                     (= (:query_id %) query-id)))

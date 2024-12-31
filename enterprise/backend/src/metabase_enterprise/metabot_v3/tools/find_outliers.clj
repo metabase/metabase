@@ -35,9 +35,9 @@
                              (m/find-first (fn [[_i col]]
                                              (lib.types.isa/numeric? (u/normalize-map col))))
                              first)]
-      {:output (->> data
-                    :rows
-                    (map (fn [row]
-                           {:dimension (nth row dimension-col-idx)
-                            :value (nth row value-col-idx)}))
-                    (metabot-v3.client/find-outliers-request))})))
+      {:structured-output (->> data
+                               :rows
+                               (map (fn [row]
+                                      {:dimension (nth row dimension-col-idx)
+                                       :value (nth row value-col-idx)}))
+                               (metabot-v3.client/find-outliers-request))})))

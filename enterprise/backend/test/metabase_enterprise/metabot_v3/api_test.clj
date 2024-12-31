@@ -108,7 +108,7 @@
                                     :role :assistant,
                                     :tool-calls
                                     [{:id "call_1drvrXfHb6q9Doxh8leujqKB", :name :metabot.tool/invite-user, :arguments {:email "cam@metabase.com"}}]}
-                                   {:role :tool, :tool-call-id "call_1drvrXfHb6q9Doxh8leujqKB", :content nil}
+                                   {:role :tool, :tool-call-id "call_1drvrXfHb6q9Doxh8leujqKB"}
                                    {:content "Cool, I invited him"
                                     :role :assistant}]}]]
                     @calls))))))))
