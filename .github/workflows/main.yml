@@ -9,14 +9,20 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     if: |
-      contains(github.event.issue.labels.*.name, 'Type:New Feature')
+      contains(github.event.issue.labels.*.name, 'Type:New Feature') && contains(github.event.issue.labels.*.name, '.Needs Triage')
     steps:
-      - name: Setting title
+      - name: Get Title
         uses: actions/github-script@v7
-        id: vars
+        id: var_title
         with:
           script: |
             core.setOutput('issue_title', ${{ toJson(github.event.issue.title) }}.replaceAll(/"/g, '\\"'));
+      - name: Get Author
+        uses: actions/github-script@v7
+        id: var_author
+        with:
+          script: |
+            core.setOutput('issue_creator', ${{ toJson(github.event.issue.user.login) }}.replaceAll(/"/g, '\\"'));
       - name: Send the issue ${{ github.event.issue.number }} to Slack
         id: slack
         uses: slackapi/slack-github-action@v1.26.0
@@ -28,7 +34,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "New incoming feature request: ${{ steps.vars.outputs.issue_title }}\n${{ github.event.issue.html_url }}"
+                    "text": "*New incoming feature request for triaging*\n<${{ github.event.issue.html_url }}|${{ steps.var_title.outputs.issue_title }}>\n_Filed by ${{ steps.var_author.outputs.issue_creator }}_"
                   }
                 }
               ]
