@@ -36,8 +36,8 @@
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
-   [metabase.public-settings :as public-settings]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.public-settings :as public-settings]
    [metabase.query-analysis :as query-analysis]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
@@ -795,7 +795,7 @@
       (cond-> #_changes
        (or (empty? (:result_metadata card))
            (not verified-result-metadata?))
-        card.metadata/populate-result-metadata)
+       card.metadata/populate-result-metadata)
       pre-update
       populate-query-fields
       maybe-populate-initially-published-at))

@@ -1330,31 +1330,31 @@
        [_                         {:type :model :dataset_query (mt/mbql-query venues)}
         {http-action :action-id}  {:type :http :name search-term}
         {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
-       (testing "by default do not search for native content"
-         (is (= #{["card" mbql-card]
-                  ["card" native-card-in-name]
-                  ["dataset" mbql-model]
-                  ["dataset" native-model-in-name]
-                  ["action" http-action]}
-                (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term)
-                     :data
-                     (map (juxt :model :id))
-                     set))))
+        (testing "by default do not search for native content"
+          (is (= #{["card" mbql-card]
+                   ["card" native-card-in-name]
+                   ["dataset" mbql-model]
+                   ["dataset" native-model-in-name]
+                   ["action" http-action]}
+                 (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term)
+                      :data
+                      (map (juxt :model :id))
+                      set))))
 
-       (testing "if search-native-query is true, search both dataset_query and the name"
-         (is (= #{["card" mbql-card]
-                  ["card" native-card-in-name]
-                  ["dataset" mbql-model]
-                  ["dataset" native-model-in-name]
-                  ["action" http-action]
+        (testing "if search-native-query is true, search both dataset_query and the name"
+          (is (= #{["card" mbql-card]
+                   ["card" native-card-in-name]
+                   ["dataset" mbql-model]
+                   ["dataset" native-model-in-name]
+                   ["action" http-action]
 
-                  ["card" native-card-in-query]
-                  ["dataset" native-model-in-query]
-                  ["action" query-action]}
-                (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :search_native_query true)
-                     :data
-                     (map (juxt :model :id))
-                     set))))))))
+                   ["card" native-card-in-query]
+                   ["dataset" native-model-in-query]
+                   ["action" query-action]}
+                 (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :search_native_query true)
+                      :data
+                      (map (juxt :model :id))
+                      set))))))))
 
 (deftest search-result-with-user-metadata-test
   (let [search-term "with-user-metadata"]

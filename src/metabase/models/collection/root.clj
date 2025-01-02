@@ -34,6 +34,7 @@
   {:pre [(map? collection)]}
   ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
   (if (and (= (u/qualified-name (:namespace collection)) "snippets")
+           #_{:clj-kondo/ignore [:deprecated-var]}
            (not (premium-features/enable-enhancements?)))
     #{}
     #{((case read-or-write

@@ -10,10 +10,10 @@
 (deftest get-token-status-test
   (testing "GET /api/premium-features/token/status"
     (with-redefs [token-check/fetch-token-status (fn [_x]
-                                                     {:valid    true
-                                                      :status   "fake"
-                                                      :features ["test" "fixture"]
-                                                      :trial    false})]
+                                                   {:valid    true
+                                                    :status   "fake"
+                                                    :features ["test" "fixture"]
+                                                    :trial    false})]
       (mt/with-temporary-setting-values [:premium-embedding-token (token-check-test/random-token)]
         (testing "returns correctly"
           (is (= {:valid    true
