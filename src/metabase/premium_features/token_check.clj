@@ -110,7 +110,7 @@
   "Amount of time to cache the status of a valid enterprise token before forcing a re-check."
   (u/hours->ms 12))
 
-(def ^{:arglists '([token base-url site-uuid])} fetch-token-and-parse-body*
+(def ^{:arglists '([token base-url site-uuid])} ^:private fetch-token-and-parse-body*
   "Caches successful and 4XX API responses for 24 hours. 5XX errors, timeouts, etc. may be transient and will NOT be
   cached, but may trigger the *store-circuit-breaker*."
   (memoize/ttl
@@ -204,36 +204,36 @@
   (cond (mc/validate [:re RemoteCheckedToken] token)
     ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
     ;; reasonable amount of time throw a timeout exception
-        (let [site-uuid (setting/get :site-uuid-for-premium-features-token-checks)]
-          (try (fetch-token-and-parse-body token token-check-url site-uuid)
-               (catch Exception e1
-                 (log/errorf e1 "Error fetching token status from %s:" token-check-url)
-                 ;; Try the fallback URL, which was the default URL prior to 45.2
-                 (try (fetch-token-and-parse-body token store-url site-uuid)
-                      ;; if there was an error fetching the token from both the normal and fallback URLs, log the
-                      ;; first error and return a generic message about the token being invalid. This message
-                      ;; will get displayed in the Settings page in the admin panel so we do not want something
-                      ;; complicated
-                      (catch Exception e2
-                        (log/errorf e2 "Error fetching token status from %s:" store-url)
-                        (let [body (u/ignore-exceptions (some-> (ex-data e1) :body json/decode+kw))]
-                          (or
-                           body
-                           {:valid         false
-                            :status        (tru "Unable to validate token")
-                            :error-details (.getMessage e1)})))))))
+    (let [site-uuid (setting/get :site-uuid-for-premium-features-token-checks)]
+      (try (fetch-token-and-parse-body token token-check-url site-uuid)
+        (catch Exception e1
+          (log/errorf e1 "Error fetching token status from %s:" token-check-url)
+          ;; Try the fallback URL, which was the default URL prior to 45.2
+          (try (fetch-token-and-parse-body token store-url site-uuid)
+            ;; if there was an error fetching the token from both the normal and fallback URLs, log the
+            ;; first error and return a generic message about the token being invalid. This message
+            ;; will get displayed in the Settings page in the admin panel so we do not want something
+            ;; complicated
+            (catch Exception e2
+              (log/errorf e2 "Error fetching token status from %s:" store-url)
+              (let [body (u/ignore-exceptions (some-> (ex-data e1) :body json/decode+kw))]
+                (or
+                 body
+                 {:valid         false
+                  :status        (tru "Unable to validate token")
+                  :error-details (.getMessage e1)})))))))
 
-        (mc/validate [:re AirgapToken] token)
-        (do
-          (log/infof "Checking airgapped token '%s'..." (u.str/mask token))
-          (decode-airgap-token token))
+    (mc/validate [:re AirgapToken] token)
+    (do
+      (log/infof "Checking airgapped token '%s'..." (u.str/mask token))
+      (decode-airgap-token token))
 
-        :else
-        (do
-          (log/error (u/format-color 'red "Invalid token format!"))
-          {:valid         false
-           :status        "invalid"
-           :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")})))
+    :else
+    (do
+      (log/error (u/format-color 'red "Invalid token format!"))
+      {:valid         false
+       :status        "invalid"
+       :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")})))
 
 (let [lock (Object.)]
   (defn- fetch-token-status
@@ -267,7 +267,7 @@
   :type       :json
   :audit      :never
   :setter     :none
-  :getter     (fn [] (some-> (premium-embedding-token) (fetch-token-status))))
+  :getter     (fn [] (some-> #p (premium-embedding-token) (fetch-token-status))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             SETTING & RELATED FNS                                              |

@@ -33,10 +33,10 @@
 (defn- check-feature
   [feature]
   (or (= feature :none)
-      ((requiring-resolve 'metabase.premium-features.core/has-feature?) feature)))
-      ; #_(do)))
-        ; (classloader/require 'metabase.premium-features.token-check)
-        ; ((resolve 'metabase.premium-features.token-check/has-feature?) feature))))
+      (do
+        ;; Avoid a circular dependency between this namespace and metabase.premium-features.token-check
+        (classloader/require 'metabase.premium-features.token-check)
+        ((resolve 'metabase.premium-features.token-check/has-feature?) feature))))
 
 (defn dynamic-ee-oss-fn
   "Dynamically tries to require an enterprise namespace and determine the correct implementation to call, based on the

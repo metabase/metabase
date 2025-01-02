@@ -11,6 +11,7 @@
    [metabase.premium-features.token-check :as token-check]
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -22,21 +23,22 @@
 
 (defmacro with-open-circuit-breaker! [& body]
   `(binding [token-check/*store-circuit-breaker* (dh.cb/circuit-breaker
-                                                  #'token-check/store-circuit-breaker-config)]
+                                                  @#'token-check/store-circuit-breaker-config)]
      (open-circuit-breaker! token-check/*store-circuit-breaker*)
      (do ~@body)))
 
 (defn reset-circuit-breaker-fixture [f]
   (binding [token-check/*store-circuit-breaker* (dh.cb/circuit-breaker
-                                                 #'token-check/store-circuit-breaker-config)]
+                                                 @#'token-check/store-circuit-breaker-config)]
     (f)))
 
+(use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :each reset-circuit-breaker-fixture)
 
 (defn- token-status-response
   [token token-check-response]
   (http-fake/with-fake-routes-in-isolation
-    {{:address      (#'token-check/token-status-url token #'token-check/token-check-url)
+    {{:address      (#'token-check/token-status-url token @#'token-check/token-check-url)
       :query-params {:users      (str (#'token-check/active-users-count))
                      :site-uuid  (public-settings/site-uuid-for-premium-features-token-checks)
                      :mb-version (:tag config/mb-version-info)}}
