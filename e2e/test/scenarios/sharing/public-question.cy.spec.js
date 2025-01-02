@@ -127,7 +127,7 @@ describe("scenarios > public > question", () => {
   );
 
   it("should be able to view public questions with snippets", () => {
-    H.startNewNativeQuestion().as("editor");
+    H.startNewNativeQuestion({ display: "table" }).as("editor");
 
     // Create a snippet
     cy.icon("snippet").click();
@@ -170,7 +170,7 @@ describe("scenarios > public > question", () => {
         query: "SELECT * FROM PEOPLE LIMIT 5",
       },
     }).then(({ body: { id } }) => {
-      H.startNewNativeQuestion().as("editor");
+      H.startNewNativeQuestion({ display: "table" }).as("editor");
 
       cy.get("@editor")
         .type("select * from {{#")

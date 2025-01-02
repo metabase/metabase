@@ -64,10 +64,16 @@ export function startNewMetric() {
  * @param {("number" | null)} [config.database]
  * @param {string} [config.query]
  * @param {number} [config.collection_id]
+ * @param {string} [config.display]
  */
 function newNativeCardHash(
   type,
-  { database = SAMPLE_DB_ID, query = "", collection_id = null } = {},
+  {
+    database = SAMPLE_DB_ID,
+    query = "",
+    collection_id = null,
+    display = "scalar",
+  } = {},
 ) {
   const card = {
     collection_id,
@@ -76,7 +82,7 @@ function newNativeCardHash(
       native: { query, "template-tags": {} },
       type: "native",
     },
-    display: "scalar",
+    display,
     parameters: [],
     visualization_settings: {},
     type,
@@ -94,6 +100,7 @@ function newNativeCardHash(
  * @param {number} config.database
  * @param {string} config.query
  * @param {number} config.collection_id
+ * @param {string} [config.display]
  */
 export function startNewNativeQuestion(config) {
   const hash = newNativeCardHash("question", config);

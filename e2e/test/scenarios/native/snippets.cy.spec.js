@@ -55,7 +55,7 @@ describe("scenarios > question > snippets", () => {
     H.startNewNativeQuestion().as("editor");
     cy.get("@editor").type("select ");
     // 2. snippet
-    cy.get("@editor").icon("snippet").click();
+    cy.icon("snippet").click();
     cy.findByTestId("sidebar-right").within(() => {
       cy.findByText("stuff-snippet").click();
 
