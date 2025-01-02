@@ -28,6 +28,6 @@ export const DASHBOARD_DATE_FILTERS = {
     value: {
       timeBucket: "years",
     },
-    representativeResult: "51.19", // this may change every year
+    representativeResult: "67.33", // this may change every year
   },
 };
