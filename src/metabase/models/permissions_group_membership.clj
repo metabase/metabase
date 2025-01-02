@@ -7,11 +7,6 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(def PermissionsGroupMembership
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/PermissionsGroupMembership)
-
 (methodical/defmethod t2/table-name :model/PermissionsGroupMembership [_model] :permissions_group_membership)
 
 (derive :model/PermissionsGroupMembership :metabase/model)

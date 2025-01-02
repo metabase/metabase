@@ -10,12 +10,9 @@
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.table :as table :refer [Table]]
+   [metabase.models.table :as table]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.related :as related]
    [metabase.request.core :as request]
@@ -47,7 +44,7 @@
 (api/defendpoint GET "/"
   "Get all `Tables`."
   []
-  (as-> (t2/select Table, :active true, {:order-by [[:name :asc]]}) tables
+  (as-> (t2/select :model/Table, :active true, {:order-by [[:name :asc]]}) tables
     (t2/hydrate tables :db)
     (into [] (comp (filter mi/can-read?)
                    (map fix-schema))
@@ -61,7 +58,7 @@
   (let [api-perm-check-fn (if include_editable_data_model
                             api/write-check
                             api/read-check)]
-    (-> (api-perm-check-fn Table id)
+    (-> (api-perm-check-fn :model/Table id)
         (t2/hydrate :db :pk_field)
         fix-schema)))
 
@@ -73,8 +70,8 @@
   (when-let [changes (not-empty (u/select-keys-when body
                                                     :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
                                                     :present [:description :caveats :points_of_interest :visibility_type]))]
-    (api/check-500 (pos? (t2/update! Table id changes))))
-  (let [updated-table        (t2/select-one Table :id id)
+    (api/check-500 (pos? (t2/update! :model/Table id changes))))
+  (let [updated-table        (t2/select-one :model/Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
       (do
@@ -101,7 +98,7 @@
 
 (defn- update-tables!
   [ids {:keys [visibility_type] :as body}]
-  (let [existing-tables (t2/select Table :id [:in ids])]
+  (let [existing-tables (t2/select :model/Table :id [:in ids])]
     (api/check-404 (= (count existing-tables) (count ids)))
     (run! api/write-check existing-tables)
     (let [updated-tables (t2/with-transaction [_conn] (mapv #(update-table!* % body) existing-tables))
@@ -350,7 +347,7 @@
   (if include-editable-data-model?
     (api/write-check table)
     (api/read-check table))
-  (let [db (t2/select-one Database :id (:db_id table))]
+  (let [db (t2/select-one :model/Database :id (:db_id table))]
     (-> table
         (t2/hydrate :db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :metrics)
         (m/dissoc-in [:db :details])
@@ -367,7 +364,7 @@
   "Returns the query metadata used to power the Query Builder for the `table`s specified by `ids`."
   [ids]
   (when (seq ids)
-    (let [tables (->> (t2/select Table :id [:in ids])
+    (let [tables (->> (t2/select :model/Table :id [:in ids])
                       (filter mi/can-read?))
           tables (t2/hydrate tables
                              [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
@@ -385,7 +382,7 @@
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   metabase-enterprise.sandbox.api.table
   [id opts]
-  (fetch-query-metadata* (t2/select-one Table :id id) opts))
+  (fetch-query-metadata* (t2/select-one :model/Table :id id) opts))
 
 (defenterprise batch-fetch-table-query-metadatas
   "Returns the query metadatas used to power the Query Builder for the tables specified by `ids`."
@@ -419,10 +416,10 @@
   `metadata-fields` can be nil."
   [card-id database-or-id metadata metadata-fields]
   (let [db (cond->> database-or-id
-             (int? database-or-id) (t2/select-one Database :id))
+             (int? database-or-id) (t2/select-one :model/Database :id))
         underlying (m/index-by :id (or metadata-fields
                                        (when-let [ids (seq (keep :id metadata))]
-                                         (-> (t2/select Field :id [:in ids])
+                                         (-> (t2/select :model/Field :id [:in ids])
                                              (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)))))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
@@ -493,10 +490,10 @@
   Unreadable cards are silently skipped."
   [ids]
   (when (seq ids)
-    (let [cards (t2/select Card
+    (let [cards (t2/select :model/Card
                            {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
                                         :c.description :c.collection_id :c.database_id :c.type
-                                        :c.source_card_id
+                                        :c.source_card_id :c.created_at :c.entity_id
                                         [:r.status :moderated_status]]
                             :from      [[:report_card :c]]
                             :left-join [[{:select   [:moderated_item_id :status]
@@ -509,14 +506,14 @@
                                         [:= :r.moderated_item_id :c.id]]
                             :where      [:in :c.id ids]})
           dbs (if (seq cards)
-                (t2/select-pk->fn identity Database :id [:in (into #{} (map :database_id) cards)])
+                (t2/select-pk->fn identity :model/Database :id [:in (into #{} (map :database_id) cards)])
                 {})
           metadata-field-ids (into #{}
                                    (comp (mapcat :result_metadata)
                                          (keep :id))
                                    cards)
           metadata-fields (if (seq metadata-field-ids)
-                            (-> (t2/select Field :id [:in metadata-field-ids])
+                            (-> (t2/select :model/Field :id [:in metadata-field-ids])
                                 (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)
                                 (->> (m/index-by :id)))
                             {})
@@ -555,22 +552,22 @@
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   [id]
   {id ms/PositiveInt}
-  (api/read-check Table id)
-  (when-let [field-ids (seq (t2/select-pks-set Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
-    (for [origin-field (t2/select Field, :fk_target_field_id [:in field-ids], :active true)]
+  (api/read-check :model/Table id)
+  (when-let [field-ids (seq (t2/select-pks-set :model/Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
+    (for [origin-field (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true)]
       ;; it's silly to be hydrating some of these tables/dbs
       {:relationship   :Mt1
        :origin_id      (:id origin-field)
        :origin         (t2/hydrate origin-field [:table :db])
        :destination_id (:fk_target_field_id origin-field)
-       :destination    (t2/hydrate (t2/select-one Field :id (:fk_target_field_id origin-field)) :table)})))
+       :destination    (t2/hydrate (t2/select-one :model/Field :id (:fk_target_field_id origin-field)) :table)})))
 
 (api/defendpoint POST "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
   [id]
   {id ms/PositiveInt}
-  (let [table (api/write-check (t2/select-one Table :id id))]
+  (let [table (api/write-check (t2/select-one :model/Table :id id))]
     (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
@@ -587,23 +584,23 @@
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
   {id ms/PositiveInt}
-  (api/write-check (t2/select-one Table :id id))
-  (when-let [field-ids (t2/select-pks-set Field :table_id id)]
-    (t2/delete! (t2/table-name FieldValues) :field_id [:in field-ids]))
+  (api/write-check (t2/select-one :model/Table :id id))
+  (when-let [field-ids (t2/select-pks-set :model/Field :table_id id)]
+    (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids]))
   {:status :success})
 
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
   {id ms/PositiveInt}
-  (-> (t2/select-one Table :id id) api/read-check related/related))
+  (-> (t2/select-one :model/Table :id id) api/read-check related/related))
 
 (api/defendpoint PUT "/:id/fields/order"
   "Reorder fields"
   [id :as {field_order :body}]
   {id ms/PositiveInt
    field_order [:sequential ms/PositiveInt]}
-  (-> (t2/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
+  (-> (t2/select-one :model/Table :id id) api/write-check (table/custom-order-fields! field_order)))
 
 (mu/defn- update-csv!
   "This helper function exists to make testing the POST /api/table/:id/{action}-csv endpoints easier."

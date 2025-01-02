@@ -6,8 +6,7 @@
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.driver.util :as driver.u]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.model-index :as model-index :refer [ModelIndex ModelIndexValue]]
+   [metabase.models.model-index :as model-index]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.task :as task]
@@ -65,13 +64,13 @@
                       (mt/user-http-request :rasta :get 200 (str "/model-index/" (:id model-index))))))
             (testing "We can invoke the task ourself manually"
               (model-index/add-values! model-index)
-              (is (= 9 (count (t2/select ModelIndexValue :model_index_id (:id model-index)))))
+              (is (= 9 (count (t2/select :model/ModelIndexValue :model_index_id (:id model-index)))))
               (is (= (into #{} cat (mt/rows (qp/process-query
                                              (mt/mbql-query products {:fields [$title]
                                                                       :filter [:and
                                                                                [:> $id 0]
                                                                                [:< $id 10]]}))))
-                     (t2/select-fn-set :name ModelIndexValue :model_index_id (:id model-index)))))
+                     (t2/select-fn-set :name :model/ModelIndexValue :model_index_id (:id model-index)))))
             (testing "When the values change the indexed values change"
               ;; update the filter on the model to simulate different values indexed
               (t2/update! :model/Card
@@ -81,13 +80,13 @@
                                                       [:> $id 10]
                                                       [:< $id 20]]})})
               (model-index/add-values! model-index)
-              (is (= 9 (count (t2/select ModelIndexValue :model_index_id (:id model-index)))))
+              (is (= 9 (count (t2/select :model/ModelIndexValue :model_index_id (:id model-index)))))
               (is (= (into #{} cat (mt/rows (qp/process-query
                                              (mt/mbql-query products {:fields [$title]
                                                                       :filter [:and
                                                                                [:> $id 10]
                                                                                [:< $id 20]]}))))
-                     (t2/select-fn-set :name ModelIndexValue :model_index_id (:id model-index))))
+                     (t2/select-fn-set :name :model/ModelIndexValue :model_index_id (:id model-index))))
               (is (=? {:error nil
                        :state "indexed"}
                       (t2/select-one :model/ModelIndex :id (u/the-id model-index)))))
@@ -104,7 +103,7 @@
                   (is (= {"model-index-id" (:id model-index)}
                          (:data trigger)))))
               (testing "Deleting the model index removes the indexing task"
-                (t2/delete! ModelIndex :id (u/the-id model-index))
+                (t2/delete! :model/ModelIndex :id (u/the-id model-index))
                 (is (nil? (index-trigger!)) "Index trigger not removed")))))))))
 
 (def ^:private empty-changes "empty state map for find changes"
@@ -206,8 +205,8 @@
                                                            &Products.products.id],
                                             :alias        "Products"}]})
                           [(mt/$ids [&Products.products.id &Products.products.title])]])])]
-        (t2.with-temp/with-temp [Card model (mt/card-with-source-metadata-for-query
-                                             query)]
+        (t2.with-temp/with-temp [:model/Card model (mt/card-with-source-metadata-for-query
+                                                    query)]
           (testing (str "scenario: " scenario)
             (let [[pk-ref value-ref] (or field-refs
                                          (->> model :result_metadata (map :field_ref)))
@@ -226,9 +225,9 @@
   do and ensures that items in the options map are correct."
   [{:keys [query pk-name value-name quantity subset scenario]}]
   (testing scenario
-    (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                               :type :model
-                                               :name "model index test")]
+    (t2.with-temp/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
+                                                      :type :model
+                                                      :name "model index test")]
       (let [by-name     (fn [n] (or (some (fn [f]
                                             (when (= (-> f :display_name u/lower-case-en) (u/lower-case-en n))
                                               (:field_ref f)))
@@ -243,10 +242,10 @@
         ;; post most likely creates this, but duplicate to be sure
         (model-index/add-values! model-index)
         (is (= "indexed"
-               (t2/select-one-fn :state ModelIndex :id (u/the-id model-index))))
+               (t2/select-one-fn :state :model/ModelIndex :id (u/the-id model-index))))
         (is (= quantity
-               (t2/count ModelIndexValue :model_index_id (:id model-index))))
-        (is (set/subset? subset (t2/select-fn-set :name ModelIndexValue
+               (t2/count :model/ModelIndexValue :model_index_id (:id model-index))))
+        (is (set/subset? subset (t2/select-fn-set :name :model/ModelIndexValue
                                                   :model_index_id (:id model-index))))
         (mt/user-http-request :rasta :delete 200 (str "/model-index/" (:id model-index)))))))
 
@@ -298,17 +297,17 @@
       (let [query             (mt/mbql-query products {:fields [$id $title]})
             pk-ref            (mt/$ids $products.id)
             invalid-value-ref (mt/$ids $products.ean)]
-        (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                                   :type :model
-                                                   :name "model index test")
-                                 ModelIndex mi {:model_id   (u/the-id model)
-                                                :pk_ref     pk-ref
-                                                :value_ref  invalid-value-ref
-                                                :creator_id (mt/user->id :rasta)
-                                                :schedule   "0 0 23 * * ? *"
-                                                :state      "initial"}]
+        (t2.with-temp/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
+                                                          :type :model
+                                                          :name "model index test")
+                                 :model/ModelIndex mi {:model_id   (u/the-id model)
+                                                       :pk_ref     pk-ref
+                                                       :value_ref  invalid-value-ref
+                                                       :creator_id (mt/user->id :rasta)
+                                                       :schedule   "0 0 23 * * ? *"
+                                                       :state      "initial"}]
           (model-index/add-values! mi)
-          (let [bad-attempt (t2/select-one ModelIndex :id (u/the-id mi))]
+          (let [bad-attempt (t2/select-one :model/ModelIndex :id (u/the-id mi))]
             (is (=? {:state "error"
                      :error #"(?s)Error executing query.*"}
                     bad-attempt))))))))

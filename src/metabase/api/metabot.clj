@@ -5,7 +5,6 @@
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.metabot :as metabot]
-   [metabase.models :refer [Card Database]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -55,7 +54,7 @@
    "Metabot '/api/metabot/model/%s' being called with prompt: '%s'"
    model-id
    question)
-  (let [model   (api/check-404 (t2/select-one Card :id model-id :type :model))
+  (let [model   (api/check-404 (t2/select-one :model/Card :id model-id :type :model))
         _       (check-database-support (:database_id model))
         context {:model       (metabot/denormalize-model model)
                  :user_prompt question
@@ -72,7 +71,7 @@
    "Metabot '/api/metabot/database/%s' being called with prompt: '%s'"
    database-id
    question)
-  (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
+  (let [{:as database} (api/check-404 (t2/select-one :model/Database :id database-id))
         _       (check-database-support (:id database))
         context {:database    (metabot/denormalize-database database)
                  :user_prompt question
@@ -102,7 +101,7 @@
    "Metabot '/api/metabot/database/%s/query' being called with prompt: '%s'"
    database-id
    question)
-  (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
+  (let [{:as database} (api/check-404 (t2/select-one :model/Database :id database-id))
         _       (check-database-support (:id database))
         context {:database    (metabot/denormalize-database database)
                  :user_prompt question

@@ -2,10 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
    [metabase-enterprise.sandbox.models.params.field-values :as ee-params.field-values]
    [metabase-enterprise.test :as met]
-   [metabase.models :refer [Card Field FieldValues PermissionsGroup PermissionsGroupMembership User]]
    [metabase.models.field-values :as field-values]
    [metabase.models.params.field-values :as params.field-values]
    [metabase.request.core :as request]
@@ -21,16 +19,16 @@
                                                                                         [:> $id 3]
                                                                                         [:< $id 6]]})}}}
         ;; the categories-id doesn't have a field values, we fake it with a full fieldvalues to make it easier to test
-        (t2/insert! FieldValues {:type                  :full
-                                 :field_id              (mt/id :categories :id)
-                                 :values                (range 10)
-                                 :human_readable_values (map #(str "id_" %) (range 10))})
+        (t2/insert! :model/FieldValues {:type                  :full
+                                        :field_id              (mt/id :categories :id)
+                                        :values                (range 10)
+                                        :human_readable_values (map #(str "id_" %) (range 10))})
         (let [categories-id (mt/id :categories :id)
-              f             (t2/select-one Field :id (mt/id :categories :id))
+              f             (t2/select-one :model/Field :id (mt/id :categories :id))
               card-id       (-> f :table_id (#'ee-params.field-values/table-id->gtap) :card :id)
               fv            (params.field-values/get-or-create-advanced-field-values! fv-type f)]
           (is (= [(range 4 6)]
-                 (t2/select-fn-vec :values FieldValues
+                 (t2/select-fn-vec :values :model/FieldValues
                                    :field_id categories-id :type fv-type
                                    {:order-by [:id]})))
           (is (= [4 5] (:values fv)))
@@ -40,21 +38,21 @@
           (testing "call second time shouldn't create a new FieldValues"
             (params.field-values/get-or-create-advanced-field-values!
              fv-type
-             (t2/select-one Field :id (mt/id :categories :id)))
-            (is (= 1 (t2/count FieldValues :field_id categories-id :type fv-type))))
+             (t2/select-one :model/Field :id (mt/id :categories :id)))
+            (is (= 1 (t2/count :model/FieldValues :field_id categories-id :type fv-type))))
 
           (testing "after changing the question, should create new FieldValues"
             (let [new-query (mt/mbql-query categories
                               {:filter [:and [:> $id 1] [:< $id 4]]})]
               (Thread/sleep 1)
-              (t2/update! Card card-id {:dataset_query new-query
-                                        :updated_at    (t/local-date-time)}))
+              (t2/update! :model/Card card-id {:dataset_query new-query
+                                               :updated_at    (t/local-date-time)}))
             (params.field-values/get-or-create-advanced-field-values!
              fv-type
-             (t2/select-one Field :id (mt/id :categories :id)))
+             (t2/select-one :model/Field :id (mt/id :categories :id)))
             (is (= [(range 4 6)
                     (range 2 4)]
-                   (t2/select-fn-vec :values FieldValues
+                   (t2/select-fn-vec :values :model/FieldValues
                                      :field_id categories-id :type fv-type
                                      {:order-by [:id]})))))))
 
@@ -66,7 +64,7 @@
           (is (= ["Asian"]
                  (:values (params.field-values/get-or-create-advanced-field-values!
                            fv-type
-                           (t2/select-one Field :id (mt/id :categories :name)))))))))))
+                           (t2/select-one :model/Field :id (mt/id :categories :name)))))))))))
 
 (deftest advanced-field-values-hash-test
   (mt/with-premium-features #{:sandboxes}
@@ -78,8 +76,8 @@
                     {:gtaps      {:categories {:remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}}
                      :attributes login-attributes}
                     (ee-params.field-values/hash-key-for-sandbox field-id)))]
-          (mt/with-temp [User {user-id-1 :id} {}
-                         User {user-id-2 :id} {}]
+          (mt/with-temp [:model/User {user-id-1 :id} {}
+                         :model/User {user-id-2 :id} {}]
 
             (testing "2 users with the same attribute"
               (testing "should have the same hash for the same field"
@@ -111,23 +109,23 @@
       ;; hack so that we don't have to setup all the sandbox permissions the table
       (with-redefs [ee-params.field-values/field-is-sandboxed? (constantly true)]
         (letfn [(hash-for-user-id-with-attributes [user-id login_attributes field-id]
-                  (mt/with-temp-vals-in-db User user-id {:login_attributes login_attributes}
+                  (mt/with-temp-vals-in-db :model/User user-id {:login_attributes login_attributes}
                     (request/with-current-user user-id
                       (ee-params.field-values/hash-key-for-sandbox field-id))))]
           (testing "2 users in the same group"
             (mt/with-temp
-              [Card                       {card-id :id} {}
-               PermissionsGroup           {group-id :id} {}
-               User                       {user-id-1 :id} {}
-               User                       {user-id-2 :id} {}
-               PermissionsGroupMembership _ {:group_id group-id
-                                             :user_id user-id-1}
-               PermissionsGroupMembership _ {:group_id group-id
-                                             :user_id user-id-2}
-               GroupTableAccessPolicy     _ {:card_id card-id
-                                             :group_id group-id
-                                             :table_id (mt/id :categories)
-                                             :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]
+              [:model/Card                       {card-id :id} {}
+               :model/PermissionsGroup           {group-id :id} {}
+               :model/User                       {user-id-1 :id} {}
+               :model/User                       {user-id-2 :id} {}
+               :model/PermissionsGroupMembership _ {:group_id group-id
+                                                    :user_id user-id-1}
+               :model/PermissionsGroupMembership _ {:group_id group-id
+                                                    :user_id user-id-2}
+               :model/GroupTableAccessPolicy     _ {:card_id card-id
+                                                    :group_id group-id
+                                                    :table_id (mt/id :categories)
+                                                    :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]
 
               (testing "with same attributes, the hash should be the same field"
                 (is (= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
@@ -143,52 +141,52 @@
 
           (testing "gtap with native question"
             (mt/with-temp
-              [Card                       {card-id :id} {:query_type :native
-                                                         :name "A native query"
-                                                         :dataset_query
-                                                         {:type :native
-                                                          :database (mt/id)
-                                                          :native
-                                                          {:query "SELECT * FROM People WHERE state = {{STATE}}"
-                                                           :template-tags
-                                                           {"STATE" {:id "72461b3b-3877-4538-a5a3-7a3041924517"
-                                                                     :name "STATE"
-                                                                     :display-name "STATE"
-                                                                     :type "text"}}}}}
-               PermissionsGroup           {group-id :id} {}
-               User                       {user-id :id} {}
-               PermissionsGroupMembership _ {:group_id group-id
-                                             :user_id user-id}
-               GroupTableAccessPolicy     _ {:card_id card-id
-                                             :group_id group-id
-                                             :table_id (mt/id :categories)
-                                             :attribute_remappings {"State" [:variable [:template-tag "STATE"]]}}]
+              [:model/Card                       {card-id :id} {:query_type :native
+                                                                :name "A native query"
+                                                                :dataset_query
+                                                                {:type :native
+                                                                 :database (mt/id)
+                                                                 :native
+                                                                 {:query "SELECT * FROM People WHERE state = {{STATE}}"
+                                                                  :template-tags
+                                                                  {"STATE" {:id "72461b3b-3877-4538-a5a3-7a3041924517"
+                                                                            :name "STATE"
+                                                                            :display-name "STATE"
+                                                                            :type "text"}}}}}
+               :model/PermissionsGroup           {group-id :id} {}
+               :model/User                       {user-id :id} {}
+               :model/PermissionsGroupMembership _ {:group_id group-id
+                                                    :user_id user-id}
+               :model/GroupTableAccessPolicy     _ {:card_id card-id
+                                                    :group_id group-id
+                                                    :table_id (mt/id :categories)
+                                                    :attribute_remappings {"State" [:variable [:template-tag "STATE"]]}}]
               (testing "same users but if the login_attributes change, they should have different hash (#24966)"
                 (is (not= (hash-for-user-id-with-attributes user-id {"State" "CA"} (mt/id :categories :name))
                           (hash-for-user-id-with-attributes user-id {"State" "NY"} (mt/id :categories :name)))))))
 
           (testing "2 users in different groups but gtaps use the same card"
             (mt/with-temp
-              [Card                       {card-id :id} {}
+              [:model/Card                       {card-id :id} {}
 
                ;; user 1 in group 1
-               User                       {user-id-1 :id} {}
-               PermissionsGroup           {group-id-1 :id} {}
-               PermissionsGroupMembership _ {:group_id group-id-1
-                                             :user_id user-id-1}
-               GroupTableAccessPolicy     _ {:card_id card-id
-                                             :group_id group-id-1
-                                             :table_id (mt/id :categories)
-                                             :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}
+               :model/User                       {user-id-1 :id} {}
+               :model/PermissionsGroup           {group-id-1 :id} {}
+               :model/PermissionsGroupMembership _ {:group_id group-id-1
+                                                    :user_id user-id-1}
+               :model/GroupTableAccessPolicy     _ {:card_id card-id
+                                                    :group_id group-id-1
+                                                    :table_id (mt/id :categories)
+                                                    :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}
                ;; user 2 in group 2 with gtap using the same card
-               User                       {user-id-2 :id} {}
-               PermissionsGroup           {group-id-2 :id} {}
-               PermissionsGroupMembership _ {:group_id group-id-2
-                                             :user_id user-id-2}
-               GroupTableAccessPolicy     _ {:card_id card-id
-                                             :group_id group-id-2
-                                             :table_id (mt/id :categories)
-                                             :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]
+               :model/User                       {user-id-2 :id} {}
+               :model/PermissionsGroup           {group-id-2 :id} {}
+               :model/PermissionsGroupMembership _ {:group_id group-id-2
+                                                    :user_id user-id-2}
+               :model/GroupTableAccessPolicy     _ {:card_id card-id
+                                                    :group_id group-id-2
+                                                    :table_id (mt/id :categories)
+                                                    :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]
               (testing "with the same attributes, the hash should be the same"
                 (is (= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
                        (hash-for-user-id-with-attributes user-id-2 {"State" "CA"} (mt/id :categories :name)))))
@@ -203,25 +201,25 @@
 
           (testing "2 users in different groups and gtaps use 2 different cards"
             (mt/with-temp
-              [Card                       {card-id-1 :id} {}
-               User                       {user-id-1 :id} {}
-               PermissionsGroup           {group-id-1 :id} {}
-               PermissionsGroupMembership _ {:group_id group-id-1
-                                             :user_id user-id-1}
-               GroupTableAccessPolicy     _ {:card_id card-id-1
-                                             :group_id group-id-1
-                                             :table_id (mt/id :categories)
-                                             :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}
+              [:model/Card                       {card-id-1 :id} {}
+               :model/User                       {user-id-1 :id} {}
+               :model/PermissionsGroup           {group-id-1 :id} {}
+               :model/PermissionsGroupMembership _ {:group_id group-id-1
+                                                    :user_id user-id-1}
+               :model/GroupTableAccessPolicy     _ {:card_id card-id-1
+                                                    :group_id group-id-1
+                                                    :table_id (mt/id :categories)
+                                                    :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}
                ;; user 2 in group 2 with gtap using card 2
-               Card                       {card-id-2 :id} {}
-               User                       {user-id-2 :id} {}
-               PermissionsGroup           {group-id-2 :id} {}
-               PermissionsGroupMembership _ {:group_id group-id-2
-                                             :user_id user-id-2}
-               GroupTableAccessPolicy     _ {:card_id card-id-2
-                                             :group_id group-id-2
-                                             :table_id (mt/id :categories)
-                                             :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]
+               :model/Card                       {card-id-2 :id} {}
+               :model/User                       {user-id-2 :id} {}
+               :model/PermissionsGroup           {group-id-2 :id} {}
+               :model/PermissionsGroupMembership _ {:group_id group-id-2
+                                                    :user_id user-id-2}
+               :model/GroupTableAccessPolicy     _ {:card_id card-id-2
+                                                    :group_id group-id-2
+                                                    :table_id (mt/id :categories)
+                                                    :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]
               (testing "the hash are different even though they have the same attribute"
                 (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
                           (hash-for-user-id-with-attributes user-id-2 {"State" "CA"} (mt/id :categories :name))))

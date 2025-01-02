@@ -12,7 +12,6 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
-   [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as models.pulse]
@@ -83,8 +82,8 @@
                                                     :channel_type "http"
                                                     :channel_id   chn-id})]
     (if (= pulse-channel :email)
-      (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
-                                                        :pulse_channel_id pc-id}]
+      (t2.with-temp/with-temp [:model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                               :pulse_channel_id pc-id}]
         (f pulse))
       (f pulse))))
 
@@ -119,9 +118,9 @@
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
       (notification.tu/with-notification-testing-setup
-        (mt/with-temp [Card          {card-id :id} (merge {:name    pulse.test-util/card-name
-                                                           :display (or display :line)}
-                                                          card)]
+        (mt/with-temp [:model/Card          {card-id :id} (merge {:name    pulse.test-util/card-name
+                                                                  :display (or display :line)}
+                                                                 card)]
           (with-pulse-for-card [{pulse-id :id}
                                 {:card          card-id
                                  :pulse         pulse
@@ -388,8 +387,8 @@
 
       :fixture
       (fn [{:keys [pulse-id]} thunk]
-        (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id          (mt/user->id :crowberto)
-                                                          :pulse_channel_id (t2/select-one-pk PulseChannel :pulse_id pulse-id)}]
+        (t2.with-temp/with-temp [:model/PulseChannelRecipient _ {:user_id          (mt/user->id :crowberto)
+                                                                 :pulse_channel_id (t2/select-one-pk :model/PulseChannel :pulse_id pulse-id)}]
           (thunk)))
 
       :assert
@@ -491,7 +490,7 @@
                      (mt/summarize-multipart-single-email email test-card-regex))) ;#"stop sending you alerts")))
               (testing "Pulse should be deleted"
                 (is (= false
-                       (t2/exists? Pulse :id pulse-id)))))}}
+                       (t2/exists? :model/Pulse :id pulse-id)))))}}
 
           "first run alert with no data"
           {:card
@@ -504,7 +503,7 @@
               (is (empty? emails))
               (testing "Pulse should still exist"
                 (is (= true
-                       (t2/exists? Pulse :id pulse-id)))))}}))
+                       (t2/exists? :model/Pulse :id pulse-id)))))}}))
 
 (deftest above-goal-alert-test
   (testing "above goal alert"
@@ -654,17 +653,17 @@
 
 (deftest native-query-with-user-specified-axes-test
   (testing "Native query with user-specified x and y axis"
-    (t2.with-temp/with-temp [Card {card-id :id} {:name                   "Test card"
-                                                 :dataset_query          {:database (mt/id)
-                                                                          :type     :native
-                                                                          :native   {:query (str "select count(*) as total_per_day, date as the_day "
-                                                                                                 "from checkins "
-                                                                                                 "group by date")}}
-                                                 :display                :line
-                                                 :visualization_settings {:graph.show_goal  true
-                                                                          :graph.goal_value 5.9
-                                                                          :graph.dimensions ["THE_DAY"]
-                                                                          :graph.metrics    ["TOTAL_PER_DAY"]}}]
+    (t2.with-temp/with-temp [:model/Card {card-id :id} {:name                   "Test card"
+                                                        :dataset_query          {:database (mt/id)
+                                                                                 :type     :native
+                                                                                 :native   {:query (str "select count(*) as total_per_day, date as the_day "
+                                                                                                        "from checkins "
+                                                                                                        "group by date")}}
+                                                        :display                :line
+                                                        :visualization_settings {:graph.show_goal  true
+                                                                                 :graph.goal_value 5.9
+                                                                                 :graph.dimensions ["THE_DAY"]
+                                                                                 :graph.metrics    ["TOTAL_PER_DAY"]}}]
       (with-pulse-for-card [{pulse-id :id} {:card card-id, :pulse {:alert_condition  "goal"
                                                                    :alert_first_only false
                                                                    :alert_above_goal true}}]
@@ -676,19 +675,19 @@
 (deftest nonuser-email-test
   (testing "Both users and Nonusers get an email, with unsubscribe text for nonusers"
     (notification.tu/with-send-notification-sync
-      (mt/with-temp [Card                  {card-id :id} {:name          "Test card"
-                                                          :dataset_query {:database (mt/id)
-                                                                          :type     :native
-                                                                          :native   {:query "select * from checkins"}}
-                                                          :display       :table}
-                     Pulse                 {pulse-id :id} {:name            "Pulse Name"
-                                                           :alert_condition "rows"}
-                     PulseCard             _ {:pulse_id pulse-id
-                                              :card_id  card-id}
-                     PulseChannel          {pc-id :id} {:pulse_id pulse-id
-                                                        :details  {:emails ["nonuser@metabase.com"]}}
-                     PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
-                                              :pulse_channel_id pc-id}]
+      (mt/with-temp [:model/Card                  {card-id :id} {:name          "Test card"
+                                                                 :dataset_query {:database (mt/id)
+                                                                                 :type     :native
+                                                                                 :native   {:query "select * from checkins"}}
+                                                                 :display       :table}
+                     :model/Pulse                 {pulse-id :id} {:name            "Pulse Name"
+                                                                  :alert_condition "rows"}
+                     :model/PulseCard             _ {:pulse_id pulse-id
+                                                     :card_id  card-id}
+                     :model/PulseChannel          {pc-id :id} {:pulse_id pulse-id
+                                                               :details  {:emails ["nonuser@metabase.com"]}}
+                     :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                     :pulse_channel_id pc-id}]
         (pulse.test-util/email-test-setup!
          (pulse.send/send-pulse! (models.pulse/retrieve-notification pulse-id))
          (is (mt/received-email-body? :rasta #"Manage your subscriptions"))
@@ -697,11 +696,11 @@
 (deftest pulse-permissions-test
   (testing "Pulses should be sent with the Permissions of the user that created them."
     (letfn [(send-pulse-created-by-user!* [user-kw]
-              (mt/with-temp [Collection coll {}
-                             Card       card {:dataset_query (mt/mbql-query checkins
-                                                               {:order-by [[:asc $id]]
-                                                                :limit    1})
-                                              :collection_id (:id coll)}]
+              (mt/with-temp [:model/Collection coll {}
+                             :model/Card       card {:dataset_query (mt/mbql-query checkins
+                                                                      {:order-by [[:asc $id]]
+                                                                       :limit    1})
+                                                     :collection_id (:id coll)}]
                 (perms/revoke-collection-permissions! (perms-group/all-users) coll)
                 (pulse.test-util/send-alert-created-by-user! user-kw card)))]
       (is (= [[1 "2014-04-07T00:00:00Z" 5 12]]
@@ -904,16 +903,16 @@
                               :source            :aggregation
                               :field_ref         [:aggregation 0]
                               :aggregation_index 0}]]
-        (mt/with-temp [Card {card-id :id} {:display         :table
-                                           :dataset_query   q
-                                           :type            :model
-                                           :result_metadata result-metadata}
-                       Pulse {pulse-id :id :as p} {:name "Test Pulse" :alert_condition "rows"}
-                       PulseCard _ {:pulse_id pulse-id
-                                    :card_id  card-id}
-                       PulseChannel _ {:channel_type :email
-                                       :pulse_id     pulse-id
-                                       :enabled      true}]
+        (mt/with-temp [:model/Card {card-id :id} {:display         :table
+                                                  :dataset_query   q
+                                                  :type            :model
+                                                  :result_metadata result-metadata}
+                       :model/Pulse {pulse-id :id :as p} {:name "Test Pulse" :alert_condition "rows"}
+                       :model/PulseCard _ {:pulse_id pulse-id
+                                           :card_id  card-id}
+                       :model/PulseChannel _ {:channel_type :email
+                                              :pulse_id     pulse-id
+                                              :enabled      true}]
           (pulse.send/send-pulse! p)
           (testing "The custom columns defined in the result-metadata (:display_name and :description) are still present after the alert has run."
             (is (= (-> result-metadata
@@ -927,18 +926,18 @@
   (testing "if a pulse is set to send to multiple channels and one of them fail, the other channels should still receive the message"
     (notification.tu/with-send-notification-sync
       (mt/with-temp
-        [Card         {card-id :id}  (pulse.test-util/checkins-query-card {:breakout [!day.date]
-                                                                           :limit    1})
-         Pulse        {pulse-id :id} {:name "Test Pulse"
-                                      :alert_condition "rows"}
-         PulseCard    _              {:pulse_id pulse-id
-                                      :card_id  card-id}
-         PulseChannel _              {:pulse_id pulse-id
-                                      :channel_type "email"
-                                      :details      {:emails ["foo@metabase.com"]}}
-         PulseChannel _              {:pulse_id     pulse-id
-                                      :channel_type "slack"
-                                      :details      {:channel "#general"}}]
+        [:model/Card         {card-id :id}  (pulse.test-util/checkins-query-card {:breakout [!day.date]
+                                                                                  :limit    1})
+         :model/Pulse        {pulse-id :id} {:name "Test Pulse"
+                                             :alert_condition "rows"}
+         :model/PulseCard    _              {:pulse_id pulse-id
+                                             :card_id  card-id}
+         :model/PulseChannel _              {:pulse_id pulse-id
+                                             :channel_type "email"
+                                             :details      {:emails ["foo@metabase.com"]}}
+         :model/PulseChannel _              {:pulse_id     pulse-id
+                                             :channel_type "slack"
+                                             :details      {:channel "#general"}}]
         (let [original-render-noti (var-get #'channel/render-notification)]
           (with-redefs [channel/render-notification (fn [& args]
                                                       (if (= :channel/slack (first args))

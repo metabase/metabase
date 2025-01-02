@@ -11,7 +11,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models :refer [Card Collection]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -286,7 +285,7 @@
                    :aggregation  [[:sum $subtotal]]
                    :breakout     [!month.created_at
                                   [:field %people.id {:join-alias "People - User"}]]})]
-      (mt/with-temp [Card card {:dataset_query model, :type :model}]
+      (mt/with-temp [:model/Card card {:dataset_query model, :type :model}]
         (testing "Column aliasing needs to work even with aggregations over a model"
           (let [query        (mt/mbql-query
                                orders {:source-table (str "card__" (u/the-id card))
@@ -306,21 +305,21 @@
 
 (deftest nested-models-with-expressions-pivot-breakout-names-test
   (testing "#43993 again - breakouts on an expression from the inner model should pass"
-    (mt/with-temp [Card model1 {:type :model
-                                :dataset_query
-                                (mt/mbql-query products
-                                  {:source-table $$products
-                                   :expressions  {"Rating Bucket" [:floor $products.rating]}})}
-                   Card model2 {:type :model
-                                :dataset_query
-                                (mt/mbql-query orders
-                                  {:source-table $$orders
-                                   :joins        [{:source-table (str "card__" (u/the-id model1))
-                                                   :alias        "model A - Product"
-                                                   :fields       :all
-                                                   :condition    [:= $orders.product_id
-                                                                  [:field %products.id
-                                                                   {:join-alias "model A - Product"}]]}]})}]
+    (mt/with-temp [:model/Card model1 {:type :model
+                                       :dataset_query
+                                       (mt/mbql-query products
+                                         {:source-table $$products
+                                          :expressions  {"Rating Bucket" [:floor $products.rating]}})}
+                   :model/Card model2 {:type :model
+                                       :dataset_query
+                                       (mt/mbql-query orders
+                                         {:source-table $$orders
+                                          :joins        [{:source-table (str "card__" (u/the-id model1))
+                                                          :alias        "model A - Product"
+                                                          :fields       :all
+                                                          :condition    [:= $orders.product_id
+                                                                         [:field %products.id
+                                                                          {:join-alias "model A - Product"}]]}]})}]
       (testing "Column aliasing works when joining an expression in an inner model"
         (let [query        (mt/mbql-query
                              orders {:source-table (str "card__" (u/the-id model2))
@@ -506,8 +505,8 @@
             (testing "Should be able to run the query via a Card that All Users has perms for"
               ;; now save it as a Card in a Collection in Root Collection; All Users should be able to run because the
               ;; Collection inherits Root Collection perms when created
-              (mt/with-temp [Collection collection {}
-                             Card       card {:collection_id (u/the-id collection), :dataset_query query}]
+              (mt/with-temp [:model/Collection collection {}
+                             :model/Card       card {:collection_id (u/the-id collection), :dataset_query query}]
                 (is (=? {:status "completed"}
                         (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))
                 (testing "... with the pivot-table endpoints"

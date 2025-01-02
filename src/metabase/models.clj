@@ -60,7 +60,6 @@
    [metabase.search.core :as search]
    [metabase.util :as u]
    [methodical.core :as methodical]
-   [potemkin :as p]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
@@ -97,6 +96,7 @@
          pulse-channel-recipient/keep-me
          pulse-channel/keep-me
          models.pulse/keep-me
+         model-index/keep-me
          query-cache/keep-me
          query-execution/keep-me
          query-analysis/keep-me
@@ -113,54 +113,6 @@
          timeline/keep-me
          user/keep-me
          view-log/keep-me)
-
-(p/import-vars
- [action Action HTTPAction ImplicitAction QueryAction]
- [bookmark CardBookmark]
- [bookmark DashboardBookmark]
- [bookmark CollectionBookmark]
- [bookmark BookmarkOrdering]
- [cache-config CacheConfig]
- [card Card]
- [collection Collection]
- [c-perm-revision CollectionPermissionGraphRevision]
- [dashboard Dashboard]
- [dashboard-card DashboardCard]
- [dashboard-card-series DashboardCardSeries]
- [database Database]
- [dimension Dimension]
- [field Field]
- [field-values FieldValues]
- [legacy-metric LegacyMetric]
- [login-history LoginHistory]
- [moderation-review ModerationReview]
- [model-index ModelIndex ModelIndexValue]
- [legacy-metric-important-field LegacyMetricImportantField]
- [native-query-snippet NativeQuerySnippet]
- [parameter-card ParameterCard]
- [perms Permissions]
- [perms-group PermissionsGroup]
- [perms-group-membership PermissionsGroupMembership]
- [perms-revision PermissionsRevision]
- [a-perm-revision ApplicationPermissionsRevision]
- [persisted-info PersistedInfo]
- [models.pulse Pulse]
- [pulse-card PulseCard]
- [pulse-channel PulseChannel]
- [pulse-channel-recipient PulseChannelRecipient]
- [query-cache QueryCache]
- [query-execution QueryExecution]
- [revision Revision]
- [secret Secret]
- [segment Segment]
- [session Session]
- [setting Setting]
- [table Table]
- [task-history TaskHistory]
- [timeline Timeline]
- [timeline-event TimelineEvent]
- [user User]
- [view-log ViewLog])
 
 ;;; TODO -- we should move this stuff into [[metabase.models.interface]] so we can be more certain it's always loaded
 ;;; during REPL usage and tests

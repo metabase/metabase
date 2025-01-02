@@ -12,7 +12,6 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [Database Secret]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync :as sync]
@@ -71,7 +70,7 @@
            (fn [conn]
              (next.jdbc/execute! conn ["CREATE TABLE birds (name varchar)"])
              (next.jdbc/execute! conn ["INSERT INTO birds values ('rasta'),('lucky')"])
-             (t2.with-temp/with-temp [Database database {:engine :h2, :details connection-details}]
+             (t2.with-temp/with-temp [:model/Database database {:engine :h2, :details connection-details}]
                (testing "database id is not in our connection map initially"
                  ;; deref'ing a var to get the atom. looks weird
                  (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
@@ -158,7 +157,7 @@
                   (testing "The calculated hash should be different"
                     (is (not= (#'sql-jdbc.conn/jdbc-spec-hash db)
                               (#'sql-jdbc.conn/jdbc-spec-hash db-perturbed))))
-                  (t2/update! Database (mt/id) {:details (:details db-perturbed)})
+                  (t2/update! :model/Database (mt/id) {:details (:details db-perturbed)})
                   (let [;; this call should result in the connection pool becoming invalidated, and the new hash value
                         ;; being stored based upon these updated details
                         pool-spec-2  (sql-jdbc.conn/db->pooled-connection-spec db-perturbed)
@@ -183,17 +182,17 @@
                     (is (not= db-hash-1 db-hash-2)))))))
           (finally
             ;; restore the original test DB details, no matter what just happened
-            (t2/update! Database (mt/id) {:details (:details db)})))))))
+            (t2/update! :model/Database (mt/id) {:details (:details db)})))))))
 
 ;;; Postgres-specific, so ok to hardcode driver names below.
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest connection-pool-invalidated-on-details-change-postgres-secrets-are-stable-test
   (testing "postgres secrets are stable (#23034)"
-    (mt/with-temp [Secret secret {:name       "file based secret"
-                                  :kind       :perm-cert
-                                  :source     nil
-                                  :value      (.getBytes "super secret")
-                                  :creator_id (mt/user->id :crowberto)}]
+    (mt/with-temp [:model/Secret secret {:name       "file based secret"
+                                         :kind       :perm-cert
+                                         :source     nil
+                                         :value      (.getBytes "super secret")
+                                         :creator_id (mt/user->id :crowberto)}]
       (let [db {:engine  :postgres
                 :details {:ssl                      true
                           :ssl-mode                 "verify-ca"
@@ -303,7 +302,7 @@
                                              (swap! connection-creations inc)
                                              {:access_token (:password db-details)
                                               :expires_in @expires-in})]
-            (t2.with-temp/with-temp [Database oauth-db {:engine (tx/driver), :details oauth-db-details}]
+            (t2.with-temp/with-temp [:model/Database oauth-db {:engine (tx/driver), :details oauth-db-details}]
               (mt/with-db oauth-db
                 (try
                                 ;; since Metabase is running and using the pool of this DB, the sync might fail
@@ -347,7 +346,7 @@
                                      :tunnel-port ssh-test/ssh-mock-server-with-password-port
                                      :tunnel-user ssh-test/ssh-username
                                      :tunnel-pass ssh-test/ssh-password)]
-        (t2.with-temp/with-temp [Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
+        (t2.with-temp/with-temp [:model/Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
           (mt/with-db tunneled-db
             (sync/sync-database! (mt/db))
             (is (= [["Polo Lounge"]]
@@ -363,7 +362,7 @@
                                      :tunnel-port ssh-test/ssh-mock-server-with-password-port
                                      :tunnel-user ssh-test/ssh-username
                                      :tunnel-pass ssh-test/ssh-password)]
-        (t2.with-temp/with-temp [Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
+        (t2.with-temp/with-temp [:model/Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
           (mt/with-db tunneled-db
             (sync/sync-database! (mt/db))
             (letfn [(check-row []
@@ -397,7 +396,7 @@
                        :tunnel-user        ssh-test/ssh-username
                        :tunnel-pass        ssh-test/ssh-password}]
           (try
-            (t2.with-temp/with-temp [Database db {:engine :h2, :details h2-db}]
+            (t2.with-temp/with-temp [:model/Database db {:engine :h2, :details h2-db}]
               (mt/with-db db
                 (sync/sync-database! db)
                 (is (=? {:cols [{:base_type    :type/Text
@@ -442,7 +441,7 @@
                        :tunnel-user        ssh-test/ssh-username
                        :tunnel-pass        ssh-test/ssh-password}]
           (try
-            (t2.with-temp/with-temp [Database db {:engine :h2, :details h2-db}]
+            (t2.with-temp/with-temp [:model/Database db {:engine :h2, :details h2-db}]
               (mt/with-db db
                 (sync/sync-database! db)
                 (letfn [(check-data [] (is (=? {:cols [{:base_type    :type/Text

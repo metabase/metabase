@@ -8,16 +8,6 @@
    [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.http-client :as client]
    [metabase.integrations.google]
-   [metabase.models
-    :refer [Collection
-            Database
-            PermissionsGroup
-            PermissionsGroupMembership
-            Pulse
-            PulseChannel
-            PulseChannelRecipient
-            Session
-            User]]
    [metabase.models.collection :as collection]
    [metabase.models.collection-test :as collection-test]
    [metabase.models.permissions :as perms]
@@ -58,8 +48,8 @@
 (deftest group-with-no-permissions-test
   (testing (str "Adding a group with *no* permissions shouldn't suddenly break all the permissions sets (This was a "
                 "bug @tom found where a group with no permissions would cause the permissions set to contain `nil`).")
-    (t2.with-temp/with-temp [PermissionsGroup           {group-id :id} {}
-                             PermissionsGroupMembership _              {:group_id group-id, :user_id (mt/user->id :rasta)}]
+    (t2.with-temp/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                             :model/PermissionsGroupMembership _              {:group_id group-id, :user_id (mt/user->id :rasta)}]
       (is (perms-test/is-permissions-set? (user/permissions-set (mt/user->id :rasta)))))))
 
 (defn- remove-non-collection-perms [perms-set]
@@ -75,11 +65,11 @@
            (perms/collection-readwrite-path (collection/user->personal-collection (mt/user->id :lucky)))))
 
       (testing "...and for any descendant Collections of my Personal Collection?"
-        (t2.with-temp/with-temp [Collection child-collection      {:name     "child"
-                                                                   :location (collection/children-location
-                                                                              (collection/user->personal-collection (mt/user->id :lucky)))}
-                                 Collection grandchild-collection {:name     "grandchild"
-                                                                   :location (collection/children-location child-collection)}]
+        (t2.with-temp/with-temp [:model/Collection child-collection      {:name     "child"
+                                                                          :location (collection/children-location
+                                                                                     (collection/user->personal-collection (mt/user->id :lucky)))}
+                                 :model/Collection grandchild-collection {:name     "grandchild"
+                                                                          :location (collection/children-location child-collection)}]
           (is (set/subset?
                #{(perms/collection-readwrite-path (collection/user->personal-collection (mt/user->id :lucky)))
                  "/collection/child/"
@@ -133,7 +123,7 @@
           (sent-emails new-user-email new-user-first-name new-user-last-name)
           ;; Clean up after ourselves
           (finally
-            (t2/delete! User :email new-user-email)))))))
+            (t2/delete! :model/User :email new-user-email)))))))
 
 (def ^:private default-invitor
   {:email "crowberto@metabase.com", :is_active true, :first_name "Crowberto"})
@@ -161,14 +151,14 @@
                      (select-keys ["<New User>" "crowberto@metabase.com" "cam2@metabase.com"])))))
 
         (testing "... but if that admin is inactive they shouldn't get an email"
-          (t2.with-temp/with-temp [User inactive-admin {:is_superuser true, :is_active false}]
+          (t2.with-temp/with-temp [:model/User inactive-admin {:is_superuser true, :is_active false}]
             (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
                     "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]}
                    (-> (invite-user-accept-and-check-inboxes! :invitor (assoc inactive-admin :is_active false))
                        (select-keys ["<New User>" "crowberto@metabase.com" (:email inactive-admin)]))))))))
 
     (testing "for google auth, all admins should get an email..."
-      (t2.with-temp/with-temp [User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
+      (t2.with-temp/with-temp [:model/User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
         (is (= {"crowberto@metabase.com"        ["<New User> created a Metabase account"]
                 "some_other_admin@metabase.com" ["<New User> created a Metabase account"]}
                (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
@@ -176,7 +166,7 @@
 
       (testing "...including the site admin if it is set..."
         (mt/with-temporary-setting-values [admin-email "cam2@metabase.com"]
-          (t2.with-temp/with-temp [User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
+          (t2.with-temp/with-temp [:model/User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
             (is (= {"crowberto@metabase.com"        ["<New User> created a Metabase account"]
                     "some_other_admin@metabase.com" ["<New User> created a Metabase account"]
                     "cam2@metabase.com"             ["<New User> created a Metabase account"]}
@@ -184,7 +174,7 @@
                        (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com" "cam2@metabase.com"]))))))
 
         (testing "...unless they are inactive..."
-          (t2.with-temp/with-temp [User user {:is_superuser true, :is_active false}]
+          (t2.with-temp/with-temp [:model/User user {:is_superuser true, :is_active false}]
             (is (= {"crowberto@metabase.com" ["<New User> created a Metabase account"]}
                    (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
                        (select-keys ["crowberto@metabase.com" (:email user)])))))
@@ -192,7 +182,7 @@
           (testing "...or if setting is disabled"
             (mt/with-premium-features #{:sso-ldap}
               (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "false"]
-                (t2.with-temp/with-temp [User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
+                (t2.with-temp/with-temp [:model/User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
                   (is (= (if config/ee-available? {} {"crowberto@metabase.com" ["<New User> created a Metabase account"],
                                                       "some_other_admin@metabase.com" ["<New User> created a Metabase account"]})
                          (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
@@ -213,18 +203,18 @@
                                         :first_name "Test"
                                         :last_name  "SomeLdapStuff"
                                         :password   "should be removed"})
-      (let [{:keys [password password_salt]} (t2/select-one [User :password :password_salt] :email "ldaptest@metabase.com")]
+      (let [{:keys [password password_salt]} (t2/select-one [:model/User :password :password_salt] :email "ldaptest@metabase.com")]
         (is (= false
                (u.password/verify-password "should be removed" password_salt password))))
       (finally
-        (t2/delete! User :email "ldaptest@metabase.com")))))
+        (t2/delete! :model/User :email "ldaptest@metabase.com")))))
 
 (deftest new-admin-user-test
   (testing (str "when you create a new user with `is_superuser` set to `true`, it should create a "
                 "PermissionsGroupMembership object")
-    (t2.with-temp/with-temp [User user {:is_superuser true}]
+    (t2.with-temp/with-temp [:model/User user {:is_superuser true}]
       (is (= true
-             (t2/exists? PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin))))))))
+             (t2/exists? :model/PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin))))))))
 
 (deftest ldap-sequential-login-attributes-test
   (testing "You should be able to create a new LDAP user if some `login_attributes` are vectors (#10291)"
@@ -234,9 +224,9 @@
                                         :last_name        "SomeLdapStuff"
                                         :login_attributes {:local_birds ["Steller's Jay" "Mountain Chickadee"]}})
       (is (= {"local_birds" ["Steller's Jay" "Mountain Chickadee"]}
-             (t2/select-one-fn :login_attributes User :email "ldaptest@metabase.com")))
+             (t2/select-one-fn :login_attributes :model/User :email "ldaptest@metabase.com")))
       (finally
-        (t2/delete! User :email "ldaptest@metabase.com")))))
+        (t2/delete! :model/User :email "ldaptest@metabase.com")))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            New Group IDs Functions                                             |
@@ -244,12 +234,12 @@
 
 (defn group-names [groups-or-ids]
   (when (seq groups-or-ids)
-    (t2/select-fn-set :name PermissionsGroup :id [:in (map u/the-id groups-or-ids)])))
+    (t2/select-fn-set :name :model/PermissionsGroup :id [:in (map u/the-id groups-or-ids)])))
 
 (defn- do-with-group [group-properties group-members f]
-  (t2.with-temp/with-temp [PermissionsGroup group group-properties]
+  (t2.with-temp/with-temp [:model/PermissionsGroup group group-properties]
     (doseq [member group-members]
-      (t2/insert! PermissionsGroupMembership
+      (t2/insert! :model/PermissionsGroupMembership
                   {:group_id (u/the-id group)
                    :user_id  (if (keyword? member)
                                (mt/user->id member)
@@ -305,7 +295,7 @@
                                            (assoc user :group_ids '(user/add-group-ids <users>))))]
         (testing "for a single User"
           (is (= '(user/add-group-ids <users>)
-                 (-> (t2/hydrate (t2/select-one User :id (mt/user->id :lucky)) :group_ids)
+                 (-> (t2/hydrate (t2/select-one :model/User :id (mt/user->id :lucky)) :group_ids)
                      :group_ids))))
 
         (testing "for multiple Users"
@@ -363,39 +353,39 @@
                      (user/set-permissions-groups! (mt/user->id :lucky) #{group-1})))))
 
     (testing "should be able to add someone to the Admin group"
-      (t2.with-temp/with-temp [User user]
+      (t2.with-temp/with-temp [:model/User user]
         (user/set-permissions-groups! user #{(perms-group/all-users) (perms-group/admin)})
         (is (= #{"Administrators" "All Users"}
                (user-group-names user)))
 
         (testing "their is_superuser flag should be set to true"
           (is (= true
-                 (t2/select-one-fn :is_superuser User :id (u/the-id user)))))))
+                 (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
 
     (testing "should be able to remove someone from the Admin group"
-      (t2.with-temp/with-temp [User user {:is_superuser true}]
+      (t2.with-temp/with-temp [:model/User user {:is_superuser true}]
         (user/set-permissions-groups! user #{(perms-group/all-users)})
         (is (= #{"All Users"}
                (user-group-names user)))
 
         (testing "their is_superuser flag should be set to false"
           (is (= false
-                 (t2/select-one-fn :is_superuser User :id (u/the-id user)))))))
+                 (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
 
     (testing "should run all changes in a transaction -- if one set of changes fails, others should not be persisted"
       (testing "Invalid ADD operation"
         ;; User should not be removed from the admin group because the attempt to add them to the Integer/MAX_VALUE group
         ;; should fail, causing the entire transaction to fail
         (mt/test-helpers-set-global-values!
-          (mt/with-temp [User user {:is_superuser true}]
+          (mt/with-temp [:model/User user {:is_superuser true}]
             (u/ignore-exceptions
               (user/set-permissions-groups! user #{(perms-group/all-users) Integer/MAX_VALUE}))
             (is (= true
-                   (t2/select-one-fn :is_superuser User :id (u/the-id user)))))))
+                   (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
 
       (testing "Invalid REMOVE operation"
         ;; Attempt to remove someone from All Users + add to a valid group at the same time -- neither should persist
-        (t2.with-temp/with-temp [User _]
+        (t2.with-temp/with-temp [:model/User _]
           (with-groups [group {:name "Group"} {}]
             (u/ignore-exceptions
               (user/set-permissions-groups! (test.users/fetch-user :lucky) #{group})))
@@ -406,24 +396,24 @@
 (deftest set-password-test
   (testing "set-password!"
     (testing "should change the password"
-      (t2.with-temp/with-temp [User {user-id :id} {:password "ABC_DEF"}]
-        (letfn [(password [] (t2/select-one-fn :password User :id user-id))]
+      (t2.with-temp/with-temp [:model/User {user-id :id} {:password "ABC_DEF"}]
+        (letfn [(password [] (t2/select-one-fn :password :model/User :id user-id))]
           (let [original-password (password)]
             (user/set-password! user-id "p@ssw0rd")
             (is (not= original-password
                       (password)))))))
 
     (testing "should clear out password reset token"
-      (t2.with-temp/with-temp [User {user-id :id} {:reset_token "ABC123"}]
+      (t2.with-temp/with-temp [:model/User {user-id :id} {:reset_token "ABC123"}]
         (user/set-password! user-id "p@ssw0rd")
         (is (= nil
-               (t2/select-one-fn :reset_token User :id user-id)))))
+               (t2/select-one-fn :reset_token :model/User :id user-id)))))
 
     (testing "should clear out all existing Sessions"
-      (t2.with-temp/with-temp [User {user-id :id} {}]
+      (t2.with-temp/with-temp [:model/User {user-id :id} {}]
         (dotimes [_ 2]
-          (t2/insert! Session {:id (str (random-uuid)), :user_id user-id}))
-        (letfn [(session-count [] (t2/count Session :user_id user-id))]
+          (t2/insert! :model/Session {:id (str (random-uuid)), :user_id user-id}))
+        (letfn [(session-count [] (t2/count :model/Session :user_id user-id))]
           (is (= 2
                  (session-count)))
           (user/set-password! user-id "p@ssw0rd")
@@ -434,60 +424,60 @@
   (testing "`:locale` should be validated"
     (testing "creating a new User"
       (testing "valid locale"
-        (t2.with-temp/with-temp [User {user-id :id} {:locale "en_US"}]
+        (t2.with-temp/with-temp [:model/User {user-id :id} {:locale "en_US"}]
           (is (= "en_US"
-                 (t2/select-one-fn :locale User :id user-id)))))
+                 (t2/select-one-fn :locale :model/User :id user-id)))))
       (testing "invalid locale"
         (is (thrown-with-msg?
              Throwable
              #"Assert failed: Invalid locale: \"en_XX\""
-             (t2.with-temp/with-temp [User _ {:locale "en_XX"}])))))
+             (t2.with-temp/with-temp [:model/User _ {:locale "en_XX"}])))))
 
     (testing "updating a User"
-      (t2.with-temp/with-temp [User {user-id :id} {:locale "en_US"}]
+      (t2.with-temp/with-temp [:model/User {user-id :id} {:locale "en_US"}]
         (testing "valid locale"
-          (t2/update! User user-id {:locale "en_GB"})
+          (t2/update! :model/User user-id {:locale "en_GB"})
           (is (= "en_GB"
-                 (t2/select-one-fn :locale User :id user-id))))
+                 (t2/select-one-fn :locale :model/User :id user-id))))
         (testing "invalid locale"
           (is (thrown-with-msg?
                Throwable
                #"Assert failed: Invalid locale: \"en_XX\""
-               (t2/update! User user-id {:locale "en_XX"}))))))))
+               (t2/update! :model/User user-id {:locale "en_XX"}))))))))
 
 (deftest normalize-locale-test
   (testing "`:locale` should be normalized"
-    (t2.with-temp/with-temp [User {user-id :id} {:locale "EN-us"}]
+    (t2.with-temp/with-temp [:model/User {user-id :id} {:locale "EN-us"}]
       (testing "creating a new User"
         (is (= "en_US"
-               (t2/select-one-fn :locale User :id user-id))))
+               (t2/select-one-fn :locale :model/User :id user-id))))
 
       (testing "updating a User"
-        (t2/update! User user-id {:locale "en-GB"})
+        (t2/update! :model/User user-id {:locale "en-GB"})
         (is (= "en_GB"
-               (t2/select-one-fn :locale User :id user-id)))))))
+               (t2/select-one-fn :locale :model/User :id user-id)))))))
 
 (deftest delete-pulse-subscriptions-when-archived-test
   (testing "Delete a User's Pulse/Alert/Dashboard Subscription subscriptions when they get archived"
-    (t2.with-temp/with-temp [User                  {user-id :id}          {}
-                             Pulse                 {pulse-id :id}         {}
-                             PulseChannel          {pulse-channel-id :id} {:pulse_id pulse-id}
-                             PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id, :user_id user-id}]
+    (t2.with-temp/with-temp [:model/User                  {user-id :id}          {}
+                             :model/Pulse                 {pulse-id :id}         {}
+                             :model/PulseChannel          {pulse-channel-id :id} {:pulse_id pulse-id}
+                             :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id, :user_id user-id}]
       (letfn [(subscription-exists? []
-                (t2/exists? PulseChannelRecipient :pulse_channel_id pulse-channel-id, :user_id user-id))]
+                (t2/exists? :model/PulseChannelRecipient :pulse_channel_id pulse-channel-id, :user_id user-id))]
         (testing "Sanity check: subscription should exist"
           (is (subscription-exists?)))
         (testing "user is updated but not archived: don't delete the subscription"
-          (is (pos? (t2/update! User user-id {:is_active true :first_name "New name"})))
+          (is (pos? (t2/update! :model/User user-id {:is_active true :first_name "New name"})))
           (is (subscription-exists?)))
         (testing "archive the user"
-          (is (pos? (t2/update! User user-id {:is_active false}))))
+          (is (pos? (t2/update! :model/User user-id {:is_active false}))))
         (testing "subscription should no longer exist"
           (is (not (subscription-exists?))))))))
 
 (deftest identity-hash-test
   (testing "User hashes are based on the email address"
-    (t2.with-temp/with-temp [User user {:email "fred@flintston.es"}]
+    (t2.with-temp/with-temp [:model/User user {:email "fred@flintston.es"}]
       (is (= "e8d63472"
              (serdes/raw-hash ["fred@flintston.es"])
              (serdes/identity-hash user))))))
@@ -495,16 +485,16 @@
 (deftest hash-password-on-update-test
   (testing "Setting `:password` with [[t2/update!]] should hash the password, just like [[t2/insert!]]"
     (let [plaintext-password "password-1234"]
-      (t2.with-temp/with-temp [User {user-id :id} {:password plaintext-password}]
-        (let [salt                     (fn [] (t2/select-one-fn :password_salt User :id user-id))
-              hashed-password          (fn [] (t2/select-one-fn :password User :id user-id))
+      (t2.with-temp/with-temp [:model/User {user-id :id} {:password plaintext-password}]
+        (let [salt                     (fn [] (t2/select-one-fn :password_salt :model/User :id user-id))
+              hashed-password          (fn [] (t2/select-one-fn :password :model/User :id user-id))
               original-hashed-password (hashed-password)]
           (testing "sanity check: check that password can be verified"
             (is (u.password/verify-password plaintext-password
                                             (salt)
                                             original-hashed-password)))
           (is (= 1
-                 (t2/update! User user-id {:password plaintext-password})))
+                 (t2/update! :model/User user-id {:password plaintext-password})))
           (let [new-hashed-password (hashed-password)]
             (testing "password should have been hashed"
               (is (not= plaintext-password
@@ -527,14 +517,14 @@
           (setting/set! :last-acknowledged-version new-version)
           (is (= new-version (setting/get :last-acknowledged-version)))
           ;; Ensure it's saved on the user, not globally:
-          (is (= new-version (:last-acknowledged-version (t2/select-one-fn :settings User :id (mt/user->id :rasta)))))
+          (is (= new-version (:last-acknowledged-version (t2/select-one-fn :settings :model/User :id (mt/user->id :rasta)))))
           (finally
             (setting/set! :last-acknowledged-version old-version)))))))
 
 (deftest last-acknowledged-version-is-set-on-create
   (testing "last-acknowledged-version is automatically set for new users"
     (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.47.1")]
-      (t2.with-temp/with-temp [User {user-id :id} {}]
+      (t2.with-temp/with-temp [:model/User {user-id :id} {}]
         (request/with-current-user user-id
           (is (= "v0.47.1" (setting/get :last-acknowledged-version))))))))
 
@@ -542,7 +532,7 @@
   (testing "last-used-native-database-id can be read and set"
     (mt/with-test-user :rasta
       (let [initial-value  (user/last-used-native-database-id)
-            existing-db-id (:id (t2/select-one Database))
+            existing-db-id (:id (t2/select-one :model/Database))
             wrong-db-id    -999]
         (is (nil? initial-value))
         (user/last-used-native-database-id! existing-db-id)
@@ -554,8 +544,8 @@
   (testing "last-used-native-database-id should be a user-local setting"
     (is (=? {:user-local :only}
             (setting/resolve-setting :last-used-native-database-id)))
-    (mt/with-temp [Database {id1 :id} {:name "DB1"}
-                   Database {id2 :id} {:name "DB2"}]
+    (mt/with-temp [:model/Database {id1 :id} {:name "DB1"}
+                   :model/Database {id2 :id} {:name "DB2"}]
       (mt/with-test-user :rasta
         (mt/discard-setting-changes [last-used-native-database-id]
           (user/last-used-native-database-id! id1)
@@ -568,23 +558,23 @@
 
 (deftest common-name-test
   (testing "common_name should be present depending on what is selected"
-    (mt/with-temp [User user {:first_name "John"
-                              :last_name  "Smith"
-                              :email      "john.smith@gmail.com"}]
+    (mt/with-temp [:model/User user {:first_name "John"
+                                     :last_name  "Smith"
+                                     :email      "john.smith@gmail.com"}]
       (is (= "John Smith"
-             (:common_name (t2/select-one [User :first_name :last_name] (:id user)))))
+             (:common_name (t2/select-one [:model/User :first_name :last_name] (:id user)))))
       (is (= "John Smith"
-             (:common_name (t2/select-one User (:id user)))))
-      (is (nil? (:common_name (t2/select-one [User :first_name :email] (:id user)))))
-      (is (nil? (:common_name (t2/select-one [User :email] (:id user)))))))
+             (:common_name (t2/select-one :model/User (:id user)))))
+      (is (nil? (:common_name (t2/select-one [:model/User :first_name :email] (:id user)))))
+      (is (nil? (:common_name (t2/select-one [:model/User :email] (:id user)))))))
 
   (testing "common_name should be present if first_name and last_name are selected but nil and email is also selected"
-    (mt/with-temp [User user {:first_name nil
-                              :last_name  nil
-                              :email      "john.smith@gmail.com"}]
+    (mt/with-temp [:model/User user {:first_name nil
+                                     :last_name  nil
+                                     :email      "john.smith@gmail.com"}]
       (is (= "john.smith@gmail.com"
-             (:common_name (t2/select-one [User :email :first_name :last_name] (:id user)))))
-      (is (nil? (:common_name (t2/select-one [User :first_name :last_name] (:id user))))))))
+             (:common_name (t2/select-one [:model/User :email :first_name :last_name] (:id user)))))
+      (is (nil? (:common_name (t2/select-one [:model/User :first_name :last_name] (:id user))))))))
 
 (deftest block-sso-provisioning-if-instance-not-set-up
   (testing "SSO users should not be created if an admin user has not already been created (metabase-private#201)"

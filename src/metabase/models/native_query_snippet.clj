@@ -12,11 +12,6 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(def NativeQuerySnippet
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all these symbols in our codebase."
-  :model/NativeQuerySnippet)
-
 (methodical/defmethod t2/table-name :model/NativeQuerySnippet [_model] :native_query_snippet)
 
 (doto :model/NativeQuerySnippet
@@ -30,34 +25,34 @@
 
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
   (u/prog1 snippet
-    (collection/check-collection-namespace NativeQuerySnippet (:collection_id snippet))))
+    (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
 
 (t2/define-before-update :model/NativeQuerySnippet
   [{:keys [creator_id id], :as snippet}]
   (u/prog1 (t2/changes snippet)
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? <> :creator_id)
-      (when (not= (:creator_id <>) (t2/select-one-fn :creator_id NativeQuerySnippet :id id))
+      (when (not= (:creator_id <>) (t2/select-one-fn :creator_id :model/NativeQuerySnippet :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet.")))))
-    (collection/check-collection-namespace NativeQuerySnippet (:collection_id snippet))))
+    (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
 
-(defmethod serdes/hash-fields NativeQuerySnippet
+(defmethod serdes/hash-fields :model/NativeQuerySnippet
   [_snippet]
   [:name (serdes/hydrated-hash :collection) :created_at])
 
-(defmethod mi/can-read? NativeQuerySnippet
+(defmethod mi/can-read? :model/NativeQuerySnippet
   [& args]
   (apply snippet.perms/can-read? args))
 
-(defmethod mi/can-write? NativeQuerySnippet
+(defmethod mi/can-write? :model/NativeQuerySnippet
   [& args]
   (apply snippet.perms/can-write? args))
 
-(defmethod mi/can-create? NativeQuerySnippet
+(defmethod mi/can-create? :model/NativeQuerySnippet
   [& args]
   (apply snippet.perms/can-create? args))
 
-(defmethod mi/can-update? NativeQuerySnippet
+(defmethod mi/can-update? :model/NativeQuerySnippet
   [& args]
   (apply snippet.perms/can-update? args))
 
@@ -77,7 +72,7 @@
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serdes/extract-query "NativeQuerySnippet" [_ opts]
-  (serdes/extract-query-collections NativeQuerySnippet opts))
+  (serdes/extract-query-collections :model/NativeQuerySnippet opts))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy      [:archived :content :description :entity_id :name]

@@ -3,7 +3,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models :refer [Card]]
    [metabase.query-analysis :as query-analysis]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -18,23 +17,23 @@
                               (lib/aggregate (lib/distinct venues-name)))]
 
     (mt/with-temporary-setting-values [query-analysis-enabled true]
-      (mt/with-temp [Card c1       {:query_type    "native"
-                                    :dataset_query (mt/native-query {:query "SELECT id FROM venues"})}
-                     Card c2       {:query_type    "native"
-                                    :dataset_query (mt/native-query {:query         "SELECT id FROM venues WHERE name = {{ name }}"
-                                                                     :template-tags {"name" {:id           "_name_"
-                                                                                             :type         :text
-                                                                                             :display-name "name"
-                                                                                             :default      "qwe"}}})}
-                     Card c3       {:query_type    "query"
-                                    :dataset_query (mt/mbql-query venues {:aggregation [[:distinct $name]]})}
-                     Card c4       {:query_type    "query"
-                                    :dataset_query mlv2-query}
-                     Card archived {:archived      true
-                                    :query_type    "native"
-                                    :dataset_query (mt/native-query {:query "SELECT id FROM venues"})}
-                     Card invalid  {:query_type "native"
-                                    :dataset_query (mt/native-query {:query "SELECT boom, FROM"})}]
+      (mt/with-temp [:model/Card c1       {:query_type    "native"
+                                           :dataset_query (mt/native-query {:query "SELECT id FROM venues"})}
+                     :model/Card c2       {:query_type    "native"
+                                           :dataset_query (mt/native-query {:query         "SELECT id FROM venues WHERE name = {{ name }}"
+                                                                            :template-tags {"name" {:id           "_name_"
+                                                                                                    :type         :text
+                                                                                                    :display-name "name"
+                                                                                                    :default      "qwe"}}})}
+                     :model/Card c3       {:query_type    "query"
+                                           :dataset_query (mt/mbql-query venues {:aggregation [[:distinct $name]]})}
+                     :model/Card c4       {:query_type    "query"
+                                           :dataset_query mlv2-query}
+                     :model/Card archived {:archived      true
+                                           :query_type    "native"
+                                           :dataset_query (mt/native-query {:query "SELECT id FROM venues"})}
+                     :model/Card invalid  {:query_type "native"
+                                           :dataset_query (mt/native-query {:query "SELECT boom, FROM"})}]
 
         ;; Make sure there is no existing analysis for the relevant cards
         (t2/delete! :model/QueryAnalysis :card_id [:in (map :id [c1 c2 c3 c4 archived invalid])])

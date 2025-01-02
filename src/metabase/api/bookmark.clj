@@ -7,12 +7,7 @@
   (:require
    [compojure.core :refer [DELETE GET POST]]
    [metabase.api.common :as api]
-   [metabase.models.bookmark
-    :as bookmark
-    :refer [CardBookmark CollectionBookmark DashboardBookmark]]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
-   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.bookmark :as bookmark]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -28,9 +23,9 @@
 
 (def ^:private lookup
   "Lookup map from model as a string to [model bookmark-model item-id-key]."
-  {"card"       [Card       CardBookmark       :card_id]
-   "dashboard"  [Dashboard  DashboardBookmark  :dashboard_id]
-   "collection" [Collection CollectionBookmark :collection_id]})
+  {"card"       [:model/Card       :model/CardBookmark       :card_id]
+   "dashboard"  [:model/Dashboard  :model/DashboardBookmark  :dashboard_id]
+   "collection" [:model/Collection :model/CollectionBookmark :collection_id]})
 
 (api/defendpoint GET "/"
   "Fetch all bookmarks for the user"

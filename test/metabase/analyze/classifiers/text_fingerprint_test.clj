@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analyze.classifiers.text-fingerprint :as classifiers.text-fingerprint]
-   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]))
 
 (def ^:private ^{:arglists '([field])} can-edit?
@@ -38,7 +37,7 @@
 (deftest ^:parallel infer-semantic-type-test
   (let [fingerprint       {:type {:type/Text {:percent-json threshold}}}
         state-fingerprint {:type {:type/Text {:percent-state lower-threshold}}}
-        field             (mi/instance Field {:name "field" :base_type :type/Text})]
+        field             (mi/instance :model/Field {:name "field" :base_type :type/Text})]
     (testing "can infer a semantic type from text fingerprints"
       (is (= :type/SerializedJSON
              (:semantic_type (classifiers.text-fingerprint/infer-semantic-type field fingerprint))))

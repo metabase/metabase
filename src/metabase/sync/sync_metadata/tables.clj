@@ -5,10 +5,8 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models.database :refer [Database]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.table :refer [Table]]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
@@ -89,7 +87,7 @@
   [database    :- i/DatabaseInstance
    db-metadata :- i/DatabaseMetadata]
   (log/infof "Found new version for DB: %s" (:version db-metadata))
-  (t2/update! Database (u/the-id database)
+  (t2/update! :model/Database (u/the-id database)
               {:details
                (assoc (:details database) :version (:version db-metadata))}))
 
@@ -104,7 +102,7 @@
    Throws an exception if there is already a table with the same name, schema and database ID."
   [database table]
   (t2/insert-returning-instance!
-   Table
+   :model/Table
    (merge (cruft-dependent-columns (:name table))
           {:active                  true
            :db_id                   (:id database)
@@ -117,13 +115,13 @@
 (defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if it already exists."
   [database {schema :schema table-name :name :as table}]
-  (if-let [existing-id (t2/select-one-pk Table
+  (if-let [existing-id (t2/select-one-pk :model/Table
                                          :db_id (u/the-id database)
                                          :schema schema
                                          :name table-name
                                          :active false)]
     ;; if the table already exists but is marked *inactive*, mark it as *active*
-    (t2/update! Table existing-id (assoc (cruft-dependent-columns (:name table)) :active true))
+    (t2/update! :model/Table existing-id (assoc (cruft-dependent-columns (:name table)) :active true))
     ;; otherwise create a new Table
     (create-table! database table)))
 
@@ -135,7 +133,7 @@
    new-tables :- [:set i/DatabaseMetadataTable]]
   (doseq [table new-tables]
     (log/info "Found new table:"
-              (sync-util/name-for-logging (mi/instance Table table))))
+              (sync-util/name-for-logging (mi/instance :model/Table table))))
   (doseq [table new-tables]
     (create-or-reactivate-table! database table)))
 
@@ -147,12 +145,12 @@
                         [:schema [:maybe ::lib.schema.common/non-blank-string]]]]]
   (log/info "Marking tables as inactive:"
             (for [table old-tables]
-              (sync-util/name-for-logging (mi/instance Table table))))
+              (sync-util/name-for-logging (mi/instance :model/Table table))))
   (doseq [{schema :schema table-name :name :as _table} old-tables]
-    (t2/update! Table {:db_id  (u/the-id database)
-                       :schema schema
-                       :name   table-name
-                       :active true}
+    (t2/update! :model/Table {:db_id  (u/the-id database)
+                              :schema schema
+                              :name   table-name
+                              :active true}
                 {:active false})))
 
 (mu/defn- update-table-metadata-if-needed!

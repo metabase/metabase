@@ -6,7 +6,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.models :refer [Field Table]]
    [metabase.query-processor :as qp]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata.fields :as sync-fields]
@@ -76,8 +75,8 @@
                      (fn [database]
                        (set
                         (map (partial into {})
-                             (t2/select [Field :id :name :active]
-                                        :table_id [:in (t2/select-pks-set Table :db_id (u/the-id database))])))))]
+                             (t2/select [:model/Field :id :name :active]
+                                        :table_id [:in (t2/select-pks-set :model/Table :db_id (u/the-id database))])))))]
       (is (= {:before-sync #{{:name "species",      :active true}
                              {:name "example_name", :active true}}
               :after-sync #{{:name "species",      :active true}
@@ -100,7 +99,7 @@
               "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
               (fn [database]
                 (t2/select-fn->fn :name (partial into {}) :model/Field
-                                  :table_id [:in (t2/select-pks-set Table :db_id (u/the-id database))])))))))
+                                  :table_id [:in (t2/select-pks-set :model/Table :db_id (u/the-id database))])))))))
 
 (deftest mark-inactive-remove-fks-test
   (testing "when a column is dropped from the DB, sync should wipe foreign key targets and their semantic type"
@@ -112,13 +111,13 @@
                               "(3, 'Colin Fowl');")]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
       (sync/sync-database! (mt/db))
-      (let [tables          (t2/select-pks-set Table :db_id (u/the-id (mt/db)))
+      (let [tables          (t2/select-pks-set :model/Table :db_id (u/the-id (mt/db)))
             get-field-to-update (fn []
                                   (t2/select-one
                                    :model/Field
                                    :name "example_bird_name"
                                    :table_id [:in tables]))
-            field-to-drop   (t2/select-one Field :name "example_name" :table_id [:in tables])
+            field-to-drop   (t2/select-one :model/Field :name "example_name" :table_id [:in tables])
             field-to-update (get-field-to-update)]
         (t2/update! :model/Field (u/the-id field-to-update) {:semantic_type      :type/FK
                                                              :fk_target_field_id (u/the-id field-to-drop)})
@@ -143,7 +142,7 @@
            (with-test-db-before-and-after-altering
              "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
              (fn [database]
-               (let [table (t2/hydrate (t2/select-one Table :db_id (u/the-id database)) :fields)]
+               (let [table (t2/hydrate (t2/select-one :model/Table :db_id (u/the-id database)) :fields)]
                  (set (map :name (:fields table))))))))))
 
 (deftest dont-splice-inactive-columns-into-queries-test
@@ -165,7 +164,7 @@
              (fn [database]
                (-> (qp/process-query {:database (u/the-id database)
                                       :type     :query
-                                      :query    {:source-table (t2/select-one-pk Table
+                                      :query    {:source-table (t2/select-one-pk :model/Table
                                                                                  :db_id (u/the-id database), :name "birds")}})
                    :data
                    :native_form
@@ -178,25 +177,25 @@
 (deftest pk-sync-test
   (testing "Test PK Syncing"
     (mt/with-temp-copy-of-db
-      (letfn [(get-semantic-type [] (t2/select-one-fn :semantic_type Field, :id (mt/id :venues :id)))]
+      (letfn [(get-semantic-type [] (t2/select-one-fn :semantic_type :model/Field, :id (mt/id :venues :id)))]
         (testing "Semantic type should be :id to begin with"
           (is (= :type/PK
                  (get-semantic-type))))
         (testing "Clear out the semantic type"
-          (t2/update! Field (mt/id :venues :id) {:semantic_type nil})
+          (t2/update! :model/Field (mt/id :venues :id) {:semantic_type nil})
           (is (= nil
                  (get-semantic-type))))
         (testing "Calling sync-table! should set the semantic type again"
-          (sync/sync-table! (t2/select-one Table :id (mt/id :venues)))
+          (sync/sync-table! (t2/select-one :model/Table :id (mt/id :venues)))
           (is (= :type/PK
                  (get-semantic-type))))
         (testing "sync-table! should *not* change the semantic type of fields that are marked with a different type"
-          (t2/update! Field (mt/id :venues :id) {:semantic_type :type/Latitude})
+          (t2/update! :model/Field (mt/id :venues :id) {:semantic_type :type/Latitude})
           (is (= :type/Latitude
                  (get-semantic-type))))
         (testing "Make sure that sync-table runs set-table-pks-if-needed!"
-          (t2/update! Field (mt/id :venues :id) {:semantic_type nil})
-          (sync/sync-table! (t2/select-one Table :id (mt/id :venues)))
+          (t2/update! :model/Field (mt/id :venues :id) {:semantic_type nil})
+          (sync/sync-table! (t2/select-one :model/Table :id (mt/id :venues)))
           (is (= :type/PK
                  (get-semantic-type))))))))
 
@@ -204,13 +203,13 @@
   (testing "Check that Foreign Key relationships were created on sync as we expect"
     (testing "checkins.venue_id"
       (is (= (mt/id :venues :id)
-             (t2/select-one-fn :fk_target_field_id Field, :id (mt/id :checkins :venue_id)))))
+             (t2/select-one-fn :fk_target_field_id :model/Field, :id (mt/id :checkins :venue_id)))))
     (testing "checkins.user_id"
       (is (= (mt/id :users :id)
-             (t2/select-one-fn :fk_target_field_id Field, :id (mt/id :checkins :user_id)))))
+             (t2/select-one-fn :fk_target_field_id :model/Field, :id (mt/id :checkins :user_id)))))
     (testing "venues.category_id"
       (is (= (mt/id :categories :id)
-             (t2/select-one-fn :fk_target_field_id Field, :id (mt/id :venues :category_id)))))))
+             (t2/select-one-fn :fk_target_field_id :model/Field, :id (mt/id :venues :category_id)))))))
 
 (deftest update-fk-relationships-test
   (testing "Check that Foreign Key relationships can be updated"
@@ -258,19 +257,19 @@
       (letfn [(state []
                 (let [{:keys                  [step-info]
                        {:keys [task_details]} :task-history}     (sync.util-test/sync-database! "sync-fks" (mt/db))
-                      {:keys [semantic_type fk_target_field_id]} (t2/select-one [Field :semantic_type :fk_target_field_id]
+                      {:keys [semantic_type fk_target_field_id]} (t2/select-one [:model/Field :semantic_type :fk_target_field_id]
                                                                                 :id (mt/id :checkins :user_id))]
                   {:step-info         (sync.util-test/only-step-keys step-info)
                    :task-details      task_details
                    :semantic-type     semantic_type
-                   :fk-target-exists? (t2/exists? Field :id fk_target_field_id)}))]
+                   :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id)}))]
         (testing "before"
           (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0}
                   :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
                   :semantic-type     :type/FK
                   :fk-target-exists? true}
                  (state))))
-        (t2/update! Field (mt/id :checkins :user_id) {:semantic_type nil, :fk_target_field_id nil})
+        (t2/update! :model/Field (mt/id :checkins :user_id) {:semantic_type nil, :fk_target_field_id nil})
         (testing "after"
           (is (= {:step-info         {:total-fks 6, :updated-fks 1, :total-failed 0}
                   :task-details      {:total-fks 6, :updated-fks 1, :total-failed 0}
@@ -332,7 +331,7 @@
                   (is (= [{:name "continent_id", :semantic_type :type/FK, :fk_target_field_id (u/the-id continent-id-field)}
                           {:name "id",           :semantic_type :type/PK, :fk_target_field_id nil}
                           {:name "name",         :semantic_type nil,      :fk_target_field_id nil}]
-                         (->> (t2/select [Field
+                         (->> (t2/select [:model/Field
                                           [:%lower.name :name]
                                           :semantic_type
                                           :fk_target_field_id]

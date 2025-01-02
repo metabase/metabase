@@ -6,7 +6,6 @@
    [metabase.connection-pool :as connection-pool]
    [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.db.data-source :as mdb.data-source]
-   [metabase.models :refer [Database]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -46,7 +45,7 @@
   it is an optimization. This simulates that and reduces the potential for flakes"
   []
   (dotimes [_ 5]
-    (t2/count Database)))
+    (t2/count :model/Database)))
 
 (deftest DbActivityTracker-test
   (testing "connection customizer is registered"

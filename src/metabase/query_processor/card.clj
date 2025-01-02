@@ -12,7 +12,6 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.cache-config :as cache-config]
-   [metabase.models.card :refer [Card]]
    [metabase.models.query :as query]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
@@ -146,7 +145,7 @@
   parameters to the API request must be allowed for this type (i.e. `:string/=` is allowed for a `:string` parameter,
   but `:number/=` is not)."
   [card-id]
-  (let [query (api/check-404 (t2/select-one-fn :dataset_query Card :id card-id))]
+  (let [query (api/check-404 (t2/select-one-fn :dataset_query :model/Card :id card-id))]
     (into
      {}
      (comp
@@ -266,9 +265,9 @@
              ;; passed to the QP
              make-run    process-query-for-card-default-run-fn}}]
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
-  (let [card       (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :collection_id
+  (let [card       (api/read-check (t2/select-one [:model/Card :id :name :dataset_query :database_id :collection_id
                                                    :type :result_metadata :visualization_settings :display
-                                                   :cache_invalidated_at]
+                                                   :cache_invalidated_at :entity_id :created_at]
                                                   :id card-id))
         dash-viz   (when (and (not= context :question)
                               dashcard-id)

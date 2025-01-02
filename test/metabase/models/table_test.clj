@@ -3,10 +3,9 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.database :refer [Database]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
-   [metabase.models.table :as table :refer [Table]]
+   [metabase.models.table :as table]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
@@ -70,14 +69,14 @@
                          "my\\/schema"
                          "my\\\\/schema"]]
       (testing (format "Should be able to create/delete Table with schema name %s" (pr-str schema-name))
-        (t2.with-temp/with-temp [Table {table-id :id} {:schema schema-name}]
+        (t2.with-temp/with-temp [:model/Table {table-id :id} {:schema schema-name}]
           (is (= schema-name
-                 (t2/select-one-fn :schema Table :id table-id))))))))
+                 (t2/select-one-fn :schema :model/Table :id table-id))))))))
 
 (deftest identity-hash-test
   (testing "Table hashes are composed of the schema name, table name and the database's identity-hash"
-    (mt/with-temp [Database db    {:name "field-db" :engine :h2}
-                   Table    table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
+    (mt/with-temp [:model/Database db    {:name "field-db" :engine :h2}
+                   :model/Table    table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
       (let [db-hash (serdes/identity-hash db)]
         (is (= "0395fe49"
                (serdes/raw-hash ["PUBLIC" "widget" db-hash])

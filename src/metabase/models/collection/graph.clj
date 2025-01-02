@@ -7,12 +7,10 @@
    [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.db.query :as mdb.query]
-   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.collection :as collection]
    [metabase.models.collection-permission-graph-revision :as c-perm-revision]
-   [metabase.models.permissions :as perms :refer [Permissions]]
-   [metabase.models.permissions-group
-    :as perms-group
-    :refer [PermissionsGroup]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
@@ -44,7 +42,7 @@
 ;;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
 (defn- group-id->permissions-set []
-  (into {} (for [[group-id perms] (group-by :group_id (t2/select Permissions))]
+  (into {} (for [[group-id perms] (group-by :group_id (t2/select :model/Permissions))]
              {group-id (set (map :object perms))})))
 
 (mu/defn- perms-type-for-collection :- CollectionPermissions
@@ -66,7 +64,7 @@
   "Return a set of IDs of all Collections that are neither Personal Collections nor descendants of Personal
   Collections (i.e., things that you can set Permissions for, and that should go in the graph.)"
   [collection-namespace :- [:maybe ms/KeywordOrString]]
-  (let [personal-collection-ids (t2/select-pks-set Collection :personal_owner_id [:not= nil])
+  (let [personal-collection-ids (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])
         honeysql-form           {:select [[:id :id]]
                                  :from   [:collection]
                                  :where  (into [:and
@@ -87,7 +85,7 @@
                            (fn [group-id]
                              [group-id
                               (group-permissions-graph collection-namespace (group-id->perms group-id) collection-ids)])
-                           (t2/select-pks-set PermissionsGroup))))))
+                           (t2/select-pks-set :model/PermissionsGroup))))))
 
 (defn- collection-permission-graph
   "Return the permission graph for the collections with id in `collection-ids` and the root collection."

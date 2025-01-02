@@ -4,7 +4,7 @@
    [clj-ldap.client :as ldap]
    [clojure.string :as str]
    [metabase.integrations.common :as integrations.common]
-   [metabase.models.user :as user :refer [User]]
+   [metabase.models.user :as user]
    [metabase.public-settings.premium-features
     :refer [defenterprise-schema]]
    [metabase.util :as u]
@@ -147,12 +147,12 @@
       flatten
       set))
 
-(defenterprise-schema fetch-or-create-user! :- (ms/InstanceOf User)
+(defenterprise-schema fetch-or-create-user! :- (ms/InstanceOf :model/User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   metabase-enterprise.enhancements.integrations.ldap
   [{:keys [first-name last-name email groups]} :- UserInfo
    {:keys [sync-groups?], :as settings}        :- LDAPSettings]
-  (let [user     (t2/select-one [User :id :last_login :first_name :last_name :is_active]
+  (let [user     (t2/select-one [:model/User :id :last_login :first_name :last_name :is_active]
                                 :%lower.email (u/lower-case-en email))
         new-user (if user
                    (let [old-first-name (:first_name user)
@@ -162,8 +162,8 @@
                                          (when (not= last-name old-last-name) {:last_name last-name}))]
                      (if (seq user-changes)
                        (do
-                         (t2/update! User (:id user) user-changes)
-                         (t2/select-one [User :id :last_login :is_active] :id (:id user))) ; Reload updated user
+                         (t2/update! :model/User (:id user) user-changes)
+                         (t2/select-one [:model/User :id :last_login :is_active] :id (:id user))) ; Reload updated user
                        user))
                    (-> (user/create-new-ldap-auth-user! {:first_name first-name
                                                          :last_name  last-name

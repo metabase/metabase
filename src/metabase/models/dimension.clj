@@ -13,11 +13,6 @@
 ;;; :internal
 ;;; :external
 
-(def Dimension
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/Dimension)
-
 (methodical/defmethod t2/table-name :model/Dimension [_model] :dimension)
 
 (doto :model/Dimension

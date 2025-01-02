@@ -1,7 +1,6 @@
 (ns metabase.models.action
   (:require
    [medley.core :as m]
-   [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.query :as query]
    [metabase.models.serialization :as serdes]
@@ -18,13 +17,6 @@
 (methodical/defmethod t2/table-name :model/QueryAction [_model] :query_action)
 (methodical/defmethod t2/table-name :model/HTTPAction [_model] :http_action)
 (methodical/defmethod t2/table-name :model/ImplicitAction [_model] :implicit_action)
-
-;; Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-;; We'll keep this till we replace all the Actions symbol in our codebase.
-(def Action         "Action model"         :model/Action)
-(def QueryAction    "QueryAction model"    :model/QueryAction)
-(def HTTPAction     "HTTPAction model"     :model/HTTPAction)
-(def ImplicitAction "ImplicitAction model" :model/ImplicitAction)
 
 (def ^:private action-sub-models [:model/QueryAction :model/HTTPAction :model/ImplicitAction])
 
@@ -82,7 +74,7 @@
 
 (defn- check-model-is-not-a-saved-question
   [model-id]
-  (when-not (= (t2/select-one-fn :type [Card :type] :id model-id) :model)
+  (when-not (= (t2/select-one-fn :type [:model/Card :type] :id model-id) :model)
     (throw (ex-info (tru "Actions must be made with models, not cards.")
                     {:status-code 400}))))
 
@@ -100,7 +92,7 @@
 
 (defmethod mi/perms-objects-set :model/Action
   [instance read-or-write]
-  (mi/perms-objects-set (t2/select-one Card :id (:model_id instance)) read-or-write))
+  (mi/perms-objects-set (t2/select-one :model/Card :id (:model_id instance)) read-or-write))
 
 (def action-columns
   "The columns that are common to all Action types."
@@ -122,7 +114,7 @@
   "Inserts an Action and related type table. Returns the action id."
   [action-data]
   (t2/with-transaction [_conn]
-    (let [action (first (t2/insert-returning-instances! Action (select-keys action-data action-columns)))
+    (let [action (first (t2/insert-returning-instances! :model/Action (select-keys action-data action-columns)))
           model  (type->model (:type action))]
       (t2/query-one {:insert-into (t2/table-name model)
                      :values [(-> (apply dissoc action-data action-columns)
@@ -141,7 +133,7 @@
    Deletes the old type table row if the type has changed."
   [{:keys [id] :as action} existing-action]
   (when-let [action-row (not-empty (select-keys action action-columns))]
-    (t2/update! Action id action-row))
+    (t2/update! :model/Action id action-row))
   (when-let [type-row (not-empty (cond-> (apply dissoc action :id action-columns)
                                    (= (or (:type action) (:type existing-action))
                                       :implicit)
@@ -156,14 +148,14 @@
 
 (defn- normalize-query-actions [actions]
   (when (seq actions)
-    (let [query-actions (t2/select QueryAction :action_id [:in (map :id actions)])
+    (let [query-actions (t2/select :model/QueryAction :action_id [:in (map :id actions)])
           action-id->query-actions (m/index-by :action_id query-actions)]
       (for [action actions]
         (merge action (-> action :id action-id->query-actions (dissoc :action_id)))))))
 
 (defn- normalize-http-actions [actions]
   (when (seq actions)
-    (let [http-actions (t2/select HTTPAction :action_id [:in (map :id actions)])
+    (let [http-actions (t2/select :model/HTTPAction :action_id [:in (map :id actions)])
           http-actions-by-action-id (m/index-by :action_id http-actions)]
       (map (fn [action]
              (let [http-action (get http-actions-by-action-id (:id action))]
@@ -176,7 +168,7 @@
 
 (defn- normalize-implicit-actions [actions]
   (when (seq actions)
-    (let [implicit-actions (t2/select ImplicitAction :action_id [:in (map :id actions)])
+    (let [implicit-actions (t2/select :model/ImplicitAction :action_id [:in (map :id actions)])
           implicit-actions-by-action-id (m/index-by :action_id implicit-actions)]
       (map (fn [action]
              (let [implicit-action (get implicit-actions-by-action-id (:id action))]
@@ -189,7 +181,7 @@
    for implicit actions, use [[select-action]] instead.
    `options` is passed to `t2/select` `& options` arg."
   [& options]
-  (let [{:keys [query http implicit]} (group-by :type (apply t2/select Action options))
+  (let [{:keys [query http implicit]} (group-by :type (apply t2/select :model/Action options))
         query-actions                 (normalize-query-actions query)
         http-actions                  (normalize-http-actions http)
         implicit-actions              (normalize-implicit-actions implicit)]

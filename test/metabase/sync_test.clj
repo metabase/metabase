@@ -7,9 +7,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.table :refer [Table]]
    [metabase.sync :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
@@ -108,7 +105,7 @@
 
 (defn- table-details [table]
   (into {} (-> (dissoc table :db :pk_field :field_values)
-               (assoc :fields (for [field (t2/select Field, :table_id (:id table), {:order-by [:name]})]
+               (assoc :fields (for [field (t2/select :model/Field, :table_id (:id table), {:order-by [:name]})]
                                 (into {} (-> field
                                              (update :fingerprint map?)
                                              (update :fingerprint_version (complement zero?))))))
@@ -116,7 +113,7 @@
 
 (defn- table-defaults []
   (merge
-   (mt/object-defaults Table)
+   (mt/object-defaults :model/Table)
    {:created_at  true
     :db_id       true
     :entity_type :entity/GenericTable
@@ -125,7 +122,7 @@
 
 (defn- field-defaults []
   (merge
-   (mt/object-defaults Field)
+   (mt/object-defaults :model/Field)
    {:created_at          true
     :fingerprint         false
     :fingerprint_version false
@@ -233,12 +230,12 @@
     (testing (str "[[sync/sync-database!]] works if `driver/supports-schemas?` returns " supports-schemas?)
       (binding [*supports-schemas?*                      supports-schemas?
                 sync-util/*log-exceptions-and-continue?* false]
-        (mt/with-temp [Database db {:engine ::sync-test}]
+        (mt/with-temp [:model/Database db {:engine ::sync-test}]
           (let [results (sync/sync-database! db)]
             (testing "Returns results from sync-database step"
               (is (= ["metadata" "analyze" "field-values"]
                      (map :name results)))))
-          (let [[movie studio] (mapv table-details (t2/select Table :db_id (u/the-id db) {:order-by [:name]}))]
+          (let [[movie studio] (mapv table-details (t2/select :model/Table :db_id (u/the-id db) {:order-by [:name]}))]
             (testing "Tables and Fields are synced"
               (is (= (expected-movie-table) movie))
               (is (= (expected-studio-table) studio)))))))))
@@ -248,18 +245,18 @@
     (testing (str "[[sync/sync-table!]] works if `driver/supports-schemas? returns " supports-schemas?)
       (binding [*supports-schemas?*                      supports-schemas?
                 sync-util/*log-exceptions-and-continue?* false]
-        (mt/with-temp [Database db     {:engine ::sync-test}
-                       Table    movie  {:name        "movie"
-                                        :schema      (when *supports-schemas?* "default")
-                                        :db_id       (u/the-id db)
-                                        :description nil}
-                       Table    studio {:name        "studio"
-                                        :schema      (when *supports-schemas?* "public")
-                                        :db_id       (u/the-id db)
-                                        :description ""}]
+        (mt/with-temp [:model/Database db     {:engine ::sync-test}
+                       :model/Table    movie  {:name        "movie"
+                                               :schema      (when *supports-schemas?* "default")
+                                               :db_id       (u/the-id db)
+                                               :description nil}
+                       :model/Table    studio {:name        "studio"
+                                               :schema      (when *supports-schemas?* "public")
+                                               :db_id       (u/the-id db)
+                                               :description ""}]
           (sync/sync-table! studio)
           (sync/sync-table! movie)
-          (let [[movie studio] (mapv table-details (t2/select Table :db_id (u/the-id db) {:order-by [:name]}))]
+          (let [[movie studio] (mapv table-details (t2/select :model/Table :db_id (u/the-id db) {:order-by [:name]}))]
             (testing "Tables and Fields are synced"
               (is (= (expected-movie-table) movie))
               (is (= (expected-studio-table) studio)))))))))
@@ -273,7 +270,7 @@
 
 (deftest sync-database!-error-test
   (testing "Errors in sync-database! should be caught and handled correctly (#45848)"
-    (mt/with-temp [Database db {:engine ::sync-database-error-test}]
+    (mt/with-temp [:model/Database db {:engine ::sync-database-error-test}]
       (binding [sync-util/*log-exceptions-and-continue?* true]
         (let [results (sync/sync-database! db)]
           (testing "Skips the metadata step"

@@ -19,10 +19,8 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
-   [metabase.models.card :refer [Card]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -63,7 +61,7 @@
   ;; it might take a fraction of a second for the QueryExecution to show up, it's saved asynchronously. So wait a bit
   ;; and retry if it's not there yet.
   (letfn [(thunk []
-            (t2/select-one QueryExecution
+            (t2/select-one :model/QueryExecution
                            :hash (qp.util/query-hash query)
                            {:order-by [[:started_at :desc]]}))]
     (loop [retries 3]
@@ -127,7 +125,7 @@
 
 (deftest failure-test
   ;; clear out recent query executions!
-  (t2/delete! QueryExecution)
+  (t2/delete! :model/QueryExecution)
   (testing "POST /api/dataset"
     (testing "\nEven if a query fails we still expect a 202 response from the API"
       ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
@@ -207,9 +205,9 @@
 
 (deftest check-that-we-can-export-the-results-of-a-nested-query
   (mt/with-temp-copy-of-db
-    (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
-                                                        :type     :native
-                                                        :native   {:query "SELECT * FROM USERS;"}}}]
+    (t2.with-temp/with-temp [:model/Card card {:dataset_query {:database (mt/id)
+                                                               :type     :native
+                                                               :native   {:query "SELECT * FROM USERS;"}}}]
       (letfn [(do-test []
                 (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
                                                    :query (json/encode
@@ -260,11 +258,11 @@
           ;; Let metadata-provider-with-cards-with-metadata-for-queries calculate the result-metadata.
           metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])]
       (t2.with-temp/with-temp
-        [Card card (assoc {:dataset_query native-query}
-                          :result_metadata
-                          (-> (lib.metadata.protocols/metadatas metadata-provider :metadata/card [1])
-                              first
-                              :result-metadata))]
+        [:model/Card card (assoc {:dataset_query native-query}
+                                 :result_metadata
+                                 (-> (lib.metadata.protocols/metadatas metadata-provider :metadata/card [1])
+                                     first
+                                     :result-metadata))]
         (let [card-query {:database (mt/id)
                           :type     "query"
                           :query    {:source-table (str "card__" (u/the-id card))}}]
@@ -580,8 +578,8 @@
                                             {:parameter parameter})))))))
 
 (deftest ^:parallel parameter-values-test-2
-  (mt/with-temp [Card {card-id :id} {:database_id (mt/id)
-                                     :dataset_query (mt/mbql-query products)}]
+  (mt/with-temp [:model/Card {card-id :id} {:database_id (mt/id)
+                                            :dataset_query (mt/mbql-query products)}]
     (let [parameter {:values_query_type "list",
                      :values_source_type "card",
                      :values_source_config {:card_id card-id,
@@ -651,7 +649,7 @@
                                :has_more_values false}]
       (with-redefs [api.dataset/parameter-field-values (constantly mock-default-result)]
         (testing "if value-field not found in source card"
-          (t2.with-temp/with-temp [Card {source-card-id :id}]
+          (t2.with-temp/with-temp [:model/Card {source-card-id :id}]
             (is (= mock-default-result
                    (mt/user-http-request :crowberto :post 200 "dataset/parameter/values"
                                          {:parameter  {:values_source_type   "card"
@@ -662,7 +660,7 @@
                                                        :id                   "abc"}})))))
 
         (testing "if value-field not found in source card"
-          (t2.with-temp/with-temp [Card {source-card-id :id} {:archived true}]
+          (t2.with-temp/with-temp [:model/Card {source-card-id :id} {:archived true}]
             (is (= mock-default-result
                    (mt/user-http-request :crowberto :post 200 "dataset/parameter/values"
                                          {:parameter  {:values_source_type   "card"
@@ -759,9 +757,9 @@
 (deftest dataset-query-metadata-with-archived-and-deleted-source-card-test
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp
-      [Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
-       Card {card-id-2 :id} {:dataset_query {:type  :query
-                                             :query {:source-table (str "card__" card-id-1)}}}]
+      [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
+       :model/Card {card-id-2 :id} {:dataset_query {:type  :query
+                                                    :query {:source-table (str "card__" card-id-1)}}}]
       (letfn [(query-metadata [expected-status card-id]
                 (-> (mt/user-http-request :crowberto :post expected-status
                                           "dataset/query_metadata"

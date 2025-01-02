@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.cache.config :as cache.config]
-   [metabase.models :refer [Card Database PersistedInfo TaskHistory]]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -16,22 +15,22 @@
 (defn do-with-persist-models [f]
   (let [two-hours-ago (t/minus (t/local-date-time) (t/hours 2))]
     (mt/with-temp
-      [Database db {:settings {:persist-models-enabled true}}
-       Card     creating  {:type :model, :database_id (u/the-id db)}
-       Card     deletable {:type :model, :database_id (u/the-id db)}
-       Card     off       {:type :model, :database_id (u/the-id db)}
-       PersistedInfo pcreating  {:card_id (u/the-id creating)
-                                 :database_id (u/the-id db)
-                                 :state "creating"
-                                 :state_change_at two-hours-ago}
-       PersistedInfo pdeletable {:card_id (u/the-id deletable)
-                                 :database_id (u/the-id db)
-                                 :state "deletable"
-                                 :state_change_at two-hours-ago}
-       PersistedInfo poff       {:card_id (u/the-id off)
-                                 :database_id (u/the-id db)
-                                 :state "off"
-                                 :state_change_at two-hours-ago}]
+      [:model/Database db {:settings {:persist-models-enabled true}}
+       :model/Card     creating  {:type :model, :database_id (u/the-id db)}
+       :model/Card     deletable {:type :model, :database_id (u/the-id db)}
+       :model/Card     off       {:type :model, :database_id (u/the-id db)}
+       :model/PersistedInfo pcreating  {:card_id (u/the-id creating)
+                                        :database_id (u/the-id db)
+                                        :state "creating"
+                                        :state_change_at two-hours-ago}
+       :model/PersistedInfo pdeletable {:card_id (u/the-id deletable)
+                                        :database_id (u/the-id db)
+                                        :state "deletable"
+                                        :state_change_at two-hours-ago}
+       :model/PersistedInfo poff       {:card_id (u/the-id off)
+                                        :database_id (u/the-id db)
+                                        :state "off"
+                                        :state_change_at two-hours-ago}]
       (f {:db         db
           :creating   creating
           :deletable  deletable
@@ -56,12 +55,12 @@
   ;; behave this way. Don't know how to exercise both in the same jvm, but will let CI sort it out.
   (let [two-hours-ago (t/minus (t/local-date-time) (t/hours 2))]
     (mt/with-temp
-      [Database db {:settings {:persist-models-enabled true}}
-       Card          refreshing  {:type :model, :database_id (u/the-id db)}
-       PersistedInfo prefreshing {:card_id         (u/the-id refreshing)
-                                  :database_id     (u/the-id db)
-                                  :state           "refreshing"
-                                  :state_change_at two-hours-ago}]
+      [:model/Database db {:settings {:persist-models-enabled true}}
+       :model/Card          refreshing  {:type :model, :database_id (u/the-id db)}
+       :model/PersistedInfo prefreshing {:card_id         (u/the-id refreshing)
+                                         :database_id     (u/the-id db)
+                                         :state           "refreshing"
+                                         :state_change_at two-hours-ago}]
       (let [card-ids       (atom #{})
             test-refresher (reify task.persist-refresh/Refresher
                              (refresh! [_ _database _definition card]
@@ -78,7 +77,7 @@
           (is (= "persisted" (current-state!))))))))
 
 (deftest model-caching-granular-controls-test
-  (mt/with-model-cleanup [TaskHistory]
+  (mt/with-model-cleanup [:model/TaskHistory]
     (testing "with :cache-granular-controls enabled, don't refresh any tables in an 'off' or 'deletable' state"
       (mt/with-premium-features #{:cache-granular-controls}
         (with-temp-persist-models [db creating poff pdeletable]
@@ -94,7 +93,7 @@
                 (is (= #{(u/the-id creating)} @card-ids)))
               (is (partial= {:task         "persist-refresh"
                              :task_details {:success 1 :error 0}}
-                            (t2/select-one TaskHistory
+                            (t2/select-one :model/TaskHistory
                                            :db_id (u/the-id db)
                                            :task "persist-refresh"
                                            {:order-by [[:id :desc]]})))
@@ -113,7 +112,7 @@
                     (is (not (deleted? poff)))))))))))))
 
 (deftest model-caching-granular-controls-test-2
-  (mt/with-model-cleanup [TaskHistory]
+  (mt/with-model-cleanup [:model/TaskHistory]
     (testing "with :cache-granular-controls disabled, refresh tables in an 'off' state, but not 'deletable'"
       (mt/with-premium-features #{}
         (with-temp-persist-models [db creating off]
@@ -128,13 +127,13 @@
               (is (= #{(u/the-id creating) (u/the-id off)} @card-ids))
               (is (partial= {:task "persist-refresh"
                              :task_details {:success 2 :error 0}}
-                            (t2/select-one TaskHistory
+                            (t2/select-one :model/TaskHistory
                                            :db_id (u/the-id db)
                                            :task "persist-refresh"
                                            {:order-by [[:id :desc]]}))))))))))
 
 (deftest model-caching-granular-controls-test-3
-  (mt/with-model-cleanup [TaskHistory]
+  (mt/with-model-cleanup [:model/TaskHistory]
     (testing "with :cache-granular-controls enabled, deletes any tables with state=deletable or state=off"
       (mt/with-premium-features #{:cache-granular-controls}
         (with-temp-persist-models [pdeletable poff]
@@ -155,12 +154,12 @@
               (is (= (set (map u/the-id deletable-persisted-infos)) @called-on))
               (is (partial= {:task "unpersist-tables"
                              :task_details {:success 2 :error 0, :skipped 0}}
-                            (t2/select-one TaskHistory
+                            (t2/select-one :model/TaskHistory
                                            :task "unpersist-tables"
                                            {:order-by [[:id :desc]]}))))))))))
 
 (deftest model-caching-granular-controls-test-4
-  (mt/with-model-cleanup [TaskHistory]
+  (mt/with-model-cleanup [:model/TaskHistory]
     (testing "with :cache-granular-controls disabled, deletes any tables with state=deletable, but not state=off"
       (mt/with-premium-features #{}
         (with-temp-persist-models [pdeletable poff]
@@ -181,6 +180,6 @@
               (is (not (contains? @called-on (u/the-id poff))))
               (is (partial= {:task "unpersist-tables"
                              :task_details {:success 1 :error 0, :skipped 1}}
-                            (t2/select-one TaskHistory
+                            (t2/select-one :model/TaskHistory
                                            :task "unpersist-tables"
                                            {:order-by [[:id :desc]]}))))))))))

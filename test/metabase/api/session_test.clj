@@ -7,7 +7,6 @@
    [metabase.api.session :as api.session]
    [metabase.driver.h2 :as h2]
    [metabase.http-client :as client]
-   [metabase.models :refer [LoginHistory PermissionsGroup PermissionsGroupMembership Session User]]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
@@ -60,7 +59,7 @@
                        [:device_description ms/NonBlankString]
                        [:ip_address         ms/NonBlankString]
                        [:active             [:= true]]]
-                      (t2/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
+                      (t2/select-one :model/LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
     (testing "Test that 'remember me' checkbox sets Max-Age attribute on session cookie"
       (let [body (assoc (mt/user->credentials :rasta) :remember true)
             response (mt/client-real-response :post 200 "session" body)]
@@ -70,7 +69,7 @@
             response (mt/client-real-response :post 200 "session" body)]
         (is (nil? (get-in response [:cookies session-cookie :expires]))))))
   (testing "failure should log an error(#14317)"
-    (t2.with-temp/with-temp [User user]
+    (t2.with-temp/with-temp [:model/User user]
       (mt/with-log-messages-for-level [messages :error]
         (mt/client :post 400 "session" {:email (:email user), :password "wooo"})
         (is (=? {:level :error, :e clojure.lang.ExceptionInfo, :message "Authentication endpoint error"}
@@ -190,7 +189,7 @@
       ;; Session
       (test.users/clear-cached-session-tokens!)
       (let [session-id       (client/authenticate (test.users/user->credentials :rasta))
-            login-history-id (t2/select-one-pk LoginHistory :session_id session-id)]
+            login-history-id (t2/select-one-pk :model/LoginHistory :session_id session-id)]
         (testing "LoginHistory should have been recorded"
           (is (integer? login-history-id)))
         ;; Ok, calling the logout endpoint should delete the Session in the DB. Don't worry, `test-users` will log back
@@ -198,7 +197,7 @@
         (client/client session-id :delete 204 "session")
         ;; check whether it's still there -- should be GONE
         (is (= nil
-               (t2/select-one Session :id session-id)))
+               (t2/select-one :model/Session :id session-id)))
         (testing "LoginHistory item should still exist, but session_id should be set to nil (active = false)"
           (is (malli= [:map
                        [:id                 ms/PositiveInt]
@@ -208,7 +207,7 @@
                        [:device_description ms/NonBlankString]
                        [:ip_address         ms/NonBlankString]
                        [:active             [:= false]]]
-                      (t2/select-one LoginHistory :id login-history-id))))))))
+                      (t2/select-one :model/LoginHistory :id login-history-id))))))))
 
 (deftest forgot-password-test
   (reset-throttlers!)
@@ -220,11 +219,11 @@
       (testing "Test that we can initiate password reset"
         (mt/with-fake-inbox
           (letfn [(reset-fields-set? []
-                    (let [{:keys [reset_token reset_triggered]} (t2/select-one [User :reset_token :reset_triggered]
+                    (let [{:keys [reset_token reset_triggered]} (t2/select-one [:model/User :reset_token :reset_triggered]
                                                                                :id (mt/user->id :rasta))]
                       (boolean (and reset_token reset_triggered))))]
             ;; make sure user is starting with no values
-            (t2/update! User (mt/user->id :rasta) {:reset_token nil, :reset_triggered nil})
+            (t2/update! :model/User (mt/user->id :rasta) {:reset_token nil, :reset_triggered nil})
             (assert (not (reset-fields-set?)))
             ;; issue reset request (token & timestamp should be saved)
             (is (= nil
@@ -293,9 +292,9 @@
       (mt/with-fake-inbox
         (let [password {:old "password"
                         :new "whateverUP12!!"}]
-          (t2.with-temp/with-temp [User {:keys [email id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
+          (t2.with-temp/with-temp [:model/User {:keys [email id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
             (let [token (u/prog1 (str id "_" (random-uuid))
-                          (t2/update! User id {:reset_token <>}))
+                          (t2/update! :model/User id {:reset_token <>}))
                   creds {:old {:password (:old password)
                                :username email}
                          :new {:password (:new password)
@@ -317,7 +316,7 @@
               (testing "check that reset token was cleared"
                 (is (= {:reset_token     nil
                         :reset_triggered nil}
-                       (mt/derecordize (t2/select-one [User :reset_token :reset_triggered], :id id))))))))))
+                       (mt/derecordize (t2/select-one [:model/User :reset_token :reset_triggered], :id id))))))))))
     (testing "Reset password endpoint is throttled on endpoint"
       (reset-throttlers!)
       (let [try!      (fn []
@@ -344,9 +343,9 @@
         (mt/with-fake-inbox
           (let [password {:old "password"
                           :new "whateverUP12!!"}]
-            (t2.with-temp/with-temp [User {:keys [id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
+            (t2.with-temp/with-temp [:model/User {:keys [id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
               (let [token       (u/prog1 (str id "_" (random-uuid))
-                                  (t2/update! User id {:reset_token <> :last_login :%now}))
+                                  (t2/update! :model/User id {:reset_token <> :last_login :%now}))
                     reset-token (t2/select-one-fn :reset_token :model/User :id id)]
                 (mt/client :post 200 "session/reset_password" {:token    token
                                                                :password (:new password)})
@@ -378,7 +377,7 @@
 
     (testing "Test that an expired token doesn't work"
       (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
-        (t2/update! User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
+        (t2/update! :model/User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
         (is (=? {:errors {:password "Invalid reset token"}}
                 (mt/client :post 400 "session/reset_password" {:token    token
                                                                :password "whateverUP12!!"})))))))
@@ -388,7 +387,7 @@
   (testing "GET /session/password_reset_token_valid"
     (testing "Check that a valid, unexpired token returns true"
       (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
-        (t2/update! User (mt/user->id :rasta) {:reset_token token, :reset_triggered (dec (System/currentTimeMillis))})
+        (t2/update! :model/User (mt/user->id :rasta) {:reset_token token, :reset_triggered (dec (System/currentTimeMillis))})
         (is (= {:valid true}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))
 
@@ -398,7 +397,7 @@
 
     (testing "Check that an expired but valid token returns false"
       (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
-        (t2/update! User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
+        (t2/update! :model/User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
         (is (= {:valid false}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))))
 
@@ -488,7 +487,7 @@
   (testing "POST /google_auth"
     (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
       (testing "Google auth works with an active account"
-        (t2.with-temp/with-temp [User _ {:email "test@metabase.com" :is_active true}]
+        (t2.with-temp/with-temp [:model/User _ {:email "test@metabase.com" :is_active true}]
           (with-redefs [http/post (constantly
                                    {:status 200
                                     :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
@@ -499,7 +498,7 @@
             (is (malli= SessionResponse
                         (mt/client :post 200 "session/google_auth" {:token "foo"}))))))
       (testing "Google auth throws exception for a disabled account"
-        (t2.with-temp/with-temp [User _ {:email "test@metabase.com" :is_active false}]
+        (t2.with-temp/with-temp [:model/User _ {:email "test@metabase.com" :is_active false}]
           (with-redefs [http/post (constantly
                                    {:status 200
                                     :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
@@ -516,8 +515,8 @@
   (reset-throttlers!)
   (ldap.test/with-ldap-server!
     (testing "Test that we can login with LDAP"
-      (t2.with-temp/with-temp [User _ {:email    "ngoc@metabase.com"
-                                       :password "securedpassword"}]
+      (t2.with-temp/with-temp [:model/User _ {:email    "ngoc@metabase.com"
+                                              :password "securedpassword"}]
         (is (malli= SessionResponse
                     (mt/client :post 200 "session" {:username "ngoc@metabase.com"
                                                     :password "securedpassword"})))))
@@ -538,17 +537,17 @@
              (mt/client :post 401 "session" (mt/user->credentials :lucky)))))
 
     (testing "Test that a deactivated user cannot login with LDAP"
-      (t2.with-temp/with-temp [User _ {:email    "ngoc@metabase.com"
-                                       :password "securedpassword"
-                                       :is_active false}]
+      (t2.with-temp/with-temp [:model/User _ {:email    "ngoc@metabase.com"
+                                              :password "securedpassword"
+                                              :is_active false}]
         (is (= {:errors {:_error "Your account is disabled."}}
                (mt/client :post 401 "session" {:username "ngoc@metabase.com"
                                                :password "securedpassword"})))))
 
     (testing "Test that login will fallback to local for broken LDAP settings"
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
-        (t2.with-temp/with-temp [User _ {:email    "ngoc@metabase.com"
-                                         :password "securedpassword"}]
+        (t2.with-temp/with-temp [:model/User _ {:email    "ngoc@metabase.com"
+                                                :password "securedpassword"}]
           (is (malli= SessionResponse
                       (mt/client :post 200 "session" {:username "ngoc@metabase.com"
                                                       :password "securedpassword"}))))))
@@ -558,7 +557,7 @@
         (is (malli= SessionResponse
                     (mt/client :post 200 "session" {:username "sbrown20", :password "1234"})))
         (finally
-          (t2/delete! User :email "sally.brown@metabase.com"))))
+          (t2/delete! :model/User :email "sally.brown@metabase.com"))))
 
     (testing "Test that we can login with LDAP multiple times if the email stored in LDAP contains upper-case
              characters (#13739)"
@@ -570,23 +569,23 @@
              SessionResponse
              (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
         (finally
-          (t2/delete! User :email "John.Smith@metabase.com"))))
+          (t2/delete! :model/User :email "John.Smith@metabase.com"))))
 
     (testing "test that group sync works even if ldap doesn't return uid (#22014)"
-      (t2.with-temp/with-temp [PermissionsGroup group {:name "Accounting"}]
+      (t2.with-temp/with-temp [:model/PermissionsGroup group {:name "Accounting"}]
         (mt/with-temporary-raw-setting-values
           [ldap-group-mappings (json/encode {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})]
           (is (malli= SessionResponse
                       (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
           (testing "PermissionsGroupMembership should exist"
-            (let [user-id (t2/select-one-pk User :email "fred.taylor@metabase.com")]
-              (is (t2/exists? PermissionsGroupMembership :group_id (u/the-id group) :user_id (u/the-id user-id))))))))))
+            (let [user-id (t2/select-one-pk :model/User :email "fred.taylor@metabase.com")]
+              (is (t2/exists? :model/PermissionsGroupMembership :group_id (u/the-id group) :user_id (u/the-id user-id))))))))))
 
 (deftest no-password-no-login-test
   (reset-throttlers!)
   (testing "A user with no password should not be able to do password-based login"
-    (t2.with-temp/with-temp [User user]
-      (t2/update! User (u/the-id user) {:password nil, :password_salt nil})
+    (t2.with-temp/with-temp [:model/User user]
+      (t2/update! :model/User (u/the-id user) {:password nil, :password_salt nil})
       (let [device-info {:device_id          "Cam's Computer"
                          :device_description "The computer where Cam wrote this test"
                          :ip_address         "192.168.1.1"}]

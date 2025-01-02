@@ -3,13 +3,10 @@
    [metabase-enterprise.advanced-permissions.api.util
     :as advanced-perms.api.u]
    [metabase-enterprise.sandbox.api.table :as table]
-   [metabase-enterprise.sandbox.models.group-table-access-policy
-    :refer [GroupTableAccessPolicy]]
    [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
     :as row-level-restrictions]
    [metabase.api.common :as api]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models :refer [Field PermissionsGroupMembership]]
    [metabase.models.field :as field]
    [metabase.models.field-values :as field-values]
    [metabase.models.params.field-values :as params.field-values]
@@ -30,8 +27,8 @@
 (defn- table-id->gtap
   "Find the GTAP for current user that apply to table `table-id`."
   [table-id]
-  (let [group-ids (t2/select-fn-set :group_id PermissionsGroupMembership :user_id api/*current-user-id*)
-        gtaps     (t2/select GroupTableAccessPolicy
+  (let [group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id api/*current-user-id*)
+        gtaps     (t2/select :model/GroupTableAccessPolicy
                              :group_id [:in group-ids]
                              :table_id table-id)]
     (when gtaps
@@ -64,7 +61,7 @@
   (when-let [gtap (table-id->gtap table_id)]
     (let [login-attributes     (:login_attributes @api/*current-user*)
           attribute_remappings (:attribute_remappings gtap)
-          field-ids            (t2/select-fn-set :id Field :table_id table_id)]
+          field-ids            (t2/select-fn-set :id :model/Field :table_id table_id)]
       [(:card_id gtap)
        (-> gtap :card :updated_at)
        (if (= :native (get-in gtap [:card :query_type]))
@@ -90,7 +87,7 @@
   :feature :sandboxes
   [field-ids]
   (let [fields                   (when (seq field-ids)
-                                   (t2/hydrate (t2/select Field :id [:in (set field-ids)]) :table))
+                                   (t2/hydrate (t2/select :model/Field :id [:in (set field-ids)]) :table))
         {unsandboxed-fields false
          sandboxed-fields   true} (group-by (comp boolean field-is-sandboxed?) fields)]
     (merge
@@ -125,7 +122,7 @@
   "Returns a hash-key for linked-filter FieldValues if the field is sandboxed, otherwise fallback to the OSS impl."
   :feature :sandboxes
   [field-id constraints]
-  (let [field (t2/select-one Field :id field-id)]
+  (let [field (t2/select-one :model/Field :id field-id)]
     (if (field-is-sandboxed? field)
       (str (hash (concat [field-id
                           constraints]
@@ -136,7 +133,7 @@
   "Returns a hash-key for FieldValues if the field is sandboxed, otherwise fallback to the OSS impl."
   :feature :sandboxes
   [field-id]
-  (let [field (t2/select-one Field :id field-id)]
+  (let [field (t2/select-one :model/Field :id field-id)]
     (when (field-is-sandboxed? field)
       (str (hash (concat [field-id]
                          (field->gtap-attributes-for-current-user field)))))))

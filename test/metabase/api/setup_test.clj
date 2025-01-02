@@ -12,7 +12,6 @@
    [metabase.driver.h2 :as h2]
    [metabase.events :as events]
    [metabase.http-client :as client]
-   [metabase.models :refer [Database User]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache-test :as setting.cache-test]
@@ -41,11 +40,11 @@
     (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
       (thunk))
     (finally
-      (t2/delete! User :email (get-in request-body [:user :email]))
+      (t2/delete! :model/User :email (get-in request-body [:user :email]))
       (when-let [invited (get-in request-body [:invite :name])]
-        (t2/delete! User :email invited))
+        (t2/delete! :model/User :email invited))
       (when-let [db-name (get-in request-body [:database :name])]
-        (t2/delete! Database :name db-name)))))
+        (t2/delete! :model/Database :name db-name)))))
 
 (defn- default-setup-input []
   {:token (setup/create-token!)
@@ -80,11 +79,11 @@
         (let [email (mt/random-email)]
           (with-setup! {:user {:email email}}
             (testing "new User should be created"
-              (is (t2/exists? User :email email)))
+              (is (t2/exists? :model/User :email email)))
             (testing "Creating a new admin user should set the `admin-email` Setting"
               (is (= email (public-settings/admin-email))))
             (testing "Should record :user-joined in the Audit Log (#12933)"
-              (let [user-id (u/the-id (t2/select-one User :email email))]
+              (let [user-id (u/the-id (t2/select-one :model/User :email email))]
                 (is (= {:topic    :user-joined
                         :model_id user-id
                         :user_id  user-id
@@ -107,7 +106,7 @@
                 (with-setup! {:invite {:email email, :first_name first-name, :last_name last-name}
                               :user   {:first_name invitor-first-name}
                               :prefs  {:site_name "Metabase"}}
-                  (let [invited-user (t2/select-one User :email email)]
+                  (let [invited-user (t2/select-one :model/User :email email)]
                     (is (= (:first_name invited-user) first-name))
                     (is (= (:last_name invited-user) last-name))
                     (is (:is_superuser invited-user))
@@ -125,7 +124,7 @@
                              {:topic    :user-invited
                               :user_id  nil
                               :model    "User"
-                              :model_id (u/the-id (t2/select-one User :email email))
+                              :model_id (u/the-id (t2/select-one :model/User :email email))
                               :details  {:invite_method          "email"
                                          :first_name             first-name
                                          :last_name              last-name
@@ -142,7 +141,7 @@
               first-name (mt/random-name)
               last-name (mt/random-name)]
           (with-setup! {:invite {:email email, :first_name first-name, :last_name last-name}}
-            (is (not (t2/exists? User :email email)))))))))
+            (is (not (t2/exists? :model/User :email email)))))))))
 
 (deftest setup-settings-test
   (testing "POST /api/setup"
@@ -268,7 +267,7 @@
 
 (deftest has-user-setup-setting-test
   (testing "has-user-setup is true iff there are 1 or more users"
-    (let [user-count (t2/count User {:where [:not= :id config/internal-mb-user-id]})]
+    (let [user-count (t2/count :model/User {:where [:not= :id config/internal-mb-user-id]})]
       (if (zero? user-count)
         (is (not (setup/has-user-setup)))
         (is (setup/has-user-setup))))))
@@ -328,12 +327,12 @@
                      (client/client :post 500 "setup" body))))
            (testing "New user shouldn't exist"
              (is (= false
-                    (t2/exists? User :email user-email))))
+                    (t2/exists? :model/User :email user-email))))
            (testing "New DB shouldn't exist"
              ;; TODO -- we should also be deleting relevant sync tasks for the DB, but this doesn't matter too much
              ;; for right now.
              (is (= false
-                    (t2/exists? Database :engine "h2", :name db-name))))
+                    (t2/exists? :model/Database :engine "h2", :name db-name))))
            (testing "Settings should not be changed"
              (is (not= site-name
                        (public-settings/site-name)))

@@ -2,7 +2,6 @@
   "Tests for visualization settings processing"
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [Card Field]]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.middleware.visualization-settings
     :as viz-settings]
@@ -71,13 +70,13 @@
 
 (deftest card-viz-settings-test
   (qp.store/with-metadata-provider (mt/id)
-    (t2.with-temp/with-temp [Field {field-id-1 :id} {:settings {:column_title "Test"}}
-                             Field {field-id-2 :id} {:settings {:decimals 4, :scale 10}}
-                             Field {field-id-3 :id} {:settings {:number_style "percent"}}]
+    (t2.with-temp/with-temp [:model/Field {field-id-1 :id} {:settings {:column_title "Test"}}
+                             :model/Field {field-id-2 :id} {:settings {:decimals 4, :scale 10}}
+                             :model/Field {field-id-3 :id} {:settings {:number_style "percent"}}]
       (testing "Field settings in the DB are incorporated into visualization settings with a lower
                precedence than card settings"
         (testing "for a saved card"
-          (t2.with-temp/with-temp [Card {card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
+          (t2.with-temp/with-temp [:model/Card {card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
             (let [query    (test-query [field-id-1 field-id-2 field-id-3] card-id nil)
                   result   (update-viz-settings query)
                   expected (-> (processed-viz-settings field-id-1 field-id-2)
@@ -96,13 +95,13 @@
 
 (deftest card-viz-settings-test-2
   (qp.store/with-metadata-provider (mt/id)
-    (t2.with-temp/with-temp [Field {field-id-1 :id} {:settings {:column_title "Test"}}
-                             Field {field-id-2 :id} {:settings {:decimals 4, :scale 10}}
-                             Field {field-id-3 :id} {:settings {:number_style "percent"}}]
+    (t2.with-temp/with-temp [:model/Field {field-id-1 :id} {:settings {:column_title "Test"}}
+                             :model/Field {field-id-2 :id} {:settings {:decimals 4, :scale 10}}
+                             :model/Field {field-id-3 :id} {:settings {:number_style "percent"}}]
       (testing "Field settings in the DB are incorporated into visualization settings with a lower
                precedence than card settings"
         (testing "for a saved card"
-          (t2.with-temp/with-temp [Card {card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
+          (t2.with-temp/with-temp [:model/Card {card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
             (let [query    (test-query [field-id-1 field-id-2 field-id-3] card-id nil)
                   result   (update-viz-settings query)
                   expected (-> (processed-viz-settings field-id-1 field-id-2)
@@ -133,9 +132,9 @@
 
 (deftest includes-global-settings-test
   (testing "Viz settings include global viz settings, in a normalized form"
-    (mt/with-temp [Field {field-id-1 :id} {}
-                   Field {field-id-2 :id} {}
-                   Card  {card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
+    (mt/with-temp [:model/Field {field-id-1 :id} {}
+                   :model/Field {field-id-2 :id} {}
+                   :model/Card  {card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
       (let [global-viz-settings #:type{:Number   {:number_separators ".,"}
                                        :Currency {:currency "BIF"}}]
         (mt/with-temporary-setting-values [custom-formatting global-viz-settings]

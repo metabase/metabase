@@ -5,18 +5,6 @@
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.render.body :as body]
    [metabase.email.result-attachment :as email.result-attachment]
-   [metabase.models
-    :refer [Card
-            Collection
-            Dashboard
-            DashboardCard
-            Database
-            Pulse
-            PulseCard
-            PulseChannel
-            PulseChannelRecipient
-            Table
-            User]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.notification.test-util :as notification.tu]
@@ -38,28 +26,28 @@
   [{:keys [dashboard pulse pulse-card channel card dashcard]
     :or   {channel :email}}
    f]
-  (mt/with-temp [Pulse         {pulse-id :id, :as pulse} (merge {:name         "Aviary KPIs"
-                                                                 :dashboard_id (u/the-id dashboard)}
-                                                                pulse)
-                 PulseCard     _ (merge {:pulse_id pulse-id
-                                         :card_id  (u/the-id card)
-                                         :position 0}
-                                        pulse-card)
-                 DashboardCard _ (merge {:dashboard_id (u/the-id dashboard)
-                                         :row          0
-                                         :card_id      (u/the-id card)}
-                                        dashcard)
-                 PulseChannel  {pc-id :id} (case channel
-                                             :email
-                                             {:pulse_id pulse-id}
+  (mt/with-temp [:model/Pulse         {pulse-id :id, :as pulse} (merge {:name         "Aviary KPIs"
+                                                                        :dashboard_id (u/the-id dashboard)}
+                                                                       pulse)
+                 :model/PulseCard     _ (merge {:pulse_id pulse-id
+                                                :card_id  (u/the-id card)
+                                                :position 0}
+                                               pulse-card)
+                 :model/DashboardCard _ (merge {:dashboard_id (u/the-id dashboard)
+                                                :row          0
+                                                :card_id      (u/the-id card)}
+                                               dashcard)
+                 :model/PulseChannel  {pc-id :id} (case channel
+                                                    :email
+                                                    {:pulse_id pulse-id}
 
-                                             :slack
-                                             {:pulse_id     pulse-id
-                                              :channel_type "slack"
-                                              :details      {:channel "#general"}})]
+                                                    :slack
+                                                    {:pulse_id     pulse-id
+                                                     :channel_type "slack"
+                                                     :details      {:channel "#general"}})]
     (if (= channel :email)
-      (mt/with-temp [PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
-                                              :pulse_channel_id pc-id}]
+      (mt/with-temp [:model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                     :pulse_channel_id pc-id}]
         (f pulse))
       (f pulse))))
 
@@ -93,11 +81,11 @@
           :when        f]
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
-      (mt/with-temp [Dashboard     {dashboard-id :id} (->> dashboard
-                                                           (merge {:name "Aviary KPIs"
-                                                                   :description "How are the birds doing today?"}))
-                     Card          {card-id :id} (merge {:name pulse.test-util/card-name
-                                                         :display (or display :line)} card)]
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} (->> dashboard
+                                                                  (merge {:name "Aviary KPIs"
+                                                                          :description "How are the birds doing today?"}))
+                     :model/Card          {card-id :id} (merge {:name pulse.test-util/card-name
+                                                                :display (or display :line)} card)]
         (with-dashboard-sub-for-card [{pulse-id :id}
                                       {:card       card-id
                                        :creator_id (mt/user->id :rasta)
@@ -166,51 +154,51 @@
                                  :link         {:entity {:id    id
                                                          :model model}}})
         rasta-id              (mt/user->id :rasta)
-        rasta-pc-id           (t2/select-one-fn :id Collection :personal_owner_id rasta-id)]
+        rasta-pc-id           (t2/select-one-fn :id :model/Collection :personal_owner_id rasta-id)]
     (t2.with-temp/with-temp
-      [Collection    {coll-id :id}      {:name        "Linked collection name"
-                                         :description "Linked collection desc"
-                                         :location    (format "/%d/" rasta-pc-id)}
-       Database      {db-id :id}        {:name        "Linked database name"
-                                         :description "Linked database desc"}
-       Table         {table-id :id}     {:db_id        db-id
-                                         :name        "Linked table name"
-                                         :display_name "Linked table dname"
-                                         :description "Linked table desc"}
-       Card          {card-id :id}      {:name          "Linked card name"
-                                         :description   "Linked card desc"
-                                         :display       "bar"
-                                         :collection_id coll-id}
-       Card          {model-id :id}     {:type          :model
-                                         :name          "Linked model name"
-                                         :description   "Linked model desc"
-                                         :display       "table"
-                                         :collection_id coll-id}
-       Dashboard     {dash-id :id}      {:name          "Linked Dashboard name"
-                                         :description   "Linked Dashboard desc"
-                                         :collection_id coll-id}
-       DashboardCard _                  {:dashboard_id           dashboard-id
-                                         :row                    1
-                                         :visualization_settings (link-card-viz-setting "collection" coll-id)}
-       DashboardCard _                  {:dashboard_id           dashboard-id
-                                         :row                    2
-                                         :visualization_settings (link-card-viz-setting "database" db-id)}
-       DashboardCard _                  {:dashboard_id           dashboard-id
-                                         :row                    3
-                                         :visualization_settings (link-card-viz-setting "table" table-id)}
-       DashboardCard _                  {:dashboard_id           dashboard-id
-                                         :row                    4
-                                         :visualization_settings (link-card-viz-setting "dashboard" dash-id)}
-       DashboardCard _                  {:dashboard_id           dashboard-id
-                                         :row                    5
-                                         :visualization_settings (link-card-viz-setting "card" card-id)}
-       DashboardCard _                  {:dashboard_id           dashboard-id
-                                         :row                    6
-                                         :visualization_settings (link-card-viz-setting "dataset" model-id)}
-       DashboardCard _                  {:dashboard_id           dashboard-id
-                                         :row                    7
-                                         :visualization_settings {:virtual_card {:display "link"}
-                                                                  :link         {:url "https://metabase.com"}}}]
+      [:model/Collection    {coll-id :id}      {:name        "Linked collection name"
+                                                :description "Linked collection desc"
+                                                :location    (format "/%d/" rasta-pc-id)}
+       :model/Database      {db-id :id}        {:name        "Linked database name"
+                                                :description "Linked database desc"}
+       :model/Table         {table-id :id}     {:db_id        db-id
+                                                :name        "Linked table name"
+                                                :display_name "Linked table dname"
+                                                :description "Linked table desc"}
+       :model/Card          {card-id :id}      {:name          "Linked card name"
+                                                :description   "Linked card desc"
+                                                :display       "bar"
+                                                :collection_id coll-id}
+       :model/Card          {model-id :id}     {:type          :model
+                                                :name          "Linked model name"
+                                                :description   "Linked model desc"
+                                                :display       "table"
+                                                :collection_id coll-id}
+       :model/Dashboard     {dash-id :id}      {:name          "Linked Dashboard name"
+                                                :description   "Linked Dashboard desc"
+                                                :collection_id coll-id}
+       :model/DashboardCard _                  {:dashboard_id           dashboard-id
+                                                :row                    1
+                                                :visualization_settings (link-card-viz-setting "collection" coll-id)}
+       :model/DashboardCard _                  {:dashboard_id           dashboard-id
+                                                :row                    2
+                                                :visualization_settings (link-card-viz-setting "database" db-id)}
+       :model/DashboardCard _                  {:dashboard_id           dashboard-id
+                                                :row                    3
+                                                :visualization_settings (link-card-viz-setting "table" table-id)}
+       :model/DashboardCard _                  {:dashboard_id           dashboard-id
+                                                :row                    4
+                                                :visualization_settings (link-card-viz-setting "dashboard" dash-id)}
+       :model/DashboardCard _                  {:dashboard_id           dashboard-id
+                                                :row                    5
+                                                :visualization_settings (link-card-viz-setting "card" card-id)}
+       :model/DashboardCard _                  {:dashboard_id           dashboard-id
+                                                :row                    6
+                                                :visualization_settings (link-card-viz-setting "dataset" model-id)}
+       :model/DashboardCard _                  {:dashboard_id           dashboard-id
+                                                :row                    7
+                                                :visualization_settings {:virtual_card {:display "link"}
+                                                                         :link         {:url "https://metabase.com"}}}]
       (thunk {:collection-owner-id rasta-id
               :collection-id       coll-id
               :database-id         db-id
@@ -236,12 +224,12 @@
 
 (deftest ^:parallel execute-dashboard-test
   (testing "it runs for each non-virtual card"
-    (mt/with-temp [Card          {card-id-1 :id} {:dataset_query (mt/mbql-query venues)}
-                   Card          {card-id-2 :id} {:dataset_query (mt/mbql-query venues)}
-                   Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
-                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1}
-                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2}
-                   User {user-id :id} {}]
+    (mt/with-temp [:model/Card          {card-id-1 :id} {:dataset_query (mt/mbql-query venues)}
+                   :model/Card          {card-id-2 :id} {:dataset_query (mt/mbql-query venues)}
+                   :model/Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2}
+                   :model/User {user-id :id} {}]
       (let [result (execute-dashboard (:id dashboard) user-id nil)]
         (is (malli= [:sequential
                      {:min 2, :max 2}
@@ -254,41 +242,41 @@
 
 (deftest ^:parallel execute-dashboard-test-2
   (testing "hides empty card when card.hide_empty is true and there are no results."
-    (mt/with-temp [Card          {card-id-1 :id} {:dataset_query (mt/mbql-query venues)}
-                   Card          {card-id-2 :id} {:dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
-                   Card          {card-id-3 :id} {:dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
-                   Card          {card-id-4 :id} {:dataset_query (mt/mbql-query venues)}
-                   Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
-                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1}
-                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :visualization_settings {:card.hide_empty true}}
-                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-3}
-                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-4}
-                   User {user-id :id} {}]
+    (mt/with-temp [:model/Card          {card-id-1 :id} {:dataset_query (mt/mbql-query venues)}
+                   :model/Card          {card-id-2 :id} {:dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
+                   :model/Card          {card-id-3 :id} {:dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
+                   :model/Card          {card-id-4 :id} {:dataset_query (mt/mbql-query venues)}
+                   :model/Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :visualization_settings {:card.hide_empty true}}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-3}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-4}
+                   :model/User {user-id :id} {}]
       (let [result (execute-dashboard (:id dashboard) user-id nil)]
         (is (= 3 (count result)))))))
 
 (deftest ^:parallel execute-dashboard-test-3
   (testing "dashboard cards are ordered correctly -- by rows, and then by columns (#17419)"
-    (mt/with-temp [Card          {card-id-1 :id} {:dataset_query (mt/mbql-query venues)}
-                   Card          {card-id-2 :id} {:dataset_query (mt/mbql-query venues)}
-                   Card          {card-id-3 :id} {:dataset_query (mt/mbql-query venues)}
-                   Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
-                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1 :row 1 :col 0}
-                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}
-                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}
-                   User {user-id :id} {}]
+    (mt/with-temp [:model/Card          {card-id-1 :id} {:dataset_query (mt/mbql-query venues)}
+                   :model/Card          {card-id-2 :id} {:dataset_query (mt/mbql-query venues)}
+                   :model/Card          {card-id-3 :id} {:dataset_query (mt/mbql-query venues)}
+                   :model/Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1 :row 1 :col 0}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}
+                   :model/User {user-id :id} {}]
       (let [result (execute-dashboard (:id dashboard) user-id nil)]
         (is (= [card-id-3 card-id-2 card-id-1]
                (map #(-> % :card :id) result)))))))
 
 (deftest ^:parallel execute-dashboard-test-4
   (testing "virtual (text) cards are returned as a viz settings map"
-    (mt/with-temp [Card          _ {:dataset_query (mt/mbql-query venues)}
-                   Card          _ {:dataset_query (mt/mbql-query venues)}
-                   Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
-                   DashboardCard _ {:dashboard_id dashboard-id
-                                    :visualization_settings {:virtual_card {}, :text "test"}}
-                   User {user-id :id} {}]
+    (mt/with-temp [:model/Card          _ {:dataset_query (mt/mbql-query venues)}
+                   :model/Card          _ {:dataset_query (mt/mbql-query venues)}
+                   :model/Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id
+                                           :visualization_settings {:virtual_card {}, :text "test"}}
+                   :model/User {user-id :id} {}]
       (is (= [{:virtual_card {} :text "test" :type :text}]
              (execute-dashboard (:id dashboard) user-id nil))))))
 
@@ -371,10 +359,10 @@
 
     :fixture
     (fn [{dashboard-id :dashboard-id} thunk]
-      (t2.with-temp/with-temp [DashboardCard _ {:dashboard_id dashboard-id
-                                                :row 1
-                                                :col 1
-                                                :visualization_settings {:text "# header"}}]
+      (t2.with-temp/with-temp [:model/DashboardCard _ {:dashboard_id dashboard-id
+                                                       :row 1
+                                                       :col 1
+                                                       :visualization_settings {:text "# header"}}]
         (mt/with-temporary-setting-values [site-name "Metabase Test"]
           (thunk))))
 
@@ -415,10 +403,10 @@
 
     :fixture
     (fn [{dashboard-id :dashboard-id} thunk]
-      (t2.with-temp/with-temp [DashboardCard _ {:dashboard_id dashboard-id
-                                                :row 1
-                                                :col 1
-                                                :visualization_settings {:text "# header, quote isn't escaped" :virtual_card {:display "heading"}}}]
+      (t2.with-temp/with-temp [:model/DashboardCard _ {:dashboard_id dashboard-id
+                                                       :row 1
+                                                       :col 1
+                                                       :visualization_settings {:text "# header, quote isn't escaped" :virtual_card {:display "heading"}}}]
         (mt/with-temporary-setting-values [site-name "Metabase Test"]
           (thunk))))
 
@@ -510,7 +498,7 @@
     :fixture
     (fn [{dashboard-id :dashboard-id} thunk]
       (mt/with-temporary-setting-values [site-name "Metabase Test"]
-        (with-link-card-fixture-for-dashboard (t2/select-one Dashboard :id dashboard-id) [_]
+        (with-link-card-fixture-for-dashboard (t2/select-one :model/Dashboard :id dashboard-id) [_]
           (thunk))))
     :assert
     {:email
@@ -606,10 +594,10 @@
 
       :fixture
       (fn [{dashboard-id :dashboard-id} thunk]
-        (t2.with-temp/with-temp [DashboardCard _ {:dashboard_id dashboard-id
-                                                  :row 1
-                                                  :col 1
-                                                  :visualization_settings {:text "abcdefghijklmnopqrstuvwxyz"}}]
+        (t2.with-temp/with-temp [:model/DashboardCard _ {:dashboard_id dashboard-id
+                                                         :row 1
+                                                         :col 1
+                                                         :visualization_settings {:text "abcdefghijklmnopqrstuvwxyz"}}]
           (thunk)))
 
       :assert
@@ -636,55 +624,55 @@
 (deftest use-default-values-test
   (testing "Dashboard Subscriptions SHOULD use default values for Dashboard parameters when running (#20516)"
     (mt/dataset test-data
-      (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard} {:name       "20516 Dashboard"
-                                                                            :parameters [{:name    "Category"
-                                                                                          :slug    "category"
-                                                                                          :id      "_MBQL_CATEGORY_"
-                                                                                          :type    "category"
-                                                                                          :default ["Doohickey"]}
-                                                                                         {:name    "SQL Category"
-                                                                                          :slug    "sql_category"
-                                                                                          :id      "_SQL_CATEGORY_"
-                                                                                          :type    "category"
-                                                                                          :default ["Gizmo"]}]}]
+      (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id, :as dashboard} {:name       "20516 Dashboard"
+                                                                                   :parameters [{:name    "Category"
+                                                                                                 :slug    "category"
+                                                                                                 :id      "_MBQL_CATEGORY_"
+                                                                                                 :type    "category"
+                                                                                                 :default ["Doohickey"]}
+                                                                                                {:name    "SQL Category"
+                                                                                                 :slug    "sql_category"
+                                                                                                 :id      "_SQL_CATEGORY_"
+                                                                                                 :type    "category"
+                                                                                                 :default ["Gizmo"]}]}]
         (testing "MBQL query"
-          (mt/with-temp [Card {mbql-card-id :id} {:name          "Orders"
-                                                  :dataset_query (mt/mbql-query products
-                                                                   {:fields   [$id $title $category]
-                                                                    :order-by [[:asc $id]]
-                                                                    :limit    2})}
-                         DashboardCard _ {:parameter_mappings [{:parameter_id "_MBQL_CATEGORY_"
-                                                                :card_id      mbql-card-id
-                                                                :target       [:dimension [:field (mt/id :products :category) nil]]}]
-                                          :card_id            mbql-card-id
-                                          :dashboard_id       dashboard-id}]
+          (mt/with-temp [:model/Card {mbql-card-id :id} {:name          "Orders"
+                                                         :dataset_query (mt/mbql-query products
+                                                                          {:fields   [$id $title $category]
+                                                                           :order-by [[:asc $id]]
+                                                                           :limit    2})}
+                         :model/DashboardCard _ {:parameter_mappings [{:parameter_id "_MBQL_CATEGORY_"
+                                                                       :card_id      mbql-card-id
+                                                                       :target       [:dimension [:field (mt/id :products :category) nil]]}]
+                                                 :card_id            mbql-card-id
+                                                 :dashboard_id       dashboard-id}]
             (let [[mbql-results] (map :result (execute-dashboard (:id dashboard) (mt/user->id :rasta) (:parameters dashboard)))]
               (is (= [[2 "Small Marble Shoes"        "Doohickey"]
                       [3 "Synergistic Granite Chair" "Doohickey"]]
                      (mt/rows mbql-results))))))
         (testing "SQL Query"
-          (mt/with-temp [Card {sql-card-id :id} {:name          "Products (SQL)"
-                                                 :dataset_query (mt/native-query
-                                                                  {:query
-                                                                   (str "SELECT id, title, category\n"
-                                                                        "FROM products\n"
-                                                                        "WHERE {{category}}\n"
-                                                                        "ORDER BY id ASC\n"
-                                                                        "LIMIT 2")
+          (mt/with-temp [:model/Card {sql-card-id :id} {:name          "Products (SQL)"
+                                                        :dataset_query (mt/native-query
+                                                                         {:query
+                                                                          (str "SELECT id, title, category\n"
+                                                                               "FROM products\n"
+                                                                               "WHERE {{category}}\n"
+                                                                               "ORDER BY id ASC\n"
+                                                                               "LIMIT 2")
 
-                                                                   :template-tags
-                                                                   {"category"
-                                                                    {:id           "_SQL_CATEGORY_TEMPLATE_TAG_"
-                                                                     :name         "category"
-                                                                     :display-name "Category"
-                                                                     :type         :dimension
-                                                                     :dimension    [:field (mt/id :products :category) nil]
-                                                                     :widget-type  :category}}})}
-                         DashboardCard _ {:parameter_mappings [{:parameter_id "_SQL_CATEGORY_"
-                                                                :card_id      sql-card-id
-                                                                :target       [:dimension [:template-tag "category"]]}]
-                                          :card_id            sql-card-id
-                                          :dashboard_id       dashboard-id}]
+                                                                          :template-tags
+                                                                          {"category"
+                                                                           {:id           "_SQL_CATEGORY_TEMPLATE_TAG_"
+                                                                            :name         "category"
+                                                                            :display-name "Category"
+                                                                            :type         :dimension
+                                                                            :dimension    [:field (mt/id :products :category) nil]
+                                                                            :widget-type  :category}}})}
+                         :model/DashboardCard _ {:parameter_mappings [{:parameter_id "_SQL_CATEGORY_"
+                                                                       :card_id      sql-card-id
+                                                                       :target       [:dimension [:template-tag "category"]]}]
+                                                 :card_id            sql-card-id
+                                                 :dashboard_id       dashboard-id}]
             (let [[results] (map :result (execute-dashboard (:id dashboard) (mt/user->id :rasta) (:parameters dashboard)))]
               (is (= [[1  "Rustic Paper Wallet"   "Gizmo"]
                       [10 "Mediocre Wooden Table" "Gizmo"]]
@@ -692,16 +680,16 @@
 
 (deftest substitute-parameters-in-virtual-cards
   (testing "Parameters in virtual (text) cards should have parameter values substituted appropriately"
-    (mt/with-temp [Dashboard {dashboard-id :id :as dashboard} {:name "Params in Text Card Test"
-                                                               :parameters [{:name    "Category"
-                                                                             :slug    "category"
-                                                                             :id      "TEST_ID"
-                                                                             :type    "category"
-                                                                             :default ["Doohickey" "Gizmo"]}]}
-                   DashboardCard _ {:parameter_mappings [{:parameter_id "TEST_ID"
-                                                          :target       [:text-tag "foo"]}]
-                                    :dashboard_id       dashboard-id
-                                    :visualization_settings {:text "{{foo}}"}}]
+    (mt/with-temp [:model/Dashboard {dashboard-id :id :as dashboard} {:name "Params in Text Card Test"
+                                                                      :parameters [{:name    "Category"
+                                                                                    :slug    "category"
+                                                                                    :id      "TEST_ID"
+                                                                                    :type    "category"
+                                                                                    :default ["Doohickey" "Gizmo"]}]}
+                   :model/DashboardCard _ {:parameter_mappings [{:parameter_id "TEST_ID"
+                                                                 :target       [:text-tag "foo"]}]
+                                           :dashboard_id       dashboard-id
+                                           :visualization_settings {:text "{{foo}}"}}]
       (is (= [{:text "Doohickey and Gizmo" :type :text}]
              (execute-dashboard (:id dashboard) (mt/user->id :rasta) (:parameters dashboard)))))))
 
@@ -709,12 +697,12 @@
   (testing "A native query on a dashboard executes succesfully even if the subscription creator does not have native
            query permissions (#28947)"
     (mt/with-full-data-perms-for-all-users!
-      (mt/with-temp [Dashboard {dashboard-id :id, :as dashboard} {:name "Dashboard"}
-                     Card      {card-id :id} {:name          "Products (SQL)"
-                                              :dataset_query (mt/native-query
-                                                               {:query "SELECT * FROM venues LIMIT 1"})}
-                     DashboardCard _ {:dashboard_id dashboard-id
-                                      :card_id      card-id}]
+      (mt/with-temp [:model/Dashboard {dashboard-id :id, :as dashboard} {:name "Dashboard"}
+                     :model/Card      {card-id :id} {:name          "Products (SQL)"
+                                                     :dataset_query (mt/native-query
+                                                                      {:query "SELECT * FROM venues LIMIT 1"})}
+                     :model/DashboardCard _ {:dashboard_id dashboard-id
+                                             :card_id      card-id}]
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
         (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
                (-> (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)
@@ -723,24 +711,24 @@
 (deftest actions-are-skipped-test
   (testing "Actions should be filtered out"
     (t2.with-temp/with-temp
-      [Dashboard     {dashboard-id :id
-                      :as dashboard}   {:name "Dashboard"}
-       DashboardCard _                 {:dashboard_id           dashboard-id
-                                        :visualization_settings {:text "Markdown"}
-                                        :row                    1}
-       DashboardCard _                 {:dashboard_id           dashboard-id
-                                        :visualization_settings {:virtual_card {:display "link"}
-                                                                 :link         {:url "https://metabase.com"}}
-                                        :row                    2}
-       DashboardCard _                 {:dashboard_id           dashboard-id
-                                        :visualization_settings {:virtual_card {:display "action"}}
-                                        :row                    3}]
+      [:model/Dashboard     {dashboard-id :id
+                             :as dashboard}   {:name "Dashboard"}
+       :model/DashboardCard _                 {:dashboard_id           dashboard-id
+                                               :visualization_settings {:text "Markdown"}
+                                               :row                    1}
+       :model/DashboardCard _                 {:dashboard_id           dashboard-id
+                                               :visualization_settings {:virtual_card {:display "link"}
+                                                                        :link         {:url "https://metabase.com"}}
+                                               :row                    2}
+       :model/DashboardCard _                 {:dashboard_id           dashboard-id
+                                               :visualization_settings {:virtual_card {:display "action"}}
+                                               :row                    3}]
       (is (=? [{:text "Markdown"}
                {:text "### [https://metabase.com](https://metabase.com)"}]
               (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)))))
 
   (testing "Link cards are returned and info should be newly fetched"
-    (t2.with-temp/with-temp [Dashboard dashboard {:name "Test Dashboard"}]
+    (t2.with-temp/with-temp [:model/Dashboard dashboard {:name "Test Dashboard"}]
       (with-link-card-fixture-for-dashboard dashboard [{:keys [collection-owner-id
                                                                collection-id
                                                                database-id
@@ -750,12 +738,12 @@
                                                                dashboard-id]}]
         (let [site-url (public-settings/site-url)]
           (testing "should returns all link cards and name are newly fetched"
-            (doseq [[model id] [[Card card-id]
-                                [Table table-id]
-                                [Database database-id]
-                                [Dashboard dashboard-id]
-                                [Collection collection-id]
-                                [Card model-id]]]
+            (doseq [[model id] [[:model/Card card-id]
+                                [:model/Table table-id]
+                                [:model/Database database-id]
+                                [:model/Dashboard dashboard-id]
+                                [:model/Collection collection-id]
+                                [:model/Card model-id]]]
               (t2/update! model id {:name (format "New %s name" (name model))}))
             (is (=? [{:text (format "### [New Collection name](%s/collection/%d)\nLinked collection desc" site-url collection-id)}
                      {:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
@@ -774,24 +762,24 @@
 (deftest iframe-cards-are-skipped-test
   (testing "iframe cards should be filtered out"
     (t2.with-temp/with-temp
-      [Dashboard     {dashboard-id :id
-                      :as dashboard}   {:name "Dashboard"}
-       DashboardCard _                 {:dashboard_id           dashboard-id
-                                        :visualization_settings {:text "Markdown"}
-                                        :row                    1}
-       DashboardCard _                 {:dashboard_id           dashboard-id
-                                        :visualization_settings {:virtual_card {:display "link"}
-                                                                 :link         {:url "https://metabase.com"}}
-                                        :row                    2}
-       DashboardCard _                 {:dashboard_id           dashboard-id
-                                        :visualization_settings {:virtual_card {:display "iframe"}}
-                                        :row                    3}]
+      [:model/Dashboard     {dashboard-id :id
+                             :as dashboard}   {:name "Dashboard"}
+       :model/DashboardCard _                 {:dashboard_id           dashboard-id
+                                               :visualization_settings {:text "Markdown"}
+                                               :row                    1}
+       :model/DashboardCard _                 {:dashboard_id           dashboard-id
+                                               :visualization_settings {:virtual_card {:display "link"}
+                                                                        :link         {:url "https://metabase.com"}}
+                                               :row                    2}
+       :model/DashboardCard _                 {:dashboard_id           dashboard-id
+                                               :visualization_settings {:virtual_card {:display "iframe"}}
+                                               :row                    3}]
       (is (=? [{:text "Markdown"}
                {:text "### [https://metabase.com](https://metabase.com)"}]
               (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)))))
 
   (testing "Link cards are returned and info should be newly fetched"
-    (t2.with-temp/with-temp [Dashboard dashboard {:name "Test Dashboard"}]
+    (t2.with-temp/with-temp [:model/Dashboard dashboard {:name "Test Dashboard"}]
       (with-link-card-fixture-for-dashboard dashboard [{:keys [collection-owner-id
                                                                collection-id
                                                                database-id
@@ -801,12 +789,12 @@
                                                                dashboard-id]}]
         (let [site-url (public-settings/site-url)]
           (testing "should returns all link cards and name are newly fetched"
-            (doseq [[model id] [[Card card-id]
-                                [Table table-id]
-                                [Database database-id]
-                                [Dashboard dashboard-id]
-                                [Collection collection-id]
-                                [Card model-id]]]
+            (doseq [[model id] [[:model/Card card-id]
+                                [:model/Table table-id]
+                                [:model/Database database-id]
+                                [:model/Dashboard dashboard-id]
+                                [:model/Collection collection-id]
+                                [:model/Card model-id]]]
               (t2/update! model id {:name (format "New %s name" (name model))}))
             (is (=? [{:text (format "### [New Collection name](%s/collection/%d)\nLinked collection desc" site-url collection-id)}
                      {:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
@@ -825,30 +813,30 @@
 
 (deftest execute-dashboard-with-tabs-test
   (t2.with-temp/with-temp
-    [Dashboard           {dashboard-id :id
-                          :as dashboard}   {:name "Dashboard"}
+    [:model/Dashboard           {dashboard-id :id
+                                 :as dashboard}   {:name "Dashboard"}
      :model/DashboardTab {tab-id-2 :id}    {:name         "The second tab"
                                             :position     1
                                             :dashboard_id dashboard-id}
      :model/DashboardTab {tab-id-1 :id}    {:name         "The first tab"
                                             :position     0
                                             :dashboard_id dashboard-id}
-     DashboardCard       _                 {:dashboard_id           dashboard-id
-                                            :dashboard_tab_id       tab-id-1
-                                            :row                    2
-                                            :visualization_settings {:text "Card 2 tab-1"}}
-     DashboardCard       _                 {:dashboard_id           dashboard-id
-                                            :dashboard_tab_id       tab-id-1
-                                            :row                    1
-                                            :visualization_settings {:text "Card 1 tab-1"}}
-     DashboardCard       _                 {:dashboard_id           dashboard-id
-                                            :dashboard_tab_id       tab-id-2
-                                            :row                    2
-                                            :visualization_settings {:text "Card 2 tab-2"}}
-     DashboardCard       _                 {:dashboard_id           dashboard-id
-                                            :dashboard_tab_id       tab-id-2
-                                            :row                    1
-                                            :visualization_settings {:text "Card 1 tab-2"}}]
+     :model/DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                   :dashboard_tab_id       tab-id-1
+                                                   :row                    2
+                                                   :visualization_settings {:text "Card 2 tab-1"}}
+     :model/DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                   :dashboard_tab_id       tab-id-1
+                                                   :row                    1
+                                                   :visualization_settings {:text "Card 1 tab-1"}}
+     :model/DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                   :dashboard_tab_id       tab-id-2
+                                                   :row                    2
+                                                   :visualization_settings {:text "Card 2 tab-2"}}
+     :model/DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                   :dashboard_tab_id       tab-id-2
+                                                   :row                    1
+                                                   :visualization_settings {:text "Card 1 tab-2"}}]
     (testing "tabs are correctly rendered"
       (is (= [{:text "The first tab", :type :tab-title}
               {:text "Card 1 tab-1", :type :text}
@@ -861,44 +849,44 @@
 (deftest execute-dashboard-with-empty-tabs-test
   (testing "Dashboard with one tab."
     (t2.with-temp/with-temp
-      [Dashboard           {dashboard-id :id
-                            :as          dashboard}   {:name "Dashboard"}
+      [:model/Dashboard           {dashboard-id :id
+                                   :as          dashboard}   {:name "Dashboard"}
        :model/DashboardTab {}                {:name         "The second tab"
                                               :position     1
                                               :dashboard_id dashboard-id}
        :model/DashboardTab {tab-id-1 :id}    {:name         "The first tab"
                                               :position     0
                                               :dashboard_id dashboard-id}
-       DashboardCard       _                 {:dashboard_id           dashboard-id
-                                              :dashboard_tab_id       tab-id-1
-                                              :row                    2
-                                              :visualization_settings {:text "Card 2 tab-1"}}
-       DashboardCard       _                 {:dashboard_id           dashboard-id
-                                              :dashboard_tab_id       tab-id-1
-                                              :row                    1
-                                              :visualization_settings {:text "Card 1 tab-1"}}]
+       :model/DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                     :dashboard_tab_id       tab-id-1
+                                                     :row                    2
+                                                     :visualization_settings {:text "Card 2 tab-1"}}
+       :model/DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                     :dashboard_tab_id       tab-id-1
+                                                     :row                    1
+                                                     :visualization_settings {:text "Card 1 tab-1"}}]
       (testing "Tab title is omitted (#45123)"
         (is (= [{:text "Card 1 tab-1", :type :text}
                 {:text "Card 2 tab-1", :type :text}]
                (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil))))))
   (testing "Dashboard with multiple tabs"
     (t2.with-temp/with-temp
-      [Dashboard           {dashboard-id :id
-                            :as          dashboard}   {:name "Dashboard"}
+      [:model/Dashboard           {dashboard-id :id
+                                   :as          dashboard}   {:name "Dashboard"}
        :model/DashboardTab {}                {:name         "The second tab"
                                               :position     1
                                               :dashboard_id dashboard-id}
        :model/DashboardTab {tab-id-1 :id}    {:name         "The first tab"
                                               :position     0
                                               :dashboard_id dashboard-id}
-       DashboardCard       _                 {:dashboard_id           dashboard-id
-                                              :dashboard_tab_id       tab-id-1
-                                              :row                    2
-                                              :visualization_settings {:text "Card 2 tab-1"}}
-       DashboardCard       _                 {:dashboard_id           dashboard-id
-                                              :dashboard_tab_id       tab-id-1
-                                              :row                    1
-                                              :visualization_settings {:text "Card 1 tab-1"}}]
+       :model/DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                     :dashboard_tab_id       tab-id-1
+                                                     :row                    2
+                                                     :visualization_settings {:text "Card 2 tab-1"}}
+       :model/DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                     :dashboard_tab_id       tab-id-1
+                                                     :row                    1
+                                                     :visualization_settings {:text "Card 1 tab-1"}}]
       (testing "Tab title is omitted when only 1 tab contains cards."
         (is (= [{:text "Card 1 tab-1", :type :text}
                 {:text "Card 2 tab-1", :type :text}]
@@ -921,22 +909,22 @@
            :model/DashboardTab {tab-id-1 :id}    {:name         "The first tab"
                                                   :position     0
                                                   :dashboard_id dashboard-id}
-           DashboardCard       _                 {:dashboard_id           dashboard-id
-                                                  :dashboard_tab_id       tab-id-1
-                                                  :row                    1
-                                                  :visualization_settings {:text "Card 1 tab-1"}}
-           DashboardCard       _                 {:dashboard_id           dashboard-id
-                                                  :dashboard_tab_id       tab-id-1
-                                                  :row                    2
-                                                  :visualization_settings {:text "Card 2 tab-1"}}
-           DashboardCard       _                 {:dashboard_id           dashboard-id
-                                                  :dashboard_tab_id       tab-id-2
-                                                  :row                    1
-                                                  :visualization_settings {:text "Card 1 tab-2"}}
-           DashboardCard       _                 {:dashboard_id           dashboard-id
-                                                  :dashboard_tab_id       tab-id-2
-                                                  :row                    2
-                                                  :visualization_settings {:text "Card 2 tab-2"}}]
+           :model/DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                         :dashboard_tab_id       tab-id-1
+                                                         :row                    1
+                                                         :visualization_settings {:text "Card 1 tab-1"}}
+           :model/DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                         :dashboard_tab_id       tab-id-1
+                                                         :row                    2
+                                                         :visualization_settings {:text "Card 2 tab-1"}}
+           :model/DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                         :dashboard_tab_id       tab-id-2
+                                                         :row                    1
+                                                         :visualization_settings {:text "Card 1 tab-2"}}
+           :model/DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                         :dashboard_tab_id       tab-id-2
+                                                         :row                    2
+                                                         :visualization_settings {:text "Card 2 tab-2"}}]
           ;; dashcards from this setup is currently not belong to any tabs, we should make sure them belong to one
           (t2/update! :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id nil {:dashboard_tab_id tab-id-1})
           (thunk))))
@@ -1004,24 +992,24 @@
   (testing "Dashboard subscription attachments respect dashcard viz settings."
     (mt/with-fake-inbox
       (notification.tu/with-notification-testing-setup
-        (mt/with-temp [Card {card-id :id :as c} (pulse.test-util/checkins-query-card {:breakout [!day.date]})
-                       Dashboard     {dash-id :id} {:name "just dash"}]
+        (mt/with-temp [:model/Card {card-id :id :as c} (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+                       :model/Dashboard     {dash-id :id} {:name "just dash"}]
           (let [;; with the helper `metadata->field-ref` we turn column metadata into column field refs
                 ;; with an additional key `:enabled`. Here the 1st col is enabled, and the 2nd is disabled
                 viz {:table.columns (mapv metadata->field-ref (:result_metadata c) [true false])}]
-            (mt/with-temp [DashboardCard {dash-card-id :id} {:dashboard_id           dash-id
-                                                             :card_id                card-id
-                                                             :visualization_settings viz}
-                           Pulse         {pulse-id :id, :as pulse}  {:name         "just pulse"
-                                                                     :dashboard_id dash-id}
-                           PulseCard     _ {:pulse_id          pulse-id
-                                            :card_id           card-id
-                                            :position          0
-                                            :dashboard_card_id dash-card-id
-                                            :include_csv       true}
-                           PulseChannel  {pc-id :id} {:pulse_id pulse-id}
-                           PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
-                                                    :pulse_channel_id pc-id}]
+            (mt/with-temp [:model/DashboardCard {dash-card-id :id} {:dashboard_id           dash-id
+                                                                    :card_id                card-id
+                                                                    :visualization_settings viz}
+                           :model/Pulse         {pulse-id :id, :as pulse}  {:name         "just pulse"
+                                                                            :dashboard_id dash-id}
+                           :model/PulseCard     _ {:pulse_id          pulse-id
+                                                   :card_id           card-id
+                                                   :position          0
+                                                   :dashboard_card_id dash-card-id
+                                                   :include_csv       true}
+                           :model/PulseChannel  {pc-id :id} {:pulse_id pulse-id}
+                           :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                           :pulse_channel_id pc-id}]
               (with-redefs [email.result-attachment/result-attachment result-attachment]
                 (pulse.send/send-pulse! pulse)
                 (is (= 1
@@ -1044,22 +1032,22 @@
 
 (deftest dashboard-description-markdown-test
   (testing "Dashboard description renders markdown"
-    (mt/with-temp [Card                  {card-id :id} {:name          "Test card"
-                                                        :dataset_query {:database (mt/id)
-                                                                        :type     :native
-                                                                        :native   {:query "select * from checkins"}}
-                                                        :display       :table}
-                   Dashboard             {dashboard-id :id} {:description "# dashboard description"}
-                   DashboardCard         {dashboard-card-id :id} {:dashboard_id dashboard-id
-                                                                  :card_id      card-id}
-                   Pulse                 {pulse-id :id} {:name         "Pulse Name"
-                                                         :dashboard_id dashboard-id}
-                   PulseCard             _ {:pulse_id          pulse-id
-                                            :card_id           card-id
-                                            :dashboard_card_id dashboard-card-id}
-                   PulseChannel          {pc-id :id} {:pulse_id pulse-id}
-                   PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
-                                            :pulse_channel_id pc-id}]
+    (mt/with-temp [:model/Card                  {card-id :id} {:name          "Test card"
+                                                               :dataset_query {:database (mt/id)
+                                                                               :type     :native
+                                                                               :native   {:query "select * from checkins"}}
+                                                               :display       :table}
+                   :model/Dashboard             {dashboard-id :id} {:description "# dashboard description"}
+                   :model/DashboardCard         {dashboard-card-id :id} {:dashboard_id dashboard-id
+                                                                         :card_id      card-id}
+                   :model/Pulse                 {pulse-id :id} {:name         "Pulse Name"
+                                                                :dashboard_id dashboard-id}
+                   :model/PulseCard             _ {:pulse_id          pulse-id
+                                                   :card_id           card-id
+                                                   :dashboard_card_id dashboard-card-id}
+                   :model/PulseChannel          {pc-id :id} {:pulse_id pulse-id}
+                   :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                   :pulse_channel_id pc-id}]
       (is (= "<h1>dashboard description</h1>"
              (->> (pulse.test-util/with-captured-channel-send-messages!
                     (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))

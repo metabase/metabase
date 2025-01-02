@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
    [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
    [metabase-enterprise.test :as met]
    [metabase.api.common :as api]
@@ -13,7 +12,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models :refer [Card Collection Field Table]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -42,11 +40,11 @@
 (defn- identifier
   ([table-key]
    (qp.store/with-metadata-provider (mt/id)
-     (sql.qp/->honeysql (or driver/*driver* :h2) (t2/select-one Table :id (mt/id table-key)))))
+     (sql.qp/->honeysql (or driver/*driver* :h2) (t2/select-one :model/Table :id (mt/id table-key)))))
 
   ([table-key field-key]
    (let [field-id   (mt/id table-key field-key)
-         field-name (t2/select-one-fn :name Field :id field-id)]
+         field-name (t2/select-one-fn :name :model/Field :id field-id)]
      (qp.store/with-metadata-provider (mt/id)
        (sql.qp/->honeysql
         (or driver/*driver* :h2)
@@ -381,8 +379,8 @@
   (mt/test-drivers (e2e-test-drivers)
     (testing "Users with view access to the related collection should bypass segmented permissions"
       (mt/with-temp-copy-of-db
-        (mt/with-temp [Collection collection {}
-                       Card       card        {:collection_id (u/the-id collection)}]
+        (mt/with-temp [:model/Collection collection {}
+                       :model/Card       card        {:collection_id (u/the-id collection)}]
           (mt/with-group [group]
             (mt/with-no-data-perms-for-all-users!
               (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
@@ -403,7 +401,7 @@
                   "querying of a card as a nested query. Part of the row level perms check is looking at the table (or "
                   "card) to see if row level permissions apply. This was broken when it wasn't expecting a card and "
                   "only expecting resolved source-tables")
-      (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues)}]
+      (t2.with-temp/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
         (let [query (mt/mbql-query nil
                       {:source-table (format "card__%s" (u/the-id card))
                        :aggregation  [["count"]]})]
@@ -650,13 +648,13 @@
                                                   :remappings {"venue_id" [:variable [:template-tag "sandbox"]]}}
                                        :checkins {}}
                           :attributes {"venue_id" 1}})
-        (let [venues-gtap-card-id (t2/select-one-fn :card_id GroupTableAccessPolicy
+        (let [venues-gtap-card-id (t2/select-one-fn :card_id :model/GroupTableAccessPolicy
                                                     :group_id (:id &group)
                                                     :table_id (mt/id :venues))]
           (is (integer? venues-gtap-card-id))
           (testing "GTAP Card should not yet current have result_metadata"
             (is (= nil
-                   (t2/select-one-fn :result_metadata Card :id venues-gtap-card-id))))
+                   (t2/select-one-fn :result_metadata :model/Card :id venues-gtap-card-id))))
           (testing "Should be able to run the query"
             (is (= [[1 "Red Medicine" 1 "Red Medicine"]]
                    (mt/rows
@@ -675,7 +673,7 @@
                      {:name         "NAME"
                       :base_type    :type/Text
                       :display_name "Name"}]
-                    (t2/select-one-fn :result_metadata Card :id venues-gtap-card-id)))))))))
+                    (t2/select-one-fn :result_metadata :model/Card :id venues-gtap-card-id)))))))))
 
 (defn- do-with-sql-gtap! [sql f]
   (met/with-gtaps! (mt/$ids
@@ -688,13 +686,13 @@
                                               :remappings {"venue_id" [:variable [:template-tag "sandbox"]]}}
                                    :checkins {}}
                       :attributes {"venue_id" 1}})
-    (let [venues-gtap-card-id (t2/select-one-fn :card_id GroupTableAccessPolicy
+    (let [venues-gtap-card-id (t2/select-one-fn :card_id :model/GroupTableAccessPolicy
                                                 :group_id (:id &group)
                                                 :table_id (mt/id :venues))]
       (is (integer? venues-gtap-card-id))
       (testing "GTAP Card should not yet current have result_metadata"
         (is (= nil
-               (t2/select-one-fn :result_metadata Card :id venues-gtap-card-id))))
+               (t2/select-one-fn :result_metadata :model/Card :id venues-gtap-card-id))))
       (f {:run-query (fn []
                        (mt/run-mbql-query venues
                          {:fields   [$id $name]
@@ -863,8 +861,8 @@
                      :row_count 2}
                     (qp/process-query query))))
           (testing "should be able to save the query as a Card and run it"
-            (mt/with-temp [Collection {collection-id :id} {}
-                           Card       {card-id :id} {:dataset_query query, :collection_id collection-id}]
+            (mt/with-temp [:model/Collection {collection-id :id} {}
+                           :model/Card       {card-id :id} {:dataset_query query, :collection_id collection-id}]
               (perms/grant-collection-read-permissions! &group collection-id)
               (is (=? {:data      {:rows     [[nil 5] ["Widget" 6]]}
                        :status    "completed"
@@ -889,7 +887,7 @@
                                         [:value "Widget" {:base_type     :type/Text
                                                           :effective_type :type/Text
                                                           :coercion_strategy nil
-                                                          :semantic_type  (t2/select-one-fn :semantic_type Field
+                                                          :semantic_type  (t2/select-one-fn :semantic_type :model/Field
                                                                                             :id (mt/id :products :category))
                                                           :database_type "CHARACTER VARYING"
                                                           :name          "CATEGORY"}]]
@@ -961,15 +959,15 @@
   a parameter in order to run the query to get metadata, pass `param-name` and `param-value` template tag parameters
   when running the query."
   [group table-name param-name param-value]
-  (let [card-id (t2/select-one-fn :card_id GroupTableAccessPolicy :group_id (u/the-id group), :table_id (mt/id table-name))
-        query   (t2/select-one-fn :dataset_query Card :id (u/the-id card-id))
+  (let [card-id (t2/select-one-fn :card_id :model/GroupTableAccessPolicy :group_id (u/the-id group), :table_id (mt/id table-name))
+        query   (t2/select-one-fn :dataset_query :model/Card :id (u/the-id card-id))
         results (mt/with-test-user :crowberto
                   (qp/process-query (assoc query :parameters [{:type   :category
                                                                :target [:variable [:template-tag param-name]]
                                                                :value  param-value}])))
         metadata (get-in results [:data :results_metadata :columns])]
     (is (seq metadata))
-    (t2/update! Card card-id {:result_metadata metadata})))
+    (t2/update! :model/Card card-id {:result_metadata metadata})))
 
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
@@ -1061,9 +1059,9 @@
   (testing "Make sure Sandboxing works in combination with caching (#18579)"
     (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
       (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})}}}
-        (let [card-id   (t2/select-one-fn :card_id GroupTableAccessPolicy :group_id (u/the-id &group))
+        (let [card-id   (t2/select-one-fn :card_id :model/GroupTableAccessPolicy :group_id (u/the-id &group))
               _         (is (integer? card-id))
-              query     (t2/select-one-fn :dataset_query Card :id card-id)
+              query     (t2/select-one-fn :dataset_query :model/Card :id card-id)
               run-query (fn []
                           (let [results (qp/process-query (assoc query :cache-strategy {:type             :ttl
                                                                                         :multiplier       60
@@ -1095,12 +1093,12 @@
                                                [:field (mt/id :products :category)
                                                 nil]]}}}}
         (mt/with-persistence-enabled! [persist-models!]
-          (mt/with-temp [Card model {:type          :model
-                                     :dataset_query (mt/mbql-query
-                                                      products
-                                                      ;; note does not include the field we have to filter on. No way
-                                                      ;; to use the sandbox filter on the cached table
-                                                      {:fields [$id $price]})}]
+          (mt/with-temp [:model/Card model {:type          :model
+                                            :dataset_query (mt/mbql-query
+                                                             products
+                                                              ;; note does not include the field we have to filter on. No way
+                                                              ;; to use the sandbox filter on the cached table
+                                                             {:fields [$id $price]})}]
             ;; persist model (as admin, so sandboxing is not applied to the persisted query)
             (mt/with-test-user :crowberto
               (persist-models!))
@@ -1140,9 +1138,9 @@
 (deftest is-sandboxed-success-test
   (testing "Integration test that checks that is_sandboxed is recorded in query_execution correctly for a sandboxed query"
     (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
-      (t2.with-temp/with-temp [Card card {:database_id   (mt/id)
-                                          :table_id      (mt/id :categories)
-                                          :dataset_query (mt/mbql-query categories)}]
+      (t2.with-temp/with-temp [:model/Card card {:database_id   (mt/id)
+                                                 :table_id      (mt/id :categories)
+                                                 :dataset_query (mt/mbql-query categories)}]
         (let [query (:dataset_query card)]
           (process-userland-query-test/with-query-execution! [qe query]
             (qp/process-query (qp/userland-query query))

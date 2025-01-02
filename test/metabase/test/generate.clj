@@ -5,11 +5,6 @@
    [clojure.test.check.generators :as gen]
    [java-time.api :as t]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.models :refer [Action Card Collection Dashboard
-                            DashboardCard DashboardCardSeries Database Dimension Field
-                            HTTPAction ImplicitAction LegacyMetric NativeQuerySnippet PermissionsGroup
-                            PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient QueryAction
-                            Segment Table Timeline TimelineEvent User]]
    [metabase.util.log :as log]
    [reifyhealth.specmonstah.core :as rs]
    [reifyhealth.specmonstah.spec-gen :as rsg]
@@ -189,48 +184,48 @@
 (def schema
   {:permissions-group            {:prefix  :perm-g
                                   :spec    ::permissions-group
-                                  :insert! {:model PermissionsGroup}}
+                                  :insert! {:model :model/PermissionsGroup}}
    :permissions-group-membership {:prefix    :perm-g-m
                                   :spec      ::permissions-group-membership
                                   :relations {:group_id [:permissions-group :id]
                                               :user_id  [:core-user :id]}
-                                  :insert!   {:model PermissionsGroupMembership}}
+                                  :insert!   {:model :model/PermissionsGroupMembership}}
    :core-user                    {:prefix  :u
                                   :spec    ::core-user
-                                  :insert! {:model User}}
+                                  :insert! {:model :model/User}}
    :action                       {:prefix    :action
                                   :spec      ::action
-                                  :insert!   {:model Action}
+                                  :insert!   {:model :model/Action}
                                   :relations {:creator_id [:core-user :id]
                                               :model_id   [:simple-model :id]}}
    :query-action                 {:prefix    :query-action
                                   :spec      ::query-action
-                                  :insert!   {:model QueryAction}
+                                  :insert!   {:model :model/QueryAction}
                                   :relations {:database_id [:database :id]
                                               :action_id   [:action :id]}}
    :implicit-action              {:prefix    :implicit-action
                                   :spec      ::implicit-action
-                                  :insert!   {:model ImplicitAction}
+                                  :insert!   {:model :model/ImplicitAction}
                                   :relations {:action_id   [:action :id]}}
    :http-action                  {:prefix    :http-action
                                   :spec      ::http-action
-                                  :insert!   {:model HTTPAction}
+                                  :insert!   {:model :model/HTTPAction}
                                   :relations {:action_id   [:action :id]}}
    :database                     {:prefix  :db
                                   :spec    ::database
-                                  :insert! {:model Database}}
+                                  :insert! {:model :model/Database}}
    :collection                   {:prefix    :coll
                                   :spec      ::collection
-                                  :insert!   {:model Collection}
+                                  :insert!   {:model :model/Collection}
                                   :relations {:personal_owner_id [:core-user :id]}}
    :pulse                        {:prefix    :pulse
                                   :spec      ::pulse
-                                  :insert!   {:model Pulse}
+                                  :insert!   {:model :model/Pulse}
                                   :relations {:creator_id    [:core-user :id]
                                               :collection_id [:collection :id]}}
    :card                         {:prefix    :c
                                   :spec      ::card
-                                  :insert!   {:model Card}
+                                  :insert!   {:model :model/Card}
                                   :relations {:creator_id    [:core-user :id]
                                               :database_id   [:database :id]
                                               :table_id      [:table :id]
@@ -239,75 +234,75 @@
    ;; it's used primarily as model for actions
    :simple-model                  {:prefix    :sm
                                    :spec      ::card
-                                   :insert!   {:model Card}
+                                   :insert!   {:model :model/Card}
                                    :relations {:creator_id    [:core-user :id]
                                                :database_id   [:database :id]
                                                :table_id      [:table :id]
                                                :collection_id [:collection :id]}}
    :dashboard                    {:prefix    :d
                                   :spec      ::dashboard
-                                  :insert!   {:model Dashboard}
+                                  :insert!   {:model :model/Dashboard}
                                   :relations {:creator_id    [:core-user :id]
                                               :collection_id [:collection :id]}}
    :dashboard-card               {:prefix    :dc
                                   :spec      ::dashboard-card
-                                  :insert!   {:model DashboardCard}
+                                  :insert!   {:model :model/DashboardCard}
                                   :relations {:card_id      [:card :id]
                                               :dashboard_id [:dashboard :id]}}
    :dashboard-card-series        {:prefix  :dcs
                                   :spec    ::dashboard_card_series
-                                  :insert! {:model DashboardCardSeries}}
+                                  :insert! {:model :model/DashboardCardSeries}}
    :dimension                    {:prefix  :dim
                                   :spec    ::dimension
-                                  :insert! {:model Dimension}
+                                  :insert! {:model :model/Dimension}
                                   :relations {:field_id                [:field :id]
                                               :human_readable_field_id [:field :id]}}
    :field                        {:prefix      :field
                                   :spec        ::field
-                                  :insert!     {:model Field}
+                                  :insert!     {:model :model/Field}
                                   :relations   {:table_id [:table :id]}}
    :metric                       {:prefix    :metric
                                   :spec      ::metric
-                                  :insert!   {:model LegacyMetric}
+                                  :insert!   {:model :model/LegacyMetric}
                                   :relations {:creator_id [:core-user :id]
                                               :table_id   [:table :id]}}
    :table                        {:prefix    :t
                                   :spec      ::table
-                                  :insert!   {:model Table}
+                                  :insert!   {:model :model/Table}
                                   :relations {:db_id [:database :id]}}
    :native-query-snippet         {:prefix    :nqs
                                   :spec      ::native-query-snippet
-                                  :insert!   {:model NativeQuerySnippet}
+                                  :insert!   {:model :model/NativeQuerySnippet}
                                   :relations {:creator_id    [:core-user :id]
                                               :collection_id [:collection :id]}}
    :pulse-card                   {:prefix    :pulse-card
                                   :spec      ::pulse-card
-                                  :insert!   {:model PulseCard}
+                                  :insert!   {:model :model/PulseCard}
                                   :relations {:pulse_id [:pulse :id]
                                               :card_id  [:card :id]
                                               :dashboard_card_id [:dashboard-card :id]}}
    :pulse-channel                {:prefix    :pulse-channel
                                   :spec      ::pulse-channel
-                                  :insert!   {:model PulseChannel}
+                                  :insert!   {:model :model/PulseChannel}
                                   :relations {:pulse_id [:pulse :id]}}
    :pulse-channel-recipient      {:prefix    :pcr
                                   :spec      ::pulse-channel-recipient
-                                  :insert!   {:model PulseChannelRecipient}
+                                  :insert!   {:model :model/PulseChannelRecipient}
                                   :relations {:pulse_channel_id [:pulse-channel :id]
                                               :user_id          [:core-user     :id]}}
    :timeline                     {:prefix    :timeline
                                   :spec      ::timeline
-                                  :insert!   {:model Timeline}
+                                  :insert!   {:model :model/Timeline}
                                   :relations {:collection_id [:collection :id]
                                               :creator_id    [:core-user  :id]}}
    :timeline-event               {:prefix    :tl-event
                                   :spec      ::timeline-event
-                                  :insert!   {:model TimelineEvent}
+                                  :insert!   {:model :model/TimelineEvent}
                                   :relations {:timeline_id [:timeline  :id]
                                               :creator_id  [:core-user :id]}}
    :segment                      {:prefix    :seg
                                   :spec      ::segment
-                                  :insert!   {:model Segment}
+                                  :insert!   {:model :model/Segment}
                                   :relations {:creator_id [:core-user :id]
                                               :table_id   [:table :id]}}})
    ;; :revision {}

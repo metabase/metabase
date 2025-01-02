@@ -13,11 +13,8 @@
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
-   [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as models.pulse]
-   [metabase.models.pulse-channel :refer [PulseChannel]]
-   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
@@ -145,7 +142,7 @@
    channels         [:+ :map]}
   (validation/check-has-application-permission :subscription false)
   ;; To create an Alert you need read perms for its Card
-  (api/read-check Card (u/the-id card))
+  (api/read-check :model/Card (u/the-id card))
   ;; ok, now create the Alert
   (let [alert-card (-> card (maybe-include-csv alert_condition) models.pulse/card->ref)
         new-alert  (api/check-500
@@ -192,10 +189,10 @@
             (tru "Invalid Alert: Alert does not have a Card associated with it"))
     ;; check permissions as needed.
     ;; Check permissions to update existing Card
-    (api/read-check Card (u/the-id (:card alert-before-update)))
+    (api/read-check :model/Card (u/the-id (:card alert-before-update)))
     ;; if trying to change the card, check perms for that as well
     (when card
-      (api/write-check Card (u/the-id card)))
+      (api/write-check :model/Card (u/the-id card)))
 
     (when-not (or api/*is-superuser?*
                   has-monitoring-permissions?
@@ -251,9 +248,9 @@
   (let [alert (models.pulse/retrieve-alert id)]
     (api/read-check alert)
     (api/let-404 [alert-id (u/the-id alert)
-                  pc-id    (t2/select-one-pk PulseChannel :pulse_id alert-id :channel_type "email")
-                  pcr-id   (t2/select-one-pk PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
-      (t2/delete! PulseChannelRecipient :id pcr-id))
+                  pc-id    (t2/select-one-pk :model/PulseChannel :pulse_id alert-id :channel_type "email")
+                  pcr-id   (t2/select-one-pk :model/PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
+      (t2/delete! :model/PulseChannelRecipient :id pcr-id))
     ;; Send emails letting people know they have been unsubscribed
     (let [user @api/*current-user*]
       (when (email/email-configured?)

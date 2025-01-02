@@ -8,9 +8,6 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.table :refer [Table]]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
@@ -238,22 +235,22 @@
               (sync/sync-database! database {:scan :schema}))
             (testing "the new view should have been synced"
               (is (contains?
-                   (t2/select-fn-set :name Table :db_id (u/the-id database))
+                   (t2/select-fn-set :name :model/Table :db_id (u/the-id database))
                    view-nm)))
-            (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
+            (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database), :name view-nm)]
               (testing "and its columns' :base_type should have been identified correctly"
                 (is (= [{:name "numeric_col",   :database_type "numeric",           :base_type :type/Decimal}
                         {:name "weird_varchar", :database_type "character varying", :base_type :type/Text}]
                        (map
                         mt/derecordize
-                        (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))))))))))
+                        (t2/select [:model/Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))))))))))
 
 (deftest redshift-lbv-sync-error-test
   (mt/test-driver
     :redshift
     (testing "Late-binding view with with data types that cause a JDBC error can still be synced successfully (#21215)"
       (let [db-details (tx/dbdef->connection-details :redshift nil nil)]
-        (t2.with-temp/with-temp [Database database {:engine :redshift, :details db-details}]
+        (t2.with-temp/with-temp [:model/Database database {:engine :redshift, :details db-details}]
           (let [view-nm      (tx/db-qualified-table-name (:name database) "lbv")
                 qual-view-nm (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) view-nm)]
             (execute!
@@ -269,14 +266,14 @@
               (sync/sync-database! database {:scan :schema}))
             (testing "the new view should have been synced without errors"
               (is (contains?
-                   (t2/select-fn-set :name Table :db_id (u/the-id database))
+                   (t2/select-fn-set :name :model/Table :db_id (u/the-id database))
                    view-nm)))
-            (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
+            (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database), :name view-nm)]
               (testing "and its columns' :base_type should have been identified correctly"
                 (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric",           :base_type :type/Decimal}
                         {:name "raw_null",                    :database_type "character varying", :base_type :type/Text}
                         {:name "raw_var",                     :database_type "character varying", :base_type :type/Text}]
-                       (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]})))))))))))
+                       (t2/select [:model/Field :name :database_type :base_type] :table_id table-id {:order-by [:name]})))))))))))
 
 (deftest describe-database-privileges-test
   (mt/test-driver :redshift
@@ -349,7 +346,7 @@
   (mt/test-driver :redshift
     (testing "Check that we properly fetch materialized views"
       (let [db-details (tx/dbdef->connection-details :redshift nil nil)]
-        (mt/with-temp [Database database {:engine :redshift, :details db-details}]
+        (mt/with-temp [:model/Database database {:engine :redshift, :details db-details}]
           (let [table-name    (tx/db-qualified-table-name (:name database) "sync_t")
                 qual-tbl-nm   (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) table-name)
                 mview-nm      (tx/db-qualified-table-name (:name database) "sync_mv")
@@ -377,8 +374,8 @@
               (is (= [1 1642704550656M]
                      (mt/first-row (qp/process-query query)))))))
         (testing "WITH coercion strategy"
-          (mt/with-temp-vals-in-db Field (mt/id :timestamps :timestamp) {:coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
-                                                                         :effective_type    :type/Instant}
+          (mt/with-temp-vals-in-db :model/Field (mt/id :timestamps :timestamp) {:coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
+                                                                                :effective_type    :type/Instant}
             (let [query (mt/mbql-query timestamps)]
               (mt/with-native-query-testing-context query
                 (is (= [1 "2022-01-20T18:49:10.656Z"]

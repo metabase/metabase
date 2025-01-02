@@ -7,8 +7,6 @@
    [metabase.api.user :as api.user]
    [metabase.audit :as audit]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse :refer [Pulse]]
-   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -36,9 +34,9 @@
   (api.user/check-self-or-superuser id)
   ;; delete all `PulseChannelRecipient` rows for this User, which means they will no longer receive any
   ;; Alerts/DashboardSubscriptions
-  (t2/delete! PulseChannelRecipient :user_id id)
+  (t2/delete! :model/PulseChannelRecipient :user_id id)
   ;; archive anything they created.
-  (t2/update! Pulse {:creator_id id, :archived false} {:archived true})
+  (t2/update! :model/Pulse {:creator_id id, :archived false} {:archived true})
   api/generic-204-no-content)
 
 (api/define-routes)

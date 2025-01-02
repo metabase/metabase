@@ -18,10 +18,8 @@
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.sync.describe-table]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.field :as field]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test.data.env :as tx.env]
@@ -280,7 +278,7 @@
 
 (defmethod metabase-instance FieldDefinition
   [this table]
-  (t2/select-one Field
+  (t2/select-one :model/Field
                  :table_id    (u/the-id table)
                  :%lower.name (u/lower-case-en (:field-name this))
                  {:order-by [[:id :asc]]}))
@@ -290,7 +288,7 @@
   ;; Look first for an exact table-name match; otherwise allow DB-qualified table names for drivers that need them
   ;; like Oracle
   (letfn [(table-with-name [table-name]
-            (t2/select-one Table
+            (t2/select-one :model/Table
                            :db_id       (:id database)
                            :%lower.name table-name
                            {:order-by [[:id :asc]]}))]
@@ -307,7 +305,7 @@
   [{:keys [database-name]} :- [:map [:database-name :string]]
    driver                  :- :keyword]
   (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
-  (t2/select-one Database
+  (t2/select-one :model/Database
                  :name   (database-display-name-for-driver driver database-name)
                  :engine driver
                  {:order-by [[:id :asc]]}))
@@ -461,7 +459,7 @@
   ([_driver aggregation-type {field-id :id, table-id :table_id}]
    {:pre [(some? table-id)]}
    (merge
-    (first (qp.preprocess/query->expected-cols {:database (t2/select-one-fn :db_id Table :id table-id)
+    (first (qp.preprocess/query->expected-cols {:database (t2/select-one-fn :db_id :model/Table :id table-id)
                                                 :type     :query
                                                 :query    {:source-table table-id
                                                            :aggregation  [[aggregation-type [:field-id field-id]]]

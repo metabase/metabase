@@ -5,7 +5,6 @@
    [metabase.api.geojson-test :as geojson-test]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
-   [metabase.models :refer [Card Dashboard]]
    [metabase.models.permissions :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -172,13 +171,13 @@
 
                 (get-embeddable-dashboards [user status]
                   (testing (format "get embeddable dashboards with %s user" (mt/user-descriptor user))
-                    (t2.with-temp/with-temp [Dashboard _ {:enable_embedding true}]
+                    (t2.with-temp/with-temp [:model/Dashboard _ {:enable_embedding true}]
                       (mt/user-http-request user :get status "dashboard/embeddable"))))
 
                 (delete-public-dashboard! [user status]
                   (testing (format "delete public dashboard with %s user" (mt/user-descriptor user))
-                    (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:public_uuid       (str (random-uuid))
-                                                                           :made_public_by_id (mt/user->id :crowberto)}]
+                    (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid       (str (random-uuid))
+                                                                                  :made_public_by_id (mt/user->id :crowberto)}]
                       (mt/user-http-request user :delete status (format "dashboard/%d/public_link" dashboard-id)))))]
 
           (testing "if `advanced-permissions` is disabled, require admins,"
@@ -251,13 +250,13 @@
 
                 (get-embeddable-cards [user status]
                   (testing (format "get embeddable cards with %s user" (mt/user-descriptor user))
-                    (t2.with-temp/with-temp [Card _ {:enable_embedding true}]
+                    (t2.with-temp/with-temp [:model/Card _ {:enable_embedding true}]
                       (mt/user-http-request user :get status "card/embeddable"))))
 
                 (delete-public-card! [user status]
                   (testing (format "delete public card with %s user" (mt/user-descriptor user))
-                    (t2.with-temp/with-temp [Card {card-id :id} {:public_uuid       (str (random-uuid))
-                                                                 :made_public_by_id (mt/user->id :crowberto)}]
+                    (t2.with-temp/with-temp [:model/Card {card-id :id} {:public_uuid       (str (random-uuid))
+                                                                        :made_public_by_id (mt/user->id :crowberto)}]
                       (mt/user-http-request user :delete status (format "card/%d/public_link" card-id)))))]
 
           (testing "if `advanced-permissions` is disabled, require admins,"

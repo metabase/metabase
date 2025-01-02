@@ -5,7 +5,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [Database Field Table]]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.query-processor :as qp]
@@ -25,17 +24,17 @@
 (deftest ^:parallel field-distinct-count-test
   (mt/test-drivers (mt/normal-drivers-with-feature ::field-count-tests)
     (is (= 100
-           (metadata-queries/field-distinct-count (t2/select-one Field :id (mt/id :checkins :venue_id)))))))
+           (metadata-queries/field-distinct-count (t2/select-one :model/Field :id (mt/id :checkins :venue_id)))))))
 
 (deftest ^:parallel field-distinct-count-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature ::field-count-tests)
     (is (= 15
-           (metadata-queries/field-distinct-count (t2/select-one Field :id (mt/id :checkins :user_id)))))))
+           (metadata-queries/field-distinct-count (t2/select-one :model/Field :id (mt/id :checkins :user_id)))))))
 
 (deftest ^:parallel field-count-test
   (mt/test-drivers (mt/normal-drivers-with-feature ::field-count-tests)
     (is (= 1000
-           (metadata-queries/field-count (t2/select-one Field :id (mt/id :checkins :venue_id)))))))
+           (metadata-queries/field-count (t2/select-one :model/Field :id (mt/id :checkins :venue_id)))))))
 
 (deftest ^:parallel table-rows-sample-test
   (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
@@ -44,8 +43,8 @@
                     ["33 Taps"]
                     ["800 Degrees Neapolitan Pizzeria"]
                     ["BCD Tofu House"]]
-          table    (t2/select-one Table :id (mt/id :venues))
-          fields   [(t2/select-one Field :id (mt/id :venues :name))]
+          table    (t2/select-one :model/Table :id (mt/id :venues))
+          fields   [(t2/select-one :model/Field :id (mt/id :venues :name))]
           fetch   (fn [truncation-size]
                     (->> (metadata-queries/table-rows-sample table fields (constantly conj)
                                                              (when truncation-size
@@ -65,9 +64,9 @@
 (deftest table-rows-sample-substring-test
   (testing "substring checking"
     (with-redefs [driver.u/database->driver (constantly (:engine (mt/db)))
-                  table/database (constantly (mi/instance Database {:id 5678}))]
-      (let [table  (mi/instance Table {:id 1234})
-            fields [(mi/instance Field {:id 4321 :base_type :type/Text})]]
+                  table/database (constantly (mi/instance :model/Database {:id 5678}))]
+      (let [table  (mi/instance :model/Table {:id 1234})
+            fields [(mi/instance :model/Field {:id 4321 :base_type :type/Text})]]
         (testing "uses substrings if driver supports expressions"
           (with-redefs [driver.u/supports? (constantly true)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
@@ -77,8 +76,8 @@
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions])))))))
       (testing "pre-existing json fields are still marked as `:type/Text`"
-        (let [table (mi/instance Table {:id 1234})
-              fields [(mi/instance Field {:id 4321, :base_type :type/Text, :semantic_type :type/SerializedJSON})]]
+        (let [table (mi/instance :model/Table {:id 1234})
+              fields [(mi/instance :model/Field {:id 4321, :base_type :type/Text, :semantic_type :type/SerializedJSON})]]
           (with-redefs [driver.u/supports? (constantly true)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions]))))))))))

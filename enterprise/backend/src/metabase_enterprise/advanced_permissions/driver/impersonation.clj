@@ -7,8 +7,6 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.util :as driver.u]
    [metabase.models.field :as field]
-   [metabase.models.permissions-group-membership
-    :refer [PermissionsGroupMembership]]
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
@@ -55,7 +53,7 @@
   Note: this returns a list of policies. Typically a user should only be in one group with an impersonation policy at a time,
   but there may be policies in multiple groups if they use the same user attribute."
   [db-or-id]
-  (let [group-ids           (t2/select-fn-set :group_id PermissionsGroupMembership :user_id api/*current-user-id*)
+  (let [group-ids           (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id api/*current-user-id*)
         conn-impersonations (when (seq group-ids)
                               (t2/select :model/ConnectionImpersonation
                                          :group_id [:in group-ids]

@@ -2,7 +2,7 @@
   "`/api/mt/gtap` endpoints, for CRUD operations and the like on GTAPs (Group Table Access Policies)."
   (:require
    [compojure.core :refer [DELETE GET POST PUT]]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap]
    [metabase.api.common :as api]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
@@ -16,14 +16,14 @@
   {group_id [:maybe ms/PositiveInt]
    table_id [:maybe ms/PositiveInt]}
   (if (and group_id table_id)
-    (t2/select-one GroupTableAccessPolicy :group_id group_id :table_id table_id)
-    (t2/select GroupTableAccessPolicy {:order-by [[:id :asc]]})))
+    (t2/select-one :model/GroupTableAccessPolicy :group_id group_id :table_id table_id)
+    (t2/select :model/GroupTableAccessPolicy {:order-by [[:id :asc]]})))
 
 (api/defendpoint GET "/:id"
   "Fetch GTAP by `id`"
   [id]
   {id ms/PositiveInt}
-  (api/check-404 (t2/select-one GroupTableAccessPolicy :id id)))
+  (api/check-404 (t2/select-one :model/GroupTableAccessPolicy :id id)))
 
 ;; TODO - not sure what other endpoints we might need, e.g. for fetching the list above but for a given group or Table
 
@@ -38,7 +38,7 @@
    card_id              [:maybe ms/PositiveInt]
    group_id             ms/PositiveInt
    #_attribute_remappings #_AttributeRemappings} ; TODO -  fix me
-  (first (t2/insert-returning-instances! GroupTableAccessPolicy
+  (first (t2/insert-returning-instances! :model/GroupTableAccessPolicy
                                          {:table_id             table_id
                                           :card_id              card_id
                                           :group_id             group_id
@@ -52,14 +52,14 @@
   {id                   ms/PositiveInt
    card_id              [:maybe ms/PositiveInt]
    #_attribute_remappings #_AttributeRemappings} ; TODO -  fix me
-  (api/check-404 (t2/select-one GroupTableAccessPolicy :id id))
+  (api/check-404 (t2/select-one :model/GroupTableAccessPolicy :id id))
   ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
   ;; This allows existing values to be "cleared" by being set to nil
   (when (some #(contains? body %) [:card_id :attribute_remappings])
-    (t2/update! GroupTableAccessPolicy id
+    (t2/update! :model/GroupTableAccessPolicy id
                 (u/select-keys-when body
                                     :present #{:card_id :attribute_remappings})))
-  (t2/select-one GroupTableAccessPolicy :id id))
+  (t2/select-one :model/GroupTableAccessPolicy :id id))
 
 (api/defendpoint POST "/validate"
   "Validate a sandbox which may not have yet been saved. This runs the same validation that is performed when the
@@ -74,8 +74,8 @@
   "Delete a GTAP entry."
   [id]
   {id ms/PositiveInt}
-  (api/check-404 (t2/select-one GroupTableAccessPolicy :id id))
-  (t2/delete! GroupTableAccessPolicy :id id)
+  (api/check-404 (t2/select-one :model/GroupTableAccessPolicy :id id))
+  (t2/delete! :model/GroupTableAccessPolicy :id id)
   api/generic-204-no-content)
 
 (defn- +check-sandboxes-enabled

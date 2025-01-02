@@ -52,11 +52,6 @@
   :doc "This variable also controls the geocoding service that Metabase uses to know the location of your logged in users.
         Setting this variable to false also disables this reverse geocoding functionality.")
 
-(def LoginHistory
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/LoginHistory)
-
 (methodical/defmethod t2/table-name :model/LoginHistory [_model] :login_history)
 
 (doto :model/LoginHistory
@@ -70,12 +65,12 @@
     true                                  (dissoc :session_id)))
 
 (defn- first-login-ever? [{user-id :user_id}]
-  (some-> (t2/select [LoginHistory :id] :user_id user-id {:limit 2})
+  (some-> (t2/select [:model/LoginHistory :id] :user_id user-id {:limit 2})
           count
           (= 1)))
 
 (defn- first-login-on-this-device? [{user-id :user_id, device-id :device_id}]
-  (some-> (t2/select [LoginHistory :id] :user_id user-id, :device_id device-id, {:limit 2})
+  (some-> (t2/select [:model/LoginHistory :id] :user_id user-id, :device_id device-id, {:limit 2})
           count
           (= 1)))
 

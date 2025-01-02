@@ -8,8 +8,6 @@
    [metabase.api.permissions :as api.permissions]
    [metabase.api.permissions-test-util :as perm-test-util]
    [metabase.config :as config]
-   [metabase.models
-    :refer [Database PermissionsGroup PermissionsGroupMembership Table User]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.permissions-group :as perms-group]
@@ -51,7 +49,7 @@
         (check-default-groups-returned id->group))
 
       (testing "should return empty groups"
-        (t2.with-temp/with-temp [PermissionsGroup group]
+        (t2.with-temp/with-temp [:model/PermissionsGroup group]
           (let [id->group (m/index-by :id (fetch-groups))]
             (check-default-groups-returned id->group)
             (testing "empty group should be returned"
@@ -116,9 +114,9 @@
 (deftest create-group-test
   (testing "POST /permissions/group"
     (testing "happy path"
-      (mt/with-model-cleanup [PermissionsGroup]
+      (mt/with-model-cleanup [:model/PermissionsGroup]
         (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Test Group"})
-        (is (some? (t2/select PermissionsGroup :name "Test Group")))))
+        (is (some? (t2/select :model/PermissionsGroup :name "Test Group")))))
 
     (testing "requires superuser"
       (is (= "You don't have permissions to do that."
@@ -132,19 +130,19 @@
 (deftest delete-group-test
   (testing "DELETE /permissions/group/:id"
     (testing "happy path"
-      (t2.with-temp/with-temp [PermissionsGroup {group-id :id} {:name "Test group"}]
+      (t2.with-temp/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test group"}]
         (mt/user-http-request :crowberto :delete 204 (format "permissions/group/%d" group-id))
-        (is (= 0 (t2/count PermissionsGroup :name "Test group")))))
+        (is (= 0 (t2/count :model/PermissionsGroup :name "Test group")))))
 
     (testing "requires superuser"
-      (t2.with-temp/with-temp [PermissionsGroup {group-id :id} {:name "Test group"}]
+      (t2.with-temp/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test group"}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :delete 403 (format "permissions/group/%d" group-id))))))))
 
 (deftest fetch-perms-graph-test
   (testing "GET /api/permissions/graph"
     (testing "make sure we can fetch the perms graph from the API"
-      (t2.with-temp/with-temp [Database {db-id :id}]
+      (t2.with-temp/with-temp [:model/Database {db-id :id}]
         (let [graph (mt/user-http-request :crowberto :get 200 "permissions/graph")]
           (is (partial= {:groups {(u/the-id (perms-group/admin))
                                   {db-id {:view-data "unrestricted"
@@ -157,8 +155,8 @@
 (deftest fetch-perms-graph-by-group-id-test
   (testing "GET /api/permissions/graph"
     (testing "make sure we can fetch the perms graph from the API"
-      (t2.with-temp/with-temp [PermissionsGroup {group-id :id :as group}    {}
-                               Database         db                          {}]
+      (t2.with-temp/with-temp [:model/PermissionsGroup {group-id :id :as group}    {}
+                               :model/Database         db                          {}]
         (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
         (let [graph (mt/user-http-request :crowberto :get 200 (format "permissions/graph/group/%s" group-id))]
           (is (mc/validate nat-int? (:revision graph)))
@@ -168,8 +166,8 @@
 (deftest fetch-perms-graph-by-db-id-test
   (testing "GET /api/permissions/graph"
     (testing "make sure we can fetch the perms graph from the API"
-      (t2.with-temp/with-temp [PermissionsGroup group       {}
-                               Database         {db-id :id} {}]
+      (t2.with-temp/with-temp [:model/PermissionsGroup group       {}
+                               :model/Database         {db-id :id} {}]
         (data-perms/set-database-permission! group db-id :perms/view-data :unrestricted)
         (let [graph (mt/user-http-request :crowberto :get 200 (format "permissions/graph/db/%s" db-id))]
           (is (mc/validate nat-int? (:revision graph)))
@@ -179,7 +177,7 @@
 (deftest update-perms-graph-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure we can update the perms graph from the API"
-      (t2.with-temp/with-temp [PermissionsGroup group]
+      (t2.with-temp/with-temp [:model/PermissionsGroup group]
         (mt/user-http-request
          :crowberto :put 200 "permissions/graph"
          (assoc-in (data-perms.graph/api-graph)
@@ -192,7 +190,7 @@
   (testing "PUT /api/permissions/graph"
     (testing "make sure we can update the perms graph from the API"
       (testing "Table-specific perms"
-        (t2.with-temp/with-temp [PermissionsGroup group]
+        (t2.with-temp/with-temp [:model/PermissionsGroup group]
           (data-perms/set-database-permission! group (mt/id) :perms/create-queries :no)
           (mt/user-http-request
            :crowberto :put 200 "permissions/graph"
@@ -207,9 +205,9 @@
 (deftest update-perms-graph-perms-for-new-db-test
   (testing "PUT /api/permissions/graph"
     (testing "permissions for new db"
-      (t2.with-temp/with-temp [PermissionsGroup group       {}
-                               Database         {db-id :id} {}
-                               Table            _           {:db_id db-id}]
+      (t2.with-temp/with-temp [:model/PermissionsGroup group       {}
+                               :model/Database         {db-id :id} {}
+                               :model/Table            _           {:db_id db-id}]
         (mt/user-http-request
          :crowberto :put 200 "permissions/graph"
          (assoc-in (data-perms.graph/api-graph)
@@ -224,8 +222,8 @@
 (deftest update-perms-graph-perms-for-new-db-with-no-tables-test
   (testing "PUT /api/permissions/graph"
     (testing "permissions for new db with no tables"
-      (t2.with-temp/with-temp [PermissionsGroup group       {}
-                               Database         {db-id :id} {}]
+      (t2.with-temp/with-temp [:model/PermissionsGroup group       {}
+                               :model/Database         {db-id :id} {}]
         (mt/user-http-request
          :crowberto :put 200 "permissions/graph"
          (assoc-in (data-perms.graph/api-graph)
@@ -280,7 +278,7 @@
 (deftest can-revoke-permsissions-via-graph-test
   (testing "PUT /api/permissions/graph"
     (let [table-id (mt/id :venues)]
-      (t2.with-temp/with-temp [PermissionsGroup group]
+      (t2.with-temp/with-temp [:model/PermissionsGroup group]
         (mt/user-http-request
          :crowberto :put 200 "permissions/graph"
          (assoc-in (data-perms.graph/api-graph)
@@ -337,8 +335,8 @@
 
 (deftest add-group-membership-test
   (testing "POST /api/permissions/membership"
-    (t2.with-temp/with-temp [User             user  {}
-                             PermissionsGroup group {}]
+    (t2.with-temp/with-temp [:model/User             user  {}
+                             :model/PermissionsGroup group {}]
       (testing "requires superuser"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "permissions/membership" {:group_id (:id group)
@@ -351,10 +349,10 @@
 
 (deftest update-group-membership-test
   (testing "PUT /api/permissions/membership/:id"
-    (t2.with-temp/with-temp [User                       user     {}
-                             PermissionsGroup           group    {}
-                             PermissionsGroupMembership {id :id} {:group_id (:id group)
-                                                                  :user_id  (:id user)}]
+    (t2.with-temp/with-temp [:model/User                       user     {}
+                             :model/PermissionsGroup           group    {}
+                             :model/PermissionsGroupMembership {id :id} {:group_id (:id group)
+                                                                         :user_id  (:id user)}]
       (testing "This API is for EE only"
         (mt/with-premium-features #{}
           (is (= "The group manager permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
@@ -362,29 +360,29 @@
 
 (deftest clear-group-membership-test
   (testing "PUT /api/permissions/membership/:group-id/clear"
-    (t2.with-temp/with-temp [User                       {user-id :id}  {}
-                             PermissionsGroup           {group-id :id} {}
-                             PermissionsGroupMembership _              {:group_id group-id
-                                                                        :user_id  user-id}]
+    (t2.with-temp/with-temp [:model/User                       {user-id :id}  {}
+                             :model/PermissionsGroup           {group-id :id} {}
+                             :model/PermissionsGroupMembership _              {:group_id group-id
+                                                                               :user_id  user-id}]
       (testing "requires superuser permisisons"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (format "permissions/membership/%d/clear" group-id)))))
 
       (testing "Membership of a group can be cleared succesfully, while preserving the group itself"
-        (is (= 1 (t2/count PermissionsGroupMembership :group_id group-id)))
+        (is (= 1 (t2/count :model/PermissionsGroupMembership :group_id group-id)))
         (mt/user-http-request :crowberto :put 204 (format "permissions/membership/%d/clear" group-id))
-        (is (true? (t2/exists? PermissionsGroup :id group-id)))
-        (is (= 0 (t2/count PermissionsGroupMembership :group_id group-id))))
+        (is (true? (t2/exists? :model/PermissionsGroup :id group-id)))
+        (is (= 0 (t2/count :model/PermissionsGroupMembership :group_id group-id))))
 
       (testing "The admin group cannot be cleared using this endpoint"
         (mt/user-http-request :crowberto :put 400 (format "permissions/membership/%d/clear" (u/the-id (perms-group/admin))))))))
 
 (deftest delete-group-membership-test
   (testing "DELETE /api/permissions/membership/:id"
-    (t2.with-temp/with-temp [User                       user     {}
-                             PermissionsGroup           group    {}
-                             PermissionsGroupMembership {id :id} {:group_id (:id group)
-                                                                  :user_id  (:id user)}]
+    (t2.with-temp/with-temp [:model/User                       user     {}
+                             :model/PermissionsGroup           group    {}
+                             :model/PermissionsGroupMembership {id :id} {:group_id (:id group)
+                                                                         :user_id  (:id user)}]
       (testing "requires superuser"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :delete 403 (format "permissions/membership/%d" id)))))

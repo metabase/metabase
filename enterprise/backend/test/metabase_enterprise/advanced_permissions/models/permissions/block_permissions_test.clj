@@ -1,11 +1,6 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.sandbox.models.group-table-access-policy
-    :refer [GroupTableAccessPolicy]]
-   [metabase.models
-    :refer [Card Collection Database Permissions PermissionsGroup
-            PermissionsGroupMembership User]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.interface :as mi]
@@ -39,7 +34,7 @@
                              "the API"
                              api-test-db-perms}]
       (testing (str message "\n"))
-      (mt/with-temp [PermissionsGroup {group-id :id} {}]
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
         (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
         (is (nil? (perms group-id)))))))
 
@@ -60,7 +55,7 @@
   (testing "PUT /api/permissions/graph"
     (testing (str "fails when a group has a block permission set, and the instance doesn't have the "
                   ":advanced-permissions premium feature enabled")
-      (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
+      (t2.with-temp/with-temp [:model/PermissionsGroup {group-id :id}]
         ;; Revoke native perms so that we can set block perms
         (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder)
         (let [current-graph (data-perms.graph/api-graph)
@@ -80,7 +75,7 @@
                                   "the perms graph API endpoint"
                                   api-grant-block-perms!}]
       (testing (str description "\n")
-        (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
+        (t2.with-temp/with-temp [:model/PermissionsGroup {group-id :id}]
           (testing "Group should have unrestricted view-data perms upon creation"
             (is (= :unrestricted
                    (test-db-perms group-id)))
@@ -106,17 +101,17 @@
 (deftest update-graph-delete-sandboxes-test
   (testing "When setting `:blocked` permissions any GTAP rows for that Group/Database should get deleted."
     (mt/with-premium-features #{:sandboxes :advanced-permissions}
-      (mt/with-model-cleanup [Permissions]
-        (mt/with-temp [PermissionsGroup       {group-id :id} {}
-                       GroupTableAccessPolicy _ {:table_id (mt/id :venues)
-                                                 :group_id group-id}]
+      (mt/with-model-cleanup [:model/Permissions]
+        (mt/with-temp [:model/PermissionsGroup       {group-id :id} {}
+                       :model/GroupTableAccessPolicy _ {:table_id (mt/id :venues)
+                                                        :group_id group-id}]
           (grant-block-perms! group-id)
           (is (nil? (test-db-perms group-id)))
-          (is (not (t2/exists? GroupTableAccessPolicy :group_id group-id))))))))
+          (is (not (t2/exists? :model/GroupTableAccessPolicy :group_id group-id))))))))
 
 (deftest update-graph-data-perms-should-delete-block-perms-test
   (testing "granting data permissions for a table should not delete existing block permissions"
-    (mt/with-temp [PermissionsGroup {group-id :id} {}]
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
       (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
       (is (nil? (test-db-perms group-id)))
       (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
@@ -125,7 +120,7 @@
 
 (deftest update-graph-disallow-native-query-perms-test
   (testing "Disallow block permissions + native query permissions"
-    (mt/with-temp [PermissionsGroup {group-id :id} {}]
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
       (testing "via the fn"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
@@ -143,12 +138,12 @@
 
 (deftest delete-database-delete-block-perms-test
   (testing "If a Database gets DELETED, any block permissions for it should get deleted too."
-    (mt/with-temp [Database    {db-id :id} {}]
+    (mt/with-temp [:model/Database    {db-id :id} {}]
       (data-perms/set-database-permission! (u/the-id (perms-group/all-users)) db-id :perms/view-data :blocked)
       (letfn [(perms-exist? []
                 (t2/exists? :model/DataPermissions :db_id db-id :perm_value :blocked))]
         (is (perms-exist?))
-        (t2/delete! Database :id db-id)
+        (t2/delete! :model/Database :id db-id)
         (is (not (perms-exist?)))))))
 
 ;;;; QP perms-check related stuff.
@@ -159,13 +154,13 @@
                  :type     :query
                  :query    {:source-table (mt/id :venues)
                             :limit        1}}]
-      (mt/with-temp [User                       {user-id :id} {}
-                     PermissionsGroup           {group-id :id} {}
-                     PermissionsGroupMembership _ {:group_id group-id :user_id user-id}
-                     Collection                 {collection-id :id} {}
-                     Card                       {card-id :id} {:collection_id collection-id
-                                                               :dataset_query query}
-                     Permissions                _ {:group_id group-id :object (perms/collection-read-path collection-id)}]
+      (mt/with-temp [:model/User                       {user-id :id} {}
+                     :model/PermissionsGroup           {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:group_id group-id :user_id user-id}
+                     :model/Collection                 {collection-id :id} {}
+                     :model/Card                       {card-id :id} {:collection_id collection-id
+                                                                      :dataset_query query}
+                     :model/Permissions                _ {:group_id group-id :object (perms/collection-read-path collection-id)}]
         (mt/with-premium-features #{:advanced-permissions}
           (mt/with-no-data-perms-for-all-users!
             (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
@@ -221,9 +216,9 @@
                  :type     :query
                  :query    {:source-table (mt/id :venues)
                             :limit        1}}]
-      (mt/with-temp [User                       {user-id :id} {}
-                     PermissionsGroup           {group-id :id} {}
-                     PermissionsGroupMembership _ {:group_id group-id :user_id user-id}]
+      (mt/with-temp [:model/User                       {user-id :id} {}
+                     :model/PermissionsGroup           {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:group_id group-id :user_id user-id}]
         (mt/with-premium-features #{:advanced-permissions}
           (mt/with-no-data-perms-for-all-users!
             (testing "legacy-no-self-service does not override block perms for a table"

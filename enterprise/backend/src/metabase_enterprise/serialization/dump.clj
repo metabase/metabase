@@ -6,16 +6,8 @@
    [metabase-enterprise.serialization.names :refer [fully-qualified-name name-for-logging safe-name]]
    [metabase-enterprise.serialization.serialize :as serialize]
    [metabase.config :as config]
-   [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.dimension :refer [Dimension]]
-   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse :refer [Pulse]]
-   [metabase.models.segment :refer [Segment]]
    [metabase.models.setting :as setting]
-   [metabase.models.table :refer [Table]]
-   [metabase.models.user :refer [User]]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
@@ -71,7 +63,7 @@
   [instance]
   (some (fn [model]
           (mi/instance-of? model instance))
-        [Pulse Dashboard Segment Field User]))
+        [:model/Pulse :model/Dashboard :model/Segment :model/Field :model/User]))
 
 (defn- spit-entity!
   [path entity]
@@ -108,14 +100,14 @@
   "Combine all dimensions into a vector and dump it into YAML at in the directory for the
    corresponding schema starting at `path`."
   [path]
-  (doseq [[table-id dimensions] (group-by (comp :table_id Field :field_id) (t2/select Dimension))
-          :let [table (t2/select-one Table :id table-id)]]
+  (doseq [[table-id dimensions] (group-by (comp :table_id :model/Field :field_id) (t2/select :model/Dimension))
+          :let [table (t2/select-one :model/Table :id table-id)]]
     (spit-yaml! (if (:schema table)
                   (format "%s%s/schemas/%s/dimensions.yaml"
                           path
-                          (->> table :db_id (fully-qualified-name Database))
+                          (->> table :db_id (fully-qualified-name :model/Database))
                           (:schema table))
                   (format "%s%s/dimensions.yaml"
                           path
-                          (->> table :db_id (fully-qualified-name Database))))
+                          (->> table :db_id (fully-qualified-name :model/Database))))
                 (map serialize/serialize dimensions))))

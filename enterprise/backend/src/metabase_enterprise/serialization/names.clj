@@ -5,17 +5,7 @@
    [malli.core :as mc]
    [metabase.db :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
-   [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-   [metabase.models.pulse :refer [Pulse]]
-   [metabase.models.segment :refer [Segment]]
-   [metabase.models.table :refer [Table]]
-   [metabase.models.user :refer [User]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
@@ -47,76 +37,76 @@
         id
         (fully-qualified-name* (t2/select-one model :id id)))))))
 
-(defmethod fully-qualified-name* Database
+(defmethod fully-qualified-name* :model/Database
   [db]
   (str "/databases/" (safe-name db)))
 
-(defmethod fully-qualified-name* Table
+(defmethod fully-qualified-name* :model/Table
   [table]
   (if (:schema table)
     (format "%s/schemas/%s/tables/%s"
-            (->> table :db_id (fully-qualified-name Database))
+            (->> table :db_id (fully-qualified-name :model/Database))
             (:schema table)
             (safe-name table))
     (format "%s/tables/%s"
-            (->> table :db_id (fully-qualified-name Database))
+            (->> table :db_id (fully-qualified-name :model/Database))
             (safe-name table))))
 
-(defmethod fully-qualified-name* Field
+(defmethod fully-qualified-name* :model/Field
   [field]
   (if (:fk_target_field_id field)
-    (str (->> field :table_id (fully-qualified-name Table)) "/fks/" (safe-name field))
-    (str (->> field :table_id (fully-qualified-name Table)) "/fields/" (safe-name field))))
+    (str (->> field :table_id (fully-qualified-name :model/Table)) "/fks/" (safe-name field))
+    (str (->> field :table_id (fully-qualified-name :model/Table)) "/fields/" (safe-name field))))
 
-(defmethod fully-qualified-name* Segment
+(defmethod fully-qualified-name* :model/Segment
   [segment]
-  (str (->> segment :table_id (fully-qualified-name Table)) "/segments/" (safe-name segment)))
+  (str (->> segment :table_id (fully-qualified-name :model/Table)) "/segments/" (safe-name segment)))
 
 (defn- local-collection-name [collection]
   (let [ns-part (when-let [coll-ns (:namespace collection)]
                   (str ":" (if (keyword? coll-ns) (name coll-ns) coll-ns) "/"))]
     (str "/collections/" ns-part (safe-name collection))))
 
-(defmethod fully-qualified-name* Collection
+(defmethod fully-qualified-name* :model/Collection
   [collection]
   (let [parents (some->> (str/split (:location collection) #"/")
                          rest
                          not-empty
-                         (map #(local-collection-name (t2/select-one Collection :id (Integer/parseInt %))))
+                         (map #(local-collection-name (t2/select-one :model/Collection :id (Integer/parseInt %))))
                          (apply str))]
     (str root-collection-path parents (local-collection-name collection))))
 
-(defmethod fully-qualified-name* Dashboard
+(defmethod fully-qualified-name* :model/Dashboard
   [dashboard]
   (format "%s/dashboards/%s"
-          (or (some->> dashboard :collection_id (fully-qualified-name Collection))
+          (or (some->> dashboard :collection_id (fully-qualified-name :model/Collection))
               root-collection-path)
           (safe-name dashboard)))
 
-(defmethod fully-qualified-name* Pulse
+(defmethod fully-qualified-name* :model/Pulse
   [pulse]
   (format "%s/pulses/%s"
-          (or (some->> pulse :collection_id (fully-qualified-name Collection))
+          (or (some->> pulse :collection_id (fully-qualified-name :model/Collection))
               root-collection-path)
           (safe-name pulse)))
 
-(defmethod fully-qualified-name* Card
+(defmethod fully-qualified-name* :model/Card
   [card]
   (format "%s/cards/%s"
           (or (some->> card
                        :collection_id
-                       (fully-qualified-name Collection))
+                       (fully-qualified-name :model/Collection))
               root-collection-path)
           (safe-name card)))
 
-(defmethod fully-qualified-name* User
+(defmethod fully-qualified-name* :model/User
   [user]
   (str "/users/" (:email user)))
 
-(defmethod fully-qualified-name* NativeQuerySnippet
+(defmethod fully-qualified-name* :model/NativeQuerySnippet
   [snippet]
   (format "%s/snippets/%s"
-          (or (some->> snippet :collection_id (fully-qualified-name Collection))
+          (or (some->> snippet :collection_id (fully-qualified-name :model/Collection))
               root-collection-path)
           (safe-name snippet)))
 
@@ -151,7 +141,7 @@
   [context _ _ db-name]
   (assoc context :database (if (= db-name "__virtual")
                              lib.schema.id/saved-questions-virtual-database-id
-                             (t2/select-one-pk Database :name db-name))))
+                             (t2/select-one-pk :model/Database :name db-name))))
 
 (defmethod path->context* "schemas"
   [context _ _ schema]
@@ -159,14 +149,14 @@
 
 (defmethod path->context* "tables"
   [context _ _ table-name]
-  (assoc context :table (t2/select-one-pk Table
+  (assoc context :table (t2/select-one-pk :model/Table
                                           :db_id  (:database context)
                                           :schema (:schema context)
                                           :name   table-name)))
 
 (defmethod path->context* "fields"
   [context _ _ field-name]
-  (assoc context :field (t2/select-one-pk Field
+  (assoc context :field (t2/select-one-pk :model/Field
                                           :table_id (:table context)
                                           :name     field-name)))
 
@@ -176,7 +166,7 @@
 
 (defmethod path->context* "segments"
   [context _ _ segment-name]
-  (assoc context :segment (t2/select-one-pk Segment
+  (assoc context :segment (t2/select-one-pk :model/Segment
                                             :table_id (:table context)
                                             :name     segment-name)))
 
@@ -184,11 +174,11 @@
   [context _ model-attrs collection-name]
   (if (= collection-name "root")
     (assoc context :collection nil)
-    (assoc context :collection (t2/select-one-pk Collection
+    (assoc context :collection (t2/select-one-pk :model/Collection
                                                  :name      collection-name
                                                  :namespace (:namespace model-attrs)
                                                  :location  (or (letfn [(collection-location [id]
-                                                                          (t2/select-one-fn :location Collection :id id))]
+                                                                          (t2/select-one-fn :location :model/Collection :id id))]
                                                                   (some-> context
                                                                           :collection
                                                                           collection-location
@@ -197,30 +187,30 @@
 
 (defmethod path->context* "dashboards"
   [context _ _ dashboard-name]
-  (assoc context :dashboard (t2/select-one-pk Dashboard
+  (assoc context :dashboard (t2/select-one-pk :model/Dashboard
                                               :collection_id (:collection context)
                                               :name          dashboard-name)))
 
 (defmethod path->context* "pulses"
   [context _ _ pulse-name]
-  (assoc context :dashboard (t2/select-one-pk Pulse
+  (assoc context :dashboard (t2/select-one-pk :model/Pulse
                                               :collection_id (:collection context)
                                               :name          pulse-name)))
 
 (defmethod path->context* "cards"
   [context _ _ dashboard-name]
-  (assoc context :card (t2/select-one-pk Card
+  (assoc context :card (t2/select-one-pk :model/Card
                                          :collection_id (:collection context)
                                          :name          dashboard-name)))
 
 (defmethod path->context* "users"
   [context _ _ email]
-  (assoc context :user (t2/select-one-pk User
+  (assoc context :user (t2/select-one-pk :model/User
                                          :email email)))
 
 (defmethod path->context* "snippets"
   [context _ _ snippet-name]
-  (assoc context :snippet (t2/select-one-pk NativeQuerySnippet
+  (assoc context :snippet (t2/select-one-pk :model/NativeQuerySnippet
                                             :collection_id (:collection context)
                                             :name          snippet-name)))
 

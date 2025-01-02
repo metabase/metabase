@@ -3,7 +3,7 @@
    [environ.core :as env]
    [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.models.setting :as setting :refer [defsetting Setting]]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [toucan2.core :as t2]))
 
@@ -33,7 +33,7 @@
   ;; value or setting DB values and the like
   (or (when-let [mb-setup-token (env/env :mb-setup-token)]
         (setting/set-value-of-type! :string :setup-token mb-setup-token))
-      (t2/select-one-fn :value Setting :key "setup-token")
+      (t2/select-one-fn :value :model/Setting :key "setup-token")
       (setting/set-value-of-type! :string :setup-token (str (random-uuid)))))
 
 (defsetting has-user-setup
