@@ -10444,8 +10444,11 @@ databaseChangeLog:
             sql: "delete from setting where \"key\"='encryption-check'"
             dbms: postgresql
         - sql:
+            sql: "delete from setting where `key`='encryption-check'"
+            dbms: mysql,mariadb
+        - sql:
             sql: "delete from setting where \"KEY\"='encryption-check'"
-            dbms: "!postgresql"
+            dbms: h2
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
