@@ -1,6 +1,4 @@
 import { USERS } from "e2e/support/cypress_data";
-import { LOGIN_CACHE } from "e2e/support/cypress_sample_instance_data";
-
 declare global {
   namespace Cypress {
     interface Chainable {
@@ -24,14 +22,22 @@ export const loginCache: Partial<
   >
 > = {};
 
-// Load login cache from sample instance data
-if (Object.keys(LOGIN_CACHE).length) {
-  Object.entries(LOGIN_CACHE).forEach(([user, { sessionId, deviceId }]) => {
-    loginCache[user] = { sessionId, deviceId };
-  });
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const sampleDataFile = require("e2e/support/cypress_sample_instance_data.json");
+  const { loginCache: LOGIN_CACHE } = sampleDataFile;
+
+  // Load login cache from sample instance data
+  if (Object.keys(LOGIN_CACHE).length) {
+    Object.entries(LOGIN_CACHE).forEach(([user, { sessionId, deviceId }]) => {
+      loginCache[user] = { sessionId, deviceId };
+    });
+  }
+} catch (e) {
+  console.warn("No login cache found in cypress_sample_instance_data");
 }
 
-Cypress.Commands.add("signIn", (user = "admin") => {
+Cypress.Commands.add("signIn", (user = "admin", setupCache = false) => {
   if (loginCache[user]) {
     const { sessionId, deviceId } = loginCache[user];
     cy.log("Using cached login token for user", user);
@@ -45,13 +51,15 @@ Cypress.Commands.add("signIn", (user = "admin") => {
 
   const { email: username, password } = USERS[user];
   cy.request("POST", "/api/session", { username, password }).then(response => {
-    cy.log("saving login token for user", user);
-    cy.getCookie("metabase.DEVICE").then(deviceCookie => {
-      loginCache[user] = {
-        sessionId: response.body.id,
-        deviceId: deviceCookie?.value ?? "my-device-id",
-      };
-    });
+    if (setupCache) {
+      cy.log("saving login token for user", user);
+      cy.getCookie("metabase.DEVICE").then(deviceCookie => {
+        loginCache[user] = {
+          sessionId: response.body.id,
+          deviceId: deviceCookie?.value ?? "my-device-id",
+        };
+      });
+    }
   });
 });
 
