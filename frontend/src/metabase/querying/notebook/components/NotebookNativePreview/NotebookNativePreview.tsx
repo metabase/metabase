@@ -8,7 +8,7 @@ import { formatNativeQuery, getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
-import { Editor } from "metabase/query_builder/components/NativeQueryEditor/Editor";
+import { CodeMirrorEditor as Editor } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -83,8 +83,14 @@ export const NotebookNativePreview = (): JSX.Element => {
       >
         {TITLE[engineType]}
       </Box>
-      <Box
-        style={{ flex: 1, borderTop: borderStyle, borderBottom: borderStyle }}
+      <Flex
+        style={{
+          flex: 1,
+          borderTop: borderStyle,
+          borderBottom: borderStyle,
+          overflow: "auto",
+        }}
+        direction="column"
       >
         {showLoader && <DelayedLoadingSpinner delay={1000} />}
         {showEmptySidebar}
@@ -95,12 +101,8 @@ export const NotebookNativePreview = (): JSX.Element => {
             <Box mt="sm">{getErrorMessage(error)}</Box>
           </Flex>
         )}
-        {showQuery && (
-          <div style={{ height: "100%", flex: 1 }}>
-            <Editor query={query} readOnly />
-          </div>
-        )}
-      </Box>
+        {showQuery && <Editor query={query} readOnly />}
+      </Flex>
       <Box ta="end" p="1.5rem">
         <Button
           variant="subtle"
