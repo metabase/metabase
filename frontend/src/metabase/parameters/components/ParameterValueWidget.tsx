@@ -6,7 +6,7 @@ import { t } from "ttag";
 import { Sortable } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
-import S from "metabase/parameters/components/ParameterValueWidget.module.css";
+import S from "./ParameterValueWidget.module.css";
 import { ParameterValueWidgetTrigger } from "metabase/parameters/components/ParameterValueWidgetTrigger";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { Box, Icon, Popover, type PopoverProps } from "metabase/ui";

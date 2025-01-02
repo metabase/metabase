@@ -17,6 +17,7 @@ interface ThemeProviderProps {
    * to allow SDK users to customize the theme.
    */
   theme?: MantineThemeOverride;
+  withGlobalStyles?: boolean;
 }
 
 export const ThemeProvider = withEmotionCache(
@@ -27,7 +28,7 @@ export const ThemeProvider = withEmotionCache(
     }, [props.theme]);
 
     return (
-      <MantineProvider theme={theme} emotionCache={cache}>
+      <MantineProvider withGlobalStyles={props.withGlobalStyles} theme={theme} emotionCache={cache}>
         <DatesProvider>{props.children}</DatesProvider>
       </MantineProvider>
     );

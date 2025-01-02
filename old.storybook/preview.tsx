@@ -17,7 +17,7 @@ import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
-const parameters = {
+export const parameters = {
   actions: { argTypesRegex: "^on[A-Z].*" },
   controls: {
     matchers: {
@@ -39,17 +39,17 @@ const globalStyles = css`
   ${baseStyle}
 `;
 
-const decorators = [
-  Story => {
+export const decorators = [
+  renderStory => {
     if (!document.body.classList.contains("mb-wrapper")) {
       document.body.classList.add("mb-wrapper");
     }
     return (
       <EmotionCacheProvider>
-        <ThemeProvider withGlobalStyles>
+        <ThemeProvider>
           <Global styles={globalStyles} />
           <CssVariables />
-          <Story />
+          {renderStory()}
         </ThemeProvider>
       </EmotionCacheProvider>
     );
@@ -81,6 +81,3 @@ function CssVariables() {
 
   return <Global styles={styles} />;
 }
-
-const preview = { tags: ['autodocs'], parameters, decorators }
-export default preview;
