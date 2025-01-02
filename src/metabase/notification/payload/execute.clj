@@ -164,7 +164,7 @@
                                 :dashcard dashcard
                                ;; TODO should this be dashcard?
                                 :type     :card
-                                :result   (update-in result [:data :rows] storage.disk/store!)}))
+                                :result   result #_(update-in result [:data :rows] storage.disk/store!)}))
             result         (result-fn card_id)
             series-results (mapv (comp result-fn :id) multi-cards)]
         (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])

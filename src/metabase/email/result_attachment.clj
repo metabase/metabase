@@ -8,6 +8,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.interface :as qp.si]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -52,7 +53,7 @@
          (map-indexed
           (fn [i row]
             (qp.si/write-row! w row i ordered-cols viz-settings'))
-          @rows))
+          (u/maybe-deref rows)))
         (qp.si/finish! w results)))))
 
 (defn- create-temp-file
@@ -86,7 +87,7 @@
   "Create result attachments for an email."
   [{{card-name :name format-rows :format_rows pivot-results :pivot_results :as card} :card
     {{:keys [rows]} :data :as result}                                                :result}]
-  (when (seq @rows)
+  (when (seq (u/maybe-deref rows))
     [(when-let [temp-file (and (:include_csv card)
                                (create-temp-file-or-throw "csv"))]
        (with-open [os (io/output-stream temp-file)]
