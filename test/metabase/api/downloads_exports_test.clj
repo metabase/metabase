@@ -959,11 +959,30 @@
 
 (deftest downloads-row-limit-test
   (testing "Downloads row limit works."
+    (with-redefs [qp.i/absolute-max-results 100]
+      (mt/with-temporary-setting-values [public-settings/download-row-limit 105]
+        (mt/with-temp [:model/Card card {:display       :table
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :native
+                                                         :native   {:query "SELECT 1 as A FROM generate_series(1,110);"}}}]
+          (let [results (all-outputs! card {:export-format :csv :format-rows true})]
+            (is (= {:card-download            106
+                    :unsaved-card-download    106
+                    :alert-attachment         106
+                    :dashcard-download        106
+                    :subscription-attachment  106
+                    :public-question-download 106
+                    :public-dashcard-download 106}
+                   (update-vals results count)))))))))
+
+(deftest downloads-row-limit-supercedes-query-limit-test
+  (testing "Downloads row limit works even if a query has a higher limit (#51620)."
     (mt/with-temporary-setting-values [public-settings/download-row-limit 105]
       (mt/with-temp [:model/Card card {:display       :table
                                        :dataset_query {:database (mt/id)
-                                                       :type     :native
-                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,110);"}}}]
+                                                       :type     :query
+                                                       :query    {:source-table (mt/id :orders)
+                                                                  :limit        200}}}]
         (let [results (all-outputs! card {:export-format :csv :format-rows true})]
           (is (= {:card-download            106
                   :unsaved-card-download    106
