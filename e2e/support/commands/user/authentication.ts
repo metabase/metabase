@@ -1,5 +1,5 @@
 import { USERS } from "e2e/support/cypress_data";
-import  { LOGIN_CACHE } from "e2e/support/cypress_sample_instance_data";
+import { LOGIN_CACHE } from "e2e/support/cypress_sample_instance_data";
 
 declare global {
   namespace Cypress {
@@ -14,10 +14,15 @@ declare global {
   }
 }
 
-export const loginCache: Partial<Record<keyof typeof USERS, {
-  sessionId: string;
-  deviceId: string;
-}>> = {};
+export const loginCache: Partial<
+  Record<
+    keyof typeof USERS,
+    {
+      sessionId: string;
+      deviceId: string;
+    }
+  >
+> = {};
 
 // Load login cache from sample instance data
 if (Object.keys(LOGIN_CACHE).length) {
@@ -30,28 +35,24 @@ Cypress.Commands.add("signIn", (user = "admin") => {
   if (loginCache[user]) {
     const { sessionId, deviceId } = loginCache[user];
     cy.log("Using cached login token for user", user);
-    cy.setCookie("metabase.SESSION", sessionId,
-      { httpOnly: true });
+    cy.setCookie("metabase.SESSION", sessionId, { httpOnly: true });
     cy.setCookie("metabase.TIMEOUT", "alive");
-    cy.setCookie("metabase.DEVICE", deviceId ?? "",
-       { httpOnly: true });
+    cy.setCookie("metabase.DEVICE", deviceId ?? "", { httpOnly: true });
     return;
   }
 
   cy.log(`Logging in as ${user}`);
 
   const { email: username, password } = USERS[user];
-  cy.request("POST", "/api/session", { username, password }).then(
-    response => {
-      cy.log("saving login token for user", user);
-      cy.getCookie("metabase.DEVICE").then(deviceCookie => {
-        loginCache[user] = {
-          sessionId: response.body.id,
-          deviceId: deviceCookie?.value ?? "my-device-id",
-        };
-      });
-    },
-  );
+  cy.request("POST", "/api/session", { username, password }).then(response => {
+    cy.log("saving login token for user", user);
+    cy.getCookie("metabase.DEVICE").then(deviceCookie => {
+      loginCache[user] = {
+        sessionId: response.body.id,
+        deviceId: deviceCookie?.value ?? "my-device-id",
+      };
+    });
+  });
 });
 
 Cypress.Commands.add("signInAsAdmin", () => {
