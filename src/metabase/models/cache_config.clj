@@ -12,8 +12,6 @@
 
 (def CachingModel "Caching is configurable for those models" [:enum "root" "database" "dashboard" "question"])
 
-(def CacheConfig "Cache configuration" :model/CacheConfig)
-
 (doto :model/CacheConfig
   (derive :metabase/model)
   (derive :hook/timestamped?))
@@ -136,7 +134,7 @@
     (if (empty? conditions)
       -1
       ;; using JVM date rather than DB time since it's what are used in cache tasks
-      (t2/query-one {:update (t2/table-name CacheConfig)
+      (t2/query-one {:update (t2/table-name :model/CacheConfig)
                      :set    {:invalidated_at (t/offset-date-time)}
                      :where  (into [:or] conditions)}))))
 

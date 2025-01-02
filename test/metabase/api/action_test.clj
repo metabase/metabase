@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.action :as api.action]
-   [metabase.models :refer [Action Card Database]]
    [metabase.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -71,7 +70,7 @@
     :model_id      card-id
     :dataset_query (update (mt/native-query {:query "update users set name = 'foo' where id = {{x}}"})
                            :type name)
-    :database_id   (t2/select-one-fn :database_id Card :id card-id)
+    :database_id   (t2/select-one-fn :database_id :model/Card :id card-id)
     :parameters    [{:id "x" :type "type/biginteger"}]}
    {:name       "Implicit example"
     :type       "implicit"
@@ -197,10 +196,10 @@
             (mt/dataset test-data
               (mt/with-actions-enabled
                 (is (not= (mt/id) test-data-id))
-                (mt/with-temp [Card model {:type :model
-                                           :dataset_query
-                                           (mt/native-query
-                                             {:query "select * from checkins limit 1"})}]
+                (mt/with-temp [:model/Card model {:type :model
+                                                  :dataset_query
+                                                  (mt/native-query
+                                                    {:query "select * from checkins limit 1"})}]
                   (let [action (cross-db-action (:id model) test-data-id)
                         response (mt/user-http-request :rasta :post 400 "action"
                                                        action)]
@@ -261,7 +260,7 @@
                              (:cause
                               (mt/user-http-request :crowberto :post 400 "action" initial-action))))))
                   (testing "a plain card instead of a model"
-                    (t2.with-temp/with-temp [Card {plain-card-id :id} {:dataset_query (mt/mbql-query users)}]
+                    (t2.with-temp/with-temp [:model/Card {plain-card-id :id} {:dataset_query (mt/mbql-query users)}]
                       (is (= "Actions must be made with models, not cards."
                              (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :model_id plain-card-id)))))))
                 (let [created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
@@ -313,8 +312,8 @@
 (deftest implicit-actions-on-non-raw-model-test
   (testing "Implicit actions are not supported on models that have clauses (aggregation, sort, breakout, ...)"
     (mt/with-actions-enabled
-      (t2.with-temp/with-temp [Card {model-id :id} {:dataset_query (mt/mbql-query users {:aggregation [[:count]]})
-                                                    :type          :model}]
+      (t2.with-temp/with-temp [:model/Card {model-id :id} {:dataset_query (mt/mbql-query users {:aggregation [[:count]]})
+                                                           :type          :model}]
         (is (= "Implicit actions are not supported for models with clauses."
                (mt/user-http-request :crowberto :post 400 "action"
                                      {:name       "Implicit example"
@@ -328,7 +327,7 @@
     (mt/with-actions-enabled
       (testing "Should send a snowplow event when"
         (t2.with-temp/with-temp
-          [Card {card-id :id} {:type :model :dataset_query (mt/mbql-query users)}]
+          [:model/Card {card-id :id} {:type :model :dataset_query (mt/mbql-query users)}]
           (doseq [{:keys [type parameters] :as action} (all-actions-default card-id)]
             (let [new-action (mt/user-http-request :crowberto :post 200 "action" action)]
               (testing (format "adding an action of type %s" type)
@@ -357,8 +356,8 @@
 
 (deftest action-parameters-test
   (mt/with-actions-enabled
-    (mt/with-temp [Card {card-id :id} {:type :model}]
-      (mt/with-model-cleanup [Action]
+    (mt/with-temp [:model/Card {card-id :id} {:type :model}]
+      (mt/with-model-cleanup [:model/Action]
         (let [initial-action {:name "Get example"
                               :type "http"
                               :model_id card-id
@@ -372,9 +371,9 @@
               action-path    (str "action/" action-id)]
           (testing "Archiving"
             (mt/user-http-request :crowberto :put 200 action-path {:archived true})
-            (is (true? (t2/select-one-fn :archived Action :id action-id)))
+            (is (true? (t2/select-one-fn :archived :model/Action :id action-id)))
             (mt/user-http-request :crowberto :put 200 action-path {:archived false})
-            (is (false? (t2/select-one-fn :archived Action :id action-id))))
+            (is (false? (t2/select-one-fn :archived :model/Action :id action-id))))
           (testing "Validate POST"
             (testing "Required fields"
               (is (partial= {:errors {:name "string"},
@@ -440,7 +439,7 @@
             (mt/with-actions [{:keys [action-id]} unshared-action-opts]
               (let [uuid (:uuid (mt/user-http-request :crowberto :post 200
                                                       (format "action/%d/public_link" action-id)))]
-                (is (t2/exists? Action :id action-id, :public_uuid uuid))
+                (is (t2/exists? :model/Action :id action-id, :public_uuid uuid))
                 (testing "Test that if an Action has already been shared we reuse the existing UUID"
                   (is (= uuid
                          (:uuid (mt/user-http-request :crowberto :post 200
@@ -486,7 +485,7 @@
             (testing "Test that we can unshare an action"
               (mt/user-http-request :crowberto :delete 204 (format "action/%d/public_link" action-id))
               (is (= false
-                     (t2/exists? Action :id action-id, :public_uuid (:public_uuid action-opts)))))))
+                     (t2/exists? :model/Action :id action-id, :public_uuid (:public_uuid action-opts)))))))
 
         (testing "Test that we cannot unshare an action if it's archived"
           (let [action-opts (merge {:archived true} (shared-action-opts))]
@@ -540,7 +539,7 @@
 (deftest execute-action-test-3
   (mt/with-actions-test-data-and-actions-enabled
     (mt/with-actions [{:keys [action-id]} unshared-action-opts]
-      (let [nonexistent-id (inc (t2/select-one-pk Action {:order-by [[:id :desc]]}))]
+      (let [nonexistent-id (inc (t2/select-one-pk :model/Action {:order-by [[:id :desc]]}))]
         (testing "Check that we get a 404 if the action doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :crowberto
@@ -548,7 +547,7 @@
                                        (format "action/%s/execute" nonexistent-id)
                                        {:parameters {:id 1 :name "European"}})))))
       (testing "Check that we get a 400 if actions are disabled for the database."
-        (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
+        (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-actions false}}
           (is (= "Actions are not enabled."
                  (:cause
                   (mt/user-http-request :crowberto

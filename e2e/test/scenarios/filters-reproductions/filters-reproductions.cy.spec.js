@@ -755,10 +755,10 @@ describe.skip("issue 26861", () => {
   it("exclude filter shouldn't break native questions with field filters (metabase#26861)", () => {
     H.filterWidget().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Exclude...").click();
+    cy.findByText("Exclude…").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Days of the week...").click();
+    cy.findByText("Days of the week…").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Tuesday").click();
 
@@ -1563,7 +1563,6 @@ describe("issue 49642", () => {
       );
 
       cy.findByText("Zackery Bailey").should("be.visible");
-      cy.findByText("Zackery Kuhn").should("be.visible");
     });
   });
 

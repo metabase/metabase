@@ -6,7 +6,6 @@
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.audit :as audit]
    [metabase.db :as mdb]
-   [metabase.models.database :refer [Database]]
    [metabase.models.setting :refer [defsetting]]
    [metabase.plugins :as plugins]
    [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -80,15 +79,15 @@
   - This uses a weird ID because some tests were hardcoded to look for database with ID = 2, and inserting an extra db
   throws that off since these IDs are sequential."
   [engine id]
-  (t2/insert! Database {:is_audit         true
-                        :id               id
-                        :name             "Internal Metabase Database"
-                        :description      "Internal Audit DB used to power metabase analytics."
-                        :engine           engine
-                        :is_full_sync     true
-                        :is_on_demand     false
-                        :creator_id       nil
-                        :auto_run_queries true})
+  (t2/insert! :model/Database {:is_audit         true
+                               :id               id
+                               :name             "Internal Metabase Database"
+                               :description      "Internal Audit DB used to power metabase analytics."
+                               :engine           engine
+                               :is_full_sync     true
+                               :is_on_demand     false
+                               :creator_id       nil
+                               :auto_run_queries true})
   ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
   (t2/delete! :model/Permissions {:where [:like :object (str "%/db/" id "/%")]}))
 

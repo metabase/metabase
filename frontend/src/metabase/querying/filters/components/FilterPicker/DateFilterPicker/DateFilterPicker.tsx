@@ -1,8 +1,8 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import { useDateFilter } from "metabase/querying/filters/hooks/use-date-filter";
 import type { DatePickerValue } from "metabase/querying/filters/types";
-import { PopoverBackButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { DatePicker } from "../../DatePicker";
@@ -39,15 +39,10 @@ export function DateFilterPicker({
         value={value}
         availableOperators={availableOperators}
         availableUnits={availableUnits}
-        backButton={
-          onBack && (
-            <PopoverBackButton p="sm" onClick={onBack}>
-              {columnInfo.longDisplayName}
-            </PopoverBackButton>
-          )
-        }
-        isNew={isNew}
+        submitButtonLabel={isNew ? t`Add filter` : t`Update filter`}
+        backButtonLabel={columnInfo.longDisplayName}
         onChange={handleChange}
+        onBack={onBack}
       />
     </div>
   );

@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useSet } from "react-use";
 
+import { isDesktopSafari } from "metabase/lib/browser";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
@@ -93,6 +94,17 @@ function _CartesianChart(props: VisualizationProps) {
 
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
+
+    // HACK: clip paths cause glitches in Safari on multiseries line charts on dashboards (metabase#51383)
+    if (isDesktopSafari()) {
+      chartRef.current.on("finished", () => {
+        const svg = containerRef.current?.querySelector("svg");
+        if (svg) {
+          const clipPaths = svg.querySelectorAll('defs > clipPath[id^="zr"]');
+          clipPaths.forEach(cp => cp.remove());
+        }
+      });
+    }
   }, []);
 
   const handleToggleSeriesVisibility = useCallback(

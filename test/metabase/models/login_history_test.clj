@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.models :refer [LoginHistory User]]
    [metabase.models.login-history :as login-history]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
@@ -18,21 +17,21 @@
 (deftest first-login-on-this-device?-test
   (let [device-1 (str (random-uuid))
         device-2 (str (random-uuid))]
-    (mt/with-temp [User         {user-id :id} {}
-                   LoginHistory history-1 {:user_id user-id, :device_id device-1}]
+    (mt/with-temp [:model/User         {user-id :id} {}
+                   :model/LoginHistory history-1 {:user_id user-id, :device_id device-1}]
       (testing "one login to device 1 -- should be the first login with this device"
         (is (= true
                (#'login-history/first-login-on-this-device? history-1)))
         (is (= true
                (#'login-history/first-login-ever? history-1))))
       (testing "add a history item for a *different* device -- should be the first login with this device"
-        (t2.with-temp/with-temp [LoginHistory _ {:user_id user-id, :device_id device-2}]
+        (t2.with-temp/with-temp [:model/LoginHistory _ {:user_id user-id, :device_id device-2}]
           (is (= true
                  (#'login-history/first-login-on-this-device? history-1)))
           (is (= false
                  (#'login-history/first-login-ever? history-1)))
           (testing "add a second history item for device 1 -- should *not* be the first login with this device"
-            (t2.with-temp/with-temp [LoginHistory _ {:user_id user-id, :device_id device-1}]
+            (t2.with-temp/with-temp [:model/LoginHistory _ {:user_id user-id, :device_id device-1}]
               (is (= false
                      (#'login-history/first-login-on-this-device? history-1)))
               (is (= false
@@ -41,7 +40,7 @@
 (deftest send-email-on-first-login-from-new-device-test
   (testing "User should get an email the first time they log in from a new device (#14313, #15603, #17495)"
     (mt/test-helpers-set-global-values!
-      (mt/with-temp [User {user-id :id, email :email, first-name :first_name}]
+      (mt/with-temp [:model/User {user-id :id, email :email, first-name :first_name}]
         (let [device              (str (random-uuid))
               original-maybe-send (var-get #'login-history/maybe-send-login-from-new-device-email)]
           (testing "send email on first login from *new* device (but not first login ever)"
@@ -58,11 +57,11 @@
                               (when-let [futur (original-maybe-send login-history)]
                                 ;; block in tests
                                 (u/deref-with-timeout futur 10000)))]
-                (mt/with-temp [LoginHistory _ {:user_id   user-id
-                                               :device_id (str (random-uuid))}
-                               LoginHistory _ {:user_id   user-id
-                                               :device_id device
-                                               :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"}]
+                (mt/with-temp [:model/LoginHistory _ {:user_id   user-id
+                                                      :device_id (str (random-uuid))}
+                               :model/LoginHistory _ {:user_id   user-id
+                                                      :device_id device
+                                                      :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"}]
 
                   (is (malli= [:map-of [:= email]
                                [:sequential
@@ -90,16 +89,16 @@
 
                   (testing "don't send email on subsequent login from same device"
                     (mt/reset-inbox!)
-                    (t2.with-temp/with-temp [LoginHistory _ {:user_id user-id, :device_id device}]
+                    (t2.with-temp/with-temp [:model/LoginHistory _ {:user_id user-id, :device_id device}]
                       (is (= {}
                              @mt/inbox))))))))))))
 
   (testing "don't send email if the setting is disabled by setting MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE=FALSE"
-    (t2.with-temp/with-temp [User {user-id :id}]
+    (t2.with-temp/with-temp [:model/User {user-id :id}]
       (mt/with-fake-inbox
         ;; can't use `mt/with-temporary-setting-values` here because it's a read-only setting
         (mt/with-temp-env-var-value! [mb-send-email-on-first-login-from-new-device "FALSE"]
-          (mt/with-temp [LoginHistory _ {:user_id user-id, :device_id (str (random-uuid))}
-                         LoginHistory _ {:user_id user-id, :device_id (str (random-uuid))}]
+          (mt/with-temp [:model/LoginHistory _ {:user_id user-id, :device_id (str (random-uuid))}
+                         :model/LoginHistory _ {:user_id user-id, :device_id (str (random-uuid))}]
             (is (= {}
                    @mt/inbox))))))))
