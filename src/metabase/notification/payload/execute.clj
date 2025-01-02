@@ -162,7 +162,7 @@
                                             card
                                             (t2/select-one :model/Card :id card-id))
                                 :dashcard dashcard
-                               ;; TODO should this be dashcard?
+                                ;; TODO should this be dashcard?
                                 :type     :card
                                 :result   result #_(update-in result [:data :rows] storage.disk/store!)}))
             result         (result-fn card_id)

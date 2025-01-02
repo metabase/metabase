@@ -245,7 +245,7 @@
                 parameters
                 dashboard]} payload
         timezone            (some->> dashboard_parts (some :card) channel.render/defaulted-timezone)
-        rendered-cards      (mapv #(render-part timezone % {:channel.render/include-title? true}) dashboard_parts)
+        rendered-cards      (map #(render-part timezone % {:channel.render/include-title? true}) dashboard_parts)
         icon-attachment     (apply make-message-attachment (icon-bundle :dashboard))
         attachments         (concat
                              [icon-attachment]
