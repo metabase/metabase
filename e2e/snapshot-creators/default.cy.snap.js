@@ -147,7 +147,7 @@ describe("snapshots", () => {
     cy.request("GET", "/api/user");
 
     Object.keys(USERS).forEach(user => {
-      cy.signIn(user);
+      cy.signIn(user, true);
     });
 
     cy.signInAsAdmin();
