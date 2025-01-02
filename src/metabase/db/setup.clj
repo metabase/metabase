@@ -129,23 +129,26 @@
   Encryption status is tracked by an 'encryption-check' value in the settings table.
   NOTE: the encryption-check setting is not managed like most settings with 'defsetting' so we can manage checking the raw values in the database"
   []
-  (let [raw (-> (t2/select-one :setting :key "encryption-check")
-                :value)
+  (let [raw (try (-> (t2/select-one :setting :key "encryption-check") :value)
+                 (catch Throwable e (do
+                                      (log/warn e "Error checking encryption status, assuming unencrypted")
+                                      nil)))
         looks-encrypted (not= raw "unencrypted")]
     (log/debug "Checking encryption configuration")
-    (if looks-encrypted
-      (do
-        (when-not (encryption/default-encryption-enabled?)
-          (throw (ex-info "Database is encrypted but the MB_ENCRYPTION_SECRET_KEY environment variable was NOT set" {})))
-        (when-not (string/valid-uuid? (encryption/maybe-decrypt raw))
-          (throw (ex-info "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" {})))
-        (log/debug "Database encrypted and MB_ENCRYPTION_SECRET_KEY correctly configured"))
-      (if (encryption/default-encryption-enabled?)
+    (when-not (nil? raw)
+      (if looks-encrypted
         (do
-          (log/info "New MB_ENCRYPTION_SECRET_KEY environment variable set. Encrypting database...")
-          (mdb.encryption/encrypt-db (:db-type mdb.connection/*application-db*) (:data-source mdb.connection/*application-db*) nil)
-          (log/info "Database encrypted..." (u/emoji "✅")))
-        (log/debug "Database not encrypted and MB_ENCRYPTION_SECRET_KEY env variable not set.")))))
+          (when-not (encryption/default-encryption-enabled?)
+            (throw (ex-info "Database is encrypted but the MB_ENCRYPTION_SECRET_KEY environment variable was NOT set" {})))
+          (when-not (string/valid-uuid? (encryption/maybe-decrypt raw))
+            (throw (ex-info "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" {})))
+          (log/debug "Database encrypted and MB_ENCRYPTION_SECRET_KEY correctly configured"))
+        (if (encryption/default-encryption-enabled?)
+          (do
+            (log/info "New MB_ENCRYPTION_SECRET_KEY environment variable set. Encrypting database...")
+            (mdb.encryption/encrypt-db (:db-type mdb.connection/*application-db*) (:data-source mdb.connection/*application-db*) nil)
+            (log/info "Database encrypted..." (u/emoji "✅")))
+          (log/debug "Database not encrypted and MB_ENCRYPTION_SECRET_KEY env variable not set."))))))
 
 (mu/defn- error-if-downgrade-required!
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
