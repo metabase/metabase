@@ -194,6 +194,15 @@
         (f entity))
       raw-hash))
 
+(defn backfill-entity-id
+  "Given an entity with a (possibly empty) `:entity_id` field:
+  - Return the `:entity_id` if it's set.
+  - Compute the backfill `:entity_id` based on the [[identity-hash]]."
+  [entity]
+  (or (:entity_id entity)
+      (:entity-id entity)
+      (u/generate-nano-id (identity-hash entity))))
+
 (defn identity-hash?
   "Returns true if s is a valid identity hash string."
   [s]

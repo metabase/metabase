@@ -11,10 +11,8 @@
    [metabase.events :as events]
    [metabase.integrations.google :as google]
    [metabase.integrations.ldap :as ldap]
-   [metabase.models.login-history :refer [LoginHistory]]
-   [metabase.models.session :refer [Session]]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.models.user :as user :refer [User]]
+   [metabase.models.user :as user]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -34,9 +32,9 @@
   [session-id  :- uuid?
    user-id     :- ms/PositiveInt
    device-info :- request/DeviceInfo]
-  (t2/insert! LoginHistory (merge {:user_id    user-id
-                                   :session_id (str session-id)}
-                                  device-info)))
+  (t2/insert! :model/LoginHistory (merge {:user_id    user-id
+                                          :session_id (str session-id)}
+                                         device-info)))
 
 (defmulti create-session!
   "Generate a new Session for a User. `session-type` is the currently either `:password` (for email + password login) or
@@ -60,7 +58,7 @@
 (mu/defmethod create-session! :sso :- SessionSchema
   [_ user :- CreateSessionUserInfo device-info :- request/DeviceInfo]
   (let [session-uuid (random-uuid)
-        session      (first (t2/insert-returning-instances! Session
+        session      (first (t2/insert-returning-instances! :model/Session
                                                             :id      (str session-uuid)
                                                             :user_id (u/the-id user)))]
     (assert (map? session))
@@ -127,7 +125,7 @@
   [username    :- ms/NonBlankString
    password    :- [:maybe ms/NonBlankString]
    device-info :- request/DeviceInfo]
-  (if-let [user (t2/select-one [User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
+  (if-let [user (t2/select-one [:model/User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
     (when (u.password/verify-password password (:password_salt user) (:password user))
       (if (:is_active user)
         (create-session! :password user device-info)
@@ -198,8 +196,8 @@
   "Logout."
   ;; `metabase-session-id` gets added automatically by the [[metabase.server.middleware.session]] middleware
   [:as {:keys [metabase-session-id]}]
-  (api/check-exists? Session metabase-session-id)
-  (t2/delete! Session :id metabase-session-id)
+  (api/check-exists? :model/Session metabase-session-id)
+  (t2/delete! :model/Session :id metabase-session-id)
   (request/clear-session-cookie api/generic-204-no-content))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
@@ -219,7 +217,7 @@
     (when-let [{user-id      :id
                 sso-source   :sso_source
                 is-active?   :is_active :as user}
-               (t2/select-one [User :id :sso_source :is_active]
+               (t2/select-one [:model/User :id :sso_source :is_active]
                               :%lower.email
                               (u/lower-case-en email))]
       (if (some? sso-source)
@@ -260,7 +258,7 @@
   [^String token]
   (when-let [[_ user-id] (re-matches #"(^\d+)_.+$" token)]
     (let [user-id (Integer/parseInt user-id)]
-      (when-let [{:keys [reset_token reset_triggered], :as user} (t2/select-one [User :id :last_login :reset_triggered
+      (when-let [{:keys [reset_token reset_triggered], :as user} (t2/select-one [:model/User :id :last_login :reset_triggered
                                                                                  :reset_token]
                                                                                 :id user-id, :is_active true)]
         ;; Make sure the plaintext token matches up with the hashed one for this user
@@ -290,7 +288,7 @@
           (if (:last_login user)
             (events/publish-event! :event/password-reset-successful {:object (assoc user :token reset-token)})
             ;; Send all the active admins an email :D
-            (messages/send-user-joined-admin-notification-email! (t2/select-one User :id user-id)))
+            (messages/send-user-joined-admin-notification-email! (t2/select-one :model/User :id user-id)))
           ;; after a successful password update go ahead and offer the client a new session that they can use
           (let [{session-uuid :id, :as session} (create-session! :password user (request/device-info request))
                 response                        {:success    true
@@ -324,7 +322,7 @@
         (let [user (google/do-google-auth request)
               {session-uuid :id, :as session} (create-session! :sso user (request/device-info request))
               response {:id (str session-uuid)}
-              user (t2/select-one [User :id :is_active], :email (:email user))]
+              user (t2/select-one [:model/User :id :is_active], :email (:email user))]
           (if (and user (:is_active user))
             (request/set-session-cookies request
                                          response
