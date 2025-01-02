@@ -253,8 +253,7 @@
 (def ^:private model-weights
   {"metric"  15
    "dataset" 10
-   "card"    5
-   "table"   1})
+   "card"    5})
 
 (defn- model-score
   [{:keys [model]}]
@@ -284,6 +283,10 @@
 (defn- col-is-temporal?
   [{:keys [base_type effective_type semantic_type]}]
   (some #(isa? (keyword %) :type/Temporal) [base_type effective_type semantic_type]))
+
+(defn- col-is-categorical?
+  [{:keys [base_type effective_type semantic_type]}]
+  (some #(isa? (keyword %) :type/Category) [base_type effective_type semantic_type]))
 
 (defn- single-column-scalar-score
   [{:keys [fingerprint base_type effective_type semantic_type]}]
@@ -323,6 +326,14 @@
       timeseries? 2
       :else       0)))
 
+(defn- categorical-score
+  [{:keys [result_metadata]}]
+  (let [result-metadata (json/decode result_metadata keyword)
+        timeseries?     (some col-is-categorical? result-metadata)]
+    (cond
+      timeseries? 2
+      :else       0)))
+
 (defn- column-similarity-score
   [{:keys [result_metadata]} col-types]
   (let [result-metadata (json/decode result_metadata keyword)
@@ -344,14 +355,17 @@
                 0)
       :name   "scalar-compatibility"}
 
-
-
-
      {:weight 7
       :score  (if (some #(isa? % :type/Temporal) column-types)
                 (timeseries-score result)
                 0)
       :name   "timeseries-compatibility"}
+
+     {:weight 6
+      :score  (if (some #(isa? % :type/Category) column-types)
+                (categorical-score result)
+                0)
+      :name   "categorical-compatibility"}
 
 
      {:weight 1
@@ -381,7 +395,7 @@
   [result]
   [{:weight 3 :score (recency-score result) :name "recency"}
    {:weight 1 :score (model-score result) :name "model"}
-   {:weight 1 :score (official-collection-score result) :name "official"}
+   {:weight 8 :score (official-collection-score result) :name "official"}
    {:weight 10 :score (verified-score result) :name "verified"}])
 
 (defn score-result
