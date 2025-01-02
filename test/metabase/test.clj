@@ -39,7 +39,6 @@
    [metabase.test.util.i18n :as i18n.tu]
    [metabase.test.util.log :as tu.log]
    [metabase.test.util.misc :as tu.misc]
-   [metabase.test.util.public-settings :as tu.public-setings]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util.log.capture]
@@ -90,7 +89,6 @@
   tu.async/keep-me
   tu.log/keep-me
   tu.misc/keep-me
-  tu.public-setings/keep-me
   tu.thread-local/keep-me
   tu/keep-me
   tx.env/keep-me

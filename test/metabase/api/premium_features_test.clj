@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.premium-features.token-check :as token-check]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.premium-features.token-check-test :as token-check-test]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -14,7 +14,7 @@
                                                       :status   "fake"
                                                       :features ["test" "fixture"]
                                                       :trial    false})]
-      (mt/with-temporary-setting-values [:premium-embedding-token (premium-features-test/random-token)]
+      (mt/with-temporary-setting-values [:premium-embedding-token (token-check-test/random-token)]
         (testing "returns correctly"
           (is (= {:valid    true
                   :status   "fake"

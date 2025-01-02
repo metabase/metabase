@@ -22,13 +22,13 @@
 
 (defmacro with-open-circuit-breaker! [& body]
   `(binding [token-check/*store-circuit-breaker* (dh.cb/circuit-breaker
-                                                  @#'token-check/store-circuit-breaker-config)]
+                                                  #'token-check/store-circuit-breaker-config)]
      (open-circuit-breaker! token-check/*store-circuit-breaker*)
      (do ~@body)))
 
 (defn reset-circuit-breaker-fixture [f]
   (binding [token-check/*store-circuit-breaker* (dh.cb/circuit-breaker
-                                                 @#'token-check/store-circuit-breaker-config)]
+                                                 #'token-check/store-circuit-breaker-config)]
     (f)))
 
 (use-fixtures :each reset-circuit-breaker-fixture)
@@ -36,7 +36,7 @@
 (defn- token-status-response
   [token token-check-response]
   (http-fake/with-fake-routes-in-isolation
-    {{:address      (#'token-check/token-status-url token @#'token-check/token-check-url)
+    {{:address      (#'token-check/token-status-url token #'token-check/token-check-url)
       :query-params {:users      (str (#'token-check/active-users-count))
                      :site-uuid  (public-settings/site-uuid-for-premium-features-token-checks)
                      :mb-version (:tag config/mb-version-info)}}
@@ -67,7 +67,7 @@
 
 (deftest ^:parallel fetch-token-status-test-2
   (testing "With the backend unavailable"
-    (let [result (token-status-response (random-token) {:status 500})]
+    (let [result (#'token-status-response (random-token) {:status 500})]
       (is (false? (:valid result))))))
 
 (deftest ^:parallel fetch-token-status-test-3
@@ -79,7 +79,7 @@
       (is (= {:valid         false
               :status        "Unable to validate token"
               :error-details "network issues"}
-             (token-check/fetch-token-status (apply str (repeat 64 "b"))))))))
+             (#'token-check/fetch-token-status (apply str (repeat 64 "b"))))))))
 
 (deftest fetch-token-caches-successful-responses
   (testing "For successful responses, the result is cached"
@@ -88,7 +88,7 @@
       (binding [http/request (fn [& _]
                                (swap! call-count inc)
                                {:status 200 :body "{\"valid\": true, \"status\": \"fake\"}"})]
-        (dotimes [_ 10] (token-check/fetch-token-status token))
+        (dotimes [_ 10] (#'token-check/fetch-token-status token))
         (is (= 1 @call-count))))))
 
 (deftest fetch-token-caches-invalid-responses
@@ -98,7 +98,7 @@
       (binding [http/request (fn [& _]
                                (swap! call-count inc)
                                {:status 400 :body "{\"valid\": false, \"status\": \"fake\"}"})]
-        (dotimes [_ 10] (token-check/fetch-token-status token))
+        (dotimes [_ 10] (#'token-check/fetch-token-status token))
         (is (= 1 @call-count))))))
 
 (deftest fetch-token-does-not-cache-exceptions
@@ -108,7 +108,7 @@
       (binding [http/request (fn [& _]
                                (swap! call-count inc)
                                (throw (ex-info "oh, fiddlesticks" {})))]
-        (dotimes [_ 5] (token-check/fetch-token-status token))
+        (dotimes [_ 5] (#'token-check/fetch-token-status token))
         ;; Note that we have a fallback URL that gets hit in this case (see
         ;; https://github.com/metabase/metabase/issues/27036) and 2x5=10
         (is (= 10 @call-count))))))
@@ -119,7 +119,7 @@
     (binding [http/request (fn [& _]
                              (swap! call-count inc)
                              {:status 500})]
-      (dotimes [_ 10] (token-check/fetch-token-status token))
+      (dotimes [_ 10] (#'token-check/fetch-token-status token))
       ;; Same as above, we have a fallback URL that gets hit in this case (see
       ;; https://github.com/metabase/metabase/issues/27036) and 2x10=20
       (is (= 10 @call-count)))))
@@ -131,13 +131,13 @@
         (is (= {:valid false
                 :status "Unable to validate token"
                 :error-details "Token validation is currently unavailable."}
-               (token-check/fetch-token-status (random-token))))
+               (#'token-check/fetch-token-status (random-token))))
         (is (= 0 @call-count))))))
 
 (deftest ^:parallel fetch-token-status-test-4
   (testing "With a valid token"
-    (let [result (token-status-response (random-token) {:status 200
-                                                        :body   token-response-fixture})]
+    (let [result (#'token-status-response (random-token) {:status 200
+                                                          :body   token-response-fixture})]
       (is (:valid result))
       (is (contains? (set (:features result)) "test")))))
 
@@ -154,11 +154,11 @@
     (let [token (random-token)]
       (t2/with-call-count [call-count]
         ;; First fetch, should trigger a DB call to fetch user count
-        (token-check/fetch-token-status token)
+        (#'token-check/fetch-token-status token)
         (is (= 1 (call-count)))
 
         ;; Subsequent fetches with the same token should not trigger additional DB calls
-        (token-check/fetch-token-status token)
+        (#'token-check/fetch-token-status token)
         (is (= 1 (call-count)))))))
 
 (deftest token-status-setting-test

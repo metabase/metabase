@@ -29,7 +29,8 @@
   max-users-allowed
   plan-alias
   premium-embedding-token
-  token-status])
+  token-status
+  TokenStatus])
 
 (def premium-features
   "Set of defined premium feature keywords."

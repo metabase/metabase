@@ -2,12 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.integrations.google :as google]
-<<<<<<< HEAD
-   [metabase.public-settings.premium-features :as premium-features]
-=======
-   [metabase.models.user :refer [User]]
    [metabase.premium-features.core :as premium-features]
->>>>>>> a680280552 (WIP fixes)
    [metabase.test :as mt]))
 
 (deftest google-auth-create-new-user!-test
