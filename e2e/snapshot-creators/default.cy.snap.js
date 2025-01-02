@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { loginCache } from "e2e/support/commands/user/authentication";
 import {
   METABASE_SECRET_KEY,
   SAMPLE_DB_ID,
@@ -144,6 +145,12 @@ describe("snapshots", () => {
 
     // Make a call to `/api/user` because some things (personal collections) get created there
     cy.request("GET", "/api/user");
+
+    Object.keys(USERS).forEach(user => {
+      cy.signIn(user);
+    });
+
+    cy.signInAsAdmin();
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
@@ -344,6 +351,8 @@ describe("snapshots", () => {
 
 function getDefaultInstanceData() {
   const instanceData = {};
+
+  instanceData.loginCache = loginCache;
 
   cy.request("/api/card").then(({ body: cards }) => {
     instanceData.questions = cards;
