@@ -1,7 +1,6 @@
 (ns metabase.driver.bigquery-cloud-sdk.common
   "Common utility functions and utilities for the bigquery-cloud-sdk driver and related namespaces."
   (:require
-   [metabase.models :refer [Database]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
@@ -60,7 +59,7 @@
   {:added "0.42.0"}
   ^String [{:keys [details] :as database} :- [:map [:details RequiredDetails]]]
   (let [creds-proj-id (database-details->credential-project-id details)]
-    (t2/update! Database
+    (t2/update! :model/Database
                 (u/the-id database)
                 {:details (assoc details :project-id-from-credentials creds-proj-id)})
     creds-proj-id))

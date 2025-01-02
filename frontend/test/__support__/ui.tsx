@@ -10,7 +10,6 @@ import { KBarProvider } from "kbar";
 import type * as React from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
-import { Provider } from "react-redux";
 import { Router, useRouterHistory } from "react-router";
 import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
@@ -25,6 +24,7 @@ import { createMockSdkState } from "embedding-sdk/test/mocks/state";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/containers/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
+import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { mainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { ThemeProvider } from "metabase/ui";
@@ -141,13 +141,13 @@ export function renderWithProviders(
   const wrapper = (props: any) => {
     if (mode === "sdk") {
       return (
-        <Provider store={store}>
+        <MetabaseReduxProvider store={store}>
           <MetabaseProviderInternal
             {...props}
             {...sdkProviderProps}
             store={store}
           />
-        </Provider>
+        </MetabaseReduxProvider>
       );
     }
 
@@ -203,7 +203,7 @@ export function TestWrapper({
   theme?: MantineThemeOverride;
 }): JSX.Element {
   return (
-    <Provider store={store}>
+    <MetabaseReduxProvider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
         <ThemeProvider theme={theme}>
           <GlobalStylesForTest />
@@ -216,7 +216,7 @@ export function TestWrapper({
           {withUndos && <UndoListing />}
         </ThemeProvider>
       </MaybeDNDProvider>
-    </Provider>
+    </MetabaseReduxProvider>
   );
 }
 

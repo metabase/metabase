@@ -76,7 +76,7 @@ export const dashboardApi = Api.injectEndpoints({
         providesTags: metadata =>
           metadata ? provideDashboardQueryMetadataTags(metadata) : [],
       }),
-      getDashboardItemsList: builder.query<
+      listDashboardItems: builder.query<
         ListCollectionItemsResponse,
         Omit<ListCollectionItemsRequest, "id"> & { id: DashboardId }
       >({
@@ -201,7 +201,7 @@ export const {
   useGetDashboardQuery,
   useGetDashboardQueryMetadataQuery,
   useListDashboardsQuery,
-  useGetDashboardItemsListQuery,
+  useListDashboardItemsQuery,
   useCreateDashboardMutation,
   useUpdateDashboardMutation,
   useSaveDashboardMutation,

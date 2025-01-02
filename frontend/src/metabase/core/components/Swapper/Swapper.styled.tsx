@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-export interface SwapperElementProps {
+interface SwapperElementProps {
   isVisible: boolean;
 }
 

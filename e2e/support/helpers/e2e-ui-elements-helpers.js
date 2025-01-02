@@ -1,11 +1,10 @@
-// various Metabase-specific "scoping" functions like inside popover/modal/navbar/main/sidebar content area
+// Functions that get key elements in the app
+
 export const POPOVER_ELEMENT =
   ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
 
-export function popover() {
-  cy.get(POPOVER_ELEMENT).should("be.visible");
-  return cy.get(POPOVER_ELEMENT);
-}
+/** The currently visible popover dropdown or menu dropdown.*/
+export const popover = () => cy.get(POPOVER_ELEMENT).should("be.visible");
 
 const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']:visible";
 
@@ -29,7 +28,11 @@ export function modal() {
 }
 
 export function tooltip() {
-  return cy.get(".emotion-Tooltip-tooltip");
+  return cy.get(".emotion-Tooltip-tooltip, [role='tooltip']");
+}
+
+export function selectDropdown() {
+  return cy.get('[data-testid="select-dropdown"]');
 }
 
 export function entityPickerModal() {
@@ -162,7 +165,7 @@ export function setFilterWidgetValue(
   popover()
     .first()
     .within(() => {
-      removeMultiAutocompleteValue(0);
+      removeFieldValuesValue(0);
       if (value) {
         cy.findByPlaceholderText(targetPlaceholder).type(value).blur();
       }
@@ -345,6 +348,18 @@ export function multiSelectInput(filter = ":eq(0)") {
 
 export function multiAutocompleteInput(filter = ":eq(0)") {
   return cy.findAllByRole("combobox").filter(filter).get("input").last();
+}
+
+export function fieldValuesInput(filter = ":eq(0)") {
+  return cy.findAllByRole("textbox").filter(filter).get("input").last();
+}
+
+export function fieldValuesValue(index) {
+  return cy.findAllByTestId("token-field").eq(index);
+}
+
+export function removeFieldValuesValue(index) {
+  return cy.findAllByTestId("token-field").icon("close").eq(index).click();
 }
 
 export function multiAutocompleteValue(index, filter = ":eq(0)") {

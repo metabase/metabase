@@ -22,14 +22,9 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(def Secret
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/Secret)
-
 (methodical/defmethod t2/table-name :model/Secret [_model] :secret)
 
-(doto Secret
+(doto :model/Secret
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive ::mi/read-policy.superuser)
@@ -40,7 +35,7 @@
    :kind   mi/transform-keyword
    :source mi/transform-keyword})
 
-(methodical/defmethod mi/to-json Secret
+(methodical/defmethod mi/to-json :model/Secret
   "Never include the secret value in JSON."
   [secret json-generator]
   (next-method
@@ -51,7 +46,7 @@
   "Returns the latest Secret instance for the given `id` (meaning the one with the highest `version`)."
   {:added "0.42.0"}
   [id]
-  (t2/select-one Secret :id id {:order-by [[:version :desc]]}))
+  (t2/select-one :model/Secret :id id {:order-by [[:version :desc]]}))
 
 (defn upsert-secret-value!
   "Inserts a new secret value, or updates an existing one, for the given parameters.
@@ -60,18 +55,18 @@
   {:added "0.42.0"}
   [existing-id nm kind src value]
   (let [insert-new     (fn [id v]
-                         (let [inserted (first (t2/insert-returning-instances! Secret (cond-> {:version    v
-                                                                                               :name       nm
-                                                                                               :kind       kind
-                                                                                               :source     src
-                                                                                               :value      value
-                                                                                               :creator_id api/*current-user-id*}
-                                                                                        id
-                                                                                        (assoc :id id))))]
+                         (let [inserted (first (t2/insert-returning-instances! :model/Secret (cond-> {:version    v
+                                                                                                      :name       nm
+                                                                                                      :kind       kind
+                                                                                                      :source     src
+                                                                                                      :value      value
+                                                                                                      :creator_id api/*current-user-id*}
+                                                                                               id
+                                                                                               (assoc :id id))))]
                            ;; Toucan doesn't support composite primary keys, so adding a new record with incremented
                            ;; version for an existing ID won't return a result from t2/insert!, hence we may need to
                            ;; manually select it here
-                           (t2/select-one Secret :id (or id (u/the-id inserted)) :version v)))
+                           (t2/select-one :model/Secret :id (or id (u/the-id inserted)) :version v)))
         latest-version (when existing-id (latest-for-id existing-id))]
     (if latest-version
       (insert-new (u/the-id latest-version) (inc (:version latest-version)))
@@ -274,7 +269,7 @@
                               []
                               possible-secret-prop-names)]
       (log/infof "Deleting secret ID %s from app DB because the owning database (%s) is being deleted" secret-id id)
-      (t2/delete! Secret :id secret-id))))
+      (t2/delete! :model/Secret :id secret-id))))
 
 (defn- hydrate-redacted-secret
   [db-details conn-prop-nm _conn-prop]

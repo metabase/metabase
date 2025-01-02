@@ -90,6 +90,7 @@ export type SearchItem = Pick<SearchResult, "id" | "model" | "name"> &
     Pick<
       SearchResult,
       | "collection"
+      | "dashboard"
       | "description"
       | "collection_authority_level"
       | "moderated_status"

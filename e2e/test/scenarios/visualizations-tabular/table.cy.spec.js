@@ -44,7 +44,7 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should allow you to reorder and hide columns in the table header", () => {
-    H.openNativeEditor().type("select * from orders LIMIT 2");
+    H.startNewNativeQuestion({ query: "select * from orders LIMIT 2" });
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.findByTestId("viz-settings-button").click();

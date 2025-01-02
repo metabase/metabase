@@ -3,7 +3,7 @@
    [buddy.core.codecs :as codecs]
    [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [metabase.models.secret :as secret :refer [Secret]]
+   [metabase.models.secret :as secret]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.encryption-test :as encryption-test]
@@ -30,14 +30,14 @@
   (doseq [value ["fourtytwo" (byte-array (range 0 100))]]
     (let [name        "Test Secret"
           kind        ::secret/password]
-      (t2.with-temp/with-temp [Secret {:keys [id] :as secret} {:name       name
-                                                               :kind       kind
-                                                               :value      value
-                                                               :creator_id (mt/user->id :crowberto)}]
+      (t2.with-temp/with-temp [:model/Secret {:keys [id] :as secret} {:name       name
+                                                                      :kind       kind
+                                                                      :value      value
+                                                                      :creator_id (mt/user->id :crowberto)}]
         (is (= name (:name secret)))
         (is (= kind (:kind secret)))
         (is (mt/secret-value-equals? value (:value secret)))
-        (let [loaded (t2/select-one Secret :id id)]
+        (let [loaded (t2/select-one :model/Secret :id id)]
           (is (= name (:name loaded)))
           (is (= kind (:kind loaded)))
           (is (mt/secret-value-equals? value (:value loaded))))))))
@@ -57,18 +57,18 @@
            (secret/value-as-string :secret-test-driver {:keystore-value "titok"} "keystore"))))
 
   (testing "get-secret-string from value only from the database"
-    (t2.with-temp/with-temp [Secret {id :id} {:name       "private-key"
-                                              :kind       ::secret/pem-cert
-                                              :value      "titok"
-                                              :creator_id (mt/user->id :crowberto)}]
+    (t2.with-temp/with-temp [:model/Secret {id :id} {:name       "private-key"
+                                                     :kind       ::secret/pem-cert
+                                                     :value      "titok"
+                                                     :creator_id (mt/user->id :crowberto)}]
       (is (= "titok"
              (secret/value-as-string :secret-test-driver {:keystore-id id} "keystore")))))
 
   (testing "get-secret-string from uploaded value"
-    (t2.with-temp/with-temp [Secret {id :id} {:name       "private-key"
-                                              :kind       ::secret/pem-cert
-                                              :value      (.getBytes "titok" "UTF-8")
-                                              :creator_id (mt/user->id :crowberto)}]
+    (t2.with-temp/with-temp [:model/Secret {id :id} {:name       "private-key"
+                                                     :kind       ::secret/pem-cert
+                                                     :value      (.getBytes "titok" "UTF-8")
+                                                     :creator_id (mt/user->id :crowberto)}]
       (is (= "titok"
              (secret/value-as-string :secret-test-driver
                                      {:keystore-id      id
@@ -103,10 +103,10 @@
                 "keystore"))))
 
       (testing "from the database"
-        (t2.with-temp/with-temp [Secret {id :id} {:name       "private-key"
-                                                  :kind       ::secret/pem-cert
-                                                  :value      file-db
-                                                  :creator_id (mt/user->id :crowberto)}]
+        (t2.with-temp/with-temp [:model/Secret {id :id} {:name       "private-key"
+                                                         :kind       ::secret/pem-cert
+                                                         :value      file-db
+                                                         :creator_id (mt/user->id :crowberto)}]
           (is (= "titok"
                  (secret/value-as-string
                   :secret-test-driver
@@ -149,7 +149,7 @@
                                                  :source "file-path"
                                                  :value  (.getAbsolutePath tmp-file)}]]]
         (testing (format " with a %s value" value-kind)
-          (t2.with-temp/with-temp [Secret {secret-id :id :keys [value]} (assoc secret-map :creator_id (mt/user->id :crowberto))]
+          (t2.with-temp/with-temp [:model/Secret {secret-id :id :keys [value]} (assoc secret-map :creator_id (mt/user->id :crowberto))]
             (let [val-file (secret/value-as-file! :secret-test-driver {:keystore-id secret-id} "keystore")]
               (is (value-matches? (or exp-val value)
                                   (let [result (byte-array (.length val-file))]
@@ -160,19 +160,19 @@
     (testing "for file paths"
       (let [file-secret-val "dingbat"
             ^File tmp-file  (tempfile-with-contents file-secret-val StandardCharsets/UTF_8)]
-        (t2.with-temp/with-temp [Secret {secret-id :id} {:name   "file based secret"
-                                                         :kind   :perm-cert
-                                                         :source "file-path"
-                                                         :value  (.getAbsolutePath tmp-file)}]
+        (t2.with-temp/with-temp [:model/Secret {secret-id :id} {:name   "file based secret"
+                                                                :kind   :perm-cert
+                                                                :source "file-path"
+                                                                :value  (.getAbsolutePath tmp-file)}]
           (is (instance? java.io.File (secret/value-as-file! :secret-test-driver {:keystore-id secret-id} "keystore")))
           (is (= (secret/value-as-file! :secret-test-driver {:keystore-id secret-id} "keystore")
                  (secret/value-as-file! :secret-test-driver {:keystore-id secret-id} "keystore"))
               "Secret did not return the same file"))))
     (testing "for upload files (#23034)"
-      (t2.with-temp/with-temp [Secret {secret-id :id} {:name   "file based secret"
-                                                       :kind   :perm-cert
-                                                       :source nil
-                                                       :value  (.getBytes "super secret")}]
+      (t2.with-temp/with-temp [:model/Secret {secret-id :id} {:name   "file based secret"
+                                                              :kind   :perm-cert
+                                                              :source nil
+                                                              :value  (.getBytes "super secret")}]
         (is (instance? java.io.File (secret/value-as-file! :secret-test-driver {:keystore-id secret-id} "keystore")))
         (is (= (secret/value-as-file! :secret-test-driver {:keystore-id secret-id} "keystore")
                (secret/value-as-file! :secret-test-driver {:keystore-id secret-id} "keystore"))
@@ -250,10 +250,10 @@
                        :source latest-source}
           crowberto-id (mt/user->id :crowberto)
           by-crowberto #(assoc % :creator_id crowberto-id)]
-      (t2.with-temp/with-temp [Secret {:keys [id version]} (by-crowberto secret-map1)
-                               Secret _ (-> secret-map2
-                                            by-crowberto
-                                            (assoc :id id :version (inc version)))]
+      (t2.with-temp/with-temp [:model/Secret {:keys [id version]} (by-crowberto secret-map1)
+                               :model/Secret _ (-> secret-map2
+                                                   by-crowberto
+                                                   (assoc :id id :version (inc version)))]
         (let [details {:keystore-id id}]
           (testing "latest-for-id"
             (let [secret (secret/latest-for-id id)]

@@ -2,7 +2,6 @@ import type { Location } from "history";
 import { KBarProvider } from "kbar";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { connect } from "react-redux";
 
 import { AppBanner } from "metabase/components/AppBanner";
 import {
@@ -17,6 +16,7 @@ import { ContentViewportContext } from "metabase/core/context/ContentViewportCon
 import CS from "metabase/css/core/index.css";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import { initializeIframeResizer } from "metabase/lib/dom";
+import { connect } from "metabase/lib/redux";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
 import { setErrorPage } from "metabase/redux/app";

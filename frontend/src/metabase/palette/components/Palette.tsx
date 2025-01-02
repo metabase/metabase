@@ -60,7 +60,7 @@ export const PaletteCard = forwardRef<
   OverlayProps & HTMLAttributes<HTMLDivElement>
 >(function PaletteCard({ children, ...props }, ref) {
   return (
-    <Overlay zIndex={500} opacity={0.5} {...props}>
+    <Overlay opacity={0.5} {...props}>
       <Center>
         <Card ref={ref} w="640px" mt="10vh" p="0" data-testid="command-palette">
           {children}

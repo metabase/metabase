@@ -1,9 +1,9 @@
-import { connect } from "react-redux";
 import { jt, t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { connect } from "metabase/lib/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 

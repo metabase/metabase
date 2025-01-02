@@ -1,6 +1,7 @@
 import { bindActionCreators } from "@reduxjs/toolkit";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useMemo } from "react";
+import { match } from "ts-pattern";
 
 import { skipToken } from "metabase/api";
 import DefaultLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -26,7 +27,6 @@ import type {
 
 interface ChildrenProps<Entity, EntityWrapper> {
   dispatch: Dispatch;
-  dispatchApiErrorEvent: boolean;
   error: unknown;
   fetched: boolean;
   loading: boolean;
@@ -44,9 +44,8 @@ interface LoadingAndErrorWrapperProps {
   noWrapper?: boolean;
 }
 
-export interface Props<Entity, EntityWrapper> {
+interface Props<Entity, EntityWrapper> {
   ComposedComponent: (props: ChildrenProps<Entity, EntityWrapper>) => ReactNode;
-  dispatchApiErrorEvent?: boolean;
   entityAlias?: string;
   entityId: EntityId | EntityIdSelector | undefined;
   entityQuery?: EntityQuery | EntityQuerySelector;
@@ -56,7 +55,7 @@ export interface Props<Entity, EntityWrapper> {
   LoadingAndErrorWrapper?: ComponentType<LoadingAndErrorWrapperProps>;
   reload?: boolean;
   requestType?: RequestType;
-  selectorName?: string;
+  selectorName?: "getObject" | "getObjectUnfiltered";
   wrapped?: boolean;
 }
 
@@ -71,7 +70,6 @@ const defaultTransformResponse = (data: unknown, _query: EntityQuery) => data;
  */
 export function EntityObjectLoader<Entity, EntityWrapper>({
   ComposedComponent,
-  dispatchApiErrorEvent = true,
   entityAlias,
   entityId: entityIdProp,
   entityQuery: entityQueryProp,
@@ -201,7 +199,17 @@ export function EntityObjectLoader<Entity, EntityWrapper>({
   );
 
   const object = useSelector(state => {
-    return entityDefinition.selectors[selectorName](state, entityOptions);
+    return match(selectorName)
+      .with("getObject", () => {
+        return entityDefinition.selectors.getObject(state, entityOptions);
+      })
+      .with("getObjectUnfiltered", () => {
+        return entityDefinition.selectors.getObjectUnfiltered(
+          state,
+          entityOptions,
+        );
+      })
+      .exhaustive();
   });
 
   const fetched = useSelector(state => {
@@ -238,7 +246,6 @@ export function EntityObjectLoader<Entity, EntityWrapper>({
         [entityAlias || entityDefinition.nameOne]: wrappedObject,
       }}
       dispatch={dispatch}
-      dispatchApiErrorEvent={dispatchApiErrorEvent}
       error={error}
       fetched={fetched}
       loading={loading || isFetching}
@@ -266,13 +273,18 @@ export function EntityObjectLoader<Entity, EntityWrapper>({
  * @deprecated HOCs are deprecated
  */
 export const entityObjectLoader =
-  (eolProps: any) =>
-  (ComposedComponent: (props: any) => ReactNode) =>
-  // eslint-disable-next-line react/display-name
-  (props: any): ReactNode => (
-    <EntityObjectLoader
-      ComposedComponent={ComposedComponent}
-      {...props}
-      {...eolProps}
-    />
-  );
+  <Entity, EntityWrapper>(eolProps: any) =>
+  (
+    ComposedComponent: (
+      props: ChildrenProps<Entity, EntityWrapper>,
+    ) => ReactNode,
+  ) =>
+    function EntityObjectLoaderWrapper(props: any) {
+      return (
+        <EntityObjectLoader
+          ComposedComponent={ComposedComponent}
+          {...props}
+          {...eolProps}
+        />
+      );
+    };

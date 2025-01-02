@@ -9,7 +9,6 @@ import {
   useRef,
 } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import {
@@ -22,7 +21,6 @@ import { color } from "metabase/lib/colors";
 import { isObscured } from "metabase/lib/dom";
 import {
   Box,
-  DEFAULT_POPOVER_Z_INDEX,
   DelayGroup,
   Flex,
   Icon,
@@ -105,7 +103,6 @@ export const ExpressionEditorSuggestions = forwardRef<
       opened={open && suggestions.length > 0}
       radius="xs"
       withinPortal
-      zIndex={DEFAULT_POPOVER_Z_INDEX}
       middlewares={{
         flip: false,
         shift: false,

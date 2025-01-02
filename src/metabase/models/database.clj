@@ -35,11 +35,6 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(def Database
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all Database symbols in our codebase."
-  :model/Database)
-
 (methodical/defmethod t2/table-name :model/Database [_model] :metabase_database)
 
 (methodical/defmethod t2.pipeline/results-transform [:toucan.result-type/instances :model/Database]
@@ -80,7 +75,7 @@
   [database-id]
   (and (not (premium-features/enable-audit-app?)) (= database-id audit/audit-db-id)))
 
-(defmethod mi/can-read? Database
+(defmethod mi/can-read? :model/Database
   ([instance]
    (mi/can-read? :model/Database (u/the-id instance)))
   ([_model pk]
@@ -431,13 +426,13 @@
 
 (defmethod serdes/load-find-local "Database"
   [[{:keys [id]}]]
-  (t2/select-one Database :name id))
+  (t2/select-one :model/Database :name id))
 
 (defmethod serdes/storage-path "Database" [{:keys [name]} _]
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
   ["databases" name name])
 
-(defmethod audit-log/model-details Database
+(defmethod audit-log/model-details :model/Database
   [database _event-type]
   (select-keys database [:id :name :engine]))
 

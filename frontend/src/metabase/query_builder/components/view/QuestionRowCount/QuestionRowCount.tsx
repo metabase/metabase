@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { useMemo } from "react";
-import { connect } from "react-redux";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
@@ -8,6 +7,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import CS from "metabase/css/core/index.css";
 import Database from "metabase/entities/databases";
 import { formatNumber } from "metabase/lib/formatting";
+import { connect } from "metabase/lib/redux";
 import { setLimit } from "metabase/query_builder/actions";
 import LimitPopover from "metabase/query_builder/components/LimitPopover";
 import {
