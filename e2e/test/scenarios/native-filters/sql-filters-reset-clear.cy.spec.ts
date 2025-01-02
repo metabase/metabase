@@ -1,5 +1,6 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { popover } from "e2e/support/helpers";
 import type { TemplateTag } from "metabase-types/api";
 
 type SectionId =
@@ -211,11 +212,11 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       otherValue: "{backspace}Gadget",
       otherValueFormatted: "Gadget",
       setValue: value => {
-        H.popover().findByRole("searchbox").clear().type(value).blur();
+        H.popover().findByRole("textbox").clear().type(value).blur();
         H.popover().button("Add filter").click();
       },
       updateValue: value => {
-        H.popover().findByRole("searchbox").clear().type(value).blur();
+        H.popover().findByRole("textbox").clear().type(value).blur();
         H.popover().button("Update filter").click();
       },
     });
@@ -225,8 +226,12 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       otherValue: "{backspace}Gadget",
       otherValueFormatted: "Gadget",
       setValue: value => {
-        H.popover().findByRole("searchbox").clear().type(value).blur();
+        H.popover().findByRole("textbox").clear().type(value).blur();
         H.popover().button("Add filter").click();
+      },
+      updateValue: value => {
+        popover().findByRole("textbox").clear().type(value).blur();
+        popover().button("Add filter").click();
       },
     });
   });
