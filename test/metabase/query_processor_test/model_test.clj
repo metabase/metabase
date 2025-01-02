@@ -34,7 +34,8 @@
                                                         (m/find-first (comp #{"Price"} :display-name)))))
                         (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
                                                            (lib/breakoutable-columns $q))
-                                             (lib/with-temporal-bucket :month))))
+                                             (lib/with-temporal-bucket :month)))
+                        (lib.convert/->legacy-MBQL $q))
                       :database_id (mt/id)
                       :name "Products+Reviews Summary"
                       :type :model}]

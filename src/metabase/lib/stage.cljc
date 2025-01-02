@@ -356,8 +356,8 @@
   (boolean (seq (dissoc (lib.util/query-stage query stage-number)
                         :lib/type :source-table :source-card
                         :lib.columns/source
-                        :lib.columns/aggregations
-                        :lib.columns/breakouts
+                        :lib.columns/aggregation
+                        :lib.columns/breakout
                         :lib.columns/expressions
                         :lib.columns/implicit-joins
                         :lib.columns/synthetic))))
