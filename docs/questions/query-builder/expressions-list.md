@@ -56,6 +56,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [domain](#domain)
     - [endsWith](#endswith)
     - [host](#host)
+    - [in](#in)
     - [isempty](./expressions/isempty.md)
     - [ltrim](#ltrim)
     - [length](#length)
@@ -93,6 +94,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [year](#year)
 
   - [Window functions](#window-functions)
+
     - [Offset](./expressions/offset.md)
     - [CumulativeCount](./expressions/cumulative.md)
     - [CumulativeSum](./expressions/cumulative.md)
@@ -448,6 +450,10 @@ Syntax: `host(urlOrEmail)`.
 Example: `host([Page URL])`. If the `[Page URL]` column had a value of `https://www.metabase.com`, `host([Page URL])` would return `metabase.com`. `host([Email])` would extract `metabase.com` from `hello@metabase.com`.
 
 Related: [domain](#domain), [subdomain](#subdomain).
+
+### [in](./expressions/in.md)
+
+Returns true if value1 equals value2 (or value3, etc., if specified).
 
 ### [isempty](./expressions/isempty.md)
 
