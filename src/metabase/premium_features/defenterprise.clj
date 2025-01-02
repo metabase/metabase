@@ -4,7 +4,8 @@
    [clojure.string :as str]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]))
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.malli :as mu]))
 
 (defn- in-ee?
   "Is the current namespace an Enterprise Edition namespace?"

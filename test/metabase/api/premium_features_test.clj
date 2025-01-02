@@ -1,7 +1,7 @@
 (ns metabase.api.premium-features-test
   (:require
    [clojure.test :refer :all]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.token-check :as token-check]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]))
 
@@ -9,11 +9,11 @@
 
 (deftest get-token-status-test
   (testing "GET /api/premium-features/token/status"
-    (with-redefs [premium-features/fetch-token-status (fn [_x]
-                                                        {:valid    true
-                                                         :status   "fake"
-                                                         :features ["test" "fixture"]
-                                                         :trial    false})]
+    (with-redefs [token-check/fetch-token-status (fn [_x]
+                                                     {:valid    true
+                                                      :status   "fake"
+                                                      :features ["test" "fixture"]
+                                                      :trial    false})]
       (mt/with-temporary-setting-values [:premium-embedding-token (premium-features-test/random-token)]
         (testing "returns correctly"
           (is (= {:valid    true
@@ -24,4 +24,9 @@
 
         (testing "requires superusers"
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 "premium-features/token/status"))))))))
+                 (mt/user-http-request :rasta :get 403 "premium-features/token/status"))))))
+
+    (mt/with-temporary-setting-values [:premium-embedding-token nil]
+      (testing "returns 404 if no token is set"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 "premium-features/token/status")))))))

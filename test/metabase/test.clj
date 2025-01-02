@@ -18,6 +18,7 @@
    [metabase.http-client :as client]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -177,6 +178,11 @@
   dynamic-value
   with-dynamic-redefs]
 
+ [premium-features.test-util
+  with-premium-features
+  with-additional-premium-features
+  assert-has-premium-feature-error]
+
  [perms.test-util
   with-restored-data-perms!
   with-restored-data-perms-for-group!
@@ -294,11 +300,6 @@
   object-defaults
   with-clock
   with-single-admin-user]
-
- [tu.public-setings
-  with-premium-features
-  with-additional-premium-features
-  assert-has-premium-feature-error]
 
  [u.random
   random-name

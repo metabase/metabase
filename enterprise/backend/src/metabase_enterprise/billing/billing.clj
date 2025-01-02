@@ -35,8 +35,7 @@
    :ttl/threshold (u/minutes->ms 5)))
 
 (defn- valid-thru []
-  (some->> (premium-features/premium-embedding-token)
-           premium-features/fetch-token-status
+  (some->> (premium-features/token-status)
            :valid-thru
            u.date.parse/parse
            (t/format "MMMM d, YYYY")))
