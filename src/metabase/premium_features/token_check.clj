@@ -202,38 +202,38 @@
   ;; will have taken a lock to call through to here, and could create a deadlock with the future's thread.  See
   ;; https://github.com/metabase/metabase/pull/38029/
   (cond (mc/validate [:re RemoteCheckedToken] token)
-    ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
-    ;; reasonable amount of time throw a timeout exception
-    (let [site-uuid (setting/get :site-uuid-for-premium-features-token-checks)]
-      (try (fetch-token-and-parse-body token token-check-url site-uuid)
-        (catch Exception e1
-          (log/errorf e1 "Error fetching token status from %s:" token-check-url)
-          ;; Try the fallback URL, which was the default URL prior to 45.2
-          (try (fetch-token-and-parse-body token store-url site-uuid)
-            ;; if there was an error fetching the token from both the normal and fallback URLs, log the
-            ;; first error and return a generic message about the token being invalid. This message
-            ;; will get displayed in the Settings page in the admin panel so we do not want something
-            ;; complicated
-            (catch Exception e2
-              (log/errorf e2 "Error fetching token status from %s:" store-url)
-              (let [body (u/ignore-exceptions (some-> (ex-data e1) :body json/decode+kw))]
-                (or
-                 body
-                 {:valid         false
-                  :status        (tru "Unable to validate token")
-                  :error-details (.getMessage e1)})))))))
+        ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
+        ;; reasonable amount of time throw a timeout exception
+        (let [site-uuid (setting/get :site-uuid-for-premium-features-token-checks)]
+          (try (fetch-token-and-parse-body token token-check-url site-uuid)
+               (catch Exception e1
+                 (log/errorf e1 "Error fetching token status from %s:" token-check-url)
+                 ;; Try the fallback URL, which was the default URL prior to 45.2
+                 (try (fetch-token-and-parse-body token store-url site-uuid)
+                      ;; if there was an error fetching the token from both the normal and fallback URLs, log the
+                      ;; first error and return a generic message about the token being invalid. This message
+                      ;; will get displayed in the Settings page in the admin panel so we do not want something
+                      ;; complicated
+                      (catch Exception e2
+                        (log/errorf e2 "Error fetching token status from %s:" store-url)
+                        (let [body (u/ignore-exceptions (some-> (ex-data e1) :body json/decode+kw))]
+                          (or
+                           body
+                           {:valid         false
+                            :status        (tru "Unable to validate token")
+                            :error-details (.getMessage e1)})))))))
 
-    (mc/validate [:re AirgapToken] token)
-    (do
-      (log/infof "Checking airgapped token '%s'..." (u.str/mask token))
-      (decode-airgap-token token))
+        (mc/validate [:re AirgapToken] token)
+        (do
+          (log/infof "Checking airgapped token '%s'..." (u.str/mask token))
+          (decode-airgap-token token))
 
-    :else
-    (do
-      (log/error (u/format-color 'red "Invalid token format!"))
-      {:valid         false
-       :status        "invalid"
-       :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")})))
+        :else
+        (do
+          (log/error (u/format-color 'red "Invalid token format!"))
+          {:valid         false
+           :status        "invalid"
+           :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")})))
 
 (let [lock (Object.)]
   (defn- fetch-token-status
