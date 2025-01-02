@@ -340,6 +340,11 @@ const PreemptiveCachingSwitch = ({
       label="Refresh cache automatically"
       description="As soon as cached results expire, run and cache the query again to update
       the results and refresh the cache."
+      styles={{
+        labelWrapper: { paddingLeft: "16px" },
+        label: { fontWeight: "bold" },
+        description: { fontWeight: "normal" },
+      }}
       data-testid="preemptive-caching-switch"
     />
   );
