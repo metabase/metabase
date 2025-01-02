@@ -8,7 +8,7 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.setting.multi-setting
     :refer [define-multi-setting-impl]]
-   [metabase.models.user :as user :refer [User]]
+   [metabase.models.user :as user]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -125,9 +125,9 @@
                                         :last_name  last-name}))
   (assoc user :first_name first-name :last_name last-name))
 
-(mu/defn- google-auth-fetch-or-create-user! :- (ms/InstanceOf User)
+(mu/defn- google-auth-fetch-or-create-user! :- (ms/InstanceOf :model/User)
   [first-name last-name email]
-  (let [existing-user (t2/select-one [User :id :email :last_login :first_name :last_name] :%lower.email (u/lower-case-en email))]
+  (let [existing-user (t2/select-one [:model/User :id :email :last_login :first_name :last_name] :%lower.email (u/lower-case-en email))]
     (if existing-user
       (maybe-update-google-user! existing-user first-name last-name)
       (google-auth-create-new-user! {:first_name first-name
