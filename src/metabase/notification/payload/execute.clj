@@ -6,6 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.params.shared :as shared.params]
    [metabase.models.serialization :as serdes]
+   [metabase.notification.storage.disk :as storage.disk]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -141,28 +142,29 @@
     (when-let [card (t2/select-one :model/Card :id card_id :archived false)]
       (let [multi-cards    (dashboard-card/dashcard->multi-cards dashcard)
             result-fn      (fn [card-id]
-                             {:card     (if (= card-id (:id card))
-                                          card
-                                          (t2/select-one :model/Card :id card-id))
-                              :dashcard dashcard
-                              ;; TODO should this be dashcard?
-                              :type     :card
-                              :result   (qp.dashboard/process-query-for-dashcard
-                                         :dashboard-id  dashboard_id
-                                         :card-id       card-id
-                                         :dashcard-id   (u/the-id dashcard)
-                                         :context       :dashboard-subscription
-                                         :export-format :api
-                                         :parameters    parameters
-                                         :constraints   {}
-                                         :middleware    {:process-viz-settings?             true
-                                                         :js-int-to-string?                 false
-                                                         :add-default-userland-constraints? false}
-                                         :make-run      (fn make-run [qp _export-format]
-                                                          (^:once fn* [query info]
-                                                            (qp
-                                                             (qp/userland-query query info)
-                                                             nil))))})
+                             (let [result (qp.dashboard/process-query-for-dashcard
+                                           :dashboard-id  dashboard_id
+                                           :card-id       card-id
+                                           :dashcard-id   (u/the-id dashcard)
+                                           :context       :dashboard-subscription
+                                           :export-format :api
+                                           :parameters    parameters
+                                           :constraints   {}
+                                           :middleware    {:process-viz-settings?             true
+                                                           :js-int-to-string?                 false
+                                                           :add-default-userland-constraints? false}
+                                           :make-run      (fn make-run [qp _export-format]
+                                                            (^:once fn* [query info]
+                                                              (qp
+                                                               (qp/userland-query query info)
+                                                               nil))))]
+                               {:card     (if (= card-id (:id card))
+                                            card
+                                            (t2/select-one :model/Card :id card-id))
+                                :dashcard dashcard
+                               ;; TODO should this be dashcard?
+                                :type     :card
+                                :result   (update-in result [:data :rows] storage.disk/store!)}))
             result         (result-fn card_id)
             series-results (mapv (comp result-fn :id) multi-cards)]
         (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
@@ -277,7 +279,7 @@
                               (process-query))
                             (process-query))]
         {:card   card
-         :result result
+         :result (update-in result [:result :data :rows] storage.disk/store!)
          :type   :card}))
     (catch Throwable e
       (log/warnf e "Error running query for Card %s" card-id))))

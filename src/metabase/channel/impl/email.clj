@@ -69,7 +69,7 @@
   [timezone part options]
   (case (:type part)
     :card
-    (channel.render/render-pulse-section timezone part options)
+    (channel.render/render-pulse-section timezone (update-in part [:result :data :rows] deref) options)
 
     :text
     {:content (markdown/process-markdown (:text part) :html)}
