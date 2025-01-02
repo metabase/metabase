@@ -1,4 +1,6 @@
 (ns metabase.premium-features.defenterprise
+  "Definition of the defenterprise macro, which enables writing functions with dual implementations across the OSS/EE
+  code boundary. See the [[defenterprise]] macro docstring for more details."
   (:require
    [clojure.spec.alpha :as s]
    [clojure.string :as str]

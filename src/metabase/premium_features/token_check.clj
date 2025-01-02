@@ -1,5 +1,8 @@
 (ns metabase.premium-features.token-check
-  "Settings related to checking premium token validity and which premium features it allows."
+  "Code relating to the premium features token check, and related logic.
+
+  WARNING: Token check data, particularly the user count, is used for billing, so errors here have the potential to be
+  high consequence. Be extra careful when editing this code!"
   (:require
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
