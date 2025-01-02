@@ -8,9 +8,9 @@ redirect_from:
 
 Set up an alert to send the results of questions to people via email or Slack, or to a webhook.
 
-![The wide world of alerts](./images/the-wide-world-of-alerts.png)
+![The wide world of alerts](../images/the-wide-world-of-alerts.png)
 
-Alerts are for questions only. If you instead want to get the results of a dashboard sent to you, check out [dashboard subscriptions](../dashboards/subscriptions.md).
+Alerts are for questions only. If you instead want to get the results of a dashboard sent to you, check out [dashboard subscriptions](../../dashboards/subscriptions.md).
 
 ## Prerequisite for alerts
 
