@@ -132,7 +132,10 @@
               (doseq [deletions-part (partition-all 10000 deletions)]
                 (t2/delete! :model/ModelIndexValue
                             :model_index_id (:id model-index)
-                            :model_pk [:in (->> deletions-part (map first))])))
+                            :model_pk [:in (->> deletions-part (map first))])
+                (search/delete! :model/ModelIndexValue (map (fn [[pk]]
+                                                              (str (:id model-index) ":" pk))
+                                                            deletions-part))))
             (when (seq additions)
               (doseq [additions-part (partition-all 10000 additions)]
                 (t2/insert! :model/ModelIndexValue
@@ -147,6 +150,7 @@
                        :state      (if (> (count values-to-index) max-indexed-values)
                                      "overflow"
                                      "indexed")}))
+        (run! search/update! (t2/select :model/ModelIndexValue :model_index_id (:id model-index)))
         (catch Exception e
           (log/errorf e "Error saving model-index values for model-index: %d, model: %d"
                       (:id model-index) (:model_id model-index))
@@ -179,7 +183,7 @@
 (search/define-spec "indexed-entity"
   {:model        :model/ModelIndexValue
    :visibility   :app-user
-   :attrs        {:id            :model_pk
+   :attrs        {:id            [:concat :model_index_id ":" :model_pk]
                   :collection-id :collection.id
                   :creator-id    false
                   ;; this seems wrong, I'd expect it to track whether the model is archived.
