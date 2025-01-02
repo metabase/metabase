@@ -268,7 +268,10 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should show field metadata hovercards for native query tables", () => {
-    H.startNewNativeQuestion({ query: "select * from products limit 1" });
+    H.startNewNativeQuestion({
+      query: "select * from products limit 1",
+      display: "table",
+    });
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.log("Wait for the table to load");
