@@ -978,7 +978,7 @@
               ;; return the DB with the expanded schedules back in place
               add-expanded-schedules
               ;; return the DB with the passed in details in place
-              (m/update-existing :details merge incoming-details)))))))
+              (m/update-existing :details #(merge incoming-details %))))))))
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
