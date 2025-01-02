@@ -267,7 +267,7 @@
   :type       :json
   :audit      :never
   :setter     :none
-  :getter     (fn [] (some-> nil (fetch-token-status))))
+  :getter     (fn [] (some-> (premium-embedding-token) (fetch-token-status))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             SETTING & RELATED FNS                                              |
