@@ -9,8 +9,7 @@
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.sql Connection)
-   (java.util.concurrent Semaphore)
-   (javax.sql DataSource)))
+   (java.util.concurrent Semaphore)))
 
 (set! *warn-on-reflection* true)
 
@@ -19,31 +18,31 @@
   (fixtures/initialize :db))
 
 (deftest nested-transaction-test
-  (let [user-1 (mt/random-email)
-        user-2 (mt/random-email)
-        user-exists? (fn [email]
-                       (t2/exists? :model/User :email email))
-        create-user! (fn [email]
-                       (t2/insert! :model/User (assoc (t2.with-temp/with-temp-defaults :model/User) :email email)))
-        transaction-exception (Exception. "(Abort the current transaction)")
+  (let [user-1                    (mt/random-email)
+        user-2                    (mt/random-email)
+        user-exists?              (fn [email]
+                                    (t2/exists? :model/User :email email))
+        create-user!              (fn [email]
+                                    (t2/insert! :model/User (assoc (t2.with-temp/with-temp-defaults :model/User) :email email)))
+        transaction-exception     (Exception. "(Abort the current transaction)")
         is-transaction-exception? (fn is-transaction-exception? [e]
                                     (or (identical? e transaction-exception)
                                         (some-> (ex-cause e) is-transaction-exception?)))
-        do-in-transaction (fn [thunk]
-                            (try
-                              (t2/with-transaction []
-                                (thunk))
-                              (catch Throwable e
-                                (when-not (is-transaction-exception? e)
-                                  (throw e)))))]
+        do-in-transaction         (fn [thunk]
+                                    (try
+                                      (t2/with-transaction []
+                                        (thunk))
+                                      (catch Throwable e
+                                        (when-not (is-transaction-exception? e)
+                                          (throw e)))))]
     (testing "inside transaction"
       (do-in-transaction
        (fn []
          (create-user! user-1)
          (is (user-exists? user-1))
          (testing "inside nested transaction"
-            ;; do this on a separate thread to make sure we're not deadlocking, see
-            ;; https://github.com/seancorfield/next-jdbc/issues/244
+           ;; do this on a separate thread to make sure we're not deadlocking, see
+           ;; https://github.com/seancorfield/next-jdbc/issues/244
            (let [futur (future
                          (do-in-transaction
                           (fn []
@@ -64,7 +63,7 @@
     (testing "make sure we set autocommit back after the transaction"
       (t2/with-connection [^java.sql.Connection conn]
         (t2/with-transaction [_t-conn conn]
-                                               ;; dummy op
+          ;; dummy op
           (is (false? (.getAutoCommit conn))))
         (is (true? (.getAutoCommit conn)))))
 
@@ -81,21 +80,21 @@
       (try
         ;; the top-level transaction cleans up everything
         (t2/with-transaction []
-                             ;; This transaction doesn't modify the DB. It catches the exception
-                             ;; from the nested transaction and sees its change because the nested
-                             ;; transaction doesn't set any new savepoint.
+          ;; This transaction doesn't modify the DB. It catches the exception
+          ;; from the nested transaction and sees its change because the nested
+          ;; transaction doesn't set any new savepoint.
           (t2/with-transaction [t-conn]
             (try
               (t2/with-transaction [_ t-conn {:nested-transaction-rule :ignore}]
-                                                                         ;; Create a user...
+                ;; Create a user...
                 (create-user! user-1)
                 (is (user-exists? user-1))
-                                                                         ;; and fail.
+                ;; and fail.
                 (throw transaction-exception))
               (catch Exception e
                 (when-not (is-transaction-exception? e)
                   (throw e)))))
-                             ;; this user has not been rolled back because of :ignore
+          ;; this user has not been rolled back because of :ignore
           (is (user-exists? user-1))
           (throw transaction-exception))
         (catch Exception e
@@ -121,7 +120,7 @@
                            (.acquire finished1)
                            (do-in-transaction
                             (fn []
-                                                  ;; can see uncommited change
+                              ;; can see uncommited change
                               (is (user-exists? user-1))
                               (create-user! user-2)
                               (is (user-exists? user-2))))
@@ -129,7 +128,7 @@
               @futur2
               @futur1)
             (is (not (user-exists? user-1)))
-                               ;; "committed" change has been rolled back
+            ;; "committed" change has been rolled back
             (is (not (user-exists? user-2)))
             (throw transaction-exception))
           (catch Exception e
@@ -144,18 +143,13 @@
 
 (deftest rollback-error-handling
   (testing "rollback error handling"
-    (let [real-conn (.getConnection ^DataSource mdb.connection/*application-db*)
-          mock-conn (reify Connection
+    (let [mock-conn (reify Connection
                       (rollback [_ _savepoint]
                         (throw (ex-info "Rollback error" {})))
-                      (setAutoCommit [_ auto?]
-                        (.setAutoCommit real-conn auto?))
-                      (getAutoCommit [_]
-                        (.getAutoCommit real-conn))
-                      (setSavepoint [_]
-                        (.setSavepoint real-conn))
-                      (commit [_]
-                        (.commit real-conn)))]
+                      (setAutoCommit [_ _])
+                      (getAutoCommit [_] true)
+                      (setSavepoint [_])
+                      (commit [_]))]
       (binding [t2.connection/*current-connectable* mock-conn]
         (let [e (is (thrown? Exception
                              (t2/with-transaction [_t-conn] (throw (ex-info "Original error" {})))))]
