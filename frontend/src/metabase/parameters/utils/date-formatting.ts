@@ -21,6 +21,9 @@ function getFilterOperator(filter: any[] = []) {
 }
 
 const prefixedOperators = new Set([
+  "previous",
+  "next",
+  "current",
   "exclude",
   "before",
   "after",
