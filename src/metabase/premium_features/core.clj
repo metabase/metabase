@@ -181,20 +181,6 @@
   "Does the Metabase Cloud instance have an internal data warehouse attached?"
   :attached-dwh)
 
-;; `enhancements` are not currently a specific "feature" that EE tokens can have or not have. Instead, it's a
-;; catch-all term for various bits of EE functionality that we assume all EE licenses include. (This may change in the
-;; future.)
-;;
-;; By checking whether `(*token-features*)` is non-empty we can see whether we have a valid EE token. If the token is
-;; valid, we can enable EE enhancements.
-;;
-;; DEPRECATED -- it should now be possible to use the new 0.41.0+ features for everything previously covered by
-;; 'enhancements'.
-(define-premium-feature ^:deprecated enable-enhancements?
-  "Should we various other enhancements, e.g. NativeQuerySnippet collection permissions?"
-  :enhancements
-  :getter #(and config/ee-available? (has-any-features?)))
-
 (define-premium-feature ^{:added "0.51.0"} enable-collection-cleanup?
   "Should we enable Collection Cleanup?"
   :collection-cleanup)

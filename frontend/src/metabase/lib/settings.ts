@@ -118,13 +118,6 @@ class MetabaseSettings {
   }
 
   /**
-   * @deprecated use getSetting(state, "enable-enhancements?")
-   */
-  enhancementsEnabled() {
-    return this.get("enable-enhancements?");
-  }
-
-  /**
    * @deprecated use getSetting(state, "email-configured?")
    */
   isEmailConfigured(): boolean {

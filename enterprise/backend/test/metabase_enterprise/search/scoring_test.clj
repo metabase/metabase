@@ -34,8 +34,7 @@
     (-> (scoring/score-and-result item {:search-string search-string}) :score)))
 
 (deftest official-collection-tests
-  (testing "it should bump up the value of items in official collections"
-    ;; using the ee implementation that isn't wrapped by enable-enhancements? check
+  (testing "Enterprise search scoring should bump up the value of items in official collections"
     (let [search-string "custom expression examples"
           a             {:id "a" :name "custom expression examples" :model "dashboard"}
           b             {:id "b" :name "examples of custom expressions" :model "dashboard"}

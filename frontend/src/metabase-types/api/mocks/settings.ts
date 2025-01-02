@@ -195,7 +195,6 @@ export const createMockSettings = (
   "enable-embedding-static": false,
   "enable-embedding-sdk": false,
   "enable-embedding-interactive": false,
-  "enable-enhancements?": false,
   "enable-nested-queries": true,
   "enable-pivoted-exports": true,
   "expand-browse-in-nav": true,
