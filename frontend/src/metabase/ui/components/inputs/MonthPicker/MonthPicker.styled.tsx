@@ -7,7 +7,7 @@ export const getMonthPickerOverrides =
         size: "md",
         mih: 0, // overwrite Calendar's default value
       },
-      styles: _theme => ({
+      styles: () => ({
         pickerControl: THEMED_STYLE,
         calendarHeaderLevel: THEMED_STYLE,
         calendarHeaderControl: THEMED_STYLE,

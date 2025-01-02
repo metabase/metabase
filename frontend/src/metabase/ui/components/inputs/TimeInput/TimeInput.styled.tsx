@@ -6,7 +6,7 @@ export const getTimeInputOverrides =
       defaultProps: {
         size: "md",
       },
-      styles: _theme => ({
+      styles: () => ({
         input: {
           color: "var(--mb-color-text-primary)",
           backgroundColor: "var(--mb-color-background)",
