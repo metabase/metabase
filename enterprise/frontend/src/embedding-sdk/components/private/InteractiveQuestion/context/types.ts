@@ -50,7 +50,7 @@ export type InteractiveQuestionProviderProps = PropsWithChildren<
 
 export type InteractiveQuestionContextType = Omit<
   LoadQuestionHookResult,
-  "loadQuestion"
+  "loadAndQueryQuestion"
 > &
   Pick<
     InteractiveQuestionConfig,
@@ -63,4 +63,6 @@ export type InteractiveQuestionContextType = Omit<
     onReset: () => void;
     onCreate: (question: Question) => Promise<Question>;
     onSave: (question: Question) => Promise<void>;
+  } & {
+    isCardIdError: boolean;
   };

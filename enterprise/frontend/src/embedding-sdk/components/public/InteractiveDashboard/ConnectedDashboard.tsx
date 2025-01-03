@@ -1,6 +1,8 @@
+import { Code } from "@mantine/core";
 import type { Query } from "history";
-import type { ComponentType, FC } from "react";
+import { type ComponentType, type FC, useEffect } from "react";
 import type { ConnectedProps } from "react-redux";
+import { jt } from "ttag";
 import _ from "underscore";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
@@ -8,6 +10,7 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import * as dashboardActions from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
@@ -43,7 +46,7 @@ import { connect } from "metabase/lib/redux";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { closeNavbar, setErrorPage } from "metabase/redux/app";
-import { getIsNavbarOpen } from "metabase/selectors/app";
+import { getErrorPage, getIsNavbarOpen } from "metabase/selectors/app";
 import {
   canManageSubscriptions,
   getUserIsAdmin,
@@ -127,19 +130,41 @@ const ConnectedDashboardInner = ({
 
 export const ConnectedDashboard = connector<
   ComponentType<ConnectedDashboardProps & ReduxProps>
->(({ dashboardId: initId, ...rest }) => {
-  const { id: dashboardId, isLoading } = useValidatedEntityId({
+>(({ dashboardId: initialDashboardId, ...rest }) => {
+  const { id: resolvedDashboardId, isLoading } = useValidatedEntityId({
     type: "dashboard",
-    id: initId,
+    id: initialDashboardId,
   });
+
+  const errorPage = useSdkSelector(getErrorPage);
+  const dispatch = useSdkDispatch();
+  useEffect(() => {
+    if (resolvedDashboardId) {
+      dispatch(setErrorPage(null));
+    }
+  }, [dispatch, resolvedDashboardId]);
 
   if (isLoading) {
     return <SdkLoader />;
   }
 
-  if (!dashboardId) {
-    return <SdkError message="ID not found" />;
+  if (!resolvedDashboardId || errorPage?.status === 404) {
+    return (
+      <SdkError
+        message={jt`Dashboard ${(
+          <Code
+            bg="var(--mb-base-color-ocean-20)"
+            c="text-dark"
+            key="question-id"
+          >
+            {initialDashboardId}
+          </Code>
+        )} not found`}
+      />
+    );
   }
 
-  return <ConnectedDashboardInner dashboardId={dashboardId} {...rest} />;
+  return (
+    <ConnectedDashboardInner dashboardId={resolvedDashboardId} {...rest} />
+  );
 }) as FC<ConnectedDashboardProps>;

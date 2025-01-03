@@ -1,12 +1,14 @@
+import { Code } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactElement } from "react";
-import { t } from "ttag";
+import { jt } from "ttag";
 
 import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Box, Divider, Group, Stack } from "metabase/ui";
@@ -41,6 +43,7 @@ export const InteractiveQuestionResult = ({
     useDisclosure(false);
 
   const {
+    originalId,
     question,
     queryResults,
     isQuestionLoading,
@@ -49,20 +52,35 @@ export const InteractiveQuestionResult = ({
     onSave,
     isSaveEnabled,
     saveToCollectionId,
+    isCardIdError,
   } = useInteractiveQuestionContext();
 
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
 
   // When visualizing a question for the first time, there is no query result yet.
-  const isQueryResultLoading = question && !queryResults;
+  const isQueryResultLoading =
+    question && shouldRunCardQuery(question) && !queryResults;
 
   if (isQuestionLoading || isQueryResultLoading) {
     return <SdkLoader />;
   }
 
-  if (!question) {
-    return <SdkError message={t`Question not found`} />;
+  // `isCardError: true` when the entity ID couldn't be resolved
+  if (!question || isCardIdError) {
+    return (
+      <SdkError
+        message={jt`Question ${(
+          <Code
+            bg="var(--mb-base-color-ocean-20)"
+            c="text-dark"
+            key="question-id"
+          >
+            {originalId}
+          </Code>
+        )} not found`}
+      />
+    );
   }
 
   const showSaveButton =

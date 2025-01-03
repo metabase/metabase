@@ -3,38 +3,26 @@ import type { ComponentProps } from "react";
 
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 
-import { InteractiveQuestion } from "./InteractiveQuestion";
+import { StaticQuestion } from "./StaticQuestion";
 
-const NUMBER_ID = 12;
 const ENTITY_ID = "VFCGVYPVtLzCtt4teeoW4";
 const ONE_TOO_MANY_ENTITY_ID = ENTITY_ID + "1";
 const WRONG_ENTITY_ID = ENTITY_ID.slice(0, -1) + "1";
+const NUMBER_ID = 12;
 const WRONG_NUMBER_ID = 99999999;
 
 const QUESTION_ID = ENTITY_ID;
 
-type InteractiveQuestionComponentProps = ComponentProps<
-  typeof InteractiveQuestion
->;
+type StaticQuestionComponentProps = ComponentProps<typeof StaticQuestion>;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion",
-  component: InteractiveQuestion,
+  title: "EmbeddingSDK/StaticQuestion",
+  component: StaticQuestion,
   parameters: {
     layout: "fullscreen",
   },
   decorators: [CommonSdkStoryWrapper],
   argTypes: {
-    title: {
-      options: [
-        undefined,
-        true,
-        false,
-        "Custom Title",
-        "Long title".repeat(10),
-      ],
-      control: { type: "radio" },
-    },
     questionId: {
       options: [
         ENTITY_ID,
@@ -57,30 +45,12 @@ export default {
   },
 };
 
-const Template: StoryFn<InteractiveQuestionComponentProps> = args => {
-  return <InteractiveQuestion {...args} />;
+const Template: StoryFn<StaticQuestionComponentProps> = args => {
+  return <StaticQuestion {...args} />;
 };
 
 export const Default = {
   render: Template,
-
-  args: {
-    questionId: QUESTION_ID,
-    isSaveEnabled: true,
-    saveToCollectionId: undefined,
-    title: true,
-    withResetButton: true,
-  },
-};
-
-export const EditorOnly = {
-  render(args: InteractiveQuestionComponentProps) {
-    return (
-      <InteractiveQuestion {...args}>
-        <InteractiveQuestion.Editor />
-      </InteractiveQuestion>
-    );
-  },
 
   args: {
     questionId: QUESTION_ID,
