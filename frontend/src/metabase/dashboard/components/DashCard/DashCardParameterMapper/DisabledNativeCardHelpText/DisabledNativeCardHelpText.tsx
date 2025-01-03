@@ -36,7 +36,9 @@ export function DisabledNativeCardHelpText({
 
 function ModelHelpText() {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-  const learnUrl = getLearnUrl("data-modeling/models#skip-the-sql-variables");
+  const learnUrl = getLearnUrl(
+    "metabase-basics/getting-started/models#skip-the-sql-variables",
+  );
 
   return (
     <NativeCardDefault>

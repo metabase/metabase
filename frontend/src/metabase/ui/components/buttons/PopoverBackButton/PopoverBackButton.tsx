@@ -14,7 +14,7 @@ export function PopoverBackButton(props: PopoverBackButtonProps) {
     <Button
       p={0}
       aria-label={t`Back`}
-      c="text-dark"
+      c="var(--mb-color-text-primary)"
       fz="1rem"
       lh="1.25rem"
       {...props}

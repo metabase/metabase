@@ -22,7 +22,7 @@ import {
   OptionsRoot,
 } from "./NewModelOptions.styled";
 
-const EDUCATIONAL_LINK = getLearnUrl("data-modeling/models");
+const EDUCATIONAL_LINK = getLearnUrl("metabase-basics/getting-started/models");
 
 interface NewModelOptionsProps {
   location: Location;

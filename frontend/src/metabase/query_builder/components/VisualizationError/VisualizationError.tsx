@@ -113,7 +113,9 @@ export function VisualizationError({
           {isSql && showMetabaseLinks && (
             <ExternalLink
               className={VisErrorS.QueryErrorLink}
-              href={getLearnUrl("debugging-sql/sql-syntax")}
+              href={getLearnUrl(
+                "grow-your-data-skills/learn-sql/debugging-sql/sql-syntax",
+              )}
             >
               {t`Learn how to debug SQL errors`}
             </ExternalLink>

@@ -89,6 +89,7 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 ## Further reading
 
+- [Microsoft JDBC Driver for SQL Server support matrix](https://learn.microsoft.com/en-us/sql/connect/jdbc/microsoft-jdbc-driver-for-sql-server-support-matrix)
 - [Managing databases](../../databases/connecting.md)
 - [Metadata editing](../../data-modeling/metadata-editing.md)
 - [Models](../../data-modeling/models.md)
