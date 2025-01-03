@@ -251,9 +251,9 @@
         icon-attachment     (apply make-message-attachment (icon-bundle :dashboard))
         attachments         (concat
                              [icon-attachment]
-                             #_(email-attachment rendered-cards (assoc-attachment-booleans
-                                                                 (:dashboard_subscription_dashcards dashboard_subscription)
-                                                                 dashboard_parts)))
+                             (email-attachment rendered-cards (assoc-attachment-booleans
+                                                               (:dashboard_subscription_dashcards dashboard_subscription)
+                                                               dashboard_parts)))
         message-context-fn  (fn [non-user-email]
                               (-> notification-payload
                                   (assoc :computed {:dashboard_content  (html (vec (cons :div (map :content rendered-cards))))
