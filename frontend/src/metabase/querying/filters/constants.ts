@@ -19,12 +19,12 @@ export const DATE_PICKER_OPERATORS = [
 export const DATE_PICKER_SHORTCUTS = [
   "today" as const,
   "yesterday" as const,
-  "last-week" as const,
-  "last-7-days" as const,
-  "last-30-days" as const,
-  "last-month" as const,
-  "last-3-months" as const,
-  "last-12-months" as const,
+  "previous-week" as const,
+  "previous-7-days" as const,
+  "previous-30-days" as const,
+  "previous-month" as const,
+  "previous-3-months" as const,
+  "previous-12-months" as const,
 ];
 
 export const DATE_PICKER_TRUNCATION_UNITS = [

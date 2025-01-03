@@ -53,7 +53,7 @@ describe("DateFilterEditor", () => {
       column,
     });
 
-    await userEvent.click(screen.getByText("Last month"));
+    await userEvent.click(screen.getByText("Previous month"));
 
     expect(getNextFilterName()).toBe("Created At is in the previous month");
   });
@@ -93,7 +93,7 @@ describe("DateFilterEditor", () => {
     });
 
     await userEvent.click(screen.getByLabelText("More options"));
-    await userEvent.click(await screen.findByText("Last 30 days"));
+    await userEvent.click(await screen.findByText("Previous 30 days"));
 
     expect(getNextFilterName()).toBe("Created At is in the previous 30 days");
   });

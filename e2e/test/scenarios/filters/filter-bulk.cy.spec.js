@@ -435,8 +435,12 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("can add a date shortcut filter from the popover", () => {
       H.filterField("Created At").findByLabelText("More options").click();
-      H.popover().contains("Last 3 months").findByText("Last 3 months").click();
+      H.popover()
+        .contains("Previous 3 months")
+        .findByText("Previous 3 months")
+        .click();
       H.modal().findByText("Previous 3 Months").should("be.visible");
+
       applyFilters();
 
       cy.findByTestId("qb-filters-panel")

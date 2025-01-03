@@ -181,7 +181,7 @@ describe("FilterModal", () => {
 
     await userEvent.click(within(ordersSection).getByText("Today"));
     await userEvent.click(within(productsSection).getByText("Yesterday"));
-    await userEvent.click(within(peopleSection).getByText("Last month"));
+    await userEvent.click(within(peopleSection).getByText("Previous month"));
     await userEvent.click(
       screen.getByRole("button", { name: "Apply filters" }),
     );
