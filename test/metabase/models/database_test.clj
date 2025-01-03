@@ -210,7 +210,7 @@
 
 (deftest sensitive-fields-test
   (testing "get-sensitive-fields returns the custom :password type field in addition to all default ones"
-    (is (= (conj driver.u/default-sensitive-fields :custom-field-2-secret :custom-field-2-secret-value)
+    (is (= (conj driver.u/default-sensitive-fields :custom-field-2-secret)
            (driver.u/sensitive-fields :test-sensitive-driver))))
   (testing "get-sensitive-fields-for-db returns default fields for null or empty database map"
     (is (= driver.u/default-sensitive-fields
@@ -231,7 +231,7 @@
                                                      :details json-details}]
             (is (= json-details (t2/select-one-fn :details database-table db-id)))
             (is (= {:host "localhost" :keystore-id secret-id} (t2/select-one-fn :details :model/Database db-id)))
-            (is (= {:host "localhost" :keystore-id secret-id}
+            (is (= {:host "localhost" :keystore-id secret-id :keystore-options "uploaded" :keystore-value secret/protected-password}
                    (:details (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))))
                 "API request")))))
     (testing "Existing value no secret id does not leak"
@@ -286,13 +286,17 @@
           db-table (t2/table-name :model/Database)
           host-and-keystore-id [:map {:closed true}
                                 [:keystore-id :int]
-                                [:host [:enum "localhost"]]]]
+                                [:host [:enum "localhost"]]]
+          expected-path-response (conj host-and-keystore-id
+                                       [:keystore-path [:enum "local.key"]]
+                                       [:keystore-options [:enum "local"]])
+          secret-key (u/encode-base64 "secret")]
       (mt/with-temp [db-table {db-id :id} {:engine (name :secret-test-driver)
                                            :name "Secret Test"
                                            :details (json/encode original-details)}]
 
         (testing "Initially setting secret value"
-          (is (=? (=?/malli host-and-keystore-id)
+          (is (=? (=?/malli expected-path-response)
                   (:details (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
                                                   {:details (assoc original-details
                                                                    :keystore-path "local.key"
@@ -301,22 +305,27 @@
                   (json/decode (:details (t2/select-one db-table db-id)) keyword))
               "Database value")
 
-          (is (=? (=?/malli host-and-keystore-id)
+          (is (=? (=?/malli expected-path-response)
                   (:details (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))))
               "API request"))
 
         (testing "Change secret value from local path to uploaded"
-          (is (=? (=?/malli host-and-keystore-id)
+          (is (=? (=?/malli (conj host-and-keystore-id
+                                  ;; The secret gets passed back on the put for the ui
+                                  [:keystore-value [:enum secret-key]]
+                                  [:keystore-options [:enum "uploaded"]]))
                   (:details (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
                                                   {:details (assoc original-details
-                                                                   :keystore-value (u/encode-base64 "secret")
+                                                                   :keystore-value secret-key
                                                                    :keystore-options "uploaded")}))))
 
           (is (=? (=?/malli host-and-keystore-id)
                   (json/decode (:details (t2/select-one db-table db-id)) keyword))
               "Database value")
 
-          (is (=? (=?/malli host-and-keystore-id)
+          (is (=? (=?/malli (conj host-and-keystore-id
+                                  [:keystore-value [:enum secret/protected-password]]
+                                  [:keystore-options [:enum "uploaded"]]))
                   (:details (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))))
               "API request"))))))
 
@@ -324,12 +333,14 @@
   (let [base-details {:host "localhost"}
         expected-uploaded {:keystore-value secret/protected-password
                            :keystore-options "uploaded"}
-        expected-path {:keystore-path secret/protected-password
-                       :keystore-options "local"}]
-    (mt/with-temp [:model/Secret {uploaded-secret :id} {:name "secret" :value "my-secret" :kind "s" :source "uploaded"}
-                   :model/Secret {path-secret :id} {:name "secret" :value "my-secret" :kind "s" :source "file-path"}
-                   :model/Secret {other-secret :id} {:name "secret" :value "my-secret" :kind "s" :source "something"}
-                   :model/Secret {nil-source-secret :id} {:name "secret" :value "my-secret" :kind "s"}
+        expected-path {:keystore-path "stored-secret-path"
+                       :keystore-options "local"}
+        incoming-value {:keystore-value "incoming-secret-value"}
+        incoming-path {:keystore-path "incoming-secret-path"}]
+    (mt/with-temp [:model/Secret {uploaded-secret :id} {:name "secret" :value "stored-secret-value" :kind "s" :source "uploaded"}
+                   :model/Secret {path-secret :id} {:name "secret" :value "stored-secret-path" :kind "s" :source "file-path"}
+                   :model/Secret {other-secret :id} {:name "secret" :value "stored-secret-something" :kind "s" :source "something"}
+                   :model/Secret {nil-source-secret :id} {:name "secret" :value "sotred-secret-nil-source" :kind "s"}
                    :model/Database db {:engine (name :secret-test-driver)
                                        :name "Secret Test"
                                        :details base-details}]
@@ -342,21 +353,25 @@
                                              json/encode
                                              json/decode+kw
                                              :details))
-          expected-uploaded
-          {:keystore-value "my-secret"}
+          ;; Incoming values gets passed back, as is
+          incoming-value
+          incoming-value
 
-          expected-path
-          {:keystore-path "secret-path"}
+          incoming-path
+          incoming-path
 
-          expected-uploaded
-          {:keystore-path "secret-path"
-           :keystore-value "secret-value"}
+          (merge incoming-path incoming-value)
+          (merge incoming-path incoming-value)
 
-          expected-path
-          {:keystore-path "secret-path"
-           :keystore-options "local"
-           :keystore-value "secret-value"}
+          ;; We should pass incoming back as is even if it has a keystore-id
+          (merge incoming-path {:keystore-id path-secret})
+          (merge incoming-path {:keystore-id path-secret})
 
+          ;; We should pass incoming back as is even if it has a keystore-id
+          (merge incoming-value {:keystore-id uploaded-secret})
+          (merge incoming-value {:keystore-id uploaded-secret})
+
+          ;; If there's only a keystore-id then we should do a lookup and fill in with redacted secrets
           (assoc expected-uploaded :keystore-id uploaded-secret)
           {:keystore-id uploaded-secret}
 
@@ -367,17 +382,7 @@
           {:keystore-id other-secret}
 
           (assoc expected-uploaded :keystore-id nil-source-secret)
-          {:keystore-id nil-source-secret}
-
-          ;; The path from details should override the value and source in the secret
-          (assoc expected-path :keystore-id uploaded-secret)
-          {:keystore-path "secret-path"
-           :keystore-id uploaded-secret}
-
-          ;; The value from details should override the value and source in the secret
-          (assoc expected-uploaded :keystore-id path-secret)
-          {:keystore-value "secret-value"
-           :keystore-id path-secret})))))
+          {:keystore-id nil-source-secret})))))
 
 (deftest secret-db-details-integration-test
   (testing "manipulating secret values in db-details works correctly"

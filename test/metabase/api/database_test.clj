@@ -2023,13 +2023,12 @@
                                                          :name    "Test secret DB with password path"
                                                          :details {:host           "localhost"
                                                                    :password-path "/path/to/password.txt"}}]
-        (is (= {:password-source "file-path"
-                :password-value  "/path/to/password.txt"}
-               (as-> (u/the-id database) d
-                 (format "database/%d" d)
-                 (mt/user-http-request :crowberto :get 200 d)
-                 (:details d)
-                 (select-keys d [:password-source :password-value]))))))))
+        (is (=? {:password-options "local"
+                 :password-path  "/path/to/password.txt"}
+                (as-> (u/the-id database) d
+                  (format "database/%d" d)
+                  (mt/user-http-request :crowberto :get 200 d)
+                  (:details d))))))))
 
 ;; these descriptions use deferred-tru because the `defsetting` macro complains if they're not, but since these are in
 ;; tests they won't get scraped for i18n purposes so it's ok.

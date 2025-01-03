@@ -274,7 +274,7 @@
 (defn- hydrate-redacted-secret
   [db-details conn-prop-nm _conn-prop]
   (let [kws (->possible-secret-property-names conn-prop-nm)
-        secret-id (get db-details  (->id-kw conn-prop-nm))]
+        secret-id (get db-details (->id-kw conn-prop-nm))]
     ;; If db-details contains secret properties, we must be in a PUT and we want to return to client as is.
     ;; This is true because otherwise [[handle-incoming-client-secrets!]] and
     ;; [[clean-secret-properties-from-database]] would have removed them.
