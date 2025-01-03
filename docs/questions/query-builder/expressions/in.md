@@ -4,7 +4,7 @@ title: in
 
 # In
 
-lin` compares values and returns true if `value1` equals `value2` (OR `value3`, etc., if specified).
+`in` compares values and returns true if `value1` equals `value2` (OR `value3`, etc., if specified).
 
 ## Syntax
 
