@@ -350,7 +350,9 @@ const PreemptiveCachingSwitch = ({
         label: { fontWeight: "bold" },
         description: { fontWeight: "normal" },
       }}
-      data-testid="preemptive-caching-switch"
+      wrapperProps={{
+        "data-testid": "preemptive-caching-switch",
+      }}
     />
   );
 };
