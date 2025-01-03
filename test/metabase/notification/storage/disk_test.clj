@@ -6,6 +6,8 @@
   (:import
    (java.io File)))
 
+(set! *warn-on-reflection* true)
+
 (deftest disk-storage-test
   (testing "basic store and retrieve operations"
     (let [storage (disk/to-disk-storage!)]

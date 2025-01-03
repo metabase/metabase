@@ -3,7 +3,8 @@
    [clojure.java.io :as io]
    [metabase.notification.storage.protocols :as storage]
    [metabase.util :as u]
-   [metabase.util.random :as random])
+   [metabase.util.random :as random]
+   [taoensso.nippy :as nippy])
   (:import
    (java.io File)
    (java.util.concurrent Executors ScheduledThreadPoolExecutor TimeUnit)))
@@ -34,19 +35,19 @@
 
 (defn- temp-file
   []
-  (doto (File/createTempFile "notification-" ".edn" @temp-dir)
+  (doto (File/createTempFile "notification-" ".npy" @temp-dir)
     (.deleteOnExit)))
 
 (deftype DiskStorage [file]
   storage/NotificationStorage
   (store! [this data]
-    (spit file (pr-str data))
+    (nippy/freeze-to-file file data)
     this)
 
   (retrieve [this]
     (let [^File file (.file this)]
       (when (.exists file)
-        (read-string (slurp file)))))
+        (nippy/thaw-from-file file))))
 
   (cleanup! [this]
     (let [^File file (.file this)]
