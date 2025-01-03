@@ -55,6 +55,7 @@
    [metabase.api.user :as api.user]
    [metabase.api.user-key-value :as api.user-key-value]
    [metabase.api.util :as api.util]
+   [metabase.api.visualizer :as api.visualizer]
    [metabase.config :as config]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -157,4 +158,5 @@
   (context "/user-key-value"       [] (+auth api.user-key-value/routes))
   (context "/api-key"              [] (+auth api.api-key/routes))
   (context "/util"                 [] api.util/routes)
+  (context "/visualizer"           [] (+auth api.visualizer/routes))
   (route/not-found (constantly {:status 404, :body (deferred-tru "API endpoint does not exist.")})))
