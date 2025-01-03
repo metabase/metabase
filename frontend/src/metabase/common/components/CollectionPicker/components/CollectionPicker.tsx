@@ -5,8 +5,9 @@ import { useDeepCompareEffect } from "react-use";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { Collection } from "metabase-types/api";
+import type { Collection, Dashboard } from "metabase-types/api";
 
+import { handleNewDashboard as handleNewDashboardUtil } from "../../DashboardPicker/utils";
 import { LoadingSpinner, NestedItemPicker } from "../../EntityPicker";
 import { useEnsureCollectionSelected, useGetInitialContainer } from "../hooks";
 import type {
@@ -146,14 +147,35 @@ export const CollectionPickerInner = (
     [path, handleItemSelect, onItemSelect, onPathChange, options.namespace],
   );
 
+  const handleNewDashboard = useCallback(
+    (newDashboard: Dashboard) => {
+      handleNewDashboardUtil(
+        newDashboard,
+        path,
+        onItemSelect,
+        userPersonalCollectionId,
+        handleItemSelect,
+        onPathChange,
+      );
+    },
+    [
+      path,
+      onItemSelect,
+      userPersonalCollectionId,
+      handleItemSelect,
+      onPathChange,
+    ],
+  );
+
   // Exposing onNewCollection so that parent can select newly created
   // folder
   useImperativeHandle(
     ref,
     () => ({
       onNewCollection: handleNewCollection,
+      onNewDashboard: handleNewDashboard,
     }),
-    [handleNewCollection],
+    [handleNewCollection, handleNewDashboard],
   );
 
   useDeepCompareEffect(

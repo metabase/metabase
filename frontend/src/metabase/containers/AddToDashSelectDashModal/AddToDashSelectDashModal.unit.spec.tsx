@@ -591,12 +591,12 @@ describe("AddToDashSelectDashModal", () => {
     });
   });
 
-  describe('"Create a new dashboard" option', () => {
-    it('should render "Create a new dashboard" option', async () => {
+  describe('"New dashboard" option', () => {
+    it('should render "New dashboard" option', async () => {
       await setup();
       expect(
         await screen.findByRole("button", {
-          name: /Create a new dashboard/,
+          name: /New dashboard/,
         }),
       ).toBeInTheDocument();
     });
@@ -610,7 +610,7 @@ describe("AddToDashSelectDashModal", () => {
 
       await userEvent.click(
         await screen.findByRole("button", {
-          name: /Create a new dashboard/,
+          name: /New dashboard/,
         }),
       );
       // opened CreateDashboardModal
