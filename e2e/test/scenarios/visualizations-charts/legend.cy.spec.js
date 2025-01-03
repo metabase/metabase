@@ -528,7 +528,7 @@ describe("scenarios > visualizations > legend", () => {
     showSeries(2);
     showSeries(3);
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     H.leftSidebar().within(() => {
       cy.findByText("Display").click();

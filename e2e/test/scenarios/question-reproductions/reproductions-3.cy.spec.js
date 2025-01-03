@@ -97,7 +97,7 @@ describe("issue 32964", () => {
 
   it("should not overflow chart settings sidebar with long column name (metabase#32964)", () => {
     H.visitQuestionAdhoc(QUESTION);
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left").within(([sidebar]) => {
       const maxX = sidebar.getBoundingClientRect().right;
       cy.findByDisplayValue(`Sum of ${LONG_NAME}`).then(([el]) => {
@@ -425,7 +425,7 @@ describe("issue 39795", () => {
         type: "query",
       },
     });
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.moveColumnDown(H.getDraggableElements().first(), 2);
 
     // We are not able to re-order because the dataset will also contain values a column for Product ID
@@ -498,7 +498,7 @@ describe("issue 40435", () => {
     });
     H.getNotebookStep("data").button("Pick columns").click();
     H.visualize();
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTestId("ID-hide-button").click();
       cy.findByTestId("ID-show-button").click();
@@ -1017,7 +1017,7 @@ describe("issue 37374", () => {
     cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
 
     cy.log("changing the viz type to pivot table and running the query works");
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     cy.findByTestId("chart-type-sidebar")
       .findByTestId("Pivot Table-button")
       .click();
@@ -1515,7 +1515,7 @@ describe("issue 44668", () => {
     // Ensure custom columns weren't added as series automatically
     H.queryBuilderMain().findByLabelText("Legend").should("not.exist");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     // Ensure can use Custom Number as series
     H.leftSidebar().findByText("Add another series").click();

@@ -21,7 +21,7 @@ describe("scenarios > visualizations > funnel chart", () => {
       },
       display: "funnel",
     });
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.sidebar().findByText("Data").click();
   });
 

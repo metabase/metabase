@@ -812,7 +812,7 @@ const hideColumn = column => {
 };
 
 const openSettings = () => {
-  cy.findByTestId("viz-settings-button").click();
+  H.openVizSettingsSidebar();
 };
 
 const visualization = () => {

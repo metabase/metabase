@@ -47,7 +47,7 @@ describe("scenarios > visualizations > table", () => {
     H.startNewNativeQuestion({ query: "select * from orders LIMIT 2" });
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     cy.findByTestId(/subtotal-hide-button/i).click();
     cy.findByTestId(/tax-hide-button/i).click();
@@ -389,7 +389,7 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
         },
       });
 
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
       H.sidebar().findByText("Conditional Formatting").click();
     });
 
@@ -480,7 +480,7 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
     });
 
     it("should work with boolean columns", { tags: ["@external"] }, () => {
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
       H.leftSidebar().findByText("Conditional Formatting").click();
       cy.findByRole("button", { name: /add a rule/i }).click();
 

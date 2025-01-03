@@ -57,7 +57,7 @@ describe("issue 12439", () => {
     });
 
     // Make sure buttons are clickable
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     H.sidebar().contains("X-axis");
     H.sidebar().contains("Y-axis");
@@ -130,7 +130,7 @@ describe("issue 16914", () => {
       visualization_settings: {},
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left")
       .as("sidebar")
       .within(() => {
@@ -192,7 +192,7 @@ describe("issue 17060", () => {
       visualization_settings: {},
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left").within(() => {
       rearrangeColumns();
     });

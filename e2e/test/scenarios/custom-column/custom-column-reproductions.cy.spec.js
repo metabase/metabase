@@ -466,7 +466,7 @@ describe("issue 19745", () => {
         H.openNotebook();
         updateExpressions();
         H.visualize();
-        cy.findByTestId("viz-settings-button").click();
+        H.openVizSettingsSidebar();
         cy.findByRole("button", { name: "Add or remove columns" }).click();
         cy.findByLabelText("Count").should("not.be.checked").click();
         updateQuestion();

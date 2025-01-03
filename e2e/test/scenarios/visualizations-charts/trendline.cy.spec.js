@@ -25,7 +25,7 @@ describe("scenarios > question > trendline", () => {
     });
 
     // Change settings to trendline
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.leftSidebar().within(() => {
       cy.findByText("Display").click();
       cy.findByText("Trend line").click();
@@ -56,7 +56,7 @@ describe("scenarios > question > trendline", () => {
       },
       display: "bar",
     });
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     // stack 100%, then enable trend line
     H.leftSidebar().within(() => {
       cy.findByText("Display").click();
