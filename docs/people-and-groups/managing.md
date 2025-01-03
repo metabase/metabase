@@ -8,6 +8,8 @@ redirect_from:
 
 People can have [accounts](#creating-an-account) in Metabase, and those accounts can be members of [groups](#groups). These groups are used to define [permissions](../permissions/introduction.md). People can be in multiple groups.
 
+> This page covers accounts people use to log in to _your_ Metabase(s). These accounts are distinct from [Metabase _store_ accounts](https://store.metabase.com), which are used to manage paid Metabase plans.
+
 ## Managing people and groups
 
 To start managing people and groups:
