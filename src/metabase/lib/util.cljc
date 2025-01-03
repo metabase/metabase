@@ -542,7 +542,7 @@
 
 (mu/defn add-summary-clause :- ::lib.schema/query
   "If the given stage has no summary, it will drop :fields, :order-by, and :join :fields from it,
-   as well as any subsequent stages."
+   as well as dropping any subsequent stages."
   [query :- ::lib.schema/query
    stage-number :- :int
    location :- [:enum :breakout :aggregation]
@@ -567,8 +567,7 @@
              (-> stage
                  (dissoc :order-by :fields)
                  (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins))))))
-          ;; subvec holds onto references, so create a new vector
-          (update :stages (comp #(into [] %) subvec) 0 (inc (canonical-stage-index query stage-number))))
+          (update :stages #(into [] (take (inc (canonical-stage-index query stage-number))) %)))
       new-query)))
 
 (defn fresh-uuids
