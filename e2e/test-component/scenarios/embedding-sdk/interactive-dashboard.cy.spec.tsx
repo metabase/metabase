@@ -3,11 +3,8 @@ import {
   InteractiveQuestion,
 } from "@metabase/embedding-sdk-react";
 
-import {
-  ORDERS_DASHBOARD_DASHCARD_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
-import { describeEE, getTextCardDetails } from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { POPOVER_ELEMENT, describeEE, popover } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
@@ -20,20 +17,32 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
-    const textCard = getTextCardDetails({ col: 16, text: "Text text card" });
     const questionCard = {
-      id: ORDERS_DASHBOARD_DASHCARD_ID,
+      id: 64,
       card_id: ORDERS_QUESTION_ID,
       row: 0,
       col: 0,
-      size_x: 16,
+      size_x: 8,
       size_y: 8,
+    };
+
+    const questionCardWithClickBehavior = {
+      ...questionCard,
+      id: 65,
+      col: 8,
+      visualization_settings: {
+        click_behavior: {
+          type: "link",
+          linkType: "url",
+          linkTemplate: "https://metabase.com",
+        },
+      },
     };
 
     cy.createDashboard(
       {
         name: "Orders in a dashboard",
-        dashcards: [questionCard, textCard],
+        dashcards: [questionCard, questionCardWithClickBehavior],
       },
       { wrapId: true },
     );
@@ -69,6 +78,42 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
       cy.findByText("Orders").click();
       cy.contains("Orders").should("be.visible");
       cy.contains("This is a custom question layout.");
+    });
+  });
+
+  it("should not trigger url click behaviors when clicking on cards (metabase#51099)", () => {
+    cy.get<string>("@dashboardId").then(dashboardId => {
+      mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+    });
+
+    cy.wait("@dashcardQuery").then(() => {
+      cy.location().then(location => {
+        cy.wrap(location.pathname).as("initialPath");
+      });
+
+      getSdkRoot().within(() => {
+        const dashcards = cy.findAllByTestId("dashcard");
+        dashcards.should("have.length", 2);
+
+        // Drill-through should work on cards without click behavior
+        dashcards.eq(0).findAllByTestId("cell-data").eq(1).click();
+        popover().should("contain.text", "View details");
+
+        // Click on the second card with url click behavior
+        cy.findAllByTestId("dashcard")
+          .eq(1)
+          .findAllByTestId("cell-data")
+          .eq(1)
+          .click();
+
+        // Drill-through should not activate on cards with url click behavior
+        cy.get(POPOVER_ELEMENT).should("not.exist");
+
+        // We should not be navigated away from the current page
+        cy.location().then(location => {
+          cy.get("@initialPath").should("eq", location.pathname);
+        });
+      });
     });
   });
 });
