@@ -1,4 +1,4 @@
-import { within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import {
   setupAlertsEndpoints,
@@ -14,6 +14,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
@@ -233,5 +234,27 @@ describe("InteractiveQuestion", () => {
     expect(
       screen.queryByTestId("chart-type-selector-button"),
     ).not.toBeInTheDocument();
+  });
+
+  // Obviously, we can't test every single permutation of chart settings right now, but tests in the core
+  // app should cover most cases anyway.
+  it("should allow user to use chart settings", async () => {
+    setup({ withChartTypeSelector: true });
+    await waitForLoaderToBeRemoved();
+
+    await userEvent.click(screen.getByLabelText("gear icon"));
+
+    const popover = within(screen.getByRole("dialog"));
+    expect(popover.getByTestId("chartsettings-sidebar")).toBeInTheDocument();
+    await userEvent.click(screen.getByTestId("Test Column-settings-button"));
+
+    const columnTitle = screen.getByTestId("column_title");
+    await userEvent.clear(columnTitle);
+    await userEvent.type(columnTitle, "A New Test Column");
+    await userEvent.tab();
+
+    expect(
+      await screen.findByTestId("draggable-item-A New Test Column"),
+    ).toBeInTheDocument();
   });
 });

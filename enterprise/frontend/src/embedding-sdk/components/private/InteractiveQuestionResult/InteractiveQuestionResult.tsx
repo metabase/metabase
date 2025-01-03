@@ -97,6 +97,7 @@ export const InteractiveQuestionResult = ({
             {withChartTypeSelector && (
               <>
                 <InteractiveQuestion.ChartTypeDropdown />
+                <InteractiveQuestion.QuestionSettingsDropdown />
                 <Divider
                   mx="xs"
                   orientation="vertical"
