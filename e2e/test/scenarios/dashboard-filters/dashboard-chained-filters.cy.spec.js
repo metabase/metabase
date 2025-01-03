@@ -80,7 +80,7 @@ describe("scenarios > dashboard > chained filter", () => {
 
       H.popover().within(() => {
         if (has_field_values === "search") {
-          H.multiAutocompleteInput().type("An");
+          H.fieldValuesInput().type("An");
         }
         if (has_field_values === "list") {
           cy.findByPlaceholderText("Search the list").type("An");
@@ -94,19 +94,17 @@ describe("scenarios > dashboard > chained filter", () => {
           cy.findByText("Anacoco").should("not.exist");
         });
 
-      H.popover()
-        .first()
-        .within(() => {
-          if (has_field_values === "search") {
-            H.multiAutocompleteInput()
-              .type("{backspace}{backspace}")
-              // close the suggestion list
-              .blur();
-          }
-          if (has_field_values === "list") {
-            cy.findByPlaceholderText("Search the list").clear();
-          }
-        });
+      cy.findByTestId("parameter-value-dropdown").within(() => {
+        if (has_field_values === "search") {
+          H.fieldValuesInput()
+            .type("{backspace}{backspace}")
+            // close the suggestion list
+            .blur();
+        }
+        if (has_field_values === "list") {
+          cy.findByPlaceholderText("Search the list").clear();
+        }
+      });
 
       H.filterWidget().contains("AK").click();
       H.popover()
@@ -122,7 +120,7 @@ describe("scenarios > dashboard > chained filter", () => {
       H.filterWidget().contains("Location 1").click();
       H.popover().within(() => {
         if (has_field_values === "search") {
-          H.multiAutocompleteInput().type("An");
+          H.fieldValuesInput().type("An");
         }
         if (has_field_values === "list") {
           cy.findByPlaceholderText("Search the list").type("An");
@@ -137,12 +135,10 @@ describe("scenarios > dashboard > chained filter", () => {
         });
 
       if (has_field_values === "search") {
-        H.popover()
-          .first()
-          .within(() => {
-            // close the suggestion list
-            H.multiAutocompleteInput().blur();
-          });
+        cy.findByTestId("parameter-value-dropdown").within(() => {
+          // close the suggestion list
+          H.fieldValuesInput().blur();
+        });
       }
 
       H.filterWidget().contains("GA").click();
@@ -155,16 +151,14 @@ describe("scenarios > dashboard > chained filter", () => {
 
       // do it again without a state filter to make sure it isn't cached incorrectly
       H.filterWidget().contains("Location 1").click();
-      H.popover()
-        .first()
-        .within(() => {
-          if (has_field_values === "search") {
-            H.multiAutocompleteInput().type("An");
-          }
-          if (has_field_values === "list") {
-            cy.findByRole("textbox").type("An");
-          }
-        });
+      cy.findByTestId("parameter-value-dropdown").within(() => {
+        if (has_field_values === "search") {
+          H.fieldValuesInput().type("An");
+        }
+        if (has_field_values === "list") {
+          cy.findByRole("textbox").type("An");
+        }
+      });
 
       H.popover()
         .last()
