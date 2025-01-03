@@ -87,7 +87,10 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
 
       H.visualize(); // need to visualize because startNewQuestion does not set "display" property on a card
       cy.wait("@dataset");
-      H.saveQuestion("test"); // added to new dash automatically
+      H.saveQuestion("test", { addToDashboard: true });
+      H.modal().findByText("My new dashboard").click();
+      H.modal().button("Select").click();
+      cy.url().should("match", /\/dashboard\/\d+/);
 
       cy.findByLabelText("Add a filter or parameter").click();
       H.popover().findByText("Text or Category").click();
