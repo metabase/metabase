@@ -1,11 +1,13 @@
 (ns metabase.notification.send
   (:require
+   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.channel.core :as channel]
    [metabase.events :as events]
    [metabase.models.setting :as setting]
    [metabase.models.task-history :as task-history]
    [metabase.notification.payload.core :as notification.payload]
+   [metabase.notification.payload.disk-map :as notification.disk-map]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -131,6 +133,10 @@
                                                                                            :alert)
                                                                                          %)
                                                                      :parameters)}})))))
+
+(defn- clean-up-disk-maps
+  [x]
+  (walk/postwalk notification.disk-map/cleanup! x))
 
 (mu/defn send-notification-sync!
   "Send the notification to all handlers synchronously. Do not use this directly, use *send-notification!* instead."
