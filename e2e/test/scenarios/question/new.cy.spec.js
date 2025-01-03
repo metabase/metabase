@@ -310,7 +310,7 @@ describe("scenarios > question > new", () => {
         .findByRole("tab", { name: /Browse/ })
         .click();
 
-      H.entityPickerModal().findByText("Create a new collection").click();
+      H.entityPickerModal().findByText("New collection").click();
 
       const NEW_COLLECTION = "Foo";
       H.collectionOnTheGoModal().within(() => {
@@ -456,7 +456,7 @@ describe("scenarios > question > new", () => {
         );
         cy.findByText(collectionInRoot.name).should("be.visible");
         cy.findByText(dashboardInRoot.name).should("be.visible");
-        cy.findByText("Create a new dashboard").should("be.visible");
+        cy.findByText("New dashboard").should("be.visible");
       });
     });
 
@@ -493,7 +493,7 @@ describe("scenarios > question > new", () => {
         H.entityPickerModal().within(() => {
           H.entityPickerModalTab("Dashboards").click();
           H.entityPickerModalItem(1, "Collection in root collection").click();
-          cy.button(/Create a new dashboard/).click();
+          cy.button(/New dashboard/).click();
         });
 
         cy.findByRole("dialog", { name: "Create a new dashboard" }).within(
@@ -525,7 +525,7 @@ describe("scenarios > question > new", () => {
         H.entityPickerModal().within(() => {
           H.entityPickerModalTab("Dashboards").click();
           H.entityPickerModalItem(1, "First collection").click();
-          cy.button(/Create a new dashboard/).click();
+          cy.button(/New dashboard/).click();
         });
 
         cy.findByRole("dialog", { name: "Create a new dashboard" }).within(
@@ -557,7 +557,7 @@ describe("scenarios > question > new", () => {
         H.entityPickerModal().within(() => {
           H.entityPickerModalTab("Dashboards").click();
           H.entityPickerModalItem(1, "Orders in a dashboard").click();
-          cy.button(/Create a new dashboard/).click();
+          cy.button(/New dashboard/).click();
         });
 
         cy.findByRole("dialog", { name: "Create a new dashboard" }).within(

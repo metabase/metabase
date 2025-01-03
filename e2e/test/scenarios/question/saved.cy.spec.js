@@ -151,7 +151,7 @@ describe("scenarios > question > saved", () => {
       cy.findByTestId("dashboard-and-collection-picker-button").click();
     });
 
-    H.entityPickerModal().findByText("Create a new collection").click();
+    H.entityPickerModal().findByText("New collection").click();
 
     const NEW_COLLECTION = "My New collection";
     H.collectionOnTheGoModal().then(() => {
