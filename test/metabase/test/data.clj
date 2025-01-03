@@ -269,7 +269,7 @@
   [& body]
   `(data.impl/do-with-temp-copy-of-db (^:once fn* [] ~@body)))
 
-;;; TODO FIXME -- rename this to `with-empty-h2-app-db`
+;;; TODO FIXME -- rename this to `with-empty-h2-app-db!`
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-empty-h2-app-db
   "Runs `body` under a new, blank, H2 application database (randomly named), in which all model tables have been

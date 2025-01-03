@@ -10409,6 +10409,22 @@ databaseChangeLog:
             constraintName: unique_user_key_value_user_id_namespace_key
       rollback: # will be deleted with table
 
+  - changeSet:
+      id: v53.2024-12-27T20:17:23
+      author: noahmoss
+      comment: Drop unnecessary NOT NULL constraint from cache_config.refresh_automatically column
+      changes:
+        - dropNotNullConstraint:
+            tableName: cache_config
+            columnName: refresh_automatically
+            columnDataType: ${boolean.type}
+      rollback:
+        - addNotNullConstraint:
+            tableName: cache_config
+            columnName: refresh_automatically
+            columnDataType: ${boolean.type}
+            defaultNullValue: false
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -33,11 +33,13 @@
                 [:type [:= :duration]]
                 [:duration ms/PositiveInt]
                 [:unit [:enum "hours" "minutes" "seconds" "days"]]
+                [:refresh_automatically {:optional true} [:maybe :boolean]]
                 ^:internal
                 [:invalidated-at {:optional true} some?]]]
     [:schedule [:map {:closed true}
                 [:type [:= :schedule]]
                 [:schedule u.cron/CronScheduleString]
+                [:refresh_automatically {:optional true} [:maybe :boolean]]
                 ^:internal
                 [:invalidated-at {:optional true} some?]]]]])
 
