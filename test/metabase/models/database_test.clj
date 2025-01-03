@@ -230,6 +230,7 @@
           (mt/with-temp [database-table {db-id :id} {:engine "secret-test-driver"
                                                      :name "Secret Test"
                                                      :created_at (t/instant)
+                                                     :updated_at (t/instant)
                                                      :details json-details}]
             (is (= json-details (t2/select-one-fn :details database-table db-id)))
             (is (= {:host "localhost" :keystore-id secret-id} (t2/select-one-fn :details :model/Database db-id)))
@@ -242,6 +243,7 @@
         (mt/with-temp [database-table {db-id :id} {:engine "secret-test-driver"
                                                    :name "Secret Test"
                                                    :created_at (t/instant)
+                                                   :updated_at (t/instant)
                                                    :details json-details}]
           (is (= json-details (t2/select-one-fn :details database-table db-id)))
           (is (= {:host "localhost"} (t2/select-one-fn :details :model/Database db-id)))
@@ -297,6 +299,7 @@
       (mt/with-temp [db-table {db-id :id} {:engine (name :secret-test-driver)
                                            :name "Secret Test"
                                            :created_at (t/instant)
+                                           :updated_at (t/instant)
                                            :details (json/encode original-details)}]
 
         (testing "Initially setting secret value"
