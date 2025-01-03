@@ -87,9 +87,7 @@
 (defn- mbql-query->raw-hsql
   [driver {database-id :database, :as query}]
   (qp.store/with-metadata-provider database-id
-    ;; catch errors in the query
-    (qp.preprocess/preprocess query)
-    (sql.qp/mbql->honeysql driver query)))
+    (sql.qp/mbql->honeysql driver (qp.preprocess/preprocess query))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Action Execution                                                 |
@@ -209,7 +207,7 @@
   [driver action database {database-id :database, :as query}]
   (let [raw-hsql    (mbql-query->raw-hsql driver query)
         delete-hsql (-> raw-hsql
-                        (dissoc :select)
+                        (dissoc :select :limit)
                         (assoc :delete [])
                         (prepare-query driver action))
         sql-args    (sql.qp/format-honeysql driver delete-hsql)]
@@ -285,7 +283,7 @@
         create-hsql (-> raw-hsql
                         (assoc :insert-into (first (:from raw-hsql)))
                         (assoc :values [(cast-values driver create-row database-id (get-in query [:query :source-table]))])
-                        (dissoc :select :from)
+                        (dissoc :select :from :limit)
                         (prepare-query driver action))
         sql-args    (sql.qp/format-honeysql driver create-hsql)]
     (log/tracef ":row/create HoneySQL:\n\n%s" (u/pprint-to-str create-hsql))
