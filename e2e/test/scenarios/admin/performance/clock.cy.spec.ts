@@ -1,5 +1,7 @@
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
+
+import { H } from "e2e/support";
 dayjs.extend(timezone);
 
 import {
@@ -11,13 +13,13 @@ import {
  * There's an endpoint that supports this: /api/testing/set-time.
  * These tests guarantee that this endpoint works as expected. */
 describe("server clock", () => {
-  afterEach(() => {
+  beforeEach(() => {
+    H.restore();
     resetServerTime();
+    cy.signInAsAdmin();
   });
 
   it("can advance the server clock by one day", () => {
-    cy.signInAsAdmin();
-
     cy.request("GET", "/api/setting/report-timezone-long").then(response => {
       cy.wrap(response.body).as("serverTimeZone");
     });

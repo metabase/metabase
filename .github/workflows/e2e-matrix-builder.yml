@@ -1,0 +1,91 @@
+name: E2E Matrix Builder
+
+on:
+  workflow_call:
+    inputs:
+      chunks:
+        required: true
+        type: number
+        default: 30
+    outputs:
+      matrix:
+        value: ${{ jobs.build-matrix.outputs.matrix }}
+
+jobs:
+  build-matrix:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.matrix.outputs.config }}
+    steps:
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: e2e
+      - name: get test file names
+        id: test-files
+        shell: bash
+        run: |
+          echo "::set-output name=filenames::$(find e2e/test/scenarios -name '*.cy.spec.*' | tr '\n' ',')"
+      - run: yarn add underscore
+      - uses: actions/github-script@v7
+        id: matrix
+        with:
+          script: | # js
+            const _ = require('underscore');
+
+            const java = 21;
+            const defaultRunner = "ubuntu-22.04";
+
+            // these are special and shouldn't be chunked out arbitrarily
+            const blacklist = [
+              "/embedding-sdk/",
+              "/cross-version/"
+            ];
+
+            const defaultOptions = {
+              "java-version": java,
+              runner: defaultRunner,
+              specs: "./e2e/test/scenarios/**/*.cy.spec.*",
+              edition: "ee",
+            };
+
+            const specialTests = [
+              { name: "embedding-sdk", specs: "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*" },
+              { name: "oss-subset", edition: 'oss', tags: "@OSS" },
+              { name: "slow", tags: "@slow" },
+              { name: "mongo", tags: "@mongo" },
+            ];
+
+            const fileNames = "${{ steps.test-files.outputs.filenames }}"
+              .split(",")
+              .filter(Boolean)
+              .filter(testPath => !blacklist.some(blacklisted => testPath.includes(blacklisted)));
+
+            const fileCount = fileNames.length;
+
+            // subtract the special tests since they all get their own runners
+            const chunkSize = fileCount / (Number('${{ inputs.chunks }}') - specialTests.length);
+
+
+
+            const chunkedFiles = _.chunk(fileNames, chunkSize);
+
+            const regularTests = chunkedFiles.map((files, index) => ({
+              name: `e2e-group-${index + 1}`,
+              specs: files.join(","),
+              tags: '',
+            }));
+
+            const testSets = [...regularTests, ...specialTests];
+
+            const config = testSets.map((options) => ({
+              ...defaultOptions,
+              ...options,
+            }));
+
+            console.log("matrix config", config);
+
+            core.setOutput("config", JSON.stringify({ include: config }));
