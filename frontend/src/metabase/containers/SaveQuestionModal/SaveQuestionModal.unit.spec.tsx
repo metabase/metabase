@@ -841,13 +841,13 @@ describe("SaveQuestionModal", () => {
         await userEvent.click(collDropdown());
         await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
         await userEvent.click(newCollBtn());
-        await waitFor(async () =>
+        await waitFor(async () => {
           expect(
             await screen.findByRole("heading", {
-              name: "New collection",
+              name: "Create a new collection",
             }),
-          ).toBeInTheDocument(),
-        );
+          ).toBeInTheDocument();
+        });
       });
     });
   });
