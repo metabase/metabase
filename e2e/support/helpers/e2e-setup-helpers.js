@@ -22,4 +22,5 @@ export function restore(name = "default") {
 
   cy.log("Restore Data Set");
   cy.request("POST", `/api/testing/restore/${name}`);
+  return cy;
 }

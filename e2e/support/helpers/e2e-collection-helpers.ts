@@ -39,6 +39,7 @@ export function visitCollection(id: CollectionId) {
   cy.visit(`/collection/${id}`);
 
   cy.wait([`@${alias}`, `@${alias}`]);
+  return cy;
 }
 
 export function getPersonalCollectionName(
