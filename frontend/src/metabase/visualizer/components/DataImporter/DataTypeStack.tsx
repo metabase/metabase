@@ -8,12 +8,12 @@ import {
   isDate,
   isLocation,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn } from "metabase-types/api";
+import type { Field } from "metabase-types/api";
 
 import S from "./DataTypeStack.module.css";
 
 interface DataTypeStackProps {
-  columns: DatasetColumn[];
+  columns: Field[];
 }
 
 export function DataTypeStack({ columns }: DataTypeStackProps) {
@@ -56,7 +56,7 @@ export function DataTypeStack({ columns }: DataTypeStackProps) {
   );
 }
 
-function getIcon(column: DatasetColumn): IconName {
+function getIcon(column: Field): IconName {
   if (isDate(column)) {
     return "calendar";
   }

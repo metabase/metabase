@@ -21,22 +21,25 @@ import {
 import {
   getDataSources,
   getVisualizationType,
-  getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
-import { canCombineCard, createDataSource } from "metabase/visualizer/utils";
+import { createDataSource } from "metabase/visualizer/utils";
 import {
   addDataSource,
   removeDataSource,
 } from "metabase/visualizer/visualizer.slice";
-import type { DatasetColumn, VisualizationDisplay } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  Field,
+  VisualizationDisplay,
+} from "metabase-types/api";
 import type { VisualizerDataSource } from "metabase-types/store/visualizer";
 
 import { DataTypeStack } from "./DataTypeStack";
 
 type DataImporterListItem = {
   dataSource: VisualizerDataSource;
-  columns: DatasetColumn[];
+  columns: Field[];
   location: string;
   isCompatible: boolean;
 };
@@ -45,7 +48,6 @@ export const DataImporter = () => {
   const display = useSelector(getVisualizationType);
   const columns = useSelector(getVisualizerDatasetColumns);
   const dataSources = useSelector(getDataSources);
-  const settings = useSelector(getVisualizerComputedSettings);
   const dispatch = useDispatch();
 
   const [search, setSearch] = useState("");
@@ -60,27 +62,15 @@ export const DataImporter = () => {
 
   const items: DataImporterListItem[] = useMemo(() => {
     const isEmpty = columns.length === 0;
-    return result.map(cardLike => {
-      const card = {
-        ...cardLike,
-        result_metadata: JSON.parse(cardLike.result_metadata),
-        visualization_settings: JSON.parse(cardLike.visualization_settings),
-      };
-      const isCompatible =
-        isEmpty ||
-        Boolean(
-          display &&
-            ["line", "area", "bar"].includes(display) &&
-            canCombineCard(display, columns, settings, card),
-        );
+    return result.map(card => {
       return {
         dataSource: createDataSource("card", card.id, card.name),
         location: card.collection?.name ?? t`Our analytics`,
         columns: card.result_metadata,
-        isCompatible,
+        isCompatible: isEmpty || Boolean(card.compatible),
       };
     });
-  }, [result, display, columns, settings]);
+  }, [result, columns]);
 
   const dataSourceIds = useMemo(
     () => new Set(dataSources.map(s => s.id)),

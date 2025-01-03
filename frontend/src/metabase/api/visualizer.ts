@@ -6,12 +6,8 @@ import type {
 
 import { Api } from "./api";
 
-type VisualizerEndpointCard = Omit<
-  Card,
-  "result_metadata" | "visualization_settings"
-> & {
-  result_metadata: string;
-  visualization_settings: string;
+type VisualizerEndpointCard = Card & {
+  compatible: boolean | null;
 };
 
 export type VisualizerSearchParams = {
