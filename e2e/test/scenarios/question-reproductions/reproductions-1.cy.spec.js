@@ -135,7 +135,7 @@ describe("issue 9027", () => {
       cy.button("Close").click();
     });
 
-    H.openNativeEditor({ fromCurrentPage: true });
+    H.startNewNativeQuestion();
 
     H.focusNativeEditor().type("select 0");
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -277,9 +277,11 @@ describe("issue 14957", { tags: "@external" }, () => {
   });
 
   it("should save a question before query has been executed (metabase#14957)", () => {
-    H.openNativeEditor({ databaseName: PG_DB_NAME }).type(
-      "select pg_sleep(60)",
-    );
+    H.startNewNativeQuestion().as("editor");
+
+    cy.findByTestId("gui-builder-data").click();
+    cy.findByLabelText(PG_DB_NAME).click();
+    cy.get("@editor").type("select pg_sleep(60)");
     H.saveQuestion("14957", undefined, {
       tab: "Browse",
       path: ["Our analytics"],

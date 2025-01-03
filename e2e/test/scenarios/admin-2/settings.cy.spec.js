@@ -466,7 +466,8 @@ describe.skip(
         cy.findByText("Saved");
 
         // Run the query and save the question
-        H.openNativeEditor({ databaseName: "QA Postgres12" }).type(nativeQuery);
+        H.startNewNativeQuestion().as("editor");
+        cy.get("@editor").type(nativeQuery);
         H.runNativeQuery();
 
         getCellText().then(res => {
