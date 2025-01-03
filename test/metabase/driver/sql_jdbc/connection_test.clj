@@ -286,7 +286,7 @@
     (let [original-details (:details (mt/db))]
       ;; Only test drivers that use a username to log in
       (when (:user original-details)
-        (t2.with-temp/with-temp [Database db {:engine (tx/driver), :details original-details}]
+        (t2.with-temp/with-temp [:model/Database db {:engine (tx/driver), :details original-details}]
           (mt/with-db db
             (sync/sync-database! (mt/db))
             (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))
