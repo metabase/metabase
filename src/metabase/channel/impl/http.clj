@@ -88,6 +88,7 @@
 (mu/defmethod channel/render-notification [:channel/http :notification/card]
   [_channel-type {:keys [payload creator]} _template _recipients]
   (let [{:keys [card alert card_part]} payload
+        card_part                         (channel.shared/realize-data-rows card_part)
         request-body {:type               "alert"
                       :alert_id           (:id alert)
                       :alert_creator_id   (:id creator)
