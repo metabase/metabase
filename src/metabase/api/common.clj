@@ -423,34 +423,14 @@
                                      ~@(validate-params arg->schema)
                                      ~@body))))))
 
-(defn- defendpoint2-route-fn
-  "Get the combined handler created by [[metabase.api.macros/defendpoint-build-ns-handler]] for all the routes defined
-  by [[metabase.api.macros/defendpoint]]."
-  [nmspace]
-  ;; this fetches the handler from the namespace
-  (let [nmspace (the-ns nmspace)
-        handler (fn []
-                  (:api/handler (meta nmspace)))]
-    ;; for dev, fetch the handler from the metadata on every request so we get nice live reloading if the endpoints in a
-    ;; namespace change. For prod that's not necessary since they shouldn't change
-    (if config/is-dev?
-      (fn
-        ([request]
-         ((handler) request))
-        ([request respond raise]
-         ((handler) request respond raise)))
-      (handler))))
-
 (defn- namespace->api-route-fns
   "Return a sequence of all API endpoint functions defined by `defendpoint` in a namespace."
   [nmspace]
   (filter
    some?
-   (cons
-    (defendpoint2-route-fn nmspace)
-    (for [[_symb varr] (ns-publics nmspace)
-          :when        (:is-endpoint? (meta varr))]
-      varr))))
+   (for [[_symb varr] (ns-publics nmspace)
+         :when        (:is-endpoint? (meta varr))]
+     varr)))
 
 (defn- api-routes-docstring [nmspace route-fns middleware]
   (str
