@@ -51,6 +51,34 @@ export const dontCacheResultsRadioButton = () =>
 export const useDefaultRadioButton = () =>
   cacheStrategyRadioButton(/Use default/);
 
+export const preemptiveCachingSwitch = () =>
+  cy.findByTestId("preemptive-caching-switch");
+export const enablePreemptiveCaching = () =>
+  preemptiveCachingSwitch().within(() => {
+    cy.findByRole("switch").should("not.be.checked");
+    cy.findByRole("switch").next("label").click();
+    cy.findByRole("switch").should("be.checked");
+  });
+export const disablePreemptiveCaching = () =>
+  preemptiveCachingSwitch().within(() => {
+    cy.findByRole("switch").should("be.checked");
+    cy.findByRole("switch").next("label").click();
+    cy.findByRole("switch").should("not.be.checked");
+  });
+export const checkPreemptiveCachingEnabled = () =>
+  preemptiveCachingSwitch().within(() => {
+    cy.findByRole("switch").should("be.checked");
+  });
+export const checkPreemptiveCachingDisabled = () =>
+  preemptiveCachingSwitch().within(() => {
+    cy.findByRole("switch").should("not.be.checked");
+  });
+
+export const dashboardAndQuestionsTable = () =>
+  cy.findByRole("table", {
+    name: /Here are the dashboards and questions/,
+  });
+
 export const formLauncher = (
   itemName: string,
   preface:
@@ -73,7 +101,7 @@ export const openStrategyFormForDatabaseOrDefaultPolicy = (
   currentStrategyLabel?: string,
 ) => {
   cy.visit("/admin/performance");
-  cy.findByRole("tablist").get("[aria-selected]").contains("Database caching");
+  cy.findByRole("tablist").get("aria-selected").contains("Database caching");
   cy.log(`Open strategy form for ${databaseNameOrDefaultPolicy}`);
   formLauncher(
     databaseNameOrDefaultPolicy,
