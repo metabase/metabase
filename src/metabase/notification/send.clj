@@ -1,12 +1,13 @@
 (ns metabase.notification.send
   (:require
+   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.channel.core :as channel]
    [metabase.events :as events]
    [metabase.models.setting :as setting]
    [metabase.models.task-history :as task-history]
    [metabase.notification.payload.core :as notification.payload]
-   [metabase.notification.storage.core :as notification.storage]
+   [metabase.notification.payload.disk-map :as notification.disk-map]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -133,6 +134,10 @@
                                                                                          %)
                                                                      :parameters)}})))))
 
+(defn- clean-up-disk-maps
+  [x]
+  (walk/postwalk notification.disk-map/cleanup! x))
+
 (mu/defn send-notification-sync!
   "Send the notification to all handlers synchronously. Do not use this directly, use *send-notification!* instead."
   [notification-info :- notification.payload/Notification]
@@ -164,7 +169,7 @@
               (do-after-notification-sent notification-info)
               (log/infof "[Notification %d] Sent successfully" (:id notification-info))
               (finally
-                (notification.storage/cleanup-all! notification-payload)))
+                (clean-up-disk-maps notification-payload)))
             (log/infof "[Notification %d] Skipping" (:id notification-info))))))
     (catch Exception e
       (log/errorf e "[Notification %d] Failed to send" (:id notification-info))

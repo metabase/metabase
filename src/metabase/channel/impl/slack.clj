@@ -101,7 +101,7 @@
                                 :text {:type "plain_text"
                                        :text (str "🔔 " (-> payload :card :name))
                                        :emoji true}}]}
-                     (part->attachment-data (channel.shared/realize-data-rows (:card_part payload)) (slack/files-channel))]]
+                     (part->attachment-data (channel.shared/realize-qp-data (:card_part payload)) (slack/files-channel))]]
     (for [channel-id channel-ids]
       {:channel-id  channel-id
        :attachments attachments})))
@@ -143,7 +143,7 @@
   [parts]
   (let [channel-id (slack/files-channel)]
     (for [part  parts
-          :let  [attachment (part->attachment-data (channel.shared/realize-data-rows part) channel-id)]
+          :let  [attachment (part->attachment-data (channel.shared/realize-qp-data part) channel-id)]
           :when attachment]
       attachment)))
 

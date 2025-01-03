@@ -3,7 +3,7 @@
   (:require
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.notification.storage.core :as notification.storage]
+   [metabase.notification.payload.disk-map :as notification.disk-map]
    [metabase.util.i18n :refer [tru]]))
 
 (defn validate-channel-details
@@ -14,12 +14,12 @@
                             me/humanize)]
     (throw (ex-info (tru "Invalid channel details") {:errors errors}))))
 
-(defn- maybe-retrieve
+(defn- maybe-realize
   [x]
-  (if (satisfies? notification.storage/NotificationStorage x)
-    (notification.storage/retrieve x)
-    x))
+  (cond->> x
+    (notification.disk-map/disk-map? x)
+    (into {})))
 
-(defn realize-data-rows
+(defn realize-qp-data
   [part]
-  (update-in part [:result :data :rows] maybe-retrieve))
+  (update-in part [:result :data] maybe-realize))

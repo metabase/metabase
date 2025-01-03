@@ -4,7 +4,6 @@
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.seed :as notification.seed]
    [metabase.notification.send :as notification.send]
-   [metabase.notification.storage.core :as notification.storage]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [potemkin :as p]))
@@ -19,9 +18,7 @@
   Notification
   NotificationPayload]
  [notification.seed
-  seed-notification!]
- [notification.storage
-  retrieve])
+  seed-notification!])
 
 (def ^:private Options
   [:map
