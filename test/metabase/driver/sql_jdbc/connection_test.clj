@@ -281,8 +281,16 @@
         server (Server/createTcpServer (into-array args))]
     (doto server (.start))))
 
+(defmethod driver/database-supports? [:sql-jdbc ::regular-connection-pooling]
+  [& _args]
+  true)
+
+(defmethod driver/database-supports? [:hive-like ::regular-connection-pooling]
+  [& _args]
+  false)
+
 (deftest test-bad-connection-detail-acquisition
-  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature ::regular-connection-pooling)
     (let [original-details (:details (mt/db))]
       ;; Only test drivers that use a username to log in
       (when (:user original-details)
