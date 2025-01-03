@@ -10453,7 +10453,7 @@ databaseChangeLog:
   - changeSet:
       id: v53.2025-01-03T19:07:39
       author: noahmoss
-      comments: Add `deactivated_at` column to the `core_user` table
+      comment: Add `deactivated_at` column to the `core_user` table
       preConditions:
         - onFail: MARK_RAN
         - not:
