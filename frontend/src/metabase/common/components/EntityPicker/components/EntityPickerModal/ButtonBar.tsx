@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { Button, Flex, Text } from "metabase/ui";
 
 export const ButtonBar = ({
+  modalRef,
   onConfirm,
   onCancel,
   canConfirm,
@@ -11,6 +12,7 @@ export const ButtonBar = ({
   confirmButtonText,
   cancelButtonText,
 }: {
+  modalRef: React.RefObject<HTMLElement>;
   onConfirm: () => void;
   onCancel: () => void;
   canConfirm?: boolean;
@@ -25,11 +27,11 @@ export const ButtonBar = ({
         onConfirm();
       }
     };
-    document.addEventListener("keypress", handleEnter);
-    return () => {
-      document.removeEventListener("keypress", handleEnter);
-    };
-  }, [canConfirm, onConfirm]);
+    // TODO: kinda iffy on this idea...
+    const modal = modalRef.current;
+    modal?.addEventListener("keypress", handleEnter);
+    return () => modal?.removeEventListener("keypress", handleEnter);
+  }, [canConfirm, onConfirm, modalRef]);
 
   return (
     <Flex

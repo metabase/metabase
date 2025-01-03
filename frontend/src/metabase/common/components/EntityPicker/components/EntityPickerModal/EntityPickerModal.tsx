@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useDebounce, usePreviousDistinct } from "react-use";
@@ -347,6 +348,8 @@ export function EntityPickerModal<
 
   const titleId = useUniqueId("entity-picker-modal-title-");
 
+  const modalRef = useRef<HTMLElement>(null);
+
   return (
     <Modal.Root
       opened={open}
@@ -369,6 +372,7 @@ export function EntityPickerModal<
         maw="57.5rem"
         mah="40rem"
         aria-labelledby={titleId}
+        ref={modalRef}
       >
         <Modal.Header
           px="2.5rem"
@@ -413,6 +417,7 @@ export function EntityPickerModal<
               )}
               {!!hydratedOptions.hasConfirmButtons && onConfirm && (
                 <ButtonBar
+                  modalRef={modalRef}
                   onConfirm={onConfirm}
                   onCancel={onClose}
                   canConfirm={canSelectItem}
