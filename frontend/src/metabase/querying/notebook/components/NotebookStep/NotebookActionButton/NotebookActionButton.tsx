@@ -9,7 +9,6 @@ import S from "./NotebookActionButton.module.css";
 
 interface NotebookActionButtonProps {
   className?: string;
-
   icon?: IconName;
   title: string;
   color: string;
