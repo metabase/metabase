@@ -85,7 +85,7 @@ export function DateIntervalPicker({
         <Tooltip label={t`Starting from…`} position="bottom">
           <Button
             aria-label={t`Starting from…`}
-            c="text-medium"
+            c="var(--mb-color-text-secondary)"
             variant="subtle"
             leftIcon={<Icon name="arrow_left_to_line" />}
             onClick={handleStartingFromClick}
@@ -97,7 +97,7 @@ export function DateIntervalPicker({
       </Flex>
       <Divider />
       <Group px="md" py="sm" position="apart">
-        <Group c="text-medium" spacing="sm">
+        <Group c="var(--mb-color-text-secondary)" spacing="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
