@@ -1,10 +1,12 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
 import type { RecentItem, SearchResult } from "metabase-types/api";
 
+import { NewDashboardDialog } from "../../DashboardPicker/components/NewDashboardDialog";
 import type { EntityPickerTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
@@ -74,8 +76,16 @@ export const CollectionPickerModal = ({
   );
 
   const [
-    isCreateDialogOpen,
-    { turnOn: openCreateDialog, turnOff: closeCreateDialog },
+    isCreateCollectionDialogOpen,
+    {
+      turnOn: openCreateCollectionDialog,
+      turnOff: closeCreateCollectionDialog,
+    },
+  ] = useToggle(false);
+
+  const [
+    isCreateDashboardDialogOpen,
+    { turnOn: openCreateDashboardDialog, turnOff: closeCreateDashboardDialog },
   ] = useToggle(false);
 
   const pickerRef = useRef<{
@@ -104,17 +114,28 @@ export const CollectionPickerModal = ({
   };
 
   const modalActions = options.allowCreateNew
-    ? [
+    ? _.compact([
+        models.includes("dashboard") && (
+          <Button
+            key="dashboard-on-the-go"
+            miw="9.5rem"
+            onClick={openCreateDashboardDialog}
+            leftIcon={<Icon name="add_to_dash" />}
+            disabled={selectedItem?.can_write === false}
+          >
+            {t`New dashboard`}
+          </Button>
+        ),
         <Button
           key="collection-on-the-go"
-          miw="21rem"
-          onClick={openCreateDialog}
-          leftIcon={<Icon name="add" />}
+          miw="9.5rem"
+          onClick={openCreateCollectionDialog}
+          leftIcon={<Icon name="collection" />}
           disabled={selectedItem?.can_write === false}
         >
-          {t`Create a new collection`}
+          {t`New collection`}
         </Button>,
-      ]
+      ])
     : [];
 
   const [collectionsPath, setCollectionsPath] =
@@ -153,6 +174,12 @@ export const CollectionPickerModal = ({
     pickerRef.current?.onNewCollection(newCollection);
   };
 
+  const handleNewDashboardCreate = (newDashboard: CollectionPickerItem) => {
+    // TODO: this doesn't work, but we don't have the same guarantees here as the dashboard picker :thinking:
+    // @ts-expect-error -- property isn't defined... will get to it
+    pickerRef.current?.onNewDashboard(newDashboard);
+  };
+
   const composedSearchResultFilter = useCallback(
     (searchResults: SearchResult[]) => {
       if (searchResultFilter) {
@@ -180,7 +207,9 @@ export const CollectionPickerModal = ({
       <EntityPickerModal
         title={title}
         onItemSelect={handleItemSelect}
-        canSelectItem={!isCreateDialogOpen && canSelectItem(selectedItem)}
+        canSelectItem={
+          !isCreateCollectionDialogOpen && canSelectItem(selectedItem)
+        }
         onConfirm={handleConfirm}
         onClose={onClose}
         selectedItem={selectedItem}
@@ -189,14 +218,20 @@ export const CollectionPickerModal = ({
         searchResultFilter={composedSearchResultFilter}
         recentFilter={recentFilter}
         actionButtons={modalActions}
-        trapFocus={!isCreateDialogOpen}
+        trapFocus={!isCreateCollectionDialogOpen}
       />
       <NewCollectionDialog
-        isOpen={isCreateDialogOpen}
-        onClose={closeCreateDialog}
+        isOpen={isCreateCollectionDialogOpen}
+        onClose={closeCreateCollectionDialog}
         parentCollectionId={parentCollectionId}
         onNewCollection={handleNewCollectionCreate}
         namespace={options.namespace}
+      />
+      <NewDashboardDialog
+        isOpen={isCreateDashboardDialogOpen}
+        onClose={closeCreateDashboardDialog}
+        parentCollectionId={parentCollectionId}
+        onNewDashboard={handleNewDashboardCreate}
       />
     </>
   );
