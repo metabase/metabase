@@ -7,7 +7,10 @@ import { DraggableSidebarLink } from "../../SidebarItems";
 export const SidebarBookmarkItem = styled(DraggableSidebarLink)`
   padding-left: 0.75rem;
 
-  &:hover {
+  &:hover,
+  &:focus,
+  &:focus-within,
+  :focus & {
     button {
       color: var(--mb-color-brand);
       opacity: 0.5;

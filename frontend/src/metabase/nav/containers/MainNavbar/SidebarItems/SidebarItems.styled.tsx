@@ -57,7 +57,11 @@ export const NodeRoot = styled(TreeNode.Root)<{
     ${ExpandToggleButton} {
       color: var(--mb-color-brand);
     }
+  }
 
+  &:hover,
+  &:focus,
+  &:focus-within {
     ${SidebarIcon} {
       ${props => props.hasDefaultIconStyle && activeColorCSS};
     }

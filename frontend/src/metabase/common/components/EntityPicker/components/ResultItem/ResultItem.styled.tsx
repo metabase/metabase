@@ -11,6 +11,7 @@ export const ChunkyListItem = styled.button<{
     isSelected ? "var(--mb-color-brand)" : "var(--mb-color-bg-white)"};
   color: ${({ isSelected }) =>
     isSelected ? "var(--mb-color-text-white)" : "var(--mb-color-text-dark)"};
+  outline-offset: -3px;
 
   &:hover {
     ${({ isSelected }) =>
