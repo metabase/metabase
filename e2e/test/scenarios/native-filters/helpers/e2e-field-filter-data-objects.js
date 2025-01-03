@@ -61,7 +61,7 @@ export const NUMBER_FILTER_SUBTYPES = {
 export const DATE_FILTER_SUBTYPES = {
   "Month and Year": {
     value: {
-      month: "September",
+      month: "Sep",
       year: "2022",
     },
     representativeResult: "Aerodynamic Paper Computer",

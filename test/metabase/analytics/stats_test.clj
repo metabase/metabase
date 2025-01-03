@@ -10,11 +10,6 @@
    [metabase.db :as mdb]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.pulse :refer [Pulse]]
-   [metabase.models.pulse-card :refer [PulseCard]]
-   [metabase.models.pulse-channel :refer [PulseChannel]]
-   [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
@@ -198,7 +193,7 @@
 (def ^:private large-histogram (partial #'stats/histogram bin-large-number))
 
 (defn- old-execution-metrics []
-  (let [executions (t2/select [QueryExecution :executor_id :running_time :error])]
+  (let [executions (t2/select [:model/QueryExecution :executor_id :running_time :error])]
     {:executions     (count executions)
      :by_status      (frequencies (for [{error :error} executions]
                                     (if error
@@ -219,11 +214,11 @@
    :started_at   (t/offset-date-time)})
 
 (deftest new-impl-test
-  (mt/with-temp [QueryExecution _ (merge query-execution-defaults
-                                         {:error "some error"})
-                 QueryExecution _ (merge query-execution-defaults
-                                         {:error "some error"})
-                 QueryExecution _ query-execution-defaults]
+  (mt/with-temp [:model/QueryExecution _ (merge query-execution-defaults
+                                                {:error "some error"})
+                 :model/QueryExecution _ (merge query-execution-defaults
+                                                {:error "some error"})
+                 :model/QueryExecution _ query-execution-defaults]
     (is (= (old-execution-metrics)
            (#'stats/execution-metrics))
         "the new version of the executions metrics works the same way the old one did")))
@@ -235,17 +230,17 @@
         (mt/with-app-db-timezone-id! tz
           (let [get-executions #(:executions (#'stats/execution-metrics))
                 before         (get-executions)]
-            (mt/with-temp [QueryExecution _ (merge query-execution-defaults
-                                                   {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
-                                                                    (t/minus (t/days 30))
-                                                                    (t/plus (t/minutes 10)))})]
+            (mt/with-temp [:model/QueryExecution _ (merge query-execution-defaults
+                                                          {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
+                                                                           (t/minus (t/days 30))
+                                                                           (t/plus (t/minutes 10)))})]
               (is (= (inc before)
                      (get-executions))
                   "execution metrics include query executions since 30 days ago"))
-            (mt/with-temp [QueryExecution _ (merge query-execution-defaults
-                                                   {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
-                                                                    (t/minus (t/days 30))
-                                                                    (t/minus (t/minutes 10)))})]
+            (mt/with-temp [:model/QueryExecution _ (merge query-execution-defaults
+                                                          {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
+                                                                           (t/minus (t/days 30))
+                                                                           (t/minus (t/minutes 10)))})]
               (is (= before
                      (get-executions))
                   "the executions metrics exclude query executions before 30 days ago"))))))))
@@ -260,54 +255,54 @@
 ;;  alert_first_only boolean, -- True if the alert should be disabled after the first notification
 ;;  alert_above_goal boolean, -- For a goal condition, alert when above the goal
 (deftest pulses-and-alerts-test
-  (mt/with-temp [Card         c {}
+  (mt/with-temp [:model/Card         c {}
                  ;; ---------- Pulses ----------
-                 Pulse        p1 {}
-                 Pulse        p2 {}
-                 Pulse        p3 {}
-                 PulseChannel _ {:pulse_id (u/the-id p1), :schedule_type "daily", :channel_type "email"}
-                 PulseChannel _ {:pulse_id (u/the-id p1), :schedule_type "weekly" :schedule_day "sun", :channel_type "email"}
-                 PulseChannel _ {:pulse_id (u/the-id p2), :schedule_type "daily", :channel_type "slack"}
+                 :model/Pulse        p1 {}
+                 :model/Pulse        p2 {}
+                 :model/Pulse        p3 {}
+                 :model/PulseChannel _ {:pulse_id (u/the-id p1), :schedule_type "daily", :channel_type "email"}
+                 :model/PulseChannel _ {:pulse_id (u/the-id p1), :schedule_type "weekly" :schedule_day "sun", :channel_type "email"}
+                 :model/PulseChannel _ {:pulse_id (u/the-id p2), :schedule_type "daily", :channel_type "slack"}
                  ;; Pulse 1 gets 2 Cards (1 CSV)
-                 PulseCard    _ {:pulse_id (u/the-id p1), :card_id (u/the-id c)}
-                 PulseCard    _ {:pulse_id (u/the-id p1), :card_id (u/the-id c), :include_csv true}
+                 :model/PulseCard    _ {:pulse_id (u/the-id p1), :card_id (u/the-id c)}
+                 :model/PulseCard    _ {:pulse_id (u/the-id p1), :card_id (u/the-id c), :include_csv true}
                  ;; Pulse 2 gets 1 Card
-                 PulseCard    _ {:pulse_id (u/the-id p1), :card_id (u/the-id c)}
+                 :model/PulseCard    _ {:pulse_id (u/the-id p1), :card_id (u/the-id c)}
                  ;; Pulse 3 gets 7 Cards (1 CSV, 2 XLS, 2 BOTH)
-                 PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c)}
-                 PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c)}
-                 PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_csv true}
-                 PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_xls true}
-                 PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_xls true}
-                 PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_csv true, :include_xls true}
-                 PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_csv true, :include_xls true}
+                 :model/PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c)}
+                 :model/PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c)}
+                 :model/PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_csv true}
+                 :model/PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_xls true}
+                 :model/PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_xls true}
+                 :model/PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_csv true, :include_xls true}
+                 :model/PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_csv true, :include_xls true}
                  ;; ---------- Alerts ----------
-                 Pulse        a1 {:alert_condition "rows", :alert_first_only false}
-                 Pulse        a2 {:alert_condition "rows", :alert_first_only true}
-                 Pulse        a3 {:alert_condition "goal", :alert_first_only false}
-                 Pulse        _  {:alert_condition "goal", :alert_first_only false, :alert_above_goal true}
+                 :model/Pulse        a1 {:alert_condition "rows", :alert_first_only false}
+                 :model/Pulse        a2 {:alert_condition "rows", :alert_first_only true}
+                 :model/Pulse        a3 {:alert_condition "goal", :alert_first_only false}
+                 :model/Pulse        _  {:alert_condition "goal", :alert_first_only false, :alert_above_goal true}
                  ;; Alert 1 is Email, Alert 2 is Email & Slack, Alert 3 is Slack-only
-                 PulseChannel _ {:pulse_id (u/the-id a1), :channel_type "email"}
-                 PulseChannel _ {:pulse_id (u/the-id a1), :channel_type "email"}
-                 PulseChannel _ {:pulse_id (u/the-id a2), :channel_type "slack"}
-                 PulseChannel _ {:pulse_id (u/the-id a3), :channel_type "slack"}
+                 :model/PulseChannel _ {:pulse_id (u/the-id a1), :channel_type "email"}
+                 :model/PulseChannel _ {:pulse_id (u/the-id a1), :channel_type "email"}
+                 :model/PulseChannel _ {:pulse_id (u/the-id a2), :channel_type "slack"}
+                 :model/PulseChannel _ {:pulse_id (u/the-id a3), :channel_type "slack"}
                  ;; Alert 1 gets 2 Cards (1 CSV)
-                 PulseCard    _ {:pulse_id (u/the-id a1), :card_id (u/the-id c)}
-                 PulseCard    _ {:pulse_id (u/the-id a1), :card_id (u/the-id c), :include_csv true}
+                 :model/PulseCard    _ {:pulse_id (u/the-id a1), :card_id (u/the-id c)}
+                 :model/PulseCard    _ {:pulse_id (u/the-id a1), :card_id (u/the-id c), :include_csv true}
                  ;; Alert 2 gets 1 Card
-                 PulseCard    _ {:pulse_id (u/the-id a1), :card_id (u/the-id c)}
+                 :model/PulseCard    _ {:pulse_id (u/the-id a1), :card_id (u/the-id c)}
                  ;; Alert 3 gets 7 Cards (1 CSV, 2 XLS, 2 BOTH)
-                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
-                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
-                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_csv true}
-                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_xls true}
-                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_xls true}
-                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_csv true, :include_xls true}
-                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_csv true, :include_xls true}
+                 :model/PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
+                 :model/PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
+                 :model/PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_csv true}
+                 :model/PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_xls true}
+                 :model/PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_xls true}
+                 :model/PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_csv true, :include_xls true}
+                 :model/PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_csv true, :include_xls true}
                  ;; Alert 4 gets 3 Cards
-                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
-                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
-                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}]
+                 :model/PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
+                 :model/PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
+                 :model/PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}]
     (is (malli= [:map
                  [:pulses               [:int {:min 3}]]
                  [:with_table_cards     [:int {:min 2}]]

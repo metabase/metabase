@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { DateMonthYearWidget } from "metabase/components/DateMonthYearWidget";
 import { DateQuarterYearWidget } from "metabase/components/DateQuarterYearWidget";
 import { DateRelativeWidget } from "metabase/components/DateRelativeWidget";
 import { TextWidget } from "metabase/components/TextWidget";
@@ -9,6 +8,7 @@ import { NumberInputWidget } from "metabase/parameters/components/widgets/Number
 import { StringInputWidget } from "metabase/parameters/components/widgets/StringInputWidget";
 import { getParameterWidgetTitle } from "metabase/parameters/utils/ui";
 import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
+import { DateMonthYearWidget } from "metabase/querying/parameters/components/DateMonthYearWidget";
 import { DateRangeWidget } from "metabase/querying/parameters/components/DateRangeWidget";
 import { DateSingleWidget } from "metabase/querying/parameters/components/DateSingleWidget";
 import type {
@@ -68,12 +68,12 @@ export const ParameterDropdownWidget = ({
     const DateWidget = {
       "date/single": DateSingleWidget,
       "date/range": DateRangeWidget,
+      "date/month-year": DateMonthYearWidget,
       "date/all-options": DateAllOptionsWidget,
     }[parameter.type];
 
     const LegacyDateWidget = {
       "date/relative": DateRelativeWidget,
-      "date/month-year": DateMonthYearWidget,
       "date/quarter-year": DateQuarterYearWidget,
     }[parameter.type];
 

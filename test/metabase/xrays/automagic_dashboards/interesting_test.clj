@@ -1,7 +1,6 @@
 (ns ^:mb/once metabase.xrays.automagic-dashboards.interesting-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [Card Field]]
    [metabase.models.interface :as mi]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.test :as mt]
@@ -14,11 +13,11 @@
 
 (deftest ^:parallel ->reference-test
   (is (= [:field 1 nil]
-         (->> (assoc (mi/instance Field) :id 1)
+         (->> (assoc (mi/instance :model/Field) :id 1)
               (#'interesting/->reference :mbql))))
 
   (is (= [:field 2 {:source-field 1}]
-         (->> (assoc (mi/instance Field) :id 1 :fk_target_field_id 2)
+         (->> (assoc (mi/instance :model/Field) :id 1 :fk_target_field_id 2)
               (#'interesting/->reference :mbql))))
   (is (= 42
          (->> 42
@@ -27,7 +26,7 @@
 ;;; -------------------- Bind dimensions, candidate bindings, field candidates, and related --------------------
 
 (defn field [table column]
-  (or (t2/select-one Field :id (mt/id table column))
+  (or (t2/select-one :model/Field :id (mt/id table column))
       (throw (ex-info (format "Did not find %s.%s" (name table) (name column))
                       {:table table :column column}))))
 
@@ -404,13 +403,13 @@
                                        :fields       [(mt/id :people :latitude)]}
                             :type     :query}]
           (mt/with-temp
-            [Card card {:table_id        (mt/id :products)
-                        :dataset_query   source-query
-                        :result_metadata (mt/with-test-user
-                                           :rasta
-                                           (result-metadata-for-query
-                                            source-query))
-                        :type            :model}]
+            [:model/Card card {:table_id        (mt/id :products)
+                               :dataset_query   source-query
+                               :result_metadata (mt/with-test-user
+                                                  :rasta
+                                                  (result-metadata-for-query
+                                                   source-query))
+                               :type            :model}]
             (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
                   base-context       (#'magic/make-base-context root)
                   dimensions         [{"GenericNumber" {:field_type [:type/Number], :score 70}}
@@ -445,13 +444,13 @@
                                                       (mt/id :people :longitude)]}
                             :type     :query}]
           (mt/with-temp
-            [Card card {:table_id        (mt/id :products)
-                        :dataset_query   source-query
-                        :result_metadata (mt/with-test-user
-                                           :rasta
-                                           (result-metadata-for-query
-                                            source-query))
-                        :type            :model}]
+            [:model/Card card {:table_id        (mt/id :products)
+                               :dataset_query   source-query
+                               :result_metadata (mt/with-test-user
+                                                  :rasta
+                                                  (result-metadata-for-query
+                                                   source-query))
+                               :type            :model}]
             (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
                   base-context       (#'magic/make-base-context root)
                   ;; These typically come from the dashboard templates, but can be mocked (injected dyamically if desired) easily.

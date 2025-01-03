@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.db :as mdb]
-   [metabase.models.setting :refer [Setting]]
    [metabase.models.setting-test :as setting-test]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.public-settings :as public-settings]
@@ -26,7 +25,7 @@
   "Simulate a different instance updating the value of `settings-last-updated` in the DB by updating its value without
   updating our locally cached value.."
   []
-  (t2/update! Setting {:key setting.cache/settings-last-updated-key}
+  (t2/update! :model/Setting {:key setting.cache/settings-last-updated-key}
               {:value [:raw (case (mdb/db-type)
                               ;; make it one second in the future so we don't end up getting an exact match when we try to test
                               ;; to see if things update below
@@ -36,8 +35,8 @@
 
 (defn- simulate-another-instance-updating-setting! [setting-name new-value]
   (if new-value
-    (t2/update! Setting {:key (name setting-name)} {:value new-value})
-    (t2/delete! (t2/table-name Setting) {:key (name setting-name)}))
+    (t2/update! :model/Setting {:key (name setting-name)} {:value new-value})
+    (t2/delete! (t2/table-name :model/Setting) {:key (name setting-name)}))
   (update-settings-last-updated-value-in-db!))
 
 (defn reset-last-update-check!
@@ -106,7 +105,7 @@
   (setting-test/toucan-name! "Reggae Toucan")
   (simulate-another-instance-updating-setting! :toucan-name "Bird Can")
   (is (= "Bird Can"
-         (t2/select-one-fn :value Setting :key "toucan-name")))
+         (t2/select-one-fn :value :model/Setting :key "toucan-name")))
   (reset-last-update-check!)
   ;; calling `setting-test/toucan-name` will call `restore-cache-if-needed!`, which will in turn call `should-restore-cache?`.
   ;; Since memoized value is no longer present, this should call `cache-out-of-date?`, which checks the DB; it will

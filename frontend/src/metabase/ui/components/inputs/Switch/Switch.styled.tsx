@@ -71,7 +71,7 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
           padding: 0,
           fontSize: getSize({ size, sizes: LABEL_FONT_SIZES }),
           lineHeight: getSize({ size, sizes: LABEL_LINE_HEIGHT }),
-          color: theme.fn.themeColor("text-dark"),
+          color: "var(--mb-color-text-primary)",
           cursor: "pointer",
           "&[data-disabled]:not([data-css-specificity-hack='😢'])": {
             color: theme.fn.themeColor("text-light"),
@@ -91,7 +91,7 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
           color: theme.fn.themeColor("error"),
         },
         track: {
-          backgroundColor: theme.fn.themeColor("bg-medium"),
+          backgroundColor: "var(--mb-color-switch-off)",
           border: error ? `1px solid ${color("accent3")}` : "none",
           boxSizing: "border-box",
           borderRadius: rem(24),
@@ -100,6 +100,9 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
           cursor: "pointer",
           "input:disabled + &": {
             backgroundColor: theme.fn.themeColor("bg-medium"),
+          },
+          "input:checked + &": {
+            backgroundColor: "var(--mb-color-background-brand)",
           },
           marginTop: getSize({ size, sizes: TRACK_PADDING_TOP }),
         },

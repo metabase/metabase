@@ -5,7 +5,7 @@
    [metabase.integrations.common :as integrations.common]
    [metabase.integrations.ldap.default-implementation :as default-impl]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.models.user :as user :refer [User]]
+   [metabase.models.user :as user]
    [metabase.public-settings.premium-features :refer [defenterprise-schema]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -44,7 +44,7 @@
 
 (defn- attribute-synced-user
   [{:keys [attributes first-name last-name email]}]
-  (when-let [user (t2/select-one [User :id :last_login :first_name :last_name :login_attributes :is_active]
+  (when-let [user (t2/select-one [:model/User :id :last_login :first_name :last_name :login_attributes :is_active]
                                  :%lower.email (u/lower-case-en email))]
     (let [syncable-attributes (syncable-user-attributes attributes)
           old-first-name (:first_name user)
@@ -58,8 +58,8 @@
                           {:last_name last-name}))]
       (if (seq user-changes)
         (do
-          (t2/update! User (:id user) user-changes)
-          (t2/select-one [User :id :last_login :is_active] :id (:id user))) ; Reload updated user
+          (t2/update! :model/User (:id user) user-changes)
+          (t2/select-one [:model/User :id :last_login :is_active] :id (:id user))) ; Reload updated user
         user))))
 
 (defenterprise-schema find-user :- [:maybe EEUserInfo]
@@ -78,7 +78,7 @@
 
 ;;; for some reason the `:clj-kondo/ignore` doesn't work inside of [[defenterprise-schema]]
 #_{:clj-kondo/ignore [:deprecated-var]}
-(defenterprise-schema fetch-or-create-user! :- (ms/InstanceOf User)
+(defenterprise-schema fetch-or-create-user! :- (ms/InstanceOf :model/User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   :feature :sso-ldap
   [{:keys [first-name last-name email groups attributes], :as user-info} :- EEUserInfo

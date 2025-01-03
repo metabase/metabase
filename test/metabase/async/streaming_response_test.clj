@@ -7,7 +7,6 @@
    [metabase.async.streaming-response.thread-pool :as thread-pool]
    [metabase.driver :as driver]
    [metabase.http-client :as client]
-   [metabase.models :refer [Database]]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.server.protocols :as server.protocols]
    [metabase.test :as mt]
@@ -44,7 +43,7 @@
   `(do-with-streaming-response-thread-pool! (fn [] ~@body)))
 
 (defmacro ^:private with-test-driver-db! {:style/indent 0} [& body]
-  `(t2.with-temp/with-temp [Database db# {:engine ::test-driver}]
+  `(t2.with-temp/with-temp [:model/Database db# {:engine ::test-driver}]
      (mt/with-db db#
        (with-streaming-response-thread-pool!
          ~@body))))

@@ -365,7 +365,7 @@ describe("Static Embed Setup phase", () => {
             ).getByRole("button", { name: DATE_PARAMETER_MOCK.name }),
           );
 
-          await userEvent.click(screen.getByText("February"));
+          await userEvent.click(screen.getByText("Feb"));
 
           await userEvent.click(screen.getByText("Code"));
 

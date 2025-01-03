@@ -2,9 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.models.pulse :refer [Pulse]]
-   [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
-   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+   [metabase.models.pulse-channel :as pulse-channel]
    [metabase.task :as task]
    [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
@@ -136,7 +134,7 @@
 (defn- create-channel-then-select!
   [channel]
   (when-let [new-channel-id (pulse-channel/create-pulse-channel! channel)]
-    (-> (t2/select-one PulseChannel :id new-channel-id)
+    (-> (t2/select-one :model/PulseChannel :id new-channel-id)
         (t2/hydrate :recipients)
         (update :recipients #(sort-by :email %))
         (dissoc :id :pulse_id :created_at :updated_at)
@@ -146,7 +144,7 @@
 (defn- update-channel-then-select!
   [{:keys [id] :as channel}]
   (pulse-channel/update-pulse-channel! channel)
-  (-> (t2/select-one PulseChannel :id id)
+  (-> (t2/select-one :model/PulseChannel :id id)
       (t2/hydrate :recipients)
       (dissoc :id :pulse_id :created_at :updated_at)
       (update :entity_id boolean)
@@ -166,8 +164,8 @@
 ;; create-pulse-channel!
 (deftest create-pulse-channel!-test
   (mt/with-premium-features #{}
-    (t2.with-temp/with-temp [Pulse {:keys [id]}]
-      (mt/with-model-cleanup [Pulse]
+    (t2.with-temp/with-temp [:model/Pulse {:keys [id]}]
+      (mt/with-model-cleanup [:model/Pulse]
         (testing "disabled"
           (is (= (merge default-pulse-channel
                         {:enabled false
@@ -213,9 +211,9 @@
 
 (deftest update-pulse-channel!-test
   (mt/with-premium-features #{}
-    (t2.with-temp/with-temp [Pulse {pulse-id :id}]
+    (t2.with-temp/with-temp [:model/Pulse {pulse-id :id}]
       (testing "simple starting case where we modify the schedule hour and add a recipient"
-        (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
+        (t2.with-temp/with-temp [:model/PulseChannel {channel-id :id} {:pulse_id pulse-id}]
           (is (= (merge default-pulse-channel
                         {:recipients [{:email "foo@bar.com"}]})
                  (update-channel-then-select!
@@ -227,7 +225,7 @@
                    :recipients    [{:email "foo@bar.com"}]})))))
 
       (testing "monthly schedules require a schedule_frame and can optionally omit they schedule_day"
-        (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
+        (t2.with-temp/with-temp [:model/PulseChannel {channel-id :id} {:pulse_id pulse-id}]
           (is (= (merge default-pulse-channel
                         {:recipients     [{:email "foo@bar.com"} (user-details :rasta)]
                          :channel_type   :email
@@ -245,7 +243,7 @@
                    :recipients     [{:email "foo@bar.com"} {:id (mt/user->id :rasta)}]})))))
 
       (testing "weekly schedule should have a day in it, show that we can get full users"
-        (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
+        (t2.with-temp/with-temp [:model/PulseChannel {channel-id :id} {:pulse_id pulse-id}]
           (is (= (merge default-pulse-channel
                         {:recipients    [{:email "foo@bar.com"} (user-details :rasta)]
                          :channel_type  :email
@@ -262,7 +260,7 @@
                    :recipients    [{:email "foo@bar.com"} {:id (mt/user->id :rasta)}]})))))
 
       (testing "hourly schedules don't require day/hour settings (should be nil), fully change recipients"
-        (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id, :details {:emails ["foo@bar.com"]}}]
+        (t2.with-temp/with-temp [:model/PulseChannel {channel-id :id} {:pulse_id pulse-id, :details {:emails ["foo@bar.com"]}}]
           (pulse-channel/update-recipients! channel-id [(mt/user->id :rasta)])
           (is (= (merge default-pulse-channel
                         {:recipients    [(user-details :crowberto)]
@@ -280,7 +278,7 @@
                    :recipients    [{:id (mt/user->id :crowberto)}]})))))
 
       (testing "custom details for channels that need it"
-        (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
+        (t2.with-temp/with-temp [:model/PulseChannel {channel-id :id} {:pulse_id pulse-id}]
           (is (= (merge default-pulse-channel
                         {:recipients    [{:email "foo@bar.com"} {:email "blah@bar.com"}]
                          :details       {:channel "#metabaserocks"}
@@ -299,11 +297,11 @@
                    :details       {:channel "#metabaserocks"}}))))))))
 
 (deftest update-recipients!-test
-  (mt/with-temp [Pulse        {pulse-id :id} {}
-                 PulseChannel {channel-id :id} {:pulse_id pulse-id}]
+  (mt/with-temp [:model/Pulse        {pulse-id :id} {}
+                 :model/PulseChannel {channel-id :id} {:pulse_id pulse-id}]
     (letfn [(upd-recipients! [recipients]
               (pulse-channel/update-recipients! channel-id recipients)
-              (t2/select-fn-set :user_id PulseChannelRecipient, :pulse_channel_id channel-id))]
+              (t2/select-fn-set :user_id :model/PulseChannelRecipient, :pulse_channel_id channel-id))]
       (doseq [[new-recipients expected] {[]                  nil
                                          [:rasta]            [:rasta]
                                          [:crowberto]        [:crowberto]

@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -490,7 +489,7 @@
                                        [:field (mt/id :lots-of-fields :a) nil]
                                        [:field (mt/id :lots-of-fields :b) nil]]}
                      :fields      (into [[:expression "c"]]
-                                        (for [{:keys [id]} (t2/select [Field :id]
+                                        (for [{:keys [id]} (t2/select [:model/Field :id]
                                                                       :table_id (mt/id :lots-of-fields)
                                                                       :id       [:not-in #{(mt/id :lots-of-fields :a)
                                                                                            (mt/id :lots-of-fields :b)}]

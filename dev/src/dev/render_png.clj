@@ -11,7 +11,6 @@
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
    [metabase.email.result-attachment :as email.result-attachment]
-   [metabase.models :refer [Card]]
    [metabase.models.card :as card]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.query-processor :as qp]
@@ -36,7 +35,7 @@
   "Given a card ID, renders the card to a png and opens it. Be aware that the png rendered on a dev machine may not
   match what's rendered on another system, like a docker container."
   [card-id]
-  (let [{:keys [dataset_query result_metadata], card-type :type, :as card} (t2/select-one card/Card :id card-id)
+  (let [{:keys [dataset_query result_metadata], card-type :type, :as card} (t2/select-one :model/Card :id card-id)
         query-results (qp/process-query
                        (cond-> dataset_query
                          (= card-type :model)
@@ -50,7 +49,7 @@
 (defn render-pulse-card
   "Render a pulse card as a data structure"
   [card-id]
-  (let [{:keys [dataset_query] :as card} (t2/select-one card/Card :id card-id)
+  (let [{:keys [dataset_query] :as card} (t2/select-one :model/Card :id card-id)
         query-results (qp/process-query dataset_query)]
     (channel.render/render-pulse-card
      :inline (channel.render/defaulted-timezone card)
@@ -195,7 +194,7 @@
   ;; - The plain question will not have custom formatting applied
   ;; - The model and derived query will have custom formatting applied
   (mt/dataset sample-dataset
-    (mt/with-temp [Card {base-card-id :id}
+    (mt/with-temp [:model/Card {base-card-id :id}
                    {:dataset_query {:database (mt/id)
                                     :type     :query
                                     :query    {:source-table (mt/id :orders)
@@ -206,24 +205,24 @@
                                                               [:field (mt/id :orders :total) {:base-type :type/Float}]
                                                               [:expression "Tax Rate"]]
                                                :limit        10}}}
-                   Card {model-card-id :id} {:dataset         true
-                                             :dataset_query   {:type     :query
-                                                               :database (mt/id)
-                                                               :query    {:source-table (format "card__%s" base-card-id)}}
-                                             :result_metadata [{:name         "TAX"
-                                                                :display_name "Tax"
-                                                                :base_type    :type/Float}
-                                                               {:name         "TOTAL"
-                                                                :display_name "Total"
-                                                                :base_type    :type/Float}
-                                                               {:name          "Tax Rate"
-                                                                :display_name  "Tax Rate"
-                                                                :base_type     :type/Float
-                                                                :semantic_type :type/Percentage
-                                                                :field_ref     [:field "Tax Rate" {:base-type :type/Float}]}]}
-                   Card {question-card-id :id} {:dataset_query {:type     :query
-                                                                :database (mt/id)
-                                                                :query    {:source-table (format "card__%s" model-card-id)}}}]
+                   :model/Card {model-card-id :id} {:dataset         true
+                                                    :dataset_query   {:type     :query
+                                                                      :database (mt/id)
+                                                                      :query    {:source-table (format "card__%s" base-card-id)}}
+                                                    :result_metadata [{:name         "TAX"
+                                                                       :display_name "Tax"
+                                                                       :base_type    :type/Float}
+                                                                      {:name         "TOTAL"
+                                                                       :display_name "Total"
+                                                                       :base_type    :type/Float}
+                                                                      {:name          "Tax Rate"
+                                                                       :display_name  "Tax Rate"
+                                                                       :base_type     :type/Float
+                                                                       :semantic_type :type/Percentage
+                                                                       :field_ref     [:field "Tax Rate" {:base-type :type/Float}]}]}
+                   :model/Card {question-card-id :id} {:dataset_query {:type     :query
+                                                                       :database (mt/id)
+                                                                       :query    {:source-table (format "card__%s" model-card-id)}}}]
       (render-card-to-png base-card-id)
       (render-card-to-png model-card-id)
       (render-card-to-png question-card-id))))

@@ -25,17 +25,6 @@
    [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.driver :as driver]
-   [metabase.models
-    :refer [Action
-            Card
-            Collection
-            Database
-            Dimension
-            Field
-            Permissions
-            PermissionsGroup
-            Table
-            User]]
    [metabase.models.collection :as collection]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -78,7 +67,7 @@
 (defn- create-raw-user!
   "create a user but skip pre and post insert steps"
   [email]
-  (first (t2/insert-returning-instances! (t2/table-name User)
+  (first (t2/insert-returning-instances! (t2/table-name :model/User)
                                          :email        email
                                          :first_name   (mt/random-name)
                                          :last_name    (mt/random-name)
@@ -90,54 +79,54 @@
 (deftest make-database-details-not-null-test
   (testing "Migrations v45.00-042 and v45.00-043: set default value of '{}' for Database rows with NULL details"
     (impl/test-migrations ["v45.00-042" "v45.00-043"] [migrate!]
-      (let [database-id (first (t2/insert-returning-pks! (t2/table-name Database) (-> (dissoc (mt/with-temp-defaults Database) :details :settings)
-                                                                                      (assoc :engine "h2"))))]
+      (let [database-id (first (t2/insert-returning-pks! (t2/table-name :model/Database) (-> (dissoc (mt/with-temp-defaults :model/Database) :details :settings)
+                                                                                             (assoc :engine "h2"))))]
         (is (partial= {:details nil}
-                      (t2/select-one Database :id database-id)))
+                      (t2/select-one :model/Database :id database-id)))
         (migrate!)
         (is (partial= {:details {}}
-                      (t2/select-one Database :id database-id)))))))
+                      (t2/select-one :model/Database :id database-id)))))))
 
 (deftest populate-collection-created-at-test
   (testing "Migrations v45.00-048 thru v45.00-050: add Collection.created_at and populate it"
     (impl/test-migrations ["v45.00-048" "v45.00-050"] [migrate!]
-      (let [database-id              (first (t2/insert-returning-pks! (t2/table-name Database) {:details   "{}"
-                                                                                                :engine    "h2"
-                                                                                                :is_sample false
-                                                                                                :name      "populate-collection-created-at-test-db"}))
-            user-id                  (first (t2/insert-returning-pks! (t2/table-name User) {:first_name  "Cam"
-                                                                                            :last_name   "Era"
-                                                                                            :email       "cam@example.com"
-                                                                                            :password    "123456"
-                                                                                            :date_joined #t "2022-10-20T02:09Z"}))
-            personal-collection-id   (first (t2/insert-returning-pks! (t2/table-name Collection) {:name              "Cam Era's Collection"
-                                                                                                  :personal_owner_id user-id
-                                                                                                  :color             "#ff0000"
-                                                                                                  :slug              "personal_collection"}))
-            impersonal-collection-id (first (t2/insert-returning-pks! (t2/table-name Collection) {:name  "Regular Collection"
-                                                                                                  :color "#ff0000"
-                                                                                                  :slug  "regular_collection"}))
-            empty-collection-id      (first (t2/insert-returning-pks! (t2/table-name Collection) {:name  "Empty Collection"
-                                                                                                  :color "#ff0000"
-                                                                                                  :slug  "empty_collection"}))
-            _                        (t2/insert! (t2/table-name Card) {:collection_id          impersonal-collection-id
-                                                                       :name                   "Card 1"
-                                                                       :display                "table"
-                                                                       :dataset_query          "{}"
-                                                                       :visualization_settings "{}"
-                                                                       :creator_id             user-id
-                                                                       :database_id            database-id
-                                                                       :created_at             #t "2022-10-20T02:09Z"
-                                                                       :updated_at             #t "2022-10-20T02:09Z"})
-            _                        (t2/insert! (t2/table-name Card) {:collection_id          impersonal-collection-id
-                                                                       :name                   "Card 2"
-                                                                       :display                "table"
-                                                                       :dataset_query          "{}"
-                                                                       :visualization_settings "{}"
-                                                                       :creator_id             user-id
-                                                                       :database_id            database-id
-                                                                       :created_at             #t "2021-10-20T02:09Z"
-                                                                       :updated_at             #t "2022-10-20T02:09Z"})]
+      (let [database-id              (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:details   "{}"
+                                                                                                       :engine    "h2"
+                                                                                                       :is_sample false
+                                                                                                       :name      "populate-collection-created-at-test-db"}))
+            user-id                  (first (t2/insert-returning-pks! (t2/table-name :model/User) {:first_name  "Cam"
+                                                                                                   :last_name   "Era"
+                                                                                                   :email       "cam@example.com"
+                                                                                                   :password    "123456"
+                                                                                                   :date_joined #t "2022-10-20T02:09Z"}))
+            personal-collection-id   (first (t2/insert-returning-pks! (t2/table-name :model/Collection) {:name              "Cam Era's Collection"
+                                                                                                         :personal_owner_id user-id
+                                                                                                         :color             "#ff0000"
+                                                                                                         :slug              "personal_collection"}))
+            impersonal-collection-id (first (t2/insert-returning-pks! (t2/table-name :model/Collection) {:name  "Regular Collection"
+                                                                                                         :color "#ff0000"
+                                                                                                         :slug  "regular_collection"}))
+            empty-collection-id      (first (t2/insert-returning-pks! (t2/table-name :model/Collection) {:name  "Empty Collection"
+                                                                                                         :color "#ff0000"
+                                                                                                         :slug  "empty_collection"}))
+            _                        (t2/insert! (t2/table-name :model/Card) {:collection_id          impersonal-collection-id
+                                                                              :name                   "Card 1"
+                                                                              :display                "table"
+                                                                              :dataset_query          "{}"
+                                                                              :visualization_settings "{}"
+                                                                              :creator_id             user-id
+                                                                              :database_id            database-id
+                                                                              :created_at             #t "2022-10-20T02:09Z"
+                                                                              :updated_at             #t "2022-10-20T02:09Z"})
+            _                        (t2/insert! (t2/table-name :model/Card) {:collection_id          impersonal-collection-id
+                                                                              :name                   "Card 2"
+                                                                              :display                "table"
+                                                                              :dataset_query          "{}"
+                                                                              :visualization_settings "{}"
+                                                                              :creator_id             user-id
+                                                                              :database_id            database-id
+                                                                              :created_at             #t "2021-10-20T02:09Z"
+                                                                              :updated_at             #t "2022-10-20T02:09Z"})]
         (migrate!)
         ;; Urgh. `collection/is-trash?` will select the Trash collection (cached) based on its `type`. But as of this
         ;; migration, this `type` does not exist yet. Neither does the Trash collection though, so let's just ... make
@@ -150,7 +139,7 @@
             (is (= (t/offset-date-time #t "2021-10-20T02:09Z")
                    (t/offset-date-time (t2/select-one-fn :created_at [:model/Collection :created_at] :id impersonal-collection-id)))))
           (testing "Empty Collection should not have been updated"
-            (let [empty-collection-created-at (t/offset-date-time (t2/select-one-fn :created_at Collection :id empty-collection-id))]
+            (let [empty-collection-created-at (t/offset-date-time (t2/select-one-fn :created_at :model/Collection :id empty-collection-id))]
               (is (not= (t/offset-date-time #t "2021-10-20T02:09Z")
                         empty-collection-created-at))
               (is (not= (t/offset-date-time #t "2022-10-20T02:09Z")
@@ -159,92 +148,92 @@
 (deftest deduplicate-dimensions-test
   (testing "Migrations v46.00-029 thru v46.00-031: make Dimension field_id unique instead of field_id + name"
     (impl/test-migrations ["v46.00-029" "v46.00-031"] [migrate!]
-      (let [database-id (first (t2/insert-returning-pks! (t2/table-name Database) {:details   "{}"
-                                                                                   :engine    "h2"
-                                                                                   :is_sample false
-                                                                                   :name      "populate-collection-created-at-test-db"}))
-            table-id    (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      database-id
-                                                                                :name       "Table"
-                                                                                :created_at :%now
-                                                                                :updated_at :%now
-                                                                                :active     true}))
-            field-1-id  (first (t2/insert-returning-pks! (t2/table-name Field) {:name          "F1"
-                                                                                :table_id      table-id
-                                                                                :base_type     "type/Text"
-                                                                                :database_type "TEXT"
-                                                                                :created_at    :%now
-                                                                                :updated_at    :%now}))
-            field-2-id  (first (t2/insert-returning-pks! (t2/table-name Field) {:name          "F2"
-                                                                                :table_id      table-id
-                                                                                :base_type     "type/Text"
-                                                                                :database_type "TEXT"
-                                                                                :created_at    :%now
-                                                                                :updated_at    :%now}))
-            _           (t2/insert! (t2/table-name Dimension) {:field_id   field-1-id
-                                                               :name       "F1 D1"
-                                                               :type       "internal"
-                                                               :created_at #t "2022-12-07T18:30:30.000-08:00"
-                                                               :updated_at #t "2022-12-07T18:30:30.000-08:00"})
-            _           (t2/insert! (t2/table-name Dimension) {:field_id   field-1-id
-                                                               :name       "F1 D2"
-                                                               :type       "internal"
-                                                               :created_at #t "2022-12-07T18:45:30.000-08:00"
-                                                               :updated_at #t "2022-12-07T18:45:30.000-08:00"})
-            _           (t2/insert! (t2/table-name Dimension) {:field_id   field-2-id
-                                                               :name       "F2 D1"
-                                                               :type       "internal"
-                                                               :created_at #t "2022-12-07T18:45:30.000-08:00"
-                                                               :updated_at #t "2022-12-07T18:45:30.000-08:00"})]
+      (let [database-id (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:details   "{}"
+                                                                                          :engine    "h2"
+                                                                                          :is_sample false
+                                                                                          :name      "populate-collection-created-at-test-db"}))
+            table-id    (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      database-id
+                                                                                       :name       "Table"
+                                                                                       :created_at :%now
+                                                                                       :updated_at :%now
+                                                                                       :active     true}))
+            field-1-id  (first (t2/insert-returning-pks! (t2/table-name :model/Field) {:name          "F1"
+                                                                                       :table_id      table-id
+                                                                                       :base_type     "type/Text"
+                                                                                       :database_type "TEXT"
+                                                                                       :created_at    :%now
+                                                                                       :updated_at    :%now}))
+            field-2-id  (first (t2/insert-returning-pks! (t2/table-name :model/Field) {:name          "F2"
+                                                                                       :table_id      table-id
+                                                                                       :base_type     "type/Text"
+                                                                                       :database_type "TEXT"
+                                                                                       :created_at    :%now
+                                                                                       :updated_at    :%now}))
+            _           (t2/insert! (t2/table-name :model/Dimension) {:field_id   field-1-id
+                                                                      :name       "F1 D1"
+                                                                      :type       "internal"
+                                                                      :created_at #t "2022-12-07T18:30:30.000-08:00"
+                                                                      :updated_at #t "2022-12-07T18:30:30.000-08:00"})
+            _           (t2/insert! (t2/table-name :model/Dimension) {:field_id   field-1-id
+                                                                      :name       "F1 D2"
+                                                                      :type       "internal"
+                                                                      :created_at #t "2022-12-07T18:45:30.000-08:00"
+                                                                      :updated_at #t "2022-12-07T18:45:30.000-08:00"})
+            _           (t2/insert! (t2/table-name :model/Dimension) {:field_id   field-2-id
+                                                                      :name       "F2 D1"
+                                                                      :type       "internal"
+                                                                      :created_at #t "2022-12-07T18:45:30.000-08:00"
+                                                                      :updated_at #t "2022-12-07T18:45:30.000-08:00"})]
         (is (= #{"F1 D1"
                  "F1 D2"
                  "F2 D1"}
-               (t2/select-fn-set :name Dimension {:order-by [[:id :asc]]})))
+               (t2/select-fn-set :name :model/Dimension {:order-by [[:id :asc]]})))
         (migrate!)
         (testing "Keep the newest Dimensions"
           (is (= #{"F1 D2"
                    "F2 D1"}
-                 (t2/select-fn-set :name Dimension {:order-by [[:id :asc]]}))))))))
+                 (t2/select-fn-set :name :model/Dimension {:order-by [[:id :asc]]}))))))))
 
 (deftest able-to-delete-db-with-actions-test
   (testing "Migrations v46.00-084 and v46.00-085 set delete CASCADE for action.model_id to
            fix the bug of unable to delete database with actions"
     (impl/test-migrations ["v46.00-084" "v46.00-085"] [migrate!]
-      (let [user-id  (first (t2/insert-returning-pks! (t2/table-name User) {:first_name  "Howard"
-                                                                            :last_name   "Hughes"
-                                                                            :email       "howard@aircraft.com"
-                                                                            :password    "superstrong"
-                                                                            :date_joined :%now}))
-            db-id    (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
-                                                                                :engine     "postgres"
-                                                                                :created_at :%now
-                                                                                :updated_at :%now
-                                                                                :settings    "{\"database-enable-actions\":true}"
-                                                                                :details    "{}"}))
-            table-id (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                             :name       "Table"
-                                                                             :created_at :%now
-                                                                             :updated_at :%now
-                                                                             :active     true}))
-            model-id (first (t2/insert-returning-pks! (t2/table-name Card) {:name                   "My Saved Question"
-                                                                            :created_at             :%now
-                                                                            :updated_at             :%now
-                                                                            :creator_id             user-id
-                                                                            :table_id               table-id
-                                                                            :display                "table"
-                                                                            :dataset_query          "{}"
-                                                                            :visualization_settings "{}"
-                                                                            :database_id            db-id
-                                                                            :collection_id          nil}))
-            _        (t2/insert! (t2/table-name Action) {:name       "Update user name"
-                                                         :type       "implicit"
-                                                         :model_id   model-id
-                                                         :archived   false
-                                                         :created_at :%now
-                                                         :updated_at :%now})]
+      (let [user-id  (first (t2/insert-returning-pks! (t2/table-name :model/User) {:first_name  "Howard"
+                                                                                   :last_name   "Hughes"
+                                                                                   :email       "howard@aircraft.com"
+                                                                                   :password    "superstrong"
+                                                                                   :date_joined :%now}))
+            db-id    (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
+                                                                                       :engine     "postgres"
+                                                                                       :created_at :%now
+                                                                                       :updated_at :%now
+                                                                                       :settings    "{\"database-enable-actions\":true}"
+                                                                                       :details    "{}"}))
+            table-id (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                    :name       "Table"
+                                                                                    :created_at :%now
+                                                                                    :updated_at :%now
+                                                                                    :active     true}))
+            model-id (first (t2/insert-returning-pks! (t2/table-name :model/Card) {:name                   "My Saved Question"
+                                                                                   :created_at             :%now
+                                                                                   :updated_at             :%now
+                                                                                   :creator_id             user-id
+                                                                                   :table_id               table-id
+                                                                                   :display                "table"
+                                                                                   :dataset_query          "{}"
+                                                                                   :visualization_settings "{}"
+                                                                                   :database_id            db-id
+                                                                                   :collection_id          nil}))
+            _        (t2/insert! (t2/table-name :model/Action) {:name       "Update user name"
+                                                                :type       "implicit"
+                                                                :model_id   model-id
+                                                                :archived   false
+                                                                :created_at :%now
+                                                                :updated_at :%now})]
         (is (thrown? clojure.lang.ExceptionInfo
-                     (t2/delete! Database :id db-id)))
+                     (t2/delete! :model/Database :id db-id)))
         (migrate!)
-        (is (t2/delete! Database :id db-id))))))
+        (is (t2/delete! :model/Database :id db-id))))))
 
 (deftest migrate-field-database-type-test
   (testing "Migration v47.00-001: set base-type to type/JSON for JSON database-types for postgres and mysql"
@@ -277,13 +266,13 @@
              pg-field-2-id
              pg-field-3-id
              mysql-field-1-id
-             mysql-field-2-id] (t2/insert-returning-pks! Field [{:name "PG Field 1"    :table_id pg-table-id    :database_type "json"    :base_type :type/Structured}
-                                                                {:name "PG Field 2"    :table_id pg-table-id    :database_type "JSONB"   :base_type :type/Structured}
-                                                                {:name "PG Field 3"    :table_id pg-table-id    :database_type "varchar" :base_type :type/Text}
-                                                                {:name "MySQL Field 1" :table_id mysql-table-id :database_type "json"    :base_type :type/SerializedJSON}
-                                                                {:name "MySQL Field 2" :table_id mysql-table-id :database_type "varchar" :base_type :type/Text}])
+             mysql-field-2-id] (t2/insert-returning-pks! :model/Field [{:name "PG Field 1"    :table_id pg-table-id    :database_type "json"    :base_type :type/Structured}
+                                                                       {:name "PG Field 2"    :table_id pg-table-id    :database_type "JSONB"   :base_type :type/Structured}
+                                                                       {:name "PG Field 3"    :table_id pg-table-id    :database_type "varchar" :base_type :type/Text}
+                                                                       {:name "MySQL Field 1" :table_id mysql-table-id :database_type "json"    :base_type :type/SerializedJSON}
+                                                                       {:name "MySQL Field 2" :table_id mysql-table-id :database_type "varchar" :base_type :type/Text}])
             _ (migrate!)
-            new-base-types (t2/select-pk->fn :base_type Field)]
+            new-base-types (t2/select-pk->fn :base_type :model/Field)]
         (are [field-id expected] (= expected (get new-base-types field-id))
           pg-field-1-id :type/JSON
           pg-field-2-id :type/JSON
@@ -411,17 +400,17 @@
 (deftest backfill-permission-id-test
   (testing "Migrations v46.00-088-v46.00-90: backfill `permission_id` FK on sandbox table"
     (impl/test-migrations ["v46.00-088" "v46.00-090"] [migrate!]
-      (let [db-id    (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "DB"
-                                                                                :engine     "h2"
-                                                                                :created_at :%now
-                                                                                :updated_at :%now
-                                                                                :details    "{}"}))
-            table-id (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                             :schema     "SchemaName"
-                                                                             :name       "Table"
-                                                                             :created_at :%now
-                                                                             :updated_at :%now
-                                                                             :active     true}))
+      (let [db-id    (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "DB"
+                                                                                       :engine     "h2"
+                                                                                       :created_at :%now
+                                                                                       :updated_at :%now
+                                                                                       :details    "{}"}))
+            table-id (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                    :schema     "SchemaName"
+                                                                                    :name       "Table"
+                                                                                    :created_at :%now
+                                                                                    :updated_at :%now
+                                                                                    :active     true}))
             _        (t2/query-one {:insert-into :sandboxes
                                     :values      [{:group_id             1
                                                    :table_id             table-id
@@ -429,7 +418,7 @@
                                                   {:group_id             2
                                                    :table_id             table-id
                                                    :attribute_remappings "{\"foo\", 1}"}]})
-            perm-id  (first (t2/insert-returning-pks! (t2/table-name Permissions)
+            perm-id  (first (t2/insert-returning-pks! (t2/table-name :model/Permissions)
                                                       [{:group_id 1
                                                         :object   "/db/1/schema/SchemaName/table/1/query/segmented/"}
                                                        {:group_id 1
@@ -531,9 +520,9 @@
                     ;; Also avoid loading sample content, because this test breaks the assumption that only the trash
                     ;; collection exists at the time of the migration
                     config/load-sample-content? (constantly false)]
-        (let [collection-id (first (t2/insert-returning-pks! (t2/table-name Collection) {:name "Amazing collection"
-                                                                                         :slug "amazing_collection"
-                                                                                         :color "#509EE3"}))]
+        (let [collection-id (first (t2/insert-returning-pks! (t2/table-name :model/Collection) {:name "Amazing collection"
+                                                                                                :slug "amazing_collection"
+                                                                                                :color "#509EE3"}))]
 
           (testing "Collection should exist and have the color set by the user prior to migration"
             (is (= "#509EE3" (:color (t2/select-one :model/Collection :id collection-id)))))
@@ -641,36 +630,36 @@
 (deftest inactive-fields-fk-migration-test
   (testing "Migration v48.00-051"
     (impl/test-migrations ["v48.00-051"] [migrate!]
-      (let [database-id (first (t2/insert-returning-pks! (t2/table-name Database) {:details   "{}"
-                                                                                   :engine    "h2"
-                                                                                   :is_sample false
-                                                                                   :name      "populate-collection-created-at-test-db"}))
-            table-1-id  (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      database-id
-                                                                                :name       "Table 1"
-                                                                                :created_at :%now
-                                                                                :updated_at :%now
-                                                                                :active     true}))
-            table-2-id  (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      database-id
-                                                                                :name       "Table 2"
-                                                                                :created_at :%now
-                                                                                :updated_at :%now
-                                                                                :active     true}))
-            field-1-id  (first (t2/insert-returning-pks! (t2/table-name Field) {:name          "F1"
-                                                                                :table_id      table-1-id
-                                                                                :base_type     "type/Text"
-                                                                                :database_type "TEXT"
-                                                                                :created_at    :%now
-                                                                                :updated_at    :%now
-                                                                                :active        false}))
-            field-2-id  (first (t2/insert-returning-pks! (t2/table-name Field) {:name               "F2"
-                                                                                :table_id           table-2-id
-                                                                                :base_type          "type/Text"
-                                                                                :database_type      "TEXT"
-                                                                                :created_at         :%now
-                                                                                :updated_at         :%now
-                                                                                :active             true
-                                                                                :fk_target_field_id field-1-id
-                                                                                :semantic_type      "type/FK"}))]
+      (let [database-id (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:details   "{}"
+                                                                                          :engine    "h2"
+                                                                                          :is_sample false
+                                                                                          :name      "populate-collection-created-at-test-db"}))
+            table-1-id  (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      database-id
+                                                                                       :name       "Table 1"
+                                                                                       :created_at :%now
+                                                                                       :updated_at :%now
+                                                                                       :active     true}))
+            table-2-id  (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      database-id
+                                                                                       :name       "Table 2"
+                                                                                       :created_at :%now
+                                                                                       :updated_at :%now
+                                                                                       :active     true}))
+            field-1-id  (first (t2/insert-returning-pks! (t2/table-name :model/Field) {:name          "F1"
+                                                                                       :table_id      table-1-id
+                                                                                       :base_type     "type/Text"
+                                                                                       :database_type "TEXT"
+                                                                                       :created_at    :%now
+                                                                                       :updated_at    :%now
+                                                                                       :active        false}))
+            field-2-id  (first (t2/insert-returning-pks! (t2/table-name :model/Field) {:name               "F2"
+                                                                                       :table_id           table-2-id
+                                                                                       :base_type          "type/Text"
+                                                                                       :database_type      "TEXT"
+                                                                                       :created_at         :%now
+                                                                                       :updated_at         :%now
+                                                                                       :active             true
+                                                                                       :fk_target_field_id field-1-id
+                                                                                       :semantic_type      "type/FK"}))]
         (migrate!)
         (is (=? {:fk_target_field_id nil
                  :semantic_type      nil}
@@ -900,28 +889,28 @@
 (deftest data-access-permissions-schema-migration-basic-test
   (testing "Data access permissions are correctly migrated from `permissions` to `data_permissions`"
     (impl/test-migrations "v50.2024-01-10T03:27:30" [migrate!]
-      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
-            db-id      (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
-                                                                                  :engine     "postgres"
-                                                                                  :created_at :%now
-                                                                                  :updated_at :%now
-                                                                                  :details    "{}"}))
-            table-id-1 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                               :name       "Table 1"
-                                                                               :created_at :%now
-                                                                               :updated_at :%now
-                                                                               :schema     "PUBLIC"
-                                                                               :active     true}))
-            table-id-2 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                               :name       "Table 2"
-                                                                               :created_at :%now
-                                                                               :updated_at :%now
-                                                                               :schema     "PUBLIC/with\\slash"
-                                                                               :active     true}))]
+      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
+            db-id      (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
+                                                                                         :engine     "postgres"
+                                                                                         :created_at :%now
+                                                                                         :updated_at :%now
+                                                                                         :details    "{}"}))
+            table-id-1 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                      :name       "Table 1"
+                                                                                      :created_at :%now
+                                                                                      :updated_at :%now
+                                                                                      :schema     "PUBLIC"
+                                                                                      :active     true}))
+            table-id-2 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                      :name       "Table 2"
+                                                                                      :created_at :%now
+                                                                                      :updated_at :%now
+                                                                                      :schema     "PUBLIC/with\\slash"
+                                                                                      :active     true}))]
         (testing "Unrestricted data access for a DB"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/db/%d/" db-id)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/db/%d/" db-id)})
           (migrate!)
           (is (= "unrestricted" (t2/select-one-fn :perm_value
                                                   (t2/table-name :model/DataPermissions)
@@ -932,8 +921,8 @@
 
         (testing "Unrestricted not-native data access for a DB"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/db/%d/schema/" db-id)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/db/%d/schema/" db-id)})
           (migrate!)
           (is (= "unrestricted" (t2/select-one-fn :perm_value
                                                   (t2/table-name :model/DataPermissions)
@@ -944,8 +933,8 @@
 
         (testing "Unrestricted data access for a schema"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/db/%d/schema/PUBLIC/" db-id)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/db/%d/schema/PUBLIC/" db-id)})
           (migrate!)
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
@@ -957,8 +946,8 @@
 
         (testing "Unrestricted data access for a table"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)})
           (migrate!)
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
@@ -970,8 +959,8 @@
 
         (testing "Query access to a table"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/db/%d/schema/PUBLIC/table/%d/query/" db-id table-id-1)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/db/%d/schema/PUBLIC/table/%d/query/" db-id table-id-1)})
           (migrate!)
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
@@ -984,8 +973,8 @@
         (testing "Segmented query access to a table - maps to unrestricted data access; sandboxing is determined by the
                                      `sandboxes` table"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/db/%d/schema/PUBLIC/table/%d/query/segmented/" db-id table-id-1)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/db/%d/schema/PUBLIC/table/%d/query/segmented/" db-id table-id-1)})
           (migrate!)
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
@@ -1008,8 +997,8 @@
 
         (testing "Granular table permissions"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/db/%d/schema/PUBLIC\\/with\\\\slash/table/%d/" db-id table-id-2)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/db/%d/schema/PUBLIC\\/with\\\\slash/table/%d/" db-id table-id-2)})
           (migrate!)
           (is (nil?
                (t2/select-one-fn :perm_value
@@ -1026,8 +1015,8 @@
 
         (testing "Block permissions for a database"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/block/db/%d/" db-id)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/block/db/%d/" db-id)})
           (migrate!)
           (is (= "block" (t2/select-one-fn :perm_value
                                            (t2/table-name :model/DataPermissions)
@@ -1039,16 +1028,16 @@
 (deftest native-query-editing-permissions-schema-migration-test
   (testing "Native query editing permissions are correctly migrated from `permissions` to `data_permissions`"
     (impl/test-migrations "v50.2024-01-10T03:27:31" [migrate!]
-      (let [group-id (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
-            db-id    (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
-                                                                                :engine     "postgres"
-                                                                                :created_at :%now
-                                                                                :updated_at :%now
-                                                                                :details    "{}"}))]
+      (let [group-id (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
+            db-id    (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
+                                                                                       :engine     "postgres"
+                                                                                       :created_at :%now
+                                                                                       :updated_at :%now
+                                                                                       :details    "{}"}))]
         (testing "Native query editing allowed"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/db/%d/" db-id)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/db/%d/" db-id)})
           (migrate!)
           (is (= "yes" (t2/select-one-fn :perm_value
                                          (t2/table-name :model/DataPermissions)
@@ -1056,8 +1045,8 @@
 
         (testing "Native query editing explicitly allowed"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/db/%d/native/" db-id)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/db/%d/native/" db-id)})
           (migrate!)
           (is (= "yes" (t2/select-one-fn :perm_value
                                          (t2/table-name :model/DataPermissions)
@@ -1073,34 +1062,34 @@
 (deftest download-results-permissions-schema-migration-test
   (testing "Download results permissions are correctly migrated from `permissions` to `data_permissions`"
     (impl/test-migrations "v50.2024-01-10T03:27:32" [migrate!]
-      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
-            db-id      (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
-                                                                                  :engine     "postgres"
-                                                                                  :created_at :%now
-                                                                                  :updated_at :%now
-                                                                                  :details    "{}"}))
-            table-id-1 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                               :name       "Table 1"
-                                                                               :created_at :%now
-                                                                               :updated_at :%now
-                                                                               :schema     "PUBLIC"
-                                                                               :active     true}))
-            table-id-2 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                               :name       "Table 2"
-                                                                               :created_at :%now
-                                                                               :updated_at :%now
-                                                                               :schema     "PUBLIC"
-                                                                               :active     true}))
-            table-id-3 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                               :name       "Table 3"
-                                                                               :created_at :%now
-                                                                               :updated_at :%now
-                                                                               :schema     "PUBLIC"
-                                                                               :active     true}))]
+      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
+            db-id      (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
+                                                                                         :engine     "postgres"
+                                                                                         :created_at :%now
+                                                                                         :updated_at :%now
+                                                                                         :details    "{}"}))
+            table-id-1 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                      :name       "Table 1"
+                                                                                      :created_at :%now
+                                                                                      :updated_at :%now
+                                                                                      :schema     "PUBLIC"
+                                                                                      :active     true}))
+            table-id-2 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                      :name       "Table 2"
+                                                                                      :created_at :%now
+                                                                                      :updated_at :%now
+                                                                                      :schema     "PUBLIC"
+                                                                                      :active     true}))
+            table-id-3 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                      :name       "Table 3"
+                                                                                      :created_at :%now
+                                                                                      :updated_at :%now
+                                                                                      :schema     "PUBLIC"
+                                                                                      :active     true}))]
         (testing "One-million-rows download access for a DB"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/download/db/%d/" db-id)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/download/db/%d/" db-id)})
           (migrate!)
           (is (= "one-million-rows" (t2/select-one-fn :perm_value
                                                       (t2/table-name :model/DataPermissions)
@@ -1110,8 +1099,8 @@
                                       :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/download-results")))
 
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/download/db/%d/schema/" db-id)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/download/db/%d/schema/" db-id)})
           (migrate!)
           (is (= "one-million-rows" (t2/select-one-fn :perm_value
                                                       (t2/table-name :model/DataPermissions)
@@ -1122,8 +1111,8 @@
 
         (testing "Ten-thousand-rows download access for a DB"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/download/limited/db/%d/" db-id)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/download/limited/db/%d/" db-id)})
           (migrate!)
           (is (= "ten-thousand-rows" (t2/select-one-fn :perm_value
                                                        (t2/table-name :model/DataPermissions)
@@ -1133,8 +1122,8 @@
                                       :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/download-results")))
 
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/download/limited/db/%d/schema/" db-id)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/download/limited/db/%d/schema/" db-id)})
           (migrate!)
           (is (= "ten-thousand-rows" (t2/select-one-fn :perm_value
                                                        (t2/table-name :model/DataPermissions)
@@ -1155,8 +1144,8 @@
 
         (testing "One-million-rows download access for a table"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/download/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/download/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)})
           (migrate!)
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
@@ -1168,8 +1157,8 @@
 
         (testing "One-million-rows download access for a table"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/download/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/download/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)})
           (migrate!)
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
@@ -1181,8 +1170,8 @@
 
         (testing "Ten-thousand-rows download access for a table"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/download/limited/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/download/limited/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)})
           (migrate!)
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
@@ -1194,10 +1183,10 @@
 
         (testing "Granular table permissions"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) [{:group_id group-id
-                                                    :object   (format "/download/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)}
-                                                   {:group_id group-id
-                                                    :object   (format "/download/limited/db/%d/schema/PUBLIC/table/%d/" db-id table-id-2)}])
+          (t2/insert! (t2/table-name :model/Permissions) [{:group_id group-id
+                                                           :object   (format "/download/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)}
+                                                          {:group_id group-id
+                                                           :object   (format "/download/limited/db/%d/schema/PUBLIC/table/%d/" db-id table-id-2)}])
           (migrate!)
           (is (nil?
                (t2/select-one-fn :perm_value
@@ -1219,22 +1208,22 @@
 (deftest manage-table-metadata-permissions-schema-migration-test
   (testing "Manage table metadata permissions are correctly migrated from `permissions` to `data_permissions`"
     (impl/test-migrations "v50.2024-01-10T03:27:33" [migrate!]
-      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
-            db-id      (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
-                                                                                  :engine     "postgres"
-                                                                                  :created_at :%now
-                                                                                  :updated_at :%now
-                                                                                  :details    "{}"}))
-            table-id   (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                               :name       "Table 1"
-                                                                               :created_at :%now
-                                                                               :updated_at :%now
-                                                                               :schema     "PUBLIC"
-                                                                               :active     true}))]
+      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
+            db-id      (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
+                                                                                         :engine     "postgres"
+                                                                                         :created_at :%now
+                                                                                         :updated_at :%now
+                                                                                         :details    "{}"}))
+            table-id   (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                      :name       "Table 1"
+                                                                                      :created_at :%now
+                                                                                      :updated_at :%now
+                                                                                      :schema     "PUBLIC"
+                                                                                      :active     true}))]
         (testing "Manage table metadata access for a DB"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/data-model/db/%d/" db-id)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/data-model/db/%d/" db-id)})
           (migrate!)
           (is (= "yes" (t2/select-one-fn :perm_value
                                          (t2/table-name :model/DataPermissions)
@@ -1255,8 +1244,8 @@
 
         (testing "Manage table metadata access for a schema"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/data-model/db/%d/schema/PUBLIC/" db-id)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/data-model/db/%d/schema/PUBLIC/" db-id)})
           (migrate!)
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
@@ -1268,8 +1257,8 @@
 
         (testing "Manage table metadata access for a table"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/data-model/db/%d/schema/PUBLIC/table/%d/" db-id table-id)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/data-model/db/%d/schema/PUBLIC/table/%d/" db-id table-id)})
           (migrate!)
           (is (nil? (t2/select-one-fn :perm_value
                                       (t2/table-name :model/DataPermissions)
@@ -1282,16 +1271,16 @@
 (deftest manage-database-permissions-schema-migration-test
   (testing "Manage database permissions are correctly migrated from `permissions` to `data_permissions`"
     (impl/test-migrations "v50.2024-01-10T03:27:34" [migrate!]
-      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
-            db-id      (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
-                                                                                  :engine     "postgres"
-                                                                                  :created_at :%now
-                                                                                  :updated_at :%now
-                                                                                  :details    "{}"}))]
+      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
+            db-id      (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
+                                                                                         :engine     "postgres"
+                                                                                         :created_at :%now
+                                                                                         :updated_at :%now
+                                                                                         :details    "{}"}))]
         (testing "Manage database permission"
           (clear-permissions!)
-          (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/details/db/%d/" db-id)})
+          (t2/insert! (t2/table-name :model/Permissions) {:group_id group-id
+                                                          :object   (format "/details/db/%d/" db-id)})
           (migrate!)
           (is (= "yes" (t2/select-one-fn :perm_value
                                          (t2/table-name :model/DataPermissions)
@@ -1351,22 +1340,22 @@
       (let [migrate-up!  (fn []
                            (migrate!)
                            (clear-permissions!))
-            group-id     (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
-            db-id        (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
-                                                                                    :engine     "postgres"
-                                                                                    :created_at :%now
-                                                                                    :updated_at :%now
-                                                                                    :details    "{}"}))
-            table-id     (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                                 :name       "Table 1"
-                                                                                 :created_at :%now
-                                                                                 :updated_at :%now
-                                                                                 :active     true}))
-            table-id-2   (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                                 :name       "Table 2"
-                                                                                 :created_at :%now
-                                                                                 :updated_at :%now
-                                                                                 :active     true}))
+            group-id     (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
+            db-id        (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
+                                                                                           :engine     "postgres"
+                                                                                           :created_at :%now
+                                                                                           :updated_at :%now
+                                                                                           :details    "{}"}))
+            table-id     (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                        :name       "Table 1"
+                                                                                        :created_at :%now
+                                                                                        :updated_at :%now
+                                                                                        :active     true}))
+            table-id-2   (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                        :name       "Table 2"
+                                                                                        :created_at :%now
+                                                                                        :updated_at :%now
+                                                                                        :active     true}))
             insert-perm! (fn [perm-type perm-value & [table-id schema]]
                            (t2/insert! (t2/table-name :model/DataPermissions)
                                        :db_id db-id
@@ -1524,7 +1513,7 @@
         (t2/insert! :setting [{:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100.4")}
                               {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123.4")}]))
       (let [user (create-raw-user! (mt/random-email))
-            db   (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
+            db   (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults :model/Database)
                                                                  (update :details json/encode)
                                                                  (update :settings json/encode)
                                                                  (update :engine str)
@@ -1536,7 +1525,7 @@
                                            :updated_at :%now
                                            :cache_ttl  20
                                            :parameters ""})
-            card (t2/insert-returning-pk! (t2/table-name Card)
+            card (t2/insert-returning-pk! (t2/table-name :model/Card)
                                           {:name                   "Card"
                                            :display                "table"
                                            :dataset_query          "{}"
@@ -1589,7 +1578,7 @@
                             {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
                             {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}])
       ;; this one to have custom configuration to check they are not copied over
-      (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
+      (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults :model/Database)
                                                       (update :details json/encode)
                                                       (update :settings json/encode)
                                                       (update :engine str)
@@ -1647,24 +1636,24 @@
 (deftest split-data-permissions-migration-test
   (testing "View Data and Create Query permissions are created correctly based on existing data permissions"
     (impl/test-migrations ["v50.2024-02-26T22:15:54" "v50.2024-02-26T22:15:55"] [migrate!]
-      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
-            db-id      (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
-                                                                                  :engine     "postgres"
-                                                                                  :created_at :%now
-                                                                                  :updated_at :%now
-                                                                                  :details    "{}"}))
-            table-id-1 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                               :name       "Table 1"
-                                                                               :created_at :%now
-                                                                               :updated_at :%now
-                                                                               :schema     "PUBLIC"
-                                                                               :active     true}))
-            table-id-2 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                               :name       "Table 2"
-                                                                               :created_at :%now
-                                                                               :updated_at :%now
-                                                                               :schema     "PUBLIC"
-                                                                               :active     true}))]
+      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
+            db-id      (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
+                                                                                         :engine     "postgres"
+                                                                                         :created_at :%now
+                                                                                         :updated_at :%now
+                                                                                         :details    "{}"}))
+            table-id-1 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                      :name       "Table 1"
+                                                                                      :created_at :%now
+                                                                                      :updated_at :%now
+                                                                                      :schema     "PUBLIC"
+                                                                                      :active     true}))
+            table-id-2 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                      :name       "Table 2"
+                                                                                      :created_at :%now
+                                                                                      :updated_at :%now
+                                                                                      :schema     "PUBLIC"
+                                                                                      :active     true}))]
         (testing "Unrestricted data access + native query editing"
           (clear-permissions!)
           (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
@@ -1771,29 +1760,29 @@
   (testing "view-data is set to `legacy-no-self-service` for groups that meet specific conditions"
     (impl/test-migrations ["v50.2024-02-26T22:15:54" "v50.2024-02-26T22:15:55"] [migrate!]
       (let [user-id    (:id (create-raw-user! (mt/random-email)))
-            group-id-1 (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group 1"}))
-            group-id-2 (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group 2"}))
+            group-id-1 (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group 1"}))
+            group-id-2 (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group 2"}))
             _pgm       (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroupMembership)
                                                  {:user_id user-id :group_id group-id-1 :is_group_manager false})
             _pgm       (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroupMembership)
                                                  {:user_id user-id :group_id group-id-2 :is_group_manager false})
-            db-id      (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
-                                                                                  :engine     "postgres"
-                                                                                  :created_at :%now
-                                                                                  :updated_at :%now
-                                                                                  :details    "{}"}))
-            table-id-1 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                               :name       "Table 1"
-                                                                               :created_at :%now
-                                                                               :updated_at :%now
-                                                                               :schema     "PUBLIC"
-                                                                               :active     true}))
-            table-id-2 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                               :name       "Table 2"
-                                                                               :created_at :%now
-                                                                               :updated_at :%now
-                                                                               :schema     "PUBLIC"
-                                                                               :active     true}))]
+            db-id      (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
+                                                                                         :engine     "postgres"
+                                                                                         :created_at :%now
+                                                                                         :updated_at :%now
+                                                                                         :details    "{}"}))
+            table-id-1 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                      :name       "Table 1"
+                                                                                      :created_at :%now
+                                                                                      :updated_at :%now
+                                                                                      :schema     "PUBLIC"
+                                                                                      :active     true}))
+            table-id-2 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                      :name       "Table 2"
+                                                                                      :created_at :%now
+                                                                                      :updated_at :%now
+                                                                                      :schema     "PUBLIC"
+                                                                                      :active     true}))]
         (testing "No self-service in group 1 and unrestricted in group 2 (normal case)"
           (clear-permissions!)
           (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
@@ -1965,18 +1954,18 @@
     (let [migrate-up!  (fn []
                          (migrate!)
                          (clear-permissions!))
-          group-id     (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
-          db-id        (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
-                                                                                  :engine     "postgres"
-                                                                                  :created_at :%now
-                                                                                  :updated_at :%now
-                                                                                  :details    "{}"}))
-          table-id     (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                               :name       "Table 1"
-                                                                               :schema     "PUBLIC"
-                                                                               :created_at :%now
-                                                                               :updated_at :%now
-                                                                               :active     true}))
+          group-id     (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
+          db-id        (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
+                                                                                         :engine     "postgres"
+                                                                                         :created_at :%now
+                                                                                         :updated_at :%now
+                                                                                         :details    "{}"}))
+          table-id     (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                      :name       "Table 1"
+                                                                                      :schema     "PUBLIC"
+                                                                                      :created_at :%now
+                                                                                      :updated_at :%now
+                                                                                      :active     true}))
           insert-perm! (fn [perm-type perm-value & [table-id]]
                          (t2/insert! (t2/table-name :model/DataPermissions)
                                      :db_id db-id

@@ -71,7 +71,6 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.email :as email]
-   [metabase.models.database :refer [Database]]
    [metabase.models.setting :as setting]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -350,12 +349,12 @@
   "Add the application database as a Database. Currently only works if your app DB uses broken-out details!"
   []
   (binding [t2.connection/*current-connectable* nil]
-    (or (t2/select-one Database :name "Application Database")
+    (or (t2/select-one :model/Database :name "Application Database")
         #_:clj-kondo/ignore
         (let [details (#'metabase.db.env/broken-out-details
                        (mdb/db-type)
                        @#'metabase.db.env/env)
-              app-db  (first (t2/insert-returning-instances! Database
+              app-db  (first (t2/insert-returning-instances! :model/Database
                                                              {:name    "Application Database"
                                                               :engine  (mdb/db-type)
                                                               :details details}))]

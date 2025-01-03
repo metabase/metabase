@@ -2,7 +2,6 @@
   "Tests for the test utils!"
   (:require
    [clojure.test :refer :all]
-   [metabase.models.field :refer [Field]]
    [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -17,8 +16,8 @@
 
 (deftest with-temp-vals-in-db-test
   (testing "let's make sure this actually works right!"
-    (let [position #(t2/select-one-fn :position Field :id (data/id :venues :price))]
-      (mt/with-temp-vals-in-db Field (data/id :venues :price) {:position -1}
+    (let [position #(t2/select-one-fn :position :model/Field :id (data/id :venues :price))]
+      (mt/with-temp-vals-in-db :model/Field (data/id :venues :price) {:position -1}
         (is (= -1
                (position))))
       (is (= 5
@@ -26,10 +25,10 @@
 
   (testing "if an Exception is thrown, original value should be restored"
     (u/ignore-exceptions
-      (mt/with-temp-vals-in-db Field (data/id :venues :price) {:position -1}
+      (mt/with-temp-vals-in-db :model/Field (data/id :venues :price) {:position -1}
         (throw (Exception.))))
     (is (= 5
-           (t2/select-one-fn :position Field :id (data/id :venues :price))))))
+           (t2/select-one-fn :position :model/Field :id (data/id :venues :price))))))
 
 (setting/defsetting test-util-test-setting
   "Another internal test setting"

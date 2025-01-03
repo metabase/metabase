@@ -2,7 +2,6 @@
   "Tests for creating and updating Connection Impersonation configs via the permisisons API"
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [PermissionsGroup]]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -40,8 +39,8 @@
 
 (deftest fetch-impersonation-policy-test
   (testing "GET /api/ee/advanced-permissions/impersonation"
-    (t2.with-temp/with-temp [PermissionsGroup               {group-id-1 :id} {}
-                             PermissionsGroup               {group-id-2 :id} {}
+    (t2.with-temp/with-temp [:model/PermissionsGroup               {group-id-1 :id} {}
+                             :model/PermissionsGroup               {group-id-2 :id} {}
                              :model/ConnectionImpersonation {impersonation-id-1 :id :as impersonation-1} {:group_id group-id-1
                                                                                                           :db_id    (mt/id)
                                                                                                           :attribute "Attribute Name 1"}
@@ -71,7 +70,7 @@
   (testing "DELETE /api/ee/advanced-permissions/impersonation"
     (mt/with-premium-features #{:advanced-permissions}
       (testing "Test that a Connection Impersonation can be deleted by ID"
-        (t2.with-temp/with-temp [PermissionsGroup               {group-id :id}         {}
+        (t2.with-temp/with-temp [:model/PermissionsGroup               {group-id :id}         {}
                                  :model/ConnectionImpersonation {impersonation-id :id} {:group_id group-id
                                                                                         :db_id    (mt/id)
                                                                                         :attribute "Attribute Name"}]
@@ -79,7 +78,7 @@
           (is (nil? (t2/select-one :model/ConnectionImpersonation :id impersonation-id)))))
 
       (testing "Test that a non-admin cannot delete a Connection Impersonation"
-        (t2.with-temp/with-temp [PermissionsGroup               {group-id :id} {}
+        (t2.with-temp/with-temp [:model/PermissionsGroup               {group-id :id} {}
                                  :model/ConnectionImpersonation {impersonation-id :id :as impersonation}
                                  {:group_id group-id
                                   :db_id    (mt/id)
@@ -89,7 +88,7 @@
 
     (testing "Test that the :advanced-permissions flag is required to delete a Connection Impersonation"
       (mt/with-premium-features #{}
-        (t2.with-temp/with-temp [PermissionsGroup               {group-id :id} {}
+        (t2.with-temp/with-temp [:model/PermissionsGroup               {group-id :id} {}
                                  :model/ConnectionImpersonation {impersonation-id :id :as impersonation}
                                  {:group_id group-id
                                   :db_id    (mt/id)
@@ -100,7 +99,7 @@
 (deftest delete-impersonation-policy-after-permissions-change-test
   (mt/with-premium-features #{:advanced-permissions}
     (testing "A connection impersonation policy is deleted automatically if the data permissions are changed"
-      (t2.with-temp/with-temp [PermissionsGroup               {group-id :id} {}
+      (t2.with-temp/with-temp [:model/PermissionsGroup               {group-id :id} {}
                                :model/ConnectionImpersonation {impersonation-id :id}
                                {:group_id group-id
                                 :db_id    (mt/id)
@@ -113,7 +112,7 @@
         (is (nil? (t2/select-one :model/ConnectionImpersonation :id impersonation-id)))))
 
     (testing "A connection impersonation policy is not deleted if unrelated permissions are changed"
-      (t2.with-temp/with-temp [PermissionsGroup               {group-id :id} {}
+      (t2.with-temp/with-temp [:model/PermissionsGroup               {group-id :id} {}
                                :model/ConnectionImpersonation {impersonation-id :id}
                                {:group_id group-id
                                 :db_id    (mt/id)

@@ -6,10 +6,9 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models :refer [Database]]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
-   [metabase.models.secret :as secret :refer [Secret]]
+   [metabase.models.secret :as secret]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
@@ -43,7 +42,7 @@
   (testing "Sync tasks should get scheduled for a newly created Database"
     (mt/with-temp-scheduler!
       (task/init! ::task.sync-databases/SyncDatabases)
-      (t2.with-temp/with-temp [Database {db-id :id}]
+      (t2.with-temp/with-temp [:model/Database {db-id :id}]
         (is (=? {:description         (format "sync-and-analyze Database %d" db-id)
                  :key                 (format "metabase.task.sync-and-analyze.trigger.%d" db-id)
                  :misfire-instruction "DO_NOTHING"
@@ -54,14 +53,14 @@
                 (trigger-for-db db-id)))
 
         (testing "When deleting a Database, sync tasks should get removed"
-          (t2/delete! Database :id db-id)
+          (t2/delete! :model/Database :id db-id)
           (is (= nil
                  (trigger-for-db db-id))))))))
 
 (deftest can-read-database-setting-test
   (let [encode-decode (comp json/decode json/encode)
         pg-db         (mi/instance
-                       Database
+                       :model/Database
                        {:description nil
                         :name        "testpg"
                         :details     {}
@@ -88,25 +87,25 @@
 (deftest driver-supports-actions-and-database-enable-actions-test
   (mt/test-drivers #{:sqlite}
     (testing "Updating database-enable-actions to true should fail if the engine doesn't support actions"
-      (t2.with-temp/with-temp [Database database {:engine :sqlite}]
+      (t2.with-temp/with-temp [:model/Database database {:engine :sqlite}]
         (is (= false (driver.u/supports? :sqlite :actions database)))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"The database does not support actions."
-             (t2/update! Database (:id database) {:settings {:database-enable-actions true}})))))
+             (t2/update! :model/Database (:id database) {:settings {:database-enable-actions true}})))))
     (testing "Updating the engine when database-enable-actions is true should fail if the engine doesn't support actions"
-      (t2.with-temp/with-temp [Database database {:engine :h2 :settings {:database-enable-actions true}}]
+      (t2.with-temp/with-temp [:model/Database database {:engine :h2 :settings {:database-enable-actions true}}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"The database does not support actions."
-             (t2/update! Database (:id database) {:engine :sqlite})))))))
+             (t2/update! :model/Database (:id database) {:engine :sqlite})))))))
 
 (deftest ^:parallel sensitive-data-redacted-test
   (let [encode-decode (comp json/decode json/encode)
         project-id    "random-project-id" ; the actual value here doesn't seem to matter
         ;; this is trimmed for the parts we care about in the test
         pg-db         (mi/instance
-                       Database
+                       :model/Database
                        {:description nil
                         :name        "testpg"
                         :engine      :postgres
@@ -127,7 +126,7 @@
                         :settings    {:database-enable-actions true}
                         :id          3})
         bq-db         (mi/instance
-                       Database
+                       :model/Database
                        {:description nil
                         :name        "testbq"
                         :details     {:use-service-account  nil
@@ -250,53 +249,53 @@
                                     (is (= exp-val
                                            v)))))))]
           (testing "values for referenced secret IDs are resolved in a new DB"
-            (t2.with-temp/with-temp [Database {:keys [id details] :as database} {:engine  :secret-test-driver
-                                                                                 :name    "Test DB with secrets"
-                                                                                 :details {:host           "localhost"
-                                                                                           :password-value "new-password"}}]
+            (t2.with-temp/with-temp [:model/Database {:keys [id details] :as database} {:engine  :secret-test-driver
+                                                                                        :name    "Test DB with secrets"
+                                                                                        :details {:host           "localhost"
+                                                                                                  :password-value "new-password"}}]
               (testing " and saved db-details looks correct"
                 (check-db-fn database {:kind    :password
                                        :source  nil
                                        :version 1
                                        :value   "new-password"})
                 (testing " updating the value works as expected"
-                  (t2/update! Database id {:details (assoc details :password-path  "/path/to/my/password-file")})
-                  (check-db-fn (t2/select-one Database :id id) {:kind    :password
-                                                                :source  :file-path
-                                                                :version 2
-                                                                :value   "/path/to/my/password-file"}))))
+                  (t2/update! :model/Database id {:details (assoc details :password-path  "/path/to/my/password-file")})
+                  (check-db-fn (t2/select-one :model/Database :id id) {:kind    :password
+                                                                       :source  :file-path
+                                                                       :version 2
+                                                                       :value   "/path/to/my/password-file"}))))
             (testing "Secret instances are deleted from the app DB when the DatabaseInstance is deleted"
               (is (seq @secret-ids) "At least one Secret instance should have been created")
               (doseq [secret-id @secret-ids]
                 (testing (format "Secret ID %d should have been deleted after the Database was" secret-id)
-                  (is (nil? (t2/select-one Secret :id secret-id))
+                  (is (nil? (t2/select-one :model/Secret :id secret-id))
                       (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))
 
 (deftest user-may-not-update-sample-database-test
-  (t2.with-temp/with-temp [Database {:keys [id] :as _sample-database} {:engine    :h2
-                                                                       :is_sample true
-                                                                       :name      "Sample Database"
-                                                                       :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
+  (t2.with-temp/with-temp [:model/Database {:keys [id] :as _sample-database} {:engine    :h2
+                                                                              :is_sample true
+                                                                              :name      "Sample Database"
+                                                                              :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
     (testing " updating the engine of a sample database is not allowed"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"The engine on a sample database cannot be changed."
-           (t2/update! Database id {:engine :sqlite}))))
+           (t2/update! :model/Database id {:engine :sqlite}))))
     (testing " updating other attributes of a sample database is allowed"
-      (t2/update! Database id {:name "My New Name"})
-      (is (= "My New Name" (t2/select-one-fn :name Database :id id))))))
+      (t2/update! :model/Database id {:name "My New Name"})
+      (is (= "My New Name" (t2/select-one-fn :name :model/Database :id id))))))
 
 (driver/register! ::test, :abstract? true)
 
 (deftest preserve-driver-namespaces-test
   (testing "Make sure databases preserve namespaced driver names"
-    (t2.with-temp/with-temp [Database {db-id :id} {:engine (u/qualified-name ::test)}]
+    (t2.with-temp/with-temp [:model/Database {db-id :id} {:engine (u/qualified-name ::test)}]
       (is (= ::test
-             (t2/select-one-fn :engine Database :id db-id))))))
+             (t2/select-one-fn :engine :model/Database :id db-id))))))
 
 (deftest identity-hash-test
   (testing "Database hashes are composed of the name and engine"
-    (t2.with-temp/with-temp [Database db {:engine :mysql :name "hashmysql"}]
+    (t2.with-temp/with-temp [:model/Database db {:engine :mysql :name "hashmysql"}]
       (is (= (Integer/toHexString (hash ["hashmysql" :mysql]))
              (serdes/identity-hash db)))
       (is (= "b6f1a9e8"
@@ -304,8 +303,8 @@
 
 (deftest create-database-with-null-details-test
   (testing "Details should get a default value of {} if unspecified"
-    (mt/with-model-cleanup [Database]
-      (let [db (first (t2/insert-returning-instances! Database (dissoc (mt/with-temp-defaults Database) :details)))]
+    (mt/with-model-cleanup [:model/Database]
+      (let [db (first (t2/insert-returning-instances! :model/Database (dissoc (mt/with-temp-defaults :model/Database) :details)))]
         (is (partial= {:details {}}
                       db))))))
 
@@ -314,10 +313,10 @@
   ;; instance, not a transient row. Otherwise a call like `(mi/instance-of :model/Database db)` will return false
   ;; when it should return true.
   (testing "Make sure selecting a database calls `driver/database-supports?` with a database instance"
-    (mt/with-temp [Database {db-id :id} {:engine (u/qualified-name ::test)}]
+    (mt/with-temp [:model/Database {db-id :id} {:engine (u/qualified-name ::test)}]
       (mt/with-dynamic-redefs [driver.u/supports? (fn [_ _ db]
                                                     (is (true? (mi/instance-of? :model/Database db))))]
-        (is (some? (t2/select-one-fn :features Database :id db-id)))))))
+        (is (some? (t2/select-one-fn :features :model/Database :id db-id)))))))
 
 (deftest hydrate-tables-test
   (is (= ["CATEGORIES"

@@ -8,8 +8,6 @@
    [metabase.events :as events]
    [metabase.events.audit-log :as events.audit-log]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models
-    :refer [Card Dashboard DashboardCard LegacyMetric Pulse Segment]]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -26,7 +24,7 @@
 
 (deftest card-create-test
   (testing ":card-create event"
-    (t2.with-temp/with-temp [Card card {:name "My Cool Card"}]
+    (t2.with-temp/with-temp [:model/Card card {:name "My Cool Card"}]
       (is (= {:object card :user-id (mt/user->id :rasta)}
              (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :rasta)})))
       (is (partial=
@@ -40,14 +38,14 @@
 (deftest card-create-nested-query-test
   (testing :card-create
     (testing "when I save a Card that uses a NESTED query, is the activity recorded? :D"
-      (mt/with-temp [Card card-1 {:name          "My Cool Card"
-                                  :dataset_query {:database (mt/id)
-                                                  :type     :query
-                                                  :query    {:source-table (mt/id :venues)}}}
-                     Card card-2 {:name          "My Cool NESTED Card"
-                                  :dataset_query {:database lib.schema.id/saved-questions-virtual-database-id
-                                                  :type     :query
-                                                  :query    {:source-table (str "card__" (u/the-id card-1))}}}]
+      (mt/with-temp [:model/Card card-1 {:name          "My Cool Card"
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :query
+                                                         :query    {:source-table (mt/id :venues)}}}
+                     :model/Card card-2 {:name          "My Cool NESTED Card"
+                                         :dataset_query {:database lib.schema.id/saved-questions-virtual-database-id
+                                                         :type     :query
+                                                         :query    {:source-table (str "card__" (u/the-id card-1))}}}]
         (is (= {:object card-2 :user-id (mt/user->id :rasta)}
                (events/publish-event! :event/card-create {:object card-2 :user-id (mt/user->id :rasta)})))
         (is (partial=
@@ -65,7 +63,7 @@
   (testing :card-update
     (doseq [card-type [:question :model]]
       (testing card-type
-        (t2.with-temp/with-temp [Card card {:name "My Cool Card", :type card-type}]
+        (t2.with-temp/with-temp [:model/Card card {:name "My Cool Card", :type card-type}]
           (mt/with-test-user :rasta
             (is (= {:object card :user-id (mt/user->id :rasta)}
                    (events/publish-event! :event/card-update {:object card :user-id (mt/user->id :rasta)})))
@@ -85,7 +83,7 @@
   (testing :card-delete
     (doseq [card-type [:question :model]]
       (testing card-type
-        (t2.with-temp/with-temp [Card card {:name "My Cool Card", :type card-type}]
+        (t2.with-temp/with-temp [:model/Card card {:name "My Cool Card", :type card-type}]
           (mt/with-test-user :rasta
             (is (= {:object card :user-id (mt/user->id :rasta)}
                    (events/publish-event! :event/card-delete {:object card :user-id (mt/user->id :rasta)})))
@@ -100,7 +98,7 @@
 
 (deftest dashboard-create-event-test
   (testing :dashboard-create
-    (t2.with-temp/with-temp [Dashboard dashboard {:name "My Cool Dashboard"}]
+    (t2.with-temp/with-temp [:model/Dashboard dashboard {:name "My Cool Dashboard"}]
       (is (= {:object dashboard :user-id (mt/user->id :rasta)}
              (events/publish-event! :event/dashboard-create {:object dashboard :user-id (mt/user->id :rasta)})))
       (is (partial=
@@ -113,7 +111,7 @@
 
 (deftest dashboard-delete-event-test
   (testing :dashboard-delete
-    (t2.with-temp/with-temp [Dashboard dashboard {:name "My Cool Dashboard"}]
+    (t2.with-temp/with-temp [:model/Dashboard dashboard {:name "My Cool Dashboard"}]
       (is (= {:object dashboard :user-id (mt/user->id :rasta)}
              (events/publish-event! :event/dashboard-delete {:object dashboard :user-id (mt/user->id :rasta)})))
       (is (partial=
@@ -126,9 +124,9 @@
 
 (deftest dashboard-add-cards-event-test
   (testing :dashboard-add-cards
-    (mt/with-temp [Dashboard     dashboard {:name "My Cool Dashboard"}
-                   Card          card {}
-                   DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
+    (mt/with-temp [:model/Dashboard     dashboard {:name "My Cool Dashboard"}
+                   :model/Card          card {}
+                   :model/DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
       (let [event {:object    dashboard
                    :dashcards [dashcard]
                    :user-id   (mt/user->id :rasta)}]
@@ -149,9 +147,9 @@
 
 (deftest dashboard-remove-cards-event-test
   (testing :dashboard-remove-cards
-    (mt/with-temp [Dashboard     dashboard {:name "My Cool Dashboard"}
-                   Card          card {}
-                   DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
+    (mt/with-temp [:model/Dashboard     dashboard {:name "My Cool Dashboard"}
+                   :model/Card          card {}
+                   :model/DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
       (let [event {:object    dashboard
                    :dashcards [dashcard]
                    :user-id   (mt/user->id :rasta)}]
@@ -183,7 +181,7 @@
 
 (deftest metric-create-event-test
   (testing :metric-create
-    (t2.with-temp/with-temp [LegacyMetric metric {:table_id (mt/id :venues)}]
+    (t2.with-temp/with-temp [:model/LegacyMetric metric {:table_id (mt/id :venues)}]
       (is (= {:object metric :user-id (mt/user->id :rasta)}
              (events/publish-event! :event/metric-create {:object metric :user-id (mt/user->id :rasta)})))
       (is (= {:topic       :metric-create
@@ -198,7 +196,7 @@
 
 (deftest metric-update-event-test
   (testing :metric-update
-    (t2.with-temp/with-temp [LegacyMetric metric {:table_id (mt/id :venues)}]
+    (t2.with-temp/with-temp [:model/LegacyMetric metric {:table_id (mt/id :venues)}]
       (let [event {:object           metric
                    :revision-message "update this mofo"
                    :user-id          (mt/user->id :rasta)}]
@@ -217,7 +215,7 @@
 
 (deftest metric-delete-event-test
   (testing :metric-delete
-    (t2.with-temp/with-temp [LegacyMetric metric {:table_id (mt/id :venues)}]
+    (t2.with-temp/with-temp [:model/LegacyMetric metric {:table_id (mt/id :venues)}]
       (let [event {:object           metric
                    :revision-message "deleted"
                    :user-id          (mt/user->id :rasta)}]
@@ -235,11 +233,11 @@
                (mt/latest-audit-log-entry "metric-delete" (:id metric))))))))
 
 (deftest subscription-events-test
-  (t2.with-temp/with-temp [Dashboard      {dashboard-id :id} {}
-                           Pulse          pulse {:archived     false
-                                                 :name         "name"
-                                                 :dashboard_id dashboard-id
-                                                 :parameters   ()}]
+  (t2.with-temp/with-temp [:model/Dashboard      {dashboard-id :id} {}
+                           :model/Pulse          pulse {:archived     false
+                                                        :name         "name"
+                                                        :dashboard_id dashboard-id
+                                                        :parameters   ()}]
     (let [recipients [{:email "test@metabase.com"}
                       {:id    (mt/user->id :rasta)
                        :email "rasta@metabase.com"}]
@@ -279,12 +277,12 @@
                (mt/latest-audit-log-entry "subscription-create" (:id pulse))))))))
 
 (deftest alert-events-test
-  (t2.with-temp/with-temp [Dashboard      {dashboard-id :id} {}
-                           Card           card {:name "card-name"}
-                           Pulse          pulse {:archived     false
-                                                 :name         "name"
-                                                 :dashboard_id dashboard-id
-                                                 :parameters   ()}]
+  (t2.with-temp/with-temp [:model/Dashboard      {dashboard-id :id} {}
+                           :model/Card           card {:name "card-name"}
+                           :model/Pulse          pulse {:archived     false
+                                                        :name         "name"
+                                                        :dashboard_id dashboard-id
+                                                        :parameters   ()}]
     (let [pulse (-> pulse
                     (assoc :card card)
                     (assoc :channels [{:channel_type  :email
@@ -383,7 +381,7 @@
 
 (deftest segment-create-event-test
   (testing :segment-create
-    (t2.with-temp/with-temp [Segment segment]
+    (t2.with-temp/with-temp [:model/Segment segment]
       (mt/with-test-user :rasta
         (is (= {:object segment :user-id (mt/user->id :rasta)}
                (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :rasta)})))
@@ -399,7 +397,7 @@
 
 (deftest segment-update-event-test
   (testing :segment-update
-    (t2.with-temp/with-temp [Segment segment]
+    (t2.with-temp/with-temp [:model/Segment segment]
       (let [event (-> {:object segment}
                       (assoc :revision-message "update this mofo")
                       (assoc :user-id (mt/user->id :rasta)))]
@@ -418,7 +416,7 @@
 
 (deftest segment-delete-event-test
   (testing :segment-delete
-    (t2.with-temp/with-temp [Segment segment]
+    (t2.with-temp/with-temp [:model/Segment segment]
       (let [event (assoc {:object segment}
                          :revision-message "deleted"
                          :user-id (mt/user->id :rasta))]

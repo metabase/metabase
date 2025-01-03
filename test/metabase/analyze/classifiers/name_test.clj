@@ -2,8 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analyze.classifiers.name :as classifiers.name]
-   [metabase.models.interface :as mi]
-   [metabase.models.table :refer [Table]]))
+   [metabase.models.interface :as mi]))
 
 (deftest ^:parallel semantic-type-for-name-and-base-type-test
   (doseq [[input expected] {["id"      :type/Integer] :type/PK
@@ -22,7 +21,7 @@
 
 (deftest ^:parallel infer-entity-type-test
   (testing "name matches"
-    (let [classify (fn [table-name] (-> (mi/instance Table {:name table-name})
+    (let [classify (fn [table-name] (-> (mi/instance :model/Table {:name table-name})
                                         classifiers.name/infer-entity-type-by-name
                                         :entity_type))]
       (testing "matches simple"
@@ -69,7 +68,7 @@
         :type/Quantity ["quantity" :type/Integer]))
     (testing "name and type matches"
       (testing "matches \"updated at\" style columns"
-        (let [classify (fn [table-name table-type] (-> (mi/instance Table {:name table-name :base_type table-type})
+        (let [classify (fn [table-name table-type] (-> (mi/instance :model/Table {:name table-name :base_type table-type})
                                                        classifiers.name/infer-semantic-type-by-name))]
           (doseq [[col-type expected] [[:type/Date :type/UpdatedDate]
                                        [:type/DateTime :type/UpdatedTimestamp]

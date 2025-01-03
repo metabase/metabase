@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import { useState } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
@@ -46,10 +47,13 @@ function getPickerValue(
 ): SingleDatePickerValue | undefined {
   const value =
     valueText != null ? deserializeDateFilter(valueText) : undefined;
-  if (value != null && value.type === "specific" && value.operator === "=") {
-    const [date] = value.values;
-    return { date, hasTime: value.hasTime };
-  }
+  return match(value)
+    .returnType<SingleDatePickerValue | undefined>()
+    .with({ type: "specific", operator: "=" }, ({ values, hasTime }) => ({
+      date: values[0],
+      hasTime,
+    }))
+    .otherwise(() => undefined);
 }
 
 function getPickerDefaultValue(): SingleDatePickerValue {

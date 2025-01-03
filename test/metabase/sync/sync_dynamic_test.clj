@@ -3,7 +3,6 @@
    A Mongo database is an example of such a DB."
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [Database Table]]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.mock.toucanery :as toucanery]
@@ -32,12 +31,12 @@
                                :json-unfolding]))))))))
 
 (defn- get-tables [database-or-id]
-  (->> (t2/hydrate (t2/select Table, :db_id (u/the-id database-or-id), {:order-by [:id]}) :fields)
+  (->> (t2/hydrate (t2/select :model/Table, :db_id (u/the-id database-or-id), {:order-by [:id]}) :fields)
        (mapv mt/boolean-ids-and-timestamps)))
 
 (deftest sync-nested-fields-test
   (testing "basic test to make sure syncing nested fields works. This is sort of a higher-level test."
-    (t2.with-temp/with-temp [Database db {:engine ::toucanery/toucanery}]
+    (t2.with-temp/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
       (sync/sync-database! db)
       (is (= (remove-nonsense toucanery/toucanery-tables-and-fields)
              (remove-nonsense (get-tables db)))))))

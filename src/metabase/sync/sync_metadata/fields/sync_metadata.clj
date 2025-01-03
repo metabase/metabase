@@ -4,7 +4,6 @@
   Fields that were not newly created; newly created Fields are given appropriate metadata when first synced."
   (:require
    [clojure.string :as str]
-   [metabase.models.field :refer [Field]]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.common :as common]
    [metabase.sync.util :as sync-util]
@@ -140,7 +139,7 @@
            {:database_required new-db-required}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
-             (pos? (t2/update! Field (u/the-id metabase-field) updates)))
+             (pos? (t2/update! :model/Field (u/the-id metabase-field) updates)))
       1
       0)))
 

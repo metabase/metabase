@@ -8,7 +8,6 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models :refer [Card Collection Field]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -22,7 +21,7 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- card-metadata [card]
-  (t2/select-one-fn :result_metadata Card :id (u/the-id card)))
+  (t2/select-one-fn :result_metadata :model/Card :id (u/the-id card)))
 
 (defn- round-to-2-decimals
   "Defaults [[mt/round-all-decimals]] to 2 digits"
@@ -30,7 +29,7 @@
   (mt/round-all-decimals 2 data))
 
 (defn- default-card-results []
-  (let [id->fingerprint   (t2/select-pk->fn :fingerprint Field :table_id (mt/id :venues))
+  (let [id->fingerprint   (t2/select-pk->fn :fingerprint :model/Field :table_id (mt/id :venues))
         name->fingerprint (comp id->fingerprint (partial mt/id :venues))]
     [{:name           "ID"
       :display_name   "ID"
@@ -89,7 +88,7 @@
 
 (deftest save-result-metadata-test
   (testing "test that Card result metadata is saved after running a Card"
-    (t2.with-temp/with-temp [Card card]
+    (t2.with-temp/with-temp [:model/Card card]
       (let [result (qp/process-query
                     (qp/userland-query
                      (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})
@@ -106,8 +105,8 @@
 
 (deftest save-result-metadata-test-2
   (testing "check that using a Card as your source doesn't overwrite the results metadata..."
-    (t2.with-temp/with-temp [Card card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
-                                        :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
+    (t2.with-temp/with-temp [:model/Card card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
+                                               :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
       (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]
              (card-metadata card)))
       (let [result (qp/process-query
@@ -122,10 +121,10 @@
 
 (deftest save-result-metadata-test-3
   (testing "check that using a Card as your source doesn't overwrite the results metadata even when running via the API endpoint"
-    (mt/with-temp [Collection collection {}
-                   Card       card {:collection_id   (u/the-id collection)
-                                    :dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
-                                    :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card       card {:collection_id   (u/the-id collection)
+                                           :dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
+                                           :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
       (mt/user-http-request :rasta :post 202 "dataset" {:database lib.schema.id/saved-questions-virtual-database-id
                                                         :type     :query
@@ -194,7 +193,7 @@
 
 (deftest card-with-datetime-breakout-by-year-test
   (testing "make sure that a Card where a DateTime column is broken out by year works the way we'd expect"
-    (t2.with-temp/with-temp [Card card]
+    (t2.with-temp/with-temp [:model/Card card]
       (qp/process-query
        (qp/userland-query
         (merge (mt/mbql-query checkins
@@ -337,23 +336,23 @@
 (deftest ^:parallel result-metadata-preservation-test
   (testing "result_metadata is preserved in the query processor if passed into the context"
     (mt/dataset test-data
-      (mt/with-temp [Card {base-card-id :id} {:dataset_query {:database (mt/id)
-                                                              :type     :query
-                                                              :query    {:source-table (mt/id :orders)
-                                                                         :expressions  {"Tax Rate" [:/
-                                                                                                    [:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                                                                    [:field (mt/id :orders :total) {:base-type :type/Float}]]},
-                                                                         :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                                                        [:field (mt/id :orders :total) {:base-type :type/Float}]
-                                                                                        [:expression "Tax Rate"]]
-                                                                         :limit        10}}}
-                     Card {dataset-query   :dataset_query
-                           result-metadata :result_metadata
-                           :as             _card} {:dataset_query   {:type     :query
-                                                                     :database (mt/id)
-                                                                     :query    {:source-table (format "card__%s" base-card-id)}}
-                                                   :result_metadata [{:semantic_type :type/Percentage
-                                                                      :name          "Tax Rate"}]}]
+      (mt/with-temp [:model/Card {base-card-id :id} {:dataset_query {:database (mt/id)
+                                                                     :type     :query
+                                                                     :query    {:source-table (mt/id :orders)
+                                                                                :expressions  {"Tax Rate" [:/
+                                                                                                           [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                                           [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                                                                                :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                               [:field (mt/id :orders :total) {:base-type :type/Float}]
+                                                                                               [:expression "Tax Rate"]]
+                                                                                :limit        10}}}
+                     :model/Card {dataset-query   :dataset_query
+                                  result-metadata :result_metadata
+                                  :as             _card} {:dataset_query   {:type     :query
+                                                                            :database (mt/id)
+                                                                            :query    {:source-table (format "card__%s" base-card-id)}}
+                                                          :result_metadata [{:semantic_type :type/Percentage
+                                                                             :name          "Tax Rate"}]}]
         (testing "The baseline behavior is for data results_metadata to be independently computed"
           (let [results (qp/process-query dataset-query)]
             ;; :type/Share is the computed semantic type as of 2023-11-30

@@ -14,7 +14,6 @@
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models :refer [Database]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
@@ -114,7 +113,7 @@
 
 (deftest disallow-admin-accounts-test
   (testing "Check that we're not allowed to run SQL against an H2 database with a non-admin account"
-    (t2.with-temp/with-temp [Database db {:name "Fake-H2-DB", :engine "h2", :details {:db "mem:fake-h2-db"}}]
+    (t2.with-temp/with-temp [:model/Database db {:name "Fake-H2-DB", :engine "h2", :details {:db "mem:fake-h2-db"}}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Running SQL queries against H2 databases using the default \(admin\) database user is forbidden\.$"
@@ -342,7 +341,7 @@
                   (is (= #{:classname :subprotocol :subname :datasource}
                          (set (keys spec))))))))
           (finally
-            (t2/delete! Database :is_audit true)
+            (t2/delete! :model/Database :is_audit true)
             (when original-audit-db (mbc/ensure-audit-db-installed!))))))))
 
 ;; API tests are in [[metabase.api.action-test]]

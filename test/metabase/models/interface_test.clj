@@ -3,9 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.table :refer [Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
@@ -81,7 +79,7 @@
 
 (deftest timestamped-property-test
   (testing "Make sure updated_at gets updated for timestamped models"
-    (t2.with-temp/with-temp [Table table {:updated_at #t "2023-02-02T01:00:00"}]
+    (t2.with-temp/with-temp [:model/Table table {:updated_at #t "2023-02-02T01:00:00"}]
       (let [updated-at (:updated_at table)
             new-name   (u/qualified-name ::a-new-name)]
         (is (= 1
@@ -89,11 +87,11 @@
         (is (=? {:id         (:id table)
                  :name       new-name
                  :updated_at (partial not= updated-at)}
-                (t2/select-one [Table :id :name :updated_at] (u/the-id table))))))))
+                (t2/select-one [:model/Table :id :name :updated_at] (u/the-id table))))))))
 
 (deftest timestamped-property-do-not-stomp-on-explicit-values-test
   (testing "The :timestamped property should not stomp on :created_at/:updated_at if they are explicitly specified"
-    (t2.with-temp/with-temp [Field field]
+    (t2.with-temp/with-temp [:model/Field field]
       (testing "Nothing specified: use now() for both"
         (is (=? {:created_at java.time.temporal.Temporal
                  :updated_at java.time.temporal.Temporal}
@@ -101,12 +99,12 @@
     (let [t                  #t "2022-10-13T19:21:00Z"
           expected-timestamp (t/offset-date-time "2022-10-13T19:21:00Z")]
       (testing "Explicitly specify :created_at"
-        (t2.with-temp/with-temp [Field field {:created_at t}]
+        (t2.with-temp/with-temp [:model/Field field {:created_at t}]
           (is (=? {:created_at expected-timestamp
                    :updated_at java.time.temporal.Temporal}
                   field))))
       (testing "Explicitly specify :updated_at"
-        (t2.with-temp/with-temp [Field field {:updated_at t}]
+        (t2.with-temp/with-temp [:model/Field field {:updated_at t}]
           (is (=? {:created_at java.time.temporal.Temporal
                    :updated_at expected-timestamp}
                   field)))))))

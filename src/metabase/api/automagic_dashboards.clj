@@ -4,16 +4,8 @@
    [compojure.core :refer [GET]]
    [metabase.api.common :as api]
    [metabase.api.query-metadata :as api.query-metadata]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.legacy-metric :refer [LegacyMetric]]
-   [metabase.models.model-index :refer [ModelIndex ModelIndexValue]]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
-   [metabase.models.segment :refer [Segment]]
-   [metabase.models.table :refer [Table]]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -59,7 +51,7 @@
   "Return a list of candidates for automagic dashboards ordered by interestingness."
   [id]
   {id ms/PositiveInt}
-  (-> (t2/select-one Database :id id)
+  (-> (t2/select-one :model/Database :id id)
       api/read-check
       xrays/candidate-tables))
 
@@ -93,21 +85,21 @@
   (if-let [[_ card-id-str] (when (string? table-id-str)
                              (re-matches #"^card__(\d+$)" table-id-str))]
     (->entity :question card-id-str)
-    (api/read-check (t2/select-one Table :id (ensure-int table-id-str)))))
+    (api/read-check (t2/select-one :model/Table :id (ensure-int table-id-str)))))
 
 (defmethod ->entity :segment
   [_entity-type segment-id-str]
-  (api/read-check (t2/select-one Segment :id (ensure-int segment-id-str))))
+  (api/read-check (t2/select-one :model/Segment :id (ensure-int segment-id-str))))
 
 (defmethod ->entity :model
   [_entity-type card-id-str]
-  (api/read-check (t2/select-one Card
+  (api/read-check (t2/select-one :model/Card
                                  :id (ensure-int card-id-str)
                                  :type :model)))
 
 (defmethod ->entity :question
   [_entity-type card-id-str]
-  (api/read-check (t2/select-one Card :id (ensure-int card-id-str))))
+  (api/read-check (t2/select-one :model/Card :id (ensure-int card-id-str))))
 
 (defmethod ->entity :adhoc
   [_entity-type encoded-query]
@@ -115,15 +107,15 @@
 
 (defmethod ->entity :metric
   [_entity-type metric-id-str]
-  (api/read-check (t2/select-one LegacyMetric :id (ensure-int metric-id-str))))
+  (api/read-check (t2/select-one :model/LegacyMetric :id (ensure-int metric-id-str))))
 
 (defmethod ->entity :field
   [_entity-type field-id-str]
-  (api/read-check (t2/select-one Field :id (ensure-int field-id-str))))
+  (api/read-check (t2/select-one :model/Field :id (ensure-int field-id-str))))
 
 (defmethod ->entity :transform
   [_entity-type transform-name]
-  (api/read-check (t2/select-one Collection :id (xrays/get-collection transform-name)))
+  (api/read-check (t2/select-one :model/Collection :id (xrays/get-collection transform-name)))
   transform-name)
 
 (def ^:private entities
@@ -208,7 +200,7 @@
     :keys                                        [linked-tables]}]
   (if (seq linked-tables)
     (let [child-dashboards (map (fn [{:keys [linked-table-id linked-field-id]}]
-                                  (let [table (t2/select-one Table :id linked-table-id)]
+                                  (let [table (t2/select-one :model/Table :id linked-table-id)]
                                     (xrays/automagic-analysis
                                      table
                                      {:show         :all
@@ -262,13 +254,13 @@
   [model-index-id pk-id]
   {model-index-id :int
    pk-id          :int}
-  (api/let-404 [model-index (t2/select-one ModelIndex model-index-id)
-                model (t2/select-one Card (:model_id model-index))
-                model-index-value (t2/select-one ModelIndexValue
+  (api/let-404 [model-index (t2/select-one :model/ModelIndex model-index-id)
+                model (t2/select-one :model/Card (:model_id model-index))
+                model-index-value (t2/select-one :model/ModelIndexValue
                                                  :model_index_id model-index-id
                                                  :model_pk pk-id)]
                ;; `->entity` does a read check on the model but this is here as well to be extra sure.
-    (api/read-check Card (:model_id model-index))
+    (api/read-check :model/Card (:model_id model-index))
     (let [linked (linked-entities {:model             model
                                    :model-index       model-index
                                    :model-index-value model-index-value})]

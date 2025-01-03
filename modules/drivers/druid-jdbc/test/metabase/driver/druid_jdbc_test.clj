@@ -7,7 +7,6 @@
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [Field Table Database]]
    [metabase.query-processor :as qp]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
@@ -123,7 +122,7 @@
                        [::failure t]))))))))
 
 (defn- db-dbms-version [db-or-id]
-  (t2/select-one-fn :dbms_version Database :id (u/the-id db-or-id)))
+  (t2/select-one-fn :dbms_version :model/Database :id (u/the-id db-or-id)))
 
 (defn- check-dbms-version [dbms-version]
   (me/humanize (mc/validate sync-dbms-ver/DBMSVersion dbms-version)))
@@ -137,8 +136,8 @@
       (tqpt/with-flattened-dbdef
         (let [db                   (mt/db)
               version-on-load      (db-dbms-version db)
-              _                    (t2/update! Database (u/the-id db) {:dbms_version nil})
-              db                   (t2/select-one Database :id (u/the-id db))
+              _                    (t2/update! :model/Database (u/the-id db) {:dbms_version nil})
+              db                   (t2/select-one :model/Database :id (u/the-id db))
               version-after-update (db-dbms-version db)
               _                    (sync-dbms-ver/sync-dbms-version! db)]
           (testing "On startup is the dbms-version specified?"
@@ -454,10 +453,10 @@
                    (some-> (.getCause e) recur)))))))))
 
 (defn- table-rows-sample []
-  (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :checkins))
-                                           [(t2/select-one Field :id (mt/id :checkins :id))
-                                            (t2/select-one Field :id (mt/id :checkins :venue_name))
-                                            (t2/select-one Field :id (mt/id :checkins :__time #_:timestamp))]
+  (->> (metadata-queries/table-rows-sample (t2/select-one :model/Table :id (mt/id :checkins))
+                                           [(t2/select-one :model/Field :id (mt/id :checkins :id))
+                                            (t2/select-one :model/Field :id (mt/id :checkins :venue_name))
+                                            (t2/select-one :model/Field :id (mt/id :checkins :__time #_:timestamp))]
                                            (constantly conj))
        (sort-by first)
        (take 5)))

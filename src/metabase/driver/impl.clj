@@ -93,6 +93,7 @@
       (with-load-driver-write-lock
         ;; driver may have become registered while we were waiting for the lock, check again to be sure
         (when-not (registered? driver)
+          (classloader/the-classloader) ;; Ensure the classloader is properly set before loading namespaces.
           (u/profile (trs "Load driver {0}" driver)
             (require-driver-ns driver)
             ;; ok, hopefully it was registered now. If not, try again, but reload the entire driver namespace
@@ -195,9 +196,6 @@
   [driver init-fn]
   ;; no-op during compilation
   (when-not *compile-files*
-    ;; first, initialize parents as needed
-    (doseq [parent (parents hierarchy driver)]
-      (initialize-if-needed! parent init-fn))
     (when-not (initialized? driver)
       ;; if the driver is not yet initialized, acquire an exclusive lock for THIS THREAD to perform initialization to
       ;; make sure no other thread tries to initialize it at the same time
@@ -205,6 +203,9 @@
         ;; and once we acquire the lock, check one more time to make sure the driver didn't get initialized by
         ;; whatever thread(s) we were waiting on.
         (when-not (initialized? driver)
+          ;; first, initialize parents as needed
+          (doseq [parent (parents hierarchy driver)]
+            (initialize-if-needed! parent init-fn))
           (log/info (u/format-color :yellow "Initializing driver %s..." driver))
           (log/debug "Reason:" (u/pprint-to-str :blue (drop 5 (u/filtered-stacktrace (Thread/currentThread)))))
           (init-fn driver)

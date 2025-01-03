@@ -5,7 +5,6 @@
    [metabase.actions.execution :as actions.execution]
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
-   [metabase.models :refer [Database Table]]
    [metabase.models.action :as action]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -123,7 +122,7 @@
 (deftest feature-flags-test
   (doseq [{:keys [action request-body]} (mock-requests)]
     (testing action
-      (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
+      (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-actions false}}
         (binding [*current-user-permissions-set* (delay #{"/"})]
           (testing "Should return a 400 if Database feature flag is disabled."
             (is (thrown-with-msg?
@@ -144,10 +143,10 @@
 
 (deftest actions-feature-test
   (testing "Only allow actions for drivers that support the `:actions` driver feature. (#22557)"
-    (mt/with-temp [Database {db-id :id}    {:name     "Birds"
-                                            :engine   ::feature-flag-test-driver
-                                            :settings {:database-enable-actions true}}
-                   Table    {table-id :id} {:db_id db-id}]
+    (mt/with-temp [:model/Database {db-id :id}    {:name     "Birds"
+                                                   :engine   ::feature-flag-test-driver
+                                                   :settings {:database-enable-actions true}}
+                   :model/Table    {table-id :id} {:db_id db-id}]
       (is (thrown-with-msg? Exception (re-pattern
                                        (format "%s Database %d \"Birds\" does not support actions."
                                                (u/qualified-name ::feature-flag-test-driver)

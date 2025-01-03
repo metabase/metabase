@@ -5,9 +5,7 @@
    [compojure.core :refer [GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.models.native-query-snippet
-    :as native-query-snippet
-    :refer [NativeQuerySnippet]]
+   [metabase.models.native-query-snippet :as native-query-snippet]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -16,16 +14,16 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn- hydrated-native-query-snippet :- [:maybe (ms/InstanceOf NativeQuerySnippet)]
+(mu/defn- hydrated-native-query-snippet :- [:maybe (ms/InstanceOf :model/NativeQuerySnippet)]
   [id :- ms/PositiveInt]
-  (-> (api/read-check (t2/select-one NativeQuerySnippet :id id))
+  (-> (api/read-check (t2/select-one :model/NativeQuerySnippet :id id))
       (t2/hydrate :creator)))
 
 (api/defendpoint GET "/"
   "Fetch all snippets"
   [archived]
   {archived [:maybe ms/BooleanValue]}
-  (let [snippets (t2/select NativeQuerySnippet
+  (let [snippets (t2/select :model/NativeQuerySnippet
                             :archived archived
                             {:order-by [[:%lower.name :asc]]})]
     (t2/hydrate (filter mi/can-read? snippets) :creator)))
@@ -37,7 +35,7 @@
   (hydrated-native-query-snippet id))
 
 (defn- check-snippet-name-is-unique [snippet-name]
-  (when (t2/exists? NativeQuerySnippet :name snippet-name)
+  (when (t2/exists? :model/NativeQuerySnippet :name snippet-name)
     (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
                     {:status-code 400}))))
 
@@ -54,14 +52,14 @@
                  :description   description
                  :name          name
                  :collection_id collection_id}]
-    (api/create-check NativeQuerySnippet snippet)
-    (api/check-500 (first (t2/insert-returning-instances! NativeQuerySnippet snippet)))))
+    (api/create-check :model/NativeQuerySnippet snippet)
+    (api/check-500 (first (t2/insert-returning-instances! :model/NativeQuerySnippet snippet)))))
 
 (defn- check-perms-and-update-snippet!
   "Check whether current user has write permissions, then update NativeQuerySnippet with values in `body`.  Returns
   updated/hydrated NativeQuerySnippet"
   [id body]
-  (let [snippet     (t2/select-one NativeQuerySnippet :id id)
+  (let [snippet     (t2/select-one :model/NativeQuerySnippet :id id)
         body-fields (u/select-keys-when body
                                         :present #{:description :collection_id}
                                         :non-nil #{:archived :content :name})
@@ -70,7 +68,7 @@
       (api/update-check snippet changes)
       (when-let [new-name (:name changes)]
         (check-snippet-name-is-unique new-name))
-      (t2/update! NativeQuerySnippet id changes))
+      (t2/update! :model/NativeQuerySnippet id changes))
     (hydrated-native-query-snippet id)))
 
 (api/defendpoint PUT "/:id"

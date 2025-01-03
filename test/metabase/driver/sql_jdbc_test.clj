@@ -9,7 +9,6 @@
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [Database Field Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
@@ -46,8 +45,8 @@
             ["33 Taps"]
             ["800 Degrees Neapolitan Pizzeria"]
             ["BCD Tofu House"]]
-           (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
-                                                    [(t2/select-one Field :id (mt/id :venues :name))]
+           (->> (metadata-queries/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
+                                                    [(t2/select-one :model/Field :id (mt/id :venues :name))]
                                                     (constantly conj))
                 ;; since order is not guaranteed do some sorting here so we always get the same results
                 (sort-by first)
@@ -62,7 +61,7 @@
             {:name "Brite Spot Family Restaurant", :price 2, :category_id 20, :id 5}]
            (for [row (take 5 (sort-by :id (driver/table-rows-seq driver/*driver*
                                                                  (mt/db)
-                                                                 (t2/select-one Table :id (mt/id :venues)))))]
+                                                                 (t2/select-one :model/Table :id (mt/id :venues)))))]
              ;; different DBs use different precisions for these
              (-> (dissoc row :latitude :longitude)
                  (update :price int)
@@ -190,20 +189,20 @@
             patterns-type-prop (keyword (str (:name schema-filter-prop) "-patterns"))]
         (testing "syncable-schemas works as expected"
           (testing "with an inclusion filter"
-            (t2.with-temp/with-temp [Database db-filtered {:engine  driver
-                                                           :details (-> (mt/db)
-                                                                        :details
-                                                                        (assoc filter-type-prop "inclusion"
-                                                                               patterns-type-prop "public"))}]
+            (t2.with-temp/with-temp [:model/Database db-filtered {:engine  driver
+                                                                  :details (-> (mt/db)
+                                                                               :details
+                                                                               (assoc filter-type-prop "inclusion"
+                                                                                      patterns-type-prop "public"))}]
               (let [syncable (driver/syncable-schemas driver/*driver* db-filtered)]
                 (is      (contains? syncable "public"))
                 (is (not (contains? syncable fake-schema-name))))))
           (testing "with an exclusion filter"
-            (t2.with-temp/with-temp [Database db-filtered {:engine  driver
-                                                           :details (-> (mt/db)
-                                                                        :details
-                                                                        (assoc filter-type-prop "exclusion"
-                                                                               patterns-type-prop "public"))}]
+            (t2.with-temp/with-temp [:model/Database db-filtered {:engine  driver
+                                                                  :details (-> (mt/db)
+                                                                               :details
+                                                                               (assoc filter-type-prop "exclusion"
+                                                                                      patterns-type-prop "public"))}]
               (let [syncable (driver/syncable-schemas driver/*driver* db-filtered)]
                 (is (not (contains? syncable "public")))
                 (is (not (contains? syncable fake-schema-name)))))))))))

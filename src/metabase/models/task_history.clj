@@ -15,11 +15,6 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(def TaskHistory
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/TaskHistory)
-
 (methodical/defmethod t2/table-name :model/TaskHistory [_model] :task_history)
 
 (doto :model/TaskHistory
@@ -29,7 +24,7 @@
 
 ;;; Permissions to read or write Task. If `advanced-permissions` is enabled it requires superusers or non-admins with
 ;;; monitoring permissions, Otherwise it requires superusers.
-(defmethod mi/perms-objects-set TaskHistory
+(defmethod mi/perms-objects-set :model/TaskHistory
   [_task _read-or-write]
   #{(if (premium-features/enable-advanced-permissions?)
       (perms/application-perms-path :monitoring)
@@ -44,10 +39,10 @@
   ;; the date that task finished, it deletes everything after that. As we continue to add TaskHistory entries, this
   ;; ensures we'll have a good amount of history for debugging/troubleshooting, but not grow too large and fill the
   ;; disk.
-  (when-let [clean-before-date (t2/select-one-fn :ended_at TaskHistory {:limit    1
-                                                                        :offset   num-rows-to-keep
-                                                                        :order-by [[:ended_at :desc]]})]
-    (t2/delete! (t2/table-name TaskHistory) :ended_at [:<= clean-before-date])))
+  (when-let [clean-before-date (t2/select-one-fn :ended_at :model/TaskHistory {:limit    1
+                                                                               :offset   num-rows-to-keep
+                                                                               :order-by [[:ended_at :desc]]})]
+    (t2/delete! (t2/table-name :model/TaskHistory) :ended_at [:<= clean-before-date])))
 
 (def ^:private task-history-status #{:started :success :failed})
 
@@ -73,11 +68,11 @@
   "Return all TaskHistory entries, applying `limit` and `offset` if not nil"
   [limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]]
-  (t2/select TaskHistory (merge {:order-by [[:started_at :desc]]}
-                                (when limit
-                                  {:limit limit})
-                                (when offset
-                                  {:offset offset}))))
+  (t2/select :model/TaskHistory (merge {:order-by [[:started_at :desc]]}
+                                       (when limit
+                                         {:limit limit})
+                                       (when offset
+                                         {:offset offset}))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            with-task-history macro                                             |

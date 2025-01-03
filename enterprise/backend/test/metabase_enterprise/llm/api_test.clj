@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.llm.client :as llm-client]
-   [metabase.models :refer [Card Dashboard DashboardCard]]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -10,11 +9,11 @@
 (deftest summarize-card-test
   (testing "POST /api/ee/autodescribe/card/summarize"
     (mt/dataset test-data
-      (t2.with-temp/with-temp [Card card {:name "Orders"
-                                          :dataset_query
-                                          {:database (mt/id)
-                                           :type     :query
-                                           :query    {:source-table (mt/id :orders)}}}]
+      (t2.with-temp/with-temp [:model/Card card {:name "Orders"
+                                                 :dataset_query
+                                                 {:database (mt/id)
+                                                  :type     :query
+                                                  :query    {:source-table (mt/id :orders)}}}]
         (let [fake-response {:title "Title" :description "Description"}
               json-response (json/encode fake-response)
               expected {:summary fake-response}]
@@ -55,14 +54,14 @@
 (deftest summarize-dashboard-test
   (testing "POST /api/ee/autodescribe/dashboard/summarize/:id"
     (mt/dataset test-data
-      (t2.with-temp/with-temp [Card {card-id :id} {:name "Orders"
-                                                   :dataset_query
-                                                   {:database (mt/id)
-                                                    :type     :query
-                                                    :query    {:source-table (mt/id :orders)}}}
-                               Dashboard {dash-id :id} {:name "Dashboard"}
-                               DashboardCard {_ :id} {:dashboard_id dash-id
-                                                      :card_id      card-id}]
+      (t2.with-temp/with-temp [:model/Card {card-id :id} {:name "Orders"
+                                                          :dataset_query
+                                                          {:database (mt/id)
+                                                           :type     :query
+                                                           :query    {:source-table (mt/id :orders)}}}
+                               :model/Dashboard {dash-id :id} {:name "Dashboard"}
+                               :model/DashboardCard {_ :id} {:dashboard_id dash-id
+                                                             :card_id      card-id}]
         (let [url           (format "ee/autodescribe/dashboard/summarize/%s" dash-id)
               fake-response {:description "Description"
                              :keywords    "awesome, amazing"

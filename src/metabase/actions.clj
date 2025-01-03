@@ -8,7 +8,6 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.actions :as lib.schema.actions]
-   [metabase.models :refer [Database]]
    [metabase.models.setting :as setting]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
@@ -133,11 +132,11 @@
   nil)
 
 (defn- database-for-action [action-or-id]
-  (t2/select-one Database {:select [:db.*]
-                           :from   :action
-                           :join   [[:report_card :card] [:= :card.id :action.model_id]
-                                    [:metabase_database :db] [:= :db.id :card.database_id]]
-                           :where  [:= :action.id (u/the-id action-or-id)]}))
+  (t2/select-one :model/Database {:select [:db.*]
+                                  :from   :action
+                                  :join   [[:report_card :card] [:= :card.id :action.model_id]
+                                           [:metabase_database :db] [:= :db.id :card.database_id]]
+                                  :where  [:= :action.id (u/the-id action-or-id)]}))
 
 (defn check-actions-enabled!
   "Throws an appropriate error if actions are unsupported or disabled for the database of the action's model,

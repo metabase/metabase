@@ -8,7 +8,6 @@
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.druid.query-processor :as druid.qp]
-   [metabase.models :refer [Field Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
@@ -235,10 +234,10 @@
                 {:aggregation [[:+ 1 [:aggregation-options [:distinct $checkins.venue_name] {:name "__distinct_0"}]]]})))))))
 
 (defn- table-rows-sample []
-  (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :checkins))
-                                           [(t2/select-one Field :id (mt/id :checkins :id))
-                                            (t2/select-one Field :id (mt/id :checkins :venue_name))
-                                            (t2/select-one Field :id (mt/id :checkins :timestamp))]
+  (->> (metadata-queries/table-rows-sample (t2/select-one :model/Table :id (mt/id :checkins))
+                                           [(t2/select-one :model/Field :id (mt/id :checkins :id))
+                                            (t2/select-one :model/Field :id (mt/id :checkins :venue_name))
+                                            (t2/select-one :model/Field :id (mt/id :checkins :timestamp))]
                                            (constantly conj))
        (sort-by first)
        (take 5)))

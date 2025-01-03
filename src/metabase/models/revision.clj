@@ -68,11 +68,6 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(def Revision
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/Revision)
-
 (methodical/defmethod t2/table-name :model/Revision [_model] :revision)
 
 (doto :model/Revision
@@ -175,7 +170,7 @@
   [model :- [:fn toucan-model?]
    id    :- pos-int?]
   (let [model-name (name model)]
-    (t2/select Revision :model model-name :model_id id {:order-by [[:id :desc]]})))
+    (t2/select :model/Revision :model model-name :model_id id {:order-by [[:id :desc]]})))
 
 (mu/defn revisions+details
   "Fetch `revisions` for `model` with `id` and add details."
@@ -202,7 +197,7 @@
                                         [:message      {:optional true} [:maybe :string]]]]
   (let [entity-name (name entity)
         serialized-object (serialize-instance entity id (dissoc object :message))
-        last-object       (t2/select-one-fn :object Revision :model entity-name :model_id id {:order-by [[:id :desc]]})]
+        last-object       (t2/select-one-fn :object :model/Revision :model entity-name :model_id id {:order-by [[:id :desc]]})]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? serialized-object))
     ;; the last-object could have nested object, e.g: Dashboard can have multiple Card in it,
@@ -211,7 +206,7 @@
     ;; so to be safe, we'll just compare them as string
     (when-not (= (json/encode serialized-object)
                  (json/encode last-object))
-      (t2/insert! Revision
+      (t2/insert! :model/Revision
                   :model        entity-name
                   :model_id     id
                   :user_id      user-id
@@ -230,13 +225,13 @@
             [:entity      [:fn toucan-model?]]]]
   (let [{:keys [id user-id revision-id entity]} info
         model-name (name entity)
-        serialized-instance (t2/select-one-fn :object Revision :model model-name :model_id id :id revision-id)]
+        serialized-instance (t2/select-one-fn :object :model/Revision :model model-name :model_id id :id revision-id)]
     (t2/with-transaction [_conn]
       ;; Do the reversion of the object
       (revert-to-revision! entity id user-id serialized-instance)
       ;; Push a new revision to record this change
-      (let [last-revision (t2/select-one Revision :model model-name, :model_id id, {:order-by [[:id :desc]]})
-            new-revision  (first (t2/insert-returning-instances! Revision
+      (let [last-revision (t2/select-one :model/Revision :model model-name, :model_id id, {:order-by [[:id :desc]]})
+            new-revision  (first (t2/insert-returning-instances! :model/Revision
                                                                  :model        model-name
                                                                  :model_id     id
                                                                  :user_id      user-id

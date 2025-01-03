@@ -3,8 +3,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.events :as events]
-   [metabase.models
-    :refer [Card Dashboard DashboardCard Database Revision Segment Table]]
    [metabase.models.dashboard :as dashboard]
    [metabase.test :as mt]
    [toucan2.core :as t2]
@@ -59,7 +57,7 @@
 
 (deftest card-create-test
   (testing :event/card-create
-    (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)]
+    (t2.with-temp/with-temp [:model/Card {card-id :id, :as card} (card-properties)]
       (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)})
       (is (=? {:model        "Card"
                :model_id     card-id
@@ -67,13 +65,13 @@
                :object       (card->revision-object card)
                :is_reversion false
                :is_creation  true}
-              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+              (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                              :model       "Card"
                              :model_id    card-id))))))
 
 (deftest card-update-test
   (testing :event/card-update
-    (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)]
+    (t2.with-temp/with-temp [:model/Card {card-id :id, :as card} (card-properties)]
       (events/publish-event! :event/card-update {:object card :user-id (mt/user->id :crowberto)})
       (is (=? {:model        "Card"
                :model_id     card-id
@@ -81,18 +79,18 @@
                :object       (card->revision-object card)
                :is_reversion false
                :is_creation  false}
-              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+              (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                              :model       "Card"
                              :model_id    card-id))))))
 
 (deftest card-update-shoud-not-contains-public-info-test
   (testing :event/card-update
-    (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)]
+    (t2.with-temp/with-temp [:model/Card {card-id :id, :as card} (card-properties)]
       (events/publish-event! :event/card-update {:object card :user-id (mt/user->id :crowberto)})
       ;; we don't want the public_uuid and made_public_by_id to be recorded in a revision
       ;; otherwise revert a card to earlier revision might toggle the public sharing settings
       (is (empty? (set/intersection #{:public_uuid :made_public_by_id}
-                                    (->> (t2/select-one-fn :object Revision
+                                    (->> (t2/select-one-fn :object :model/Revision
                                                            :model       "Card"
                                                            :model_id    card-id)
                                          keys set)))))))
@@ -100,7 +98,7 @@
 (deftest dashboard-create-test
   (testing :event/dashboard-create
     (mt/with-test-user :rasta
-      (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
+      (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id, :as dashboard}]
         (events/publish-event! :event/dashboard-create {:object dashboard :user-id (mt/user->id :rasta)})
         (is (= {:model        "Dashboard"
                 :model_id     dashboard-id
@@ -108,14 +106,14 @@
                 :object       (assoc (dashboard->revision-object dashboard) :cards [])
                 :is_reversion false
                 :is_creation  true}
-               (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+               (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                               :model "Dashboard"
                               :model_id dashboard-id)))))))
 
 (deftest dashboard-update-test
   (testing :event/dashboard-update
     (mt/with-test-user :rasta
-      (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
+      (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id, :as dashboard}]
         (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
         (is (= {:model        "Dashboard"
                 :model_id     dashboard-id
@@ -123,28 +121,28 @@
                 :object       (dashboard->revision-object dashboard)
                 :is_reversion false
                 :is_creation  false}
-               (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+               (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                               :model    "Dashboard"
                               :model_id dashboard-id)))))))
 
 (deftest dashboard-update-shoud-not-contains-public-info-test
   (testing :event/dashboard-update
     (mt/with-test-user :rasta
-      (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
+      (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id, :as dashboard}]
         (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
 
        ;; we don't want the public_uuid and made_public_by_id to be recorded in a revision
        ;; otherwise revert a card to earlier revision might toggle the public sharing settings
         (is (empty? (set/intersection #{:public_uuid :made_public_by_id}
-                                      (->> (t2/select-one-fn :object Revision
+                                      (->> (t2/select-one-fn :object :model/Revision
                                                              :model       "Dashboard"
                                                              :model_id    dashboard-id)
                                            keys set))))))))
 (deftest dashboard-add-cards-test
   (testing ":event/dashboard-update with adding dashcards"
-    (t2.with-temp/with-temp [Dashboard     {dashboard-id :id, :as dashboard} {}
-                             Card          {card-id :id}                     (card-properties)
-                             DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
+    (t2.with-temp/with-temp [:model/Dashboard     {dashboard-id :id, :as dashboard} {}
+                             :model/Card          {card-id :id}                     (card-properties)
+                             :model/DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
       (events/publish-event! :event/dashboard-update {:object  dashboard
                                                       :user-id (mt/user->id :rasta)})
       (is (= {:model        "Dashboard"
@@ -154,16 +152,16 @@
                                    :cards [(assoc (apply dissoc dashcard @#'dashboard/excluded-columns-for-dashcard-revision) :series [])])
               :is_reversion false
               :is_creation  false}
-             (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+             (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                             :model    "Dashboard"
                             :model_id dashboard-id))))))
 
 (deftest dashboard-remove-cards-test
   (testing ":event/dashboard-update with removing dashcards"
-    (t2.with-temp/with-temp [Dashboard     {dashboard-id :id, :as dashboard} {}
-                             Card          {card-id :id}                     (card-properties)
-                             DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
-      (t2/delete! (t2/table-name DashboardCard), :id (:id dashcard))
+    (t2.with-temp/with-temp [:model/Dashboard     {dashboard-id :id, :as dashboard} {}
+                             :model/Card          {card-id :id}                     (card-properties)
+                             :model/DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
+      (t2/delete! (t2/table-name :model/DashboardCard), :id (:id dashcard))
       (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
@@ -171,16 +169,16 @@
               :object       (assoc (dashboard->revision-object dashboard) :cards [])
               :is_reversion false
               :is_creation  false}
-             (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+             (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                             :model    "Dashboard"
                             :model_id dashboard-id))))))
 
 (deftest dashboard-reposition-cards-test
   (testing ":event/dashboard-update with repositioning dashcards"
-    (t2.with-temp/with-temp [Dashboard     {dashboard-id :id, :as dashboard} {}
-                             Card          {card-id :id}                     (card-properties)
-                             DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
-      (t2/update! DashboardCard (:id dashcard) {:size_x 3})
+    (t2.with-temp/with-temp [:model/Dashboard     {dashboard-id :id, :as dashboard} {}
+                             :model/Card          {card-id :id}                     (card-properties)
+                             :model/DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
+      (t2/update! :model/DashboardCard (:id dashcard) {:size_x 3})
       (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :crowberto)})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
@@ -199,7 +197,7 @@
                                                                                    :dashboard_id           dashboard-id}])
               :is_reversion false
               :is_creation  false}
-             (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+             (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                             :model    "Dashboard"
                             :model_id dashboard-id))))))
 
@@ -221,7 +219,7 @@
                                            :dashboard_id dashboard-id}])
               :is_reversion false
               :is_creation  false}
-             (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+             (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                             :model    "Dashboard"
                             :model_id dashboard-id))))))
 
@@ -244,7 +242,7 @@
                                            :dashboard_id dashboard-id}])
               :is_reversion false
               :is_creation  false}
-             (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+             (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                             :model    "Dashboard"
                             :model_id dashboard-id))))))
 
@@ -263,18 +261,18 @@
               :object       (dashboard->revision-object dashboard)
               :is_reversion false
               :is_creation  false}
-             (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+             (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                             :model    "Dashboard"
                             :model_id dashboard-id))))))
 
 (deftest segment-create-test
   (testing :event/segment-create
-    (t2.with-temp/with-temp [Database {database-id :id} {}
-                             Table    {:keys [id]}      {:db_id database-id}
-                             Segment  segment           {:table_id   id
-                                                         :definition {:a "b"}}]
+    (t2.with-temp/with-temp [:model/Database {database-id :id} {}
+                             :model/Table    {:keys [id]}      {:db_id database-id}
+                             :model/Segment  segment           {:table_id   id
+                                                                :definition {:a "b"}}]
       (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :rasta)})
-      (let [revision (-> (t2/select-one Revision :model "Segment", :model_id (:id segment))
+      (let [revision (-> (t2/select-one :model/Revision :model "Segment", :model_id (:id segment))
                          (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
         (is (= {:model        "Segment"
                 :user_id      (mt/user->id :rasta)
@@ -294,10 +292,10 @@
 
 (deftest segment-update-test
   (testing :event/segment-update
-    (t2.with-temp/with-temp [Database {database-id :id} {}
-                             Table    {:keys [id]}      {:db_id database-id}
-                             Segment  segment           {:table_id   id
-                                                         :definition {:a "b"}}]
+    (t2.with-temp/with-temp [:model/Database {database-id :id} {}
+                             :model/Table    {:keys [id]}      {:db_id database-id}
+                             :model/Segment  segment           {:table_id   id
+                                                                :definition {:a "b"}}]
       (events/publish-event! :event/segment-update
                              (assoc {:object segment}
                                     :revision-message "updated"
@@ -316,18 +314,18 @@
               :is_reversion false
               :is_creation  false
               :message      "updated"}
-             (update (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
+             (update (t2/select-one [:model/Revision :model :user_id :object :is_reversion :is_creation :message]
                                     :model "Segment"
                                     :model_id (:id segment))
                      :object dissoc :id :table_id))))))
 
 (deftest segment-delete-test
   (testing :event/segment-delete
-    (t2.with-temp/with-temp [Database {database-id :id} {}
-                             Table    {:keys [id]}      {:db_id database-id}
-                             Segment  segment           {:table_id   id
-                                                         :definition {:a "b"}
-                                                         :archived   true}]
+    (t2.with-temp/with-temp [:model/Database {database-id :id} {}
+                             :model/Table    {:keys [id]}      {:db_id database-id}
+                             :model/Segment  segment           {:table_id   id
+                                                                :definition {:a "b"}
+                                                                :archived   true}]
       (events/publish-event! :event/segment-delete {:object segment :user-id (mt/user->id :rasta)})
       (is (= {:model        "Segment"
               :user_id      (mt/user->id :rasta)
@@ -343,7 +341,7 @@
               :is_reversion false
               :is_creation  false
               :message      nil}
-             (update (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
+             (update (t2/select-one [:model/Revision :model :user_id :object :is_reversion :is_creation :message]
                                     :model "Segment"
                                     :model_id (:id segment))
                      :object dissoc :id :table_id))))))

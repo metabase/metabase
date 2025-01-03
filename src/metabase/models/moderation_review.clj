@@ -30,11 +30,6 @@
      [:status              {:optional true} Statuses]
      [:text                {:optional true} [:maybe :string]]]))
 
-(def ModerationReview
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/ModerationReview)
-
 (methodical/defmethod t2/table-name :model/ModerationReview [_model] :moderation_review)
 
 (doto :model/ModerationReview
@@ -69,7 +64,7 @@
                                     ;; and insert a new one to arrive at 10 again, our invariant.
                                     :order-by [[:id :desc]]}))]
     (when (seq ids)
-      (t2/delete! ModerationReview :id [:in ids]))))
+      (t2/delete! :model/ModerationReview :id [:in ids]))))
 
 (mu/defn create-review!
   "Create a new ModerationReview"
@@ -82,7 +77,7 @@
     [:text                {:optional true} [:maybe :string]]]]
   (t2/with-transaction [_conn]
     (delete-extra-reviews! (:moderated_item_id params) (:moderated_item_type params))
-    (t2/update! ModerationReview {:moderated_item_id   (:moderated_item_id params)
-                                  :moderated_item_type (:moderated_item_type params)}
+    (t2/update! :model/ModerationReview {:moderated_item_id   (:moderated_item_id params)
+                                         :moderated_item_type (:moderated_item_type params)}
                 {:most_recent false})
-    (first (t2/insert-returning-instances! ModerationReview (assoc params :most_recent true)))))
+    (first (t2/insert-returning-instances! :model/ModerationReview (assoc params :most_recent true)))))

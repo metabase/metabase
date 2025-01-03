@@ -7,14 +7,10 @@
    [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.core :as mbc]
-   [metabase.models.collection :refer [Collection]]
    [metabase.models.collection.graph :refer [update-graph!]]
    [metabase.models.collection.graph-test :refer [graph]]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :refer [PermissionsGroup]]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -99,10 +95,10 @@
 
 (deftest analytics-permissions-test
   (mt/with-premium-features #{:audit-app}
-    (mt/with-temp [PermissionsGroup {group-id :id}    {}
-                   Database         {database-id :id} {}
-                   Table            view-table        {:db_id database-id :name "v_users"}
-                   Collection       collection        {}]
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
+                   :model/Database         {database-id :id} {}
+                   :model/Table            view-table        {:db_id database-id :name "v_users"}
+                   :model/Collection       collection        {}]
       (with-redefs [audit/audit-db-id                 database-id
                     audit/default-audit-collection (constantly collection)]
         (testing "Updating permissions for the audit collection also updates audit DB permissions"

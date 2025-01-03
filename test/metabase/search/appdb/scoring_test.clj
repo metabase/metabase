@@ -193,7 +193,7 @@
                ;; Flake alert - we need to insert the outlier so that it is not chosen over the card it ties with.
                 ;; NOTE: we have brought in the outlier *a lot* to compensate for h2 not calculating a real percentile.
                 outlier-card-id (t2/insert-returning-pk! :model/Card (card-with-view 88 #_100000))
-                _               (t2/insert! :model/Card (concat (repeat 20 (card-with-view 0))
+                _               (t2/insert! :model/Card (concat (repeatedly 20 #(card-with-view 0))
                                                                 (for [i (range 1 81)]
                                                                   (card-with-view i))))
                 _               (search.ingestion/consume!

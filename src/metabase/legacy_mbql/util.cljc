@@ -147,6 +147,29 @@
    new-clause   :- [:maybe mbql.s/Filter]]
   (update outer-query :query add-filter-clause-to-inner-query stage-number new-clause))
 
+(defn- map-stages*
+  "Helper for [[map-stages]]; call that instead."
+  [f {:keys [source-query] :as inner-query}]
+  (if source-query
+    ;; Recursive case: Call `map-stages*` on the `:source-query`, then `f` on this stage. Increment the stage count.
+    (let [[new-source-query stage-count] (map-stages* f source-query)]
+      [(-> (assoc inner-query :source-query new-source-query)
+           (f stage-count))
+       (inc stage-count)])
+    ;; Base case: No `:source-query`, so just call `f` and return a `stage-count` of 1.
+    [(f inner-query 0) 1]))
+
+(defn map-stages
+  "Given a function `(f inner-query stage-number)`, recursively calls it on the stages of this (legacy MBQL)
+  `inner-query`.
+
+  The calls run postorder, that is the earliest/innermost stage first.
+
+  Returns the updated `inner-query`."
+  [f inner-query]
+  (let [[updated-inner-query _stage-count] (map-stages* f inner-query)]
+    updated-inner-query))
+
 (defn desugar-inside
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."
   [m]

@@ -98,11 +98,6 @@
 ;;; |                                             Entity & Lifecycle                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def FieldValues
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/FieldValues)
-
 (methodical/defmethod t2/table-name :model/FieldValues [_model] :metabase_fieldvalues)
 
 (doto :model/FieldValues
@@ -151,13 +146,13 @@
 (defn clear-advanced-field-values-for-field!
   "Remove all advanced FieldValues for a `field-or-id`."
   [field-or-id]
-  (t2/delete! FieldValues :field_id (u/the-id field-or-id)
+  (t2/delete! :model/FieldValues :field_id (u/the-id field-or-id)
               :type     [:in advanced-field-values-types]))
 
 (defn clear-field-values-for-field!
   "Remove all FieldValues for a `field-or-id`, including the advanced fieldvalues."
   [field-or-id]
-  (t2/delete! FieldValues :field_id (u/the-id field-or-id)))
+  (t2/delete! :model/FieldValues :field_id (u/the-id field-or-id)))
 
 (t2/define-before-insert :model/FieldValues
   [{:keys [field_id] :as field-values}]
@@ -482,7 +477,7 @@
       (and field-values unwrapped-values)
       (do
         (log/debugf "Storing updated FieldValues for Field %s..." field-name)
-        (t2/update! FieldValues (u/the-id field-values)
+        (t2/update! :model/FieldValues (u/the-id field-values)
                     (m/remove-vals nil?
                                    {:has_more_values       has_more_values
                                     :values                values
@@ -493,7 +488,7 @@
       unwrapped-values
       (do
         (log/debugf "Storing FieldValues for Field %s..." field-name)
-        (mdb.query/select-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
+        (mdb.query/select-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
                                      (constantly {:has_more_values       has_more_values
                                                   :values                values
                                                   :human_readable_values human-readable-values}))
@@ -523,10 +518,10 @@
 
           (do
             (when existing
-              (t2/update! FieldValues (:id existing) {:last_used_at :%now}))
+              (t2/update! :model/FieldValues (:id existing) {:last_used_at :%now}))
             (get-latest-full-field-values field-id)))
         (do
-          (t2/update! FieldValues (:id existing) {:last_used_at :%now})
+          (t2/update! :model/FieldValues (:id existing) {:last_used_at :%now})
           existing)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

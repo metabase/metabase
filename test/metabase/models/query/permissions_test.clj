@@ -7,14 +7,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.query.permissions :as query-perms]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -29,19 +24,19 @@
   (assoc (card) :collection_id (u/the-id collection-or-id)))
 
 (deftest ^:parallel card-in-collection-test
-  (t2.with-temp/with-temp [Collection collection]
+  (t2.with-temp/with-temp [:model/Collection collection]
     (testing "Shouldn't be able to read a Card not in Collection without permissions"
-      (t2.with-temp/with-temp [Card card (card)]
+      (t2.with-temp/with-temp [:model/Card card (card)]
         (binding [*current-user-permissions-set* (delay #{})]
           (is (not (mi/can-read? card)))))
 
       (testing "...or one in a Collection either!"
-        (t2.with-temp/with-temp [Card card (card-in-collection collection)]
+        (t2.with-temp/with-temp [:model/Card card (card-in-collection collection)]
           (binding [*current-user-permissions-set* (delay #{})]
             (is (not (mi/can-read? card)))))))
 
     (testing "*should* be allowed to read a Card not in a Collection if you have Root collection perms"
-      (t2.with-temp/with-temp [Card card (card)]
+      (t2.with-temp/with-temp [:model/Card card (card)]
         (binding [*current-user-permissions-set* (delay #{"/collection/root/read/"})]
           (is (mi/can-read? card)))
 
@@ -50,7 +45,7 @@
             (is (not (mi/can-read? card)))))))
 
     (testing "should be allowed to *read* a Card in a Collection if you have read perms for that Collection"
-      (t2.with-temp/with-temp [Card card (card-in-collection collection)]
+      (t2.with-temp/with-temp [:model/Card card (card-in-collection collection)]
         (binding [*current-user-permissions-set* (delay #{(perms/collection-read-path collection)})]
           (is (mi/can-read? card)))
 
@@ -59,7 +54,7 @@
             (is (not (mi/can-read? card)))))))
 
     (testing "to *write* a Card not in a Collection you need Root Collection Write Perms"
-      (t2.with-temp/with-temp [Card card (card)]
+      (t2.with-temp/with-temp [:model/Card card (card)]
         (binding [*current-user-permissions-set* (delay #{"/collection/root/"})]
           (is (mi/can-write? card)))
 
@@ -72,7 +67,7 @@
               (is (not (mi/can-write? card))))))))
 
     (testing "to *write* a Card *in* a Collection you need Collection Write Perms"
-      (t2.with-temp/with-temp [Card card (card-in-collection collection)]
+      (t2.with-temp/with-temp [:model/Card card (card-in-collection collection)]
         (binding [*current-user-permissions-set* (delay #{(perms/collection-readwrite-path collection)})]
           (is (mi/can-write? card)))
 
@@ -109,9 +104,9 @@
 
 (deftest mbql-query-test-2
   (testing "if current user is bound, we should ignore that for purposes of calculating query permissions"
-    (mt/with-temp [Database db    {}
-                   Table    table {:db_id (u/the-id db) :schema nil}
-                   Field    _     {:table_id (u/the-id table)}]
+    (mt/with-temp [:model/Database db    {}
+                   :model/Table    table {:db_id (u/the-id db) :schema nil}
+                   :model/Field    _     {:table_id (u/the-id table)}]
       (mt/with-no-data-perms-for-all-users!
         (binding [*current-user-permissions-set* (atom nil)
                   *current-user-id*              (mt/user->id :rasta)]
@@ -147,20 +142,20 @@
 
 (deftest ^:parallel nested-query-test
   (testing "if source card is *not* in a Collection, we require Root Collection read perms"
-    (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
-                                                        :type     :query
-                                                        :query    {:source-table (mt/id :venues)}}}]
+    (t2.with-temp/with-temp [:model/Card card {:dataset_query {:database (mt/id)
+                                                               :type     :query
+                                                               :query    {:source-table (mt/id :venues)}}}]
       (is (= {:paths #{"/collection/root/read/"}}
              (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
 
 (deftest ^:parallel nested-query-test-2
   (testing "if source Card *is* in a Collection, we require read perms for that Collection"
-    (mt/with-temp [Collection collection {}
-                   Card card {:collection_id (u/the-id collection)
-                              :dataset_query {:database (mt/id)
-                                              :type     :query
-                                              :query    {:source-table (mt/id :venues)}}}]
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card card {:collection_id (u/the-id collection)
+                                     :dataset_query {:database (mt/id)
+                                                     :type     :query
+                                                     :query    {:source-table (mt/id :venues)}}}]
       (is (= {:paths #{(perms/collection-read-path collection)}}
              (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
@@ -168,11 +163,11 @@
 (deftest ^:parallel nested-query-with-join-test
   (testing (str "If you run a query that uses a Card as its source query, and the source query has a JOIN, then you "
                 "should still only need Permissions for the Collection that Card is in.")
-    (t2.with-temp/with-temp [Card card {:dataset_query
-                                        {:database (mt/id)
-                                         :type     :query
-                                         :query    {:source-table (mt/id :checkins)
-                                                    :order-by     [[:asc [:field (mt/id :users :id) {:source-field (mt/id :checkins :user_id)}]]]}}}]
+    (t2.with-temp/with-temp [:model/Card card {:dataset_query
+                                               {:database (mt/id)
+                                                :type     :query
+                                                :query    {:source-table (mt/id :checkins)
+                                                           :order-by     [[:asc [:field (mt/id :users :id) {:source-field (mt/id :checkins :user_id)}]]]}}}]
       (is (= {:paths #{"/collection/root/read/"}}
              (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
@@ -180,9 +175,9 @@
 (deftest ^:parallel nested-native-query-test
   (testing (str "doesn't matter if it's a NATIVE query as the source; you should still just need read perms for the "
                 "Card's collection")
-    (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
-                                                        :type     :native
-                                                        :native   {:query "SELECT * FROM CHECKINS"}}}]
+    (t2.with-temp/with-temp [:model/Card card {:dataset_query {:database (mt/id)
+                                                               :type     :native
+                                                               :native   {:query "SELECT * FROM CHECKINS"}}}]
       (is (= {:paths #{"/collection/root/read/"}}
              (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
@@ -207,10 +202,10 @@
 
 (deftest ^:parallel joins-test
   (testing "Are permissions calculated correctly for JOINs?"
-    (t2.with-temp/with-temp [Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                                 (mt/mbql-query checkins
-                                                   {:aggregation [[:sum $id]]
-                                                    :breakout    [$user_id]}))]
+    (t2.with-temp/with-temp [:model/Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                                        (mt/mbql-query checkins
+                                                          {:aggregation [[:sum $id]]
+                                                           :breakout    [$user_id]}))]
       (is (= {:card-ids             #{card-id}
               :perms/view-data      {(mt/id :users) :unrestricted
                                      (mt/id :checkins) :unrestricted}

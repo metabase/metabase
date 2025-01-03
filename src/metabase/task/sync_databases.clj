@@ -15,7 +15,6 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as sync.field-values]
@@ -71,9 +70,9 @@
 (defn- sync-and-analyze-database*!
   [database-id]
   (log/infof "Starting sync task for Database %d." database-id)
-  (when-let [database (or (t2/select-one Database :id database-id)
+  (when-let [database (or (t2/select-one :model/Database :id database-id)
                           (do
-                            (unschedule-tasks-for-db! (mi/instance Database {:id database-id}))
+                            (unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
                             (log/warnf "Cannot sync Database %d: Database does not exist." database-id)))]
     (if-let [ex (try
                   ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
@@ -116,9 +115,9 @@
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
     (log/infof "Update Field values task triggered for Database %d." database-id)
-    (when-let [database (or (t2/select-one Database :id database-id)
+    (when-let [database (or (t2/select-one :model/Database :id database-id)
                             (do
-                              (unschedule-tasks-for-db! (mi/instance Database {:id database-id}))
+                              (unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
                               (log/warnf "Cannot update Field values for Database %d: Database does not exist." database-id)))]
       (if (:is_full_sync database)
         (sync.field-values/update-field-values! database)
@@ -173,13 +172,13 @@
 
 (mu/defn- trigger-key :- (ms/InstanceOfClass TriggerKey)
   "Return an appropriate string key for the trigger for `task-info` and `database-or-id`."
-  ^TriggerKey [database  :- (ms/InstanceOf Database)
+  ^TriggerKey [database  :- (ms/InstanceOf :model/Database)
                task-info :- TaskInfo]
   (triggers/key (format "metabase.task.%s.trigger.%d" (name (:key task-info)) (u/the-id database))))
 
 (mu/defn- cron-schedule :- [:maybe u.cron/CronScheduleString]
   "Fetch the appropriate cron schedule string for `database` and `task-info`."
-  [database  :- (ms/InstanceOf Database)
+  [database  :- (ms/InstanceOf :model/Database)
    task-info :- TaskInfo]
   (get database (:db-schedule-column task-info)))
 
@@ -190,7 +189,7 @@
 
 (mu/defn- trigger-description :- :string
   "Return an appropriate description string for a job/trigger for Database described by `task-info`."
-  [database  :- (ms/InstanceOf Database)
+  [database  :- (ms/InstanceOf :model/Database)
    task-info :- TaskInfo]
   (format "%s Database %d" (name (:key task-info)) (u/the-id database)))
 
@@ -205,7 +204,7 @@
 
 (mu/defn- delete-trigger!
   "Cancel a single sync trigger for `database-or-id` and `task-info`."
-  [database  :- (ms/InstanceOf Database)
+  [database  :- (ms/InstanceOf :model/Database)
    task-info :- TaskInfo]
   (let [trigger-key (trigger-key database task-info)]
     (log/debug (u/format-color 'red
@@ -214,7 +213,7 @@
 
 (mu/defn unschedule-tasks-for-db!
   "Cancel *all* scheduled sync and FieldValues caching tasks for `database-or-id`."
-  [database :- (ms/InstanceOf Database)]
+  [database :- (ms/InstanceOf :model/Database)]
   (doseq [task all-tasks]
     (delete-trigger! database task)))
 
@@ -237,7 +236,7 @@
 
 (mu/defn- trigger :- [:maybe (ms/InstanceOfClass CronTrigger)]
   "Build a Quartz Trigger for `database` and `task-info` if a schedule exists."
-  ^CronTrigger [database  :- (ms/InstanceOf Database)
+  ^CronTrigger [database  :- (ms/InstanceOf :model/Database)
                 task-info :- TaskInfo]
   (when-let [task-schedule (cron-schedule database task-info)]
     (triggers/build
@@ -300,7 +299,7 @@
 ;; called [[from metabase.models.database/schedule-tasks!]] from the post-insert and the pre-update
 (mu/defn check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
-  [database :- (ms/InstanceOf Database)]
+  [database :- (ms/InstanceOf :model/Database)]
   (if (= audit/audit-db-id (:id database))
     (log/info (u/format-color :red "Not scheduling tasks for audit database"))
     (doseq [task all-tasks]
@@ -325,7 +324,7 @@
 (defn- randomize-db-schedules-if-needed!
   []
   ;; todo: when we can use json operations on h2 we can check details in the query and drop the transducer
-  (transduce (comp (map (partial mi/do-after-select Database))
+  (transduce (comp (map (partial mi/do-after-select :model/Database))
                    (filter metabase-controls-schedule?))
              (fn
                ([] 0)
@@ -334,7 +333,7 @@
                 counter)
                ([counter db]
                 (try
-                  (t2/update! Database (u/the-id db)
+                  (t2/update! :model/Database (u/the-id db)
                               (sync.schedules/schedule-map->cron-strings
                                (sync.schedules/default-randomized-schedule)))
                   (inc counter)

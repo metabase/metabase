@@ -4,8 +4,6 @@
    [medley.core :as m]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.table :refer [Table]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -28,7 +26,7 @@
 
 (def SourceEntity
   "A source for a card. Can be either a table or another card."
-  [:or (ms/InstanceOf Table) (ms/InstanceOf Card)])
+  [:or (ms/InstanceOf :model/Table) (ms/InstanceOf :model/Card)])
 
 (def Bindings
   "Top-level lexical context mapping source names to their corresponding entity and constituent dimensions. See also

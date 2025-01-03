@@ -14,9 +14,8 @@
    [metabase.integrations.slack :as slack]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.session :refer [Session]]
    [metabase.models.setting.cache :as setting.cache]
-   [metabase.models.user :as user :refer [User]]
+   [metabase.models.user :as user]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.request.core :as request]
@@ -54,7 +53,7 @@
             (tru "The /api/setup route can only be used to create the first user, however a user currently exists.")
             {:status-code 403})))
   (let [session-id (str (random-uuid))
-        new-user   (first (t2/insert-returning-instances! User
+        new-user   (first (t2/insert-returning-instances! :model/User
                                                           :email        email
                                                           :first_name   first-name
                                                           :last_name    last-name
@@ -64,7 +63,7 @@
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (user/set-password! user-id password)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
-    (let [session (first (t2/insert-returning-instances! Session
+    (let [session (first (t2/insert-returning-instances! :model/Session
                                                          :id      session-id
                                                          :user_id user-id))]
       ;; return user ID, session ID, and the Session object itself

@@ -9,7 +9,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.models.query :as query :refer [Query]]
+   [metabase.models.query :as query]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache :as cache]
@@ -347,7 +347,7 @@
                             :cache-strategy (assoc (ttl-strategy) :multiplier 5000))
               q-hash (qp.util/query-hash query)]
           (with-mock-cache! [save-chan]
-            (t2/delete! Query :query_hash q-hash)
+            (t2/delete! :model/Query :query_hash q-hash)
             (is (not (:cached (qp/process-query (qp/userland-query query)))))
             (a/alts!! [save-chan (a/timeout 200)]) ;; wait-for-result closes the channel
             (u/deref-with-timeout called-promise 500)

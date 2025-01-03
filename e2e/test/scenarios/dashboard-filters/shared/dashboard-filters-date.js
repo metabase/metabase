@@ -1,7 +1,7 @@
 export const DASHBOARD_DATE_FILTERS = {
   "Month and Year": {
     value: {
-      month: "November",
+      month: "Nov",
       year: "2022",
     },
     representativeResult: "85.88",
@@ -28,6 +28,6 @@ export const DASHBOARD_DATE_FILTERS = {
     value: {
       timeBucket: "years",
     },
-    representativeResult: "51.19", // this may change every year
+    representativeResult: "67.33", // this may change every year
   },
 };

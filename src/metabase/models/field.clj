@@ -9,8 +9,7 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
-   [metabase.models.dimension :refer [Dimension]]
-   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.models.field-values :as field-values]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -38,11 +37,6 @@
     :retired})      ; For fields that no longer exist in the physical db.  automatically set by Metabase.  QP should error if encountered in a query.
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
-
-(def Field
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]]; now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the Field symbol in our codebase."
-  :model/Field)
 
 (methodical/defmethod t2/table-name :model/Field [_model] :metabase_field)
 
@@ -190,7 +184,7 @@
 (defn values
   "Return the `FieldValues` associated with this `field`."
   [{:keys [id]}]
-  (t2/select [FieldValues :field_id :values], :field_id id :type :full))
+  (t2/select [:model/FieldValues :field_id :values], :field_id id :type :full))
 
 (mu/defn nested-field-names->field-id :- [:maybe ms/PositiveInt]
   "Recusively find the field id for a nested field name, return nil if not found.
@@ -231,7 +225,7 @@
   ;; with Field. See the doc in [[metabase.models.field-values]] for more.
   ;; We filter down to only :type =:full values, as they contain configured labels which must be preserved. The Advanced
   ;; FieldValues can then be regenerated without loss given these Full entities.
-  (let [id->field-values (select-field-id->instance fields FieldValues :type :full)]
+  (let [id->field-values (select-field-id->instance fields :model/FieldValues :type :full)]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
@@ -240,7 +234,7 @@
   "Efficiently hydrate the `FieldValues` for visibility_type normal `fields`."
   [fields]
   (let [id->field-values (select-field-id->instance (filter field-values/field-should-have-field-values? fields)
-                                                    [FieldValues :id :human_readable_values :values :field_id]
+                                                    [:model/FieldValues :id :human_readable_values :values :field_id]
                                                     :type :full)]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
@@ -257,7 +251,7 @@
   vector with the matching Dimension, or an empty vector. At least the response shape is consistent now. Maybe in the
   future we can change this key to `:dimension` and return it that way. -- Cam"
   [fields]
-  (let [id->dimensions (select-field-id->instance fields Dimension)]
+  (let [id->dimensions (select-field-id->instance fields :model/Dimension)]
     (for [field fields
           :let  [dimension (get id->dimensions (:id field))]]
       (assoc field :dimensions (if dimension [dimension] [])))))
@@ -297,7 +291,7 @@
                                                (:fk_target_field_id field))]
                                 (:fk_target_field_id field)))
         id->target-field (m/index-by :id (when (seq target-field-ids)
-                                           (readable-fields-only (t2/select Field :id [:in target-field-ids]))))]
+                                           (readable-fields-only (t2/select :model/Field :id [:in target-field-ids]))))]
     (for [field fields
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
@@ -307,7 +301,7 @@
   [field]
   (let [target-field-id (when (isa? (:semantic_type field) :type/FK)
                           (:fk_target_field_id field))
-        target-field    (when-let [target-field (and target-field-id (t2/select-one Field :id target-field-id))]
+        target-field    (when-let [target-field (and target-field-id (t2/select-one :model/Field :id target-field-id))]
                           (when (mi/can-write? (t2/hydrate target-field :table))
                             target-field))]
     (assoc field :target target-field)))
@@ -315,7 +309,7 @@
 (defn qualified-name-components
   "Return the pieces that represent a path to `field`, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
-  (conj (vec (if-let [parent (t2/select-one Field :id parent-id)]
+  (conj (vec (if-let [parent (t2/select-one :model/Field :id parent-id)]
                (qualified-name-components parent)
                (let [{table-name :name, schema :schema} (t2/select-one ['Table :name :schema], :id table-id)]
                  (conj (when schema
@@ -333,7 +327,7 @@
   (mdb/memoize-for-application-db
    (fn [field-id]
      {:pre [(integer? field-id)]}
-     (t2/select-one-fn :table_id Field, :id field-id))))
+     (t2/select-one-fn :table_id :model/Field, :id field-id))))
 
 (defn field-id->database-id
   "Return the ID of the Database this Field belongs to."

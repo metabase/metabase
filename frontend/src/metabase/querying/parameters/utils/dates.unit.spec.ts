@@ -1,10 +1,10 @@
-import type { DatePickerValue } from "metabase/querying/filters/types";
+import type { DateFilterValue } from "metabase/querying/filters/types";
 
 import { deserializeDateFilter, serializeDateFilter } from "./dates";
 
 type TestCase = {
   text: string;
-  value: DatePickerValue;
+  value: DateFilterValue;
 };
 
 describe("serializeDateFilter", () => {
@@ -248,6 +248,22 @@ describe("serializeDateFilter", () => {
         values: [1, 2, 3, 4],
       },
     },
+    {
+      text: "2020-01",
+      value: {
+        type: "month",
+        year: 2020,
+        month: 1,
+      },
+    },
+    {
+      text: "2024-12",
+      value: {
+        type: "month",
+        year: 2024,
+        month: 12,
+      },
+    },
   ])("should serialize and deserialize $text", ({ text, value }) => {
     expect(serializeDateFilter(value)).toEqual(text);
     expect(deserializeDateFilter(text)).toEqual(value);
@@ -272,6 +288,7 @@ describe("serializeDateFilter", () => {
     "exclude-months-abc",
     "exclude-quarters-5",
     "exclude-quarters-abc",
+    "2024-ab",
   ])("should ignore invalid input %s", text => {
     expect(deserializeDateFilter(text)).toBeUndefined();
   });

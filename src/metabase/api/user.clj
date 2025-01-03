@@ -12,10 +12,8 @@
    [metabase.config :as config]
    [metabase.events :as events]
    [metabase.integrations.google :as google]
-   [metabase.models.collection :as collection :refer [Collection]]
-   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.models.login-history :refer [LoginHistory]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :as user]
@@ -96,7 +94,7 @@
       (let [{email :email} user-before-update
             new-collection-name (collection/format-personal-collection-name first_name last_name email :site)]
         (when-not (= new-collection-name (:name collection))
-          (t2/update! Collection (:id collection) {:name new-collection-name}))))))
+          (t2/update! :model/Collection (:id collection) {:name new-collection-name}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
@@ -313,7 +311,7 @@
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
   [{:keys [id] :as user}]
   (let [ts (or
-            (:timestamp (t2/select-one [LoginHistory :timestamp] :user_id id
+            (:timestamp (t2/select-one [:model/LoginHistory :timestamp] :user_id id
                                        {:order-by [[:timestamp :asc]]}))
             (t/offset-date-time))]
     (assoc user :first_login ts)))
@@ -323,7 +321,7 @@
   [user]
   (let [enabled? (public-settings/custom-homepage)
         id       (public-settings/custom-homepage-dashboard)
-        dash     (t2/select-one Dashboard :id id)
+        dash     (t2/select-one :model/Dashboard :id id)
         valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? dash))]
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id}))))

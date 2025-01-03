@@ -4,11 +4,6 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(def CollectionPermissionGraphRevision
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all these symbols in our codebase."
-  :model/CollectionPermissionGraphRevision)
-
 (methodical/defmethod t2/table-name :model/CollectionPermissionGraphRevision [_model] :collection_permission_graph_revision)
 
 (doto :model/CollectionPermissionGraphRevision

@@ -17,7 +17,7 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
       day: {
         width: rem(40),
         height: rem(40),
-        color: theme.fn.themeColor("text-dark"),
+        color: "var(--mb-color-text-primary)",
         fontSize: theme.fontSizes.md,
         lineHeight: rem(24),
         borderRadius: theme.radius.xs,
@@ -29,7 +29,7 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
           color: theme.fn.themeColor("bg-dark"),
         },
         "&[data-weekend]": {
-          color: theme.fn.themeColor("text-dark"),
+          color: "var(--mb-color-text-primary)",
         },
         "&[data-outside]": {
           color: theme.fn.themeColor("bg-dark"),

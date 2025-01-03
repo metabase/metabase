@@ -1,8 +1,6 @@
 (ns metabase.test.sync
   (:require
    [clojure.test :refer :all]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.task-history :refer [TaskHistory]]
    [metabase.sync :as sync]
    [metabase.test.data :as data]
    [toucan2.core :as t2]))
@@ -12,8 +10,8 @@
   []
   (data/with-temp-copy-of-db
     ;; `sync-database!` does both sync an analysis steps
-    (sync/sync-database! (t2/select-one Database :id (data/id)))
-    (t2/count TaskHistory :db_id (data/id))))
+    (sync/sync-database! (t2/select-one :model/Database :id (data/id)))
+    (t2/count :model/TaskHistory :db_id (data/id))))
 
 (defn crash-fn
   "A function that always crashes"

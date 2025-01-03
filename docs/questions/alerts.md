@@ -23,9 +23,15 @@ To start using alerts, an administrator will need to have set up at least one of
 
 ## Creating an alert
 
-Save your question, click on the sharing icon in the top-right of the screen, and select **Create alert**.
+To create an alert:
+
+1. Save your question
+2. Click on the sharing icon in the top-right of the screen
+3. Select **Create alert**.
 
 ![Get alerts](./images/get-alerts-about-this.png)
+
+Available types of alerts will depend on the visualization you selected.
 
 ## Types of alerts
 
@@ -37,7 +43,7 @@ There are three kinds of things you can get alerted about in Metabase:
 
 ## Goal line alerts
 
-_Requires a goal line and a time series._
+_Requires a [bar, line, or area chart](./visualizations/line-bar-and-area-charts.md) with a goal line._
 
 Goal line alerts are useful when you're doing things like tracking daily active users (DAU) and you want to know when you reach a certain number of DAU, or when you're tracking orders per week and you want to know whenever the number of orders ever goes below a certain threshold.
 
@@ -57,11 +63,21 @@ Click Done, and your alert will be all set up! You'll get an email confirmation,
 
 ## Progress bar alerts
 
-_Requires a goal line and the progress bar visualization._
+_Requires the [progress bar visualization](./visualizations/progress-bar.md)._
 
-Setting up this kind of alert is really similar to setting up a goal line alert. First, create a question that returns a single number as its result, then choose the Progress Bar chart type from the Visualization menu. Open the settings menu to select a goal value, click Done, then save your question.
+If you want to set up an alert when a single number reaches a goal, you can use a progress bar visualization.
 
-Next, click the bell icon in the bottom-right and you'll see that same screen of options for when you want to get alerts about this progress bar.
+1. Create a question that returns a single number as its result,
+2. Choose the Progress Bar chart type,
+3. In Visualization settings, select a goal value
+4. Save your question,
+5. Create an alert by clicking on the Sharing icon in top right
+
+You'll see the options for when you want to get alerts about this progress bar:
+
+- Whether to alert when the progress bar reaches the goal line or below the goal,
+- Whether to alert only the first time the progress bar reaches the goal line, or every time
+- How often you want Metabase to check to see if the goal has been reached.
 
 ## Results alerts
 
@@ -75,17 +91,20 @@ Save the question, create an alert, and select how often you want Metabase to ch
 
 ## Editing and deleting alerts
 
-Admins get special privileges with alerts.
+To edit or delete alerts on a question, click on the Sharing icon in the top right corner.
 
-### Admins
-
-- Admins can edit and delete any alert. This can't be undone, so be careful!
-- Admins can add or remove recipients on any alert, even ones that they did not create themselves.
+You'll be able to edit alerts that you set up. Admins get additional special privileges with alerts.
 
 ### Everyone
 
 - Everyone can edit alerts that they've personally set up (but not alerts set up by other people).
 - Everyone can view and unsubscribe from all alerts they receive by clicking on the **gear** icon in the upper right and navigating to **Account settings** > **Notifications**.
+
+### Admins
+
+- Admins can edit and delete any alert. This can't be undone, so be careful!
+- Admins can add or remove recipients on any alert, even ones that they did not create themselves.
+- Admins can remove all alerts created by a Metabase user and unsubscribe that user from all other alerts from the [People menu in Admin settings](../people-and-groups/managing#unsubscribe-from-all-subscriptions--alerts).
 
 ## Avoid changing the name of the alerted channel in Slack
 

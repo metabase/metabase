@@ -6,8 +6,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -54,7 +52,7 @@
     (testing "Make sure we correctly infer complex types in views (#8630, #9276, #12191, #12547, #10681)"
       (let [details (mt/dbdef->connection-details :sqlite :db {:database-name "views_test"})
             spec    (sql-jdbc.conn/connection-details->spec :sqlite details)]
-        (t2.with-temp/with-temp [Database {db-id :id :as database} {:engine :sqlite, :details (assoc details :dbname "views_test")}]
+        (t2.with-temp/with-temp [:model/Database {db-id :id :as database} {:engine :sqlite, :details (assoc details :dbname "views_test")}]
           (doseq [statement ["drop view if exists v_groupby_test;"
                              "drop table if exists groupby_test;"
                              "drop view if exists v_src;"
@@ -74,7 +72,7 @@
                              :base_type :type/Integer}
                             {:name      "time"
                              :base_type :type/Text}]}]
-                 (->> (t2/hydrate (t2/select Table :db_id db-id {:order-by [:name]}) :fields)
+                 (->> (t2/hydrate (t2/select :model/Table :db_id db-id {:order-by [:name]}) :fields)
                       (map table-fingerprint))))
           (doseq [statement ["drop view if exists v_groupby_test;"
                              "drop table if exists groupby_test;"
@@ -110,7 +108,7 @@
                              :base_type :type/Text}
                             {:name      "totalValue"
                              :base_type :type/Float}]}]
-                 (->> (t2/hydrate (t2/select Table :db_id db-id
+                 (->> (t2/hydrate (t2/select :model/Table :db_id db-id
                                              {:where    [:in :name ["groupby_test" "v_groupby_test"]]
                                               :order-by [:name]}) :fields)
                       (map table-fingerprint)))))))))
@@ -130,7 +128,7 @@
                       "INSERT INTO timestamp_table (created_at) VALUES (datetime('now'));"]]
           (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver details)
                          [stmt]))
-        (t2.with-temp/with-temp [Database db {:engine driver :details (assoc details :dbname db-name)}]
+        (t2.with-temp/with-temp [:model/Database db {:engine driver :details (assoc details :dbname db-name)}]
           (sync/sync-database! db)
           (mt/with-db db
             (testing "timestamp columns"
@@ -148,7 +146,7 @@
                                    :database-required          false
                                    :json-unfolding             false
                                    :database-is-auto-increment false}}}
-                       (driver/describe-table driver db (t2/select-one Table :id (mt/id :timestamp_table)))))))))))))
+                       (driver/describe-table driver db (t2/select-one :model/Table :id (mt/id :timestamp_table)))))))))))))
 
 (deftest select-query-datetime
   (mt/test-driver :sqlite
@@ -169,7 +167,7 @@
                       ('null',            null,                      null,          null);"]]
         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :sqlite details)
                        [stmt]))
-      (t2.with-temp/with-temp [Database db {:engine :sqlite :details (assoc details :dbname db-name)}]
+      (t2.with-temp/with-temp [:model/Database db {:engine :sqlite :details (assoc details :dbname db-name)}]
         (sync/sync-database! db)
         ;; In SQLite, you can actually store any value in any date/timestamp column,
         ;; let's test only values we'd reasonably run into.

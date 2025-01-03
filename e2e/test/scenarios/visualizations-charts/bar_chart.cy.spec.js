@@ -915,7 +915,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
     // Test "graph.other_category_aggregation_fn" for native queries
     H.openNotebook();
-    H.queryBuilderHeader().button("View the SQL").click();
+    H.queryBuilderHeader().button("View SQL").click();
     cy.findByTestId("native-query-preview-sidebar")
       .button("Convert this question to SQL")
       .click();

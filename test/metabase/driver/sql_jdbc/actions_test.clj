@@ -9,7 +9,6 @@
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models :refer [Field]]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]
@@ -34,7 +33,7 @@
     (binding [actions/*misc-value-cache* (atom {})]
       (is (= {"CATEGORY_ID" (h2x/cast "INTEGER" 50)}
              (cast-values :h2 {"CATEGORY_ID" 50} (mt/id :venues))))
-      (mt/with-temp-vals-in-db Field (mt/id :venues :category_id) {:base_type :type/Float}
+      (mt/with-temp-vals-in-db :model/Field (mt/id :venues :category_id) {:base_type :type/Float}
         (is (= {"CATEGORY_ID" (h2x/cast "INTEGER" 40)}
                (cast-values :h2 {"CATEGORY_ID" 40} (mt/id :venues))))))))
 

@@ -6,8 +6,6 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.table :refer [Table]]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -33,10 +31,10 @@
   (let [schema?       (when scan (#{"schema" :schema} scan))
         table-sync-fn (if schema? sync-metadata/sync-table-metadata! sync/sync-table!)
         db-sync-fn    (if schema? sync-metadata/sync-db-metadata! sync/sync-database!)]
-    (api/let-404 [database (t2/select-one Database :id id)]
+    (api/let-404 [database (t2/select-one :model/Database :id id)]
       (let [table (cond
-                    table_id   (api/check-404 (t2/select-one Table :db_id id, :id (int table_id)))
-                    table_name (api/check-404 (t2/select-one Table :db_id id, :name table_name)))]
+                    table_id   (api/check-404 (t2/select-one :model/Table :db_id id, :id (int table_id)))
+                    table_name (api/check-404 (t2/select-one :model/Table :db_id id, :name table_name)))]
         (cond-> (future (if table
                           (table-sync-fn table)
                           (db-sync-fn database)))
@@ -81,7 +79,7 @@
     (if (str/blank? table_name)
       (cond-> (future (sync-metadata/sync-db-metadata! database))
         synchronous? deref)
-      (if-let [table (t2/select-one Table :db_id (:id database), :name table_name :schema schema_name)]
+      (if-let [table (t2/select-one :model/Table :db_id (:id database), :name table_name :schema schema_name)]
         (cond-> (future (sync-metadata/sync-table-metadata! table))
           synchronous? deref)
         ;; find and sync is always synchronous. And we want it to be so since the "can't find this table" error is
@@ -96,8 +94,8 @@
   {id          ms/PositiveInt
    schema_name ms/NonBlankString
    table_name  ms/NonBlankString}
-  (api/let-404 [database (t2/select-one Database :id id)]
-    (if-not (t2/select-one Table :db_id id :name table_name :schema schema_name)
+  (api/let-404 [database (t2/select-one :model/Database :id id)]
+    (if-not (t2/select-one :model/Table :db_id id :name table_name :schema schema_name)
       (find-and-sync-new-table database table_name schema_name)
       (throw (without-stacktrace
               (ex-info (trs "Table ''{0}.{1}'' already exists"

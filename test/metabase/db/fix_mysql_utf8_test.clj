@@ -6,7 +6,6 @@
    [metabase.db.data-source :as mdb.data-source]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.models :refer [Database]]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -72,4 +71,4 @@
         (testing "We should be able to insert UTF-8 values"
           (insert-row!)
           (is (= test-unicode-str
-                 (t2/select-one-fn :name Database :name test-unicode-str))))))))
+                 (t2/select-one-fn :name :model/Database :name test-unicode-str))))))))

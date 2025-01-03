@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.models.session :refer [Session]]
    [metabase.request.core :as request]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.session :as mw.session]
@@ -39,12 +38,12 @@
   (testing "Valid requests should add `metabase-user-id` to requests with valid session info"
     (let [session-id (random-session-id)]
       (try
-        (t2/insert! Session {:id      session-id
-                             :user_id (test.users/user->id :rasta)})
+        (t2/insert! :model/Session {:id      session-id
+                                    :user_id (test.users/user->id :rasta)})
         (is (= (test.users/user->id :rasta)
                (-> (auth-enforced-handler (request-with-session-id session-id))
                    :metabase-user-id)))
-        (finally (t2/delete! Session :id session-id)))))
+        (finally (t2/delete! :model/Session :id session-id)))))
 
   (testing "Invalid requests should return unauthed response"
     (testing "when no session ID is sent with request"
@@ -57,13 +56,13 @@
       ;; expiration
       (let [session-id (random-session-id)]
         (try
-          (t2/insert! Session {:id      session-id
-                               :user_id (test.users/user->id :rasta)})
-          (t2/update! (t2/table-name Session) {:id session-id}
+          (t2/insert! :model/Session {:id      session-id
+                                      :user_id (test.users/user->id :rasta)})
+          (t2/update! (t2/table-name :model/Session) {:id session-id}
                       {:created_at (t/instant 1000)})
           (is (= request/response-unauthentic
                  (auth-enforced-handler (request-with-session-id session-id))))
-          (finally (t2/delete! Session :id session-id)))))
+          (finally (t2/delete! :model/Session :id session-id)))))
 
     (testing "when a Session tied to an inactive User is sent with the request"
       ;; create a new session (specifically created some time in the past so it's EXPIRED)
@@ -71,12 +70,12 @@
       ;; NOTE that :trashbird is our INACTIVE test user
       (let [session-id (random-session-id)]
         (try
-          (t2/insert! Session {:id      session-id
-                               :user_id (test.users/user->id :trashbird)})
+          (t2/insert! :model/Session {:id      session-id
+                                      :user_id (test.users/user->id :trashbird)})
           (is (= request/response-unauthentic
                  (auth-enforced-handler
                   (request-with-session-id session-id))))
-          (finally (t2/delete! Session :id session-id)))))))
+          (finally (t2/delete! :model/Session :id session-id)))))))
 
 ;;; ------------------------------------------ TEST wrap-static-api-key middleware ------------------------------------------
 

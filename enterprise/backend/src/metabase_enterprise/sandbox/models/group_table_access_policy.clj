@@ -8,7 +8,6 @@
    [medley.core :as m]
    [metabase.audit :as audit]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.card :refer [Card]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
@@ -24,11 +23,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(def GroupTableAccessPolicy
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model
-  name. We'll keep this till we replace all the symbols in our codebase."
-  :model/GroupTableAccessPolicy)
 
 (methodical/defmethod t2/table-name :model/GroupTableAccessPolicy [_model] :sandboxes)
 
@@ -143,7 +137,7 @@
    ;; not all sandboxes have Cards
    (when card-id
      ;; not all Cards have saved result metadata
-     (when-let [result-metadata (t2/select-one-fn :result_metadata Card :id card-id)]
+     (when-let [result-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
        (check-columns-match-table table-id result-metadata))))
 
   ([table-id :- ms/PositiveInt result-metadata-columns]
@@ -160,8 +154,8 @@
   :feature :sandboxes
   [{new-result-metadata :result_metadata, card-id :id}]
   (when new-result-metadata
-    (when-let [gtaps-using-this-card (not-empty (t2/select [GroupTableAccessPolicy :id :table_id] :card_id card-id))]
-      (let [original-result-metadata (t2/select-one-fn :result_metadata Card :id card-id)]
+    (when-let [gtaps-using-this-card (not-empty (t2/select [:model/GroupTableAccessPolicy :id :table_id] :card_id card-id))]
+      (let [original-result-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
         (when-not (= original-result-metadata new-result-metadata)
           (doseq [{table-id :table_id} gtaps-using-this-card]
             (try
@@ -186,11 +180,11 @@
        ;; This allows existing values to be "cleared" by being set to nil
        (do
          (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
-           (t2/update! GroupTableAccessPolicy
+           (t2/update! :model/GroupTableAccessPolicy
                        id
                        (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
-         (t2/select-one GroupTableAccessPolicy :id id))
-       (first (t2/insert-returning-instances! GroupTableAccessPolicy sandbox))))))
+         (t2/select-one :model/GroupTableAccessPolicy :id id))
+       (first (t2/insert-returning-instances! :model/GroupTableAccessPolicy sandbox))))))
 
 (t2/define-before-insert :model/GroupTableAccessPolicy
   [{:keys [table_id group_id], :as gtap}]
