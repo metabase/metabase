@@ -1,0 +1,43 @@
+#!/usr/bin/env bb
+
+(require '[babashka.curl :as curl])
+(require '[clojure.java.io :as io])
+(require '[clojure.repl :refer [pst]])
+(require '[clojure.string :as str])
+
+(defn url [version]
+  (str "https://downloads.metabase.com"
+       (when (str/starts-with? version "1") "/enterprise")
+       "/v"
+       version "/metabase.jar"))
+
+(defn download [version dir]
+  (io/copy
+    (:body (curl/get (url version) {:as :stream}))
+    (io/file (str dir "/" version ".jar"))))
+
+(defn download-jar! [version dir]
+  (try
+    (println (str "Downloading from " (url version)))
+    (download version dir)
+    (println (str "Downloaded " version ".jar to " dir))
+    (catch Exception e
+      (println (str "Error downloading version " version))
+      (pst e))))
+
+(defn without-slash [s] (str/replace s #"/$" ""))
+
+(defn -main [& [version dir]]
+  (let [dir (some-> (or dir (System/getenv "JARS")) without-slash)]
+    (if (or (nil? version)
+            (nil? dir)
+            (#{"help" "--help" "-h"} version))
+      (do (println "Usage: mb-download 0.42.2")
+          (println "Usage: mb-download 1.45.2")
+          (println "Usage: mb-download 1.45.2 ~/path/to/my/jars")
+          (println "")
+          (println "protip: this script will read from $JARS, and use that as your jar directory."))
+      (download-jar! version dir))))
+
+(when (= *file* (System/getProperty "babashka.file"))
+  (apply -main *command-line-args*))
