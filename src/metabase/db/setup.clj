@@ -11,16 +11,20 @@
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations :as custom-migrations]
+   [metabase.db.encryption :as mdb.encryption]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.liquibase :as liquibase]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.string :as string]
    [methodical.core :as methodical]
+   [toucan2.core :as t2]
    [toucan2.honeysql2 :as t2.honeysql]
    [toucan2.jdbc.options :as t2.jdbc.options]
    [toucan2.pipeline :as t2.pipeline])
@@ -120,6 +124,30 @@
       (log/infof "Successfully verified %s %s application database connection. %s"
                  (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata) (u/emoji "✅")))))
 
+(mu/defn- check-encryption
+  "Ensure encryption env variable is correctly set if needed, and encrypt the database if it needs to be
+  Encryption status is tracked by an 'encryption-check' value in the settings table.
+  NOTE: the encryption-check setting is not managed like most settings with 'defsetting' so we can manage checking the raw values in the database"
+  []
+  (let [raw (try (t2/select-one-fn :value :setting :key "encryption-check")
+                 (catch Throwable e (log/warn e "Error checking encryption status, assuming unencrypted")))
+        looks-encrypted (not= raw "unencrypted")]
+    (log/debug "Checking encryption configuration")
+    (when-not (nil? raw)
+      (if looks-encrypted
+        (do
+          (when-not (encryption/default-encryption-enabled?)
+            (throw (ex-info "Database is encrypted but the MB_ENCRYPTION_SECRET_KEY environment variable was NOT set" {})))
+          (when-not (string/valid-uuid? (encryption/maybe-decrypt raw))
+            (throw (ex-info "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" {})))
+          (log/debug "Database encrypted and MB_ENCRYPTION_SECRET_KEY correctly configured"))
+        (if (encryption/default-encryption-enabled?)
+          (do
+            (log/info "New MB_ENCRYPTION_SECRET_KEY environment variable set. Encrypting database...")
+            (mdb.encryption/encrypt-db (:db-type mdb.connection/*application-db*) (:data-source mdb.connection/*application-db*) nil)
+            (log/info "Database encrypted..." (u/emoji "✅")))
+          (log/debug "Database not encrypted and MB_ENCRYPTION_SECRET_KEY env variable not set."))))))
+
 (mu/defn- error-if-downgrade-required!
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (log/info (u/format-color 'cyan "Checking if a database downgrade is required..."))
@@ -164,7 +192,8 @@
                 custom-migrations/*create-sample-content* create-sample-content?]
         (verify-db-connection db-type data-source)
         (error-if-downgrade-required! data-source)
-        (run-schema-migrations! data-source auto-migrate?))))
+        (run-schema-migrations! data-source auto-migrate?)
+        (check-encryption))))
   :done)
 
 (defn release-migration-locks!

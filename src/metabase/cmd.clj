@@ -23,6 +23,7 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
@@ -257,6 +258,22 @@
     (system-exit! 0)
     (catch Throwable e
       (log/error e "ERROR ROTATING KEY.")
+      (system-exit! 1))))
+
+(defn ^:command remove-encryption
+  "Decrypts data in the metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to
+  the current key"
+  []
+  (classloader/require 'metabase.cmd.remove-encryption)
+  (when-not (encryption/default-encryption-enabled?)
+    (log/error "MB_ENCRYPTION_SECRET_KEY environment variable has not been set")
+    (system-exit! 1))
+  (try
+    ((resolve 'metabase.cmd.remove-encryption/remove-encryption!))
+    (log/info "Encryption removed OK.")
+    (system-exit! 0)
+    (catch Throwable e
+      (log/error e "ERROR REMOVING ENCRYPTION.")
       (system-exit! 1))))
 
 ;;; ------------------------------------------------ Validate Commands ----------------------------------------------

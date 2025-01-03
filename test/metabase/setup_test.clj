@@ -3,11 +3,16 @@
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.db :as mdb]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.driver :as driver]
    [metabase.models.interface :as mi]
    [metabase.public-settings :as public-settings]
    [metabase.setup :as setup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.encryption-test :as encryption-test]
+   [metabase.util.string :as string]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
@@ -97,3 +102,35 @@
           (is (true? (mi/can-write? sample-db)))
           (is (true? (mi/can-write? sample-db-table)))
           (is (true? (mi/can-write? sample-db-field))))))))
+
+(deftest encryption-test
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (testing "Database can start with no encryption"
+      (encryption-test/with-secret-key nil
+        (mt/with-temp-empty-app-db [_conn driver/*driver*]
+          (mdb/setup-db! :create-sample-content? true)
+          (is (= "unencrypted" (t2/select-one-fn :value "setting" :key "encryption-check")))
+          (is (not (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database"))))
+
+          (testing "Adding encryption encrypts database on restart"
+            (encryption-test/with-secret-key "key1"
+              (reset! (:status mdb.connection/*application-db*) ::setup-finished)
+              (mdb/setup-db! :create-sample-content? false)
+              (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check"))))
+              (is (encryption/possibly-encrypted-string? (:details (t2/select-one "metabase_database")))))))))
+    (testing "Database created with encryption configured is encrypted"
+      (encryption-test/with-secret-key "key2"
+        (mt/with-temp-empty-app-db [_conn driver/*driver*]
+          (mdb/setup-db! :create-sample-content? true)
+          (is (encryption/possibly-encrypted-string? (t2/select-one-fn :value "setting" :key "encryption-check")))
+          (is (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database")))
+          (testing "Re-running server works"
+            (reset! (:status mdb.connection/*application-db*) ::setup-finished)
+            (mdb/setup-db! :create-sample-content? false)
+            (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check")))))
+          (testing "Different encryption key throws an error"
+            (encryption-test/with-secret-key "different-key"
+              (reset! (:status mdb.connection/*application-db*) ::setup-finished)
+              (is (thrown-with-msg? Exception #"Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" (mdb/setup-db! :create-sample-content? false)))
+              (let [setting-value (:value (t2/select-one "setting" :key "site-uuid-for-version-info-fetching"))] ; need to select directly from "settings" to avoid auto-decryption
+                (is (not (string/valid-uuid? setting-value)))))))))))

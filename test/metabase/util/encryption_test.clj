@@ -23,7 +23,7 @@
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-secret-key
   "Run `body` with the encryption secret key temporarily bound to `secret-key`. Useful for testing how functions behave
-  with and without encryption disabled."
+  with and without encryption disabled. A nil secret key disables encryption."
   {:style/indent 1}
   [^String secret-key & body]
   `(let [secret-key# ~secret-key]

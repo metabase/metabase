@@ -22,6 +22,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.string :as string]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -63,7 +64,7 @@
        (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
                      h2/*allow-testing-h2-connections*                       true]
          (testing "API response should return a Session UUID"
-           (is (=? {:id mt/is-uuid-string?}
+           (is (=? {:id string/valid-uuid?}
                    (client/client :post 200 "setup" request-body))))
          ;; reset our setup token
          (setup/create-token!)
