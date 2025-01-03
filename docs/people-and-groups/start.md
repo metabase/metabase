@@ -26,14 +26,14 @@ Tell Metabase how long it should wait before asking people to log in again.
 
 ## Authentication
 
-Metabase offers several options for single sign-on (SSO) authentication.
+Metabase offers several options for authentication.
 
 > If you need to set up 2-step or multi-factor authentication (2FA or MFA) for your Metabase, consider using one of the SSO options below.
 
 ### SSO for Metabase Open Source and Starter plans
 
-- [Google Sign-in][google-sign-in]
-- [LDAP][ldap]
+- [Google Sign-in](./google-sign-in.md)
+- [LDAP](./ldap.md)
 
 ### SSO for Metabase Pro and Enterprise plans
 
@@ -41,8 +41,8 @@ With [Pro and Enterprise plans](https://www.metabase.com/pricing/), you have mor
 
 - [JWT][jwt]
 - LDAP advanced features
-  - [Group membership filter][ldap-group-membership-filter]
-  - [Syncing user attributes][ldap-user-attributes]
+  - [Group membership filter](./ldap.md#ldap-group-membership-filter)
+  - [Syncing user attributes](./ldap.md#syncing-user-attributes-with-ldap)
 - [SAML][saml]
   - [Auth0][saml-auth0]
   - [Microsoft Entra ID][azure-ad]
@@ -53,6 +53,14 @@ With [Pro and Enterprise plans](https://www.metabase.com/pricing/), you have mor
 ## [API keys](./api-keys.md)
 
 Create keys to authenticate API calls.
+
+## [User provisioning](./user-provisioning.md)
+
+Metabase supports user provisioning via the SCIM protocol.
+
+## [Accessibility](./accessibility.md)
+
+Notes on Metabase's accessibility.
 
 [azure-ad]: ./saml-azure.md
 [google-sign-in]: ./google-and-ldap.md#enabling-google-sign-in
@@ -67,10 +75,3 @@ Create keys to authenticate API calls.
 [saml-keycloak]: ./saml-keycloak.md
 [sso-def]: https://www.metabase.com/glossary/sso
 
-## [User provisioning](./user-provisioning.md)
-
-Metabase supports user provisioning via the SCIM protocol.
-
-## [Accessibility](./accessibility.md)
-
-Notes on Metabase's accessibility.

@@ -78,6 +78,19 @@
    (for [dimension dimensions]
      (merge context dimension))))
 
+(mu/defn- context-with-dimensions-or-row-dimensions :- ::lib.schema.drill-thru/context
+  "Return an updated `context` with either the existing `dimensions` or dimensions constructed from the `row`."
+  [query                                       :- ::lib.schema/query
+   {:keys [column dimensions row] :as context} :- ::lib.schema.drill-thru/context]
+  ;; If no dimensions were provided but the underlying column comes from an aggregation, then construct the dimensions
+  ;; from the row data. This is needed in cases where the frontend normally provides dimensions, but will not if it
+  ;; cannot determine that the clicked table cell was from an "underlying" aggregation-sourced column. See, e.g. the
+  ;; comment in getTableCellClickedObject in table.js.
+  (let [row-dimensions (lib.drill-thru.common/dimensions-from-breakout-columns query column row)]
+    (if (and (empty? dimensions) (seq row-dimensions))
+      (assoc context :dimensions row-dimensions)
+      context)))
+
 (mu/defn available-drill-thrus :- [:sequential [:ref ::lib.schema.drill-thru/drill-thru]]
   "Get a list (possibly empty) of available drill-thrus for a column, or a column + value pair.
 
@@ -96,6 +109,7 @@
            (when (lib.metadata/editable? query)
              (let [{:keys [query stage-number]} (lib.query/wrap-native-query-with-mbql
                                                  query stage-number (:card-id context))
+                   context                      (context-with-dimensions-or-row-dimensions query context)
                    dim-contexts                 (dimension-contexts context)]
                (for [{:keys [f return-drills-for-dimensions?]} available-drill-thru-fns
                      context                                   (if (and return-drills-for-dimensions? dim-contexts)
