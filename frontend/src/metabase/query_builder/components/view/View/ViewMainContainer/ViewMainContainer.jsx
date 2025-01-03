@@ -9,7 +9,6 @@ import { TimeseriesChrome } from "metabase/querying/filters/components/Timeserie
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
 import ViewMainContainerS from "./ViewMainContainer.module.css";
@@ -72,7 +71,6 @@ export const ViewMainContainer = props => {
         updateQuestion={updateQuestion}
         className={CS.flexNoShrink}
       />
-      <ViewFooter className={CS.flexNoShrink} />
     </Box>
   );
 };

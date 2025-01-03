@@ -38,7 +38,9 @@ export const ViewFooter = ({ className }: ViewFooterProps) => {
       data-testid="view-footer"
     >
       <Group position="apart" pos="relative" noWrap w="100%">
-        {!hideChartSettings && <LeftViewFooterButtonGroup />}
+        {!hideChartSettings && (
+          <LeftViewFooterButtonGroup question={question} />
+        )}
         {isVisualized && <CenterViewFooterButtonGroup />}
         <RightViewFooterButtonGroup />
       </Group>

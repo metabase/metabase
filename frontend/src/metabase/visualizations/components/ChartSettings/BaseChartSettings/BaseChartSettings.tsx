@@ -1,8 +1,10 @@
-import { useCallback, useMemo, useState } from "react";
+import cx from "classnames";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
-import Radio from "metabase/core/components/Radio";
 import CS from "metabase/css/core/index.css";
+import { Box, Tabs } from "metabase/ui";
 import { updateSeriesColor } from "metabase/visualizations/lib/series";
 import {
   getComputedSettings,
@@ -17,11 +19,7 @@ import ChartSettingsWidgetList from "../../ChartSettingsWidgetList";
 import { ChartSettingsWidgetPopover } from "../../ChartSettingsWidgetPopover";
 import type { Widget } from "../types";
 
-import {
-  ChartSettingsListContainer,
-  ChartSettingsMenu,
-  SectionContainer,
-} from "./BaseChartSettings.styled";
+import { ChartSettingsMenu } from "./BaseChartSettings.styled";
 import { useChartSettingsSections } from "./hooks";
 import type { BaseChartSettingsProps } from "./types";
 
@@ -34,7 +32,8 @@ export const BaseChartSettings = ({
   widgets,
   chartSettings,
   transformedSeries,
-}: BaseChartSettingsProps) => {
+  chartTypeSettings,
+}: BaseChartSettingsProps & { chartTypeSettings?: ReactNode }) => {
   const {
     chartSettingCurrentSection,
     currentSectionHasColumnSettings,
@@ -45,6 +44,7 @@ export const BaseChartSettings = ({
   } = useChartSettingsSections({
     initial,
     widgets,
+    shouldShowChartTypeSelector: !!chartTypeSettings,
   });
   const [currentWidget, setCurrentWidget] = useState<Widget | null>(
     initial?.widget ?? null,
@@ -185,28 +185,52 @@ export const BaseChartSettings = ({
     onChangeSeriesColor: handleChangeSeriesColor,
   };
 
+  const isChartPicker = chartSettingCurrentSection === t`Chart`;
+
   return (
     <>
       <ChartSettingsMenu data-testid="chartsettings-sidebar">
         {showSectionPicker && (
-          <SectionContainer>
-            <Radio
-              value={chartSettingCurrentSection ?? undefined}
-              onChange={handleShowSection}
-              options={sectionNames}
-              optionNameFn={v => v}
-              optionValueFn={v => v}
-              optionKeyFn={v => v}
-              variant="underlined"
-            />
-          </SectionContainer>
+          <Tabs
+            value={chartSettingCurrentSection}
+            radius={0}
+            onTabChange={handleShowSection}
+            styles={{
+              tab: {
+                // tab should stay at the same position even when number of tabs
+                // change. e.g. 2 tabs to 3 tabs -> layout should not change
+                flexBasis: "25%",
+                maxWidth: "50%", // show ... for long tab names
+              },
+              tabsList: {
+                flexWrap: "nowrap",
+              },
+            }}
+          >
+            <Tabs.List pl="md" pr="md">
+              {sectionNames.map(sectionName => (
+                <Tabs.Tab key={sectionName} value={sectionName}>
+                  {sectionName}
+                </Tabs.Tab>
+              ))}
+            </Tabs.List>
+          </Tabs>
         )}
-        <ChartSettingsListContainer className={CS.scrollShow}>
-          <ChartSettingsWidgetList
-            widgets={visibleWidgets}
-            extraWidgetProps={extraWidgetProps}
-          />
-        </ChartSettingsListContainer>
+        <Box
+          data-testid="chartsettings-sidebar-scrollable"
+          pos="relative"
+          py="lg"
+          className={cx(CS.scrollY, CS.scrollShow)}
+        >
+          {isChartPicker ? (
+            chartTypeSettings
+          ) : (
+            <ChartSettingsWidgetList
+              widgets={visibleWidgets}
+              extraWidgetProps={extraWidgetProps}
+            />
+          )}
+        </Box>
       </ChartSettingsMenu>
       <ChartSettingsWidgetPopover
         anchor={popoverRef as HTMLElement}

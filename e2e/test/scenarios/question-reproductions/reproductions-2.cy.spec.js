@@ -609,7 +609,7 @@ describe("issue 35290", () => {
       H.createQuestion(questionDetails, { visitQuestion: true });
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar")
       // verify panel is shown
       .should("contain", "Add or remove columns")
@@ -776,6 +776,6 @@ function saveModifiedQuestion() {
 }
 
 function goToExpressionSidebarVisualizationSettings() {
-  cy.findByTestId("viz-settings-button").click();
+  H.openVizSettingsSidebar();
   cy.findByTestId(`${EXPRESSION_NAME}-settings-button`).click();
 }

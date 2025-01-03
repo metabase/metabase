@@ -415,7 +415,7 @@ describe.skip("issue 41785, issue 46756", () => {
     cy.findByTestId("loading-indicator").should("exist");
     cy.findByTestId("loading-indicator").should("not.exist");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findAllByText("Ean").should("have.length", 1);
       cy.findAllByText("Products → Ean").should("have.length", 1);
@@ -539,7 +539,7 @@ describe.skip("issue 40635", () => {
   }
 
   function assertSettingsSidebar() {
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findAllByText("ID").should("have.length", 1);
@@ -1267,7 +1267,7 @@ describe("issue 46221", () => {
       .and("contain", modelDetails.name);
 
     cy.log("Change the viz type");
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTestId("Table-button").click();
     });
