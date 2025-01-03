@@ -1,17 +1,7 @@
-.monthsList {
-  display: block;
-
-  & > tbody {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
-  }
+.yearLevel {
+  min-width: 11rem;
 }
 
-.monthsListCell {
-  padding: 0 !important;
-
-  &:not(:first-child) {
-    display: none;
-  }
+.monthsList {
+  display: none;
 }
