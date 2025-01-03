@@ -113,7 +113,7 @@
   [rendered-cards parts]
   (filter some?
           (concat (map make-message-attachment (apply merge (map :attachments (u/one-or-many rendered-cards))))
-                  (mapcat (comp email.result-attachment/result-attachment realize-data-rows) parts))))
+                  (mapcat (comp email.result-attachment/result-attachment channel.shared/realize-data-rows) parts))))
 
 (defn- icon-bundle
   "Bundle an icon.
