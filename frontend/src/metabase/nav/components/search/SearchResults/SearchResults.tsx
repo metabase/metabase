@@ -3,7 +3,7 @@ import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
-import { useSearchListQuery } from "metabase/common/hooks";
+import { useSearchQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
 import Search from "metabase/entities/search";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
@@ -98,15 +98,12 @@ export const SearchResults = ({
     query.context = SearchContextTypes.SEARCH_BAR;
   }
 
-  const {
-    data: list = [],
-    metadata,
-    isLoading,
-  } = useSearchListQuery({
-    query,
-    reload: true,
-    enabled: !!debouncedSearchText,
+  const { data, isLoading } = useSearchQuery(query, {
+    skip: !debouncedSearchText,
+    refetchOnMountOrArgChange: true,
   });
+
+  const { data: list = [], ...metadata } = data || {};
 
   const hasResults = list.length > 0;
   const showFooter = hasResults && footerComponent && metadata;
