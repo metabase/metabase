@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -293,6 +294,7 @@
           secret-key (u/encode-base64 "secret")]
       (mt/with-temp [db-table {db-id :id} {:engine (name :secret-test-driver)
                                            :name "Secret Test"
+                                           :created_at (t/instant)
                                            :details (json/encode original-details)}]
 
         (testing "Initially setting secret value"
