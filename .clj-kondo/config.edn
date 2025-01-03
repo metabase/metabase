@@ -879,6 +879,7 @@
    metabase.api.embed-test/with-chain-filter-fixtures!                                                                       hooks.common/let-one-with-optional-value
    metabase.api.embed-test/with-temp-card                                                                                    hooks.common/let-one-with-optional-value
    metabase.api.embed-test/with-temp-dashcard                                                                                hooks.common/let-one-with-optional-value
+   metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
    metabase.api.persist-test/with-setup!                                                                                     hooks.common/with-one-top-level-binding
    metabase.api.public-test/with-required-param-card!                                                                        hooks.common/with-one-binding
    metabase.api.public-test/with-temp-public-card                                                                            hooks.common/let-one-with-optional-value
