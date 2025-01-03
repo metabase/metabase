@@ -50,7 +50,7 @@
      :strategy (-> (:config row)
                    (assoc :type (:strategy row))
                    (cond->
-                     (#{:duration :schedule} (:strategy row))
+                    (#{:duration :schedule} (:strategy row))
                      (assoc :refresh_automatically (:refresh_automatically row))))}))
 
 (defn card-strategy
