@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.config :as config]
    [metabase.core :as mbc]
    [metabase.db :as mdb]
@@ -279,6 +280,32 @@
   (let [args   ["-tcp" "-tcpPort", (str port), "-tcpAllowOthers" "-tcpDaemon"]
         server (Server/createTcpServer (into-array args))]
     (doto server (.start))))
+
+(defmethod driver/database-supports? [:sql-jdbc ::regular-connection-pooling]
+  [& _args]
+  true)
+
+(defmethod driver/database-supports? [:hive-like ::regular-connection-pooling]
+  [& _args]
+  false)
+
+(deftest test-bad-connection-detail-acquisition
+  (mt/test-drivers (mt/normal-drivers-with-feature ::regular-connection-pooling)
+    (let [original-details (:details (mt/db))]
+      ;; Only test drivers that use a username to log in
+      (when (and (:password original-details) (:user original-details))
+        (t2.with-temp/with-temp [:model/Database db {:engine (tx/driver), :details original-details}]
+          (mt/with-db db
+            (sync/sync-database! (mt/db))
+            (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))
+            (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+            (let [new-details (assoc original-details :user "baduser")
+                  start (t/instant)]
+              (t2/update! :model/Database :id (mt/id) {:details new-details})
+              (mt/with-db (assoc db :details new-details)
+                (is (thrown-with-msg? Exception #"Connections could not be acquired from the underlying database!" (mt/rows (mt/run-mbql-query venues {:limit 1}))))
+                ;; Should be around 1 second
+                (is (> 10 (.getSeconds (t/duration start (t/instant)))))))))))))
 
 ;;; TODO Not clear why we're only testing Postgres here, do we support Azure Managed Identity for any other app DB type?
 ;;; Needs a comment please.
