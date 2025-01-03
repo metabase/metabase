@@ -1,0 +1,31 @@
+.monthsList {
+  display: block;
+
+  .monthsListRow {
+    &:not(:first-child) {
+      .monthsListCell {
+        padding-top: 0;
+      }
+    }
+
+    &:last-child {
+      .monthsListCell {
+        padding-right: 0;
+      }
+    }
+  }
+}
+
+.monthsListRow {
+  display: inline-block;
+}
+
+.monthsListCell {
+  &:not(:first-child) {
+    display: none;
+  }
+
+  .pickerControl {
+    width: 4rem;
+  }
+}
