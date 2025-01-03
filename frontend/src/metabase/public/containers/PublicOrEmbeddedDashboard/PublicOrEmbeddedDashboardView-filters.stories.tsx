@@ -834,6 +834,7 @@ export const LightThemeDateFilterRange = {
     await userEvent.click(filter);
 
     const popover = getLastPopover();
+    await userEvent.click(popover.getByRole("button", { name: "Add time" }));
     popover.getAllByText("15")[0].classList.add("pseudo-hover");
   },
 };
