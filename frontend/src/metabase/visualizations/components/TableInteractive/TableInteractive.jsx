@@ -64,6 +64,8 @@ const TRUNCATE_WIDTH = 780;
 
 const HEADER_HEIGHT = 36;
 const ROW_HEIGHT = 36;
+const ROW_HEIGHT_IMAGE = 300;
+
 const SIDEBAR_WIDTH = 38;
 
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
@@ -1141,6 +1143,8 @@ class TableInteractive extends Component {
     }
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
+    const rowHeight = cols.some(col => this.props.settings.column(col).view_as === 'image') ? ROW_HEIGHT_IMAGE : ROW_HEIGHT;
+
     const gutterColumn = this.state.showDetailShortcut ? 1 : 0;
     const shortcutColumn = this._shouldShowShorcutButton();
 
@@ -1171,7 +1175,6 @@ class TableInteractive extends Component {
             } else {
               mainGridProps.scrollLeft = scrollLeft;
             }
-
             return (
               <TableInteractiveRoot
                 bg={backgroundColor}
@@ -1296,7 +1299,7 @@ class TableInteractive extends Component {
                   columnCount={cols.length + gutterColumn + shortcutColumn}
                   columnWidth={this.getDisplayColumnWidth}
                   rowCount={rows.length}
-                  rowHeight={ROW_HEIGHT}
+                  rowHeight={rowHeight}
                   cellRenderer={props => {
                     if (props.columnIndex === 0 && gutterColumn) {
                       // we need a phantom cell to properly offset gutter columns

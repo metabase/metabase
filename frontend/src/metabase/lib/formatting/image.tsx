@@ -9,7 +9,7 @@ export function formatImage(
   const protocol = getUrlProtocol(url);
   const acceptedProtocol = protocol === "http:" || protocol === "https:";
   if (jsx && rich && view_as === "image" && acceptedProtocol) {
-    return <img src={url} style={{ height: 30 }} />;
+    return <img src={url} style={{ maxHeight: 290, maxWidth: "100%", objectFit: "contain", padding: 10 }} />;
   } else {
     return url;
   }
