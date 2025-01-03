@@ -1,31 +1,16 @@
 .monthsList {
   display: block;
 
-  .monthsListRow {
-    &:not(:first-child) {
-      .monthsListCell {
-        padding-top: 0;
-      }
-    }
-
-    &:last-child {
-      .monthsListCell {
-        padding-right: 0;
-      }
-    }
+  & > tbody {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
   }
-}
-
-.monthsListRow {
-  display: inline-block;
 }
 
 .monthsListCell {
+  padding: 0 !important;
+
   &:not(:first-child) {
     display: none;
-  }
-
-  .pickerControl {
-    width: 4rem;
   }
 }
