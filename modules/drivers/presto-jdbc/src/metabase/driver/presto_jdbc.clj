@@ -485,24 +485,22 @@
     v))
 
 (defn- get-valid-secret-file [details-map property-name]
-  (let [secret-map (secret/db-details-prop->secret-map details-map property-name)]
-    (when-not (:value secret-map)
+  (let [file (secret/value-as-file! :presto-jdbc details-map property-name)]
+    (when-not file
       (throw (ex-info (format "Property %s should be defined" property-name)
                       {:connection-details details-map
-                       :propery-name property-name})))
-    (.getCanonicalPath (secret/value->file! secret-map :presto-jdbc))))
+                       :property-name property-name})))
+    (.getCanonicalPath file)))
 
 (defn- maybe-add-ssl-stores [details-map]
   (let [props
         (cond-> {}
           (str->bool (:ssl-use-keystore details-map))
           (assoc :SSLKeyStorePath (get-valid-secret-file details-map "ssl-keystore")
-                 :SSLKeyStorePassword (secret/value->string
-                                       (secret/db-details-prop->secret-map details-map "ssl-keystore-password")))
+                 :SSLKeyStorePassword (secret/value-as-string :presto-jdbc details-map "ssl-keystore-password"))
           (str->bool (:ssl-use-truststore details-map))
           (assoc :SSLTrustStorePath (get-valid-secret-file details-map "ssl-truststore")
-                 :SSLTrustStorePassword (secret/value->string
-                                         (secret/db-details-prop->secret-map details-map "ssl-truststore-password"))))]
+                 :SSLTrustStorePassword (secret/value-as-string :presto-jdbc details-map "ssl-truststore-password")))]
     (cond-> details-map
       (seq props)
       (update :additional-options append-additional-options props))))

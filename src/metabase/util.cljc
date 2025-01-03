@@ -54,10 +54,13 @@
 #?(:clj (p/import-vars [u.jvm
                         all-ex-data
                         auto-retry
+                        string-to-bytes
+                        bytes-to-string
                         decode-base64
                         decode-base64-to-bytes
                         deref-with-timeout
                         encode-base64
+                        encode-base64-bytes
                         filtered-stacktrace
                         full-exception-chain
                         host-port-up?

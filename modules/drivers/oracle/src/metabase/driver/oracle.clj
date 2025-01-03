@@ -117,28 +117,24 @@
       "JKS")))
 
 (defn- handle-keystore-options [details]
-  (let [keystore (-> (secret/db-details-prop->secret-map details "ssl-keystore")
-                     (secret/value->file! :oracle))
-        password (or (-> (secret/db-details-prop->secret-map details "ssl-keystore-password")
-                         secret/value->string)
-                     (secret/get-secret-string details "ssl-keystore-password"))]
+  (let [keystore (secret/value-as-file! :oracle details "ssl-keystore")
+        password (secret/value-as-string :oracle details "ssl-keystore-password")]
     (-> details
         (assoc :javax.net.ssl.keyStoreType (guess-keystore-type keystore password)
                :javax.net.ssl.keyStore keystore
                :javax.net.ssl.keyStorePassword password)
+        (secret/clean-secret-properties-from-details :oracle)
         (dissoc :ssl-use-keystore :ssl-keystore-value :ssl-keystore-path :ssl-keystore-password-value
                 :ssl-keystore-created-at :ssl-keystore-password-created-at))))
 
 (defn- handle-truststore-options [details]
-  (let [truststore (-> (secret/db-details-prop->secret-map details "ssl-truststore")
-                       (secret/value->file! :oracle))
-        password (or (-> (secret/db-details-prop->secret-map details "ssl-truststore-password")
-                         secret/value->string)
-                     (secret/get-secret-string details "ssl-truststore-password"))]
+  (let [truststore (secret/value-as-file! :oracle details "ssl-truststore")
+        password (secret/value-as-string :oracle details "ssl-truststore-password")]
     (-> details
         (assoc :javax.net.ssl.trustStoreType (guess-keystore-type truststore password)
                :javax.net.ssl.trustStore truststore
                :javax.net.ssl.trustStorePassword password)
+        (secret/clean-secret-properties-from-details :oracle)
         (dissoc :ssl-use-truststore :ssl-truststore-value :ssl-truststore-path :ssl-truststore-password-value
                 :ssl-truststore-created-at :ssl-truststore-password-created-at))))
 

@@ -32,13 +32,13 @@
   (defmethod driver/database-supports? [:druid-jdbc feature] [_driver _feature _db] supported?))
 
 (defmethod sql-jdbc.conn/connection-details->spec :druid-jdbc
-  [_driver {:keys [host port auth-enabled auth-username] :as db-details}]
+  [driver {:keys [host port auth-enabled auth-username] :as db-details}]
   (merge {:classname   "org.apache.calcite.avatica.remote.Driver"
           :subprotocol "avatica:remote"
           :subname     (str "url=" host ":" port "/druid/v2/sql/avatica/;transparent_reconnection=true")}
          (when auth-enabled
            {:user auth-username
-            :password (secret/get-secret-string db-details "auth-password")})
+            :password (secret/value-as-string driver db-details "auth-password")})
          (when (some? (driver/report-timezone))
            {:sqlTimeZone (driver/report-timezone)
             :timeZone (driver/report-timezone)})))

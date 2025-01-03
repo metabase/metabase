@@ -407,7 +407,7 @@
                                                ssl-details
                                                :ssl-truststore-value
                                                (.encodeToString (Base64/getEncoder)
-                                                                (mt/file->bytes (:ssl-truststore-path ssl-details)))
+                                                                (mt/file-path->bytes (:ssl-truststore-path ssl-details)))
                                                :ssl-truststore-options
                                                "uploaded")
                                               (dissoc :ssl-truststore-path))
@@ -415,8 +415,7 @@
                 (testing (str " " variant)
                   (t2.with-temp/with-temp [:model/Database database {:engine  :oracle,
                                                                      :name    (format (str variant " version of %d") (mt/id)),
-                                                                     :details (->> details
-                                                                                   (driver.u/db-details-client->server :oracle))}]
+                                                                     :details details}]
                     (mt/with-db database
                       (testing " can sync correctly"
                         (sync/sync-database! database {:scan :schema})

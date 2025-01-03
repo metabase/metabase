@@ -415,9 +415,9 @@
                 (spit pk-path pk-key)
                 (doseq [to-merge [{:private-key-value pk-key                      ;; uploaded string
                                    :private-key-options "uploaded"}
-                                  {:private-key-value (.getBytes pk-key "UTF-8")
+                                  {:private-key-value (u/encode-base64 pk-key)
                                    :private-key-options "uploaded"}               ;; uploaded byte array
-                                  {:private-key-value (.getBytes pk-key "UTF-8")} ;; uploaded byte array without private-key-options
+                                  {:private-key-value (u/encode-base64 pk-key)}   ;; uploaded byte array without private-key-options
                                   {:private-key-options "local"
                                    :private-key-source "file-path"
                                    :private-key-id secret-id}]]              ;; local file path
