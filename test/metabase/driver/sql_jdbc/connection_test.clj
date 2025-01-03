@@ -293,7 +293,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature ::regular-connection-pooling)
     (let [original-details (:details (mt/db))]
       ;; Only test drivers that use a username to log in
-      (when (:user original-details)
+      (when (and (:password original-details) (:user original-details))
         (t2.with-temp/with-temp [:model/Database db {:engine (tx/driver), :details original-details}]
           (mt/with-db db
             (sync/sync-database! (mt/db))
