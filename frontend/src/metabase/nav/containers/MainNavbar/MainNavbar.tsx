@@ -1,6 +1,5 @@
 import type { LocationDescriptor } from "history";
 import { useEffect, useMemo } from "react";
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
@@ -10,6 +9,7 @@ import {
   useGetCollectionQuery,
 } from "metabase/api";
 import { getDashboard } from "metabase/dashboard/selectors";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
 import Question from "metabase-lib/v1/Question";

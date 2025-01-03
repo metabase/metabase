@@ -69,6 +69,7 @@ export const ChartSettingMaxCategories = ({
           data={AGGREGATION_FN_OPTIONS}
           onChange={handleAggregationFunctionChange}
           data-testid="graph-other-category-aggregation-fn-picker"
+          zIndex={401}
         />
       </div>
     </Stack>

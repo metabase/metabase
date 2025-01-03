@@ -1,7 +1,7 @@
 import {
+  categorizeIssues,
   generateReleaseNotes,
   getReleaseTitle,
-  categorizeIssues,
 } from "./release-notes";
 import type { Issue } from "./types";
 
@@ -14,13 +14,13 @@ describe("Release Notes", () => {
   });
 
   describe("getReleaseTitle", () => {
-    it("should generate open source release title", () => {
-      expect(getReleaseTitle("v0.2.3")).toEqual("Metabase v0.2.3");
-    });
-
-    it("should generate enterprise release title", () => {
+    it("should generate generic release title", () => {
       expect(getReleaseTitle("v1.2.3")).toEqual(
-        "Metabase® Enterprise Edition™ v1.2.3",
+        "Metabase 2.3",
+      );
+
+      expect(getReleaseTitle("v0.2.3")).toEqual(
+        "Metabase 2.3",
       );
     });
   });
@@ -63,44 +63,15 @@ describe("Release Notes", () => {
       },
     ] as Issue[];
 
-    it("should generate open source release notes", () => {
-      const notes = generateReleaseNotes({
-        version: "v0.2.3",
-        checksum: "1234567890abcdef",
-        issues,
-      });
-
-      expect(notes).toContain("SHA-256 checksum for the v0.2.3 JAR");
-      expect(notes).toContain("1234567890abcdef");
-
-      expect(notes).toContain(
-        "### Enhancements\n\n**Querying**\n\n- Feature Issue (#2)",
-      );
-      expect(notes).toContain(
-        "### Bug fixes\n\n**Embedding**\n\n- Bug Issue (#1)",
-      );
-      expect(notes).toContain(
-        "### Already Fixed\n\nIssues confirmed to have been fixed in a previous release.\n\n**Embedding**\n\n- Issue Already Fixed (#3)",
-      );
-      expect(notes).toContain(
-        "### Under the Hood\n\n**Administration**\n\n- Issue That Users Don't Care About (#4)",
-      );
-
-      expect(notes).toContain("metabase/metabase:v0.2.3");
-      expect(notes).toContain(
-        "https://downloads.metabase.com/v0.2.3/metabase.jar",
-      );
-    });
-
-    it("should generate enterprise release notes", () => {
+    it("should generate release notes", () => {
       const notes = generateReleaseNotes({
         version: "v1.2.3",
-        checksum: "1234567890abcdef",
         issues,
       });
 
-      expect(notes).toContain("SHA-256 checksum for the v1.2.3 JAR");
-      expect(notes).toContain("1234567890abcdef");
+      expect(notes).toContain(
+        "Get the most out of Metabase"
+      );
 
       expect(notes).toContain(
         "### Enhancements\n\n**Querying**\n\n- Feature Issue (#2)",
@@ -116,8 +87,12 @@ describe("Release Notes", () => {
       );
 
       expect(notes).toContain("metabase/metabase-enterprise:v1.2.3");
+      expect(notes).toContain("metabase/metabase:v0.2.3");
       expect(notes).toContain(
         "https://downloads.metabase.com/enterprise/v1.2.3/metabase.jar",
+      );
+      expect(notes).toContain(
+        "https://downloads.metabase.com/v0.2.3/metabase.jar",
       );
     });
   });

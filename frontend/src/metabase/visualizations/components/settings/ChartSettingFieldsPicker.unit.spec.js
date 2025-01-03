@@ -24,8 +24,8 @@ describe("ChartSettingFieldsPicker", () => {
   it("Should render both options", () => {
     setup();
 
-    expect(screen.getByText("Average of Total")).toBeInTheDocument();
-    expect(screen.getByText("Count")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Average of Total")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Count")).toBeInTheDocument();
 
     //Expect there to be remove icons for both
     expect(screen.getByTestId("remove-avg")).toBeInTheDocument();
@@ -37,7 +37,7 @@ describe("ChartSettingFieldsPicker", () => {
 
     setup({ value: ["avg"], onChange });
 
-    expect(screen.getByText("Average of Total")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Average of Total")).toBeInTheDocument();
     expect(screen.queryByTestId("remove-avg")).not.toBeInTheDocument();
     expect(screen.getByText("Add another series")).toBeInTheDocument();
 
@@ -51,14 +51,14 @@ describe("ChartSettingFieldsPicker", () => {
 
     setup({ value: ["avg"], onChange });
 
-    expect(screen.getByText("Average of Total")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Average of Total")).toBeInTheDocument();
     expect(screen.queryByTestId("remove-avg")).not.toBeInTheDocument();
     expect(screen.getByText("Add another series")).toBeInTheDocument();
     expect(
       screen.getByRole("img", { name: /chevrondown/i }),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByText("Average of Total"));
+    await userEvent.click(screen.getByDisplayValue("Average of Total"));
 
     //Check to see that count is in the popover
     expect(screen.getByText("Count")).toBeInTheDocument();

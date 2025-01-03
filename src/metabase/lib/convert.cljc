@@ -62,6 +62,12 @@
                                      ;; if `error-type` is missing, which seems to happen sometimes,
                                      ;; fall back to humanizing the entire error.
                                      (me/humanize (mr/explain ::lib.schema/stage.mbql almost-stage))))]
+          ;; TODO: Bring this back, for all the idents. We can't enforce this strictly when they're not being added
+          ;; by the BE for pre-existing queries.
+          #_(when (= (last error-location) :ident)
+              (throw (ex-info "Ident error" {:loc error-location
+                                             :error-desc error-desc
+                                             :diff (first (data/diff almost-stage new-stage))})))
           #?(:cljs (js/console.warn "Clean: Removing bad clause due to error!" error-location error-desc
                                     (u/pprint-to-str (first (data/diff almost-stage new-stage))))
              :clj  (log/warnf "Clean: Removing bad clause in %s due to error %s:\n%s"
@@ -183,27 +189,46 @@
      [aggregations & body]
      `(do-with-aggregation-list ~aggregations (fn [] ~@body))))
 
+(defn- from-indexed-idents [stage list-key idents-key]
+  (let [idents (get stage idents-key)]
+    (->> (get stage list-key)
+         ->pMBQL
+         (map-indexed (fn [i x]
+                        (if-let [ident (or (get idents i)
+                                           ;; Conversion from JSON keywordizes all keys, including these numbers!
+                                           (get idents (keyword (str i))))]
+                          (lib.options/update-options x assoc :ident ident)
+                          x)))
+         vec
+         not-empty)))
+
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
-  (let [aggregations (->pMBQL (:aggregation stage))
+  (let [aggregations (from-indexed-idents stage :aggregation :aggregation-idents)
+        expr-idents  (:expression-idents stage)
         expressions  (->> stage
                           :expressions
                           (mapv (fn [[k v]]
-                                  (-> v
-                                      ->pMBQL
-                                      (lib.util/top-level-expression-clause k))))
+                                  (let [expr (-> v
+                                                 ->pMBQL
+                                                 (lib.util/top-level-expression-clause k))]
+                                    (if-let [ident (get expr-idents k)]
+                                      (lib.options/update-options expr assoc :ident ident)
+                                      expr))))
                           not-empty)]
     (metabase.lib.convert/with-aggregation-list aggregations
       (let [stage (-> stage
                       stage-source-card-id->pMBQL
-                      (m/assoc-some :aggregation aggregations :expressions expressions))
+                      (m/assoc-some :expressions expressions
+                                    :aggregation aggregations
+                                    :breakout    (from-indexed-idents stage :breakout :breakout-idents)))
             stage (reduce
                    (fn [stage k]
                      (if-not (get stage k)
                        stage
                        (update stage k ->pMBQL)))
-                   stage
-                   (disj stage-keys :aggregation :expressions))]
+                   (dissoc stage :aggregation-idents :breakout-idents :expression-idents)
+                   (disj stage-keys :aggregation :breakout :expressions))]
         (cond-> stage
           (:joins stage) (update :joins deduplicate-join-aliases))))))
 
@@ -338,15 +363,16 @@
   :hierarchy lib.hierarchy/hierarchy)
 
 (defn- metabase-lib-keyword?
-  "Does keyword `k` have a`:lib/` or a `:metabase.lib.*/` namespace?"
+  "Does keyword `k` have a`:lib/`, `:lib.columns/` or a `:metabase.lib.*/` namespace?"
   [k]
   (and (qualified-keyword? k)
        (when-let [symb-namespace (namespace k)]
          (or (= symb-namespace "lib")
+             (= symb-namespace "lib.columns")
              (str/starts-with? symb-namespace "metabase.lib.")))))
 
 (defn- disqualify
-  "Remove any keys starting with the `:lib/` `:metabase.lib.*/` namespaces from map `m`.
+  "Remove any keys starting with the `:lib/` or `:metabase.lib.*/` namespaces from map `m`.
 
   No args = return transducer to remove keys from a map. One arg = update a map `m`."
   ([]
@@ -400,7 +426,7 @@
 (defn- clause-with-options->legacy-MBQL [[k options & args]]
   (if (map? options)
     (into [k] (concat (map ->legacy-MBQL args)
-                      (when-let [options (options->legacy-MBQL options)]
+                      (when-let [options (not-empty (options->legacy-MBQL options))]
                         [options])))
     (into [k] (map ->legacy-MBQL (cons options args)))))
 
@@ -552,6 +578,25 @@
         (assoc :source-table (str "card__" source-card-id)))
     stage))
 
+(defn- stage-expressions->legacy-MBQL [expressions]
+  (into {}
+        (for [expression expressions
+              :let [legacy-clause (->legacy-MBQL expression)]]
+          [(lib.util/expression-name expression)
+           ;; We wrap literals in :value ->pMBQL so unwrap this
+           ;; direction. Also, `:aggregation-options` is not allowed
+           ;; inside `:expressions` in legacy, we'll just have to toss
+           ;; the extra info.
+           (if (#{:value :aggregation-options} (first legacy-clause))
+             (second legacy-clause)
+             legacy-clause)])))
+
+(defn- idents-by-index [clause-list]
+  (when (seq clause-list)
+    (into {} (map-indexed (fn [i clause]
+                            [i (lib.options/ident clause)]))
+          clause-list)))
+
 (defmethod ->legacy-MBQL :mbql.stage/mbql
   [stage]
   (metabase.lib.convert/with-aggregation-list (:aggregation stage)
@@ -559,21 +604,19 @@
             (-> stage
                 disqualify
                 source-card->legacy-source-table
+
+                (m/assoc-some :aggregation-idents (idents-by-index (:aggregation stage)))
                 (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %))
-                (m/update-existing :expressions (fn [expressions]
-                                                  (into {}
-                                                        (for [expression expressions
-                                                              :let [legacy-clause (->legacy-MBQL expression)]]
-                                                          [(lib.util/expression-name expression)
-                                                           ;; We wrap literals in :value ->pMBQL so unwrap this
-                                                           ;; direction. Also, `:aggregation-options` is not allowed
-                                                           ;; inside `:expressions` in legacy, we'll just have to toss
-                                                           ;; the extra info.
-                                                           (if (#{:value :aggregation-options} (first legacy-clause))
-                                                             (second legacy-clause)
-                                                             legacy-clause)]))))
+                (m/assoc-some :breakout-idents (idents-by-index (:breakout stage)))
+                (m/update-existing :breakout #(mapv ->legacy-MBQL %))
+
+                (m/assoc-some :expression-idents (->> (:expressions stage)
+                                                      (into {} (map (juxt lib.util/expression-name
+                                                                          lib.options/ident)))
+                                                      not-empty))
+                (m/update-existing :expressions stage-expressions->legacy-MBQL)
                 (update-list->legacy-boolean-expression :filters :filter))
-            (disj stage-keys :aggregation :filters :expressions))))
+            (disj stage-keys :aggregation :breakout :filters :expressions))))
 
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage

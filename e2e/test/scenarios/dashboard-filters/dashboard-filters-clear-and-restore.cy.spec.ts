@@ -68,8 +68,8 @@ function editFilter(name: string) {
 
 function editFilterType(type: string, subType: string) {
   H.sidebar().findByText("Filter or parameter type").next().click();
-  H.popover().findByText(type).click();
+  H.selectDropdown().findByText(type).click();
 
   H.sidebar().findByText("Filter operator").next().click();
-  H.popover().findByText(subType).click();
+  H.selectDropdown().findByText(subType).click();
 }

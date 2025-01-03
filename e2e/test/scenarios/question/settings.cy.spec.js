@@ -183,9 +183,7 @@ describe("scenarios > question > settings", () => {
       cy.findByRole("button", { name: "Add or remove columns" }).click();
       cy.findByLabelText("Address").should("not.be.checked").click();
 
-      // The result automatically load when adding new fields but two requests are fired.
-      // Please see: https://github.com/metabase/metabase/pull/21338#discussion_r842816687
-      cy.wait(["@dataset", "@dataset"]);
+      cy.wait("@dataset");
 
       cy.findByRole("button", { name: "Done picking columns" }).click();
 
@@ -311,16 +309,14 @@ describe("scenarios > question > settings", () => {
       getSidebarColumns()
         .eq("4")
         .within(() => {
-          cy.icon("ellipsis").click();
+          cy.icon("ellipsis").click({ force: true });
         });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Normal").click();
+      cy.findByDisplayValue("Normal").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Currency").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("US Dollar").click();
+      cy.findByDisplayValue("US Dollar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Bitcoin").click();
 
@@ -485,6 +481,7 @@ describe("scenarios > question > settings", () => {
 
 function refreshResultsInHeader() {
   cy.findByTestId("qb-header").button("Refresh").click();
+  cy.wait("@dataset");
 }
 
 function getSidebarColumns() {
@@ -500,9 +497,8 @@ function getVisibleSidebarColumns() {
 }
 
 function hideColumn(name) {
-  getSidebarColumns()
-    .contains(name)
-    .parentsUntil("[role=listitem]")
+  H.sidebar()
+    .findByTestId(`draggable-item-${name}`)
     .icon("eye_outline")
-    .click();
+    .click({ force: true });
 }

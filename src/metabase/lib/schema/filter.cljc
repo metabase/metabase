@@ -82,7 +82,7 @@
 (mbql-clause/define-tuple-mbql-clause :not :- :type/Boolean
   [:ref ::expression/boolean])
 
-(doseq [op [:= :!=]]
+(doseq [op [:= :!= :in :not-in]]
   (mbql-clause/define-catn-mbql-clause op :- :type/Boolean
     [:args [:repeat {:min 2} [:schema [:ref ::expression/equality-comparable]]]]))
 

@@ -8,9 +8,6 @@
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.dashboard-card :refer [DashboardCard]]
-   [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
    [metabase.models.user-parameter-value :as user-parameter-value]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -28,15 +25,15 @@
   `dashcard-id` at the top level or as a series. If not such relationship exists this will throw a 404 Exception."
   [dashboard-id card-id dashcard-id]
   (api/check-404
-   (or (t2/exists? DashboardCard
+   (or (t2/exists? :model/DashboardCard
                    :id           dashcard-id
                    :dashboard_id dashboard-id
                    :card_id      card-id)
        (and
-        (t2/exists? DashboardCard
+        (t2/exists? :model/DashboardCard
                     :id           dashcard-id
                     :dashboard_id dashboard-id)
-        (t2/exists? DashboardCardSeries
+        (t2/exists? :model/DashboardCardSeries
                     :card_id          card-id
                     :dashboardcard_id dashcard-id)))))
 
@@ -126,7 +123,7 @@
    request-params :- [:maybe [:sequential :map]]]
   (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
   (let [request-params            (mbql.normalize/normalize-fragment [:parameters] request-params)
-        dashboard                 (-> (t2/select-one Dashboard :id dashboard-id)
+        dashboard                 (-> (t2/select-one :model/Dashboard :id dashboard-id)
                                       (t2/hydrate :resolved-params)
                                       (api/check-404))
         dashboard-param-id->param (into {}
@@ -177,7 +174,7 @@
     (events/publish-event! :event/dashboard-queried {:object-id dashboard-id :user-id api/*current-user-id*})
     ;; make sure we can read this Dashboard. Card will get read-checked later on inside
     ;; [[qp.card/process-query-for-card]]
-    (api/read-check Dashboard dashboard-id)
+    (api/read-check :model/Dashboard dashboard-id)
     (check-card-and-dashcard-are-in-dashboard dashboard-id card-id dashcard-id)
     (let [resolved-params (resolve-params-for-query dashboard-id card-id dashcard-id parameters)
           options         (merge

@@ -15,7 +15,6 @@
    [metabase.driver :as driver]
    [metabase.models.pulse :as models.pulse]
    [metabase.models.task-history :as task-history]
-   [metabase.notification.core :as notification]
    [metabase.pulse.core :as pulse]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]
@@ -56,8 +55,7 @@
                                                     :channel-ids (seq channel-ids)}}
       (when-let [pulse (models.pulse/retrieve-notification pulse-id :archived false)]
         (log/debugf "Starting Pulse Execution: %d" pulse-id)
-        (binding [notification/*default-options* {:notification/sync? true}]
-          (pulse/send-pulse! pulse :channel-ids channel-ids))
+        (pulse/send-pulse! pulse :channel-ids channel-ids :async? true)
         (log/debugf "Finished Pulse Execution: %d" pulse-id)
         :done))
     (catch Throwable e
@@ -91,8 +89,8 @@
      (cron/schedule
       (cron/cron-schedule (u.cron/schedule-map->cron-string schedule-map))
       (cron/in-time-zone (TimeZone/getTimeZone ^String timezone))
-      ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
-      ;; Just wait until the next sync cycle.
+      ;; If the trigger is misfired, fire it immediately and proceed with the next scheduled time.
+      ;; TODO: upon testing, look like re-firing on startup is not working as expected
       ;;
       ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
       (cron/with-misfire-handling-instruction-fire-and-proceed)))

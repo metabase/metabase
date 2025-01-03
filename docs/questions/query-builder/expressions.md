@@ -48,6 +48,14 @@ To do math on timestamp columns, you can use [Date functions](expressions-list.m
 
 For example, you could create a filter for customers from California or Vermont: `= [State] = "CA" OR [State] = "VT"`.
 
+You can also use conditionals with the `case` function (alias `if`):
+
+```
+case([Size] = "L", "LARGE", [SIZE] = "M", "MEDIUM", "SMALL")
+```
+
+See [`case`](./expressions/case.md).
+
 ## Referencing other columns
 
 You can refer to columns in the current table, or to columns that are linked via a foreign key relationship. Column names should be included inside of square brackets, like this: `[Name of Column]`. Columns in connected tables can be referred to like this: `[ConnectedTableName.Column]`.

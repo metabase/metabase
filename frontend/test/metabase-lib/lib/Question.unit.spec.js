@@ -187,6 +187,7 @@ const orders_join_card = {
             ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
           ],
           alias: "Products",
+          ident: "6gujbiqQ08_bn-GTZcDFI",
         },
       ],
     },

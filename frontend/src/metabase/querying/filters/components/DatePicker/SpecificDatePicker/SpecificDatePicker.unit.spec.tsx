@@ -1,21 +1,23 @@
 import _userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-
-import { DATE_PICKER_OPERATORS, DATE_PICKER_UNITS } from "../constants";
+import {
+  DATE_PICKER_OPERATORS,
+  DATE_PICKER_UNITS,
+} from "metabase/querying/filters/constants";
 import type {
   DatePickerOperator,
   DatePickerUnit,
   SpecificDatePickerValue,
-} from "../types";
+} from "metabase/querying/filters/types";
 
 import { SpecificDatePicker } from "./SpecificDatePicker";
 
 interface SetupOpts {
   value?: SpecificDatePickerValue;
-  availableOperators?: ReadonlyArray<DatePickerOperator>;
-  availableUnits?: ReadonlyArray<DatePickerUnit>;
-  isNew?: boolean;
+  availableOperators?: DatePickerOperator[];
+  availableUnits?: DatePickerUnit[];
+  submitButtonLabel?: string;
 }
 
 const userEvent = _userEvent.setup({
@@ -26,7 +28,7 @@ function setup({
   value,
   availableOperators = DATE_PICKER_OPERATORS,
   availableUnits = DATE_PICKER_UNITS,
-  isNew = false,
+  submitButtonLabel = "Apply",
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -36,7 +38,7 @@ function setup({
       value={value}
       availableOperators={availableOperators}
       availableUnits={availableUnits}
-      isNew={isNew}
+      submitButtonLabel={submitButtonLabel}
       onChange={onChange}
       onBack={onBack}
     />,
@@ -52,11 +54,11 @@ describe("SpecificDatePicker", () => {
   });
 
   it('should be able to set "on" filter', async () => {
-    const { onChange } = setup({ isNew: true });
+    const { onChange } = setup();
 
     await userEvent.click(screen.getByText("On"));
     await userEvent.click(screen.getByText("15"));
-    await userEvent.click(screen.getByText("Add filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "specific",
@@ -67,11 +69,11 @@ describe("SpecificDatePicker", () => {
   });
 
   it('should be able to set "before" filter', async () => {
-    const { onChange } = setup({ isNew: true });
+    const { onChange } = setup();
 
     await userEvent.click(screen.getByText("Before"));
     await userEvent.click(screen.getByText("15"));
-    await userEvent.click(screen.getByText("Add filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "specific",
@@ -82,12 +84,12 @@ describe("SpecificDatePicker", () => {
   });
 
   it('should be able to set "after" filter', async () => {
-    const { onChange } = setup({ isNew: true });
+    const { onChange } = setup();
 
     await userEvent.click(screen.getByText("After"));
     await userEvent.clear(screen.getByLabelText("Date"));
     await userEvent.type(screen.getByLabelText("Date"), "Feb 15, 2020");
-    await userEvent.click(screen.getByText("Add filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "specific",
@@ -98,12 +100,12 @@ describe("SpecificDatePicker", () => {
   });
 
   it('should be able to set "between" filter', async () => {
-    const { onChange } = setup({ isNew: true });
+    const { onChange } = setup();
 
     const calendars = screen.getAllByRole("table");
     await userEvent.click(within(calendars[0]).getByText("12"));
     await userEvent.click(within(calendars[1]).getByText("5"));
-    await userEvent.click(screen.getByText("Add filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenLastCalledWith({
       type: "specific",
@@ -114,7 +116,7 @@ describe("SpecificDatePicker", () => {
   });
 
   it('should swap values for "between" filter when min > max', async () => {
-    const { onChange } = setup({ isNew: true });
+    const { onChange } = setup();
 
     const startDateInput = screen.getByLabelText("Start date");
     await userEvent.clear(startDateInput);
@@ -123,7 +125,7 @@ describe("SpecificDatePicker", () => {
     const endDateInput = screen.getByLabelText("End date");
     await userEvent.clear(endDateInput);
     await userEvent.type(endDateInput, "Dec 29, 2019");
-    await userEvent.click(screen.getByText("Add filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenLastCalledWith({
       type: "specific",
@@ -151,7 +153,7 @@ describe("SpecificDatePicker", () => {
     });
 
     await userEvent.click(screen.getByText("Remove time"));
-    await userEvent.click(screen.getByText("Update filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "specific",

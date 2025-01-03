@@ -44,6 +44,7 @@ const CARD_IN_DASHBOARD = createMockCard({
   id: 3,
   collection_id: 3,
   dashboard_id: 4,
+  dashboard: BAR_DASHBOARD,
 });
 
 describe("AppBar", () => {
@@ -270,13 +271,14 @@ function setup({
   dashboardState?: { dashboard: DashboardState };
   initialRoute?: string;
 }) {
+  // Need to set the location because CollectionBreadcrumbs uses the useLocation()
+  window.history.pushState({}, "", initialRoute);
+
   setupCollectionsEndpoints({
     collections: [FOO_COLLECTION],
   });
   setupCollectionByIdEndpoint({ collections: [FOO_COLLECTION] });
   setupCardEndpoints(card);
-  // setupCardEndpoints(CARD_IN_COLLECTION);
-  // setupCardEndpoints(CARD_IN_DASHBOARD);
   setupDashboardEndpoints(BAR_DASHBOARD);
 
   return renderWithProviders(<Route path="*" component={AppBar} />, {

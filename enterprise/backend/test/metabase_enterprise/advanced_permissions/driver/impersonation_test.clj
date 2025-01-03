@@ -7,7 +7,6 @@
    [metabase-enterprise.advanced-permissions.driver.impersonation :as impersonation]
    [metabase.driver.postgres-test :as postgres-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.models.database :refer [Database]]
    [metabase.query-processor :as qp]
    [metabase.request.core :as request]
    [metabase.sync :as sync]
@@ -96,7 +95,7 @@
                            "REVOKE ALL PRIVILEGES ON DATABASE \"conn_impersonation_test\" FROM \"impersonation.role\";"
                            "GRANT SELECT ON TABLE \"conn_impersonation_test\".PUBLIC.table_with_access TO \"impersonation.role\";"]]
           (jdbc/execute! spec [statement]))
-        (t2.with-temp/with-temp [Database database {:engine :postgres, :details details}]
+        (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details details}]
           (mt/with-db database (sync/sync-database! database)
             (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                          :attributes     {"impersonation_attr" "impersonation.role"}}
@@ -119,7 +118,7 @@
             spec    (sql-jdbc.conn/connection-details->spec :redshift details)
             user    (u/lower-case-en (mt/random-name))
             schema  (sql.tx/session-schema :redshift)]
-        (mt/with-temp [Database database {:engine :redshift, :details details}]
+        (mt/with-temp [:model/Database database {:engine :redshift, :details details}]
           (try
             (doseq [statement [(format "DROP TABLE IF EXISTS \"%s\".table_with_access;" schema)
                                (format "DROP TABLE IF EXISTS \"%s\".table_without_access;" schema)
@@ -213,10 +212,9 @@
                   (let [persisted-info (t2/select-one :model/PersistedInfo
                                                       :database_id (mt/id)
                                                       :card_id (:id model))
-                        query          {:type     :query
-                                        :query    {:aggregation  [:count]
-                                                   :source-table (str "card__" (:id model))}
-                                        :database (mt/id)}]
+                        query          (mt/mbql-query nil
+                                         {:aggregation  [:count]
+                                          :source-table (str "card__" (:id model))})]
                     (let [impersonated-result (mt/with-test-user :rasta (qp/process-query query))
                           ;; Make sure we run admin query second to reset the DB role on the connection for other tests!
                           admin-result        (mt/as-admin (qp/process-query query))]

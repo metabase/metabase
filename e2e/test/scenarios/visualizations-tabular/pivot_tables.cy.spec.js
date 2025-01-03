@@ -310,14 +310,18 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     assertOnPivotSettings();
 
     // Confirm that Product -> Category doesn't have the option to hide subtotals
-    openColumnSettings(/Product → Category/);
+    openColumnSettings("Product → Category");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Show totals").should("not.be.visible");
 
     // turn off subtotals for User -> Source
-    openColumnSettings(/Users? → Source/);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Show totals").parent().find("input").click();
+    openColumnSettings("User → Source");
+    cy.findByTestId(
+      "chart-settings-widget-pivot_table.column_show_totals",
+    ).within(() => {
+      cy.findByText("Show totals").should("be.visible");
+      cy.findByRole("switch").click({ force: true });
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("3,520").should("not.exist"); // the subtotal has disappeared!
@@ -343,9 +347,13 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByTestId("viz-settings-button").click();
 
     // turn off subtotals for User -> Source
-    openColumnSettings(/Users? → Source/);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Show totals").parent().find("input").click();
+    openColumnSettings("User → Source");
+    cy.findByTestId(
+      "chart-settings-widget-pivot_table.column_show_totals",
+    ).within(() => {
+      cy.findByText("Show totals").should("be.visible");
+      cy.findByRole("switch").click({ force: true });
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("3,520").should("not.exist"); // the subtotal isn't there
@@ -361,7 +369,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     cy.findByTestId("viz-settings-button").click();
     assertOnPivotSettings();
-    openColumnSettings(/Users? → Source/);
+    openColumnSettings("User → Source");
 
     cy.log("New panel for the column options");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -384,7 +392,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     cy.findByTestId("viz-settings-button").click();
     assertOnPivotSettings();
-    openColumnSettings(/Count/);
+    openColumnSettings("Count");
 
     cy.log("New panel for the column options");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -395,8 +403,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByText("Separator style");
 
     cy.log("Change the value formatting");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Normal").click();
+    cy.findByDisplayValue("Normal").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Percent").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -414,7 +421,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     cy.findByTestId("viz-settings-button").click();
     assertOnPivotSettings();
-    openColumnSettings(/Count/);
+    openColumnSettings("Count");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Sort order/).should("not.be.visible");
@@ -1228,7 +1235,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       cy.signInAsNormalUser();
       H.visitQuestion("@questionId");
       cy.findByTestId("viz-settings-button").click();
-      cy.findByLabelText("Show row totals").click();
+      cy.findByLabelText("Show row totals").click({ force: true });
 
       cy.findByTestId("qb-save-button").should("have.attr", "data-disabled");
     });
@@ -1484,9 +1491,9 @@ function dragColumnHeader(el, xDistance = 50) {
 
 function openColumnSettings(columnName) {
   H.sidebar()
-    .findByText(columnName)
-    .siblings("[data-testid$=settings-button]")
-    .click();
+    .findByTestId(`draggable-item-${columnName}`)
+    .icon("ellipsis")
+    .click({ force: true });
 }
 
 /**

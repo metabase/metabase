@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.embed-test :as embed-test]
-   [metabase.models :refer [Card Dashboard DashboardCard]]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -320,11 +319,11 @@
       (mt/with-temporary-setting-values [enable-public-sharing true
                                          enable-embedding-static true]
         (embed-test/with-new-secret-key!
-          (t2.with-temp/with-temp [Card          card      (if viz-settings
-                                                             (assoc card-defaults :visualization_settings viz-settings)
-                                                             card-defaults)
-                                   Dashboard     dashboard {:name "Test Dashboard"}
-                                   DashboardCard dashcard  {:card_id (u/the-id card) :dashboard_id (u/the-id dashboard)}]
+          (t2.with-temp/with-temp [:model/Card          card      (if viz-settings
+                                                                    (assoc card-defaults :visualization_settings viz-settings)
+                                                                    card-defaults)
+                                   :model/Dashboard     dashboard {:name "Test Dashboard"}
+                                   :model/DashboardCard dashcard  {:card_id (u/the-id card) :dashboard_id (u/the-id dashboard)}]
             (doseq [export-format (keys assertions)
                     endpoint      (or endpoints [:dataset :card :dashboard :public :embed])]
               (testing endpoint
@@ -486,6 +485,7 @@
                      :condition    ["="
                                     ["field" (mt/id :venues :category_id) nil]
                                     ["field" (mt/id :categories :id) {:join-alias "Categories"}]],
+                     :ident "PseLrIdkWYLyhn2pCfUrN"
                      :alias "Categories"}]
                    :limit 1}
                   :type "query"}
@@ -524,6 +524,7 @@
                :condition    ["="
                               ["field" (mt/id :venues :id) nil]
                               ["field" (mt/id :venues :id) {:join-alias "Venues"}]],
+               :ident        "dcCvJv4Jz73cGnXBr5ai7"
                :alias        "Venues"}]
              :order-by     [["asc" ["field" (mt/id :venues :id) nil]]]
              :limit        1}

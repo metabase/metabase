@@ -6,7 +6,6 @@
    [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.models :refer [Card]]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -71,25 +70,23 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
         (mt/dataset daily-bird-counts
           (mt/with-persistence-enabled! [persist-models!]
-            (mt/with-temp [Card model {:type          :model
-                                       :database_id   (mt/id)
-                                       :query_type    :query
-                                       :dataset_query {:database (mt/id)
-                                                       :type     :query
-                                                       :query    {:source-table (mt/id :bird-count)}}}]
+            (mt/with-temp [:model/Card model {:type          :model
+                                              :database_id   (mt/id)
+                                              :query_type    :query
+                                              :dataset_query {:database (mt/id)
+                                                              :type     :query
+                                                              :query    {:source-table (mt/id :bird-count)}}}]
               (let [;; Get the number of rows before the model is persisted
-                    query-on-top       {:database (mt/id)
-                                        :type     :query
-                                        :query    {:aggregation  [[:count]]
-                                                   :source-table (str "card__" (:id model))}}
+                    query-on-top       (mt/mbql-query nil
+                                         {:aggregation  [[:count]]
+                                          :source-table (str "card__" (:id model))})
                     [[num-rows-query]] (mt/rows (qp/process-query query-on-top))]
                 ;; Persist the model
                 (persist-models!)
                 ;; Check the number of rows is the same after persisting
-                (let [query-on-top {:database (mt/id)
-                                    :type     :query
-                                    :query    {:aggregation [[:count]]
-                                               :source-table (str "card__" (:id model))}}]
+                (let [query-on-top (mt/mbql-query nil
+                                     {:aggregation [[:count]]
+                                      :source-table (str "card__" (:id model))})]
                   (is (= [[num-rows-query]] (mt/rows (qp/process-query query-on-top)))))))))))))
 
 ;; sandbox tests in metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test
@@ -113,10 +110,10 @@
                                                (qp.compile/compile
                                                 (mt/mbql-query products)))]]]
           (mt/with-persistence-enabled! [persist-models!]
-            (mt/with-temp [Card model {:type          :model
-                                       :database_id   (mt/id)
-                                       :query_type    query-type
-                                       :dataset_query query}]
+            (mt/with-temp [:model/Card model {:type          :model
+                                              :database_id   (mt/id)
+                                              :query_type    query-type
+                                              :dataset_query query}]
               (when (= query-type :native)
                 ;; mbql we figure out metadata from query itself. native is opaque and must have metadata in order to
                 ;; know which fields are in the model.
@@ -129,17 +126,16 @@
                     category-field (case query-type
                                      :query (mt/$ids $products.category)
                                      :native [:field "category" {:base-type :type/Text}])
-                    query   {:type :query
-                             :database (mt/id)
-                             :query {:source-table (str "card__" (:id model))
-                                     :expressions {"adjective"
-                                                   [:case
-                                                    [[[:> price-field 30] "expensive"]
-                                                     [[:> price-field 20] "not too bad"]]
-                                                    {:default "not expensive"}]}
-                                     :aggregation [[:count]]
-                                     :breakout [[:expression "adjective" nil]
-                                                category-field]}}
+                    query   (mt/mbql-query nil
+                              {:source-table (str "card__" (:id model))
+                               :expressions {"adjective"
+                                             [:case
+                                              [[[:> price-field 30] "expensive"]
+                                               [[:> price-field 20] "not too bad"]]
+                                              {:default "not expensive"}]}
+                               :aggregation [[:count]]
+                               :breakout [[:expression "adjective" nil]
+                                          category-field]})
                     results (binding [fix-bad-refs/*bad-field-reference-fn*
                                       (fn [x]
                                         (swap! bad-refs conj x))]
@@ -155,16 +151,16 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
       (mt/dataset test-data
         (mt/with-persistence-enabled! [persist-models!]
-          (mt/with-temp [Card model {:type        :model
-                                     :database_id (mt/id)
-                                     :query_type  :query
-                                     :dataset_query
-                                     (mt/mbql-query orders
-                                       {:fields [$total &products.products.category]
-                                        :joins [{:source-table $$products
-                                                 :condition [:= $product_id &products.products.id]
-                                                 :strategy :left-join
-                                                 :alias "products"}]})}]
+          (mt/with-temp [:model/Card model {:type        :model
+                                            :database_id (mt/id)
+                                            :query_type  :query
+                                            :dataset_query
+                                            (mt/mbql-query orders
+                                              {:fields [$total &products.products.category]
+                                               :joins [{:source-table $$products
+                                                        :condition [:= $product_id &products.products.id]
+                                                        :strategy :left-join
+                                                        :alias "products"}]})}]
             (persist-models!)
             (let [query   {:type :query
                            :database (mt/id)
@@ -173,11 +169,10 @@
                   persisted-schema (ddl.i/schema-name (mt/db) (public-settings/site-uuid))]
               (testing "Was persisted"
                 (is (str/includes? (-> results :data :native_form :query) persisted-schema))))
-            (let [query {:type :query
-                         :database (mt/id)
-                         :query {:source-table (str "card__" (:id model))
-                                 :aggregation [[:count]]
-                                 :breakout [(mt/$ids $products.category)]}}
+            (let [query (mt/mbql-query nil
+                          {:source-table (str "card__" (:id model))
+                           :aggregation [[:count]]
+                           :breakout [$products.category]})
                   results (qp/process-query query)
                   persisted-schema (ddl.i/schema-name (mt/db) (public-settings/site-uuid))]
               (testing "Was persisted"

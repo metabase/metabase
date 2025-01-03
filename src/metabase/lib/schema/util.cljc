@@ -73,13 +73,13 @@
                          acc))
                      options options)))))))
 
-(defn remove-lib-uuids
-  "Recursively remove all uuids from x."
+(defn remove-randomized-idents
+  "Recursively remove all uuids and `:ident`s from x."
   [x]
   (walk/postwalk
    (fn [x]
      (if (map? x)
-       (dissoc x :lib/uuid)
+       (dissoc x :lib/uuid :ident)
        x))
    x))
 
@@ -87,8 +87,8 @@
   [:fn
    {:error/message "values must be distinct ignoring uuids"
     :error/fn      (fn [{:keys [value]} _]
-                     (str "Duplicate values ignoring uuids in: " (pr-str (remove-lib-uuids value))))}
-   (comp u/empty-or-distinct? remove-lib-uuids)])
+                     (str "Duplicate values ignoring uuids in: " (pr-str (remove-randomized-idents value))))}
+   (comp u/empty-or-distinct? remove-randomized-idents)])
 
 (defn distinct-ignoring-uuids
   "Add an additional constraint to `schema` that requires all elements to be distinct after removing uuids."

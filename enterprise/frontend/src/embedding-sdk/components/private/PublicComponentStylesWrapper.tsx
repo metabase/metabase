@@ -25,7 +25,7 @@ const PublicComponentStylesWrapperInner = styled.div`
 
   font-weight: 400;
   color: var(--mb-color-text-dark);
-  font-family: var(--mb-default-font-family), sans-serif;
+  font-family: var(--mb-default-font-family);
 
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

@@ -1,7 +1,7 @@
-import { connect } from "react-redux";
 import _ from "underscore";
 
 import Alerts from "metabase/entities/alerts";
+import { connect } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 
 import { navigateToArchive } from "../../actions";

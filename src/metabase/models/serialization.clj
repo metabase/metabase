@@ -194,6 +194,15 @@
         (f entity))
       raw-hash))
 
+(defn backfill-entity-id
+  "Given an entity with a (possibly empty) `:entity_id` field:
+  - Return the `:entity_id` if it's set.
+  - Compute the backfill `:entity_id` based on the [[identity-hash]]."
+  [entity]
+  (or (:entity_id entity)
+      (:entity-id entity)
+      (u/generate-nano-id (identity-hash entity))))
+
 (defn identity-hash?
   "Returns true if s is a valid identity hash string."
   [s]
@@ -447,7 +456,7 @@
     (catch Exception e
       (when-not (or (:skip (ex-data e))
                     (:continue-on-error opts))
-        (throw (ex-info (format "Exception extracting %s %s" model (:id instance))
+        (throw (ex-info (format "Error extracting %s %s" model (:id instance))
                         {:model     model
                          :table     (->> model (keyword "model") t2/table-name)
                          :id        (:id instance)
@@ -849,14 +858,15 @@
         (= (count path) 1) (first path)
         :else              path))))
 
-(defn- maybe-export-fk
-  "Exactly like the above `*export-fk*`, except returns `nil` if the target was not found"
-  [id model]
-  (try (*export-fk* id model)
-       (catch clojure.lang.ExceptionInfo e
-         (when-not (= (::type (ex-data e)) :target-not-found)
-           (throw e))
-         nil)))
+(defmacro ^:private fk-elide
+  "If a call to `*export-fk*` inside of this fails, do not export the whole data structure"
+  [& body]
+  `(try
+     ~@body
+     (catch clojure.lang.ExceptionInfo e#
+       (when-not (= (::type (ex-data e#)) :target-not-found)
+         (throw e#))
+       nil)))
 
 (defn ^:dynamic ^::cache *import-fk*
   "Given an identifier, and the model it represents (symbol, name or IModel), looks up the corresponding
@@ -1141,7 +1151,7 @@
     [(:or :field "field") (fully-qualified-name :guard vector?)]
     [:field (*import-field-fk* fully-qualified-name)]
 
-;; source-field is also used within parameter mapping dimensions
+    ;; source-field is also used within parameter mapping dimensions
     ;; example relevant clause - [:field 2 {:source-field 1}]
     {:source-field (fully-qualified-name :guard vector?)}
     (assoc &match :source-field (*import-field-fk* fully-qualified-name))
@@ -1339,17 +1349,17 @@
       json/encode))
 
 (defn- export-viz-click-behavior-link
-  [{:keys [linkType type] old-target-id :targetId :as click-behavior}]
-  (if-not (= type "link")
-    click-behavior
-    ;; if the card doesn't exist anymore, just remove the entire click behavior
-    (when-let [new-target-id (maybe-export-fk old-target-id (link-card-model->toucan-model linkType))]
-      (assoc click-behavior :targetId new-target-id))))
+  [{:keys [linkType type] :as click-behavior}]
+  (fk-elide
+   (cond-> click-behavior
+     (= type "link") (-> (update :targetId *export-fk* (link-card-model->toucan-model linkType))
+                         (u/update-some :tabId *export-fk* :model/DashboardTab)))))
 
 (defn- import-viz-click-behavior-link
   [{:keys [linkType type] :as click-behavior}]
   (cond-> click-behavior
-    (= type "link") (update :targetId *import-fk* (link-card-model->toucan-model linkType))))
+    (= type "link") (-> (update :targetId *import-fk* (link-card-model->toucan-model linkType))
+                        (u/update-some :tabId *import-fk* :model/DashboardTab))))
 
 (defn- export-viz-click-behavior-mapping [mapping]
   (-> mapping
@@ -1391,11 +1401,8 @@
 
 (defn- export-viz-click-behavior [settings]
   (some-> settings
-          (m/update-existing    :click_behavior export-viz-click-behavior-link)
-          (m/update-existing-in [:click_behavior :parameterMapping] export-viz-click-behavior-mappings)
-          (as-> updated-settings
-                (cond-> updated-settings
-                  (nil? (:click_behavior updated-settings)) (dissoc :click_behavior)))))
+          (u/update-some :click_behavior export-viz-click-behavior-link)
+          (m/update-existing-in [:click_behavior :parameterMapping] export-viz-click-behavior-mappings)))
 
 (defn- import-viz-click-behavior [settings]
   (some-> settings
@@ -1415,25 +1422,14 @@
 (defn- export-visualizations [entity]
   (lib.util.match/replace
     entity
-    ["field-id" (id :guard number?)]
-    ["field-id" (*export-field-fk* id)]
-    [:field-id (id :guard number?)]
-    [:field-id (*export-field-fk* id)]
-
-    ["field-id" (id :guard number?) tail]
-    ["field-id" (*export-field-fk* id) (export-visualizations tail)]
-    [:field-id (id :guard number?) tail]
-    [:field-id (*export-field-fk* id) (export-visualizations tail)]
-
-    ["field" (id :guard number?)]
-    ["field" (*export-field-fk* id)]
-    [:field (id :guard number?)]
-    [:field (*export-field-fk* id)]
-
-    ["field" (id :guard number?) tail]
-    ["field" (*export-field-fk* id) (export-visualizations tail)]
-    [:field (id :guard number?) tail]
-    [:field (*export-field-fk* id) (export-visualizations tail)]
+    ["field-id" (id :guard number?)]      ["field-id" (*export-field-fk* id)]
+    [:field-id  (id :guard number?)]      [:field-id  (*export-field-fk* id)]
+    ["field-id" (id :guard number?) tail] ["field-id" (*export-field-fk* id) (export-visualizations tail)]
+    [:field-id  (id :guard number?) tail] [:field-id  (*export-field-fk* id) (export-visualizations tail)]
+    ["field"    (id :guard number?)]      ["field"    (*export-field-fk* id)]
+    [:field     (id :guard number?)]      [:field     (*export-field-fk* id)]
+    ["field"    (id :guard number?) tail] ["field"    (*export-field-fk* id) (export-visualizations tail)]
+    [:field     (id :guard number?) tail] [:field     (*export-field-fk* id) (export-visualizations tail)]
 
     (_ :guard map?)
     (m/map-vals export-visualizations &match)
@@ -1520,10 +1516,11 @@
 
 (defn- viz-click-behavior-deps
   [settings]
-  (when-let [{:keys [linkType targetId type]} (:click_behavior settings)]
+  (let [{:keys [linkType targetId type]} (:click_behavior settings)
+        model (when linkType (link-card-model->toucan-model linkType))]
     (case type
-      "link" (when-let [model (some-> linkType link-card-model->toucan-model name)]
-               #{[{:model model
+      "link" (when model
+               #{[{:model (name model)
                    :id    targetId}]})
       ;; TODO: We might need to handle the click behavior that updates dashboard filters? I can't figure out how get
       ;; that to actually attach to a filter to check what it looks like.
@@ -1550,12 +1547,12 @@
          (reduce set/union #{}))))
 
 (defn- viz-click-behavior-descendants [{:keys [click_behavior]} src]
-  (when-let [{:keys [linkType targetId type]} click_behavior]
+  (let [{:keys [linkType targetId type]} click_behavior
+        model (when linkType (link-card-model->toucan-model linkType))]
     (case type
-      "link" (when-let [model (link-card-model->toucan-model linkType)]
-               ;; if the card was deleted, just ignore it.
-               (when (maybe-export-fk targetId model)
-                 {[(name model) targetId] src}))
+      "link" (when (and model
+                        (fk-elide (*export-fk* targetId model)))
+               {[(name model) targetId] src})
       ;; TODO: We might need to handle the click behavior that updates dashboard filters? I can't figure out how get
       ;; that to actually attach to a filter to check what it looks like.
       nil)))
@@ -1603,7 +1600,7 @@
                               (->> (sort-by sorter data)
                                    (mapv #(extract-one model-name opts %)))
                               (catch Exception e
-                                (throw (ex-info (format "Error exporting nested %s" model)
+                                (throw (ex-info (format "Error extracting nested %s" model)
                                                 {:model     model
                                                  :parent-id (:id current)}
                                                 e)))))

@@ -98,6 +98,12 @@ export type MetabaseComponentTheme = {
   dashboard: {
     backgroundColor: string;
 
+    /**
+     * Border color of the dashboard grid, shown only when editing dashboards.
+     * Defaults to `colors.border`
+     **/
+    gridBorderColor?: string;
+
     card: {
       backgroundColor: string;
 
@@ -196,8 +202,9 @@ export type MetabaseComponentTheme = {
   };
 
   /** Popover */
-  popover?: {
-    /** z-index of the popover. Useful for embedding components in a modal. Defaults to 4. */
+  popover: {
+    /** z-index of overlays. Useful for embedding components in a modal.
+     * Defaults to 200. */
     zIndex?: number;
   };
 

@@ -1,7 +1,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { useState } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -11,6 +10,8 @@ import {
 } from "metabase/admin/app/selectors";
 import { useSetting } from "metabase/common/hooks";
 import EntityMenu from "metabase/components/EntityMenu";
+import { ErrorDiagnosticModalWrapper } from "metabase/components/ErrorPages/ErrorDiagnosticModal";
+import { trackErrorDiagnosticModalOpened } from "metabase/components/ErrorPages/analytics";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
 import CS from "metabase/css/core/index.css";
@@ -20,8 +21,9 @@ import {
 } from "metabase/home/selectors";
 import { color } from "metabase/lib/colors";
 import { capitalize } from "metabase/lib/formatting";
-import { useSelector } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { openDiagnostics } from "metabase/redux/app";
 import {
   getApplicationName,
   getIsWhiteLabeling,
@@ -38,7 +40,11 @@ const mapStateToProps = state => ({
   showOnboardingLink: getIsOnboardingSidebarLinkDismissed(state),
 });
 
-export default connect(mapStateToProps)(ProfileLink);
+const mapDispatchToProps = {
+  openDiagnostics,
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(ProfileLink);
 
 function ProfileLink({
   adminItems,
@@ -46,6 +52,7 @@ function ProfileLink({
   isNewInstance,
   onLogout,
   showOnboardingLink,
+  openDiagnostics,
 }) {
   const [modalOpen, setModalOpen] = useState(null);
   const version = useSetting("version");
@@ -93,6 +100,15 @@ function ProfileLink({
           link: "/getting-started",
           event: `Navbar;Profile Dropdown;Getting Started`,
         },
+      {
+        title: t`Report an issue`,
+        icon: null,
+        action: () => {
+          trackErrorDiagnosticModalOpened("profile-menu");
+          openDiagnostics();
+        },
+        event: `Navbar;Profile Dropdown;Report Bug`,
+      },
       {
         title: t`About ${applicationName}`,
         icon: null,
@@ -182,6 +198,9 @@ function ProfileLink({
           )}
         </Modal>
       ) : null}
+      {modalOpen === "diagnostic" && (
+        <ErrorDiagnosticModalWrapper isModalOpen={true} onClose={closeModal} />
+      )}
     </div>
   );
 }
@@ -192,4 +211,5 @@ ProfileLink.propTypes = {
   isNewInstance: PropTypes.bool,
   onLogout: PropTypes.func.isRequired,
   showOnboardingLink: PropTypes.bool,
+  openDiagnostics: PropTypes.func.isRequired,
 };

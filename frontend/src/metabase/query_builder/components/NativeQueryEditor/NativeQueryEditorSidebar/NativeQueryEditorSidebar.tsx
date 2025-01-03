@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import { isMac } from "metabase/lib/browser";
@@ -9,14 +10,13 @@ import { NativeVariablesButton } from "metabase/query_builder/components/view/Na
 import { PreviewQueryButton } from "metabase/query_builder/components/view/PreviewQueryButton";
 import { SnippetSidebarButton } from "metabase/query_builder/components/view/SnippetSidebarButton";
 import type { QueryModalType } from "metabase/query_builder/constants";
+import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
-import {
-  Container,
-  RunButtonWithTooltipStyled,
-  SidebarButton,
-} from "./NativeQueryEditorSidebar.styled";
+import RunButtonWithTooltip from "../../RunButtonWithTooltip";
+
+import NativeQueryEditorSidebarS from "./NativeQueryEditorSidebar.module.css";
 
 const ICON_SIZE = 18;
 
@@ -91,10 +91,15 @@ export const NativeQueryEditorSidebar = (
   const canFormatQuery = engine != null && canFormatForEngine(engine);
 
   return (
-    <Container data-testid="native-query-editor-sidebar">
+    <Box
+      component="aside"
+      className={NativeQueryEditorSidebarS.Container}
+      data-testid="native-query-editor-sidebar"
+    >
       {canFormatQuery && (
         <Tooltip tooltip={t`Format query`}>
-          <SidebarButton
+          <Button
+            className={NativeQueryEditorSidebarS.SidebarButton}
             aria-label={t`Format query`}
             onClick={onFormatQuery}
             icon="document"
@@ -116,7 +121,8 @@ export const NativeQueryEditorSidebar = (
         <PreviewQueryButton {...props} />
       )}
       {!!canRunQuery && (
-        <RunButtonWithTooltipStyled
+        <RunButtonWithTooltip
+          className={NativeQueryEditorSidebarS.RunButtonWithTooltipStyled}
           disabled={!isRunnable}
           isRunning={isRunning}
           isDirty={isResultDirty}
@@ -126,6 +132,6 @@ export const NativeQueryEditorSidebar = (
           getTooltip={getTooltip}
         />
       )}
-    </Container>
+    </Box>
   );
 };

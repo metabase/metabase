@@ -114,3 +114,11 @@
   (is (= "7e144bc5b43ee850648f353cda978b2911e2f66260ac03c5e1744bce6ca668ff"
          (query-hash-hex {:parameters [{:value 1, :name "parameter"}]})
          (query-hash-hex {:parameters [{:name "parameter", :value 1}]}))))
+
+(deftest ^:parallel parameter-order-should-not-affect-query-hash-test
+  (is (= "db4583f6192234b4bfc076446a0836a4438e5d0182a1ef9a9d737ad6ea180617"
+         (query-hash-hex {:parameters [{:name "parameter", :value ["a" "b"]}]})
+         (query-hash-hex {:parameters [{:name "parameter", :value ["b" "a"]}]})))
+  (is (= "e51a6617a34f3955a8d9b275535c2d0a611ce0bace4f52630229ba9975ed44c3"
+         (query-hash-hex {:parameters [{:name "parameter", :value [1 2]}]})
+         (query-hash-hex {:parameters [{:name "parameter", :value [2 1]}]}))))

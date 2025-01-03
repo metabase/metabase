@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { useEditItemVerificationMutation } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { Icon, Menu } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Dashboard, ModerationReview } from "metabase-types/api";
 
@@ -73,11 +74,15 @@ const useMenuItems = ({
   const isVerified = isItemVerified(latestModerationReview);
 
   if (isModerator) {
+    const testId = isVerified
+      ? "moderation-remove-verification-action"
+      : "moderation-verify-action";
+
     return [
-      {
-        title: isVerified ? t`Remove verification` : title,
-        icon: isVerified ? "close" : verifiedIconName,
-        action: async () => {
+      <Menu.Item
+        key={testId}
+        icon={<Icon name={isVerified ? "close" : verifiedIconName} />}
+        onClick={async () => {
           if (isVerified) {
             await editItemVerification({
               moderated_item_id,
@@ -93,11 +98,11 @@ const useMenuItems = ({
           }
 
           reload();
-        },
-        testId: isVerified
-          ? "moderation-remove-verification-action"
-          : "moderation-verify-action",
-      },
+        }}
+        data-testid={testId}
+      >
+        {isVerified ? t`Remove verification` : title}
+      </Menu.Item>,
     ];
   }
 
