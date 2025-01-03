@@ -1,15 +1,31 @@
+import type { MouseEvent, ReactNode } from "react";
 import type { RenderHeaderCellProps } from "react-data-grid";
 
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import type { RowValue } from "metabase-types/api";
 
-import { BaseCell, type BaseCellProps } from "./BaseCell";
+import { BaseCell } from "./BaseCell";
+import styles from "./HeaderCell.module.css";
 
-type HeaderCellProps = RenderHeaderCellProps<RowValue[]> & BaseCellProps;
+export type HeaderCellProps = RenderHeaderCellProps<RowValue[]> & {
+  textAlign?: "left" | "right";
+  children?: ReactNode;
+  onHeaderClick?: (event: MouseEvent<HTMLDivElement>) => void;
+};
 
-export const HeaderCell = ({ column, onClick }: HeaderCellProps) => {
+export const HeaderCell = ({
+  column,
+  textAlign = "left",
+  children,
+  onHeaderClick,
+}: HeaderCellProps) => {
   return (
-    <BaseCell onClick={onClick} textAlign="left">
-      {column.name}
+    <BaseCell
+      textAlign={textAlign}
+      className={styles.headerCell}
+      onClick={onHeaderClick}
+    >
+      <Ellipsified tooltip={column.name}>{children}</Ellipsified>
     </BaseCell>
   );
 };

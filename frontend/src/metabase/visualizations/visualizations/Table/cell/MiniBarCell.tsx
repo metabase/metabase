@@ -1,6 +1,7 @@
 import type { RenderCellProps } from "react-data-grid";
-import type { RowValue } from "metabase-types/api";
+
 import { Box } from "metabase/ui";
+import type { RowValue } from "metabase-types/api";
 
 import styles from "./MiniBarCell.module.css";
 

@@ -59,7 +59,7 @@ interface TableState {
 
 class Table extends Component<TableProps, TableState> {
   static uiName = t`Table`;
-  static identifier = "table";
+  static identifier = "table-old";
   static iconName = "table2";
   static canSavePng = false;
 

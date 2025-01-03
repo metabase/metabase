@@ -1,36 +1,35 @@
-import { ReactNode, useMemo, useRef } from "react";
+import cx from "classnames";
+import { useCallback, useMemo, useRef } from "react";
 import DataGrid, {
   type Column,
   type DataGridHandle,
-  type RenderCellProps,
   type RenderHeaderCellProps,
 } from "react-data-grid";
-import _ from "underscore";
 
 import { formatValue } from "metabase/lib/formatting";
-import { Box, Flex } from "metabase/ui";
+import { Box } from "metabase/ui";
 import { cachedFormatter } from "metabase/visualizations/echarts/cartesian/utils/formatter";
-import type {
-  Formatter,
-  TableCellFormatter,
-  VisualizationProps,
-} from "metabase/visualizations/types";
-import { isNumber } from "metabase-lib/v1/types/utils/isa";
+import type { VisualizationProps } from "metabase/visualizations/types";
+import { isFK, isNumber, isPK } from "metabase-lib/v1/types/utils/isa";
 import type { RowValue } from "metabase-types/api";
 
+import { AddColumnButton } from "./AddColumnButton";
 import styles from "./Table.module.css";
-import { MiniBarCell } from "./cell/MiniBarCell";
+import { HeaderCell } from "./cell/HeaderCell";
 import { TextCell } from "./cell/TextCell";
 import { TABLE_DEFINITION } from "./chart-definition";
 
 import "react-data-grid/lib/styles.css";
 
-import { HeaderCell } from "./cell/HeaderCell";
-import { AddColumnButton } from "./AddColumnButton";
-
 const ROW_HEIGHT = 36;
 const HEADER_ROW_HEIGHT = 36;
 const MIN_COLUMN_WIDTH = 50;
+
+const INDEX_COLUMN_ID = "\0_index";
+const INDEX_COLUMN_WIDTH = 60;
+
+// Table adds an index column at the beginning of the columns array so we need to subtract 1 to get the correct index in the data array
+const getDataColumnIndex = (displayIndex: number) => displayIndex - 1;
 
 export const Table = ({
   data,
@@ -42,12 +41,70 @@ export const Table = ({
 }: VisualizationProps) => {
   const dataGridRef = useRef<DataGridHandle>(null);
   const { rows, cols } = data;
-  const columnWidths = settings["table.column_widths"] || [];
 
-  const columnFormatters: TableCellFormatter[] = useMemo(() => {
+  const columnWidths = useMemo(
+    () => settings["table.column_widths"] || [],
+    [settings],
+  );
+
+  const handleColumnResize = useCallback(
+    (idx: number, width: number) => {
+      const dataIndex = getDataColumnIndex(idx);
+      if (dataIndex < 0) {
+        return;
+      }
+
+      const newColumnWidths = [...columnWidths];
+      newColumnWidths[dataIndex] = Math.max(width, MIN_COLUMN_WIDTH);
+
+      onUpdateVisualizationSettings({
+        "table.column_widths": newColumnWidths,
+      });
+    },
+    [columnWidths, onUpdateVisualizationSettings],
+  );
+
+  const handleColumnReorder = useCallback(
+    (sourceKey: string, targetKey: string) => {
+      if (sourceKey === INDEX_COLUMN_ID || targetKey === INDEX_COLUMN_ID) {
+        return;
+      }
+
+      const sourceIdx = parseInt(sourceKey, 10);
+      const targetIdx = parseInt(targetKey, 10);
+      const sourceDataIdx = getDataColumnIndex(sourceIdx);
+      const targetDataIdx = getDataColumnIndex(targetIdx);
+
+      if (sourceDataIdx < 0 || targetDataIdx < 0) return;
+
+      const columns =
+        settings["table.columns"] ||
+        cols.map(col => ({ ...col, enabled: true }));
+
+      const reorderedColumns = [...columns];
+      const [removed] = reorderedColumns.splice(sourceDataIdx, 1);
+      reorderedColumns.splice(targetDataIdx, 0, removed);
+
+      onUpdateVisualizationSettings({
+        "table.columns": reorderedColumns,
+      });
+    },
+    [cols, settings, onUpdateVisualizationSettings],
+  );
+
+  const handleHeaderClick = useCallback(
+    (column: any, element: HTMLElement) => {
+      onVisualizationClick?.({
+        column,
+        element,
+      });
+    },
+    [onVisualizationClick],
+  );
+
+  const columnFormatters = useMemo(() => {
     return cols.map(col => {
       const columnSettings = settings.column?.(col);
-
       return cachedFormatter(value =>
         formatValue(value, {
           ...columnSettings,
@@ -60,63 +117,21 @@ export const Table = ({
     });
   }, [cols, settings]);
 
-  const handleColumnResize = (idx: number, width: number) => {
-    const newColumnWidths = [...columnWidths];
-    newColumnWidths[idx] = Math.max(width, MIN_COLUMN_WIDTH);
-    onUpdateVisualizationSettings({
-      "table.column_widths": newColumnWidths,
-    });
-  };
-
-  const handleColumnReorder = (sourceIdx: number, targetIdx: number) => {
-    const columns = settings["table.columns"] || cols.map(col => ({ ...col }));
-    const reorderedColumns = [...columns];
-    const [removed] = reorderedColumns.splice(sourceIdx, 1);
-    reorderedColumns.splice(targetIdx, 0, removed);
-
-    onUpdateVisualizationSettings({
-      "table.columns": reorderedColumns,
-    });
-  };
-
-  const getCellBackgroundColor = (
-    value: unknown,
-    rowIndex: number,
-    column: any,
-  ) => {
-    try {
-      return settings["table._cell_background_getter"]?.(
-        value,
-        rowIndex,
-        column.name,
-      );
-    } catch (e) {
-      console.error(e);
-      return undefined;
-    }
-  };
-
-  const columns: Column<RowValue[]>[] = useMemo(() => {
-    const indexColumn: Column<unknown> = {
-      key: `\0_index`,
+  const columns = useMemo(() => {
+    const indexColumn: Column<RowValue[]> = {
+      key: INDEX_COLUMN_ID,
       name: "#",
-      width: "max-content",
+      width: INDEX_COLUMN_WIDTH,
       frozen: true,
       draggable: false,
       resizable: false,
-      renderCell: props => (
-        <TextCell
-          textAlign="right"
-          value={props.rowIdx}
-          formatter={val => String(val)}
-          {...props}
-        />
-      ),
+      renderCell: ({ rowIdx }) => <TextCell value={rowIdx + 1} />,
     };
 
     const valueColumns = cols.map<Column<RowValue[]>>((col, index) => {
-      const columnSettings = settings.column?.(col);
-      const showMiniBar = columnSettings?.["show_mini_bar"];
+      const isRightAligned = isNumber(col);
+      const isPrimaryKey = isPK(col);
+      const isForeignKey = isFK(col);
 
       return {
         key: index.toString(),
@@ -125,32 +140,44 @@ export const Table = ({
         resizable: true,
         draggable: true,
         minWidth: MIN_COLUMN_WIDTH,
-        className: isNumber(col) ? styles.rightAligned : undefined,
-        renderHeaderCell: (props: RenderHeaderCellProps<RowValue[]>) => {
-          return <HeaderCell {...props} />;
-        },
-        renderCell: (props: RenderCellProps<RowValue[]>) => {
-          const { row, rowIdx } = props;
-          const formatter = columnFormatters[index];
+        className: cx(styles.column, {
+          [styles.rightAligned]: isRightAligned,
+        }),
+        renderHeaderCell: (props: RenderHeaderCellProps<RowValue[]>) => (
+          <HeaderCell
+            {...props}
+            textAlign={isRightAligned ? "right" : "left"}
+            onHeaderClick={event => handleHeaderClick(col, event.currentTarget)}
+          >
+            {props.column.name}
+          </HeaderCell>
+        ),
+        renderCell: ({ row, rowIdx }) => {
           const value = row[index];
-          const backgroundColor = getCellBackgroundColor(value, rowIdx, col);
+          const backgroundColor = settings["table._cell_background_getter"]?.(
+            value,
+            rowIdx,
+            col.name,
+          );
 
           return (
             <TextCell
-              {...props}
               value={value}
-              formatter={formatter}
+              formatter={columnFormatters[index]}
+              textAlign={isRightAligned ? "right" : "left"}
               style={{ backgroundColor }}
+              isPK={isPrimaryKey}
+              isFK={isForeignKey}
               onClick={event => {
-                if (onVisualizationClick) {
-                  onVisualizationClick({
-                    value,
-                    column: col,
-                    element: event.currentTarget,
-                  });
-                }
+                onVisualizationClick?.({
+                  value,
+                  column: col,
+                  element: event.currentTarget,
+                });
               }}
-            />
+            >
+              {columnFormatters[index](value)}
+            </TextCell>
           );
         },
       };
@@ -162,37 +189,36 @@ export const Table = ({
     settings,
     columnWidths,
     columnFormatters,
-    getCellBackgroundColor,
     onVisualizationClick,
+    handleHeaderClick,
   ]);
-
-  const tableWidth = Array.from(
-    dataGridRef.current?.element?.querySelector(".rdg-header-row")
-      ?.childNodes ?? [],
-  ).reduce((acc, el) => el.clientWidth + acc, 0);
 
   return (
     <Box style={{ height, position: "relative" }}>
       <DataGrid
-        enableVirtualization
         ref={dataGridRef}
         className={styles.table}
         columns={columns}
         rows={rows}
         rowHeight={ROW_HEIGHT}
         headerRowHeight={HEADER_ROW_HEIGHT}
-        onColumnResize={(idx, width) => handleColumnResize(idx, width)}
-        onColumnsReorder={(sourceIdx, targetIdx) =>
-          handleColumnReorder(sourceIdx, targetIdx)
-        }
+        onColumnResize={handleColumnResize}
+        onColumnsReorder={handleColumnReorder}
+        enableVirtualization
+        defaultColumnOptions={{
+          sortable: true,
+          resizable: true,
+        }}
       />
-
       <AddColumnButton
         headerHeight={HEADER_ROW_HEIGHT}
         pageWidth={width}
-        tableContentWidth={tableWidth}
+        tableContentWidth={width}
         onClick={e =>
-          onVisualizationClick({ columnShortcuts: true, element: e.target })
+          onVisualizationClick?.({
+            columnShortcuts: true,
+            element: e.currentTarget,
+          })
         }
       />
     </Box>

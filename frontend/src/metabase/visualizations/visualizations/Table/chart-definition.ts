@@ -9,7 +9,7 @@ import TableLegacy from "../TableLegacy";
 
 export const TABLE_DEFINITION = {
   uiName: t`Table New`,
-  identifier: "table-new",
+  identifier: "table",
   iconName: "table",
   noun: t`table`,
   minSize: getMinSize("table"),

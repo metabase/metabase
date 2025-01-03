@@ -1,0 +1,33 @@
+.cell {
+  padding: 0.75rem;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  color: var(--color-text-dark);
+  cursor: pointer;
+}
+
+.rightAligned {
+  justify-content: flex-end;
+}
+
+.pill {
+  border: 1px solid transparent;
+  padding: 0.25rem 0.65rem;
+  border-radius: 99px;
+  min-width: 35px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.pkPill {
+  composes: pill;
+  background-color: var(--color-bg-medium);
+}
+
+.fkPill {
+  composes: pill;
+  color: var(--color-brand);
+}
