@@ -14,7 +14,7 @@ const setup = ({ currentUser }: SetupOpts = {}) => {
     currentUser,
   });
 
-  renderWithProviders(<HomeLayout hasMetabot={false} />, {
+  renderWithProviders(<HomeLayout />, {
     storeInitialState: state,
   });
 };

@@ -1,7 +1,6 @@
 (ns metabase.api.dataset
   "/api/dataset endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
@@ -13,11 +12,8 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.database :as database :refer [Database]]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.persisted-info :as persisted-info]
-   [metabase.models.table :refer [Table]]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -28,6 +24,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -44,7 +41,7 @@
   [outer-query]
   (when-let [source-card-id (qp.util/query->source-card-id outer-query)]
     (log/infof "Source query for this query is Card %s" (pr-str source-card-id))
-    (api/read-check Card source-card-id)
+    (api/read-check :model/Card source-card-id)
     source-card-id))
 
 (mu/defn- run-streaming-query :- (ms/InstanceOfClass metabase.async.streaming_response.StreamingResponse)
@@ -59,16 +56,16 @@
       (when-not database
         (throw (ex-info (tru "`database` is required for all queries whose type is not `internal`.")
                         {:status-code 400, :query query})))
-      (api/read-check Database database))
+      (api/read-check :model/Database database))
     ;; store table id trivially iff we get a query with simple source-table
     (let [table-id (get-in query [:query :source-table])]
       (when (int? table-id)
-        (events/publish-event! :event/table-read {:object  (t2/select-one Table :id table-id)
+        (events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
                                                   :user-id api/*current-user-id*})))
     ;; add sensible constraints for results limits on our query
     (let [source-card-id (query->source-card-id query)
           source-card    (when source-card-id
-                           (t2/select-one [Card :result_metadata :type] :id source-card-id))
+                           (t2/select-one [:model/Card :result_metadata :type] :id source-card-id))
           info           (cond-> {:executed-by api/*current-user-id*
                                   :context     context
                                   :card-id     source-card-id}
@@ -136,11 +133,11 @@
    format_rows            [:maybe ms/BooleanValue]
    pivot_results          [:maybe ms/BooleanValue]
    export-format          ExportFormat}
-  (let [{:keys [was-pivot] :as query} (json/parse-string query keyword)
+  (let [{:keys [was-pivot] :as query} (json/decode+kw query)
         query                         (dissoc query :was-pivot)
-        viz-settings                  (-> (json/parse-string visualization_settings viz-setting-key-fn)
+        viz-settings                  (-> (json/decode visualization_settings viz-setting-key-fn)
                                           (update :table.columns mbql.normalize/normalize)
-                                          mb.viz/db->norm)
+                                          mb.viz/norm->db)
         query                         (-> query
                                           (assoc :viz-settings viz-settings)
                                           (dissoc :constraints)
@@ -183,7 +180,7 @@
   {database [:maybe ms/PositiveInt]}
   (when-not database
     (throw (Exception. (str (tru "`database` is required for all queries.")))))
-  (api/read-check Database database)
+  (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
     (qp.streaming/streaming-response [rff :api]

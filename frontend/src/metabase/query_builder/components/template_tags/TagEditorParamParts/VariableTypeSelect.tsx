@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { Select } from "metabase/ui";
 import type { TemplateTagType } from "metabase-types/api";
 
-import { ContainerLabel, InputContainer } from "./TagEditorParam.styled";
+import { ContainerLabel, InputContainer } from "./TagEditorParam";
 
 const OPTIONS: Array<{ value: TemplateTagType; label: string }> = [
   { value: "text", label: t`Text` },

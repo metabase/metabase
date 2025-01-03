@@ -1,13 +1,14 @@
 /* eslint-disable react/prop-types */
-import EntityLink from "./EntityLink";
 import EntityListLoader, { entityListLoader } from "./EntityListLoader";
 import { EntityName } from "./EntityName";
-import EntityObjectLoader, { entityObjectLoader } from "./EntityObjectLoader";
+import { entityListLoaderRtkQuery, entityObjectLoader } from "./rtk-query";
 
 export function addEntityContainers(entity) {
   const ObjectName = entity.nameOne;
 
-  // Entity.load higher-order component
+  /**
+   * @deprecated HOCs are deprecated
+   */
   entity.load = ({ id, query, ...props } = {}) =>
     entityObjectLoader({
       entityType: entity.name,
@@ -16,31 +17,42 @@ export function addEntityContainers(entity) {
       ...props,
     });
 
-  // Entity.Loader component
-  entity.Loader = ({ id, ...props }) => (
-    <EntityObjectLoader entityType={entity.name} entityId={id} {...props} />
-  );
-  entity.Loader.displayName = `${ObjectName}.Loader`;
+  /**
+   * @deprecated HOCs are deprecated
+   */
+  entity.loadList = ({ query, ...props } = {}) => {
+    // TODO: remove this in https://github.com/metabase/metabase/issues/50324
+    if (!entity.rtk?.useListQuery) {
+      return entity.loadListLegacy({ query, ...props });
+    }
 
-  // Entity.loadList higher-order component
-  entity.loadList = ({ query, ...props } = {}) =>
-    entityListLoader({ entityType: entity.name, entityQuery: query, ...props });
+    return entityListLoaderRtkQuery({
+      entityType: entity.name,
+      entityQuery: query,
+      ...props,
+    });
+  };
 
-  // Entity.ListLoader component
+  /**
+   * TODO: remove this is in https://github.com/metabase/metabase/issues/50325
+   *
+   * @deprecated HOCs are deprecated
+   */
+  entity.loadListLegacy = ({ query, ...props } = {}) => {
+    return entityListLoader({
+      entityType: entity.name,
+      entityQuery: query,
+      ...props,
+    });
+  };
+
   entity.ListLoader = ({ query, ...props }) => (
     <EntityListLoader entityType={entity.name} entityQuery={query} {...props} />
   );
   entity.ListLoader.displayName = `${ObjectName}.ListLoader`;
 
-  // Entity.Name component
   entity.Name = ({ id, ...props }) => (
     <EntityName entityType={entity.name} entityId={id} {...props} />
   );
   entity.Name.displayName = `${ObjectName}.Name`;
-
-  // Entity.Link component
-  entity.Link = ({ id, ...props }) => (
-    <EntityLink entityType={entity.name} entityId={id} {...props} />
-  );
-  entity.Link.displayName = `${ObjectName}.Link`;
 }

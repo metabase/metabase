@@ -1,25 +1,7 @@
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
+import type { GroupItem } from "metabase/querying/filters/types";
+import { getGroupName } from "metabase/querying/filters/utils";
 import * as Lib from "metabase-lib";
-
-import type { GroupItem } from "../types";
-
-export function appendStageIfAggregated(query: Lib.Query) {
-  const aggregations = Lib.aggregations(query, -1);
-  const breakouts = Lib.breakouts(query, -1);
-
-  return aggregations.length > 0 && breakouts.length > 0
-    ? Lib.appendStage(query)
-    : query;
-}
-
-function getGroupName(
-  groupInfo: Lib.ColumnGroupDisplayInfo,
-  stageIndex: number,
-) {
-  return groupInfo.isMainGroup && stageIndex > 1
-    ? `${groupInfo.displayName} (${stageIndex})`
-    : groupInfo.displayName;
-}
 
 export function getGroupItems(query: Lib.Query): GroupItem[] {
   const stageIndexes = Lib.stageIndexes(query);

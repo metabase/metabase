@@ -13,7 +13,10 @@ import { QuarterRoot } from "./DateQuarterYearWidget.styled";
 const QUARTER_FORMAT_STRING = t`[Q]Q`;
 
 type Props = {
-  value: string;
+  value?: string;
+  defaultValue?: string;
+  initialValue?: string;
+  required?: boolean;
   setValue: (v: string) => void;
   onClose: () => void;
 };

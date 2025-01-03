@@ -3,7 +3,6 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
-   [cheshire.core :as json]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
@@ -14,6 +13,7 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -86,6 +86,11 @@
        x))
    x))
 
+(mu/defn- sort-parameter-values
+  "Return the sequence of parameter maps, but with any :value keys sorted if they are a sequence"
+  [params :- [:or :nil [:sequential :any]]]
+  (map #(if (sequential? (:value %)) (update % :value sort) %) params))
+
 (mu/defn- select-keys-for-hashing
   "Return `query` with only the keys relevant to hashing kept.
   (This is done so irrelevant info or options that don't affect query results doesn't result in the same query
@@ -94,8 +99,9 @@
   (let [{:keys [constraints parameters], :as query} (select-keys query [:database :lib/type :stages :parameters :constraints])]
     (cond-> query
       (empty? constraints) (dissoc :constraints)
+      true                 (update :parameters sort-parameter-values)
       (empty? parameters)  (dissoc :parameters)
-      true                 lib.schema.util/remove-lib-uuids
+      true                 lib.schema.util/remove-randomized-idents
       true                 walk-query-sort-maps)))
 
 (mu/defn query-hash :- bytes?
@@ -114,7 +120,7 @@
                   (throw (ex-info "Error hashing query. Is this a valid query?"
                                   {:query query}
                                   e))))]
-    (buddy-hash/sha3-256 (json/generate-string (select-keys-for-hashing query)))))
+    (buddy-hash/sha3-256 (json/encode (select-keys-for-hashing query)))))
 
 ;;; --------------------------------------------- Query Source Card IDs ----------------------------------------------
 

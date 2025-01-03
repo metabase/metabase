@@ -1,13 +1,12 @@
 import { renderHook } from "@testing-library/react-hooks";
 
+import type { DatePickerValue } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
   createQuery,
   createQueryWithClauses,
 } from "metabase-lib/test-helpers";
-
-import type { DatePickerValue } from "../../components/DatePicker";
 
 import { useDateFilter } from "./use-date-filter";
 
@@ -193,9 +192,9 @@ function getTestCases(
       expression: Lib.relativeDateFilterClause({
         column,
         value: -10,
-        bucket: "month",
+        unit: "month",
         offsetValue: null,
-        offsetBucket: null,
+        offsetUnit: null,
         options: {},
       }),
       expectedDisplayName: "Created At is in the previous 10 months",
@@ -212,9 +211,9 @@ function getTestCases(
       expression: Lib.relativeDateFilterClause({
         column,
         value: 10,
-        bucket: "month",
+        unit: "month",
         offsetValue: null,
-        offsetBucket: null,
+        offsetUnit: null,
         options: {},
       }),
       expectedDisplayName: "Created At is in the next 10 months",
@@ -231,9 +230,9 @@ function getTestCases(
       expression: Lib.relativeDateFilterClause({
         column,
         value: -10,
-        bucket: "month",
+        unit: "month",
         offsetValue: -2,
-        offsetBucket: "year",
+        offsetUnit: "year",
         options: {},
       }),
       expectedDisplayName:
@@ -251,9 +250,9 @@ function getTestCases(
       expression: Lib.relativeDateFilterClause({
         column,
         value: 10,
-        bucket: "month",
+        unit: "month",
         offsetValue: 2,
-        offsetBucket: "year",
+        offsetUnit: "year",
         options: {},
       }),
       expectedDisplayName:
@@ -266,10 +265,10 @@ function getTestCases(
         unit: "hour-of-day",
         values: [10],
       },
-      expression: Lib.excludeDateFilterClause(query, stageIndex, {
+      expression: Lib.excludeDateFilterClause({
         operator: "!=",
         column,
-        bucket: "hour-of-day",
+        unit: "hour-of-day",
         values: [10],
       }),
       expectedDisplayName: "Created At excludes the hour of 10 AM",
@@ -281,10 +280,10 @@ function getTestCases(
         unit: "day-of-week",
         values: [2],
       },
-      expression: Lib.excludeDateFilterClause(query, stageIndex, {
+      expression: Lib.excludeDateFilterClause({
         operator: "!=",
         column,
-        bucket: "day-of-week",
+        unit: "day-of-week",
         values: [2],
       }),
       expectedDisplayName: "Created At excludes Tuesdays",
@@ -294,13 +293,13 @@ function getTestCases(
         type: "exclude",
         operator: "!=",
         unit: "month-of-year",
-        values: [2],
+        values: [3],
       },
-      expression: Lib.excludeDateFilterClause(query, stageIndex, {
+      expression: Lib.excludeDateFilterClause({
         operator: "!=",
         column,
-        bucket: "month-of-year",
-        values: [2],
+        unit: "month-of-year",
+        values: [3],
       }),
       expectedDisplayName: "Created At excludes each Mar",
     },
@@ -311,10 +310,10 @@ function getTestCases(
         unit: "quarter-of-year",
         values: [2],
       },
-      expression: Lib.excludeDateFilterClause(query, stageIndex, {
+      expression: Lib.excludeDateFilterClause({
         operator: "!=",
         column,
-        bucket: "quarter-of-year",
+        unit: "quarter-of-year",
         values: [2],
       }),
       expectedDisplayName: "Created At excludes Q2 each year",
@@ -325,10 +324,10 @@ function getTestCases(
         operator: "is-null",
         values: [],
       },
-      expression: Lib.excludeDateFilterClause(query, stageIndex, {
+      expression: Lib.excludeDateFilterClause({
         operator: "is-null",
         column,
-        bucket: null,
+        unit: null,
         values: [],
       }),
       expectedDisplayName: "Created At is empty",
@@ -339,10 +338,10 @@ function getTestCases(
         operator: "not-null",
         values: [],
       },
-      expression: Lib.excludeDateFilterClause(query, stageIndex, {
+      expression: Lib.excludeDateFilterClause({
         operator: "not-null",
         column,
-        bucket: null,
+        unit: null,
         values: [],
       }),
       expectedDisplayName: "Created At is not empty",

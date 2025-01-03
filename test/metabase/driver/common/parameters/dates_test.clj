@@ -71,16 +71,20 @@
     (is (= [:time-interval [:field "field" {:base-type :type/DateTime}] -30 :quarter {:include-current false}]
            (params.dates/date-string->filter "past30quarters" [:field "field" {:base-type :type/DateTime}]))))
   (testing "relative (past) with starting from "
-    (is (= [:between
-            [:+ [:field "field" {:base-type :type/DateTime}] [:interval 3 :year]]
-            [:relative-datetime -3 :day]
-            [:relative-datetime 0 :day]]
+    (is (= [:relative-time-interval
+            [:field "field" {:base-type :type/DateTime}]
+            -3
+            :day
+            -3
+            :year]
            (params.dates/date-string->filter "past3days-from-3years" [:field "field" {:base-type :type/DateTime}]))))
   (testing "relative (next) with starting from"
-    (is (= [:between
-            [:+ [:field "field" {:base-type :type/DateTime}] [:interval -13 :month]]
-            [:relative-datetime 0 :hour]
-            [:relative-datetime 7 :hour]]
+    (is (= [:relative-time-interval
+            [:field "field" {:base-type :type/DateTime}]
+            7
+            :hour
+            13
+            :month]
            (params.dates/date-string->filter "next7hours-from-13months" [:field "field" {:base-type :type/DateTime}]))))
   (testing "exclusions"
     (mt/with-clock #t "2016-06-07T12:13:55Z"

@@ -2,6 +2,7 @@ import { createMockMetadata } from "__support__/metadata";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
+  createMockDashboardCard,
   createMockNativeDatasetQuery,
   createMockParameter,
   createMockTable,
@@ -99,6 +100,7 @@ describe("parameters/utils/mapping-options", () => {
             target: [
               "dimension",
               ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+              { "stage-number": 0 },
             ],
           },
         ]);
@@ -155,6 +157,7 @@ describe("parameters/utils/mapping-options", () => {
             target: [
               "dimension",
               ["field", REVIEWS.CREATED_AT, { "base-type": "type/DateTime" }],
+              { "stage-number": 0 },
             ],
             isForeign: false,
           },
@@ -172,6 +175,7 @@ describe("parameters/utils/mapping-options", () => {
                   "source-field": REVIEWS.PRODUCT_ID,
                 },
               ],
+              { "stage-number": 0 },
             ],
             isForeign: true,
           },
@@ -184,6 +188,7 @@ describe("parameters/utils/mapping-options", () => {
           joins: [
             {
               alias: "Product",
+              ident: "Y_wEKVMtSNd3v5I4vYs05",
               fields: "all",
               "source-table": PRODUCTS_ID,
               condition: [
@@ -211,6 +216,7 @@ describe("parameters/utils/mapping-options", () => {
             target: [
               "dimension",
               ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+              { "stage-number": 0 },
             ],
             isForeign: false,
           },
@@ -225,6 +231,7 @@ describe("parameters/utils/mapping-options", () => {
                 PRODUCTS.CREATED_AT,
                 { "base-type": "type/DateTime", "join-alias": "Product" },
               ],
+              { "stage-number": 0 },
             ],
             isForeign: true,
           },
@@ -242,6 +249,7 @@ describe("parameters/utils/mapping-options", () => {
                   "source-field": ORDERS.USER_ID,
                 },
               ],
+              { "stage-number": 0 },
             ],
             isForeign: true,
           },
@@ -259,6 +267,7 @@ describe("parameters/utils/mapping-options", () => {
                   "source-field": ORDERS.USER_ID,
                 },
               ],
+              { "stage-number": 0 },
             ],
             isForeign: true,
           },
@@ -278,12 +287,24 @@ describe("parameters/utils/mapping-options", () => {
         );
         expect(options).toEqual([
           {
+            sectionName: "Products",
+            name: "Created At",
+            icon: "calendar",
+            target: [
+              "dimension",
+              ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
+              { "stage-number": 0 },
+            ],
+            isForeign: false,
+          },
+          {
             sectionName: "Summaries",
             name: "Created At",
             icon: "calendar",
             target: [
               "dimension",
               ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+              { "stage-number": 1 },
             ],
             isForeign: false,
           },
@@ -338,10 +359,118 @@ describe("parameters/utils/mapping-options", () => {
         {
           name: "Created At",
           icon: "calendar",
-          target: ["dimension", ["template-tag", "created"]],
+          target: [
+            "dimension",
+            ["template-tag", "created"],
+            { "stage-number": 0 },
+          ],
           isForeign: false,
         },
       ]);
+    });
+  });
+
+  describe("iframe dashcard", () => {
+    const createIframeDashcard = iframeContent =>
+      createMockDashboardCard({
+        visualization_settings: {
+          virtual_card: {
+            display: "iframe",
+          },
+          iframe: iframeContent,
+        },
+      });
+
+    const getIframeOptions = iframeContent =>
+      getParameterMappingOptions(
+        undefined,
+        null,
+        { display: "iframe" },
+        createIframeDashcard(iframeContent),
+      );
+
+    const expectedTagOptions = tags =>
+      tags.map(tag => ({
+        name: tag,
+        icon: "string",
+        isForeign: false,
+        target: ["text-tag", tag],
+      }));
+
+    it("should return tag options from iframe src URL", () => {
+      const options = getIframeOptions(
+        "https://example.com/embed/{{foo}}/{{bar}}",
+      );
+      expect(options).toEqual(expectedTagOptions(["foo", "bar"]));
+    });
+
+    it("should return tag options from iframe HTML", () => {
+      const options = getIframeOptions(
+        '<iframe src="https://example.com/embed/{{foo}}/{{bar}}"></iframe>',
+      );
+      expect(options).toEqual(expectedTagOptions(["foo", "bar"]));
+    });
+
+    it("should return empty array for iframe without template tags", () => {
+      const options = getIframeOptions("https://example.com/embed");
+      expect(options).toEqual([]);
+    });
+
+    it("should return empty array if iframe src is invalid", () => {
+      const options = getIframeOptions("not-a-valid-url");
+      expect(options).toEqual([]);
+    });
+
+    it("should ignore template tags in non-src attributes", () => {
+      const options = getIframeOptions(
+        '<iframe src="https://example.com/embed/{{foo}}" allow="{{bar}}" allowfullscreen="{{baz}}"></iframe>',
+      );
+      expect(options).toEqual(expectedTagOptions(["foo"]));
+    });
+  });
+
+  describe("link dashcard", () => {
+    const createLinkDashcard = linkUrl =>
+      createMockDashboardCard({
+        visualization_settings: {
+          virtual_card: {
+            display: "link",
+          },
+          link: {
+            url: linkUrl,
+          },
+        },
+      });
+
+    const getLinkOptions = linkUrl =>
+      getParameterMappingOptions(
+        undefined,
+        null,
+        { display: "link" },
+        createLinkDashcard(linkUrl),
+      );
+
+    const expectedTagOptions = tags =>
+      tags.map(tag => ({
+        name: tag,
+        icon: "string",
+        isForeign: false,
+        target: ["text-tag", tag],
+      }));
+
+    it("should return tag options from link URL", () => {
+      const options = getLinkOptions("https://example.com/{{foo}}/{{bar}}");
+      expect(options).toEqual(expectedTagOptions(["foo", "bar"]));
+    });
+
+    it("should return empty array for link without template tags", () => {
+      const options = getLinkOptions("https://example.com/page");
+      expect(options).toEqual([]);
+    });
+
+    it("should return empty array if link URL is undefined", () => {
+      const options = getLinkOptions(undefined);
+      expect(options).toEqual([]);
     });
   });
 });

@@ -13,12 +13,11 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
-   [metabase.models :refer [Field Table]]
-   [metabase.models.card :as card :refer [Card]]
-   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -215,6 +214,8 @@
                                                               [:aggregation-options
                                                                [:max $rating]
                                                                {:name "max"}]]
+                                                :aggregation-idents {0 "VghddL-up6ZVkpUNkE9H_"
+                                                                     1 "O7xQpRu8mQfVAnjroblU2"}
                                                 :breakout    [$category]
                                                 :order-by    [[:asc $category]]})])
             (is (partial= {:data {:cols [{:name "sum" :display_name "Sum of Sum of Price"}
@@ -233,7 +234,9 @@
                                                                                 {:name "sum"}]
                                                                                [:aggregation-options
                                                                                 [:count]
-                                                                                {:name "count"}]]}}
+                                                                                {:name "count"}]]
+                                                                :aggregation-idents {0 "VghddL-up6ZVkpUNkE9H_"
+                                                                                     1 "q0awK8v8lIp1iW_ZhSS_E"}}}
                                                     (when dataset?
                                                       {:info {:metadata/model-metadata
                                                               (:result-metadata (lib.metadata/card (qp.store/metadata-provider) 1))}}))))))))))))
@@ -257,7 +260,7 @@
     :query    {:source-table (str "card__" (u/the-id card))}})
 
   ([card m]
-   (update (query-with-source-card card) :query merge m))
+   (update (query-with-source-card card) :query #(merge (get m :query m) %)))
 
   ([card k v & {:as more}]
    (query-with-source-card card (merge {k v} more))))
@@ -271,12 +274,14 @@
                                              {:fields [$id]
                                               :joins  [{:source-table $$products
                                                         :alias        "P"
+                                                        :ident        "Zh421ECf3-b2l2Ml7s_3P"
                                                         :fields       [&P.products.id &P.products.ean]
                                                         :condition    [:= $product_id &P.products.id]}]})
                                            (mt/mbql-query orders
                                              {:fields [$id]
                                               :joins  [{:source-table "card__1"
                                                         :alias        "RP"
+                                                        :ident        "FGuqyLkhyOtYbUCeFSpfl"
                                                         :fields       [&RP.reviews.id &RP.products.id &RP.products.ean]
                                                         :condition    [:= $product_id &RP.products.id]}]})])
           (is (=? {:status :completed}
@@ -295,7 +300,7 @@
                   [int int]
                   (qp/process-query
                    (query-with-source-card 1
-                                           (mt/$ids venues
+                                           (mt/mbql-query venues
                                              {:aggregation [:count]
                                               :breakout    [$price]})))))))))))
 
@@ -338,7 +343,7 @@
                (mt/format-rows-by
                 [int int]
                 (qp/process-query
-                 (query-with-source-card 1 (mt/$ids venues
+                 (query-with-source-card 1 (mt/mbql-query venues
                                              {:aggregation [:count]
                                               :breakout    [*price]})))))))]
       (is (=? (breakout-results :has-source-metadata? false :native-source? true)
@@ -619,7 +624,7 @@
                 (mt/cols
                  (qp/process-query
                   (query-with-source-card 1
-                                          (mt/$ids venues
+                                          (mt/mbql-query venues
                                             {:aggregation [[:count]]
                                              :breakout    [$price]}))))))))))
 
@@ -633,12 +638,14 @@
                    (assoc :field_ref    [:field "DATE" {:base-type :type/Date, :temporal-unit :day}]
                           :unit         :day)
                    (dissoc :semantic_type :coercion_strategy :table_id
-                           :id :settings :fingerprint :nfc_path))
+                           :id :settings :fingerprint :nfc_path)
+                   lib.temporal-bucket/ensure-temporal-unit-in-display-name)
                (qp.test-util/aggregate-col :count)]
               (mt/cols
                (qp/process-query
-                (query-with-source-card 1 (mt/$ids checkins
+                (query-with-source-card 1 (mt/mbql-query checkins
                                             {:aggregation [[:count]]
+                                             :aggregation-idents {0 "vX12AxUR50eQNFNZgdG0m"}
                                              :breakout    [!day.*date]})))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::breakout-year-test]
@@ -699,8 +706,9 @@
                                         [(mt/mbql-query checkins)])
         (is (= :completed
                (-> (query-with-source-card 1
-                                           (mt/$ids :checkins
+                                           (mt/mbql-query checkins
                                              {:aggregation [[:count]]
+                                              :aggregation-idents {0 "D8bJ476ZFWsYM5G159Ndc"}
                                               :filter      [:= !quarter.*date "2014-01-01T08:00:00.000Z"]
                                               :breakout    [!month.*date]}))
                    qp/process-query
@@ -713,7 +721,7 @@
                                         [(mt/mbql-query checkins)])
         (is (= :completed
                (-> (query-with-source-card 1
-                                           (mt/$ids checkins
+                                           (mt/mbql-query checkins
                                              {:aggregation [[:count]]
                                               :breakout    [!week.*date]
                                               :filter      [:between !week.*date "2014-02-01T00:00:00-08:00" "2014-05-01T00:00:00-07:00"]}))
@@ -737,7 +745,8 @@
                 [int]
                 (qp/process-query
                  (query-with-source-card 1
-                                         {:aggregation [:count]})))))))))
+                                         {:aggregation [:count]
+                                          :aggregation-idents {0 "ApWqC4pOyxysqqeiuiPeS"}})))))))))
 
 (deftest ^:parallel card-perms-test
   (testing "perms for a Card with a SQL source query\n"
@@ -765,12 +774,12 @@
           (mt/with-no-data-perms-for-all-users!
             (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
             (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
-            (mt/with-temp [Collection collection {}
-                           Card       card-1 {:collection_id (u/the-id collection)
-                                              :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 2})}
-                           Card       card-2 {:collection_id (u/the-id collection)
-                                              :dataset_query (mt/mbql-query nil
-                                                               {:source-table (format "card__%d" (u/the-id card-1))})}]
+            (mt/with-temp [:model/Collection collection {}
+                           :model/Card       card-1 {:collection_id (u/the-id collection)
+                                                     :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 2})}
+                           :model/Card       card-2 {:collection_id (u/the-id collection)
+                                                     :dataset_query (mt/mbql-query nil
+                                                                      {:source-table (format "card__%d" (u/the-id card-1))})}]
               (testing "read perms for both Cards should be the same as reading the parent collection")
               (is (= (mi/perms-objects-set collection :read)
                      (mi/perms-objects-set card-1 :read)
@@ -809,10 +818,10 @@
   using Rasta. Use this to test how the API endpoint behaves based on certain permissions grants for the `All Users`
   group."
   [expected-status-code db-or-id source-collection-or-id-or-nil dest-collection-or-id-or-nil]
-  (t2.with-temp/with-temp [Card card {:collection_id (some-> source-collection-or-id-or-nil u/the-id)
-                                      :dataset_query {:database (u/the-id db-or-id)
-                                                      :type     :native
-                                                      :native   {:query "SELECT * FROM VENUES"}}}]
+  (t2.with-temp/with-temp [:model/Card card {:collection_id (some-> source-collection-or-id-or-nil u/the-id)
+                                             :dataset_query {:database (u/the-id db-or-id)
+                                                             :type     :native
+                                                             :native   {:query "SELECT * FROM VENUES"}}}]
     (mt/user-http-request :rasta :post expected-status-code "card"
                           {:name                   (mt/random-name)
                            :collection_id          (some-> dest-collection-or-id-or-nil u/the-id)
@@ -826,8 +835,8 @@
     (mt/with-temp-copy-of-db
       (testing (str "To save a Card that uses another Card as its source, you only need read permissions for the Collection "
                     "the Source Card is in, and write permissions for the Collection you're trying to save the new Card in")
-        (mt/with-temp [Collection source-card-collection {}
-                       Collection dest-card-collection   {}]
+        (mt/with-temp [:model/Collection source-card-collection {}
+                       :model/Collection dest-card-collection   {}]
           (perms/grant-collection-read-permissions!      (perms-group/all-users) source-card-collection)
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
           (is (some? (save-card-via-API-with-native-source-query! 200 (mt/db) source-card-collection dest-card-collection)))))
@@ -835,28 +844,28 @@
       (testing (str "however, if we do *not* have read permissions for the source Card's collection we shouldn't be "
                     "allowed to save the query. This API call should fail")
         (testing "Card in the Root Collection"
-          (t2.with-temp/with-temp [Collection dest-card-collection]
+          (t2.with-temp/with-temp [:model/Collection dest-card-collection]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
             (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
                     (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
 
         (testing "Card in a different Collection for which we do not have perms"
-          (mt/with-temp [Collection source-card-collection {}
-                         Collection dest-card-collection   {}]
+          (mt/with-temp [:model/Collection source-card-collection {}
+                         :model/Collection dest-card-collection   {}]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
             (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
                     (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection)))))
 
         (testing "similarly, if we don't have *write* perms for the dest collection it should also fail"
           (testing "Try to save in the Root Collection"
-            (t2.with-temp/with-temp [Collection source-card-collection]
+            (t2.with-temp/with-temp [:model/Collection source-card-collection]
               (perms/grant-collection-read-permissions! (perms-group/all-users) source-card-collection)
               (is (=? {:message "You do not have curate permissions for this Collection."}
                       (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
 
           (testing "Try to save in a different Collection for which we do not have perms"
-            (mt/with-temp [Collection source-card-collection {}
-                           Collection dest-card-collection   {}]
+            (mt/with-temp [:model/Collection source-card-collection {}
+                           :model/Collection dest-card-collection   {}]
               (perms/grant-collection-read-permissions! (perms-group/all-users) source-card-collection)
               (is (=? {:message "You do not have curate permissions for this Collection."}
                       (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection))))))))))
@@ -1139,8 +1148,8 @@
                            (ean-metadata (qp/process-query query))))))))))))))
 
 (defn- field-id->name [field-id]
-  (let [{field-name :name, table-id :table_id} (t2/select-one [Field :name :table_id] :id field-id)
-        table-name                             (t2/select-one-fn :name Table :id table-id)]
+  (let [{field-name :name, table-id :table_id} (t2/select-one [:model/Field :name :table_id] :id field-id)
+        table-name                             (t2/select-one-fn :name :model/Table :id table-id)]
     (format "%s.%s" table-name field-name)))
 
 (deftest ^:parallel inception-test

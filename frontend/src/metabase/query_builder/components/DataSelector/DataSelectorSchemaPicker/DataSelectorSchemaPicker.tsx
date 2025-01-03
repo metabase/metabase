@@ -1,10 +1,10 @@
 import AccordionList from "metabase/core/components/AccordionList";
 import CS from "metabase/css/core/index.css";
-import { Icon } from "metabase/ui";
+import { Box, Icon } from "metabase/ui";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type { SchemaId } from "metabase-types/api";
 
-import { DataSelectorSchemaPickerContainer as Container } from "./DataSelectorSchemaPicker.styled";
+import { CONTAINER_WIDTH } from "../constants";
 
 type DataSelectorSchemaPickerProps = {
   hasBackButton: boolean;
@@ -36,7 +36,7 @@ const DataSelectorSchemaPicker = ({
   ];
 
   return (
-    <Container>
+    <Box w={CONTAINER_WIDTH}>
       <AccordionList
         id="SchemaPicker"
         key="schemaPicker"
@@ -51,7 +51,7 @@ const DataSelectorSchemaPicker = ({
         renderItemIcon={() => <Icon name="folder" size={16} />}
         showItemArrows={hasNextStep}
       />
-    </Container>
+    </Box>
   );
 };
 

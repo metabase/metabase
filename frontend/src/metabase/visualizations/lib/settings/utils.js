@@ -3,13 +3,12 @@ import _ from "underscore";
 import {
   columnsAreValid,
   getDefaultDimensionAndMetric,
-  getFriendlyName,
 } from "metabase/visualizations/lib/utils";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 export function getOptionFromColumn(col) {
   return {
-    name: getFriendlyName(col),
+    name: col.display_name,
     value: col.name,
   };
 }
@@ -43,7 +42,12 @@ export function getDefaultColumn(
 
 export function fieldSetting(
   id,
-  { fieldFilter = DEFAULT_FIELD_FILTER, showColumnSetting, ...def } = {},
+  {
+    fieldFilter = DEFAULT_FIELD_FILTER,
+    showColumnSetting,
+    autoOpenWhenUnset,
+    ...def
+  } = {},
 ) {
   return {
     [id]: {
@@ -55,7 +59,8 @@ export function fieldSetting(
       getProps: ([{ card, data }], vizSettings) => ({
         options: data.cols.filter(fieldFilter).map(getOptionFromColumn),
         columns: data.cols,
-        showColumnSetting: showColumnSetting,
+        showColumnSetting,
+        autoOpenWhenUnset,
       }),
       ...def,
     },

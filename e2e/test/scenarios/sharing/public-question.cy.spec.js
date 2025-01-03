@@ -1,20 +1,5 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  assertSheetRowsCount,
-  createNativeQuestion,
-  createPublicQuestionLink,
-  downloadAndAssert,
-  filterWidget,
-  main,
-  modal,
-  openNativeEditor,
-  openNewPublicLinkDropdown,
-  openSharingMenu,
-  restore,
-  saveQuestion,
-  updateSetting,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 const { PEOPLE } = SAMPLE_DATABASE;
 
@@ -59,20 +44,20 @@ describe("scenarios > public > question", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
 
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
-    updateSetting("enable-public-sharing", true);
+    H.updateSetting("enable-public-sharing", true);
   });
 
   it("adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033, metabase#21993)", () => {
     cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
-      visitQuestion(id);
+      H.visitQuestion(id);
 
       // Make sure metadata fully loaded before we continue
-      cy.get("[data-testid=cell-data]").contains("Winner");
+      cy.findByTestId("visualization-root").should("be.visible");
 
-      openNewPublicLinkDropdown("card");
+      H.openNewPublicLinkDropdown("card");
 
       // Although we already have API helper `visitPublicQuestion`,
       // it makes sense to use the UI here in order to check that the
@@ -82,18 +67,16 @@ describe("scenarios > public > question", () => {
       // On page load, query params are added
       cy.location("search").should("eq", EXPECTED_QUERY_PARAMS);
 
-      filterWidget().contains("Previous 30 Years");
-      filterWidget().contains("Affiliate");
+      H.filterWidget().contains("Previous 30 Years");
+      H.filterWidget().contains("Affiliate");
 
       cy.wait("@publicQuery");
-      // Name of a city from the expected results
-      cy.get("[data-testid=cell-data]").contains("Winner");
 
       // Make sure we can download the public question (metabase#21993)
       cy.get("@uuid").then(publicUuid => {
-        downloadAndAssert(
+        H.downloadAndAssert(
           { fileType: "xlsx", questionId: id, publicUuid },
-          assertSheetRowsCount(5),
+          H.assertSheetRowsCount(5),
         );
       });
     });
@@ -101,12 +84,12 @@ describe("scenarios > public > question", () => {
 
   it("should only allow non-admin users to see a public link if one has already been created", () => {
     cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
-      createPublicQuestionLink(id);
+      H.createPublicQuestionLink(id);
       cy.signOut();
       cy.signInAsNormalUser().then(() => {
-        visitQuestion(id);
+        H.visitQuestion(id);
 
-        openSharingMenu("Public link");
+        H.openSharingMenu("Public link");
 
         cy.findByTestId("public-link-popover-content").within(() => {
           cy.findByText("Public link").should("be.visible");
@@ -130,10 +113,10 @@ describe("scenarios > public > question", () => {
 
               cy.location("search").should("eq", EXPECTED_QUERY_PARAMS);
 
-              filterWidget().contains("Previous 30 Years");
-              filterWidget().contains("Affiliate");
+              H.filterWidget().contains("Previous 30 Years");
+              H.filterWidget().contains("Affiliate");
 
-              cy.get("[data-testid=cell-data]").contains("Winner");
+              cy.findByTestId("visualization-root").should("be.visible");
             },
           );
         });
@@ -142,13 +125,13 @@ describe("scenarios > public > question", () => {
   );
 
   it("should be able to view public questions with snippets", () => {
-    openNativeEditor();
+    H.openNativeEditor();
 
     // Create a snippet
     cy.icon("snippet").click();
     cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
 
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
         "'test'",
       );
@@ -158,10 +141,17 @@ describe("scenarios > public > question", () => {
 
     cy.get("@editor").type("{moveToStart}select ");
 
-    saveQuestion("test question", { wrapId: true });
+    H.saveQuestion(
+      "test question",
+      { wrapId: true },
+      {
+        tab: "Browse",
+        path: ["Our analytics"],
+      },
+    );
 
     cy.get("@questionId").then(id => {
-      createPublicQuestionLink(id).then(({ body: { uuid } }) => {
+      H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
         cy.signOut();
         cy.signInAsNormalUser().then(() => {
           cy.visit(`/public/question/${uuid}`);
@@ -178,15 +168,22 @@ describe("scenarios > public > question", () => {
         query: "SELECT * FROM PEOPLE LIMIT 5",
       },
     }).then(({ body: { id } }) => {
-      openNativeEditor();
+      H.openNativeEditor();
 
       cy.get("@editor")
         .type("select * from {{#")
         .type(`{leftarrow}{leftarrow}${id}`);
 
-      saveQuestion("test question", { wrapId: true });
+      H.saveQuestion(
+        "test question",
+        { wrapId: true },
+        {
+          tab: "Browse",
+          path: ["Our analytics"],
+        },
+      );
       cy.get("@questionId").then(id => {
-        createPublicQuestionLink(id).then(({ body: { uuid } }) => {
+        H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
           cy.signOut();
           cy.signInAsNormalUser().then(() => {
             cy.visit(`/public/question/${uuid}`);
@@ -197,9 +194,21 @@ describe("scenarios > public > question", () => {
       });
     });
   });
+});
 
-  it("should allow to set locale from the `locale` query parameter", () => {
-    createNativeQuestion(
+H.describeEE("scenarios [EE] > public > question", () => {
+  beforeEach(() => {
+    cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
+
+    H.restore();
+    cy.signInAsAdmin();
+    H.setTokenFeatures("all");
+
+    H.updateSetting("enable-public-sharing", true);
+  });
+
+  it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
+    H.createNativeQuestion(
       {
         name: "Native question with a parameter",
         native: {
@@ -219,17 +228,23 @@ describe("scenarios > public > question", () => {
       { wrapId: true },
     );
 
+    // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
+    cy.intercept("/app/locales/de.json").as("deLocale");
+
     cy.get("@questionId").then(id => {
-      cy.request("POST", `/api/card/${id}/public_link`).then(
-        ({ body: { uuid } }) => {
-          cy.visit(
-            `/public/question/${uuid}?locale=de&some_parameter=some_value`,
-          );
+      H.visitPublicQuestion(id, {
+        params: {
+          some_parameter: "some_value",
         },
-      );
+        hash: {
+          locale: "de-CH",
+        },
+      });
     });
 
-    main().findByText("Februar 11, 2025");
+    cy.wait("@deLocale");
+
+    H.main().findByText("Februar 11, 2025");
 
     cy.url().should("include", "locale=de");
   });

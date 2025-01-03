@@ -1,5 +1,5 @@
 (ns metabase.api.cloud-migration-test
-  "Tests for /api/cloud-migration. "
+  "Tests for /api/cloud-migration."
   (:require
    [clojure.test :refer :all]
    [metabase.models.cloud-migration :as cloud-migration]

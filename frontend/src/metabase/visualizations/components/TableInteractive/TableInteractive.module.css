@@ -106,3 +106,7 @@
 .isOverflowing {
   border-left: 1px solid var(--mb-color-border);
 }
+
+.fill {
+  height: 100%;
+}

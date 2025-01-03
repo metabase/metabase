@@ -1,0 +1,33 @@
+version: 1
+config:
+  users:
+  - first_name: First
+    last_name: Person
+    password: metabot1
+    email: first@example.com
+  - first_name: Normal
+    last_name: Person
+    password: metabot1
+    email: normal@example.com
+  - first_name: Admin
+    last_name: Person
+    password: metabot1
+    is_superuser: true
+    email: admin@example.com
+  databases:
+  - name: Sample PostgreSQL
+    engine: postgres
+    details:
+       host: postgres-data
+       port: 5432
+       user: metabase
+       password: metasample123
+       dbname: sample
+  - name: Sample MySQL
+    engine: mysql
+    details:
+       host: mysql-data
+       port: 3306
+       user: metabase
+       password: metasample123
+       dbname: sample

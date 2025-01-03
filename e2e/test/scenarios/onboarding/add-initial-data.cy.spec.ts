@@ -1,50 +1,39 @@
-import {
-  CSV_FILES,
-  describeWithSnowplow,
-  enableTracking,
-  enableUploads,
-  expectGoodSnowplowEvent,
-  expectNoBadSnowplowEvents,
-  mockSessionPropertiesTokenFeatures,
-  resetSnowplow,
-  restore,
-  uploadFile,
-} from "e2e/support/helpers";
+import { H } from "e2e/support";
 
-describeWithSnowplow(
+H.describeWithSnowplow(
   "better onboarding via sidebar",
   { tags: "@external" },
   () => {
     afterEach(() => {
-      expectNoBadSnowplowEvents();
+      H.expectNoBadSnowplowEvents();
     });
 
     describe("Upload CSV for DWH", () => {
       beforeEach(() => {
-        resetSnowplow();
-        restore("postgres-12");
+        H.resetSnowplow();
+        H.restore("postgres-12");
 
         cy.signInAsAdmin();
-        enableTracking();
-        enableUploads("postgres");
-        mockSessionPropertiesTokenFeatures({ attached_dwh: true });
+        H.enableTracking();
+        H.enableUploads("postgres");
+        H.mockSessionPropertiesTokenFeatures({ attached_dwh: true });
       });
 
-      CSV_FILES.forEach(testFile => {
+      H.CSV_FILES.forEach(testFile => {
         it(`${testFile.valid ? "Can" : "Cannot"} upload ${
           testFile.fileName
         } to "Our analytics" using DWH`, () => {
           cy.visit("/");
           cy.findByTestId("main-navbar-root").findByText("Upload CSV").click();
 
-          uploadFile("#dwh-upload-csv-input", "Our analytics", testFile);
+          H.uploadFile("#dwh-upload-csv-input", "Our analytics", testFile);
 
-          expectGoodSnowplowEvent({
+          H.expectGoodSnowplowEvent({
             event: "csv_upload_clicked",
             triggered_from: "left-nav",
           });
 
-          expectGoodSnowplowEvent({
+          H.expectGoodSnowplowEvent({
             event: testFile.valid
               ? "csv_upload_successful"
               : "csv_upload_failed",
@@ -55,18 +44,18 @@ describeWithSnowplow(
 
     describe("Add initial database", () => {
       beforeEach(() => {
-        resetSnowplow();
-        restore();
+        H.resetSnowplow();
+        H.restore();
 
         cy.signInAsAdmin();
-        enableTracking();
+        H.enableTracking();
       });
 
       it("should track the button click", () => {
         cy.visit("/");
         cy.findByTestId("main-navbar-root").findByText("Add database").click();
         cy.location("pathname").should("eq", "/admin/databases/create");
-        expectGoodSnowplowEvent({
+        H.expectGoodSnowplowEvent({
           event: "database_add_clicked",
           triggered_from: "left-nav",
         });

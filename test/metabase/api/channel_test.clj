@@ -2,10 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
-   [metabase.channel.http-test :as channel.http-test]
+   [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (comment
@@ -29,22 +30,12 @@
                               {:name "New Name"})
         (is (= "New Name" (t2/select-one-fn :name :model/Channel (:id channel)))))
 
-      (testing "can't update channel details if fail to connect"
-        (mt/user-http-request :crowberto :put 400 (str "channel/" (:id channel))
+      (testing "can update channel details even if it fails to connect"
+        (mt/user-http-request :crowberto :put 200 (str "channel/" (:id channel))
                               {:details {:return-type  "return-value"
                                          :return-value false}})
         (is (= {:return-type "return-value"
-                :return-value true}
-               (t2/select-one-fn :details :model/Channel (:id channel)))))
-
-      (testing "can update channel details if connection is successful"
-        (mt/user-http-request :crowberto :put 200 (str "channel/" (:id channel))
-                              {:details {:return-type  "return-value"
-                                         :return-value true
-                                         :new-data     true}})
-        (is (= {:return-type "return-value"
-                :return-value true
-                :new-data     true}
+                :return-value false}
                (t2/select-one-fn :details :model/Channel (:id channel)))))
 
       (testing "can update channel description"
@@ -62,7 +53,14 @@
     (is (= {:errors {:name "Channel with that name already exists"}}
            (mt/user-http-request :crowberto :post 409 "channel" default-test-channel)))))
 
-(def ns-keyword->str #(str (.-sym %)))
+(deftest can-create-channel-with-invalid-details-test
+  ;; maybe we only want this for webhook because we don't know exactly what the connection check will do
+  ;; a connection check can return 400 but maybe it's ok and we rely on the fact that users know what they're doing
+  (mt/with-model-cleanup [:model/Channel]
+    (is (some?
+         (mt/user-http-request :crowberto :post 200 "channel"
+                               (assoc default-test-channel :details {:return-type  "return-value"
+                                                                     :return-value false}))))))
 
 (deftest list-channels-test
   (mt/with-temp [:model/Channel chn-1 default-test-channel
@@ -70,41 +68,12 @@
                                              :active false
                                              :name "Channel 2")]
     (testing "return active channels only"
-      (is (= [(update chn-1 :type ns-keyword->str)]
+      (is (= [(update chn-1 :type u/qualified-name)]
              (mt/user-http-request :crowberto :get 200 "channel"))))
 
     (testing "return all if include_inactive is true"
-      (is (= (map #(update % :type ns-keyword->str) [chn-1 (assoc chn-2 :name "Channel 2")])
+      (is (= (map #(update % :type u/qualified-name) [chn-1 (assoc chn-2 :name "Channel 2")])
              (mt/user-http-request :crowberto :get 200 "channel" {:include_inactive true}))))))
-
-(deftest create-channel-error-handling-test
-  (testing "returns text error message if the channel return falsy value"
-    (is (= "Unable to connect channel"
-           (mt/user-http-request :crowberto :post 400 "channel"
-                                 (assoc default-test-channel :details {:return-type  "return-value"
-                                                                       :return-value false})))))
-  (testing "returns field-specific error message if the channel returns one"
-    (is (= {:errors {:email "Invalid email"}}
-           (mt/user-http-request :crowberto :post 400 "channel"
-                                 (assoc default-test-channel :details {:return-type  "return-value"
-                                                                       :return-value {:errors {:email "Invalid email"}}})))))
-
-  (testing "returns field-specific error message if the channel throws one"
-    (is (= {:errors {:email "Invalid email"}}
-           (mt/user-http-request :crowberto :post 400 "channel"
-                                 (assoc default-test-channel :details {:return-type  "throw"
-                                                                       :return-value {:errors {:email "Invalid email"}}})))))
-
-  (testing "error if channel details include undefined key"
-    (channel.http-test/with-server [url [channel.http-test/get-200]]
-      (is (= {:errors {:xyz ["disallowed key"]}}
-             (mt/user-http-request :crowberto :post 400 "channel"
-                                   (assoc default-test-channel
-                                          :type        "channel/http"
-                                          :details     {:url         (str url (:path channel.http-test/get-200))
-                                                        :method      "get"
-                                                        :auth-method "none"
-                                                        :xyz         "alo"})))))))
 
 (deftest ensure-channel-is-namespaced-test
   (testing "POST /api/channel return 400 if channel type is not namespaced"
@@ -133,21 +102,46 @@
                                                                        :return-value true})))))
 
   (testing "returns text error message if the channel return falsy value"
-    (is (= "Unable to connect channel"
+    (is (= {:message "Unable to connect channel"
+            :data    {:connection-result false}}
            (mt/user-http-request :crowberto :post 400 "channel/test"
                                  (assoc default-test-channel :details {:return-type  "return-value"
                                                                        :return-value false})))))
-  (testing "returns field-specific error message if the channel returns one"
-    (is (= {:errors {:email "Invalid email"}}
-           (mt/user-http-request :crowberto :post 400 "channel/test"
-                                 (assoc default-test-channel :details {:return-type  "return-value"
-                                                                       :return-value {:errors {:email "Invalid email"}}})))))
 
-  (testing "returns field-specific error message if the channel throws one"
-    (is (= {:errors {:email "Invalid email"}}
+  (testing "return the exception message and data if the channel throws an exception"
+    (is (= {:message "Test error"
+            :data    {:errors {:email "Invalid email"}}}
            (mt/user-http-request :crowberto :post 400 "channel/test"
                                  (assoc default-test-channel :details {:return-type  "throw"
                                                                        :return-value {:errors {:email "Invalid email"}}}))))))
+
+(deftest test-channel-http-test
+  (channel.http-test/with-server [url [channel.http-test/post-200 channel.http-test/post-400]]
+    (testing "status-code=200 endpoint"
+      (is (= {:ok true}
+             (mt/user-http-request :crowberto :post 200 "channel/test"
+                                   {:type    "channel/http"
+                                    :details {:url          (str url (:path channel.http-test/post-200))
+                                              :auth-method  "none"
+                                              :auth-info    {}}}))))
+    (testing "status-code=400 endpoint"
+      (is (= {:message "Failed to connect to channel"
+              :data    {:request-status 400
+                        :request-body "Bad request"}}
+             (mt/user-http-request :crowberto :post 400 "channel/test"
+                                   {:type    "channel/http"
+                                    :details {:url          (str url (:path channel.http-test/post-400))
+                                              :auth-method  "none"
+                                              :auth-info    {}}}))))
+    (testing "status-code=404 endpoint"
+      (is (= {:message "Failed to connect to channel"
+              :data    {:request-status 404
+                        :request-body "Not found."}}
+             (mt/user-http-request :crowberto :post 400 "channel/test"
+                                   {:type    "channel/http"
+                                    :details {:url          (str url "/unknown42")
+                                              :auth-method  "none"
+                                              :auth-info    {}}}))))))
 
 (deftest channel-audit-log-test
   (testing "audit log for channel apis"

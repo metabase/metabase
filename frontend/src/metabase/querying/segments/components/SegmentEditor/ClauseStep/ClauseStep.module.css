@@ -1,0 +1,43 @@
+.root {
+  position: relative;
+  min-width: 8rem;
+  min-height: 4.5rem;
+
+  &:first-child {
+    flex-shrink: 0;
+
+    &::after {
+      content: "";
+      position: absolute;
+      right: -7px;
+      display: inline-block;
+      padding: 6px;
+      border-style: solid;
+      border-color: var(--mb-color-border);
+      border-width: 0 1px 1px 0;
+      background-color: var(--mb-color-bg-white);
+      transform: rotate(-45deg);
+    }
+  }
+
+  &:last-child {
+    flex-grow: 1;
+    flex-shrink: 0;
+    justify-content: end;
+  }
+
+  &:not(:last-child) {
+    border-right: 1px solid var(--mb-color-border);
+  }
+}
+
+.label {
+  position: absolute;
+  top: 0;
+  left: 0.5rem;
+  padding: 0 0.5rem;
+  transform: translateY(-50%);
+  color: var(--mb-color-text-medium);
+  background-color: white;
+  text-transform: uppercase;
+}

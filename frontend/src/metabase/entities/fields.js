@@ -1,8 +1,14 @@
 import { assocIn, updateIn } from "icepick";
 import { normalize } from "normalizr";
+import { useMemo } from "react";
 import { t } from "ttag";
 
-import { fieldApi } from "metabase/api";
+import {
+  fieldApi,
+  skipToken,
+  useGetFieldQuery,
+  useGetFieldValuesQuery,
+} from "metabase/api";
 import {
   createEntity,
   entityCompatibleQuery,
@@ -50,6 +56,20 @@ const Fields = createEntity({
   name: "fields",
   path: "/api/field",
   schema: FieldSchema,
+
+  rtk: {
+    getUseGetQuery: fetchType => {
+      if (fetchType === "fetchFieldValues") {
+        return {
+          useGetQuery: useGetFetchFieldValuesQuery,
+        };
+      }
+
+      return {
+        useGetQuery: useGetFieldQuery,
+      };
+    },
+  },
 
   api: {
     get: (entityQuery, options, dispatch) =>
@@ -220,5 +240,33 @@ const Fields = createEntity({
     {},
   ),
 });
+
+const useGetFetchFieldValuesQuery = query => {
+  const tableId = query.table_id;
+  const result = useGetFieldValuesQuery(
+    query === skipToken ? skipToken : query.id,
+  );
+
+  const { data } = result;
+  const transformedData = useMemo(() => {
+    return data ? transformFieldValuesData(data, tableId) : data;
+  }, [data, tableId]);
+
+  return useMemo(
+    () => ({ ...result, data: transformedData }),
+    [result, transformedData],
+  );
+};
+
+const transformFieldValuesData = (data, table_id) => {
+  if (!data) {
+    return data;
+  }
+
+  const { field_id, ...rest } = data;
+
+  // table_id is required for uniqueFieldId as it's a way to know if field is virtual
+  return { id: field_id, ...rest, ...(table_id && { table_id }) };
+};
 
 export default Fields;

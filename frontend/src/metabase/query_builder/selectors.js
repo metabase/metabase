@@ -4,19 +4,18 @@ import * as d3 from "d3";
 import { getIn, merge, updateIn } from "icepick";
 import _ from "underscore";
 
-import { getAlerts } from "metabase/alert/selectors";
 import { getDashboardById } from "metabase/dashboard/selectors";
 import Databases from "metabase/entities/databases";
 import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
 import Timelines from "metabase/entities/timelines";
-import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import { LOAD_COMPLETE_FAVICON } from "metabase/hooks/use-favicon";
 import { parseTimestamp } from "metabase/lib/time";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { isNotNull } from "metabase/lib/types";
+import { getAlerts } from "metabase/notifications/redux/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
-import { MetabaseApi } from "metabase/services";
 import {
   extractRemappings,
   getVisualizationTransformed,
@@ -1009,43 +1008,6 @@ export const getIsAdditionalInfoVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
 );
-
-export const getCardAutocompleteResultsFn = state => {
-  return function autocompleteResults(query) {
-    const dbId = state.qb.card?.dataset_query?.database;
-    if (!dbId) {
-      return [];
-    }
-
-    const apiCall = MetabaseApi.db_card_autocomplete_suggestions({
-      dbId,
-      query,
-    });
-    return apiCall;
-  };
-};
-
-export const getAutocompleteResultsFn = state => {
-  const matchStyle = getSetting(state, "native-query-autocomplete-match-style");
-
-  if (matchStyle === "off") {
-    return null;
-  }
-
-  return function autocompleteResults(query) {
-    const dbId = state.qb.card?.dataset_query?.database;
-    if (!dbId) {
-      return [];
-    }
-
-    const apiCall = MetabaseApi.db_autocomplete_suggestions({
-      dbId,
-      query,
-      matchStyle,
-    });
-    return apiCall;
-  };
-};
 
 export const getDataReferenceStack = createSelector(
   [getUiControls, getDatabaseId],

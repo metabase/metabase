@@ -1,5 +1,9 @@
 import { msgid, ngettext } from "ttag";
 
+import {
+  HoverParent,
+  TableColumnInfoIcon,
+} from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import type { IconName } from "metabase/ui";
 import { DelayGroup } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -7,13 +11,12 @@ import type Field from "metabase-lib/v1/metadata/Field";
 import {
   NodeListContainer,
   NodeListIcon,
-  NodeListInfoIcon,
-  NodeListItem,
   NodeListItemLink,
   NodeListItemName,
   NodeListTitle,
   NodeListTitleText,
-} from "./NodeList.styled";
+} from "./NodeList";
+import S from "./NodeList.module.css";
 
 interface FieldListProps {
   fields: Field[];
@@ -38,12 +41,21 @@ const FieldList = ({ fields, onFieldClick }: FieldListProps) => (
         // because metabase-lib cannot import from metabase.
         const iconName = field.icon() as IconName;
         return (
-          <NodeListItem as="li" key={field.getUniqueId()}>
+          <HoverParent
+            className={S.NodeListItem}
+            as="li"
+            key={field.getUniqueId()}
+          >
             <NodeListItemLink onClick={() => onFieldClick(field)}>
-              <NodeListInfoIcon field={field} position="left" icon={iconName} />
+              <TableColumnInfoIcon
+                className={S.nodeListInfoIcon}
+                field={field}
+                position="left"
+                icon={iconName}
+              />
               <NodeListItemName>{field.name}</NodeListItemName>
             </NodeListItemLink>
-          </NodeListItem>
+          </HoverParent>
         );
       })}
     </NodeListContainer>

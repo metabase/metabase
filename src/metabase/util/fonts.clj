@@ -28,10 +28,11 @@
            (map normalize-font-dirname)
            (sort-by u/lower-case-en)))))
 
-(def ^{:arglists '([])} available-fonts
-  "Return an alphabetically sorted list of available fonts, as Strings."
-  (let [fonts (delay (available-fonts*))]
-    (fn [] @fonts)))
+(let [fonts (delay (available-fonts*))]
+  (defn available-fonts
+    "Return an alphabetically sorted list of available fonts, as Strings."
+    []
+    @fonts))
 
 (defn available-font?
   "True if a font's 'Display String', `font`, is a valid font available on this system."

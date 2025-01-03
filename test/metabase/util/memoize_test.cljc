@@ -71,5 +71,5 @@
       (doseq [k (gen/sample (gen/elements keyspace) 10000)]
         (is (= (str/reverse k)
                (f k))))
-      (is (= @calls  10000))
+      (is (= 10000 @calls))
       (is (< @misses 10000)))))

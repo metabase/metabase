@@ -64,9 +64,10 @@
   Object
   (toString [_] (str cache)))
 
-(def ^{:private true
-       :doc "Returns a function's argument transformer."}
-  args-fn #(or (::args-fn (meta %)) identity))
+(defn- args-fn
+  "Returns a function's argument transformer."
+  [x]
+  (or (::args-fn (meta x)) identity))
 
 (defn- through*
   "The basic hit/miss logic for the cache system based on `cache/through`.

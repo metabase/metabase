@@ -1,12 +1,11 @@
 (ns metabase-enterprise.advanced-permissions.api.util-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.advanced-permissions.api.util
-    :as advanced-perms.api.u]
+   [metabase-enterprise.advanced-permissions.api.util :as advanced-perms.api.u]
    [metabase-enterprise.sandbox.test-util :as met]
    [metabase.api.common :as api]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.users :as test.users]
@@ -42,7 +41,7 @@
                        (if (keyword? test-user-name-or-user-id)
                          (test.users/with-test-user test-user-name-or-user-id
                            (f group))
-                         (mw.session/with-current-user (u/the-id test-user-name-or-user-id)
+                         (request/with-current-user (u/the-id test-user-name-or-user-id)
                            (f group))))))))))]
     (thunk)))
 

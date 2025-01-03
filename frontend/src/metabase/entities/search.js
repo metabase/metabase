@@ -1,4 +1,4 @@
-import { collectionApi, searchApi } from "metabase/api";
+import { cardApi, collectionApi, searchApi } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { entityForObject } from "metabase/lib/schema";
@@ -34,6 +34,7 @@ export default createEntity({
           offset,
           sort_column,
           sort_direction,
+          show_dashboard_questions,
           ...unsupported
         } = query;
         if (Object.keys(unsupported).length > 0) {
@@ -54,6 +55,7 @@ export default createEntity({
             offset,
             sort_column,
             sort_direction,
+            show_dashboard_questions,
           },
           dispatch,
           collectionApi.endpoints.listCollectionItems,
@@ -169,7 +171,8 @@ export default createEntity({
       Questions.actionShouldInvalidateLists(action) ||
       Segments.actionShouldInvalidateLists(action) ||
       Snippets.actionShouldInvalidateLists(action) ||
-      SnippetCollections.actionShouldInvalidateLists(action)
+      SnippetCollections.actionShouldInvalidateLists(action) ||
+      cardApi.endpoints.updateCard.matchFulfilled(action)
     );
   },
 });

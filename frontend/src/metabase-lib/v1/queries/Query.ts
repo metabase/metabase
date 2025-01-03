@@ -2,7 +2,7 @@
 // @ts-nocheck
 import _ from "underscore";
 
-import Dimension from "metabase-lib/v1/Dimension";
+import type Dimension from "metabase-lib/v1/Dimension";
 import DimensionOptions from "metabase-lib/v1/DimensionOptions";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -85,10 +85,6 @@ class Query {
    */
   variables(_filter?: (variable: Variable) => boolean): TemplateTagVariable[] {
     return [];
-  }
-
-  parseFieldReference(fieldRef, query = this): Dimension | null | undefined {
-    return Dimension.parseMBQL(fieldRef, this._metadata, query);
   }
 }
 

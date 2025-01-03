@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import NoResults from "assets/img/no_results.svg";
 import { skipToken, useListRecentsQuery } from "metabase/api";
@@ -37,10 +38,11 @@ export const BrowseModels = () => {
   const { isLoading, error, models, recentModels, hasVerifiedModels } =
     useFilteredModels(modelFilters);
 
-  const isEmpty = !isLoading && models.length === 0;
+  const isEmpty = !isLoading && !error && models.length === 0;
+  const titleId = useMemo(() => _.uniqueId("browse-models"), []);
 
   return (
-    <BrowseContainer>
+    <BrowseContainer aria-labelledby={titleId}>
       <BrowseHeader role="heading" data-testid="browse-models-header">
         <BrowseSection>
           <Flex
@@ -50,7 +52,7 @@ export const BrowseModels = () => {
             justify="space-between"
             align="center"
           >
-            <Title order={1} color="text-dark">
+            <Title order={1} color="text-dark" id={titleId}>
               <Group spacing="sm">
                 <Icon
                   size={24}

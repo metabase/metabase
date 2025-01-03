@@ -3,6 +3,9 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders } from "__support__/ui";
+import Collections from "metabase/entities/collections";
+import Dashboards from "metabase/entities/dashboards";
+import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
 import type {
   Collection,
@@ -11,23 +14,23 @@ import type {
   Database,
 } from "metabase-types/api";
 import {
+  createMockCard,
   createMockCollection,
   createMockCollectionItem,
-  createMockDatabase,
+  createMockDashboard,
 } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
 
-import ActionMenu from "./ActionMenu";
+import ActionMenu, { getParentEntityLink } from "./ActionMenu";
 
 interface SetupOpts {
   item: CollectionItem;
   collection?: Collection;
   databases?: Database[];
   isXrayEnabled?: boolean;
-  isMetabotEnabled?: boolean;
 }
 
 const setup = ({
@@ -35,7 +38,6 @@ const setup = ({
   collection = createMockCollection({ can_write: true }),
   databases = [],
   isXrayEnabled = false,
-  isMetabotEnabled = false,
 }: SetupOpts) => {
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({
@@ -43,7 +45,6 @@ const setup = ({
     }),
     settings: createMockSettingsState({
       "enable-xrays": isXrayEnabled,
-      "is-metabot-enabled": isMetabotEnabled,
     }),
   });
 
@@ -131,7 +132,7 @@ describe("ActionMenu", () => {
         model: "collection",
         can_write: true,
         setCollection: jest.fn(),
-        setArchived: jest.fn(),
+        setArchived: jest.fn(() => Promise.resolve()),
       });
 
       const { onMove } = setup({ item });
@@ -152,7 +153,7 @@ describe("ActionMenu", () => {
         can_write: true,
         personal_owner_id: 1,
         setCollection: jest.fn(),
-        setArchived: jest.fn(),
+        setArchived: jest.fn(() => Promise.resolve()),
         copy: true,
       });
 
@@ -169,7 +170,7 @@ describe("ActionMenu", () => {
         model: "collection",
         can_write: false,
         setCollection: jest.fn(),
-        setArchived: jest.fn(),
+        setArchived: jest.fn(() => Promise.resolve()),
         copy: true,
       });
 
@@ -178,6 +179,43 @@ describe("ActionMenu", () => {
       await userEvent.click(getIcon("ellipsis"));
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
+    });
+
+    describe("getParentEntityLink", () => {
+      it("should generate collection link for collection question", () => {
+        const updatedCollection = Collections.wrapEntity(
+          createMockCollectionItem({ archived: false }),
+        );
+        const link = getParentEntityLink(updatedCollection, undefined);
+        expect(link).toBe("/collection/root");
+      });
+
+      it("should generate collection link for dashboards", () => {
+        const updatedDashboard = Dashboards.wrapEntity(
+          createMockDashboard({ archived: false }),
+        );
+        const parentCollection = Collections.wrapEntity(
+          createMockCollectionItem({ id: 123 }),
+        );
+        const link = getParentEntityLink(updatedDashboard, parentCollection);
+        expect(link).toBe("/collection/123-question");
+      });
+
+      it("should generate collection link for normal question", () => {
+        const updatedQuestion = Questions.wrapEntity(
+          createMockCard({ archived: false }),
+        );
+        const link = getParentEntityLink(updatedQuestion, undefined);
+        expect(link).toBe("/collection/root");
+      });
+
+      it("should generate collection link for dashboard question", () => {
+        const updatedQuestion = Questions.wrapEntity(
+          createMockCard({ archived: false, dashboard_id: 123 }),
+        );
+        const link = getParentEntityLink(updatedQuestion, undefined);
+        expect(link).toBe("/dashboard/123");
+      });
     });
   });
 
@@ -228,94 +266,6 @@ describe("ActionMenu", () => {
 
       await userEvent.click(getIcon("ellipsis"));
       expect(screen.queryByText("X-ray this")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("metabot", () => {
-    const setupMetabot = (
-      isEnabled: boolean,
-      databaseOpts: Partial<Database>,
-    ) => {
-      const database = createMockDatabase({
-        id: 1,
-        ...databaseOpts,
-      });
-
-      const item = createMockCollectionItem({
-        id: 1,
-        model: "dataset",
-        database_id: database.id,
-      });
-
-      setup({
-        item,
-        databases: [database],
-        isMetabotEnabled: isEnabled,
-      });
-    };
-
-    it("should allow to ask metabot when it is enabled and there is native write access", async () => {
-      setupMetabot(true, {
-        native_permissions: "write",
-      });
-
-      await userEvent.click(getIcon("ellipsis"));
-      expect(await screen.findByText("Ask Metabot")).toBeInTheDocument();
-    });
-
-    it("should not allow to ask metabot when it is not enabled but there is native write access", async () => {
-      setupMetabot(false, {
-        native_permissions: "write",
-      });
-
-      await userEvent.click(getIcon("ellipsis"));
-      expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
-    });
-
-    it("should not allow to ask metabot when it is enabled but there is no native write access", async () => {
-      setupMetabot(true, {
-        native_permissions: "none",
-      });
-
-      await userEvent.click(getIcon("ellipsis"));
-      expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
-    });
-
-    it("should not allow to ask metabot for non-sql databases", async () => {
-      setupMetabot(true, {
-        engine: "mongo",
-        native_permissions: "write",
-      });
-
-      await userEvent.click(getIcon("ellipsis"));
-      expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
-    });
-
-    it("should not allow to ask metabot for sql databases without nested-queries support", async () => {
-      setupMetabot(true, {
-        native_permissions: "write",
-        features: [],
-      });
-
-      await userEvent.click(getIcon("ellipsis"));
-      expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
-    });
-
-    it("should not allow to ask metabot when it is enabled but there is no data access", async () => {
-      const item = createMockCollectionItem({
-        id: 1,
-        model: "dataset",
-        database_id: 1,
-      });
-
-      setup({
-        item,
-        databases: [],
-        isMetabotEnabled: true,
-      });
-
-      await userEvent.click(getIcon("ellipsis"));
-      expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
     });
   });
 });

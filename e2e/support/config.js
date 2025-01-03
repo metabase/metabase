@@ -7,6 +7,7 @@ import {
   removeDirectory,
   verifyDownloadTasks,
 } from "./commands/downloads/downloadUtils";
+import webpackConfig from "./component-webpack.config";
 import * as dbTasks from "./db_tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
 
@@ -235,10 +236,29 @@ const stressTestConfig = {
   retries: 0,
 };
 
+const embeddingSdkComponentTestConfig = {
+  ...defaultConfig,
+  video: false,
+  specPattern: "e2e/test-component/scenarios/embedding-sdk/**/*.cy.spec.tsx",
+  indexHtmlFile: "e2e/support/component-index.html",
+  supportFile: "e2e/support/cypress.js",
+
+  reporter: mainConfig.reporter,
+  reporterOptions: mainConfig.reporterOptions,
+  retries: mainConfig.retries,
+
+  devServer: {
+    framework: "react",
+    bundler: "webpack",
+    webpackConfig: webpackConfig,
+  },
+};
+
 module.exports = {
   mainConfig,
   snapshotsConfig,
   stressTestConfig,
   crossVersionSourceConfig,
   crossVersionTargetConfig,
+  embeddingSdkComponentTestConfig,
 };

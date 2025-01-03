@@ -1,3 +1,4 @@
+import allNegativeWithOther from "./all-negative-with-other.json";
 import allNegative from "./all-negative.json";
 import allSettings from "./all-settings.json";
 import allZeroMetric44847 from "./all-zero-metric-44847.json";
@@ -64,6 +65,7 @@ export const data = {
   showPercentagesOnChart,
   showPercentagesOnChartDense,
   allNegative,
+  allNegativeWithOther,
   mixedPostiiveNegative,
   columnFormatting,
   columnFormattingPercentagesOnChart,

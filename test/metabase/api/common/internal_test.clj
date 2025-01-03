@@ -1,6 +1,5 @@
 (ns metabase.api.common.internal-test
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -14,6 +13,7 @@
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.adapter.jetty :as jetty]
@@ -127,9 +127,9 @@
 (defn- json-mw [handler]
   (fn [req]
     (-> req
-        (update :body #(-> % slurp (json/parse-string true)))
+        (update :body #(-> % slurp json/decode+kw))
         handler
-        (update :body json/generate-string))))
+        (update :body json/encode))))
 
 (defn exception-mw [handler]
   (fn [req] (try
@@ -153,7 +153,7 @@
                            :accept           :json
                            :as               :json
                            :coerce           :always
-                           :body             (json/generate-string body)}))]
+                           :body             (json/encode body)}))]
     (try
       (testing (format "With temp Jetty server on port %d" port)
         (f {:get get, :post! post}))

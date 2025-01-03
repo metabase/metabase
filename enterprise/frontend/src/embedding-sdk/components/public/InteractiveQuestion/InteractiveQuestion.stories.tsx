@@ -18,6 +18,18 @@ export default {
     layout: "fullscreen",
   },
   decorators: [CommonSdkStoryWrapper],
+  argTypes: {
+    title: {
+      options: [
+        undefined,
+        true,
+        false,
+        "Custom Title",
+        "Long title".repeat(10),
+      ],
+      control: { type: "radio" },
+    },
+  },
 };
 
 const Template: StoryFn<InteractiveQuestionComponentProps> = args => {
@@ -26,6 +38,24 @@ const Template: StoryFn<InteractiveQuestionComponentProps> = args => {
 
 export const Default = {
   render: Template,
+
+  args: {
+    questionId: QUESTION_ID,
+    isSaveEnabled: true,
+    saveToCollectionId: undefined,
+    title: true,
+    withResetButton: true,
+  },
+};
+
+export const EditorOnly = {
+  render(args: InteractiveQuestionComponentProps) {
+    return (
+      <InteractiveQuestion {...args}>
+        <InteractiveQuestion.Editor />
+      </InteractiveQuestion>
+    );
+  },
 
   args: {
     questionId: QUESTION_ID,

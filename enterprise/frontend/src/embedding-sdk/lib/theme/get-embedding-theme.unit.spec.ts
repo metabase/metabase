@@ -16,6 +16,7 @@ describe("Transform Embedding Theme Override", () => {
           brand: "hotpink",
           "text-primary": "yellow",
           "text-tertiary": "green",
+          "background-disabled": "pink",
         },
       },
       "Roboto",
@@ -30,12 +31,13 @@ describe("Transform Embedding Theme Override", () => {
         "text-primary": expect.arrayContaining(["yellow"]),
         "text-light": expect.arrayContaining(["green"]),
         "text-tertiary": expect.arrayContaining(["green"]),
+        "background-disabled": expect.arrayContaining(["pink"]),
       },
       other: {
         fontSize: "2rem",
         ...DEFAULT_EMBEDDED_COMPONENT_THEME,
       },
-      components: getEmbeddingComponentOverrides(theme.components),
+      components: getEmbeddingComponentOverrides(),
     });
   });
 });

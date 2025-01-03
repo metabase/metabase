@@ -10,7 +10,6 @@ import {
 } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import * as Lib_ColumnTypes from "metabase-lib/column_types";
 import {
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
@@ -342,14 +341,15 @@ describe("FilterPicker", () => {
       });
 
       it("should open the expression editor when column type isn't supported", () => {
-        const spy = jest
-          .spyOn(Lib_ColumnTypes, "isNumeric")
-          .mockReturnValue(false);
+        const query = Lib.filter(
+          createQuery(),
+          -1,
+          Lib.expressionClause("between", [1, 2, 3]),
+        );
+        const [filter] = Lib.filters(query, -1);
 
-        setup(createQueryWithNumberFilter());
+        setup({ query, filter });
         expect(screen.getByText(/Custom expression/i)).toBeInTheDocument();
-
-        spy.mockRestore();
       });
     });
 

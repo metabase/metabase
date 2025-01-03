@@ -3,7 +3,7 @@
    [java-time.api :as t]
    [metabase.email.messages :as messages]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -28,7 +28,7 @@
   or another -- keep that in mind when using this."
   [history-items]
   (let [ip-addresses (map :ip_address history-items)
-        ip->info     (req.util/geocode-ip-addresses ip-addresses)]
+        ip->info     (request/geocode-ip-addresses ip-addresses)]
     (for [history-item history-items
           :let         [{location-description :description, timezone :timezone} (get ip->info (:ip_address history-item))]]
       (-> history-item
@@ -38,7 +38,7 @@
                                (if (and timestamp timezone)
                                  (t/zoned-date-time (u.date/with-time-zone-same-instant timestamp timezone) timezone)
                                  timestamp)))
-          (update :device_description req.util/describe-user-agent)))))
+          (update :device_description request/describe-user-agent)))))
 
 (defsetting send-email-on-first-login-from-new-device
   ;; no need to i18n -- this isn't user-facing
@@ -51,11 +51,6 @@
   :default    true
   :doc "This variable also controls the geocoding service that Metabase uses to know the location of your logged in users.
         Setting this variable to false also disables this reverse geocoding functionality.")
-
-(def LoginHistory
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/LoginHistory)
 
 (methodical/defmethod t2/table-name :model/LoginHistory [_model] :login_history)
 
@@ -70,12 +65,12 @@
     true                                  (dissoc :session_id)))
 
 (defn- first-login-ever? [{user-id :user_id}]
-  (some-> (t2/select [LoginHistory :id] :user_id user-id {:limit 2})
+  (some-> (t2/select [:model/LoginHistory :id] :user_id user-id {:limit 2})
           count
           (= 1)))
 
 (defn- first-login-on-this-device? [{user-id :user_id, device-id :device_id}]
-  (some-> (t2/select [LoginHistory :id] :user_id user-id, :device_id device-id, {:limit 2})
+  (some-> (t2/select [:model/LoginHistory :id] :user_id user-id, :device_id device-id, {:limit 2})
           count
           (= 1)))
 

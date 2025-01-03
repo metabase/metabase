@@ -5,7 +5,7 @@
    [metabase.async.streaming-response]
    [metabase.db :as mdb]
    [metabase.public-settings :as public-settings]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.util.log :as log])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
@@ -26,7 +26,7 @@
   [handler]
   (fn [request respond raise]
     (handler request
-             (if-not (req.util/api-call? request)
+             (if-not (request/api-call? request)
                respond
                (comp respond add-content-type*))
              raise)))
@@ -79,13 +79,9 @@
 
 ;;; -------------------------------------------------- Bind request --------------------------------------------------
 
-(def ^:dynamic *request*
-  "The Ring request currently being handled by this thread, if any."
-  nil)
-
 (defn bind-request
   "Ring middleware that binds `*request*` for the duration of this Ring request."
   [handler]
   (fn [request respond raise]
-    (binding [*request* request]
+    (request/with-current-request request
       (handler request respond raise))))

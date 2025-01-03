@@ -1,6 +1,5 @@
 (ns metabase.api.geojson-test
   (:require
-   [cheshire.core :as json]
    [clj-http.fake :as fake]
    [clojure.test :refer :all]
    [metabase.api.geojson :as api.geojson]
@@ -9,6 +8,7 @@
    [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [ring.adapter.jetty :as ring-jetty])
   (:import
@@ -256,7 +256,7 @@
                              :region_name "NAME"}}
             expected-value (merge (@#'api.geojson/builtin-geojson) custom-geojson)]
         (mt/with-temporary-setting-values [custom-geojson nil]
-          (mt/with-temp-env-var-value! [mb-custom-geojson (json/generate-string custom-geojson)]
+          (mt/with-temp-env-var-value! [mb-custom-geojson (json/encode custom-geojson)]
             (binding [config/*disable-setting-cache* true]
               (testing "Should parse env var custom GeoJSON and merge in"
                 (is (= expected-value

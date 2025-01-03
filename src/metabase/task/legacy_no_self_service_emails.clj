@@ -13,7 +13,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private template-path (str "metabase/email/legacy_no_self_service.hbs"))
+(def ^:private template-path "metabase/email/legacy_no_self_service.hbs")
 
 (defn- legacy-no-self-service-groups
   "Returns a list of groups that have `legacy-no-self-service` as their `view-data` permissions level for any database."

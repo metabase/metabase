@@ -12,7 +12,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.test-runner.assert-exprs.approximately-equal]
-   [metabase.test.util.js :as test.js]))
+   [metabase.test.util.js :as test.js]
+   [metabase.util :as u]))
 
 (deftest ^:parallel query=-test
   (doseq [q1 [nil js/undefined]
@@ -56,6 +57,36 @@
       (is (lib.js/query= q1 q2))
       (is (not (lib.js/query= q1 q3)))
       (is (not (lib.js/query= q2 q3))))))
+
+(deftest ^:parallel query=-idents-test
+  (testing "idents are ignored for query="
+    (testing "on legacy queries"
+      (let [q1 #js {"query" #js {"source-table"       1
+                                 "aggregation"        #js [#js ["count"]]
+                                 "aggregation-idents" #js {"0" (u/generate-nano-id)}
+                                 "breakout"           #js [#js ["field" 3 nil]]
+                                 "breakout-idents"    #js {"0" (u/generate-nano-id)}
+                                 "expressions"        #js {"some_expr" #js ["field" 12 nil]}
+                                 "expression-idents"  #js {"some_expr" (u/generate-nano-id)}}}
+            ;; Same query, but idents will be different.
+            q2 #js {"query" #js {"source-table"       1
+                                 "aggregation"        #js [#js ["count"]]
+                                 "aggregation-idents" #js {"0" (u/generate-nano-id)}
+                                 "breakout"           #js [#js ["field" 3 nil]]
+                                 "breakout-idents"    #js {"0" (u/generate-nano-id)}
+                                 "expressions"        #js {"some_expr" #js ["field" 12 nil]}
+                                 "expression-idents"  #js {"some_expr" (u/generate-nano-id)}}}]
+        (is (lib.js/query= q1 q2))))
+    (testing "on pMBQL queries"
+      (let [q1 (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                   (lib/expression "some_expr" (lib/+ (meta/field-metadata :orders :subtotal) 1))
+                   (lib/aggregate (lib/count))
+                   (lib/breakout (meta/field-metadata :products :category)))
+            q2 (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                   (lib/expression "some_expr" (lib/+ (meta/field-metadata :orders :subtotal) 1))
+                   (lib/aggregate (lib/count))
+                   (lib/breakout (meta/field-metadata :products :category)))]
+        (is (lib.js/query= q1 q2))))))
 
 (deftype FakeJoin [guts]
   Object
@@ -262,7 +293,7 @@
                                         ["varargs"
                                          #js [(name tag) (clj->js opts) js-field "hotel" "motel"]
                                          [tag opts field "hotel" "motel"]]]]
-    (testing (str (str tag) " in " label " form with" (when (empty? opts) "out") " options")
+    (testing (str tag " in " label " form with" (when (empty? opts) "out") " options")
       (let [legacy-query      #js {:type  "query"
                                    :query #js {:source_table (meta/id :venues)
                                                :filter       legacy-expr}}
@@ -420,11 +451,20 @@
     [:get-week {} [:field {} int?]]
     (lib.js/expression-clause "get-week" [(meta/field-metadata :products :created-at)] nil)
 
+    [:get-day-of-week {} [:field {} int?] :iso]
+    (lib.js/expression-clause "get-day-of-week" [(meta/field-metadata :products :created-at) "iso"] nil)
+
+    [:get-day-of-week {} [:field {} int?]]
+    (lib.js/expression-clause "get-day-of-week" [(meta/field-metadata :products :created-at)] nil)
+
     [:temporal-extract {} [:field {} int?] :day-of-week]
     (lib.js/expression-clause "temporal-extract" [(meta/field-metadata :products :created-at) "day-of-week"] nil)
 
     [:temporal-extract {} [:field {} int?] :day-of-week :iso]
     (lib.js/expression-clause "temporal-extract" [(meta/field-metadata :products :created-at) "day-of-week" "iso"] nil)
+
+    [:during {} [:field {} int?] "2024-12-05T22:13:54" :minute]
+    (lib.js/expression-clause "during" [(meta/field-metadata :products :created-at) "2024-12-05T22:13:54" "minute"] nil)
 
     [:datetime-diff {} [:field {} int?] [:field {} int?] :day]
     (lib.js/expression-clause "datetime-diff" [(meta/field-metadata :products :created-at) (meta/field-metadata :products :created-at) "day"] nil))

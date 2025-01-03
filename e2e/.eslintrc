@@ -25,6 +25,23 @@
             "name": "metabase-types/api/mocks/presets",
             "message": "Please use e2e/support/cypress_sample_database instead"
           }
+        ],
+        "patterns": [
+          {
+            "group": [
+              "**/enterprise/frontend/src/embedding-sdk",
+              "**/enterprise/frontend/src/embedding-sdk/*"
+            ],
+            "message": "Please use SDK package name - '@metabase/embedding-sdk-react'"
+          }
+        ]
+      }
+    ],
+    "import/no-unresolved": [
+      "error",
+      {
+        "ignore": [
+          "@metabase/embedding-sdk-react"
         ]
       }
     ]

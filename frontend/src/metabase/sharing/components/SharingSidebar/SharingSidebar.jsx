@@ -2,7 +2,6 @@
 
 import PropTypes from "prop-types";
 import { Component } from "react";
-import { connect } from "react-redux";
 import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -13,22 +12,26 @@ import {
   cleanPulse,
   createChannel,
 } from "metabase/lib/pulse";
+import { connect } from "metabase/lib/redux";
+import {
+  AddEditEmailSidebar,
+  AddEditSlackSidebar,
+} from "metabase/notifications/AddEditSidebar/AddEditSidebar";
+import { NewPulseSidebar } from "metabase/notifications/NewPulseSidebar";
+import PulsesListSidebar from "metabase/notifications/PulsesListSidebar";
 import {
   cancelEditingPulse,
   fetchPulseFormInput,
   saveEditingPulse,
   testPulse,
   updateEditingPulse,
-} from "metabase/pulse/actions";
-import { getEditingPulse, getPulseFormInput } from "metabase/pulse/selectors";
+} from "metabase/notifications/pulse/actions";
+import {
+  getEditingPulse,
+  getPulseFormInput,
+} from "metabase/notifications/pulse/selectors";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { UserApi } from "metabase/services";
-import {
-  AddEditEmailSidebar,
-  AddEditSlackSidebar,
-} from "metabase/sharing/components/AddEditSidebar/AddEditSidebar";
-import { NewPulseSidebar } from "metabase/sharing/components/NewPulseSidebar";
-import PulsesListSidebar from "metabase/sharing/components/PulsesListSidebar";
 import { isVirtualCardDisplayType } from "metabase-types/api/visualization";
 
 export const CHANNEL_ICONS = {

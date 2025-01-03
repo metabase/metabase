@@ -36,10 +36,10 @@
       (testing "Check if the user needs to accept the embedding licensing terms before static embedding"
         (when-not config/ee-available?
           (testing "should return true when user is OSS and has not accepted licensing terms"
-            (is (= (embed/show-static-embed-terms) true)))
+            (is (embed/show-static-embed-terms)))
           (testing "should return false when user is OSS and has already accepted licensing terms"
             (embed/show-static-embed-terms! false)
-            (is (= (embed/show-static-embed-terms) false))))
+            (is (not (embed/show-static-embed-terms)))))
         (when config/ee-available?
           (testing "should return false when an EE user has a valid token"
             (with-redefs [premium-features/fetch-token-status (fn [_x]
@@ -48,36 +48,36 @@
                                                                  :features ["test" "fixture"]
                                                                  :trial    false})]
               (mt/with-temporary-setting-values [premium-embedding-token (premium-features-test/random-token)]
-                (is (= (embed/show-static-embed-terms) false))
+                (is (not (embed/show-static-embed-terms)))
                 (embed/show-static-embed-terms! false)
-                (is (= (embed/show-static-embed-terms) false)))))
+                (is (not (embed/show-static-embed-terms))))))
           (testing "when an EE user doesn't have a valid token"
             (mt/with-temporary-setting-values [premium-embedding-token nil show-static-embed-terms nil]
               (testing "should return true when the user has not accepted licensing terms"
-                (is (= (embed/show-static-embed-terms) true)))
+                (is (embed/show-static-embed-terms)))
               (testing "should return false when the user has already accepted licensing terms"
                 (embed/show-static-embed-terms! false)
-                (is (= (embed/show-static-embed-terms) false))))))))))
+                (is (not (embed/show-static-embed-terms)))))))))))
 
 (deftest maybe-populate-initially-published-at-test
   (let [now #t "2022-09-01T12:34:56Z"]
     (doseq [model [:model/Card :model/Dashboard]]
       (testing "should populate `initially_published_at` when a Card's enable_embedding is changed to true"
         (t2.with-temp/with-temp [model card {:enable_embedding false}]
-          (is (= nil (:initially_published_at card)))
+          (is (nil? (:initially_published_at card)))
           (t2/update! model (u/the-id card) {:enable_embedding true})
-          (is (not= nil (:initially_published_at (t2/select-one model :id (u/the-id card)))))))
+          (is (some? (t2/select-one-fn :initially_published_at model :id (u/the-id card))))))
       (testing "should keep `initially_published_at` value when a Card's enable_embedding is changed to false"
         (t2.with-temp/with-temp [model card {:enable_embedding true :initially_published_at now}]
-          (is (not= nil (:initially_published_at card)))
+          (is (some? (:initially_published_at card)))
           (t2/update! model (u/the-id card) {:enable_embedding false})
-          (is (= (t/offset-date-time now) (:initially_published_at (t2/select-one model :id (u/the-id card)))))))
+          (is (= (t/offset-date-time now) (t2/select-one-fn :initially_published_at model :id (u/the-id card))))))
       (testing "should keep `initially_published_at` value when `enable_embedding` is already set to true"
         (t2.with-temp/with-temp [model card {:enable_embedding true :initially_published_at now}]
           (t2/update! model (u/the-id card) {:enable_embedding true})
-          (is (= (t/offset-date-time now) (:initially_published_at (t2/select-one model :id (u/the-id card)))))))
+          (is (= (t/offset-date-time now) (t2/select-one-fn :initially_published_at model :id (u/the-id card))))))
       (testing "should keep `initially_published_at` value when `enable_embedding` is already set to false"
         (t2.with-temp/with-temp [model card {:enable_embedding false}]
-          (is (= nil (:initially_published_at card)))
+          (is (nil? (:initially_published_at card)))
           (t2/update! model (u/the-id card) {:enable_embedding false})
-          (is (= nil (:initially_published_at (t2/select-one model :id (u/the-id card))))))))))
+          (is (nil? (t2/select-one-fn :initially_published_at model :id (u/the-id card)))))))))

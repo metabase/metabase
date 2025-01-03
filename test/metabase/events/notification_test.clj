@@ -124,8 +124,8 @@
         (events/publish-event! :event/testing {})
         (testing "each notification should have a task history, in which each channel-send will have a task history"
           (is (= {"notification-trigger" 1
-                  "notification-send"      (+ 1 1) ;; 2 notifications, each send to 2 channels
-                  "channel-send"           (+ 2 2)}
+                  "notification-send"    2 ; 2 notifications, each send to 2 channels
+                  "channel-send"         4}
                  (as-> (t2/select :model/TaskHistory :task [:in ["notification-send" "channel-send" "notification-trigger"]]) th
                    (group-by :task th)
                    (update-vals th count)))))))))

@@ -9,6 +9,8 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Interactive embedding" %}
 
+{% include shared/in-page-promo.html %}
+
 **Interactive embedding** is what you want if you want to offer [multi-tenant, self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
 
 Interactive embedding is the only type of embedding that integrates with your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](https://www.metabase.com/glossary/query_builder) and [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) into your data.
@@ -273,13 +275,13 @@ To hide a question or dashboard's title, [additional info](#additional_info), an
 
 ### `locale`
 
-You can localize the user interface via a parameter. For example, to set the locale to Spanish:
+You can change the language of the user interface via a parameter. For example, to set the locale to Spanish:
 
 ```
-locale=es-ES
+locale=es
 ```
 
-Check out the [locales Metabase supports](https://github.com/metabase/metabase/tree/master/locales). And read more about [localization](../configuring-metabase/localization.md).
+Read more about [localization](../configuring-metabase/localization.md).
 
 ### `logo`
 

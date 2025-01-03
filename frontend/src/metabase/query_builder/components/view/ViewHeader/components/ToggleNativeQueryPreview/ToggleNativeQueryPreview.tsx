@@ -6,23 +6,20 @@ import {
   setNotebookNativePreviewState,
   setUIControls,
 } from "metabase/query_builder/actions";
+import { trackNotebookNativePreviewShown } from "metabase/query_builder/analytics";
 import { getUiControls } from "metabase/query_builder/selectors";
-import { Icon, Tooltip } from "metabase/ui";
+import { Button, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import { trackNotebookNativePreviewShown } from "../../../../../analytics";
-
-import { SqlButton } from "./ToggleNativeQueryPreview.styled";
-
-const BUTTON_TOOLTIP = {
-  sql: t`View the SQL`,
-  json: t`View the native query`,
+const BUTTON_TEXT = {
+  sql: t`View SQL`,
+  json: t`View native query`,
 };
 
-const BUTTON_TOOLTIP_CLOSE = {
-  sql: t`Hide the SQL`,
-  json: t`Hide the native query`,
+const BUTTON_CLOSE_TEXT = {
+  sql: t`Hide SQL`,
+  json: t`Hide native query`,
 };
 
 interface ToggleNativeQueryPreviewProps {
@@ -38,9 +35,9 @@ export const ToggleNativeQueryPreview = ({
   }: { isShowingNotebookNativePreview: boolean } = useSelector(getUiControls);
 
   const engineType = getEngineNativeType(question.database()?.engine);
-  const tooltip = isShowingNotebookNativePreview
-    ? BUTTON_TOOLTIP_CLOSE[engineType]
-    : BUTTON_TOOLTIP[engineType];
+  const buttonText = isShowingNotebookNativePreview
+    ? BUTTON_CLOSE_TEXT[engineType]
+    : BUTTON_TEXT[engineType];
 
   const handleClick = () => {
     dispatch(
@@ -55,15 +52,13 @@ export const ToggleNativeQueryPreview = ({
   };
 
   return (
-    <Tooltip label={tooltip} position="top">
-      <SqlButton
-        isSelected={isShowingNotebookNativePreview}
-        onClick={handleClick}
-        aria-label={tooltip}
-      >
-        <Icon size="1rem" name="sql" />
-      </SqlButton>
-    </Tooltip>
+    <Button
+      leftIcon={<Icon name="sql" />}
+      onClick={handleClick}
+      aria-label={buttonText}
+    >
+      {buttonText}
+    </Button>
   );
 };
 

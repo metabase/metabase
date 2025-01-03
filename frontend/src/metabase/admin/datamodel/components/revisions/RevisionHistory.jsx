@@ -55,6 +55,7 @@ export default class RevisionHistory extends Component {
                   <Revision
                     key={revision.id}
                     revision={revision}
+                    tableId={segment.table_id}
                     objectName={segment.name}
                     currentUser={user}
                     userColor={userColorAssignments[revision.user.id]}

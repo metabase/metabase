@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { c, t } from "ttag";
 
+import { archiveAndTrack } from "metabase/archive/analytics";
 import type {
   OnArchive,
   OnCopy,
@@ -120,7 +121,6 @@ function EntityItemMenu({
   item,
   isBookmarked,
   isXrayEnabled,
-  canUseMetabot,
   onPin,
   onMove,
   onCopy,
@@ -134,7 +134,6 @@ function EntityItemMenu({
   item: CollectionItem;
   isBookmarked?: boolean;
   isXrayEnabled?: boolean;
-  canUseMetabot?: boolean;
   onPin?: OnPin;
   onMove?: OnMove;
   onCopy?: OnCopy;
@@ -150,7 +149,6 @@ function EntityItemMenu({
   const isParameterized = isFullyParameterized(item);
   const isModel = isItemModel(item);
   const isXrayShown = isModel && isXrayEnabled;
-  const isMetabotShown = isModel && canUseMetabot;
 
   const actions = useMemo(() => {
     const result = [];
@@ -168,14 +166,6 @@ function EntityItemMenu({
         title: isBookmarked ? t`Remove from bookmarks` : c("Verb").t`Bookmark`,
         icon: "bookmark",
         action: onToggleBookmark,
-      });
-    }
-
-    if (isMetabotShown) {
-      result.push({
-        title: t`Ask Metabot`,
-        link: Urls.modelMetabot(item.id),
-        icon: "insight",
       });
     }
 
@@ -221,7 +211,13 @@ function EntityItemMenu({
       result.push({
         title: t`Move to trash`,
         icon: "trash",
-        action: onArchive,
+        action: () =>
+          archiveAndTrack({
+            archive: onArchive,
+            model: item.model,
+            modelId: item.id,
+            triggeredFrom: "collection",
+          }),
       });
     }
 
@@ -247,9 +243,9 @@ function EntityItemMenu({
     return result;
   }, [
     item.id,
+    item.model,
     isPinned,
     isXrayShown,
-    isMetabotShown,
     isPreviewed,
     isParameterized,
     isBookmarked,

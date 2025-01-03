@@ -115,7 +115,7 @@
    [java-time.api :as t]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search.config :as search.config]
-   [metabase.search.util :as search.util]
+   [metabase.search.in-place.util :as search.util]
    [metabase.util :as u]))
 
 (defn- matches?
@@ -158,7 +158,7 @@
   the text match, if there is one. If there is no match, the score is 0."
   [search-native-query weighted-scorers query-tokens search-result]
   ;; TODO is pmap over search-result worth it?
-  (let [scores (for [column (let [search-columns-fn (requiring-resolve 'metabase.search.legacy/searchable-columns)]
+  (let [scores (for [column (let [search-columns-fn (requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)]
                               (search-columns-fn (:model search-result) search-native-query))
                      {:keys [scorer name weight]
                       :as   _ws} weighted-scorers

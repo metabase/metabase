@@ -10,7 +10,6 @@
    [metabase.audit :as audit]
    [metabase.core :as mbc]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.database :refer [Database]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
    [metabase.plugins :as plugins]
@@ -78,10 +77,10 @@
     (testing "Audit DB doesn't get re-installed unless the engine changes"
       (with-redefs [ee-audit/load-analytics-content (constantly nil)]
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
-        (t2/update! Database :is_audit true {:engine "datomic"})
+        (t2/update! :model/Database :is_audit true {:engine "datomic"})
         (is (= ::ee-audit/updated (ee-audit/ensure-audit-db-installed!)))
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
-        (t2/update! Database :is_audit true {:engine "h2"})))))
+        (t2/update! :model/Database :is_audit true {:engine "h2"})))))
 
 (deftest instance-analytics-content-is-copied-to-mb-plugins-dir-test
   (mt/with-temp-env-var-value! [mb-plugins-dir "card_catalogue_dir"]
@@ -155,12 +154,12 @@
 
 (deftest should-load-audit?-test
   (testing "load-analytics-content + checksums dont match => load"
-    (is (= (#'ee-audit/should-load-audit? true 1 3) true)))
+    (is (#'ee-audit/should-load-audit? true 1 3)))
   (testing "load-analytics-content + last-checksum is -1 => load (even if current-checksum is also -1)"
-    (is (= (#'ee-audit/should-load-audit? true -1 -1) true)))
+    (is (#'ee-audit/should-load-audit? true -1 -1)))
   (testing "checksums are the same => do not load"
-    (is (= (#'ee-audit/should-load-audit? true 3 3) false)))
+    (is (not (#'ee-audit/should-load-audit? true 3 3))))
   (testing "load-analytics-content false => do not load"
-    (is (= (#'ee-audit/should-load-audit? false 3 5) false)))
+    (is (not (#'ee-audit/should-load-audit? false 3 5))))
   (testing "load-analytics-content is false + checksums do not match  => do not load"
-    (is (= (#'ee-audit/should-load-audit? false 1 3) false))))
+    (is (not (#'ee-audit/should-load-audit? false 1 3)))))

@@ -1,38 +1,31 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import {
-  assertPermissionForItem,
-  describeEE,
-  modal,
-  modifyPermission,
-  restore,
-  setTokenFeatures,
-} from "e2e/support/helpers";
 
 const DETAILS_PERMISSION_INDEX = 4;
 
-describeEE(
+H.describeEE(
   "scenarios > admin > permissions > database details permissions",
   () => {
     beforeEach(() => {
-      restore();
+      H.restore();
       cy.signInAsAdmin();
-      setTokenFeatures("all");
+      H.setTokenFeatures("all");
     });
 
     it("allows database managers to see and edit database details but not to delete a database (metabase#22293)", () => {
       // As an admin, grant database details permissions to all users
       cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
-      modifyPermission("All Users", DETAILS_PERMISSION_INDEX, "Yes");
+      H.modifyPermission("All Users", DETAILS_PERMISSION_INDEX, "Yes");
 
       cy.button("Save changes").click();
 
-      modal().within(() => {
+      H.modal().within(() => {
         cy.findByText("Save permissions?");
         cy.findByText("Are you sure you want to do this?");
         cy.button("Yes").click();
       });
 
-      assertPermissionForItem("All Users", DETAILS_PERMISSION_INDEX, "Yes");
+      H.assertPermissionForItem("All Users", DETAILS_PERMISSION_INDEX, "Yes");
 
       // Normal user should now have the ability to manage databases
       cy.signInAsNormalUser();

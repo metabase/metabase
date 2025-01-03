@@ -1,11 +1,11 @@
 (ns metabase.util.http
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
-   [medley.core :as m]))
+   [medley.core :as m]
+   [metabase.util.json :as json]))
 
 (defn- parse-http-headers [headers]
-  (json/parse-string headers))
+  (json/decode headers))
 
 (defn ^:dynamic *fetch-as-json*
   "Fetches url and parses body as json, returning it."

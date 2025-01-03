@@ -18,7 +18,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models :refer [Field]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
@@ -543,7 +542,7 @@
     (map-indexed (fn [i row] (cons (inc i) row)))))
 
 (defn- column-position [table column-name]
-  (t2/select-one-fn :database_position Field :%lower.name (u/lower-case-en column-name) :table_id (:id table)))
+  (t2/select-one-fn :database_position :model/Field :%lower.name (u/lower-case-en column-name) :table_id (:id table)))
 
 (deftest create-from-csv-test
   (doseq [[separator lines] example-files]
@@ -690,7 +689,7 @@
           (testing "Fields exists after sync"
             (testing "Check the datetime column the correct base_type"
               (is (=? :type/DateTime
-                      (t2/select-one-fn :base_type Field :%lower.name "datetime" :table_id (:id table)))))
+                      (t2/select-one-fn :base_type :model/Field :%lower.name "datetime" :table_id (:id table)))))
             (is (some? table))))))))
 
 (deftest create-from-csv-offset-datetime-test
@@ -716,7 +715,7 @@
                           :file (csv-file-with (into ["offset_datetime"] csv-strs)))]
                   (testing "Check the offset datetime column the correct base_type"
                     (is (=? :type/DateTimeWithLocalTZ
-                            (t2/select-one-fn :base_type Field :%lower.name "offset_datetime" :table_id (:id table)))))
+                            (t2/select-one-fn :base_type :model/Field :%lower.name "offset_datetime" :table_id (:id table)))))
                   (let [position (column-position table "offset_datetime")
                         values   (map #(nth % position) (rows-for-table table))]
                     (is (= expected
@@ -750,7 +749,7 @@
           (testing "Table and Fields exist after sync"
             (testing "Check the boolean column has a boolean base_type"
               (is (= :type/Boolean
-                     (t2/select-one-fn :base_type Field :%lower.name "bool" :table_id (:id table)))))
+                     (t2/select-one-fn :base_type :model/Field :%lower.name "bool" :table_id (:id table)))))
             (testing "Check the data was uploaded into the table correctly"
               (let [position    (column-position table "bool")
                     bool-column (map #(nth % position) (rows-for-table table))
@@ -763,7 +762,7 @@
       (with-mysql-local-infile-on-and-off
         (let [length-limit (driver/table-name-length-limit driver/*driver*)
               ;; Ensure the name is unique as table names can collide when using redshift
-              long-name    (->> "abc" str cycle (take (inc length-limit)) shuffle (apply str))
+              long-name    (->> "abc" cycle (take (inc length-limit)) shuffle (apply str))
               short-name   (subs long-name 0 (- length-limit (count "_yyyyMMddHHmmss")))
               table-name   (u/upper-case-en (@#'upload/unique-table-name driver/*driver* long-name))]
           (is (pos? length-limit) "driver/table-name-length-limit has been set")
@@ -890,7 +889,7 @@
                      :base_type                  :type/BigInteger
                      :database_is_auto_increment false}
                     (let [pos (if (auto-pk-column?) 1 0)]
-                      (t2/select-one Field :database_position pos :table_id (:id table)))))))))))
+                      (t2/select-one :model/Field :database_position pos :table_id (:id table)))))))))))
 
 (deftest create-from-csv-auto-pk-column-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :upload-with-auto-pk)
@@ -1146,7 +1145,7 @@
                (is (= "complete"
                       (:initial_sync_status (t2/select-one :model/Table (:id new-table))))
                    "The table is synced and marked as complete")
-               (is (t2/exists? Field :table_id (:id new-table) :%lower.name "name" :semantic_type :type/Name)
+               (is (t2/exists? :model/Field :table_id (:id new-table) :%lower.name "name" :semantic_type :type/Name)
                    "The sync actually runs")))))
         (finally
           (t2/update! :model/Database db-id original-sync-values))))))
@@ -1178,7 +1177,7 @@
        {}
        (fn [model]
          (with-upload-table! [table (card->table model)]
-           (let [new-field (t2/select-one Field :table_id (:id table) :name "_mb_row_id")]
+           (let [new-field (t2/select-one :model/Field :table_id (:id table) :name "_mb_row_id")]
              (is (= "_mb_row_id"
                     (:name new-field)
                     (:display_name new-field))))))))))
@@ -1250,8 +1249,8 @@
                   0xFF      ; Operating system (unknown)
                   0x03 0    ; Compressed data (empty block)
                   0 0 0 0   ; CRC32
-                  0 0 0 0   ; Input size
-                  ]))
+                  0 0 0 0]))   ; Input size
+
     file))
 
 (defmethod driver/database-supports? [::driver/driver ::create-csv-upload!-failure-test]
@@ -1823,11 +1822,15 @@
       (testing (action-testing-str action)
         (mt/with-premium-features #{:audit-app}
           (with-upload-table! [table (create-upload-table!)]
-            (let [csv-rows ["name" "Luke Skywalker"]
-                  file     (csv-file-with csv-rows)]
+            (let [csv-rows   ["name" "Luke Skywalker"]
+                  file       (csv-file-with csv-rows)
+                  event-type (case action
+                               ::upload/append  :upload-append
+                               ::upload/replace :upload-replace)]
+
               (update-csv! action {:file file, :table-id (:id table)})
 
-              (is (=? {:topic    :upload-append
+              (is (=? {:topic    event-type
                        :user_id  (:id (mt/fetch-user :crowberto))
                        :model    "Table"
                        :model_id (:id table)
@@ -1839,7 +1842,7 @@
                                                 :generated-columns 0
                                                 :size-mb           1.811981201171875E-5
                                                 :upload-seconds    pos?}}}
-                      (last-audit-event :upload-append)))
+                      (last-audit-event event-type)))
 
               (io/delete-file file))))))))
 
@@ -2355,9 +2358,9 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (let [long-string (str (str/join (repeat 1000 "really_")) "long")
-              header      (str (str "a_" long-string ",")
-                               (str "b_" long-string ",")
-                               (str "b_" long-string "_with_a"))]
+              header      (str "a_" long-string ","
+                               "b_" long-string ","
+                               "b_" long-string "_with_a")]
           (with-upload-table!
             [table (create-from-csv-and-sync-with-defaults!
                     :file (csv-file-with [header
@@ -2380,8 +2383,8 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (let [long-string  (str (str/join (repeat 1000 "really_")) "long")
-              header       (str (str "a_" long-string ",")
-                                (str "b_" long-string))
+              header       (str "a_" long-string ","
+                                "b_" long-string)
               original-row "a,b"
               appended-row "A,B"]
           (with-upload-table!
@@ -2430,9 +2433,9 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (let [long-string  (str (str/join (repeat 1000 "really_")) "long")
-              header       (str (str "a_" long-string ",")
-                                (str "b_" long-string ",")
-                                (str "b_" long-string "_with_a"))
+              header       (str "a_" long-string ","
+                                "b_" long-string ","
+                                "b_" long-string "_with_a")
               original-row "a,b1,b2"
               appended-row "A,B1,B2"]
           (with-upload-table!

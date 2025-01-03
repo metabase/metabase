@@ -36,6 +36,7 @@ export function infer(mbql, env) {
 
   switch (op) {
     case "case":
+    case "if":
       return infer(mbql[1][0][1], env);
     case "coalesce":
       return infer(mbql[1], env);

@@ -1,5 +1,6 @@
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { DatasetQuery } from "metabase-types/api";
 
 export function createDatasetQuery(
@@ -18,4 +19,14 @@ export function createDatasetQuery(
     native: { query: queryText, "template-tags": {}, ...extras },
     database: databaseId,
   };
+}
+
+export function createNativeQuery(question: Question, query: string = "") {
+  return new NativeQuery(question, {
+    type: "native",
+    database: question.database()?.id ?? null,
+    native: {
+      query,
+    },
+  });
 }

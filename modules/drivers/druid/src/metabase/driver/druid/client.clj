@@ -1,12 +1,12 @@
 (ns metabase.driver.druid.client
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [metabase.models.secret :as secret]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.ssh :as ssh]))
 
@@ -29,7 +29,7 @@
   ;; this is the way the `Content-Type` header is formatted in requests made by the Druid web interface
   (let [{:keys [auth-enabled auth-username auth-token-value]} options
         options (cond-> (merge {:content-type "application/json;charset=UTF-8"} options)
-                  (:body options) (update :body json/generate-string)
+                  (:body options) (update :body json/encode)
                   auth-enabled (assoc :basic-auth (str auth-username ":" auth-token-value)))]
 
     (try
@@ -38,7 +38,7 @@
           (throw (ex-info (tru "Druid request error [{0}]: {1}" status (pr-str body))
                           {:type qp.error-type/db})))
         (try
-          (json/parse-string body keyword)
+          (json/decode+kw body)
           (catch Throwable e
             (throw (ex-info (tru "Failed to parse Druid response body: {0}" (pr-str body))
                             {:type qp.error-type/db}
@@ -46,7 +46,7 @@
       (catch Throwable e
         (let [response (u/ignore-exceptions
                          (when-let [body (:body (ex-data e))]
-                           (json/parse-string body keyword)))]
+                           (json/decode+kw body)))]
           (throw (ex-info (or (:errorMessage response)
                               (.getMessage e))
                           (merge
@@ -86,7 +86,7 @@
           ;; Re-throw a new exception with `message` set to the extracted message
           (throw e'))))))
 
-(defn- cancel-query-with-id! [details query-id]
+(defn- undo-query-with-id! [details query-id]
   (if-not query-id
     (log/warn "Client closed connection, no queryId found, can't cancel query")
     (ssh/with-ssh-tunnel [details-with-tunnel details]
@@ -107,23 +107,18 @@
   [canceled-chan details query]
   {:pre [(map? details) (map? query)]}
   (let [query-id  (get-in query [:context :queryId])
-        query-fut (future
-                    (try
-                      (do-query details query)
-                      (catch Throwable e
-                        e)))
-        cancel! (delay
-                  (cancel-query-with-id! details query-id))]
+        ;; Run the query in a future so that we can interrupt it from the canceled-chan callback.
+        query-fut (future (do-query details query))
+        undo! #(undo-query-with-id! details query-id)]
     (a/go
       (when (a/<! canceled-chan)
         (future-cancel query-fut)
-        @cancel!))
-    (try
-      ;; Run the query in a future so that this thread will be interrupted, not the thread running the query (which is
-      ;; not interrupt aware)
-      (u/prog1 @query-fut
-        (when (instance? Throwable <>)
-          (throw <>)))
-      (catch InterruptedException e
-        @cancel!
-        (throw e)))))
+        (undo!)))
+    (try @query-fut
+         (catch java.util.concurrent.ExecutionException e
+           (undo!)
+           ;; Unwrap exceptions from the future.
+           (throw (.getCause e)))
+         (catch InterruptedException e
+           (undo!)
+           (throw e)))))

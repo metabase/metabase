@@ -1,7 +1,7 @@
 (ns metabase-enterprise.advanced-config.models.pulse-channel
   (:require
    [clojure.string :as str]
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]))

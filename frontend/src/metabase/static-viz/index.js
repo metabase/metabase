@@ -6,17 +6,11 @@ import ReactDOMServer from "react-dom/server";
 
 import "metabase/lib/dayjs";
 
-import { formatValue } from "metabase/lib/formatting";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
-import { createColorGetter } from "metabase/static-viz/lib/colors";
-import {
-  measureTextEChartsAdapter,
-  measureTextHeight,
-  measureTextWidth,
-} from "metabase/static-viz/lib/text";
+import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
+import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
 import { extractRemappings } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 
 import { LegacyStaticChart } from "./containers/LegacyStaticChart";
 
@@ -49,16 +43,7 @@ function getRawSeriesWithDashcardSettings(rawSeries, dashcardSettings) {
 }
 
 export function RenderChart(rawSeries, dashcardSettings, colors) {
-  const getColor = createColorGetter(colors);
-  const renderingContext = {
-    getColor,
-    formatValue,
-    measureText: (text, style) =>
-      measureTextWidth(text, style.size, style.weight),
-    measureTextHeight: (_, style) => measureTextHeight(style.size),
-    fontFamily: "Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif",
-    theme: DEFAULT_VISUALIZATION_THEME,
-  };
+  const renderingContext = createStaticRenderingContext(colors);
 
   const rawSeriesWithDashcardSettings = getRawSeriesWithDashcardSettings(
     rawSeries,

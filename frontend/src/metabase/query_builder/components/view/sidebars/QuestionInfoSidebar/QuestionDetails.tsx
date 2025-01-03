@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useState } from "react";
 import { c, t } from "ttag";
 
+import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { getCollectionName } from "metabase/collections/utils";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import DateTime from "metabase/components/DateTime";
@@ -10,7 +11,7 @@ import Styles from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
 import { QuestionPublicLinkPopover } from "metabase/sharing/components/PublicLinkPopover";
-import { Box, Flex, FixedSizeIcon as Icon, Text } from "metabase/ui";
+import { Box, Flex, FixedSizeIcon as Icon, Loader, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import SidebarStyles from "./QuestionInfoSidebar.module.css";
@@ -21,6 +22,12 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
   const createdBy = question.getCreator();
   const createdAt = question.getCreatedAt();
   const collection = question.collection();
+  const dashboardId = question.dashboardId();
+  const isDashboardQuestion = dashboardId !== null;
+
+  const { data: dashboard, isLoading } = useGetDashboardQuery(
+    dashboardId !== null ? { id: dashboardId } : skipToken,
+  );
 
   return (
     <>
@@ -56,17 +63,30 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
       <SidesheetCardSection title={t`Saved in`}>
         <Flex gap="sm" align="top" color="var(--mb-color-brand)">
           <Icon
-            name="folder"
+            name={isDashboardQuestion ? "dashboard" : "folder"}
             color="var(--mb-color-brand)"
             className={SidebarStyles.IconMargin}
           />
           <Text>
-            <Link to={Urls.collection(collection)} variant="brand">
-              {
-                // We need to use getCollectionName or the name of the root collection will not be displayed
-                getCollectionName(collection)
-              }
-            </Link>
+            {isDashboardQuestion ? (
+              isLoading || !dashboard ? (
+                <Loader />
+              ) : (
+                <Link to={Urls.dashboard(dashboard)} variant="brand">
+                  {
+                    // We need to use getCollectionName or the name of the root collection will not be displayed
+                    dashboard.name
+                  }
+                </Link>
+              )
+            ) : (
+              <Link to={Urls.collection(collection)} variant="brand">
+                {
+                  // We need to use getCollectionName or the name of the root collection will not be displayed
+                  getCollectionName(collection)
+                }
+              </Link>
+            )}
           </Text>
         </Flex>
       </SidesheetCardSection>

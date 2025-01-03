@@ -1,12 +1,5 @@
+import { H } from "e2e/support";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  changeBinningForDimension,
-  popover,
-  restore,
-  summarize,
-  visitQuestion,
-  visualize,
-} from "e2e/support/helpers";
 
 /**
  * The list of issues this spec covers:
@@ -16,7 +9,7 @@ import {
 
 describe("scenarios > binning > from a saved QB question using implicit joins", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -24,12 +17,12 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
 
   context("via simple question", () => {
     beforeEach(() => {
-      visitQuestion(ORDERS_QUESTION_ID);
-      summarize();
+      H.visitQuestion(ORDERS_QUESTION_ID);
+      H.summarize();
     });
 
     it("should work for time series", () => {
-      changeBinningForDimension({
+      H.changeBinningForDimension({
         name: "Birth Date",
         fromBinning: "by month",
         toBinning: "Year",
@@ -51,7 +44,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
     });
 
     it("should work for number", () => {
-      changeBinningForDimension({
+      H.changeBinningForDimension({
         name: "Price",
         fromBinning: "Auto bin",
         toBinning: "50 bins",
@@ -64,7 +57,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
     });
 
     it("should work for longitude", () => {
-      changeBinningForDimension({
+      H.changeBinningForDimension({
         name: "Longitude",
         fromBinning: "Auto bin",
         toBinning: "Bin every 20 degrees",
@@ -80,13 +73,13 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
   context("via custom question", () => {
     beforeEach(() => {
       cy.visit(`/question/${ORDERS_QUESTION_ID}/notebook`);
-      summarize({ mode: "notebook" });
+      H.summarize({ mode: "notebook" });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
       // Click "Order" accordion to collapse it and expose the other tables
-      popover().findByText("Orders").click();
+      H.popover().findByText("Orders").click();
     });
 
     it("should work for time series", () => {
@@ -94,7 +87,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       cy.findByText("User").click();
       cy.findByPlaceholderText("Find...").type("birth");
 
-      changeBinningForDimension({
+      H.changeBinningForDimension({
         name: "Birth Date",
         fromBinning: "by month",
         toBinning: "Year",
@@ -120,7 +113,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Product").click();
 
-      changeBinningForDimension({
+      H.changeBinningForDimension({
         name: "Price",
         fromBinning: "Auto bin",
         toBinning: "50 bins",
@@ -138,7 +131,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       cy.findByText("User").click();
       cy.findByPlaceholderText("Find...").type("longitude");
 
-      changeBinningForDimension({
+      H.changeBinningForDimension({
         name: "Longitude",
         fromBinning: "Auto bin",
         toBinning: "Bin every 20 degrees",
@@ -162,7 +155,7 @@ function waitAndAssertOnRequest(requestAlias) {
 function assertQueryBuilderState({ title, mode = null, values } = {}) {
   const [firstValue, lastValue] = values;
 
-  mode === "notebook" ? visualize() : waitAndAssertOnRequest("@dataset");
+  mode === "notebook" ? H.visualize() : waitAndAssertOnRequest("@dataset");
 
   cy.findByText(title);
   cy.get("[data-testid=cell-data]")

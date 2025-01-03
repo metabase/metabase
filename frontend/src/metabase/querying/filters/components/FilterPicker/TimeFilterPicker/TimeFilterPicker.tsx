@@ -45,7 +45,7 @@ export function TimeFilterPicker({
     filter,
   });
 
-  const handleOperatorChange = (newOperator: Lib.TimeFilterOperatorName) => {
+  const handleOperatorChange = (newOperator: Lib.TimeFilterOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
   };

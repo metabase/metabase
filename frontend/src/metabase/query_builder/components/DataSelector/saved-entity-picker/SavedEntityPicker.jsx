@@ -1,6 +1,5 @@
 import PropTypes from "prop-types";
 import { useCallback, useMemo, useState } from "react";
-import { connect } from "react-redux";
 import _ from "underscore";
 
 import {
@@ -10,21 +9,17 @@ import {
 } from "metabase/collections/utils";
 import { Tree } from "metabase/components/tree";
 import CS from "metabase/css/core/index.css";
-import Collection, {
+import Collections, {
   PERSONAL_COLLECTIONS,
   buildCollectionTree,
 } from "metabase/entities/collections";
-import { Icon } from "metabase/ui";
+import { connect } from "metabase/lib/redux";
+import { Box, Icon } from "metabase/ui";
 
 import SavedEntityList from "./SavedEntityList";
-import {
-  BackButton,
-  CollectionsContainer,
-  SavedEntityPickerRoot,
-  TreeContainer,
-} from "./SavedEntityPicker.styled";
+import SavedEntityPickerS from "./SavedEntityPicker.module.css";
 import { CARD_INFO } from "./constants";
-import { findCollectionByName } from "./utils";
+import { findCollectionById } from "./utils";
 
 const propTypes = {
   type: PropTypes.string,
@@ -34,7 +29,7 @@ const propTypes = {
   currentUser: PropTypes.object.isRequired,
   databaseId: PropTypes.string,
   tableId: PropTypes.string,
-  collectionName: PropTypes.string,
+  collectionId: PropTypes.number,
   rootCollection: PropTypes.object,
 };
 
@@ -58,7 +53,7 @@ function SavedEntityPicker({
   currentUser,
   databaseId,
   tableId,
-  collectionName,
+  collectionId,
   rootCollection,
 }) {
   const collectionTree = useMemo(() => {
@@ -98,8 +93,7 @@ function SavedEntityPicker({
   }, [collections, rootCollection, currentUser, type]);
 
   const initialCollection = useMemo(
-    () =>
-      findCollectionByName(collectionTree, collectionName) ?? collectionTree[0],
+    () => findCollectionById(collectionTree, collectionId) ?? collectionTree[0],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
@@ -115,20 +109,24 @@ function SavedEntityPicker({
   }, []);
 
   return (
-    <SavedEntityPickerRoot>
-      <CollectionsContainer>
-        <BackButton onClick={onBack} data-testid="saved-entity-back-navigation">
+    <Box className={SavedEntityPickerS.SavedEntityPickerRoot}>
+      <Box className={SavedEntityPickerS.CollectionsContainer}>
+        <a
+          className={SavedEntityPickerS.BackButton}
+          onClick={onBack}
+          data-testid="saved-entity-back-navigation"
+        >
           <Icon name="chevronleft" className={CS.mr1} />
           {CARD_INFO[type].title}
-        </BackButton>
-        <TreeContainer data-testid="saved-entity-collection-tree">
+        </a>
+        <Box m="0.5rem 0" data-testid="saved-entity-collection-tree">
           <Tree
             data={collectionTree}
             onSelect={handleSelect}
             selectedId={selectedCollection?.id}
           />
-        </TreeContainer>
-      </CollectionsContainer>
+        </Box>
+      </Box>
       <SavedEntityList
         type={type}
         collection={selectedCollection}
@@ -136,7 +134,7 @@ function SavedEntityPicker({
         databaseId={databaseId}
         onSelect={onSelect}
       />
-    </SavedEntityPickerRoot>
+    </Box>
   );
 }
 
@@ -145,12 +143,12 @@ SavedEntityPicker.propTypes = propTypes;
 const mapStateToProps = ({ currentUser }) => ({ currentUser });
 
 export default _.compose(
-  Collection.load({
+  Collections.load({
     id: () => "root",
     entityAlias: "rootCollection",
     loadingAndErrorWrapper: false,
   }),
-  Collection.loadList({
+  Collections.loadList({
     query: () => ({ tree: true, "exclude-archived": true }),
   }),
   connect(mapStateToProps),

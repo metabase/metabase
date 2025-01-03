@@ -16,7 +16,7 @@ jobs:
   set-milestone:
     name: Automatically set milestone
     runs-on: ubuntu-22.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       isNewReleaseBranch: ${{ github.event_name == 'workflow_dispatch' }}
     permissions:

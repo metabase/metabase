@@ -1,7 +1,6 @@
 (ns metabase.api.dashboard
   "/api/dashboard endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.core.cache :as cache]
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
@@ -9,10 +8,12 @@
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.collection :as api.collection]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.query-metadata :as api.query-metadata]
+   [metabase.db.query :as mdb.query]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -22,24 +23,21 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.action :as action]
-   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
-   [metabase.models.dashboard :as dashboard :refer [Dashboard]]
-   [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
+   [metabase.models.dashboard :as dashboard]
+   [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.pulse :as models.pulse]
-   [metabase.models.query :as query :refer [Query]]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
    [metabase.models.revision.last-edit :as last-edit]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -47,8 +45,11 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
+   [metabase.request.core :as request]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -111,7 +112,7 @@
                   :param_fields
                   :param_values
                   [:moderation_reviews :moderator_details]
-                  [:collection :is_personal]))))
+                  [:collection :is_personal :effective_location]))))
 
 (api/defendpoint POST "/"
   "Create a new Dashboard."
@@ -223,7 +224,7 @@
   another, and thus do not work as one would expect when used as map keys.)"
   [hashes]
   (when (seq hashes)
-    (into {} (for [[k v] (t2/select-fn->fn :query_hash :average_execution_time Query :query_hash [:in hashes])]
+    (into {} (for [[k v] (t2/select-fn->fn :query_hash :average_execution_time :model/Query :query_hash [:in hashes])]
                {(vec k) v}))))
 
 (defn- add-query-average-duration-to-card
@@ -325,56 +326,69 @@
   [id]
   ((get-dashboard-fn *dashboard-load-id*) id))
 
-(defn- cards-to-copy
-  "Returns a map of which cards we need to copy and which are not to be copied. The `:copy` key is a map from id to
-  card. The `:discard` key is a vector of cards which were not copied due to permissions."
-  [dashcards]
-  (letfn [(split-cards [{:keys [card series] :as db-card}]
-            (cond
-              (nil? (:card_id db-card)) ; text card
-              {}
+(mu/defn- cards-to-copy :- [:map
+                            [:discard [:sequential :any]]
+                            [:copy [:map-of ms/PositiveInt :any]]
+                            [:reference [:map-of ms/PositiveInt :any]]]
+  "Returns a map of which cards we need to copy, which cards we need to reference, and which are not to be copied. The
+  `:copy` and `:reference` keys are maps from id to card. The `:discard` key is a vector of cards which were not
+  copied due to permissions.
 
-              ;; cards without permissions are just a map with an :id from [[hide-unreadable-card]]
-              (not (mi/model card))
-              {:retain nil, :discard (into [card] series)}
+  If we're making a deep copy, we copy all cards that we have necessary permissions on. Otherwise, we copy Dashboard
+  Questions (questions stored 'in' the dashboard rather than a collection) and reference the rest (assuming
+  permissions)."
+  [deep-copy? :- ms/MaybeBooleanValue
+   dashcards :- [:sequential :any]]
+  (let [card->cards (fn [{:keys [card series]}] (into [card] series))
+        readable? (fn [card] (and (mi/model card) (mi/can-read? card)))
+        card->decision (fn [parent-card card]
+                         (cond
+                           (or
+                            (not (readable? parent-card))
+                            (not (readable? card)))
+                           :discard
 
-              (mi/can-read? card)
-              (let [{writable true unwritable false} (group-by (comp boolean mi/can-read?)
-                                                               series)]
-                {:retain (into [card] writable), :discard unwritable})
-              ;; if you can't write the base, we don't have anywhere to put the series
-              :else
-              {:discard (into [card] series)}))]
+                           (or (:dashboard_id card)
+                               (and deep-copy? (not= :model (:type card))))
+                           :copy
+
+                           :else :reference))
+        split-cards (fn [{:keys [card] :as db-card}]
+                      (let [cards (card->cards db-card)]
+                        (group-by (partial card->decision card) cards)))]
     (reduce (fn [acc db-card]
-              (let [{:keys [retain discard]} (split-cards db-card)]
+              (let [{:keys [discard copy reference]} (split-cards db-card)]
                 (-> acc
-                    (update :copy merge (m/index-by :id retain))
+                    (update :reference merge (m/index-by :id reference))
+                    (update :copy merge (m/index-by :id copy))
                     (update :discard concat discard))))
-            {:copy {}
+            {:reference {}
+             :copy {}
              :discard []}
             dashcards)))
 
-(defn- duplicate-cards
-  "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries. Returns a map of
-  {:copied {old-card-id duplicated-card} :uncopied [card]} so that the new dashboard can adjust accordingly."
-  [dashboard dest-coll-id]
-  (let [same-collection? (= (:collection_id dashboard) dest-coll-id)
-        {:keys [copy discard]} (cards-to-copy (:dashcards dashboard))]
-    (reduce (fn [m [id card]]
-              (assoc-in m
-                        [:copied id]
-                        (if (= (:type card) :model)
-                          card
-                          (card/create-card!
-                           (cond-> (assoc card :collection_id dest-coll-id)
-                             same-collection?
-                             (update :name #(str % " - " (tru "Duplicate"))))
-                           @api/*current-user*
-                           ;; creating cards from a transaction. wait until tx complete to signal event
-                           true))))
-            {:copied {}
-             :uncopied discard}
-            copy)))
+(defn- maybe-duplicate-cards
+  "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries as necessary.
+
+  Returns a map of {:copied {old-card-id duplicated-card} :uncopied [card]} so that the new dashboard can adjust accordingly.
+
+  If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
+  [deep-copy? new-dashboard old-dashboard dest-coll-id]
+  (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
+        {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
+    {:copied     (into {} (for [[id to-copy] copy]
+                            [id (card/create-card!
+                                 (cond-> to-copy
+                                   true                    (assoc :collection_id dest-coll-id)
+                                   same-collection?        (update :name #(str % " - " (tru "Duplicate")))
+                                   (:dashboard_id to-copy) (assoc :dashboard_id (u/the-id new-dashboard)))
+                                 @api/*current-user*
+                                 ;; creating cards from a transaction. wait until tx complete to signal event
+                                 true
+                                 ;; do not autoplace these cards. we will create the dashboard cards ourselves.
+                                 false)]))
+     :discarded  discard
+     :referenced reference}))
 
 (defn- duplicate-tabs
   [new-dashboard existing-tabs]
@@ -390,46 +404,44 @@
   If the dashboard has tabs, fix up the tab ids in dashcards to point to the new tabs.
   Then if shallow copy, return the cards. If deep copy, replace ids with id from the newly-copied cards.
   If there is no new id, it means user lacked curate permissions for the cards
-  collections and it is omitted. Dashboard-id is only needed for useful errors."
-  [dashboard-id dashcards deep? id->new-card id->new-tab-id]
-  (when (and deep? (nil? id->new-card))
-    (throw (ex-info (tru "No copied card information found")
-                    {:user-id api/*current-user-id*
-                     :dashboard-id dashboard-id})))
+  collections and it is omitted."
+  [dashcards id->new-card id->referenced-card id->new-tab-id]
   (let [dashcards (if (seq id->new-tab-id)
                     (map #(assoc % :dashboard_tab_id (id->new-tab-id (:dashboard_tab_id %)))
                          dashcards)
                     dashcards)]
-    (if-not deep?
-      dashcards
-      (keep (fn [dashboard-card]
-              (cond
-               ;; text cards need no manipulation
-                (nil? (:card_id dashboard-card))
-                dashboard-card
+    (keep (fn [dashboard-card]
+            (cond
+              ;; text cards need no manipulation
+              (nil? (:card_id dashboard-card))
+              dashboard-card
 
-               ;; if we didn't duplicate, it doesn't go in the dashboard
-                (not (id->new-card (:card_id dashboard-card)))
-                nil
+              ;; referenced cards need no manipulation
+              (get id->referenced-card (:card_id dashboard-card))
+              dashboard-card
 
-                :else
-                (let [new-id (fn [id]
-                               (-> id id->new-card :id))]
-                  (-> dashboard-card
-                      (update :card_id new-id)
-                      (assoc :card (-> dashboard-card :card_id id->new-card))
-                      (m/update-existing :parameter_mappings
-                                         (fn [pms]
-                                           (keep (fn [pm]
-                                                   (m/update-existing pm :card_id new-id))
-                                                 pms)))
-                      (m/update-existing :series
-                                         (fn [series]
-                                           (keep (fn [card]
-                                                   (when-let [id' (new-id (:id card))]
-                                                     (assoc card :id id')))
-                                                 series)))))))
-            dashcards))))
+              ;; if we didn't duplicate, it doesn't go in the dashboard
+              (not (get id->new-card (:card_id dashboard-card)))
+              nil
+
+              :else
+              (let [new-id (fn [id]
+                             (-> id id->new-card :id))]
+                (-> dashboard-card
+                    (update :card_id new-id)
+                    (assoc :card (-> dashboard-card :card_id id->new-card))
+                    (m/update-existing :parameter_mappings
+                                       (fn [pms]
+                                         (keep (fn [pm]
+                                                 (m/update-existing pm :card_id new-id))
+                                               pms)))
+                    (m/update-existing :series
+                                       (fn [series]
+                                         (keep (fn [card]
+                                                 (when-let [id' (new-id (:id card))]
+                                                   (assoc card :id id')))
+                                               series)))))))
+          dashcards)))
 
 (api/defendpoint POST "/:from-dashboard-id/copy"
   "Copy a Dashboard."
@@ -457,17 +469,17 @@
                          (api/maybe-reconcile-collection-position! dashboard-data)
                         ;; Ok, now save the Dashboard
                          (let [dash (first (t2/insert-returning-instances! :model/Dashboard dashboard-data))
-                               {id->new-card :copied uncopied :uncopied}
-                               (when is_deep_copy
-                                 (duplicate-cards existing-dashboard collection_id))
+                               {id->new-card :copied
+                                id->referenced-card :referenced
+                                uncopied :discarded}
+                               (maybe-duplicate-cards is_deep_copy dash existing-dashboard collection_id)
 
                                id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
                                                 (duplicate-tabs dash existing-tabs))]
                            (reset! new-cards (vals id->new-card))
-                           (when-let [dashcards (seq (update-cards-for-copy from-dashboard-id
-                                                                            (:dashcards existing-dashboard)
-                                                                            is_deep_copy
+                           (when-let [dashcards (seq (update-cards-for-copy (:dashcards existing-dashboard)
                                                                             id->new-card
+                                                                            id->referenced-card
                                                                             id->new-tab-id))]
                              (api/check-500 (dashboard/add-dashcards! dash dashcards)))
                            (cond-> dash
@@ -493,6 +505,49 @@
     (let [dashboard (get-dashboard id)]
       (u/prog1 (first (last-edit/with-last-edit-info [dashboard] :dashboard))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
+
+(api/defendpoint GET "/:id/items"
+  "Get Dashboard with ID."
+  [id]
+  {id ms/PositiveInt}
+  ;; Output should match the shape of api/collection/<:id|root>/items. There's a test that asserts that this remains
+  ;; the case, but if you change one, you'll want to change both.
+  (let [dashboard  (api/read-check :model/Dashboard id)
+        query      (merge
+                    {:select [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                              :last_used_at :c.collection_id :c.archived_directly :c.archived :c.database_id
+                              :c.dashboard_id
+                              [nil :location]
+                              [(h2x/literal "card")  :model]
+                              [{:select   [:status]
+                                :from     [:moderation_review]
+                                :where    [:and
+                                           [:= :moderated_item_type "card"]
+                                           [:= :moderated_item_id :c.id]
+                                           [:= :most_recent true]]
+                                ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
+                                ;; protecting against potential bugs
+                                :order-by [[:id :desc]]
+                                :limit    1}
+                               :moderated_status]]
+                     :from      [[:report_card :c]]
+                     :where     [:and
+                                 [:= :c.dashboard_id id]
+                                 [:exists {:select 1
+                                           :from [[:report_dashboardcard :dc]]
+                                           :where [:and [:= :c.id :dc.card_id] [:= :c.dashboard_id :dc.dashboard_id]]}]
+                                 [:= :c.archived false]]}
+                    (when (request/paged?)
+                      {:limit (request/limit)
+                       :offset (request/offset)}))
+        cards      (mdb.query/query query)]
+    {:total  (count cards)
+     :data   (api.collection/post-process-rows {}
+                                               (t2/select-one :model/Collection :id (:collection_id dashboard))
+                                               cards)
+     :limit  (request/limit)
+     :offset (request/offset)
+     :models (if (seq cards) ["card"] [])}))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
@@ -532,7 +587,7 @@
                                             (remove nil?))
                                       parameter-mappings)]
       (when (seq card-ids)
-        (let [card-id->query        (t2/select-pk->fn :dataset_query Card :id [:in card-ids])
+        (let [card-id->query        (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids])
               field-ids             (set (for [{:keys [target card-id]} parameter-mappings
                                                :when                    card-id
                                                :let                     [query    (or (card-id->query card-id)
@@ -544,15 +599,15 @@
                                                :when                    field-id]
                                            field-id))
               table-ids             (when (seq field-ids)
-                                      (t2/select-fn-set :table_id Field :id [:in field-ids]))
+                                      (t2/select-fn-set :table_id :model/Field :id [:in field-ids]))
               table-id->database-id (when (seq table-ids)
-                                      (t2/select-pk->fn :db_id Table :id [:in table-ids]))]
+                                      (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]))]
           (doseq [table-id table-ids
                   :let     [database-id (table-id->database-id table-id)]]
             ;; check whether we'd actually be able to query this Table (do we have ad-hoc data perms for it?)
             (when-not (query-perms/can-query-table? database-id table-id)
               (throw (ex-info (tru "You must have data permissions to add a parameter referencing the Table {0}."
-                                   (pr-str (t2/select-one-fn :name Table :id table-id)))
+                                   (pr-str (t2/select-one-fn :name :model/Table :id table-id)))
                               {:status-code        403
                                :database-id        database-id
                                :table-id           table-id
@@ -566,7 +621,7 @@
   [dashboard-id]
   (m/map-vals (fn [mappings]
                 (into #{} (map #(select-keys % [:target :parameter_id])) mappings))
-              (t2/select-pk->fn :parameter_mappings DashboardCard :dashboard_id dashboard-id)))
+              (t2/select-pk->fn :parameter_mappings :model/DashboardCard :dashboard_id dashboard-id)))
 
 (defn- check-updated-parameter-mapping-permissions
   "In 0.41.0+ you now require data permissions for the Table in question to add or modify Dashboard parameter mappings.
@@ -584,7 +639,7 @@
                                          (assoc mapping :dashcard-id dashcard-id))
         ;; need to add the appropriate `:card-id` for all the new mappings we're going to check.
         dashcard-id->card-id           (when (seq new-mappings)
-                                         (t2/select-pk->fn :card_id DashboardCard
+                                         (t2/select-pk->fn :card_id :model/DashboardCard
                                                            :dashboard_id dashboard-id
                                                            :id           [:in (set (map :dashcard-id new-mappings))]))
         new-mappings                   (for [{:keys [dashcard-id], :as mapping} new-mappings]
@@ -595,7 +650,7 @@
   [dashboard dashcards]
   (doseq [{:keys [card_id]} dashcards
           :when  (pos-int? card_id)]
-    (api/check-not-archived (api/read-check Card card_id)))
+    (api/check-not-archived (api/read-check :model/Card card_id)))
   (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} dashcards
                                              mapping parameter_mappings]
                                          (assoc mapping :card-id card_id)))
@@ -609,13 +664,27 @@
   dashcards)
 
 (defn- delete-dashcards! [dashcard-ids]
-  (let [dashboard-cards (t2/select DashboardCard :id [:in dashcard-ids])]
+  (let [dashboard-cards (t2/select :model/DashboardCard :id [:in dashcard-ids])]
     (dashboard-card/delete-dashboard-cards! dashcard-ids)
     dashboard-cards))
+
+(defn- assert-new-dashcards-are-not-internal-to-other-dashboards [dashboard to-create]
+  (when-let [card-ids (seq (concat
+                            (seq (keep :card_id to-create))
+                            (->> to-create
+                                 (mapcat :series)
+                                 (keep :id))))]
+    (api/check-400 (not (t2/exists? :model/Card
+                                    {:where [:and
+                                             [:not= :dashboard_id (u/the-id dashboard)]
+                                             [:not= :dashboard_id nil]
+                                             [:in :id (set card-ids)]]})))))
 
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
   (let [{:keys [to-create to-update to-delete]} (u/row-diff current-cards new-cards)]
+    (dashboard/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
+    (assert-new-dashcards-are-not-internal-to-other-dashboards dashboard to-create)
     (when (seq to-update)
       (update-dashcards! dashboard to-update))
     {:deleted-dashcards (when (seq to-delete)
@@ -765,7 +834,7 @@
   (span/with-span!
     {:name       "update-dashboard"
      :attributes {:dashboard/id id}}
-    (let [current-dash                       (api/write-check Dashboard id)
+    (let [current-dash                       (api/write-check :model/Dashboard id)
           ;; If there are parameters in the update, we want the old params so that we can do a check to see if any of
           ;; the notifications were broken by the update.
           {original-params :resolved-params} (when parameters
@@ -780,6 +849,7 @@
           dash-updates                       (api/updates-with-archived-directly current-dash dash-updates)]
       (collection/check-allowed-to-change-collection current-dash dash-updates)
       (check-allowed-to-change-embedding current-dash dash-updates)
+
       (api/check-500
        (do
          (t2/with-transaction [_conn]
@@ -792,7 +862,23 @@
                                 :present #{:description :position :width :collection_id :collection_position :cache_ttl :archived_directly}
                                 :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                            :embedding_params :archived :auto_apply_filters}))]
-             (t2/update! Dashboard id updates)
+             (when (api/column-will-change? :archived current-dash dash-updates)
+               (if (:archived dash-updates)
+                 (card/with-allowed-changes-to-internal-dashboard-card
+                   (t2/update! :model/Card
+                               :dashboard_id id
+                               :archived false
+                               {:archived true :archived_directly false}))
+                 (card/with-allowed-changes-to-internal-dashboard-card
+                   (t2/update! :model/Card
+                               :dashboard_id id
+                               :archived true
+                               :archived_directly false
+                               {:archived false}))))
+             (when (api/column-will-change? :collection_id current-dash dash-updates)
+               (card/with-allowed-changes-to-internal-dashboard-card
+                 (t2/update! :model/Card :dashboard_id id {:collection_id (:collection_id dash-updates)})))
+             (t2/update! :model/Dashboard id updates)
              (when (contains? updates :collection_id)
                (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
               ;; Handle broken subscriptions, if any, when parameters changed
@@ -1055,10 +1141,10 @@
   (let [dashboard       (t2/hydrate dashboard :resolved-params)
         param           (get-in dashboard [:resolved-params param-key])
         results         (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
-                              :let [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
-                                                       (mbql.u/check-clause :dimension))]
-                              :when dimension]
-                          (custom-values/values-from-card card dimension))]
+                              :let [[_ field-ref opts] (->> (mbql.normalize/normalize-tokens target :ignore-path)
+                                                            (mbql.u/check-clause :dimension))]
+                              :when field-ref]
+                          (custom-values/values-from-card card field-ref opts))]
     (when-some [values (seq (distinct (mapcat :values results)))]
       (let [has_more_values (boolean (some true? (map :has_more_values results)))]
         {:values          (cond->> values
@@ -1200,7 +1286,7 @@
   (let [filtered-field-ids  (if (sequential? filtered) (set filtered) #{filtered})
         filtering-field-ids (if (sequential? filtering) (set filtering) #{filtering})]
     (doseq [field-id (set/union filtered-field-ids filtering-field-ids)]
-      (api/read-check Field field-id))
+      (api/read-check :model/Field field-id))
     (into {} (for [field-id filtered-field-ids]
                [field-id (sort (chain-filter/filterable-field-ids field-id filtering-field-ids))]))))
 
@@ -1224,7 +1310,7 @@
   (api/read-check :model/Dashboard dashboard-id)
   (actions/fetch-values
    (api/check-404 (action/dashcard->action dashcard-id))
-   (json/parse-string parameters)))
+   (json/decode parameters)))
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
@@ -1279,7 +1365,7 @@
               :card-id       card-id
               :dashcard-id   dashcard-id
               :export-format export-format
-              :parameters    (json/parse-string parameters keyword)
+              :parameters    (json/decode+kw parameters)
               :context       (api.dataset/export-format->context export-format)
               :constraints   nil
               ;; TODO -- passing this `:middleware` map is a little repetitive, need to think of a way to not have to

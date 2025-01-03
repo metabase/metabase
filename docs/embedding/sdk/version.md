@@ -10,7 +10,7 @@ title: Embedded analytics SDK - versions
 
 The SDK stable version tracks with the Metabase version.
 
-So, for example, if you're on Metabase 51 (`0.51.x`, `1.51.x`), _any_ version 1.51.x of the @metabase/embedding-sdk-react npm package will be compatible.
+So, for example, if you're on Metabase 51 (`0.51.x`, `1.51.x`), _any_ version 0.51.x of the @metabase/embedding-sdk-react npm package will be compatible.
 
 To simplify things, we publish dist-tags for each stable Metabase version, starting from Metabase 51,`51-stable`. To install the latest version of the SDK compatible with Metabase 51, run:
 

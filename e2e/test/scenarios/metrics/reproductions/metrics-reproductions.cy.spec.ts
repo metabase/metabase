@@ -1,32 +1,17 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  type StructuredQuestionDetails,
-  createDashboard,
-  createQuestion,
-  editDashboard,
-  getDashboardCard,
-  getNotebookStep,
-  main,
-  modal,
-  openQuestionActions,
-  popover,
-  restore,
-  showDashboardCardActions,
-  sidebar,
-  visitDashboard,
-} from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe("issue 47058", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
     cy.intercept("GET", "/api/card/*/query_metadata", req =>
       req.continue(() => new Promise(resolve => setTimeout(resolve, 1000))),
     ).as("metadata");
 
-    createQuestion({
+    H.createQuestion({
       name: "Metric 47058",
       type: "metric",
       query: {
@@ -34,7 +19,7 @@ describe("issue 47058", () => {
         aggregation: [["count"]],
       },
     }).then(({ body: { id: metricId } }) => {
-      createQuestion({
+      H.createQuestion({
         name: "Question 47058",
         type: "question",
         query: {
@@ -53,9 +38,9 @@ describe("issue 47058", () => {
   });
 
   it("should show the loading page while the question metadata is being fetched (metabase#47058)", () => {
-    main().within(() => {
+    H.main().within(() => {
       cy.findByText("Loading...").should("be.visible");
-      getNotebookStep("summarize").should("not.exist");
+      H.getNotebookStep("summarize").should("not.exist");
 
       cy.findByText("[Unknown Metric]").should("not.exist");
 
@@ -65,7 +50,7 @@ describe("issue 47058", () => {
       );
 
       cy.findByText("Loading...").should("not.exist");
-      getNotebookStep("summarize").should("be.visible");
+      H.getNotebookStep("summarize").should("be.visible");
 
       cy.findByText("[Unknown Metric]").should("not.exist");
     });
@@ -73,7 +58,7 @@ describe("issue 47058", () => {
 });
 
 describe("issue 44171", () => {
-  const METRIC_A: StructuredQuestionDetails = {
+  const METRIC_A: H.StructuredQuestionDetails = {
     name: "Metric 44171-A",
     type: "metric",
     display: "line",
@@ -90,7 +75,7 @@ describe("issue 44171", () => {
     },
   };
 
-  const METRIC_B: StructuredQuestionDetails = {
+  const METRIC_B: H.StructuredQuestionDetails = {
     name: "Metric 44171-B",
     type: "metric",
     display: "line",
@@ -108,12 +93,12 @@ describe("issue 44171", () => {
   };
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
-    createQuestion(METRIC_A);
-    createQuestion(METRIC_B, { visitQuestion: true });
-    createDashboard(
+    H.createQuestion(METRIC_A);
+    H.createQuestion(METRIC_B, { visitQuestion: true });
+    H.createDashboard(
       {
         name: "Dashboard 44171",
         dashcards: [],
@@ -125,16 +110,16 @@ describe("issue 44171", () => {
   it("should not save viz settings on metrics", () => {
     cy.intercept("PUT", "/api/card/*").as("saveCard");
 
-    openQuestionActions();
-    popover().findByText("Edit metric definition").click();
-    getNotebookStep("summarize").button("Count").click();
-    popover().within(() => {
+    H.openQuestionActions();
+    H.popover().findByText("Edit metric definition").click();
+    H.getNotebookStep("summarize").button("Count").click();
+    H.popover().within(() => {
       cy.findByText("Sum of ...").click();
       cy.findByText("Total").click();
     });
     cy.button("Save changes").click();
     cy.get<number>("@dashboardId").then(id => {
-      visitDashboard(id);
+      H.visitDashboard(id);
     });
 
     cy.get("@saveCard")
@@ -142,15 +127,15 @@ describe("issue 44171", () => {
       .its("visualization_settings")
       .should("not.exist");
 
-    editDashboard();
+    H.editDashboard();
     cy.findByTestId("dashboard-header")
       .findByLabelText("Add questions")
       .click();
 
-    sidebar().findByText("Metric 44171-A").click();
+    H.sidebar().findByText("Metric 44171-A").click();
 
-    showDashboardCardActions(0);
-    getDashboardCard(0).findByLabelText("Add series").click();
-    modal().findByText("Metric 44171-B").should("be.visible");
+    H.showDashboardCardActions(0);
+    H.getDashboardCard(0).findByLabelText("Add series").click();
+    H.modal().findByText("Metric 44171-B").should("be.visible");
   });
 });

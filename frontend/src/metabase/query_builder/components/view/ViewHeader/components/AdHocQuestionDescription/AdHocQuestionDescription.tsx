@@ -1,23 +1,36 @@
+import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import { AggregationAndBreakoutDescription } from "./AdHocQuestionDescription.styled";
-
-interface AdHocQuestionDescriptionProps {
-  question: Question;
+type AdHocQuestionDescriptionProps = {
   onClick?: () => void;
-}
+} & GetAdhocQuestionDescriptionProps;
 
-const STAGE_INDEX = -1;
-export const AdHocQuestionDescription = ({
+type GetAdhocQuestionDescriptionProps = {
+  question: Question;
+};
+
+export const shouldRenderAdhocDescription = ({
   question,
-  onClick,
-}: AdHocQuestionDescriptionProps) => {
+}: GetAdhocQuestionDescriptionProps) => {
   const query = question.query();
-  const aggregations = Lib.aggregations(query, STAGE_INDEX);
-  const breakouts = Lib.breakouts(query, STAGE_INDEX);
+  const stageIndex = getInfoStageIndex(query);
+  const aggregations = Lib.aggregations(query, stageIndex);
+  const breakouts = Lib.breakouts(query, stageIndex);
+
+  return aggregations.length > 0 || breakouts.length > 0;
+};
+
+export const getAdHocQuestionDescription = ({
+  question,
+}: GetAdhocQuestionDescriptionProps) => {
+  const query = question.query();
+  const stageIndex = getInfoStageIndex(query);
+  const aggregations = Lib.aggregations(query, stageIndex);
+  const breakouts = Lib.breakouts(query, stageIndex);
   const aggregationDescription =
     aggregations.length === 0
       ? null
@@ -30,8 +43,7 @@ export const AdHocQuestionDescription = ({
         : aggregations
             .map(
               aggregation =>
-                Lib.displayInfo(query, STAGE_INDEX, aggregation)
-                  .longDisplayName,
+                Lib.displayInfo(query, stageIndex, aggregation).longDisplayName,
             )
             .join(t` and `);
   const breakoutDescription =
@@ -46,25 +58,51 @@ export const AdHocQuestionDescription = ({
         : breakouts
             .map(
               breakout =>
-                Lib.displayInfo(query, STAGE_INDEX, breakout).longDisplayName,
+                Lib.displayInfo(query, stageIndex, breakout).longDisplayName,
             )
             .join(t` and `);
 
-  if (aggregationDescription || breakoutDescription) {
-    return (
-      <AggregationAndBreakoutDescription onClick={onClick}>
-        {[aggregationDescription, breakoutDescription]
-          .filter(Boolean)
-          .join(t` by `)}
-      </AggregationAndBreakoutDescription>
-    );
+  if (!aggregationDescription && !breakoutDescription) {
+    return null;
   }
+
+  return [aggregationDescription, breakoutDescription]
+    .filter(Boolean)
+    .join(t` by `);
 };
 
-AdHocQuestionDescription.shouldRender = (question: Question): boolean => {
-  const query = question.query();
-  const aggregations = Lib.aggregations(query, STAGE_INDEX);
-  const breakouts = Lib.breakouts(query, STAGE_INDEX);
+export const AdHocQuestionDescription = ({
+  question,
+  onClick,
+}: AdHocQuestionDescriptionProps) => {
+  const adHocDescription = useMemo(() => {
+    return getAdHocQuestionDescription({ question });
+  }, [question]);
 
-  return aggregations.length > 0 || breakouts.length > 0;
+  if (!adHocDescription) {
+    return null;
+  }
+
+  return (
+    <span className={onClick ? CS.cursorPointer : ""} onClick={onClick}>
+      {adHocDescription}
+    </span>
+  );
+};
+
+const getInfoStageIndex = (query: Lib.Query): number => {
+  const hasExtraEmptyFilterStage =
+    Lib.stageCount(query) > 1 && !Lib.hasClauses(query, -1);
+
+  if (hasExtraEmptyFilterStage) {
+    /**
+     * If query is multi-stage and the last stage is empty (which means it's
+     * an extra filtering stage - see Lib.ensureFilterStage), the last stage won't
+     * provide any useful information to generate question description.
+     * We have to use the previous, non-empty stage.
+     */
+    return -2;
+  }
+
+  return -1;
 };

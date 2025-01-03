@@ -1,14 +1,13 @@
 (ns metabase.integrations.ldap
   (:require
-   [cheshire.core :as json]
    [clj-ldap.client :as ldap]
    [metabase.config :as config]
    [metabase.integrations.ldap.default-implementation :as default-impl]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.models.user :refer [User]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
@@ -108,11 +107,11 @@
   :default    {}
   :audit      :getter
   :getter     (fn []
-                (json/parse-string (setting/get-value-of-type :string :ldap-group-mappings) #(DN. (str %))))
+                (json/decode (setting/get-value-of-type :string :ldap-group-mappings) #(DN. (str %))))
   :setter     (fn [new-value]
                 (cond
                   (string? new-value)
-                  (recur (json/parse-string new-value))
+                  (recur (json/decode new-value))
 
                   (map? new-value)
                   (do (doseq [k (keys new-value)]
@@ -269,7 +268,7 @@
     username        :- ms/NonBlankString]
    (default-impl/find-user ldap-connection username (ldap-settings))))
 
-(mu/defn fetch-or-create-user! :- (ms/InstanceOf User)
+(mu/defn fetch-or-create-user! :- (ms/InstanceOf :model/User)
   "Using the `user-info` (from [[find-user]]) get the corresponding Metabase user, creating it if necessary."
   [user-info :- default-impl/UserInfo]
   (default-impl/fetch-or-create-user! user-info (ldap-settings)))

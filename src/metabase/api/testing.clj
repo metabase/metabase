@@ -1,7 +1,6 @@
 (ns metabase.api.testing
   "Endpoints for testing."
   (:require
-   [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [compojure.core :refer [POST]]
@@ -13,6 +12,7 @@
    [metabase.db :as mdb]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -155,7 +155,7 @@
     {:status 400
      :body {:error-code "oops"}}
     {:status 200
-     :body (json/decode body true)}))
+     :body (json/decode+kw body)}))
 
 (api/defendpoint POST "/mark-stale"
   "Mark the card or dashboard as stale"

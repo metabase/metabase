@@ -1,24 +1,13 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  appBar,
-  commandPalette,
-  commandPaletteButton,
-  navigationSidebar,
-  openReviewsTable,
-  popover,
-  restore,
-  summarize,
-  tableHeaderClick,
-  visitAlias,
-} from "e2e/support/helpers";
 
 const { PEOPLE_ID, PEOPLE, REVIEWS, REVIEWS_ID, ORDERS, ORDERS_ID } =
   SAMPLE_DATABASE;
 
 describe("issue 17768", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
     cy.request("PUT", `/api/field/${REVIEWS.ID}`, {
@@ -38,13 +27,13 @@ describe("issue 17768", () => {
   });
 
   it("should not show binning options for an entity key, regardless of its underlying type (metabase#17768)", () => {
-    openReviewsTable({ mode: "notebook" });
+    H.openReviewsTable({ mode: "notebook" });
 
-    summarize({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
 
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("ID")
         .closest("[data-element-id=list-section]")
         .realHover()
@@ -56,7 +45,7 @@ describe("issue 17768", () => {
 
 describe("issue 18384", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
     // Hide Reviews table
@@ -89,7 +78,7 @@ describe("issue 21984", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/table/*/query_metadata?**").as("tableMetadata");
 
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
     cy.visit(reviewsDataModelPage);
@@ -106,8 +95,8 @@ describe("issue 21984", () => {
       cy.findByText("Reviews").should("not.exist");
     });
 
-    commandPaletteButton().click();
-    commandPalette().within(() => {
+    H.commandPaletteButton().click();
+    H.commandPalette().within(() => {
       cy.findByText("Recent items").should("not.exist");
     });
   });
@@ -115,7 +104,7 @@ describe("issue 21984", () => {
 
 describe("issue 15542", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
     cy.wrap(
@@ -126,7 +115,7 @@ describe("issue 15542", () => {
 
   function openOrdersTable() {
     // Navigate without reloading the page
-    navigationSidebar().findByText("Databases").click({
+    H.navigationSidebar().findByText("Databases").click({
       // force the click because the sidebar might be closed but
       // that is not what we are testing here.
       force: true,
@@ -143,10 +132,10 @@ describe("issue 15542", () => {
 
   function openOrdersProductIdSettings() {
     // Navigate without reloading the page
-    appBar().icon("gear").click();
-    popover().findByText("Admin settings").click();
+    H.appBar().icon("gear").click();
+    H.popover().findByText("Admin settings").click();
 
-    appBar().findByText("Table Metadata").click();
+    H.appBar().findByText("Table Metadata").click();
     cy.findByText("Orders").click();
 
     cy.findByTestId("column-PRODUCT_ID").icon("gear").click();
@@ -161,24 +150,24 @@ describe("issue 15542", () => {
     // helpers because they use cy.visit under the hood and that reloads the page,
     // clearing the in-browser cache, which is what we are testing here.
 
-    visitAlias("@ORDERS_PRODUCT_ID_URL");
+    H.visitAlias("@ORDERS_PRODUCT_ID_URL");
 
     select("Plain input box").click();
-    popover().findByText("A list of all values").click();
+    H.popover().findByText("A list of all values").click();
 
     select("Use original value").click();
-    popover().findByText("Use foreign key").click();
-    popover().findByText("Title").click();
+    H.popover().findByText("Use foreign key").click();
+    H.popover().findByText("Title").click();
 
     cy.wait("@fieldDimensionUpdate");
 
     exitAdmin();
     openOrdersTable();
 
-    tableHeaderClick("Product ID");
-    popover().findByText("Filter by this column").click();
+    H.tableHeaderClick("Product ID");
+    H.popover().findByText("Filter by this column").click();
 
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("1").should("not.exist");
       cy.findByText("Rustic Paper Wallet").should("be.visible");
     });
@@ -186,15 +175,15 @@ describe("issue 15542", () => {
     openOrdersProductIdSettings();
 
     select("Use foreign key").click();
-    popover().findByText("Use original value").click();
+    H.popover().findByText("Use original value").click();
 
     exitAdmin();
     openOrdersTable();
 
-    tableHeaderClick("Product ID");
-    popover().findByText("Filter by this column").click();
+    H.tableHeaderClick("Product ID");
+    H.popover().findByText("Filter by this column").click();
 
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("1").should("be.visible");
       cy.findByText("Rustic Paper Wallet").should("not.exist");
     });

@@ -65,8 +65,10 @@
                                                       :collection_position
                                                       :collection_id
                                                       :creator_id
+                                                      :database_id
                                                       :dataset_query
                                                       :display
+                                                      :last_used_at
                                                       :name
                                                       :query_type
                                                       :type

@@ -12,9 +12,9 @@ import { waitForRequest } from "__support__/utils";
 import {
   MetabaseProvider,
   StaticQuestion,
-  defineEmbeddingSdkConfig,
+  defineMetabaseAuthConfig,
 } from "embedding-sdk/components/public";
-import type { SDKConfig } from "embedding-sdk/types";
+import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import {
   createMockCard,
   createMockSettings,
@@ -34,13 +34,15 @@ const MOCK_SESSION = {
 
 const MOCK_CARD = createMockCard({ id: 1 });
 
-const setup = (sdkConfig: SDKConfig) => {
+const setup = ({
+  authConfig,
+  locale,
+}: {
+  authConfig: MetabaseAuthConfig;
+  locale?: string;
+}) => {
   return render(
-    <MetabaseProvider
-      config={{
-        ...sdkConfig,
-      }}
-    >
+    <MetabaseProvider authConfig={authConfig} locale={locale}>
       <StaticQuestion questionId={1} />
     </MetabaseProvider>,
   );
@@ -51,7 +53,7 @@ const getLastAuthProviderApiCall = () => fetchMock.lastCall(AUTH_PROVIDER_URL);
 const getLastCardQueryApiCall = () =>
   fetchMock.lastCall(`${METABASE_INSTANCE_URL}/api/card/${MOCK_CARD.id}/query`);
 
-describe("SDK auth flow", () => {
+describe("SDK auth and init flow", () => {
   beforeEach(() => {
     fetchMock.reset();
     fetchMock.get(AUTH_PROVIDER_URL, {
@@ -74,21 +76,17 @@ describe("SDK auth flow", () => {
   });
 
   it("should initialize the auth flow only once, not on rerenders", async () => {
-    const sdkConfig = defineEmbeddingSdkConfig({
+    const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: METABASE_INSTANCE_URL,
       authProviderUri: AUTH_PROVIDER_URL,
     });
 
-    const { rerender } = setup(sdkConfig);
+    const { rerender } = setup({ authConfig });
 
     expect(fetchMock.calls(AUTH_PROVIDER_URL)).toHaveLength(1);
 
     rerender(
-      <MetabaseProvider
-        config={{
-          ...sdkConfig,
-        }}
-      >
+      <MetabaseProvider authConfig={authConfig}>
         <StaticQuestion questionId={1} />
       </MetabaseProvider>,
     );
@@ -106,12 +104,12 @@ describe("SDK auth flow", () => {
 
   describe("when using authProviderUri", () => {
     it("should retrieve the session from the authProviderUri and send it as 'X-Metabase-Session' header", async () => {
-      const sdkConfig = defineEmbeddingSdkConfig({
+      const authConfig = defineMetabaseAuthConfig({
         metabaseInstanceUrl: METABASE_INSTANCE_URL,
         authProviderUri: AUTH_PROVIDER_URL,
       });
 
-      setup(sdkConfig);
+      setup({ authConfig });
 
       await waitForRequest(() => getLastAuthProviderApiCall());
       expect(getLastAuthProviderApiCall()![1]).toMatchObject({
@@ -136,13 +134,13 @@ describe("SDK auth flow", () => {
         id: "mock-id-from-custom-fetch-function",
       }));
 
-      const sdkConfig = defineEmbeddingSdkConfig({
+      const authConfig = defineMetabaseAuthConfig({
         metabaseInstanceUrl: METABASE_INSTANCE_URL,
         authProviderUri: AUTH_PROVIDER_URL,
         fetchRequestToken: customFetchFunction,
       });
 
-      setup(sdkConfig);
+      setup({ authConfig });
 
       expect(customFetchFunction).toHaveBeenCalledWith(AUTH_PROVIDER_URL);
 
@@ -164,12 +162,12 @@ describe("SDK auth flow", () => {
 
   describe("when using apiKeyProvider", () => {
     it("should send the api key as 'X-Api-Key' header", async () => {
-      const sdkConfig = defineEmbeddingSdkConfig({
+      const authConfig = defineMetabaseAuthConfig({
         metabaseInstanceUrl: METABASE_INSTANCE_URL,
         apiKey: MOCK_API_KEY,
       });
 
-      setup(sdkConfig);
+      setup({ authConfig });
 
       await waitForRequest(() => getLastUserApiCall());
       expect(getLastUserApiCall()![1]).toMatchObject({
@@ -185,6 +183,31 @@ describe("SDK auth flow", () => {
       expect(getLastCardQueryApiCall()![1]).toMatchObject({
         headers: { "X-Api-Key": [MOCK_API_KEY] },
       });
+    });
+  });
+
+  describe("locale", () => {
+    it("should load the locale from the correct url", async () => {
+      const metabaseInstanceUrl = "http://metabase:3000";
+
+      // This can happen if the request is made before api.basename is set
+      const wrongPath = "/app/locales/de.json";
+      const correctPath = `${metabaseInstanceUrl}/app/locales/de.json`;
+
+      fetchMock.get(wrongPath, 200);
+      fetchMock.get(correctPath, 200);
+
+      const authConfig = defineMetabaseAuthConfig({
+        metabaseInstanceUrl: metabaseInstanceUrl,
+        apiKey: MOCK_API_KEY,
+      });
+
+      setup({ authConfig, locale: "de" });
+
+      await waitForRequest(() => fetchMock.lastCall(correctPath));
+
+      expect(fetchMock.calls(wrongPath)).toHaveLength(0);
+      expect(fetchMock.calls(correctPath)).toHaveLength(1);
     });
   });
 });

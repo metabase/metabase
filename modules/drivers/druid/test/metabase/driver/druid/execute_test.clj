@@ -1,11 +1,11 @@
 (ns ^:mb/driver-tests metabase.driver.druid.execute-test
-  (:require [cheshire.core :as json]
-            [clojure.java.io :as io]
+  (:require [clojure.java.io :as io]
             [clojure.test :refer :all]
             [metabase.driver.druid.execute :as druid.execute]
             [metabase.test :as mt]
             [metabase.timeseries-query-processor-test.util :as tqpt]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.json :as json]))
 
 (deftest results-order-test
   (mt/test-driver :druid
@@ -47,7 +47,7 @@
   (testing "Test that we can still return results from native :select queries, even if we no longer generate them"
     ;; example results adapted from https://github.com/apache/druid/blob/d00747774208dbbfcb272ee7d1c30cf879887838/docs/querying/select-query.md
     (let [results (with-open [r (io/reader "modules/drivers/druid/test/metabase/driver/druid/execute_test/select_results.json")]
-                    (json/parse-stream r true))]
+                    (json/decode+kw r))]
       (is (= {:projections [:a :b :c]
               :results     [{:timestamp #t "2013-01-01T00:00Z[UTC]", :robot "1", :namespace "article", :page "11._korpus_(NOVJ)"}
                             {:timestamp #t "2013-01-01T00:00Z[UTC]", :robot "0", :namespace "article", :page "112_U.S._580"}

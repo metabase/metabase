@@ -97,7 +97,7 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
             width: "100%",
             borderRadius: rem(4),
             zIndex: -1,
-            backgroundColor: theme.white,
+            backgroundColor: theme.fn.themeColor("bg-white"),
             boxSizing: "border-box",
           },
 

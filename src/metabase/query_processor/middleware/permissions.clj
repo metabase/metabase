@@ -108,11 +108,12 @@
     (let [card-id         (or *card-id* (:qp/source-card-id outer-query))
           required-perms  (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
           source-card-ids (set/difference (:card-ids required-perms) (:card-ids gtap-perms))]
+      ;; On EE, check block permissions up front for all queries. If block perms are in place, reject all native queries
+      ;; (unless overriden by `gtap-perms`) and any queries that touch blocked tables/DBs
+      (check-block-permissions outer-query)
       (cond
         card-id
-        (do
-          (query-perms/check-card-read-perms database-id card-id)
-          (check-block-permissions outer-query))
+        (query-perms/check-card-read-perms database-id card-id)
 
         ;; set when querying for field values of dashboard filters, which only require
         ;; collection perms for the dashboard and not ad-hoc query perms

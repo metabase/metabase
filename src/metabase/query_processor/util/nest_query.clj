@@ -24,7 +24,7 @@
    add/normalize-clause
    (lib.util.match/match (walk/prewalk (fn [x]
                                          (if (map? x)
-                                           (dissoc x :source-query :source-metadata)
+                                           (dissoc x :source-query :source-metadata :temporal-unit)
                                            x))
                                        inner-query)
      [:field _ (_ :guard :join-alias)]
@@ -85,7 +85,7 @@
 (defn- nest-source [inner-query]
   (let [filter-clause (:filter inner-query)
         keep-filter? (nil? (lib.util.match/match-one filter-clause :expression))
-        source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions]) source
+        source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions :expression-idents]) source
                  ;; preprocess this in a superuser context so it's not subject to permissions checks. To get here in the
                  ;; first place we already had to do perms checks to make sure the query we're transforming is itself
                  ;; ok, so we don't need to run another check.
@@ -124,6 +124,20 @@
                 ::add/source-table  ::add/source
                 ::add/source-alias  source-alias))]))
 
+(defn- coerced-field?
+  [field-id]
+  (contains? (lib.metadata/field (qp.store/metadata-provider) field-id) :coercion-strategy))
+
+(defn- coercible-field-ref?
+  [form]
+  (and (vector? form)
+       (let [[tag id-or-name opts] form]
+         (and (= tag :field)
+              (not (:qp/ignore-coercion opts))
+              (or (contains? opts :temporal-unit)
+                  (and (int? id-or-name)
+                       (coerced-field? id-or-name)))))))
+
 (defn- rewrite-fields-and-expressions [query]
   (lib.util.match/replace query
     ;; don't rewrite anything inside any source queries or source metadata.
@@ -134,9 +148,11 @@
     :expression
     (raise-source-query-expression-ref query &match)
 
-    ;; mark all Fields at the new top level as `:qp/ignore-coercion` so QP implementations know not to apply coercion or
-    ;; whatever to them a second time.
-    [:field _id-or-name (_opts :guard (every-pred :temporal-unit (complement :qp/ignore-coercion)))]
+    ;; Mark all Fields at the new top level as `:qp/ignore-coercion` so QP implementations know not to apply coercion
+    ;; or whatever to them a second time.
+    ;; In fact, we don't mark all Fields, only the ones we deem coercible. Marking all would make a bunch of tests
+    ;; fail, but it might still make sense. For example, #48721 would have been avoided by unconditional marking.
+    (_ :guard coercible-field-ref?)
     (recur (mbql.u/update-field-options &match assoc :qp/ignore-coercion true))
 
     [:field id-or-name (opts :guard :join-alias)]
@@ -188,13 +204,16 @@
   `:source-query` and updates `:expression` references and `:field` clauses with `:join-alias`es accordingly. See
   tests for examples. This is used by the SQL QP to make sure expressions happen in a subselect."
   [inner-query]
-  (let [{:keys [expressions], :as inner-query} (m/update-existing inner-query :source-query nest-expressions)]
+  (let [{:keys [expressions expression-idents]
+         :as inner-query}                      (m/update-existing inner-query :source-query nest-expressions)]
     (if-not (should-nest-expressions? inner-query)
       inner-query
       (let [{:keys [source-query], :as inner-query} (nest-source inner-query)
             inner-query                             (rewrite-fields-and-expressions inner-query)
-            source-query                            (assoc source-query :expressions expressions)]
+            source-query                            (assoc source-query
+                                                           :expressions expressions
+                                                           :expression-idents expression-idents)]
         (-> inner-query
-            (dissoc :source-query :expressions)
+            (dissoc :source-query :expressions :expression-idents)
             (assoc :source-query source-query)
             add/add-alias-info)))))

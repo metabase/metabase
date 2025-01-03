@@ -573,12 +573,17 @@
     (doseq [[message field-ref] {;; this ref is basically what we [[lib/breakout]] would have added but doesn't
                                  ;; contain type info, shouldn't matter tho.
                                  "correct ref but missing :base-type/:effective-type"
-                                 [:field {:lib/uuid (str (random-uuid)), :join-alias "Categories"} (meta/id :categories :name)]
+                                 [:field {:lib/uuid   (str (random-uuid))
+                                          :join-alias "Categories"
+                                          :ident      (u/generate-nano-id)}
+                                  (meta/id :categories :name)]
 
                                  ;; this is a busted Field ref, it's referring to a Field from a joined Table but
                                  ;; does not include `:join-alias`. It should still work anyway.
                                  "busted ref"
-                                 [:field {:lib/uuid (str (random-uuid)) :base-type :type/Text}
+                                 [:field {:lib/uuid  (str (random-uuid))
+                                          :base-type :type/Text
+                                          :ident     (u/generate-nano-id)}
                                   (meta/id :categories :name)]}]
       (testing (str \newline message " ref = " (pr-str field-ref))
         (let [query (-> lib.tu/venues-query
@@ -730,11 +735,14 @@
           category   (meta/field-metadata :venues :category-id)
           price      (meta/field-metadata :venues :price)
           breakouts  (lib/breakouts query)]
-      (is (= (count breakouts) 2))
+      (is (= 2
+             (count breakouts)))
       (is (=? category
               (lib.breakout/breakout-column query (first breakouts))))
       (is (=? price
-              (lib.breakout/breakout-column query (second breakouts))))))
+              (lib.breakout/breakout-column query (second breakouts)))))))
+
+(deftest ^:parallel breakout-column-test-2
   (testing "should set the binning strategy from the breakout clause"
     (let [base-query       (lib/query meta/metadata-provider (meta/table-metadata :people))
           column           (meta/field-metadata :people :latitude)
@@ -744,7 +752,9 @@
           breakout         (first (lib/breakouts query))]
       (is (=? {:strategy :default}
               (->> (lib/breakout-column query breakout)
-                   (lib/binning))))))
+                   (lib/binning)))))))
+
+(deftest ^:parallel breakout-column-test-3
   (testing "should set the temporal unit from the breakout clause"
     (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
           column     (meta/field-metadata :people :birth-date)

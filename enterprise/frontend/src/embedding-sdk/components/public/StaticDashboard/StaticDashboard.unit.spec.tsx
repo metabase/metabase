@@ -99,7 +99,7 @@ const setup = async (options: SetupOptions = {}) => {
     {
       mode: "sdk",
       sdkProviderProps: {
-        config: createMockAuthProviderUriConfig({
+        authConfig: createMockAuthProviderUriConfig({
           authProviderUri: "http://TEST_URI/sso/metabase",
         }),
         ...providerProps,

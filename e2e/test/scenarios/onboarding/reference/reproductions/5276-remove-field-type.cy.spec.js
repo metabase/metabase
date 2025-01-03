@@ -1,8 +1,8 @@
-import { popover, restore } from "e2e/support/helpers";
+import { H } from "e2e/support";
 
 describe("issue 5276", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.intercept("PUT", "/api/field/*").as("updateField");
   });
@@ -26,7 +26,7 @@ describe("issue 5276", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Score").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("No field type").click());
+    H.popover().within(() => cy.findByText("No field type").click());
     cy.button("Save").click();
     cy.wait("@updateField");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

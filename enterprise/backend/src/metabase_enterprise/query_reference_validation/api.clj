@@ -7,7 +7,7 @@
    [metabase.models.collection :as collection]
    [metabase.models.query-analysis :as query-analysis]
    [metabase.public-settings :as public-settings]
-   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -93,10 +93,10 @@
     (merge (cards-with-reference-errors {:sort-column (or sort_column default-sort-column)
                                          :sort-direction (or sort_direction default-sort-direction)
                                          :collection-ids (set collection-ids)
-                                         :limit mw.offset-paging/*limit*
-                                         :offset mw.offset-paging/*offset*})
-           {:limit mw.offset-paging/*limit*
-            :offset mw.offset-paging/*offset*})))
+                                         :limit (request/limit)
+                                         :offset (request/offset)})
+           {:limit (request/limit)
+            :offset (request/offset)})))
 
 (api/defendpoint GET "/invalid-cards"
   "List of cards that have an invalid reference in their query. Shape of each card is standard, with the addition of an

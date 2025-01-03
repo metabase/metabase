@@ -9,7 +9,6 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.native :as lib-native]
-   [metabase.models :refer [Card]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -104,8 +103,8 @@
 (deftest ^:parallel template-tag-generation-test
   (testing "Generating template tags produces correct types for running process-query (#31252)"
     (t2.with-temp/with-temp
-      [Card {card-id :id} {:type          :model
-                           :dataset_query (mt/native-query {:query "select * from checkins"})}]
+      [:model/Card {card-id :id} {:type          :model
+                                  :dataset_query (mt/native-query {:query "select * from checkins"})}]
       (let [q   (str "SELECT * FROM {{#" card-id "}} LIMIT 2")
             tt  (lib-native/extract-template-tags q)
             res (qp/process-query
@@ -204,17 +203,22 @@
 
 (deftest ^:parallel filter-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries)
-    (testing "We should be able to apply filters to queries that use native queries with parameters as their source (#9802)"
-      (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/native-query (qp.compile/compile (mt/mbql-query checkins)))}]
-        (let [query (assoc (mt/mbql-query nil
-                             {:source-table (format "card__%d" card-id)})
-                           :parameters [{:type   :date/all-options
-                                         :target [:dimension (mt/$ids *checkins.date)] ; expands to appropriate field-literal form
-                                         :value  "2014-01-06"}])]
+    (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query (qp.compile/compile (mt/mbql-query checkins)))}]
+      (let [query (assoc (mt/mbql-query nil
+                           {:source-table (format "card__%d" card-id)})
+                         :parameters [{:type   :date/all-options
+                                       :target [:dimension (mt/$ids *checkins.date)] ; expands to appropriate field-literal form
+                                       :value  "2014-01-06"}])]
+        (testing "We should be able to apply filters to queries that use native queries with parameters as their source (#9802)"
           (is (= [[182 "2014-01-06T00:00:00Z" 5 31]]
                  (mt/formatted-rows
                   :checkins
-                  (qp/process-query query)))))))))
+                  (qp/process-query query)))))
+        (testing "We should be able to apply filters explicitly targeting nested native stages (#48258)"
+          (is (= [[182 "2014-01-06T00:00:00Z" 5 31]]
+                 (mt/formatted-rows
+                  :checkins
+                  (qp/process-query (assoc-in query [:parameters 0 :target 2] {:stage-number 0}))))))))))
 
 (deftest ^:parallel string-escape-test
   ;; test `:sql` drivers that support native parameters
@@ -446,7 +450,7 @@
 (deftest ^:parallel date-parameter-for-native-query-with-nested-mbql-query-test
   (testing "Should be able to have a native query with a nested MBQL query and a date parameter (#21246)"
     (mt/dataset test-data
-      (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/mbql-query products)}]
+      (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query products)}]
         (let [param-name (format "#%d" card-id)
               query      (mt/native-query
                            {:query         (str/join \newline
@@ -532,7 +536,8 @@
                   (is (t/after?  (u.date/parse orders-created-at) #t "2019-04-01T00:00:00-00:00"))
                   (is (t/before? (u.date/parse orders-created-at) #t "2019-07-01T00:00:00-00:00")))
                 (testing "source = Organic"
-                  (is (= people-source "Organic")))
+                  (is (= "Organic"
+                         people-source)))
                 (testing "state != OR"
                   (is (not= people-state "OR")))))
             (testing "Should contain row with 'Emilie Goyette'"

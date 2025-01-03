@@ -9,19 +9,18 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.models.query :as query :refer [Query]]
+   [metabase.models.query :as query]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
-   [metabase.query-processor.middleware.process-userland-query
-    :as process-userland-query]
+   [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -29,7 +28,8 @@
    [metabase.util.log :as log]
    [pretty.core :as pretty]
    [toucan2.core :as t2])
-  (:import [java.time ZonedDateTime]))
+  (:import
+   (java.time ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -347,7 +347,7 @@
                             :cache-strategy (assoc (ttl-strategy) :multiplier 5000))
               q-hash (qp.util/query-hash query)]
           (with-mock-cache! [save-chan]
-            (t2/delete! Query :query_hash q-hash)
+            (t2/delete! :model/Query :query_hash q-hash)
             (is (not (:cached (qp/process-query (qp/userland-query query)))))
             (a/alts!! [save-chan (a/timeout 200)]) ;; wait-for-result closes the channel
             (u/deref-with-timeout called-promise 500)
@@ -478,7 +478,7 @@
                      #"You do not have permissions to run this query"
                      (run-forbidden-query))))
               (testing "Run forbidden query as superuser to populate the cache"
-                (mw.session/with-current-user (mt/user->id :crowberto)
+                (request/with-current-user (mt/user->id :crowberto)
                   (is (= [[1000]]
                          (mt/rows (run-forbidden-query))))))
               (testing "Cache entry should be saved within 5 seconds"
@@ -486,7 +486,7 @@
                   (is (= save-chan
                          chan))))
               (testing "Run forbidden query again as superuser again, should be cached"
-                (mw.session/with-current-user (mt/user->id :crowberto)
+                (request/with-current-user (mt/user->id :crowberto)
                   (is (=? {:cache/details {:cached     true
                                            :updated_at some?
                                            :cache-hash some?}}

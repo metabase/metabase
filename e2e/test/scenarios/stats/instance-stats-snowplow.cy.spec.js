@@ -1,36 +1,28 @@
-import {
-  describeEE,
-  describeWithSnowplow,
-  enableTracking,
-  expectGoodSnowplowEvent,
-  expectNoBadSnowplowEvents,
-  resetSnowplow,
-  restore,
-} from "e2e/support/helpers";
+import { H } from "e2e/support";
 
-describeWithSnowplow("scenarios > stats > snowplow", () => {
+H.describeWithSnowplow("scenarios > stats > snowplow", () => {
   beforeEach(() => {
-    restore();
-    resetSnowplow();
+    H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
-    enableTracking();
+    H.enableTracking();
   });
 
-  describe("instance stats", () => {
-    it("should send a snowplow event when the stats ping is triggered on OSS", () => {
+  it(
+    "should send a snowplow event when the stats ping is triggered on OSS",
+    { tags: "@OSS" },
+    () => {
       cy.request("POST", "api/testing/stats");
-      expectGoodSnowplowEvent();
-    });
-  });
+      H.expectGoodSnowplowEvents(1);
+    },
+  );
 
-  describeEE("instance stats", () => {
-    it("should send a snowplow event when the stats ping is triggered on EE", () => {
-      cy.request("POST", "api/testing/stats");
-      expectGoodSnowplowEvent();
-    });
+  it("should send a snowplow event when the stats ping is triggered on EE", () => {
+    cy.request("POST", "api/testing/stats");
+    H.expectGoodSnowplowEvents(1);
   });
 
   afterEach(() => {
-    expectNoBadSnowplowEvents();
+    H.expectNoBadSnowplowEvents();
   });
 });

@@ -1,0 +1,324 @@
+[
+  {
+    "data": {
+      "rows": [
+        ["Node A", "Node B", 10],
+        ["Node A", "Node B", 20],
+        ["Node B", "Node C", 30]
+      ],
+      "cols": [
+        {
+          "display_name": "source",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "source",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "source",
+          "base_type": "type/Text",
+          "database_type": "text",
+          "effective_type": "type/Text"
+        },
+        {
+          "display_name": "target",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "target",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "target",
+          "base_type": "type/Text",
+          "database_type": "text",
+          "effective_type": "type/Text"
+        },
+        {
+          "display_name": "value",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "value",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "value",
+          "base_type": "type/Integer",
+          "database_type": "int4",
+          "effective_type": "type/Integer"
+        }
+      ],
+      "native_form": {
+        "params": null,
+        "query": "SELECT 'Node A' AS source, 'Node B' AS target, 10 AS value\nUNION ALL\nSELECT 'Node A', 'Node B', 20\nUNION ALL\nSELECT 'Node B', 'Node C', 30;"
+      },
+      "format-rows?": true,
+      "results_timezone": "UTC",
+      "requested_timezone": "UTC",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "source",
+            "field_ref": [
+              "field",
+              "source",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "name": "source",
+            "semantic_type": "type/Source",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 2,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 6
+                }
+              }
+            }
+          },
+          {
+            "display_name": "target",
+            "field_ref": [
+              "field",
+              "target",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "name": "target",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 2,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 6
+                }
+              }
+            }
+          },
+          {
+            "display_name": "value",
+            "field_ref": [
+              "field",
+              "value",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "name": "value",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 10,
+                  "q1": 12.5,
+                  "q3": 27.5,
+                  "max": 30,
+                  "sd": 10,
+                  "avg": 20
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    },
+    "cached": null,
+    "database_id": 2,
+    "started_at": "2024-11-01T20:59:17.767778-04:00",
+    "json_query": {
+      "database": 2,
+      "type": "native",
+      "native": {
+        "template-tags": {},
+        "query": "SELECT 'Node A' AS source, 'Node B' AS target, 10 AS value\nUNION ALL\nSELECT 'Node A', 'Node B', 20\nUNION ALL\nSELECT 'Node B', 'Node C', 30;\n"
+      },
+      "middleware": {
+        "js-int-to-string?": true,
+        "userland-query?": true,
+        "add-default-userland-constraints?": true
+      }
+    },
+    "average_execution_time": null,
+    "status": "completed",
+    "context": "ad-hoc",
+    "row_count": 3,
+    "running_time": 6,
+    "card": {
+      "displayIsLocked": true,
+      "cache_invalidated_at": null,
+      "archived": false,
+      "view_count": 0,
+      "collection_position": null,
+      "source_card_id": null,
+      "table_id": null,
+      "can_run_adhoc_query": true,
+      "result_metadata": [
+        {
+          "display_name": "source",
+          "field_ref": [
+            "field",
+            "source",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "name": "source",
+          "semantic_type": "type/Source",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 12,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 6.75
+              }
+            }
+          }
+        },
+        {
+          "display_name": "target",
+          "field_ref": [
+            "field",
+            "target",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "name": "target",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 12,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 7
+              }
+            }
+          }
+        },
+        {
+          "display_name": "value",
+          "field_ref": [
+            "field",
+            "value",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "name": "value",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 7,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 5,
+                "q1": 6.333333333333333,
+                "q3": 13.348469228349533,
+                "max": 37,
+                "sd": 7.77361992038887,
+                "avg": 11.1875
+              }
+            }
+          }
+        }
+      ],
+      "initially_published_at": null,
+      "can_write": true,
+      "trashed_from_collection_id": null,
+      "database_id": 2,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "native",
+      "last_query_start": null,
+      "dashboard_count": 0,
+      "last_used_at": "2024-11-02T00:39:51.699724Z",
+      "type": "question",
+      "average_query_time": null,
+      "creator_id": 1,
+      "can_restore": false,
+      "moderation_reviews": [],
+      "updated_at": "2024-11-02T00:39:51.699724Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 2,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "SELECT 'Node A' AS source, 'Node B' AS target, 10 AS value\nUNION ALL\nSELECT 'Node A', 'Node B', 20\nUNION ALL\nSELECT 'Node B', 'Node C', 30;\n"
+        }
+      },
+      "parameter_mappings": [],
+      "can_manage_db": true,
+      "display": "sankey",
+      "archived_directly": false,
+      "entity_id": "JPzY0PY_I_MDYID54t0FA",
+      "collection_preview": true,
+      "visualization_settings": {
+        "sankey.source": "source",
+        "sankey.target": "target",
+        "sankey.value": "V"
+      },
+      "collection": null,
+      "metabase_version": "v1.2.0-SNAPSHOT (727731b)",
+      "parameters": [],
+      "created_at": "2024-11-02T00:39:51.699724Z",
+      "parameter_usage_count": 0,
+      "public_uuid": null,
+      "can_delete": false
+    }
+  }
+]

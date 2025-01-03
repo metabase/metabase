@@ -87,8 +87,8 @@ WITH RECURSIVE Ancestors (id, archived, archived_directly, archive_operation_id,
     collection.archived_directly,
     parent.archive_operation_id,
     collection.location
-    FROM collection
-    JOIN Ancestors parent ON collection.location = concat(parent.location, parent.id, '/')
+    FROM Ancestors parent
+    JOIN collection ON collection.location = concat(parent.location, parent.id, '/')
   WHERE collection.archived = true
 )
 UPDATE collection

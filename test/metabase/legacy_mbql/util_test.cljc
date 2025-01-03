@@ -1,12 +1,15 @@
 (ns ^:mb/once metabase.legacy-mbql.util-test
   (:require
-   #?@(:clj (#_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt]))
+   #?@(:clj  (#_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt])
+       :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.types]))
 
 (comment metabase.types/keep-me)
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (t/deftest ^:parallel simplify-compound-filter-test
   (t/is (= [:= [:field 1 nil] 2]
@@ -231,6 +234,28 @@
               stage-number
               [:= [:field 2 nil] 200])))))
 
+(t/deftest ^:parallel map-stages-test
+  (let [test-fn (fn [inner-query stage-number]
+                  (assoc inner-query ::stage-number stage-number))]
+    (t/is (=? {:source-table  1
+               :filter        [:= [:field 1 nil] 100]
+               :aggregation   [[:count]]
+               ::stage-number 0}
+              (mbql.u/map-stages test-fn {:source-table 1
+                                          :filter       [:= [:field 1 nil] 100]
+                                          :aggregation  [[:count]]})))
+    (t/is (=? {:source-query  {:source-table  1
+                               :filter        [:= [:field 1 nil] 100]
+                               :aggregation   [[:count]]
+                               ::stage-number 0}
+               :expressions   {"negated" [:* [:field 1 nil] -1]}
+
+               ::stage-number 1}
+              (mbql.u/map-stages test-fn {:source-query  {:source-table  1
+                                                          :filter        [:= [:field 1 nil] 100]
+                                                          :aggregation   [[:count]]}
+                                          :expressions   {"negated" [:* [:field 1 nil] -1]}})))))
+
 (t/deftest ^:parallel desugar-time-interval-test
   (t/is (= [:between
             [:field 1 {:temporal-unit :month}]
@@ -337,6 +362,59 @@
                     [:<  exp-field-ref [:+ [:relative-datetime 0     bucket] exp-offset]]]
                    (mbql.u/desugar-filter-clause
                     [:relative-time-interval exp-field-ref value bucket offset-value offset-bucket]))))))))
+
+(t/deftest ^:parallel desugar-during-test
+  (t/testing "Desugaring during filter produces expected [:and [:>=..] [:<..]] expression"
+    (let [value "2020-01-01T13:24:32"]
+      (doseq [{:keys [unit expected-lower expected-upper]}
+              [{:unit :second
+                :expected-lower "2020-01-01T13:24:32"
+                :expected-upper "2020-01-01T13:24:33"}
+               {:unit :minute
+                :expected-lower "2020-01-01T13:24"
+                :expected-upper "2020-01-01T13:25"}
+               {:unit :hour
+                :expected-lower "2020-01-01T13:00"
+                :expected-upper "2020-01-01T14:00"}
+               {:unit :day
+                :expected-lower "2020-01-01T00:00"
+                :expected-upper "2020-01-02T00:00"}
+               {:unit :month
+                :expected-lower "2020-01-01T00:00"
+                :expected-upper "2020-02-01T00:00"}
+               {:unit :year
+                :expected-lower "2020-01-01T00:00"
+                :expected-upper "2021-01-01T00:00"}]]
+        (t/testing (str "expression reference is transformed correctly for unit " unit)
+          (let [expr-ref [:expression "cc"]]
+            (t/is (= [:and
+                      [:>= expr-ref expected-lower]
+                      [:<  expr-ref expected-upper]]
+                     (mbql.u/desugar-filter-clause [:during expr-ref value unit])))))
+        (t/testing (str "field reference is transformed correctly for unit " unit)
+          (let [field-ref [:field 100 nil]
+                exp-field-ref (update field-ref 2 assoc :temporal-unit :default)]
+            (t/is (= [:and
+                      [:>= exp-field-ref expected-lower]
+                      [:<  exp-field-ref expected-upper]]
+                     (mbql.u/desugar-filter-clause [:during exp-field-ref value unit])))))))))
+
+(t/deftest ^:parallel desugar-if-test
+  (t/testing "Desugaring if produces expected [:case ..] expression"
+    (t/is (= [:case [[[:< [:field 1 nil] 1] 2] [[:< [:field 3 nil] 4] 5]]]
+             (mbql.u/desugar-filter-clause [:if [[[:< [:field 1 nil] 1] 2] [[:< [:field 3 nil] 4] 5]]])))
+    (t/is (= [:case [[[:< [:field 1 nil] 1] 2]] {:default 3}]
+             (mbql.u/desugar-filter-clause [:if [[[:< [:field 1 nil] 1] 2]] {:default 3}])))))
+
+(t/deftest ^:parallel desugar-in-test
+  (t/testing "Desugaring in and not-in produces expected [:= ..] and [:!= ..] expressions"
+    (t/are [expected clause] (= expected (mbql.u/desugar-filter-clause clause))
+      [:= [:field 1 nil] 2]                                [:in [:field 1 nil] 2]
+      [:= [:field 1 nil] [:field 2 nil]]                   [:in [:field 1 nil] [:field 2 nil]]
+      [:or [:= [:field 1 nil] 2] [:= [:field 1 nil] 3]]    [:in [:field 1 nil] 2 3]
+      [:!= [:field 1 nil] 2]                               [:not-in [:field 1 nil] 2]
+      [:!= [:field 1 nil] [:field 2 nil]]                  [:not-in [:field 1 nil] [:field 2 nil]]
+      [:and [:!= [:field 1 nil] 2] [:!= [:field 1 nil] 3]] [:not-in [:field 1 nil] 2 3])))
 
 (t/deftest ^:parallel desugar-relative-time-interval-positive-test
   (t/testing "Desugaring relative-date-time produces expected [:and [:>=..] [:<..]] expression"
@@ -447,6 +525,9 @@
   (t/testing "desugaring :is-empty of not emptyable base-type :type/DateTime"
     (t/is (= [:= [:field 1 {:base-type :type/DateTime}] nil]
              (mbql.u/desugar-filter-clause [:is-empty [:field 1 {:base-type :type/DateTime}]]))))
+  (t/testing "desugaring :is-empty of :type/PostgresEnum #48022"
+    (t/is (= [:= [:field 1 {:base-type :type/PostgresEnum}] nil]
+             (mbql.u/desugar-filter-clause [:is-empty [:field 1 {:base-type :type/PostgresEnum}]]))))
   (t/testing "desugaring :not-empty of nil base-type"
     (t/is (= [:!= [:field 1 nil] nil]
              (mbql.u/desugar-filter-clause [:not-empty [:field 1 nil]]))))
@@ -457,7 +538,9 @@
              (mbql.u/desugar-filter-clause [:not-empty [:field 1 {:base-type :type/Text}]]))))
   (t/testing "desugaring :not-empty of not emptyable base-type"
     (t/is (= [:!= [:field 1 {:base-type :type/DateTime}] nil]
-             (mbql.u/desugar-filter-clause [:not-empty [:field 1 {:base-type :type/DateTime}]])))))
+             (mbql.u/desugar-filter-clause [:not-empty [:field 1 {:base-type :type/DateTime}]]))))
+  (t/testing "desugaring :not-empty of :type/PostgresEnum #48022"
+    (t/is (= [:!= [:field 1 {:base-type :type/PostgresEnum}] nil] (mbql.u/desugar-filter-clause [:not-empty [:field 1 {:base-type :type/PostgresEnum}]])))))
 
 (t/deftest ^:parallel desugar-does-not-contain-test
   (t/testing "desugaring does-not-contain"

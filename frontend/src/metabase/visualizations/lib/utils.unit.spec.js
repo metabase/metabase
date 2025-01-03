@@ -4,11 +4,11 @@ import {
   cardHasBecomeDirty,
   computeMaxDecimalsForValues,
   computeSplit,
+  findSensibleSankeyColumns,
   getCardAfterVisualizationClick,
   getColumnCardinality,
   getDefaultDimensionsAndMetrics,
   getDefaultPivotColumn,
-  getFriendlyName,
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
 import { createMockColumn } from "metabase-types/api/mocks";
@@ -178,28 +178,6 @@ describe("metabase/visualization/lib/utils", () => {
       const rows = [[1], [2], [3], [3]];
       Object.freeze(cols[0]);
       expect(getColumnCardinality(cols, rows, 0)).toEqual(3);
-    });
-  });
-
-  describe("getFriendlyName", () => {
-    it("should return friendly name for built-in aggregations", () => {
-      expect(getFriendlyName({ name: "avg", display_name: "avg" })).toBe(
-        "Average",
-      );
-    });
-
-    it("should return friendly name for duplicate built-in aggregations", () => {
-      expect(getFriendlyName({ name: "avg_2", display_name: "avg" })).toBe(
-        "Average",
-      );
-    });
-
-    it("should return display_name for non built-in aggregations", () => {
-      expect(getFriendlyName({ name: "foo", display_name: "Foo" })).toBe("Foo");
-    });
-
-    it("should return display_name for built-in aggregations", () => {
-      expect(getFriendlyName({ name: "avg", display_name: "Foo" })).toBe("Foo");
     });
   });
 
@@ -428,6 +406,185 @@ describe("metabase/visualization/lib/utils", () => {
       const rows = _.range(lowCardinality).map(n => [n, 1]);
 
       expect(getDefaultPivotColumn(cols, rows)).toEqual(lowCardinalityColumn);
+    });
+  });
+
+  describe("findSensibleSankeyColumns", () => {
+    it("should return null values when no data is provided", () => {
+      expect(findSensibleSankeyColumns(null)).toEqual(null);
+    });
+
+    it("should detect source, target, and metric columns on a suitable dataset", () => {
+      const cols = [
+        createMockColumn({
+          name: "source",
+          base_type: "type/Text",
+          semantic_type: "type/Category",
+        }),
+        createMockColumn({
+          name: "target",
+          base_type: "type/Text",
+          semantic_type: "type/Category",
+        }),
+        createMockColumn({
+          name: "amount",
+          base_type: "type/Number",
+          semantic_type: "type/Quantity",
+        }),
+      ];
+
+      const rows = [
+        ["A", "B", 10],
+        ["A", "C", 20],
+        ["B", "C", 15],
+      ];
+
+      const data = { cols, rows };
+
+      expect(findSensibleSankeyColumns(data)).toEqual({
+        source: "source",
+        target: "target",
+        metric: "amount",
+      });
+    });
+
+    it("should ignore dimension columns with high cardinality", () => {
+      const cols = [
+        createMockColumn({
+          name: "high_cardinality",
+          base_type: "type/Text",
+          semantic_type: "type/Category",
+        }),
+        createMockColumn({
+          name: "good_source",
+          base_type: "type/Text",
+          semantic_type: "type/Category",
+        }),
+        createMockColumn({
+          name: "good_target",
+          base_type: "type/Text",
+          semantic_type: "type/Category",
+        }),
+        createMockColumn({
+          name: "amount",
+          base_type: "type/Number",
+          semantic_type: "type/Quantity",
+        }),
+      ];
+
+      const rows = [];
+      for (let i = 0; i < 200; i++) {
+        // Make sure good_source and good_target have overlapping values
+        const source = (i % 3) + 1; // 1, 2, 3
+        const target = ((i + 1) % 3) + 1; // 2, 3, 1
+        rows.push([`unique_${i}`, source.toString(), target.toString(), 10]);
+      }
+
+      const data = { cols, rows };
+
+      expect(findSensibleSankeyColumns(data)).toEqual({
+        source: "good_source",
+        target: "good_target",
+        metric: "amount",
+      });
+    });
+
+    it("should ignore dimension date columns", () => {
+      const cols = [
+        createMockColumn({
+          name: "date",
+          base_type: "type/DateTime",
+          semantic_type: "type/DateTime",
+        }),
+        createMockColumn({
+          name: "source",
+          base_type: "type/Text",
+          semantic_type: "type/Category",
+        }),
+        createMockColumn({
+          name: "target",
+          base_type: "type/Text",
+          semantic_type: "type/Category",
+        }),
+        createMockColumn({
+          name: "amount",
+          base_type: "type/Number",
+          semantic_type: "type/Quantity",
+        }),
+      ];
+
+      const rows = [
+        ["2023-01-01", "A", "B", 10],
+        ["2023-01-02", "A", "C", 20],
+        ["2023-01-03", "B", "C", 30],
+      ];
+
+      const data = { cols, rows };
+
+      expect(findSensibleSankeyColumns(data)).toEqual({
+        source: "source",
+        target: "target",
+        metric: "amount",
+      });
+    });
+
+    it("should return source and target without overlapping values if that is the only option", () => {
+      const cols = [
+        createMockColumn({
+          name: "dim1",
+          base_type: "type/Text",
+          semantic_type: "type/Category",
+        }),
+        createMockColumn({
+          name: "dim2",
+          base_type: "type/Text",
+          semantic_type: "type/Category",
+        }),
+        createMockColumn({
+          name: "amount",
+          base_type: "type/Number",
+          semantic_type: "type/Quantity",
+        }),
+      ];
+
+      const rows = [
+        ["A", "X", 10],
+        ["B", "Y", 20],
+        ["C", "Z", 30],
+      ];
+
+      const data = { cols, rows };
+
+      expect(findSensibleSankeyColumns(data)).toEqual({
+        source: "dim1",
+        target: "dim2",
+        metric: "amount",
+      });
+    });
+
+    it("should not return source and target when there is only one dimension", () => {
+      const cols = [
+        createMockColumn({
+          name: "single_dim",
+          base_type: "type/Text",
+          semantic_type: "type/Category",
+        }),
+        createMockColumn({
+          name: "amount",
+          base_type: "type/Number",
+          semantic_type: "type/Quantity",
+        }),
+      ];
+
+      const rows = [
+        ["A", 10],
+        ["B", 20],
+        ["C", 30],
+      ];
+
+      const data = { cols, rows };
+
+      expect(findSensibleSankeyColumns(data)).toEqual(null);
     });
   });
 });

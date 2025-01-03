@@ -1,9 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { DATE_PICKER_UNITS } from "metabase/querying/filters/constants";
+import type {
+  DatePickerUnit,
+  RelativeIntervalDirection,
+} from "metabase/querying/filters/types";
 
-import { DATE_PICKER_UNITS } from "../../../constants";
-import type { DatePickerUnit, RelativeIntervalDirection } from "../../../types";
 import type { DateIntervalValue } from "../../types";
 
 import { SimpleDateIntervalPicker } from "./SimpleDateIntervalPicker";
@@ -20,9 +23,7 @@ function getDefaultValue(
 
 interface SetupOpts {
   value: DateIntervalValue;
-  availableUnits?: ReadonlyArray<DatePickerUnit>;
-  isNew?: boolean;
-  canUseRelativeOffsets?: boolean;
+  availableUnits?: DatePickerUnit[];
 }
 
 function setup({ value, availableUnits = DATE_PICKER_UNITS }: SetupOpts) {
@@ -153,7 +154,7 @@ describe("SimpleDateIntervalPicker", () => {
 
       expect(onChange).toHaveBeenCalledWith({
         options: {
-          "include-current": true,
+          includeCurrent: true,
         },
         type: "relative",
         value: 1,
@@ -165,7 +166,7 @@ describe("SimpleDateIntervalPicker", () => {
       const { onChange } = setup({
         value: {
           options: {
-            "include-current": true,
+            includeCurrent: true,
           },
           type: "relative",
           value: 1,
@@ -177,7 +178,7 @@ describe("SimpleDateIntervalPicker", () => {
 
       expect(onChange).toHaveBeenCalledWith({
         options: {
-          "include-current": false,
+          includeCurrent: false,
         },
         type: "relative",
         value: 1,

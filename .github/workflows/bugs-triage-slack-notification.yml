@@ -3,14 +3,13 @@ name: Bugs Slack Notification
 on:
   issues:
     types:
-      - opened
+      - labeled
 jobs:
-  on-issue-opened:
+  on-issue-labeled:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     if: |
-        contains(github.event.issue.labels.*.name, '.Needs Triage') &&
-        contains(github.event.issue.labels.*.name, 'Type:Bug')
+      github.event.label.name == '.Needs Triage' && contains(github.event.issue.labels.*.name, 'Type:Bug')
     steps:
       - name: Setting title
         uses: actions/github-script@v7
@@ -34,7 +33,7 @@ jobs:
       - name: Send the issue ${{ github.event.issue.number }} to Slack
         id: slack
         if: steps.check_labels.outputs.has_team_label == 'false'
-        uses: slackapi/slack-github-action@v1.23.0
+        uses: slackapi/slack-github-action@v1.26.0
         with:
           payload: |
             {

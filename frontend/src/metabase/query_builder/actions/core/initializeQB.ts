@@ -1,12 +1,12 @@
 import type { LocationDescriptorObject } from "history";
 import querystring from "querystring";
 
-import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import Questions from "metabase/entities/questions";
 import Snippets from "metabase/entities/snippets";
 import { deserializeCardFromUrl } from "metabase/lib/card";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
+import { fetchAlertsForQuestion } from "metabase/notifications/redux/alert";
 import {
   getIsEditingInDashboard,
   getIsNotebookNativePreviewShown,

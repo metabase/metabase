@@ -8,10 +8,10 @@ import { Stack, Title } from "metabase/ui";
 import { useInteractiveQuestionContext } from "../context";
 
 export type SdkSaveQuestionFormProps = {
-  onClose?: () => void;
+  onCancel?: () => void;
 };
 
-export const SdkSaveQuestionForm = ({ onClose }: SdkSaveQuestionFormProps) => {
+export const SdkSaveQuestionForm = ({ onCancel }: SdkSaveQuestionFormProps) => {
   const { question, originalQuestion, onSave, onCreate, saveToCollectionId } =
     useInteractiveQuestionContext();
 
@@ -32,7 +32,7 @@ export const SdkSaveQuestionForm = ({ onClose }: SdkSaveQuestionFormProps) => {
         <Title>
           <SaveQuestionTitle />
         </Title>
-        <SaveQuestionForm onCancel={() => onClose?.()} />
+        <SaveQuestionForm onCancel={() => onCancel?.()} />
       </Stack>
     </SaveQuestionProvider>
   );

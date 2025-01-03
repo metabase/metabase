@@ -2,7 +2,7 @@
   "Common utility functions useful throughout the codebase."
   (:refer-clojure :exclude [group-by])
   (:require
-   #?@(:clj ([clojure.core.protocols :as core.protocols]
+   #?@(:clj ([clojure.core.protocols]
              [clojure.math.numeric-tower :as math]
              [me.flowthing.pp :as pp]
              [metabase.config :as config]
@@ -20,22 +20,26 @@
    [flatland.ordered.map :refer [ordered-map]]
    [medley.core :as m]
    [metabase.util.format :as u.format]
-   [metabase.util.i18n :refer [tru] :as i18n]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.memoize :as memoize]
    [metabase.util.namespaces :as u.ns]
+   [metabase.util.polyfills]
+   [nano-id.core :as nano-id]
    [net.cgrand.macrovich :as macros]
    [weavejester.dependency :as dep])
   #?(:clj (:import
-           (clojure.lang Reflector)
            (clojure.core.protocols CollReduce)
+           (clojure.lang Reflector)
            (java.text Normalizer Normalizer$Form)
-           (java.util Locale)
+           (java.util Locale Random)
            (org.apache.commons.validator.routines RegexValidator UrlValidator)))
   #?(:cljs (:require-macros [camel-snake-kebab.internals.macros :as csk.macros]
                             [metabase.util])))
 
 #?(:clj (set! *warn-on-reflection* true))
+
+#?(:clj (comment clojure.core.protocols/keep-me))
 
 (u.ns/import-fns
  [u.format
@@ -56,7 +60,6 @@
                         encode-base64
                         filtered-stacktrace
                         full-exception-chain
-                        generate-nano-id
                         host-port-up?
                         parse-currency
                         poll
@@ -152,7 +155,20 @@
 
      (u/qualified-name :type/FK) -> \"type/FK\""
   [k]
-  (when (some? k)
+  (cond
+    (nil? k)
+    nil
+
+    ;; optimization in Clojure: calling [[symbol]] on a keyword returns the underlying symbol, and [[str]] on a symbol
+    ;; is cached internally (see `clojure.lang.Symbol/toString()`). So we can avoid constructing a new string here.
+    ;; Not sure whether this is cached in ClojureScript as well.
+    (keyword? k)
+    (str (symbol k))
+
+    (symbol? k)
+    (str k)
+
+    :else
     (if-let [namespac (when #?(:clj  (instance? clojure.lang.Named k)
                                :cljs (satisfies? INamed k))
                         (namespace k))]
@@ -183,7 +199,7 @@
       (str/blank? text) text
       (#{\. \? \!} (last text)) text
       (str/ends-with? text "```") text
-      (str/ends-with? text ":") (str (subs text 0 (- (count text) 1)) ".")
+      (str/ends-with? text ":") (str (subs text 0 (dec (count text))) ".")
       :else (str text "."))))
 
 (defn lower-case-en
@@ -321,7 +337,7 @@
 (defn email?
   "Is `s` a valid email address string?"
   ^Boolean [^String s]
-  (boolean (when (string? s)
+  (boolean (when (and (string? s) (str/includes? s "@")) ;; early bail
              (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
                          (lower-case-en s)))))
 
@@ -349,10 +365,15 @@
 (defn url?
   "Is `s` a valid HTTP/HTTPS URL string?"
   ^Boolean [s]
-  #?(:clj  (let [validator (UrlValidator. (u.jvm/varargs String ["http" "https"])
-                                          (RegexValidator. url-regex-pattern)
-                                          UrlValidator/ALLOW_LOCAL_URLS)]
-             (.isValid validator (str s)))
+  #?(:clj  (and s
+                ;; UrlValidator is very expensive when non-URLs are passed to it, so we verify if the string looks
+                ;; urlish before passing to UrlValidator.
+                (str/includes? s "://")
+                (let [validator (UrlValidator. (u.jvm/varargs String ["http" "https"])
+                                               (RegexValidator. url-regex-pattern)
+                                               UrlValidator/ALLOW_LOCAL_URLS)]
+                  ;; (swap! -args conj s)
+                  (.isValid validator (str s))))
      :cljs (try
              (let [url (js/URL. (str s))]
                (boolean (and (re-matches (js/RegExp. url-regex-pattern "u")
@@ -522,7 +543,7 @@
 
    The values of `keyseq` can be either regular keys, which work the same way as `select-keys`,
    or vectors of the form `[k & nested-keys]`, which call `select-nested-keys` recursively
-   on the value of `k`. "
+   on the value of `k`."
   [m keyseq]
   ;; TODO - use (empty m) once supported by model instances
   (into {} (for [k     keyseq
@@ -1153,3 +1174,31 @@
   (let [cnt (volatile! 0)]
     (reduce (fn [_ item] (vswap! cnt inc) (proc item)) nil reducible)
     @cnt))
+
+(defn generate-nano-id
+  "Generates a random NanoID string. Usually these are used for the entity_id field of various models.
+
+  If an argument is provided, it's taken to be an identity-hash string and used to seed the RNG,
+  producing the same value every time. This is only supported on the JVM!"
+  ([] (nano-id/nano-id))
+  ([seed-str]
+   #?(:clj  (let [seed (Long/parseLong seed-str 16)
+                  rnd  (Random. seed)
+                  gen  (nano-id/custom
+                        "_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                        21
+                        (fn [len]
+                          (let [ba (byte-array len)]
+                            (.nextBytes rnd ba)
+                            ba)))]
+              (gen))
+      :cljs (throw (ex-info "Seeded NanoIDs are not supported in CLJS" {:seed-str seed-str})))))
+
+(defn update-some
+  "Update a value by key in the `m`, if it's `some?`. If `nil` is returned, dissoc it instead"
+  [m k f & args]
+  (let [v (get m k)
+        res (when v (apply f v args))]
+    (if res
+      (assoc m k res)
+      (dissoc m k))))

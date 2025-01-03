@@ -6,22 +6,18 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
-import {
-  SaveButton,
-  ViewHeaderActionPanel,
-  ViewHeaderIconButtonContainer,
-  ViewRunButtonWithTooltip,
-} from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
+import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { QuestionSharingMenu } from "metabase/sharing/components/SharingMenu";
-import { Tooltip } from "metabase/ui";
+import { Box, Button, Flex, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
+import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 import { ExploreResultsLink } from "../ExploreResultsLink";
 import { FilterHeaderButton } from "../FilterHeaderButton";
 import { QuestionActions } from "../QuestionActions";
@@ -59,7 +55,6 @@ interface ViewTitleHeaderRightSideProps {
       datasetEditorTab?: DatasetEditorTab;
     },
   ) => void;
-  turnModelIntoQuestion: () => void;
   areFiltersExpanded: boolean;
   onExpandFilters: () => void;
   onCollapseFilters: () => void;
@@ -67,7 +62,6 @@ interface ViewTitleHeaderRightSideProps {
   onOpenQuestionInfo: () => void;
   onCloseQuestionInfo: () => void;
   isShowingQuestionInfoSidebar: boolean;
-  onModelPersistenceChange: () => void;
   isObjectDetail: boolean;
 }
 
@@ -91,7 +85,6 @@ export function ViewTitleHeaderRightSide({
   onEditSummary,
   onCloseSummary,
   setQueryBuilderMode,
-  turnModelIntoQuestion,
   areFiltersExpanded,
   onExpandFilters,
   onCollapseFilters,
@@ -99,7 +92,6 @@ export function ViewTitleHeaderRightSide({
   onOpenQuestionInfo,
   onCloseQuestionInfo,
   isShowingQuestionInfoSidebar,
-  onModelPersistenceChange,
   isObjectDetail,
 }: ViewTitleHeaderRightSideProps): React.JSX.Element {
   const isShowingNotebook = queryBuilderMode === "notebook";
@@ -147,7 +139,10 @@ export function ViewTitleHeaderRightSide({
   const disabledSaveTooltip = getDisabledSaveTooltip(isEditable);
 
   return (
-    <ViewHeaderActionPanel data-testid="qb-header-action-panel">
+    <Flex
+      className={ViewTitleHeaderS.ViewHeaderActionPanel}
+      data-testid="qb-header-action-panel"
+    >
       {FilterHeaderButton.shouldRender({
         question,
         queryBuilderMode,
@@ -192,8 +187,15 @@ export function ViewTitleHeaderRightSide({
       }) && <ToggleNativeQueryPreview question={question} />}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && !isShowingNotebook && (
-        <ViewHeaderIconButtonContainer>
-          <ViewRunButtonWithTooltip
+        <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
+          <RunButtonWithTooltip
+            className={cx(
+              ViewTitleHeaderS.ViewHeaderIconButton,
+              ViewTitleHeaderS.ViewRunButtonWithTooltip,
+              {
+                [ViewTitleHeaderS.isDirty]: isResultDirty,
+              },
+            )}
             iconSize={16}
             onlyIcon
             medium
@@ -205,7 +207,7 @@ export function ViewTitleHeaderRightSide({
             onCancel={cancelQuery}
             getTooltip={getRunButtonLabel}
           />
-        </ViewHeaderIconButtonContainer>
+        </Box>
       )}
       {!isShowingNotebook && <QuestionSharingMenu question={question} />}
       {isSaved && (
@@ -216,14 +218,13 @@ export function ViewTitleHeaderRightSide({
           onOpenModal={onOpenModal}
           onToggleBookmark={toggleBookmark}
           onSetQueryBuilderMode={setQueryBuilderMode}
-          onTurnModelIntoQuestion={turnModelIntoQuestion}
           onInfoClick={handleInfoClick}
-          onModelPersistenceChange={onModelPersistenceChange}
         />
       )}
       {hasSaveButton && (
         <Tooltip label={disabledSaveTooltip} disabled={canSave} position="left">
-          <SaveButton
+          <Button
+            className={ViewTitleHeaderS.SaveButton}
             data-testid="qb-save-button"
             px="md"
             py="sm"
@@ -238,10 +239,10 @@ export function ViewTitleHeaderRightSide({
             }}
           >
             {t`Save`}
-          </SaveButton>
+          </Button>
         </Tooltip>
       )}
-    </ViewHeaderActionPanel>
+    </Flex>
   );
 }
 

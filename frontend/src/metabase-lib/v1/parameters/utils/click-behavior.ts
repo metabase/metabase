@@ -146,12 +146,13 @@ export function getTargetsForQuestion(question: Question): Target[] {
 }
 
 function getTargetsForStructuredQuestion(question: Question): Target[] {
-  const { query, stageIndex, columns } = getParameterColumns(question);
+  const { query, columns } = getParameterColumns(question);
 
-  return columns.map(targetColumn => {
+  return columns.map(({ column: targetColumn, stageIndex }) => {
     const dimension: ClickBehaviorDimensionTarget["dimension"] = [
       "dimension",
       Lib.legacyRef(query, stageIndex, targetColumn),
+      { "stage-number": stageIndex },
     ];
     const id = JSON.stringify(dimension);
     const target: ClickBehaviorTarget = { type: "dimension", id, dimension };
@@ -163,6 +164,7 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
       sourceFilters: {
         column: (sourceColumn, sourceQuestion) => {
           const sourceQuery = sourceQuestion.query();
+          const stageIndex = -1;
 
           return Lib.isAssignableType(
             Lib.fromLegacyColumn(sourceQuery, stageIndex, sourceColumn),

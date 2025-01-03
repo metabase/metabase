@@ -339,11 +339,6 @@
 ;;; |                                               ENTITY + LIFECYCLE                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def Permissions
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/Permissions)
-
 (methodical/defmethod t2/table-name :model/Permissions [_model] :permissions)
 
 (derive :model/Permissions :metabase/model)
@@ -416,9 +411,9 @@
                                    (map (fn [path-form] [:like :object (str path-form "%")])
                                         paths))
                              other-conditions)}]
-    (when-let [revoked (t2/select-fn-set :object Permissions where)]
+    (when-let [revoked (t2/select-fn-set :object :model/Permissions where)]
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/the-id group-or-id) revoked))
-      (t2/delete! Permissions where)
+      (t2/delete! :model/Permissions where)
       (clear-current-user-cached-permissions!))))
 
 (defn grant-permissions!
@@ -426,7 +421,7 @@
   With > 2 args, grants the data permissions from calling [[data-perms-path]]."
   ([group-or-id path]
    (try
-     (t2/insert! Permissions
+     (t2/insert! :model/Permissions
                  (map (fn [path-object]
                         {:group_id (u/the-id group-or-id) :object path-object})
                       (distinct (conj (perms.u/->v2-path path) path))))

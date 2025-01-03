@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
@@ -10,14 +11,11 @@ import * as Lib from "metabase-lib";
 
 import {
   ChevronDown,
-  Content,
   MoreButton,
   SelectListItem,
   TriggerButton,
   TriggerIcon,
 } from "./BaseBucketPickerPopover.styled";
-
-export const INITIALLY_VISIBLE_ITEMS_COUNT = 7;
 
 type NoBucket = null;
 
@@ -38,9 +36,15 @@ export interface BaseBucketPickerPopoverProps {
   hasArrowIcon?: boolean;
   hasChevronDown?: boolean;
   color?: ColorName;
+  initiallyVisibleItemsCount: number;
   checkBucketIsSelected: (item: BucketListItem) => boolean;
   renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => ReactNode;
   onSelect: (column: Lib.Bucket | NoBucket) => void;
+  className?: string;
+  classNames?: {
+    root?: string;
+    chevronDown?: string;
+  };
 }
 
 function _BaseBucketPickerPopover({
@@ -52,14 +56,22 @@ function _BaseBucketPickerPopover({
   triggerLabel,
   hasArrowIcon = true,
   color = "brand",
+  initiallyVisibleItemsCount,
   checkBucketIsSelected,
   renderTriggerContent,
   onSelect,
   hasChevronDown,
+  className,
+  classNames = {},
 }: BaseBucketPickerPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
   const [isExpanded, setIsExpanded] = useState(
-    isInitiallyExpanded(items, selectedBucket, checkBucketIsSelected),
+    isInitiallyExpanded(
+      items,
+      selectedBucket,
+      initiallyVisibleItemsCount,
+      checkBucketIsSelected,
+    ),
   );
 
   const defaultBucket = useMemo(
@@ -76,35 +88,47 @@ function _BaseBucketPickerPopover({
     const nextState = isInitiallyExpanded(
       items,
       selectedBucket,
+      initiallyVisibleItemsCount,
       checkBucketIsSelected,
     );
     setIsExpanded(nextState);
     setIsOpened(false);
-  }, [items, selectedBucket, checkBucketIsSelected]);
+  }, [
+    items,
+    selectedBucket,
+    initiallyVisibleItemsCount,
+    checkBucketIsSelected,
+  ]);
 
   const triggerContentBucket = isEditing ? selectedBucket : defaultBucket;
   const triggerContentBucketDisplayInfo = triggerContentBucket
     ? Lib.displayInfo(query, stageIndex, triggerContentBucket)
     : undefined;
 
-  const canExpand = items.length > INITIALLY_VISIBLE_ITEMS_COUNT;
+  const canExpand = items.length > initiallyVisibleItemsCount;
   const hasMoreButton = canExpand && !isExpanded;
   const visibleItems = hasMoreButton
-    ? items.slice(0, INITIALLY_VISIBLE_ITEMS_COUNT)
+    ? items.slice(0, initiallyVisibleItemsCount)
     : items;
 
   return (
     <Popover opened={isOpened} position="right" onClose={handlePopoverClose}>
       <Popover.Target>
         <TriggerButton
+          className={cx(classNames.root, className)}
           aria-label={triggerLabel}
-          // Compat with E2E tests around MLv1-based components
-          // Prefer using a11y role selectors
           data-testid="dimension-list-item-binning"
           onClick={event => {
             event.stopPropagation();
             setIsOpened(!isOpened);
           }}
+          px="sm"
+          miw="35%"
+          maw="50%"
+          py={0}
+          variant="subtle"
+          color="white"
+          styles={{ label: { display: "flex", gap: "0.5rem" } }}
         >
           <Ellipsified>
             {renderTriggerContent(triggerContentBucketDisplayInfo)}
@@ -112,31 +136,44 @@ function _BaseBucketPickerPopover({
           {hasArrowIcon && !hasChevronDown && (
             <TriggerIcon name="chevronright" />
           )}
-          {hasChevronDown && <ChevronDown name="chevrondown" />}
+          {hasChevronDown && (
+            <ChevronDown
+              className={classNames.chevronDown}
+              name="chevrondown"
+            />
+          )}
         </TriggerButton>
       </Popover.Target>
       <Popover.Dropdown>
-        <Content>
-          <SelectList>
-            {visibleItems.map(item => (
-              <SelectListItem
-                id={item.displayName}
-                key={item.displayName}
-                name={item.displayName}
-                activeColor={color}
-                isSelected={checkBucketIsSelected(item)}
-                onSelect={(_id, event) => {
-                  event.stopPropagation();
-                  onSelect(item.bucket);
-                  handlePopoverClose();
-                }}
-              />
-            ))}
-          </SelectList>
+        <SelectList p="sm" miw="10rem">
+          {visibleItems.map(item => (
+            <SelectListItem
+              id={item.displayName}
+              key={item.displayName}
+              name={item.displayName}
+              activeColor={color}
+              isSelected={checkBucketIsSelected(item)}
+              onSelect={(_id, event) => {
+                event.stopPropagation();
+                onSelect(item.bucket);
+                handlePopoverClose();
+              }}
+            />
+          ))}
           {hasMoreButton && (
-            <MoreButton onClick={handleExpand}>{t`More…`}</MoreButton>
+            <MoreButton
+              onClick={handleExpand}
+              variant="subtle"
+              color="brand"
+              fullWidth
+              px="md"
+              py="sm"
+              styles={{
+                inner: { display: "flex", justifyContent: "flex-start" },
+              }}
+            >{t`More…`}</MoreButton>
           )}
-        </Content>
+        </SelectList>
       </Popover.Dropdown>
     </Popover>
   );
@@ -145,16 +182,17 @@ function _BaseBucketPickerPopover({
 function isInitiallyExpanded(
   items: BucketListItem[],
   selectedBucket: Lib.Bucket | NoBucket,
+  initiallyVisibleItemsCount: number,
   checkBucketIsSelected: (item: BucketListItem) => boolean,
 ) {
-  const canExpand = items.length > INITIALLY_VISIBLE_ITEMS_COUNT;
+  const canExpand = items.length > initiallyVisibleItemsCount;
   if (!canExpand || !selectedBucket) {
     return false;
   }
 
   return (
     items.findIndex(item => checkBucketIsSelected(item)) >=
-    INITIALLY_VISIBLE_ITEMS_COUNT
+    initiallyVisibleItemsCount
   );
 }
 

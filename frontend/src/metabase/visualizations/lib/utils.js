@@ -1,6 +1,5 @@
 import crossfilter from "crossfilter";
 import * as d3 from "d3";
-import { t } from "ttag";
 import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
@@ -8,6 +7,7 @@ import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 export const MAX_SERIES = 100;
+export const MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY = 100;
 
 const SPLIT_AXIS_UNSPLIT_COST = -100;
 const SPLIT_AXIS_COST_FACTOR = 2;
@@ -147,27 +147,6 @@ export function computeSplit(extents, left = [], right = []) {
   } else {
     return best && best.sort((a, b) => a[0] - b[0]);
   }
-}
-
-const AGGREGATION_NAME_MAP = {
-  avg: t`Average`,
-  count: t`Count`,
-  sum: t`Sum`,
-  distinct: t`Distinct`,
-  stddev: t`Standard Deviation`,
-};
-const AGGREGATION_NAME_REGEX = new RegExp(
-  `^(${Object.keys(AGGREGATION_NAME_MAP).join("|")})(_\\d+)?$`,
-);
-
-export function getFriendlyName(column) {
-  if (AGGREGATION_NAME_REGEX.test(column.name)) {
-    const friendly = AGGREGATION_NAME_MAP[column.display_name.toLowerCase()];
-    if (friendly) {
-      return friendly;
-    }
-  }
-  return column.display_name;
 }
 
 export function isSameSeries(seriesA, seriesB) {
@@ -443,3 +422,100 @@ export const getDefaultPivotColumn = (cols, rows) => {
     null
   );
 };
+
+const MAX_SANKEY_COLUMN_PAIRS_TO_CHECK = 6;
+
+function findSankeyColumnPair(dimensionColumns, rows) {
+  if (dimensionColumns.length < 2) {
+    return null;
+  }
+
+  const pairsToCheck = Math.min(
+    dimensionColumns.length - 1,
+    MAX_SANKEY_COLUMN_PAIRS_TO_CHECK,
+  );
+  for (let i = 0; i < pairsToCheck; i++) {
+    const sourceCol = dimensionColumns[i];
+
+    const sourceValues = new Set(rows.map(row => row[sourceCol.index]));
+
+    const targetCol = dimensionColumns.slice(i + 1).find(maybeTarget => {
+      return rows.some(row => sourceValues.has(row[maybeTarget.index]));
+    });
+
+    if (targetCol) {
+      return {
+        source: sourceCol.column.name,
+        target: targetCol.column.name,
+      };
+    }
+  }
+
+  return {
+    source: dimensionColumns[0].column.name,
+    target: dimensionColumns[1].column.name,
+  };
+}
+
+export function findSensibleSankeyColumns(data) {
+  if (!data?.cols || !data?.rows) {
+    return null;
+  }
+
+  const { cols, rows } = data;
+
+  // Single pass through columns to categorize them
+  const { dimensionColumns, metricColumn } = cols.reduce(
+    (acc, col, index) => {
+      if (isMetric(col)) {
+        // Take the first metric column we find
+        if (!acc.metricColumn) {
+          acc.metricColumn = col;
+        }
+      } else if (isDimension(col) && !isDate(col)) {
+        // Limited quick cardinality check before doing full computation
+        const uniqueValues = new Set();
+        const rowsToQuickCheck = Math.min(
+          rows.length,
+          MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY * 1.5,
+        );
+        for (let i = 0; i < rowsToQuickCheck; i++) {
+          uniqueValues.add(rows[i][index]);
+        }
+
+        // Only do full cardinality check if initial sample looks promising
+        if (
+          uniqueValues.size > 0 &&
+          uniqueValues.size <= MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY
+        ) {
+          const cardinality = getColumnCardinality(cols, rows, index);
+          if (
+            cardinality > 0 &&
+            cardinality <= MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY
+          ) {
+            acc.dimensionColumns.push({ column: col, index, cardinality });
+          }
+        }
+      }
+      return acc;
+    },
+    { dimensionColumns: [], metricColumn: null },
+  );
+
+  if (!metricColumn) {
+    return null;
+  }
+
+  dimensionColumns.sort((a, b) => a.cardinality - b.cardinality);
+
+  const dimensionPair = findSankeyColumnPair(dimensionColumns, rows);
+  if (!dimensionPair) {
+    return null;
+  }
+
+  return {
+    source: dimensionPair.source,
+    target: dimensionPair.target,
+    metric: metricColumn.name,
+  };
+}

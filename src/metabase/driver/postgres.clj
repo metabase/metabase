@@ -63,6 +63,7 @@
 (doseq [[feature supported?] {:connection-impersonation true
                               :describe-fields          true
                               :describe-fks             true
+                              :describe-indexes         true
                               :convert-timezone         true
                               :datetime-diff            true
                               :now                      true
@@ -282,51 +283,81 @@
 (defmethod sql-jdbc.sync/describe-fields-sql :postgres
   ;; The implementation is based on `getColumns` in https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java
   [driver & {:keys [schema-names table-names]}]
-  (sql/format {:select [[:c.column_name :name]
-                        [:c.udt_name :database-type]
-                        [[:- :c.ordinal_position [:inline 1]] :database-position]
-                        [:c.table_schema :table-schema]
-                        [:c.table_name :table-name]
-                        [[:not= :pk.column_name nil] :pk?]
-
-                        [[:col_description
-                          [:cast [:cast [:format [:inline "%I.%I"] [:cast :c.table_schema :text] [:cast :c.table_name :text]] :regclass] :oid]
-                          :c.ordinal_position]
-                         :field-comment]
-                        [[:and
-                          [:or [:= :column_default nil] [:= [:lower :column_default] [:inline "null"]]]
-                          [:= :is_nullable [:inline "NO"]]
-                          ;;_ IS_AUTOINCREMENT from: https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L1852-L1856
-                          [:not [:or
-                                 [:and [:!= :column_default nil] [:like :column_default [:inline "%nextval(%"]]]
-                                 [:!= :is_identity [:inline "NO"]]]]]
-                         :database-required]
-                        [[:or
-                          [:and [:!= :column_default nil] [:like :column_default [:inline "%nextval(%"]]]
-                          [:!= :is_identity [:inline "NO"]]]
-                         :database-is-auto-increment]]
-               :from [[:information_schema.columns :c]]
-               :left-join [[{:select [:tc.table_schema
-                                      :tc.table_name
-                                      :kc.column_name]
-                             :from [[:information_schema.table_constraints :tc]]
-                             :join [[:information_schema.key_column_usage :kc]
-                                    [:and
-                                     [:= :tc.constraint_name :kc.constraint_name]
-                                     [:= :tc.table_schema :kc.table_schema]
-                                     [:= :tc.table_name :kc.table_name]]]
-                             :where [:= :tc.constraint_type [:inline "PRIMARY KEY"]]}
-                            :pk]
+  (sql/format
+   {:union-all
+    [{:select [[:c.column_name :name]
+               [[:case
+                 [:in :c.udt_schema [[:inline "public"] [:inline "pg_catalog"]]]
+                 [:format [:inline "%s"] :c.udt_name]
+                 :else
+                 [:format [:inline "\"%s\".\"%s\""] :c.udt_schema :c.udt_name]]
+                :database-type]
+               [[:- :c.ordinal_position [:inline 1]] :database-position]
+               [:c.table_schema :table-schema]
+               [:c.table_name :table-name]
+               [[:not= :pk.column_name nil] :pk?]
+               [[:col_description
+                 [:cast [:cast [:format [:inline "%I.%I"] [:cast :c.table_schema :text] [:cast :c.table_name :text]] :regclass] :oid]
+                 :c.ordinal_position]
+                :field-comment]
+               [[:and
+                 [:or [:= :column_default nil] [:= [:lower :column_default] [:inline "null"]]]
+                 [:= :is_nullable [:inline "NO"]]
+                  ;;_ IS_AUTOINCREMENT from: https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L1852-L1856
+                 [:not [:or
+                        [:and [:!= :column_default nil] [:like :column_default [:inline "%nextval(%"]]]
+                        [:!= :is_identity [:inline "NO"]]]]]
+                :database-required]
+               [[:or
+                 [:and [:!= :column_default nil] [:like :column_default [:inline "%nextval(%"]]]
+                 [:!= :is_identity [:inline "NO"]]]
+                :database-is-auto-increment]]
+      :from [[:information_schema.columns :c]]
+      :left-join [[{:select [:tc.table_schema
+                             :tc.table_name
+                             :kc.column_name]
+                    :from [[:information_schema.table_constraints :tc]]
+                    :join [[:information_schema.key_column_usage :kc]
                            [:and
-                            [:= :c.table_schema :pk.table_schema]
-                            [:= :c.table_name :pk.table_name]
-                            [:= :c.column_name :pk.column_name]]]
-               :where [:and
-                       [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
-                       (when schema-names [:in :c.table_schema schema-names])
-                       (when table-names [:in :c.table_name table-names])]
-               :order-by [:table-schema :table-name :database-position]}
-              :dialect (sql.qp/quote-style driver)))
+                            [:= :tc.constraint_name :kc.constraint_name]
+                            [:= :tc.table_schema :kc.table_schema]
+                            [:= :tc.table_name :kc.table_name]]]
+                    :where [:= :tc.constraint_type [:inline "PRIMARY KEY"]]}
+                   :pk]
+                  [:and
+                   [:= :c.table_schema :pk.table_schema]
+                   [:= :c.table_name :pk.table_name]
+                   [:= :c.column_name :pk.column_name]]]
+      :where [:and
+              [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
+              (when schema-names [:in :c.table_schema schema-names])
+              (when table-names [:in :c.table_name table-names])]}
+     {:select [[:pa.attname :name]
+               [[:case
+                 [:in :ptn.nspname [[:inline "public"] [:inline "pg_catalog"]]]
+                 [:format [:inline "%s"] :pt.typname]
+                 :else
+                 [:format [:inline "\"%s\".\"%s\""] :ptn.nspname :pt.typname]]
+                :database-type]
+               [[:- :pa.attnum [:inline 1]] :database-position]
+               [:pn.nspname :table-schema]
+               [:pc.relname :table-name]
+               [false :pk?]
+               [nil :field-comment]
+               [false :database-required]
+               [false :database-is-auto-increment]]
+      :from [[:pg_catalog.pg_class :pc]]
+      :join [[:pg_catalog.pg_namespace :pn] [:= :pn.oid :pc.relnamespace]
+             [:pg_catalog.pg_attribute :pa] [:= :pa.attrelid :pc.oid]
+             [:pg_catalog.pg_type :pt] [:= :pt.oid :pa.atttypid]
+             [:pg_catalog.pg_namespace :ptn] [:= :ptn.oid :pt.typnamespace]]
+      :where [:and
+              [:= :pc.relkind [:inline "m"]]
+              [:>= :pa.attnum [:inline 1]]
+              (when schema-names [:in :pn.nspname schema-names])
+              (when table-names [:in :pc.relname table-names])]}]
+    :order-by [:table-schema :table-name :database-position]}
+   :dialect (sql.qp/quote-style driver)))
 
 (defmethod sql-jdbc.sync/describe-fks-sql :postgres
   [driver & {:keys [schema-names table-names]}]
@@ -352,6 +383,31 @@
                         (when table-names [:in :fk_table.relname table-names])
                         (when schema-names [:in :fk_ns.nspname schema-names])]
                :order-by [:fk-table-schema :fk-table-name]}
+              :dialect (sql.qp/quote-style driver)))
+
+(defmethod sql-jdbc.sync/describe-indexes-sql :postgres
+  [driver & {:keys [schema-names table-names]}]
+  ;; From https://github.com/pgjdbc/pgjdbc/blob/master/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L2662
+  (sql/format {:select [:tmp.table-schema
+                        :tmp.table-name
+                        [[:trim :!both [:inline "\""] :!from [:pg_catalog.pg_get_indexdef :tmp.ci_oid :tmp.pos false]] :field-name]]
+               :from [[{:select [[:n.nspname :table-schema]
+                                 [:ct.relname :table-name]
+                                 [:ci.oid :ci_oid]
+                                 [[:. [:composite [:information_schema._pg_expandarray :i.indkey]] :n] :pos]]
+                        :from [[:pg_catalog.pg_class :ct]]
+                        :join [[:pg_catalog.pg_namespace :n] [:= :ct.relnamespace :n.oid]
+                               [:pg_catalog.pg_index :i] [:= :ct.oid :i.indrelid]
+                               [:pg_catalog.pg_class :ci] [:= :ci.oid :i.indexrelid]]
+                        :where [:and
+                                ;; No filtered indexes
+                                [:= [:pg_catalog.pg_get_expr :i.indpred :i.indrelid] nil]
+                                [:raw "n.nspname !~ '^information_schema|catalog_history|pg_'"]
+                                (when (seq schema-names) [:in :n.nspname schema-names])
+                                (when (seq table-names) [:in :ct.relname table-names])]}
+                       :tmp]]
+               ;; The only column or the first column in a composite index
+               :where [:= :tmp.pos 1]}
               :dialect (sql.qp/quote-style driver)))
 
 ;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same

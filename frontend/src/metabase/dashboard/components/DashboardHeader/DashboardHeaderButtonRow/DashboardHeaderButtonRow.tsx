@@ -15,7 +15,7 @@ import {
 } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/env";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getPulseFormInput } from "metabase/pulse/selectors";
+import { getPulseFormInput } from "metabase/notifications/pulse/selectors";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,

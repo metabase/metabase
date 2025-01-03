@@ -1,5 +1,5 @@
 /* NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
- * NOTE: KEEP SYNCRONIZED WITH:
+ * NOTE: KEEP SYNCHRONIZED WITH:
  * frontend/src/metabase/ui/utils/colors.ts
  * frontend/src/metabase/lib/colors/palette.ts
  * frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
@@ -92,6 +92,16 @@
   --mb-color-icon-primary-disabled: var(--mb-base-color-gray-30);
   --mb-color-icon-secondary: var(--mb-base-color-brand-20);
   --mb-color-icon-secondary-disabled: var(--mb-base-color-gray-10);
+  --mb-color-tooltip-text: var(--mb-color-text-white);
+  --mb-color-tooltip-text-secondary: var(--mb-color-text-light);
+  --mb-color-tooltip-background: var(--mb-color-background-inverse);
+  --mb-color-tooltip-background-focused: color-mix(
+    in srgb,
+    var(--mb-color-tooltip-background) 50%,
+    #000
+  );
+  --mb-color-syntax-parameters: var(--mb-base-color-mango-30);
+  --mb-color-switch-off: var(--mb-base-color-orion-10);
 
   /**
     * Base colors
@@ -129,6 +139,13 @@
     var(--mb-color-brand),
     white 90%
   );
+
+  /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
+  --mb-color-saturated-blue: #2d86d4;
+  --mb-color-saturated-green: #70a63a;
+  --mb-color-saturated-purple: #885ab1;
+  --mb-color-saturated-red: #ed6e6e;
+  --mb-color-saturated-yellow: #f9cf48;
 
   /* @deprecated Blue */
   --mb-base-color-blue-100: #00172b;
@@ -354,7 +371,8 @@
   background-color: var(--mb-color-bg-light);
 }
 
-.bgMedium {
+.bgMedium,
+.bgMediumHover:hover {
   background-color: var(--mb-color-bg-medium);
 }
 

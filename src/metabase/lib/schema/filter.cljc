@@ -5,6 +5,7 @@
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.id :as id]
+   [metabase.lib.schema.literal :as literal]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
@@ -26,6 +27,54 @@
                                    (expression/comparable-expressions? (get argv i) (get argv j)))
                                  compared-position-pairs)))))]]))
 
+(mr/def ::default-filter-operator
+  "Filter operators that should be supported by any column type. Note that the FE allows only `:is-empty` and
+  `:not-empty` for string columns."
+  [:enum :is-null :not-null])
+
+(mr/def ::string-filter-operator
+  "String filter operators supported by the FE. Note that the FE does not support `:is-null` and `:not-null` with string
+  columns; `:is-empty` and `:not-empty` should be used instead."
+  [:enum :is-empty :not-empty := :!= :contains :does-not-contain :starts-with :ends-with])
+
+(mr/def ::string-filter-options
+  "String filter operator options. Only set for `:contains`, `:does-not-contain`, `:starts-with`, `:ends-with`
+  operators."
+  [:map [:case-sensitive {:optional true} :boolean]]) ; default true
+
+(mr/def ::number-filter-operator
+  "Numeric filter operators supported by the FE."
+  [:enum :is-null :not-null := :!= :> :>= :< :<= :between])
+
+(mr/def ::coordinate-filter-operator
+  "Coordinate filter operators supported by the FE. Note that the FE does not support `:is-null` and `:not-null` for
+  coordinate columns."
+  [:enum := :!= :> :>= :< :<= :between :inside])
+
+(mr/def ::boolean-filter-operator
+  "Boolean filter operators supported by the FE. Note that `:!=` is not supported."
+  [:enum :is-null :not-null :=])
+
+(mr/def ::specific-date-filter-operator
+  "Specific date filter operators supported by the FE."
+  [:enum := :> :< :between])
+
+(mr/def ::exclude-date-filter-operator
+  "Exclude date filter operators supported by the FE."
+  [:enum :!= :is-null :not-null])
+
+(mr/def ::exclude-date-filter-unit
+  "Temporal extraction units supported by exclude date filters."
+  [:enum :hour-of-day :day-of-week :month-of-year :quarter-of-year])
+
+(mr/def ::time-filter-operator
+  "Time filter operators supported by the FE."
+  [:enum :is-null :not-null :> :< :between])
+
+(mr/def ::time-interval-options
+  "Options for `:time-interval` operator. Note that `:relative-time-interval` does not support these options."
+  [:map [:include-current {:optional true} :boolean]]) ; default false
+
 (doseq [op [:and :or]]
   (mbql-clause/define-catn-mbql-clause op :- :type/Boolean
     [:args [:repeat {:min 2} [:schema [:ref ::expression/boolean]]]]))
@@ -33,7 +82,7 @@
 (mbql-clause/define-tuple-mbql-clause :not :- :type/Boolean
   [:ref ::expression/boolean])
 
-(doseq [op [:= :!=]]
+(doseq [op [:= :!= :in :not-in]]
   (mbql-clause/define-catn-mbql-clause op :- :type/Boolean
     [:args [:repeat {:min 2} [:schema [:ref ::expression/equality-comparable]]]]))
 
@@ -76,9 +125,6 @@
   (mbql-clause/define-tuple-mbql-clause op :- :type/Boolean
     [:ref ::expression/expression]))
 
-(def ^:private string-filter-options
-  [:map [:case-sensitive {:optional true} :boolean]]) ; default true
-
 ;; N-ary [:ref ::expression/string] filter clauses. These also accept a `:case-sensitive` option.
 ;; Requires at least 2 string-shaped args. If there are more than 2, `[:contains x a b]` is equivalent to
 ;; `[:or [:contains x a] [:contains x b]]`.
@@ -88,11 +134,8 @@
   (mbql-clause/define-mbql-clause op :- :type/Boolean
     [:schema [:catn {:error/message (str "Valid " op " clause")}
               [:tag [:= {:decode/normalize common/normalize-keyword} op]]
-              [:options [:merge ::common/options string-filter-options]]
+              [:options [:merge ::common/options ::string-filter-options]]
               [:args [:repeat {:min 2} [:schema [:ref ::expression/string]]]]]]))
-
-(def ^:private time-interval-options
-  [:map [:include-current {:optional true} :boolean]]) ; default false
 
 ;; SUGAR: rewritten as a filter clause with a relative-datetime value
 (mbql-clause/define-mbql-clause :time-interval :- :type/Boolean
@@ -103,7 +146,7 @@
   ;; using units that don't agree with the expr type
   [:tuple
    [:= {:decode/normalize common/normalize-keyword} :time-interval]
-   [:merge ::common/options time-interval-options]
+   [:merge ::common/options ::time-interval-options]
    #_expr [:ref ::expression/temporal]
    #_n    [:multi
            {:dispatch (some-fn keyword? string?)}
@@ -111,6 +154,14 @@
            ;; I guess there's no reason you shouldn't be able to do something like 1 + 2 in here
            [false [:ref ::expression/integer]]]
    #_unit [:ref ::temporal-bucketing/unit.date-time.interval]])
+
+(mbql-clause/define-mbql-clause :during :- :type/Boolean
+  [:tuple
+   [:= {:decode/normalize common/normalize-keyword} :during]
+   ::common/options
+   #_expr  [:ref ::expression/temporal]
+   #_value [:or [:ref ::literal/string.date] [:ref ::literal/string.datetime]]
+   #_unit  [:ref ::temporal-bucketing/unit.date-time.interval]])
 
 (mbql-clause/define-mbql-clause :relative-time-interval :- :type/Boolean
   [:tuple

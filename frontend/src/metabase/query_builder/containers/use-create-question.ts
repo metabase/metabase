@@ -30,6 +30,8 @@ export const useCreateQuestion = ({
       scheduleCallback?.(async () => {
         await dispatch(updateUrl(createdQuestion, { dirty: false }));
       });
+
+      return createdQuestion;
     },
     [dispatch, scheduleCallback],
   );

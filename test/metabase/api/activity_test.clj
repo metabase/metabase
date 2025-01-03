@@ -4,9 +4,6 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.events :as events]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -26,20 +23,20 @@
   (clear-recent-views-for-user :rasta)
   (mt/test-helpers-set-global-values!
     (mt/with-temporary-setting-values [synchronous-batch-updates true]
-      (mt/with-temp [Card      card-1  {:name       "rand-name"
-                                        :creator_id (mt/user->id :crowberto)
-                                        :display    "table"}
-                     Dashboard dash-1  {:name        "rand-name2"
-                                        :description "rand-name2"
-                                        :creator_id  (mt/user->id :crowberto)}
-                     Dashboard dash-2  {:name        "rand-name2"
-                                        :description "rand-name2"
-                                        :creator_id  (mt/user->id :crowberto)}
-                     Dashboard dash-3  {:name        "rand-name2"
-                                        :description "rand-name2"
-                                        :archived    true
-                                        :creator_id  (mt/user->id :crowberto)}
-                     Table     table-1 {:name "rand-name"}]
+      (mt/with-temp [:model/Card      card-1  {:name       "rand-name"
+                                               :creator_id (mt/user->id :crowberto)
+                                               :display    "table"}
+                     :model/Dashboard dash-1  {:name        "rand-name2"
+                                               :description "rand-name2"
+                                               :creator_id  (mt/user->id :crowberto)}
+                     :model/Dashboard dash-2  {:name        "rand-name2"
+                                               :description "rand-name2"
+                                               :creator_id  (mt/user->id :crowberto)}
+                     :model/Dashboard dash-3  {:name        "rand-name2"
+                                               :description "rand-name2"
+                                               :archived    true
+                                               :creator_id  (mt/user->id :crowberto)}
+                     :model/Table     table-1 {:name "rand-name"}]
         (mt/with-test-user :crowberto
           (doseq [{:keys [topic event]} [{:topic :event/dashboard-read :event {:object-id (:id dash-1)}}
                                          {:topic :event/dashboard-read :event {:object-id (:id dash-2)}}
@@ -89,31 +86,31 @@
 (deftest recent-views-test
   (clear-recent-views-for-user :crowberto)
   (clear-recent-views-for-user :rasta)
-  (mt/with-temp [Card      card1     {:name                   "rand-name"
-                                      :creator_id             (mt/user->id :crowberto)
-                                      :display                "table"
-                                      :visualization_settings {}}
-                 Card      archived  {:name                   "archived-card"
-                                      :creator_id             (mt/user->id :crowberto)
-                                      :display                "table"
-                                      :archived               true
-                                      :visualization_settings {}}
-                 Dashboard dash {:name        "rand-name2"
-                                 :description "rand-name2"
-                                 :creator_id  (mt/user->id :crowberto)}
-                 Table     table1 {:name "rand-name"}
-                 Table     hidden-table {:name            "hidden table"
-                                         :visibility_type "hidden"}
-                 Card      dataset {:name                   "rand-name"
-                                    :type                   :model
-                                    :creator_id             (mt/user->id :crowberto)
-                                    :display                "table"
-                                    :visualization_settings {}}
-                 Card      metric  {:name                   "rand-metric-name"
-                                    :type                   :metric
-                                    :creator_id             (mt/user->id :crowberto)
-                                    :display                "table"
-                                    :visualization_settings {}}]
+  (mt/with-temp [:model/Card      card1     {:name                   "rand-name"
+                                             :creator_id             (mt/user->id :crowberto)
+                                             :display                "table"
+                                             :visualization_settings {}}
+                 :model/Card      archived  {:name                   "archived-card"
+                                             :creator_id             (mt/user->id :crowberto)
+                                             :display                "table"
+                                             :archived               true
+                                             :visualization_settings {}}
+                 :model/Dashboard dash {:name        "rand-name2"
+                                        :description "rand-name2"
+                                        :creator_id  (mt/user->id :crowberto)}
+                 :model/Table     table1 {:name "rand-name"}
+                 :model/Table     hidden-table {:name            "hidden table"
+                                                :visibility_type "hidden"}
+                 :model/Card      dataset {:name                   "rand-name"
+                                           :type                   :model
+                                           :creator_id             (mt/user->id :crowberto)
+                                           :display                "table"
+                                           :visualization_settings {}}
+                 :model/Card      metric  {:name                   "rand-metric-name"
+                                           :type                   :metric
+                                           :creator_id             (mt/user->id :crowberto)
+                                           :display                "table"
+                                           :visualization_settings {}}]
     (testing "recent_views endpoint shows the current user's recently viewed items."
       (mt/with-model-cleanup [:model/RecentViews]
         (mt/with-test-user :crowberto
@@ -202,9 +199,26 @@
               (is (= [{:model "metric" :id (u/the-id metric) :name "rand-metric-name"}
                       {:model "table" :id (u/the-id table1) :name "rand-name"}
                       {:model "dashboard" :id (u/the-id dash) :name "rand-name2"}
-                      {:model "card" :id (u/the-id card1) :name "rand-name"}
+                      {:model "card" :id (u/the-id card1) :name "rand-name" :dashboard nil}
                       {:model "dataset" :id (u/the-id dataset) :name "rand-name"}]
-                     (map #(select-keys % [:model :id :name]) recent-views))))))))))
+                     (map #(select-keys % [:model :id :name :dashboard]) recent-views))))))))))
+
+(deftest recent-card-read-views-have-dashboard-info-for-dashboard-questions
+  (clear-recent-views-for-user :crowberto)
+  (mt/with-test-user :crowberto
+    (mt/with-model-cleanup [:model/ViewLog :model/RecentViews]
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name "the dashboard name"}
+                     :model/Card      {card-id :id} {:name "dashboard question card"
+                                                     :dashboard_id dash-id}]
+        (testing "recent_views endpoint shows the current user's recently viewed items."
+          (clear-recent-views-for-user :crowberto)
+          (testing (str "> EVENT: " :event/card-read " does create recent views.")
+            (doseq [[topic event] [[:event/card-read      {:user-id (mt/user->id :crowberto) :object-id card-id :context :question}]]]
+              (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
+            (let [recent-views (:recents (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))]
+              (is (= [{:model "card" :id card-id :name "dashboard question card" :dashboard {:name "the dashboard name"
+                                                                                             :id   dash-id}}]
+                     (map #(select-keys % [:model :id :name :dashboard]) recent-views))))))))))
 
 (deftest recent-card-query-views-test
   (clear-recent-views-for-user :crowberto)
@@ -288,36 +302,36 @@
   ;; Clear out recent views & query execution log so that test doesn't read stale state
   (t2/delete! :model/RecentViews)
   (t2/delete! :model/QueryExecution)
-  (mt/with-temp [Card      card1 {:name                   "rand-name"
-                                  :creator_id             (mt/user->id :crowberto)
-                                  :display                "table"
-                                  :visualization_settings {}}
-                 Card      archived  {:name                   "archived-card"
-                                      :creator_id             (mt/user->id :crowberto)
-                                      :display                "table"
-                                      :archived               true
-                                      :visualization_settings {}}
-                 Dashboard dash1 {:name        "rand-name"
-                                  :description "rand-name"
-                                  :creator_id  (mt/user->id :crowberto)
-                                  :view_count  10}
-                 Dashboard dash2 {:name        "other-dashboard"
-                                  :description "just another dashboard"
-                                  :creator_id  (mt/user->id :crowberto)
-                                  :view_count  5}
-                 Table     table1 {:name "rand-name"}
-                 Table     hidden-table {:name            "hidden table"
-                                         :visibility_type "hidden"}
-                 Card      dataset {:name                   "rand-name"
-                                    :type                   :model
-                                    :creator_id             (mt/user->id :crowberto)
-                                    :display                "table"
-                                    :visualization_settings {}}
-                 Card      metric  {:name                   "rand-name"
-                                    :type                   :metric
-                                    :creator_id             (mt/user->id :crowberto)
-                                    :display                "table"
-                                    :visualization_settings {}}]
+  (mt/with-temp [:model/Card      card1 {:name                   "rand-name"
+                                         :creator_id             (mt/user->id :crowberto)
+                                         :display                "table"
+                                         :visualization_settings {}}
+                 :model/Card      archived  {:name                   "archived-card"
+                                             :creator_id             (mt/user->id :crowberto)
+                                             :display                "table"
+                                             :archived               true
+                                             :visualization_settings {}}
+                 :model/Dashboard dash1 {:name        "rand-name"
+                                         :description "rand-name"
+                                         :creator_id  (mt/user->id :crowberto)
+                                         :view_count  10}
+                 :model/Dashboard dash2 {:name        "other-dashboard"
+                                         :description "just another dashboard"
+                                         :creator_id  (mt/user->id :crowberto)
+                                         :view_count  5}
+                 :model/Table     table1 {:name "rand-name"}
+                 :model/Table     hidden-table {:name            "hidden table"
+                                                :visibility_type "hidden"}
+                 :model/Card      dataset {:name                   "rand-name"
+                                           :type                   :model
+                                           :creator_id             (mt/user->id :crowberto)
+                                           :display                "table"
+                                           :visualization_settings {}}
+                 :model/Card      metric  {:name                   "rand-name"
+                                           :type                   :metric
+                                           :creator_id             (mt/user->id :crowberto)
+                                           :display                "table"
+                                           :visualization_settings {}}]
     (let [test-ids (set (map :id [card1 archived dash1 dash2 table1 hidden-table dataset metric]))]
       (testing "Items viewed by multiple users are never duplicated in the popular items list."
         (mt/with-model-cleanup [:model/RecentViews :model/QueryExecution]

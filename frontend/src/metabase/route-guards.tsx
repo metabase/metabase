@@ -2,10 +2,11 @@ import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
-import { getIsMetabotEnabled } from "metabase/home/selectors";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
+
+import { getCanAccessOnboardingPage } from "./home/selectors";
 
 type Props = { children: React.ReactElement };
 
@@ -61,11 +62,11 @@ const UserCanAccessSettings = connectedReduxRedirect<Props, State>({
   redirectAction: routerActions.replace,
 });
 
-export const UserCanAccessMetabot = connectedReduxRedirect<Props, State>({
-  wrapperDisplayName: "UserCanAccessMetabot",
+export const UserCanAccessOnboarding = connectedReduxRedirect<Props, State>({
+  wrapperDisplayName: "UserCanAccessOnboarding",
   redirectPath: "/",
   allowRedirectBack: false,
-  authenticatedSelector: state => getIsMetabotEnabled(state),
+  authenticatedSelector: state => getCanAccessOnboardingPage(state),
   redirectAction: routerActions.replace,
 });
 
@@ -84,6 +85,6 @@ export const CanAccessSettings = MetabaseIsSetup(
   UserIsAuthenticated(UserCanAccessSettings(({ children }) => children)),
 );
 
-export const CanAccessMetabot = UserCanAccessMetabot(
+export const CanAccessOnboarding = UserCanAccessOnboarding(
   ({ children }) => children,
 );

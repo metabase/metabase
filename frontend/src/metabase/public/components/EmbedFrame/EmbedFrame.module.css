@@ -1,4 +1,4 @@
-body {
+body:where(:global(.mb-wrapper)) {
   background-color: transparent;
 }
 
@@ -17,12 +17,6 @@ body {
 .WithThemeBackground {
   background-color: var(--mb-color-bg-dashboard);
   border-color: var(--mb-color-border);
-}
-
-/* A temporary solution until we migrated all colors in visualization to use semantic colors
-   e.g. `text-primary`, `text-secondary`, `text-tertiary`. */
-.EmbedFrame svg text {
-  fill: var(--mb-color-text-primary);
 }
 
 .EmbedFrameHeader,
@@ -53,7 +47,7 @@ body {
     var(--mb-color-text-white) 45%,
     transparent
   );
-  --mb-color-bg-light: var(--mb-base-color-gray-70);
+  --mb-color-bg-light: var(--mb-base-color-orion-70);
 }
 
 [data-metabase-theme="night"][data-metabase-theme="night"] {
@@ -64,8 +58,9 @@ body {
   --mb-color-background: var(--mb-color-bg-black);
   --mb-color-background-selected: var(--mb-base-color-brand-60);
   --mb-color-background-hover: var(--mb-base-color-brand-70);
-  --mb-color-background-disabled: var(--mb-base-color-gray-70);
+  --mb-color-background-disabled: var(--mb-base-color-orion-70);
   --mb-color-background-brand: var(--mb-base-color-brand-60);
+  --mb-color-switch-off: var(--mb-base-color-orion-70);
 
   .EmbedFrameHeader,
   .EmbedFrameFooter {
@@ -77,7 +72,10 @@ body {
     transition: color 1s linear;
   }
 
+  /* A temporary solution until we migrated all colors in visualization to use semantic colors
+   e.g. `text-primary`, `text-secondary`, `text-tertiary`. */
   .EmbedFrame svg text {
+    fill: var(--mb-color-text-primary);
     stroke: none !important;
   }
 

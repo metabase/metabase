@@ -15,7 +15,6 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.literal :as lib.schema.literal]
-   [metabase.models :refer [Field]]
    [metabase.models.setting :as setting]
    [metabase.models.table :as table]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -314,6 +313,24 @@
      (describe-fields-xf driver db)
      (sql-jdbc.execute/reducible-query db (describe-fields-sql driver (assoc args :details (:details db)))))))
 
+(defmulti describe-indexes-sql
+  "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-indexes]],
+ i.e. [[describe-indexes]]."
+  {:added    "0.51.4"
+   :arglists '([driver & {:keys [schema-names table-names details]}])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defn describe-indexes
+  "Default implementation of [[metabase.driver/describe-indexes]] for JDBC drivers."
+  [driver db & {:keys [schema-names table-names] :as args}]
+  (if (or (and schema-names (empty? schema-names))
+          (and table-names (empty? table-names)))
+    []
+    (eduction
+     (map (fn [col] (select-keys col [:table-schema :table-name :field-name])))
+     (sql-jdbc.execute/reducible-query db (describe-indexes-sql driver (assoc args :details (:details db)))))))
+
 (defn- describe-table-fks*
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
   (into
@@ -406,13 +423,13 @@
 
 (defn- number-type [t]
   (u/case-enum t
-               JsonParser$NumberType/INT         Long
-               JsonParser$NumberType/LONG        Long
-               JsonParser$NumberType/FLOAT       Double
-               JsonParser$NumberType/DOUBLE      Double
-               JsonParser$NumberType/BIG_INTEGER clojure.lang.BigInt
+    JsonParser$NumberType/INT         Long
+    JsonParser$NumberType/LONG        Long
+    JsonParser$NumberType/FLOAT       Double
+    JsonParser$NumberType/DOUBLE      Double
+    JsonParser$NumberType/BIG_INTEGER clojure.lang.BigInt
     ;; there seem to be no way to encounter this, search in tests for `BigDecimal`
-               JsonParser$NumberType/BIG_DECIMAL BigDecimal))
+    JsonParser$NumberType/BIG_DECIMAL BigDecimal))
 
 (defn- json-object?
   "Return true if the string `s` is a JSON where value is an object.
@@ -449,22 +466,22 @@
 
             :else
             (u/case-enum token
-                         JsonToken/VALUE_NUMBER_INT   (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
-                         JsonToken/VALUE_NUMBER_FLOAT (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
-                         JsonToken/VALUE_TRUE         (recur path field (assoc! res (conj path field) Boolean))
-                         JsonToken/VALUE_FALSE        (recur path field (assoc! res (conj path field) Boolean))
-                         JsonToken/VALUE_NULL         (recur path field (assoc! res (conj path field) nil))
-                         JsonToken/VALUE_STRING       (recur path field (assoc! res (conj path field)
-                                                                                (type-by-parsing-string (.getText p))))
-                         JsonToken/FIELD_NAME         (recur path (.getText p) res)
-                         JsonToken/START_OBJECT       (recur (cond-> path field  (conj field)) field res)
-                         JsonToken/END_OBJECT         (recur (cond-> path (seq path) pop) field res)
-             ;; We put top-level array row type semantics on JSON roadmap but skip for now
-                         JsonToken/START_ARRAY        (do (.skipChildren p)
-                                                          (if field
-                                                            (recur path field (assoc! res (conj path field) clojure.lang.PersistentVector))
-                                                            (recur path field res)))
-                         JsonToken/END_ARRAY          (recur path field res))))))))
+              JsonToken/VALUE_NUMBER_INT   (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
+              JsonToken/VALUE_NUMBER_FLOAT (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
+              JsonToken/VALUE_TRUE         (recur path field (assoc! res (conj path field) Boolean))
+              JsonToken/VALUE_FALSE        (recur path field (assoc! res (conj path field) Boolean))
+              JsonToken/VALUE_NULL         (recur path field (assoc! res (conj path field) nil))
+              JsonToken/VALUE_STRING       (recur path field (assoc! res (conj path field)
+                                                                     (type-by-parsing-string (.getText p))))
+              JsonToken/FIELD_NAME         (recur path (.getText p) res)
+              JsonToken/START_OBJECT       (recur (cond-> path field  (conj field)) field res)
+              JsonToken/END_OBJECT         (recur (cond-> path (seq path) pop) field res)
+                         ;; We put top-level array row type semantics on JSON roadmap but skip for now
+              JsonToken/START_ARRAY        (do (.skipChildren p)
+                                               (if field
+                                                 (recur path field (assoc! res (conj path field) clojure.lang.PersistentVector))
+                                                 (recur path field res)))
+              JsonToken/END_ARRAY          (recur path field res))))))))
 
 (defn- json-map->types [json-map]
   (apply merge (map #(json->types (second %) [(first %)]) json-map)))
@@ -567,7 +584,7 @@
         json-fields  (filter #(isa? (:base-type %) :type/JSON) table-fields)]
     (if-not (seq json-fields)
       #{}
-      (let [existing-fields-by-name (m/index-by :name (t2/select Field :table_id (u/the-id table)))
+      (let [existing-fields-by-name (m/index-by :name (t2/select :model/Field :table_id (u/the-id table)))
             should-not-unfold?      (fn [field]
                                       (when-let [existing-field (existing-fields-by-name (:name field))]
                                         (false? (:json_unfolding existing-field))))]

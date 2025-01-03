@@ -3,13 +3,12 @@ import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryContext, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/testing-library";
 import { type ComponentProps, useEffect } from "react";
-import { Provider } from "react-redux";
 
 import { getStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
-import { waitTimeContext } from "metabase/context/wait-time";
+import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { publicReducers } from "metabase/reducers-public";
 import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
@@ -43,7 +42,6 @@ export default {
   component: PublicOrEmbeddedDashboardView,
   decorators: [
     ReduxDecorator,
-    FasterExplicitSizeUpdateDecorator,
     WaitForResizeToStopDecorator,
     MockIsEmbeddingDecorator,
   ],
@@ -103,24 +101,15 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
 
   const store = getStore(publicReducers, initialState);
   return (
-    <Provider store={store}>
+    <MetabaseReduxProvider store={store}>
       <Story />
-    </Provider>
-  );
-}
-
-function FasterExplicitSizeUpdateDecorator(Story: StoryFn) {
-  return (
-    <waitTimeContext.Provider value={0}>
-      <Story />
-    </waitTimeContext.Provider>
+    </MetabaseReduxProvider>
   );
 }
 
 /**
  * This is an arbitrary number, it should be big enough to pass CI tests.
- * This value works together with FasterExplicitSizeUpdateDecorator which
- * make sure we finish resizing any ExplicitSize components the fastest.
+ * This works because we set delays for ExplicitSize to 0 in storybook.
  */
 const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1500;
 function WaitForResizeToStopDecorator(Story: StoryFn) {
@@ -692,16 +681,8 @@ export const LightThemeDateFilterMonthYear = {
     await userEvent.click(filter);
 
     const popover = getLastPopover();
-    const month = popover.getByText("March");
+    const month = popover.getByText("May");
     month.classList.add("pseudo-hover");
-
-    await userEvent.click(
-      popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
-    );
-    const dropdown = getLastPopover();
-    dropdown
-      .getByRole("option", { name: "2023" })
-      .setAttribute("data-hovered", "true");
   },
 };
 
@@ -853,7 +834,8 @@ export const LightThemeDateFilterRange = {
     await userEvent.click(filter);
 
     const popover = getLastPopover();
-    popover.getByText("15").classList.add("pseudo-hover");
+    await userEvent.click(popover.getByRole("button", { name: "Add time" }));
+    popover.getAllByText("15")[0].classList.add("pseudo-hover");
   },
 };
 

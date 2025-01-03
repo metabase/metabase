@@ -22,8 +22,6 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models :refer [Table]]
-   [metabase.models.database :refer [Database]]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
@@ -240,6 +238,18 @@
        (fn [^java.sql.Connection conn]
          (is (sql-jdbc.sync/have-select-privilege? :snowflake conn "PUBLIC" "venues")))))))
 
+(deftest ^:parallel can-set-schema-in-additional-options
+  (mt/test-driver :snowflake
+    (qp.store/with-metadata-provider (mt/id)
+      (let [schema "INFORMATION_SCHEMA"
+            details (-> (mt/db)
+                        (assoc-in [:details :quote-db-name] true)
+                        (assoc-in [:details :additional-options] (format "schema=%s" schema))
+                        :details)]
+        (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [:snowflake details]]
+          (is (= [{:s schema}] (jdbc/query spec ["select CURRENT_SCHEMA() s"])))
+          (is (= 1 (count (jdbc/query spec ["select * from \"TABLES\" limit 1"])))))))))
+
 (deftest describe-database-test
   (mt/test-driver :snowflake
     (testing "describe-database"
@@ -293,7 +303,7 @@
                            (format "GRANT SELECT ON %s TO PUBLIC;" (identifier db-name schema-name table-name))])]
              (jdbc/execute! {:connection conn} [stmt] {:transaction? false}))))
         ;; fetch metadata
-        (t2.with-temp/with-temp [Database database {:engine :snowflake, :details details}]
+        (t2.with-temp/with-temp [:model/Database database {:engine :snowflake, :details details}]
           (is (=? {:tables #{{:name table-name, :schema schema-name, :description nil}}}
                   (driver/describe-database :snowflake database))))))))
 
@@ -308,7 +318,7 @@
                       (format "CREATE DATABASE \"%s\";" db-name)]]
           (jdbc/execute! spec [stmt] {:transaction? false}))
         ;; create the DB object
-        (t2.with-temp/with-temp [Database database {:engine :snowflake, :details details}]
+        (t2.with-temp/with-temp [:model/Database database {:engine :snowflake, :details details}]
           (let [sync! #(sync/sync-database! database)]
             ;; create a view
             (doseq [statement [(format "CREATE VIEW \"%s\".\"PUBLIC\".\"example_view\" AS SELECT 'hello world' AS \"name\";" db-name)
@@ -319,7 +329,7 @@
             ;; now take a look at the Tables in the database, there should be an entry for the view
             (is (= [{:name "example_view"}]
                    (map (partial into {})
-                        (t2/select [Table :name] :db_id (u/the-id database)))))))))))
+                        (t2/select [:model/Table :name] :db_id (u/the-id database)))))))))))
 
 (defn- do-with-dynamic-table
   [thunk]
@@ -407,7 +417,7 @@
                          :database-is-auto-increment false
                          :database-required true
                          :json-unfolding    false}}}
-             (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one Table :id (mt/id :categories))))))))
+             (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :categories))))))))
 
 (deftest ^:parallel describe-table-fks-test
   (mt/test-driver :snowflake
@@ -416,7 +426,7 @@
                 :dest-table       {:name "categories", :schema "PUBLIC"}
                 :dest-column-name "id"}}
              #_{:clj-kondo/ignore [:deprecated-var]}
-             (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (t2/select-one Table :id (mt/id :venues))))))))
+             (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :venues))))))))
 
 (defn- format-env-key ^String [env-key]
   (let [[_ header body footer]
@@ -724,10 +734,10 @@
 (deftest ^:parallel normalize-test
   (mt/test-driver :snowflake
     (testing "details should be normalized coming out of the DB"
-      (t2.with-temp/with-temp [Database db {:name    "Legacy Snowflake DB"
-                                            :engine  :snowflake,
-                                            :details {:account  "my-instance"
-                                                      :regionid "us-west-1"}}]
+      (t2.with-temp/with-temp [:model/Database db {:name    "Legacy Snowflake DB"
+                                                   :engine  :snowflake,
+                                                   :details {:account  "my-instance"
+                                                             :regionid "us-west-1"}}]
         (is (= {:account "my-instance.us-west-1"}
                (:details db)))))))
 
@@ -955,19 +965,17 @@
                       (is (=? [[string? 4] [string? 4] [string? 4]]
                               (mt/rows
                                (qp/process-query
-                                {:database (mt/id)
-                                 :type :query
-                                 :query {:source-table (mt/id :GOOD_DATETIMES)
-                                         :aggregation [[:count]]
-                                         :breakout [tested-day]}}))))
+                                (mt/mbql-query nil
+                                  {:source-table (mt/id :GOOD_DATETIMES)
+                                   :aggregation [[:count]]
+                                   :breakout [tested-day]})))))
                       (is (= [[yesterday-first-str 4 yesterday-first-str yesterday-last-str]]
                              (mt/rows
                               (qp/process-query
-                               {:database (mt/id)
-                                :type :query
-                                :query {:source-table (mt/id :GOOD_DATETIMES)
-                                        :aggregation [[:count]
-                                                      [:min tested-minute]
-                                                      [:max tested-minute]]
-                                        :breakout [tested-day]
-                                        :filter [:= tested-field (t/format :iso-local-date yesterday-last)]}})))))))))))))))
+                               (mt/mbql-query nil
+                                 {:source-table (mt/id :GOOD_DATETIMES)
+                                  :aggregation [[:count]
+                                                [:min tested-minute]
+                                                [:max tested-minute]]
+                                  :breakout [tested-day]
+                                  :filter [:= tested-field (t/format :iso-local-date yesterday-last)]}))))))))))))))))

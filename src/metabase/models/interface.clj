@@ -1,18 +1,19 @@
 (ns metabase.models.interface
   (:require
    [buddy.core.codecs :as codecs]
-   [cheshire.core :as json]
-   [cheshire.generate :as json.generate]
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.error :as me]
+   [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.plugins.classloader :as classloader]
@@ -20,6 +21,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -133,12 +135,12 @@
   [obj]
   (if (string? obj)
     obj
-    (json/generate-string obj)))
+    (json/encode obj)))
 
 (defn- json-out [s keywordize-keys?]
   (if (string? s)
     (try
-      (json/parse-string s keywordize-keys?)
+      (json/decode s keywordize-keys?)
       (catch Throwable e
         (log/error e "Error parsing JSON")
         s))
@@ -215,6 +217,17 @@
   (or (mbql.normalize/normalize-fragment [:parameters] parameters)
       []))
 
+(defn- keywordize-temporal_units
+  [parameter]
+  (m/update-existing parameter :temporal_units (fn [units] (mapv keyword units))))
+
+(defn normalize-card-parameters-list
+  "Normalize `parameters` of actions, cards, and dashboards when coming out of the application database."
+  [parameters]
+  (->> parameters
+       normalize-parameters-list
+       (mapv keywordize-temporal_units)))
+
 (def transform-metabase-query
   "Transform for metabase-query."
   {:in  (comp json-in (partial maybe-normalize-query :in))
@@ -224,6 +237,11 @@
   "Transform for parameters list."
   {:in  (comp json-in normalize-parameters-list)
    :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
+
+(def transform-card-parameters-list
+  "Transform for parameters list."
+  {:in  (comp json-in normalize-card-parameters-list)
+   :out (comp (catch-normalization-exceptions normalize-card-parameters-list) json-out-with-keywordization)})
 
 (def transform-field-ref
   "Transform field refs"
@@ -235,7 +253,10 @@
   [metadata]
   ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
-    (seq (map mbql.normalize/normalize-source-metadata metadata))))
+    (seq (->> (map mbql.normalize/normalize-source-metadata metadata)
+              ;; This is necessary, because in the wild, there may be cards created prior to this change.
+              (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)
+              (map lib.binning/ensure-binning-in-display-name)))))
 
 (def transform-result-metadata
   "Transform for card.result_metadata like columns."
@@ -299,7 +320,7 @@
   [v]
   (let [decrypted (encryption/maybe-decrypt v)]
     (try
-      (json/parse-string decrypted true)
+      (json/decode+kw decrypted)
       (catch Throwable e
         (if (or (encryption/possibly-encrypted-string? decrypted)
                 (encryption/possibly-encrypted-bytes? decrypted))
@@ -321,7 +342,7 @@
    to modern MBQL clauses so things work correctly."
   [viz-settings]
   (letfn [(normalize-column-settings-key [k]
-            (some-> k u/qualified-name json/parse-string mbql.normalize/normalize json/generate-string))
+            (some-> k u/qualified-name json/decode mbql.normalize/normalize json/encode))
           (normalize-column-settings [column-settings]
             (into {} (for [[k v] column-settings]
                        [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
@@ -343,6 +364,8 @@
                    form)))
              form))]
     (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings" "graph.metrics"))
+      ;; "key" is an old unused value
+      true                                 (m/update-existing :table.columns (fn [cols] (mapv #(dissoc % :key) cols)))
       (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
       true                                 normalize-mbql-clauses
       ;; exclude graph.metrics from normalization as it may start with
@@ -389,20 +412,19 @@
   {:in  validate-cron-string
    :out identity})
 
-(def ^:private LegacyMetricSegmentDefinition
+(mr/def ::legacy-metric-segment-definition
   [:map
    [:filter      {:optional true} [:maybe mbql.s/Filter]]
    [:aggregation {:optional true} [:maybe [:sequential ::mbql.s/Aggregation]]]])
 
-(def ^:private ^{:arglists '([definition])} validate-legacy-metric-segment-definition
-  (let [explainer (mr/explainer LegacyMetricSegmentDefinition)]
-    (fn [definition]
-      (if-let [error (explainer definition)]
-        (let [humanized (me/humanize error)]
-          (throw (ex-info (tru "Invalid Metric or Segment: {0}" (pr-str humanized))
-                          {:error     error
-                           :humanized humanized})))
-        definition))))
+(defn- validate-legacy-metric-segment-definition
+  [definition]
+  (if-let [error (mr/explain ::legacy-metric-segment-definition definition)]
+    (let [humanized (me/humanize error)]
+      (throw (ex-info (tru "Invalid Metric or Segment: {0}" (pr-str humanized))
+                      {:error     error
+                       :humanized humanized})))
+    definition))
 
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-legacy-metric-segment-definition [definition]
@@ -725,9 +747,9 @@
 (methodical/defmethod to-json :default
   "Default method for encoding instances of a Toucan model to JSON."
   [instance json-generator]
-  (json.generate/encode-map instance json-generator))
+  (json/generate-map instance json-generator))
 
-(json.generate/add-encoder
+(json/add-encoder
  Instance
  #'to-json)
 

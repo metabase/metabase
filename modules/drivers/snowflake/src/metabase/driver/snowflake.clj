@@ -2,7 +2,6 @@
   "Snowflake Driver."
   (:require
    [buddy.core.codecs :as codecs]
-   [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -38,6 +37,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [ring.util.codec :as codec])
   (:import
@@ -186,7 +186,7 @@
                      (update :db quote-name))
                    ;; see https://github.com/metabase/metabase/issues/9511
                    (update :warehouse upcase-not-nil)
-                   (update :schema upcase-not-nil)
+                   (m/update-existing :schema upcase-not-nil)
                    resolve-private-key
                    (dissoc :host :port :timezone)))
         (sql-jdbc.common/handle-additional-options details)
@@ -328,6 +328,10 @@
 (defmethod sql.qp/date [:snowflake :day-of-week]
   [_driver _unit expr]
   (extract :dayofweek expr))
+
+(defmethod sql.qp/date [:snowflake :day-of-week-iso]
+  [_driver _unit expr]
+  (extract :dayofweekiso expr))
 
 (defn- time-zoned-datediff
   "Same as snowflake's `datediff` but converts the args to the results time zone
@@ -722,16 +726,16 @@
   [_ {{:keys [context executed-by card-id pulse-id dashboard-id query-hash]} :info,
       query-type :type,
       database-id :database}]
-  (json/generate-string {:client      "Metabase"
-                         :context     context
-                         :queryType   query-type
-                         :userId      executed-by
-                         :pulseId     pulse-id
-                         :cardId      card-id
-                         :dashboardId dashboard-id
-                         :databaseId  database-id
-                         :queryHash   (when (bytes? query-hash) (codecs/bytes->hex query-hash))
-                         :serverId    (public-settings/site-uuid)}))
+  (json/encode {:client      "Metabase"
+                :context     context
+                :queryType   query-type
+                :userId      executed-by
+                :pulseId     pulse-id
+                :cardId      card-id
+                :dashboardId dashboard-id
+                :databaseId  database-id
+                :queryHash   (when (bytes? query-hash) (codecs/bytes->hex query-hash))
+                :serverId    (public-settings/site-uuid)}))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 

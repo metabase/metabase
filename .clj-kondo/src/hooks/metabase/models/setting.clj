@@ -21,6 +21,7 @@
      database-enable-actions
      deprecation-notice-version
      dismissed-custom-dashboard-toast
+     dismissed-onboarding-sidebar-link
      email-configured?
      email-from-address
      email-from-name
@@ -161,6 +162,7 @@
      token-features
      token-status
      toucan-name
+     trial-banner-dismissal-timestamp
      uncached-setting
      user-visibility
      version

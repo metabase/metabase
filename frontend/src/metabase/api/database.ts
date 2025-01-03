@@ -185,12 +185,21 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values")]),
     }),
+    addSampleDatabase: builder.mutation<void, Database>({
+      query: () => ({
+        method: "POST",
+        url: `/api/database/sample_database`,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("database")]),
+    }),
   }),
 });
 
 export const {
   useListDatabasesQuery,
   useGetDatabaseQuery,
+  useGetDatabaseMetadataQuery,
   useListDatabaseSchemasQuery,
   useListSyncableDatabaseSchemasQuery,
   useListDatabaseSchemaTablesQuery,

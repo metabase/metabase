@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { useGetNativeDatasetQuery } from "metabase/api";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { formatNativeQuery } from "metabase/lib/engine";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
@@ -15,7 +16,7 @@ import * as Lib from "metabase-lib";
 
 import { NativeQueryPreview } from "../NativeQueryPreview";
 
-import { ModalExternalLink } from "./PreviewQueryModal.styled";
+import PreviewQueryModalS from "./PreviewQueryModal.module.css";
 
 interface PreviewQueryModalProps {
   onClose?: () => void;
@@ -33,7 +34,9 @@ export const PreviewQueryModal = ({
     pretty: false,
   };
   const { data, error, isFetching } = useGetNativeDatasetQuery(payload);
-  const learnUrl = getLearnUrl("debugging-sql/sql-syntax");
+  const learnUrl = getLearnUrl(
+    "grow-your-data-skills/learn-sql/debugging-sql/sql-syntax",
+  );
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   const engine = question.database()?.engine;
@@ -49,9 +52,12 @@ export const PreviewQueryModal = ({
       onClose={onClose}
     >
       {formattedError && showMetabaseLinks && (
-        <ModalExternalLink href={learnUrl}>
+        <ExternalLink
+          className={PreviewQueryModalS.ModalExternalLink}
+          href={learnUrl}
+        >
           {t`Learn how to debug SQL errors`}
-        </ModalExternalLink>
+        </ExternalLink>
       )}
     </NativeQueryPreview>
   );

@@ -24,7 +24,8 @@
              handler (sdk/embedding-mw
                       (fn [_ respond _] (respond {:status 200 :body client})))
              response (handler request identity identity)]
-         (is (= (:body response "no-body") client)))
+         (is (= client
+                (:body response "no-body"))))
     nil
     "embedding-iframe"))
 
@@ -34,17 +35,22 @@
              handler (sdk/embedding-mw
                       (fn [_ respond _] (respond {:status 200 :body version})))
              response (handler request identity identity)]
-         (is (= (:body response "no-body") version)))
+         (is (= version
+                (:body response "no-body"))))
     nil
     "1.1.1"))
 
-(deftest embeding-mw-bumps-metrics-with-sdk-header
+(deftest embeding-mw-bumps-metrics-with-react-sdk-client-header
   (let [prometheus-standin (atom {})]
     (with-redefs [prometheus/inc! (fn [k] (swap! prometheus-standin update k (fnil inc 0)))]
-      (let [request (mock-request {:client "my-client"}) ;; <-- has X-Metabase-Client header => SDK context
+      ;; X-Metabase-Client header == "embedding-sdk-react" => SDK context
+      (let [request (mock-request {:client @#'sdk/embedding-sdk-client})
             good (sdk/embedding-mw (fn [_ respond _] (respond {:status 200})))
             bad (sdk/embedding-mw (fn [_ respond _] (respond {:status 400})))
+            ignored (sdk/embedding-mw (fn [_ respond _] (respond {:status 302})))
             exception (sdk/embedding-mw (fn [_ _respond raise] (raise {})))]
+        (ignored request identity identity)
+        (is (= {} @prometheus-standin))
         (good request identity identity)
         (is (= {:metabase-sdk/response-ok 1} @prometheus-standin))
         (bad request identity identity)
@@ -54,13 +60,54 @@
         (is (= {:metabase-sdk/response-ok 1
                 :metabase-sdk/response-error 2} @prometheus-standin))))))
 
+(deftest embeding-mw-bumps-metrics-with-iframe-client-header
+  (let [prometheus-standin (atom {})]
+    (with-redefs [prometheus/inc! (fn [k] (swap! prometheus-standin update k (fnil inc 0)))]
+      ;; X-Metabase-Client header == "embedding-sdk-react" => SDK context
+      (let [request (mock-request {:client @#'sdk/embedding-iframe-client})
+            good (sdk/embedding-mw (fn [_ respond _] (respond {:status 200})))
+            bad (sdk/embedding-mw (fn [_ respond _] (respond {:status 400})))
+            ignored (sdk/embedding-mw (fn [_ respond _] (respond {:status 302})))
+            exception (sdk/embedding-mw (fn [_ _respond raise] (raise {})))]
+        (ignored request identity identity)
+        (is (= {} @prometheus-standin))
+        (good request identity identity)
+        (is (= {:metabase-embedding-iframe/response-ok 1} @prometheus-standin))
+        (bad request identity identity)
+        (is (= {:metabase-embedding-iframe/response-ok 1
+                :metabase-embedding-iframe/response-error 1} @prometheus-standin))
+        (exception request identity identity)
+        (is (= {:metabase-embedding-iframe/response-ok 1
+                :metabase-embedding-iframe/response-error 2} @prometheus-standin))))))
+
+(deftest embeding-mw-does-not-bump-metrics-with-random-sdk-header
+  (let [prometheus-standin (atom {})]
+    (with-redefs [prometheus/inc! (fn [k] (swap! prometheus-standin update k (fnil inc 0)))]
+       ;; has X-Metabase-Client header, but it's not the SDK, so we don't track it
+      (let [request (mock-request {:client "my-client"})
+            good (sdk/embedding-mw (fn [_ respond _] (respond {:status 200})))
+            bad (sdk/embedding-mw (fn [_ respond _] (respond {:status 400})))
+            ignored (sdk/embedding-mw (fn [_ respond _] (respond {:status 302})))
+            exception (sdk/embedding-mw (fn [_ _respond raise] (raise {})))]
+        (ignored request identity identity)
+        (is (= {} @prometheus-standin))
+        (good request identity identity)
+        (is (= {} @prometheus-standin))
+        (bad request identity identity)
+        (is (= {} @prometheus-standin))
+        (exception request identity identity)
+        (is (= {} @prometheus-standin))))))
+
 (deftest embeding-mw-does-not-bump-sdk-metrics-without-sdk-header
   (let [prometheus-standin (atom {})]
     (with-redefs [prometheus/inc! (fn [k] (swap! prometheus-standin update k (fnil inc 0)))]
       (let [request (mock-request {}) ;; <= no X-Metabase-Client header => no SDK context
             good (sdk/embedding-mw (fn [_ respond _] (respond {:status 200})))
             bad (sdk/embedding-mw (fn [_ respond _] (respond {:status 400})))
+            ignored (sdk/embedding-mw (fn [_ respond _] (respond {:status 302})))
             exception (sdk/embedding-mw (fn [_ _respond raise] (raise {})))]
+        (ignored request identity identity)
+        (is (= {} @prometheus-standin))
         (good request identity identity)
         (is (= {} @prometheus-standin))
         (bad request identity identity)

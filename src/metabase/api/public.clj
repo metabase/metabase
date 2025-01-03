@@ -1,7 +1,6 @@
 (ns metabase.api.public
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require
-   [cheshire.core :as json]
    [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.actions.core :as actions]
@@ -18,10 +17,7 @@
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.action :as action]
-   [metabase.models.card :as card :refer [Card]]
-   [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.dimension :refer [Dimension]]
-   [metabase.models.field :refer [Field]]
+   [metabase.models.card :as card]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.query-processor.card :as qp.card]
@@ -32,10 +28,11 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.streaming :as qp.streaming]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [throttle.core :as throttle]
@@ -74,11 +71,11 @@
 (defn- remove-card-non-public-columns
   "Remove everyting from public `card` that shouldn't be visible to the general public."
   [card]
-  ;; We need to check this to resolve params - we set `mw.session/as-admin` there
+  ;; We need to check this to resolve params - we set `request/as-admin` there
   (if qp.perms/*param-values-query*
     card
     (mi/instance
-     Card
+     :model/Card
      (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters
                                  [:dataset_query :type [:native :template-tags]]]))))
 
@@ -87,7 +84,7 @@
   public. Throws a 404 if the Card doesn't exist."
   [& conditions]
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
-    (-> (api/check-404 (apply t2/select-one [Card :id :dataset_query :description :display :name :parameters :visualization_settings]
+    (-> (api/check-404 (apply t2/select-one [:model/Card :id :dataset_query :description :display :name :parameters :visualization_settings]
                               :archived false, conditions))
         remove-card-non-public-columns
         combine-parameters-and-template-tags
@@ -136,7 +133,7 @@
   (fn run [query info]
     (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
       (binding [qp.pipeline/*result* (comp qp.pipeline/*result* transform-qp-result)]
-        (mw.session/as-admin
+        (request/as-admin
           (qp (update query :info merge info) rff))))))
 
 (mu/defn- export-format->context :- ::lib.schema.info/context
@@ -161,7 +158,7 @@
   ;; we actually need to bind the current user perms here twice, once so `card-api` will have the full perms when it
   ;; tries to do the `read-check`, and a second time for when the query is ran (async) so the QP middleware will have
   ;; the correct perms
-  (mw.session/as-admin
+  (request/as-admin
     (m/mapply qp.card/process-query-for-card card-id export-format
               :parameters parameters
               :context    (export-format->context export-format)
@@ -174,7 +171,7 @@
   `StreamingResponse` object that should be returned as the result of an API endpoint."
   [uuid export-format parameters & options]
   (validation/check-public-sharing-enabled)
-  (let [card-id (api/check-404 (t2/select-one-pk Card :public_uuid uuid, :archived false))]
+  (let [card-id (api/check-404 (t2/select-one-pk :model/Card :public_uuid uuid, :archived false))]
     (apply process-query-for-card-with-id card-id export-format parameters options)))
 
 (api/defendpoint GET "/card/:uuid/query"
@@ -183,7 +180,7 @@
   [uuid parameters]
   {uuid       ms/UUIDString
    parameters [:maybe ms/JSONString]}
-  (process-query-for-card-with-public-uuid uuid :api (json/parse-string parameters keyword)))
+  (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)))
 
 (api/defendpoint GET "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
@@ -197,7 +194,7 @@
   (process-query-for-card-with-public-uuid
    uuid
    export-format
-   (json/parse-string parameters keyword)
+   (json/decode+kw parameters)
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
@@ -237,7 +234,7 @@
   {:pre [(even? (count conditions))]}
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true
             params/*field-id-context* (atom params/empty-field-id-context)]
-    (-> (api/check-404 (apply t2/select-one [Dashboard :name :description :id :parameters :auto_apply_filters :width], :archived false, conditions))
+    (-> (api/check-404 (apply t2/select-one [:model/Dashboard :name :description :id :parameters :auto_apply_filters :width], :archived false, conditions))
         (t2/hydrate [:dashcards :card :series :dashcard/action] :tabs :param_values :param_fields)
         api.dashboard/add-query-average-durations
         (update :dashcards (fn [dashcards]
@@ -279,14 +276,14 @@
                   :constraints (qp.constraints/default-query-constraints)}
                  options
                  {:parameters    (cond-> parameters
-                                   (string? parameters) (json/parse-string keyword))
+                                   (string? parameters) json/decode+kw)
                   :export-format export-format
                   :qp            qp
                   :make-run      process-query-for-card-with-id-run-fn})]
     ;; Run this query with full superuser perms. We don't want the various perms checks failing because there are no
     ;; current user perms; if this Dashcard is public you're by definition allowed to run it without a perms check
     ;; anyway
-    (mw.session/as-admin
+    (request/as-admin
       (m/mapply qp.dashboard/process-query-for-dashcard options))))
 
 (api/defendpoint GET "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
@@ -299,7 +296,7 @@
    parameters  [:maybe ms/JSONString]}
   (validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
-  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
+  (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
     (u/prog1 (process-query-for-dashcard
               :dashboard-id  dashboard-id
               :card-id       card-id
@@ -321,7 +318,7 @@
    export-format (into [:enum] api.dataset/export-formats)}
   (validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
-  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
+  (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
     (u/prog1 (process-query-for-dashcard
               :dashboard-id  dashboard-id
               :card-id       card-id
@@ -340,10 +337,10 @@
    dashcard-id ms/PositiveInt
    parameters  ms/JSONString}
   (validation/check-public-sharing-enabled)
-  (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid :archived false))
+  (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid :archived false))
   (actions/fetch-values
    (api/check-404 (action/dashcard->action dashcard-id))
-   (json/parse-string parameters)))
+   (json/decode parameters)))
 
 (def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 5000))
 
@@ -368,11 +365,11 @@
         throttle-time (assoc :headers {"Retry-After" throttle-time}))
       (do
         (validation/check-public-sharing-enabled)
-        (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
+        (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
           ;; Run this query with full superuser perms. We don't want the various perms checks
           ;; failing because there are no current user perms; if this Dashcard is public
           ;; you're by definition allowed to run it without a perms check anyway
-          (mw.session/as-admin
+          (request/as-admin
             ;; Undo middleware string->keyword coercion
             (actions/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
 
@@ -426,7 +423,7 @@
   "Check to make sure the query for Card with `card-id` references Field with `field-id`. Otherwise, or if the Card
   cannot be found, throw an Exception."
   [field-id card-id]
-  (let [card                 (api/check-404 (t2/select-one [Card :dataset_query] :id card-id))
+  (let [card                 (api/check-404 (t2/select-one [:model/Card :dataset_query] :id card-id))
         referenced-field-ids (card->referenced-field-ids card)]
     (api/check-404 (contains? referenced-field-ids field-id))))
 
@@ -444,17 +441,17 @@
   {:pre [(integer? field-id) (integer? search-field-id)]}
   (api/check-400
    (or (= field-id search-field-id)
-       (t2/exists? Dimension :field_id field-id, :human_readable_field_id search-field-id)
+       (t2/exists? :model/Dimension :field_id field-id, :human_readable_field_id search-field-id)
        ;; just do a couple small queries to figure this out, we could write a fancy query to join Field against itself
        ;; and do this in one but the extra code complexity isn't worth it IMO
-       (when-let [table-id (t2/select-one-fn :table_id Field :id field-id, :semantic_type (mdb.query/isa :type/PK))]
-         (t2/exists? Field :id search-field-id, :table_id table-id, :semantic_type (mdb.query/isa :type/Name))))))
+       (when-let [table-id (t2/select-one-fn :table_id :model/Field :id field-id, :semantic_type (mdb.query/isa :type/PK))]
+         (t2/exists? :model/Field :id search-field-id, :table_id table-id, :semantic_type (mdb.query/isa :type/Name))))))
 
 (defn- check-field-is-referenced-by-dashboard
   "Check that `field-id` belongs to a Field that is used as a parameter in a Dashboard with `dashboard-id`, or throw a
   404 Exception."
   [field-id dashboard-id]
-  (let [dashboard       (-> (t2/select-one Dashboard :id dashboard-id)
+  (let [dashboard       (-> (t2/select-one :model/Dashboard :id dashboard-id)
                             api/check-404
                             (t2/hydrate [:dashcards :card]))
         param-field-ids (params/dashcards->param-field-ids (:dashcards dashboard))]
@@ -464,7 +461,7 @@
   "Return the FieldValues for a Field with `field-id` that is referenced by Card with `card-id`."
   [card-id field-id]
   (check-field-is-referenced-by-card field-id card-id)
-  (api.field/field->values (t2/select-one Field :id field-id)))
+  (api.field/field->values (t2/select-one :model/Field :id field-id)))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by a public Card."
@@ -472,7 +469,7 @@
   {uuid     ms/UUIDString
    field-id ms/PositiveInt}
   (validation/check-public-sharing-enabled)
-  (let [card-id (t2/select-one-pk Card :public_uuid uuid, :archived false)]
+  (let [card-id (t2/select-one-pk :model/Card :public_uuid uuid, :archived false)]
     (card-and-field-id->values card-id field-id)))
 
 (defn dashboard-and-field-id->values
@@ -480,7 +477,7 @@
   in Dashboard with `dashboard-id`."
   [dashboard-id field-id]
   (check-field-is-referenced-by-dashboard field-id dashboard-id)
-  (api.field/field->values (t2/select-one Field :id field-id)))
+  (api.field/field->values (t2/select-one :model/Field :id field-id)))
 
 (api/defendpoint GET "/dashboard/:uuid/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by a Card in a public Dashboard."
@@ -488,7 +485,7 @@
   {uuid     ms/UUIDString
    field-id ms/PositiveInt}
   (validation/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
+  (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
     (dashboard-and-field-id->values dashboard-id field-id)))
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
@@ -499,7 +496,7 @@
   [card-id field-id search-id value limit]
   (check-field-is-referenced-by-card field-id card-id)
   (check-search-field-is-allowed field-id search-id)
-  (api.field/search-values (t2/select-one Field :id field-id) (t2/select-one Field :id search-id) value limit))
+  (api.field/search-values (t2/select-one :model/Field :id field-id) (t2/select-one :model/Field :id search-id) value limit))
 
 (defn search-dashboard-fields
   "Wrapper for `metabase.api.field/search-values` for use with public/embedded Dashboards. See that functions
@@ -507,7 +504,7 @@
   [dashboard-id field-id search-id value limit]
   (check-field-is-referenced-by-dashboard field-id dashboard-id)
   (check-search-field-is-allowed field-id search-id)
-  (api.field/search-values (t2/select-one Field :id field-id) (t2/select-one Field :id search-id) value limit))
+  (api.field/search-values (t2/select-one :model/Field :id field-id) (t2/select-one :model/Field :id search-id) value limit))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a public Card."
@@ -518,7 +515,7 @@
    value           ms/NonBlankString
    limit           [:maybe ms/PositiveInt]}
   (validation/check-public-sharing-enabled)
-  (let [card-id (t2/select-one-pk Card :public_uuid uuid, :archived false)]
+  (let [card-id (t2/select-one-pk :model/Card :public_uuid uuid, :archived false)]
     (search-card-fields card-id field-id search-field-id value limit)))
 
 (api/defendpoint GET "/dashboard/:uuid/field/:field-id/search/:search-field-id"
@@ -530,14 +527,14 @@
    value           ms/NonBlankString
    limit           [:maybe ms/PositiveInt]}
   (validation/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
+  (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
     (search-dashboard-fields dashboard-id field-id search-field-id value limit)))
 
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
 (defn- field-remapped-values [field-id remapped-field-id, ^String value-str]
-  (let [field          (api/check-404 (t2/select-one Field :id field-id))
-        remapped-field (api/check-404 (t2/select-one Field :id remapped-field-id))]
+  (let [field          (api/check-404 (t2/select-one :model/Field :id field-id))
+        remapped-field (api/check-404 (t2/select-one :model/Field :id remapped-field-id))]
     (check-search-field-is-allowed field-id remapped-field-id)
     (api.field/remapped-value field remapped-field (api.field/parse-query-param-value-for-field field value-str))))
 
@@ -564,7 +561,7 @@
    remapped-id ms/PositiveInt
    value       ms/NonBlankString}
   (validation/check-public-sharing-enabled)
-  (let [card-id (api/check-404 (t2/select-one-pk Card :public_uuid uuid, :archived false))]
+  (let [card-id (api/check-404 (t2/select-one-pk :model/Card :public_uuid uuid, :archived false))]
     (card-field-remapped-values card-id field-id remapped-id value)))
 
 (api/defendpoint GET "/dashboard/:uuid/field/:field-id/remapping/:remapped-id"
@@ -576,7 +573,7 @@
    remapped-id ms/PositiveInt
    value       ms/NonBlankString}
   (validation/check-public-sharing-enabled)
-  (let [dashboard-id (t2/select-one-pk Dashboard :public_uuid uuid, :archived false)]
+  (let [dashboard-id (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false)]
     (dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
 ;;; ------------------------------------------------ Param Values -------------------------------------------------
@@ -587,8 +584,8 @@
   {uuid      ms/UUIDString
    param-key ms/NonBlankString}
   (validation/check-public-sharing-enabled)
-  (let [card (t2/select-one Card :public_uuid uuid, :archived false)]
-    (mw.session/as-admin
+  (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
+    (request/as-admin
       (api.card/param-values card param-key))))
 
 (api/defendpoint GET "/card/:uuid/params/:param-key/search/:query"
@@ -598,8 +595,8 @@
    param-key ms/NonBlankString
    query     ms/NonBlankString}
   (validation/check-public-sharing-enabled)
-  (let [card (t2/select-one Card :public_uuid uuid, :archived false)]
-    (mw.session/as-admin
+  (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
+    (request/as-admin
       (api.card/param-values card param-key query))))
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/values"
@@ -608,7 +605,7 @@
   {uuid      ms/UUIDString
    param-key ms/NonBlankString}
   (let [dashboard (dashboard-with-uuid uuid)]
-    (mw.session/as-admin
+    (request/as-admin
       (binding [qp.perms/*param-values-query* true]
         (api.dashboard/param-values dashboard param-key constraint-param-key->value)))))
 
@@ -619,7 +616,7 @@
    param-key ms/NonBlankString
    query     ms/NonBlankString}
   (let [dashboard (dashboard-with-uuid uuid)]
-    (mw.session/as-admin
+    (request/as-admin
       (binding [qp.perms/*param-values-query* true]
         (api.dashboard/param-values dashboard param-key constraint-param-key->value query)))))
 
@@ -632,7 +629,7 @@
   [uuid parameters]
   {uuid       ms/UUIDString
    parameters [:maybe ms/JSONString]}
-  (process-query-for-card-with-public-uuid uuid :api (json/parse-string parameters keyword)
+  (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)
                                            :qp qp.pivot/run-pivot-query))
 
 (api/defendpoint GET "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
@@ -645,7 +642,7 @@
    parameters  [:maybe ms/JSONString]}
   (validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
-  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
+  (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
     (u/prog1 (process-query-for-dashcard
               :dashboard-id  dashboard-id
               :card-id       card-id
@@ -688,7 +685,7 @@
         ;; Run this query with full superuser perms. We don't want the various perms checks
         ;; failing because there are no current user perms; if this Dashcard is public
         ;; you're by definition allowed to run it without a perms check anyway
-        (mw.session/as-admin
+        (request/as-admin
           (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
             (snowplow/track-event! ::snowplow/action
                                    {:event     :action-executed

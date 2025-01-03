@@ -81,9 +81,9 @@
 
 ;; Snowflake requires you identify an object with db-name.schema-name.table-name
 (defmethod sql.tx/qualified-name-components :snowflake
-  ([_ db-name]                       [db-name])
-  ([_ db-name table-name]            [db-name "PUBLIC" table-name])
-  ([_ db-name table-name field-name] [db-name "PUBLIC" table-name field-name]))
+  ([_ db-name]                       [(qualified-db-name db-name)])
+  ([_ db-name table-name]            [(qualified-db-name db-name) "PUBLIC" table-name])
+  ([_ db-name table-name field-name] [(qualified-db-name db-name) "PUBLIC" table-name field-name]))
 
 (defmethod sql.tx/create-db-sql :snowflake
   [driver {:keys [database-name]}]

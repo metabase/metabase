@@ -1,6 +1,6 @@
 import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type ConnectedProps, connect } from "react-redux";
+import type { ConnectedProps } from "react-redux";
 import type { Route, WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { useMount, usePrevious, useUnmount } from "react-use";
@@ -10,14 +10,14 @@ import _ from "underscore";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import Bookmark from "metabase/entities/bookmarks";
 import Timelines from "metabase/entities/timelines";
-import favicon from "metabase/hoc/Favicon";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
+import { useFavicon } from "metabase/hooks/use-favicon";
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
-import { useSelector } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -39,9 +39,7 @@ import * as actions from "../actions";
 import { View } from "../components/view/View";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
-  getAutocompleteResultsFn,
   getCard,
-  getCardAutocompleteResultsFn,
   getDataReferenceStack,
   getDatabaseFields,
   getDatabasesList,
@@ -183,9 +181,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     questionAlerts: getQuestionAlerts(state),
     visualizationSettings: getVisualizationSettings(state),
 
-    autocompleteResultsFn: getAutocompleteResultsFn(state),
-    cardAutocompleteResultsFn: getCardAutocompleteResultsFn(state),
-
     queryStartTime: getQueryStartTime(state),
     nativeEditorCursorOffset: getNativeEditorCursorOffset(state),
     nativeEditorSelectedText: getNativeEditorSelectedText(state),
@@ -222,6 +217,8 @@ type QueryBuilderInnerProps = ReduxProps &
   };
 
 function QueryBuilderInner(props: QueryBuilderInnerProps) {
+  useFavicon({ favicon: props.pageFavicon ?? null });
+
   const {
     question,
     originalQuestion,
@@ -441,7 +438,6 @@ export const QueryBuilder = _.compose(
   Bookmark.loadList(),
   Timelines.loadList(timelineProps),
   connector,
-  favicon(({ pageFavicon }: { pageFavicon: string }) => pageFavicon),
   title(({ card, documentTitle }: { card: Card; documentTitle: string }) => ({
     title: documentTitle || card?.name || t`Question`,
     titleIndex: 1,

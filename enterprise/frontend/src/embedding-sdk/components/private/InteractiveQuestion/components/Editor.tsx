@@ -53,8 +53,8 @@ export const Editor = ({ onApply = () => {} }: EditorProps) => {
             await updateQuestion(nextQuestion, { run: false })
           }
           runQuestionQuery={async () => {
-            await runQuestion();
             onApply();
+            await runQuestion();
           }}
           setQueryBuilderMode={() => {}}
           hasVisualizeButton={true}

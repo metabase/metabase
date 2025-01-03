@@ -22,7 +22,6 @@ import {
   getMarkerColorClass,
   useClickedStateTooltipSync,
 } from "metabase/visualizations/echarts/tooltip";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import type {
   ClickObject,
   VisualizationProps,
@@ -50,7 +49,7 @@ export const getTooltipModel = (
     .filter(node => node.visible)
     .map(slice => ({
       name: slice.name,
-      value: slice.displayValue,
+      value: slice.rawValue,
       color: nodes.length === 1 ? slice.color : undefined,
       formatter: formatters.formatMetric,
       key: slice.key,
@@ -76,7 +75,7 @@ export const getTooltipModel = (
   return {
     header:
       nodes.length === 1
-        ? getFriendlyName(sliceTreeNode.column)
+        ? sliceTreeNode.column?.display_name
         : nodes
             .slice(0, -1)
             .map(node => node.name)
@@ -146,7 +145,7 @@ function handleClick(
       : undefined;
 
   if (data != null) {
-    data[chartModel.colDescs.metricDesc.index].value = sliceTreeNode.value;
+    data[chartModel.colDescs.metricDesc.index].value = sliceTreeNode.rawValue;
   }
 
   const clickObject: ClickObject = {

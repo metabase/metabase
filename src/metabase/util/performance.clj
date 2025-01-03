@@ -1,6 +1,6 @@
 (ns metabase.util.performance
   "Functions and utilities for faster processing."
-  (:refer-clojure :exclude [reduce mapv some])
+  (:refer-clojure :exclude [reduce mapv some concat])
   (:import (clojure.lang LazilyPersistentVector RT)))
 
 (set! *warn-on-reflection* true)
@@ -90,8 +90,8 @@
 
 (defn- smallest-count
   (^long [c1 c2] (min (count c1) (count c2)))
-  (^long [c1 c2 c3] (min (min (count c1) (count c2)) (count c3)))
-  (^long [c1 c2 c3 c4] (min (min (count c1) (count c2)) (min (count c3) (count c4)))))
+  (^long [c1 c2 c3] (min (count c1) (count c2) (count c3)))
+  (^long [c1 c2 c3 c4] (min (count c1) (count c2) (count c3) (count c4))))
 
 (defn mapv
   "Like `clojure.core/mapv`, but iterates multiple collections more efficiently and uses Java iterators under the hood."
@@ -131,3 +131,43 @@
   "Like `clojure.core/some` but uses our custom `reduce` which in turn uses iterators."
   [f coll]
   (unreduced (reduce #(when-let [match (f %2)] (reduced match)) nil coll)))
+
+(defn concat
+  "Like `clojure.core/concat` but accumulates the result into a vector."
+  ([a b]
+   (into (vec a) b))
+  ([a b c]
+   (as-> (transient (vec a)) res
+     (reduce conj! res b)
+     (reduce conj! res c)
+     (persistent! res)))
+  ([a b c d]
+   (as-> (transient (vec a)) res
+     (reduce conj! res b)
+     (reduce conj! res c)
+     (reduce conj! res d)
+     (persistent! res)))
+  ([a b c d e]
+   (as-> (transient (vec a)) res
+     (reduce conj! res b)
+     (reduce conj! res c)
+     (reduce conj! res d)
+     (reduce conj! res e)
+     (persistent! res)))
+  ([a b c d e f]
+   (as-> (transient (vec a)) res
+     (reduce conj! res b)
+     (reduce conj! res c)
+     (reduce conj! res d)
+     (reduce conj! res e)
+     (reduce conj! res f)
+     (persistent! res)))
+  ([a b c d e f & more]
+   (as-> (transient (vec a)) res
+     (reduce conj! res b)
+     (reduce conj! res c)
+     (reduce conj! res d)
+     (reduce conj! res e)
+     (reduce conj! res f)
+     (reduce (fn [res l] (reduce conj! res l)) res more)
+     (persistent! res))))

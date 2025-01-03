@@ -1,16 +1,8 @@
+import { H } from "e2e/support";
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  modal,
-  openStaticEmbeddingModal,
-  popover,
-  restore,
-  setTokenFeatures,
-  visitDashboard,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 import { IFRAME_CODE, getEmbeddingJsCode } from "./shared/embedding-snippets";
 
@@ -19,17 +11,17 @@ const features = ["none", "all"];
 features.forEach(feature => {
   describe(`[tokenFeatures=${feature}] scenarios > embedding > code snippets`, () => {
     beforeEach(() => {
-      restore();
+      H.restore();
       cy.signInAsAdmin();
-      setTokenFeatures(feature);
+      H.setTokenFeatures(feature);
     });
 
     it("dashboard should have the correct embed snippet", () => {
       const defaultDownloadsValue = feature === "all" ? true : undefined;
-      visitDashboard(ORDERS_DASHBOARD_ID);
-      openStaticEmbeddingModal({ acceptTerms: false });
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.openStaticEmbeddingModal({ acceptTerms: false });
 
-      modal().within(() => {
+      H.modal().within(() => {
         cy.findByText(
           "To embed this dashboard in your application you’ll just need to publish it, and paste these code snippets in the proper places in your app.",
         );
@@ -55,7 +47,7 @@ features.forEach(feature => {
           .click();
       });
 
-      popover()
+      H.popover()
         .should("contain", "Node.js")
         .and("contain", "Ruby")
         .and("contain", "Python")
@@ -63,18 +55,18 @@ features.forEach(feature => {
 
       cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
 
-      modal()
+      H.modal()
         .findAllByTestId("embed-frontend-select-button")
         .should("contain", "Pug / Jade")
         .click();
 
-      popover()
+      H.popover()
         .should("contain", "Mustache")
         .and("contain", "Pug / Jade")
         .and("contain", "ERB")
         .and("contain", "JSX");
 
-      modal().within(() => {
+      H.modal().within(() => {
         cy.findByRole("tab", { name: "Look and Feel" }).click();
 
         // set transparent background metabase#23477
@@ -113,10 +105,10 @@ features.forEach(feature => {
 
     it("question should have the correct embed snippet", () => {
       const defaultDownloadsValue = feature === "all" ? true : undefined;
-      visitQuestion(ORDERS_QUESTION_ID);
-      openStaticEmbeddingModal({ acceptTerms: false });
+      H.visitQuestion(ORDERS_QUESTION_ID);
+      H.openStaticEmbeddingModal({ acceptTerms: false });
 
-      modal().within(() => {
+      H.modal().within(() => {
         cy.findByText(
           "To embed this question in your application you’ll just need to publish it, and paste these code snippets in the proper places in your app.",
         );
@@ -160,7 +152,7 @@ features.forEach(feature => {
           .click();
       });
 
-      popover()
+      H.popover()
         .should("contain", "Node.js")
         .and("contain", "Ruby")
         .and("contain", "Python")

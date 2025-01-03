@@ -179,6 +179,6 @@
           (recur (.getNextEntry stream)))))))
 
 (defn relative-path
-  "Returns a java.nio.file.Path "
+  "Returns a java.nio.file.Path"
   [path]
   (fs/relativize (fs/absolutize ".") path))

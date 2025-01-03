@@ -1,16 +1,14 @@
 (ns metabase.models.interface-test
   (:require
-   [cheshire.core :as json]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.table :refer [Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import (com.fasterxml.jackson.core JsonParseException)))
@@ -23,7 +21,7 @@
                 "response because of one malformed Card, dump the error to the logs and return nil.")
     (is (= nil
            ((:out mi/transform-metabase-query)
-            (json/generate-string
+            (json/encode
              {:database 1
               :type     :native
               :native   {:template-tags 1000}}))))))
@@ -46,14 +44,14 @@
   (testing "Legacy Metric/Segment definitions should get normalized"
     (is (= {:filter [:= [:field 1 nil] [:field 2 {:temporal-unit :month}]]}
            ((:out mi/transform-legacy-metric-segment-definition)
-            (json/generate-string
+            (json/encode
              {:filter [:= [:field-id 1] [:datetime-field [:field-id 2] :month]]}))))))
 
 (deftest ^:parallel dont-explode-on-way-out-from-db-test
   (testing "`metric-segment-definition`s should avoid explosions coming out of the DB..."
     (is (= nil
            ((:out mi/transform-legacy-metric-segment-definition)
-            (json/generate-string
+            (json/encode
              {:filter 1000}))))
 
     (testing "...but should still throw them coming in"
@@ -68,7 +66,7 @@
     (with-redefs [mbql.normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
       (is (= nil
              ((:out mi/transform-parameters-list)
-              (json/generate-string
+              (json/encode
                [{:target [:dimension [:field "ABC" nil]]}])))))))
 
 (deftest do-not-eat-exceptions-test
@@ -81,7 +79,7 @@
 
 (deftest timestamped-property-test
   (testing "Make sure updated_at gets updated for timestamped models"
-    (t2.with-temp/with-temp [Table table {:updated_at #t "2023-02-02T01:00:00"}]
+    (t2.with-temp/with-temp [:model/Table table {:updated_at #t "2023-02-02T01:00:00"}]
       (let [updated-at (:updated_at table)
             new-name   (u/qualified-name ::a-new-name)]
         (is (= 1
@@ -89,11 +87,11 @@
         (is (=? {:id         (:id table)
                  :name       new-name
                  :updated_at (partial not= updated-at)}
-                (t2/select-one [Table :id :name :updated_at] (u/the-id table))))))))
+                (t2/select-one [:model/Table :id :name :updated_at] (u/the-id table))))))))
 
 (deftest timestamped-property-do-not-stomp-on-explicit-values-test
   (testing "The :timestamped property should not stomp on :created_at/:updated_at if they are explicitly specified"
-    (t2.with-temp/with-temp [Field field]
+    (t2.with-temp/with-temp [:model/Field field]
       (testing "Nothing specified: use now() for both"
         (is (=? {:created_at java.time.temporal.Temporal
                  :updated_at java.time.temporal.Temporal}
@@ -101,12 +99,12 @@
     (let [t                  #t "2022-10-13T19:21:00Z"
           expected-timestamp (t/offset-date-time "2022-10-13T19:21:00Z")]
       (testing "Explicitly specify :created_at"
-        (t2.with-temp/with-temp [Field field {:created_at t}]
+        (t2.with-temp/with-temp [:model/Field field {:created_at t}]
           (is (=? {:created_at expected-timestamp
                    :updated_at java.time.temporal.Temporal}
                   field))))
       (testing "Explicitly specify :updated_at"
-        (t2.with-temp/with-temp [Field field {:updated_at t}]
+        (t2.with-temp/with-temp [:model/Field field {:updated_at t}]
           (is (=? {:created_at java.time.temporal.Temporal
                    :updated_at expected-timestamp}
                   field)))))))

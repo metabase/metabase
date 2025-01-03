@@ -54,6 +54,33 @@ export type NewIFrameCardCreatedEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
+export type MoveToTrashEvent = ValidateEvent<{
+  event: "moved-to-trash";
+  target_id: number | null;
+  triggered_from: "collection" | "detail_page" | "cleanup_modal";
+  duration_ms: number | null;
+  result: "success" | "failure";
+  event_detail:
+    | "question"
+    | "model"
+    | "metric"
+    | "dashboard"
+    | "collection"
+    | "dataset"
+    | "indexed-entity"
+    | "snippet";
+}>;
+
+export type ErrorDiagnosticModalOpenedEvent = ValidateEvent<{
+  event: "error_diagnostic_modal_opened";
+  triggered_from: "profile-menu" | "command-palette";
+}>;
+
+export type ErrorDiagnosticModalSubmittedEvent = ValidateEvent<{
+  event: "error_diagnostic_modal_submitted";
+  event_detail: "download-diagnostics" | "submit-report";
+}>;
+
 export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
@@ -61,4 +88,7 @@ export type SimpleEvent =
   | NewsletterToggleClickedEvent
   | OnboardingChecklistOpenedEvent
   | OnboardingChecklistItemExpandedEvent
-  | OnboardingChecklistItemCTAClickedEvent;
+  | OnboardingChecklistItemCTAClickedEvent
+  | MoveToTrashEvent
+  | ErrorDiagnosticModalOpenedEvent
+  | ErrorDiagnosticModalSubmittedEvent;

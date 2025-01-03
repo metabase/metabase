@@ -1,7 +1,12 @@
+import { t } from "ttag";
+import _ from "underscore";
+
 import { tag_names } from "cljs/metabase.models.params.shared";
 import { isActionDashCard } from "metabase/actions/utils";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
+import { getGroupName } from "metabase/querying/filters/utils";
+import { getAllowedIframeAttributes } from "metabase/visualizations/visualizations/IFrameViz/utils";
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type { DimensionOptionsSection } from "metabase-lib/v1/DimensionOptions/types";
@@ -41,15 +46,15 @@ function buildStructuredQuerySectionOptions(
   query: Lib.Query,
   stageIndex: number,
   group: Lib.ColumnGroup,
+  columns: Lib.ColumnMetadata[],
 ): StructuredQuerySectionOption[] {
   const groupInfo = Lib.displayInfo(query, stageIndex, group);
-  const columns = Lib.getColumnsFromColumnGroup(group);
 
   return columns.map(column => {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
 
     return {
-      sectionName: groupInfo.displayName,
+      sectionName: getGroupName(groupInfo, stageIndex) ?? t`Summaries`,
       name: columnInfo.displayName,
       icon: getColumnIcon(column),
       target: buildColumnTarget(query, stageIndex, column),
@@ -60,6 +65,7 @@ function buildStructuredQuerySectionOptions(
 
 function buildNativeQuerySectionOptions(
   section: DimensionOptionsSection,
+  stageIndex: number,
 ): NativeParameterMappingOption[] {
   return section.items
     .flatMap(({ dimension }) =>
@@ -69,7 +75,7 @@ function buildNativeQuerySectionOptions(
       name: dimension.displayName(),
       icon: dimension.icon() ?? "",
       isForeign: false,
-      target: buildDimensionTarget(dimension),
+      target: buildDimensionTarget(dimension, stageIndex),
     }));
 }
 
@@ -124,13 +130,20 @@ export function getParameterMappingOptions(
   card: Card,
   dashcard: BaseDashboardCard | null | undefined = null,
 ): ParameterMappingOption[] {
-  if (
-    dashcard &&
-    isVirtualDashCard(dashcard) &&
-    ["heading", "text"].includes(card.display)
-  ) {
-    const tagNames = tag_names(dashcard.visualization_settings.text || "");
-    return tagNames ? tagNames.map(buildTextTagOption) : [];
+  if (dashcard && isVirtualDashCard(dashcard)) {
+    if (["heading", "text"].includes(card.display)) {
+      const tagNames = tag_names(dashcard.visualization_settings.text || "");
+      return tagNames?.map(buildTextTagOption) ?? [];
+    } else if (card.display === "iframe") {
+      const iframeAttributes = getAllowedIframeAttributes(
+        dashcard.visualization_settings.iframe,
+      );
+      const tagNames = tag_names(iframeAttributes?.src || "");
+      return tagNames?.map(buildTextTagOption) ?? [];
+    } else if (card.display === "link") {
+      const tagNames = tag_names(dashcard.visualization_settings.link?.url);
+      return tagNames?.map(buildTextTagOption) ?? [];
+    }
   }
 
   if (dashcard && isActionDashCard(dashcard)) {
@@ -153,14 +166,26 @@ export function getParameterMappingOptions(
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
   if (!isNative) {
-    const { query, stageIndex, columns } = getParameterColumns(
+    const { query, columns } = getParameterColumns(
       question,
       parameter ?? undefined,
     );
-    const columnGroups = Lib.groupColumns(columns);
 
-    const options = columnGroups.flatMap(group =>
-      buildStructuredQuerySectionOptions(query, stageIndex, group),
+    const columnsByStageIndex = _.groupBy(columns, "stageIndex");
+    const options = Object.entries(columnsByStageIndex).flatMap(
+      ([stageIndexString, columns]) => {
+        const groups = Lib.groupColumns(columns.map(({ column }) => column));
+        const stageIndex = parseInt(stageIndexString, 10);
+
+        return groups.flatMap(group =>
+          buildStructuredQuerySectionOptions(
+            query,
+            stageIndex,
+            group,
+            Lib.getColumnsFromColumnGroup(group),
+          ),
+        );
+      },
     );
 
     return options;
@@ -168,6 +193,7 @@ export function getParameterMappingOptions(
 
   const legacyQuery = question.legacyQuery();
   const options: NativeParameterMappingOption[] = [];
+  const stageIndex = Lib.stageCount(question.query()) - 1;
 
   options.push(
     ...legacyQuery
@@ -180,7 +206,7 @@ export function getParameterMappingOptions(
         parameter ? dimensionFilterForParameter(parameter) : undefined,
       )
       .sections()
-      .flatMap(section => buildNativeQuerySectionOptions(section)),
+      .flatMap(section => buildNativeQuerySectionOptions(section, stageIndex)),
   );
 
   return options;

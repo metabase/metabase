@@ -1,7 +1,7 @@
 (ns metabase.db.custom-migrations.metrics-v2
   (:require
-   [cheshire.core :as json]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import (java.time Instant)))
 
@@ -41,7 +41,7 @@
   database with ID `db-id`.
   The :collection_id property is not set and the question is not persisted."
   [metric-v1 db-id]
-  (let [definition (json/parse-string (:definition metric-v1) true)
+  (let [definition (json/decode+kw (:definition metric-v1))
         dataset-query {:type :query
                        :database db-id
                        :query definition}]
@@ -49,7 +49,7 @@
         (select-keys [:archived :created_at :creator_id :database_id
                       :description :name :table_id])
         (update :description add-metric-id (:id metric-v1))
-        (assoc :dataset_query (json/generate-string dataset-query)
+        (assoc :dataset_query (json/encode dataset-query)
                :enable_embedding false
                :query_type "query"
                :type "metric"
@@ -105,13 +105,13 @@
   "Rewrite `outer-query` replacing references to v1 metrics with references
   to the corresponding v2 metric question as specified by the mapping `metric-id->metric-card-id`."
   [outer-query metric-id->metric-card-id]
-  (let [dataset-query (json/parse-string outer-query true)
+  (let [dataset-query (json/decode+kw outer-query)
         inner-query (:query dataset-query)
         rewritten (rewrite-metric-consuming-query inner-query metric-id->metric-card-id)]
     (when (not= rewritten inner-query)
       (-> dataset-query
           (assoc :query rewritten)
-          json/generate-string))))
+          json/encode))))
 
 (defn migrate-up!
   "Migrate metrics and the cards consuming them to metrics v2. This involves

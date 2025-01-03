@@ -19,8 +19,8 @@
    [metabase.search.config
     :as search.config
     :refer [SearchableModel SearchContext]]
+   [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
-   [metabase.search.util :as search.util]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu])
@@ -72,14 +72,14 @@
   (when-let [query (:search-string search-context)]
     (into
      [:or]
-     (for [column           (->> (let [search-columns-fn (requiring-resolve 'metabase.search.legacy/searchable-columns)]
+     (for [column           (->> (let [search-columns-fn (requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)]
                                    (search-columns-fn model search-native-query))
                                  (map #(search.config/column-with-model-alias model %)))
            wildcarded-token (->> (search.util/normalize query)
                                  search.util/tokenize
                                  (map search.util/wildcard-match))]
        (cond
-         (and (= model "indexed-entity") (search.permissions/sandboxed-or-impersonated-user?))
+         (and (= model "indexed-entity") (search.permissions/sandboxed-or-impersonated-user? search-context))
          [:= 0 1]
 
          (and (#{"card" "dataset"} model) (= column (search.config/column-with-model-alias model :dataset_query)))
@@ -200,7 +200,7 @@
 
 ;; We won't need this post-legacy as it defines the joins à la carte.
 (defn- search-model->revision-model [model]
-  ((requiring-resolve 'metabase.search.legacy/search-model->revision-model) model))
+  ((requiring-resolve 'metabase.search.in-place.legacy/search-model->revision-model) model))
 
 (doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-by model]
@@ -249,7 +249,7 @@
   (merge
    ;; models support search-native-query if there are additional columns to search when the `search-native-query`
    ;; argument is true
-   {:search-native-query (->> (dissoc (methods @(requiring-resolve 'metabase.search.legacy/searchable-columns)) :default)
+   {:search-native-query (->> (dissoc (methods @(requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)) :default)
                               (filter (fn [[model f]]
                                         (seq (set/difference (set (f model true)) (set (f model false))))))
                               (map first)

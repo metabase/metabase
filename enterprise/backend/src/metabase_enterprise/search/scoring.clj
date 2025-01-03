@@ -2,14 +2,14 @@
   ;; TODO -- move to `metabase-enterprise.<feature>.*`
   (:require
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.search.appdb.scoring :as appdb.scoring]
    [metabase.search.config :as search.config]
-   [metabase.search.in-place.scoring :as scoring]
-   [metabase.search.postgres.scoring :as fulltext.scoring]))
+   [metabase.search.in-place.scoring :as scoring]))
 
 (def ^:private enterprise-scorers
-  {:official-collection {:expr (fulltext.scoring/truthy :official_collection)
+  {:official-collection {:expr (appdb.scoring/truthy :official_collection)
                          :pred #(premium-features/has-feature? :official-collections)}
-   :verified            {:expr (fulltext.scoring/truthy :verified)
+   :verified            {:expr (appdb.scoring/truthy :verified)
                          :pred #(premium-features/has-feature? :content-verification)}})
 
 (defn- additional-scorers
@@ -24,8 +24,8 @@
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."
   :feature :none
-  []
-  (merge fulltext.scoring/base-scorers (select-keys enterprise-scorers (additional-scorers))))
+  [search-ctx]
+  (merge (appdb.scoring/base-scorers search-ctx) (additional-scorers)))
 
 ;; ------------ LEGACY ----------
 
@@ -56,7 +56,7 @@
   {:name   (legacy-name k)
    :score  (let [f (get legacy-scorers k)]
              (f result))
-   :weight (search.config/weight k)})
+   :weight (search.config/weight :default k)})
 
 (defenterprise score-result
   "Scoring implementation that adds score for items in official collections."

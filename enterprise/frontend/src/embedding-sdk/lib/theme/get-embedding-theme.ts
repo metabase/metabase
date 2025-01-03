@@ -45,7 +45,7 @@ export function getEmbeddingThemeOverride(
       fontSize: theme.fontSize ?? SDK_BASE_FONT_SIZE,
     },
 
-    components: getEmbeddingComponentOverrides(theme.components),
+    components: getEmbeddingComponentOverrides(),
   };
 
   if (theme.colors) {
@@ -58,6 +58,15 @@ export function getEmbeddingThemeOverride(
       if (color && typeof color === "string") {
         const themeColorNames =
           SDK_TO_MAIN_APP_COLORS_MAPPING[name as MappableSdkColor];
+
+        // If the sdk color does not exist in the mapping, skip it.
+        if (!themeColorNames) {
+          console.warn(
+            `Color ${name} does not exist in the Embedding SDK. Please remove it from the theme configuration.`,
+          );
+
+          continue;
+        }
 
         for (const themeColorName of themeColorNames) {
           override.colors[themeColorName] = colorTuple(color);

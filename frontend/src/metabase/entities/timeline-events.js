@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { timelineEventApi } from "metabase/api";
+import { timelineEventApi, useGetTimelineEventQuery } from "metabase/api";
 import {
   createEntity,
   entityCompatibleQuery,
@@ -16,6 +16,12 @@ const TimelineEvents = createEntity({
   nameOne: "timelineEvent",
   path: "/api/timeline-event",
   schema: TimelineEventSchema,
+
+  rtk: {
+    getUseGetQuery: () => ({
+      useGetQuery,
+    }),
+  },
 
   api: {
     list: () => {
@@ -65,5 +71,9 @@ const TimelineEvents = createEntity({
     },
   },
 });
+
+const useGetQuery = ({ id }) => {
+  return useGetTimelineEventQuery(id);
+};
 
 export default TimelineEvents;

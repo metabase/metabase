@@ -32,17 +32,18 @@ export const readJson = async (path: string) => {
   return JSON.parse(packageJson);
 };
 
-export const getProjectDependenciesFromPackageJson =
-  async (): Promise<DependencyMap | null> => {
-    try {
-      const packageJsonPath = path.join(process.cwd(), "package.json");
-      const packageInfo = await readJson(packageJsonPath);
+export const getProjectDependenciesFromPackageJson = async (
+  field: "dependencies" | "devDependencies" = "dependencies",
+): Promise<DependencyMap | null> => {
+  try {
+    const packageJsonPath = path.join(process.cwd(), "package.json");
+    const packageInfo = await readJson(packageJsonPath);
 
-      return packageInfo?.dependencies || null;
-    } catch (error) {
-      return null;
-    }
-  };
+    return packageInfo?.[field] || null;
+  } catch (error) {
+    return null;
+  }
+};
 
 export const getPackageVersionFromModule = async (packageName: string) => {
   try {

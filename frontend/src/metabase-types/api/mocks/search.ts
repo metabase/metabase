@@ -35,6 +35,7 @@ export const createMockSearchResult = (
     table_description: null,
     initial_sync_status: null,
     dashboard_count: null,
+    dashboard: null,
     context: null,
     created_at: "2022-01-01T00:00:00.000Z",
     creator_common_name: "Testy Tableton",

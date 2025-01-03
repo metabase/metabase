@@ -99,7 +99,7 @@
       (ex-data
        (when (and schema config/is-dev?) ;; schema is nil for any var without a schema. That's ok!
          (log/warn
-          (u/format-color 'red (str "Invalid Malli Schema: %s defined at %s")
+          (u/format-color 'red "Invalid Malli Schema: %s defined at %s"
                           (u/pprint-to-str schema)
                           (u/add-period route-str)))))
       "")))

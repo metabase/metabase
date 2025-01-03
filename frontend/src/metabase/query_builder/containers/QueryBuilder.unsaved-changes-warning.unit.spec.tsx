@@ -545,7 +545,9 @@ describe("QueryBuilder - unsaved changes warning", () => {
       );
       await waitFor(() => {
         expect(
-          within(saveQuestionModal).getByLabelText(/Which collection/),
+          within(saveQuestionModal).getByLabelText(
+            /Where do you want to save this/,
+          ),
         ).toHaveTextContent(TEST_COLLECTION.name);
       });
       await userEvent.click(within(saveQuestionModal).getByText("Save"));

@@ -27,7 +27,7 @@ export const LocaleInput = styled.input`
   padding: 0;
 `;
 
-export interface LocaleContainerProps {
+interface LocaleContainerProps {
   checked: boolean;
 }
 

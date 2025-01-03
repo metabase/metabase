@@ -180,7 +180,7 @@
 (derive :type/Comment :Semantic/*)
 (derive :type/Comment :type/Text)
 
-(derive :type/PostgresEnum :type/Text)
+(derive :type/PostgresEnum :type/TextLike)
 
 (derive :type/OracleCLOB :type/Text)
 (derive :type/OracleCLOB :type/Large)

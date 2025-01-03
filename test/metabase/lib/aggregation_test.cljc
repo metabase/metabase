@@ -12,7 +12,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util :as lib.util]))
+   [metabase.lib.util :as lib.util]
+   [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -98,7 +99,13 @@
      :display-name "User-specified Name"}
 
     [:percentile {} (lib.tu/field-clause :venues :id) 0.95]
-    {:column-name "percentile", :display-name "0.95th percentile of ID"}))
+    {:column-name "percentile", :display-name "0.95th percentile of ID"}
+
+    [:case {} [[[:> (lib.tu/field-clause :venues :price) 10] "A"]]]
+    {:column-name "case", :display-name "Case"}
+
+    [:if {} [[[:> (lib.tu/field-clause :venues :price) 10] "A"]]]
+    {:column-name "if", :display-name "If"}))
 
 ;;; the following tests use raw legacy MBQL because they're direct ports of JavaScript tests from MLv1 and I wanted to
 ;;; make sure that given an existing query, the expected description was generated correctly.
@@ -167,7 +174,8 @@
              (lib.tu/venues-query-with-last-stage
               {:expressions [[:*
                               {:lib/uuid (str (random-uuid))
-                               :lib/expression-name "double-price"}
+                               :lib/expression-name "double-price"
+                               :ident (u/generate-nano-id)}
                               (lib.tu/field-clause :venues :price {:base-type :type/Integer})
                               2]]})
              [:sum
@@ -809,7 +817,8 @@
                        (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))
         price      (m/find-first #(= (:name %) "PRICE") (lib/visible-columns query))
         aggs       (lib/aggregations query)]
-    (is (= (count aggs) 2))
+    (is (= 2
+           (count aggs)))
     (testing "aggregations like COUNT have no column"
       (is (nil? (lib.aggregation/aggregation-column query -1 (first aggs)))))
     (testing "aggregations like SUM return the column of interest"

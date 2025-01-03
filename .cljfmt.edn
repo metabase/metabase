@@ -13,6 +13,8 @@
   "test"
   "enterprise/backend"
   "bin/build"
+  "bin/lint-migrations-file"
+  "bin/release-list"
   "modules/drivers"
   ".clj-kondo/src"
   ".clj-kondo/test"
@@ -192,6 +194,12 @@
   metabase.query-processor.store/with-metadata-provider                                [[:inner 0]]
   metabase.query-processor.streaming/streaming-response                                [[:block 1]]
   metabase.query-processor.test-util/format-rows-by                                    [[:default]]
+  metabase.request.core/as-admin                                                       [[:block 0]]
+  metabase.request.core/with-current-request                                           [[:inner 0]]
+  metabase.request.core/with-current-user                                              [[:inner 0]]
+  metabase.request.core/with-limit-and-offset                                          [[:inner 0]]
+  metabase.request.session/as-admin                                                    [[:block 0]]
+  metabase.request.session/with-current-user                                           [[:inner 0]]
   metabase.sample-data-test/with-temp-sample-database-db                               [[:block 1]]
   metabase.server.middleware.session/as-admin                                          [[:block 0]]
   metabase.server.middleware.session/with-current-user                                 [[:inner 0]]
@@ -269,6 +277,7 @@
   metabase.upload.types/with-currency                                                  [[:default]]
   metabase.upload.types/with-parens                                                    [[:default]]
   metabase.util/auto-retry                                                             [[:block 1]]
+  metabase.util/case-enum                                                              [[:block 1]]
   metabase.util/ignore-exceptions                                                      [[:block 0]]
   metabase.util/or-with                                                                [[:block 1]]
   metabase.util/profile                                                                [[:block 1]]

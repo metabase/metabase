@@ -72,6 +72,7 @@ async function setup({
           onQueryChange(nextQuery);
         }}
         onClose={onClose}
+        stageIndex={-1}
       />
     );
   }

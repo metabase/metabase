@@ -85,6 +85,7 @@
               resolved (lib.expression/resolve-expression query 0 "myexpr")]
           (testing (pr-str resolved)
             (is (mc/validate ::lib.schema/query query))
+            (is (string? (-> resolved lib.options/ident not-empty)))
             (is (= typ (lib.schema.expression/type-of resolved)))))))))
 
 (deftest ^:parallel col-info-expression-ref-test
@@ -103,7 +104,8 @@
   (let [query (lib.tu/venues-query-with-last-stage
                {:expressions [[:+
                                {:lib/uuid (str (random-uuid))
-                                :lib/expression-name "prev_month"}
+                                :lib/expression-name "prev_month"
+                                :ident               (u/generate-nano-id)}
                                (lib.tu/field-clause :users :last-login)
                                [:interval {:lib/uuid (str (random-uuid))} -1 :month]]]
                 :fields      [[:expression {:base-type :type/DateTime, :lib/uuid (str (random-uuid))} "prev_month"]]})]
@@ -279,11 +281,11 @@
           (-> lib.tu/venues-query
               (lib/expression "expr" 100)
               (lib/expressions-metadata))))
-  (is (=? [[:value {:lib/expression-name "expr" :effective-type :type/Integer} 100]]
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Integer, :ident string?} 100]]
           (-> lib.tu/venues-query
               (lib/expression "expr" 100)
               (lib/expressions))))
-  (is (=? [[:value {:lib/expression-name "expr" :effective-type :type/Text} "value"]]
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Text, :ident string?} "value"]]
           (-> lib.tu/venues-query
               (lib/expression "expr" "value")
               (lib/expressions)))))
@@ -414,7 +416,9 @@
       (is (= "newly-named-expression"
              (lib/display-name query expr)))
       (is (not= (lib.options/uuid orig-expr)
-                (lib.options/uuid expr))))
+                (lib.options/uuid expr)))
+      (is (= (lib.options/ident orig-expr)
+             (lib.options/ident expr))))
     (testing "aggregation expressions can be renamed"
       (is (= "my count"
              (lib/display-name query agg)))
@@ -430,7 +434,9 @@
       (is (= "my count"
              (lib/display-name query agg)))
       (is (not= (lib.options/uuid orig-agg)
-                (lib.options/uuid agg))))
+                (lib.options/uuid agg)))
+      (is (= (lib.options/ident orig-expr)
+             (lib.options/ident expr))))
     (testing "filter expressions can be renamed"
       (is (= "my filter"
              (lib/display-name query new-filter)))

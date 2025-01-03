@@ -13,13 +13,12 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^{:arglists '([temporal-accessor query])} query
-  (let [queries {:local-date  (TemporalQueries/localDate)
-                 :local-time  (TemporalQueries/localTime)
-                 :zone-offset (TemporalQueries/offset)
-                 :zone-id     (TemporalQueries/zoneId)}]
-    (fn [^TemporalAccessor temporal-accessor query]
-      (.query temporal-accessor (queries query)))))
+(let [queries {:local-date  (TemporalQueries/localDate)
+               :local-time  (TemporalQueries/localTime)
+               :zone-offset (TemporalQueries/offset)
+               :zone-id     (TemporalQueries/zoneId)}]
+  (defn- query [^TemporalAccessor temporal-accessor query]
+    (.query temporal-accessor (queries query))))
 
 (defn- normalize [s]
   (-> s

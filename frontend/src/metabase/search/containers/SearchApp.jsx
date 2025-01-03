@@ -52,6 +52,7 @@ function SearchApp({ location }) {
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
     context: SearchContextTypes.SEARCH_APP,
+    include_dashboard_questions: true,
   };
 
   const onChangeLocation = useCallback(

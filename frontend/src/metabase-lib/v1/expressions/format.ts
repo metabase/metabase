@@ -1,8 +1,6 @@
 import _ from "underscore";
 
-import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import type { FieldReference, Filter } from "metabase-types/api";
 
 import {
@@ -10,20 +8,19 @@ import {
   MBQL_CLAUSES,
   OPERATOR_PRECEDENCE,
   formatDimensionName,
-  formatLegacyDimensionName,
   formatMetricName,
   formatSegmentName,
   formatStringLiteral,
   getExpressionName,
-  hasOptions,
   isBooleanLiteral,
-  isCase,
+  isCaseOrIf,
   isDimension,
   isFunction,
   isMetric,
   isNumberLiteral,
   isOffset,
   isOperator,
+  isOptionsObject,
   isSegment,
   isStringLiteral,
 } from "./index";
@@ -33,19 +30,11 @@ export { DISPLAY_QUOTES, EDITOR_QUOTES } from "./config";
 type Options = {
   startRule: string;
   [key: string]: any;
-} & (
-  | {
-      legacyQuery: StructuredQuery;
-      query?: never;
-      stageIndex: never;
-    }
-  | {
-      legacyQuery?: never;
-      query: Lib.Query;
-      stageIndex: number;
-      expressionIndex: number | undefined;
-    }
-);
+} & {
+  query: Lib.Query;
+  stageIndex: number;
+  expressionIndex: number | undefined;
+};
 
 // convert a MBQL expression back into an expression string
 // It is hard to provide correct types here, so we have to use any
@@ -70,8 +59,8 @@ export function format(mbql: any, options: Options): string {
     return formatMetric(mbql, options);
   } else if (isSegment(mbql)) {
     return formatSegment(mbql, options);
-  } else if (isCase(mbql)) {
-    return formatCase(mbql, options);
+  } else if (isCaseOrIf(mbql)) {
+    return formatCaseOrIf(mbql, options);
   } else if (isNegativeFilter(mbql)) {
     return formatNegativeFilter(mbql, options);
   }
@@ -87,16 +76,10 @@ function formatNumberLiteral(mbql: unknown) {
 }
 
 function formatDimension(fieldRef: FieldReference, options: Options) {
-  const { query, stageIndex, legacyQuery, expressionIndex } = options;
+  const { query, stageIndex, expressionIndex } = options;
 
   if (!query) {
-    if (!legacyQuery) {
-      throw new Error(
-        "`legacyQuery` is a required parameter to format expressions",
-      );
-    }
-
-    return formatLegacyDimension(fieldRef, options);
+    throw new Error("`query` is a required parameter to format expressions");
   }
 
   const columns = Lib.expressionableColumns(query, stageIndex, expressionIndex);
@@ -114,16 +97,6 @@ function formatDimension(fieldRef: FieldReference, options: Options) {
         options,
       )
     : "";
-}
-
-function formatLegacyDimension(
-  fieldRef: FieldReference,
-  options: { legacyQuery: StructuredQuery },
-) {
-  const { legacyQuery } = options;
-  const dimension = legacyQuery.parseFieldReference(fieldRef);
-
-  return dimension ? formatLegacyDimensionName(dimension, options) : "";
 }
 
 function formatMetric([, metricId]: FieldReference, options: Options) {
@@ -149,15 +122,9 @@ function formatMetric([, metricId]: FieldReference, options: Options) {
 }
 
 function formatSegment([, segmentId]: FieldReference, options: Options) {
-  const { legacyQuery, stageIndex, query } = options;
+  const { stageIndex, query } = options;
 
   if (!query) {
-    // fallback to legacyQuery
-    if (legacyQuery) {
-      // StructuredQuery -> formatExpression
-      return formatLegacySegment(segmentId, options);
-    }
-
     throw new Error("`query` is a required parameter to format expressions");
   }
 
@@ -176,21 +143,6 @@ function formatSegment([, segmentId]: FieldReference, options: Options) {
   return formatSegmentName(displayInfo.displayName, options);
 }
 
-function formatLegacySegment(
-  segmentId: number | string,
-  options: { legacyQuery: StructuredQuery },
-) {
-  const { legacyQuery } = options;
-  const segment = _.findWhere(
-    checkNotNull(legacyQuery.table()).segments ?? [],
-    { id: Number(segmentId) },
-  );
-  if (!segment) {
-    throw new Error("segment with ID does not exist: " + segmentId);
-  }
-  return formatSegmentName(segment.name, options);
-}
-
 // HACK: very specific to some string/time functions for now
 function formatFunctionOptions(fnOptions: Record<string, any>) {
   if (Object.prototype.hasOwnProperty.call(fnOptions, "case-sensitive")) {
@@ -207,26 +159,24 @@ function formatFunctionOptions(fnOptions: Record<string, any>) {
   }
 }
 
-function formatFunction([fn, ...args]: any[], options: Options) {
-  if (hasOptions(args)) {
-    const fnOptions = formatFunctionOptions(args.pop());
-    if (fnOptions) {
-      args = [...args, fnOptions];
+function formatFunction([fn, ...operands]: any[], formatOptions: Options) {
+  const args = operands.filter(arg => !isOptionsObject(arg));
+  const options = operands.find(isOptionsObject);
+  if (options) {
+    const formattedOptions = formatFunctionOptions(options);
+    if (formattedOptions) {
+      args.push(formattedOptions);
     }
   }
   const formattedName = getExpressionName(fn) ?? "";
-  const formattedArgs = args.map(arg => format(arg, options));
+  const formattedArgs = args.map(arg => format(arg, formatOptions));
   return args.length === 0
     ? formattedName
     : `${formattedName}(${formattedArgs.join(", ")})`;
 }
 
-function formatOperator([op, ...args]: any[], options: Options) {
-  if (hasOptions(args)) {
-    // FIXME: how should we format args?
-    args = args.slice(0, -1);
-  }
-
+function formatOperator([op, ...operands]: any[], options: Options) {
+  const args = operands.filter(arg => !isOptionsObject(arg));
   const formattedOperator = getExpressionName(op) || op;
   const formattedArgs = args.map((arg, index) => {
     const argOp = isOperator(arg) && arg[0];
@@ -257,8 +207,11 @@ function formatOperator([op, ...args]: any[], options: Options) {
   return options.parens ? `(${formatted})` : formatted;
 }
 
-function formatCase([_, clauses, caseOptions = {}]: any[], options: Options) {
-  const formattedName = getExpressionName("case");
+function formatCaseOrIf(
+  [operator, clauses, caseOptions = {}]: any[],
+  options: Options,
+) {
+  const formattedName = getExpressionName(operator);
   const formattedClauses = clauses
     .map(
       ([filter, mbql]: any[]) =>

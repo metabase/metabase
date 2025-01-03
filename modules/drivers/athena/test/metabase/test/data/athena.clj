@@ -42,15 +42,14 @@
 
 (defmethod tx/dbdef->connection-details :athena
   [driver _context {:keys [database-name], :as _dbdef}]
-  (merge
-   {:region                        (tx/db-test-env-var-or-throw :athena :region)
-    :access_key                    (tx/db-test-env-var-or-throw :athena :access-key)
-    :secret_key                    (tx/db-test-env-var-or-throw :athena :secret-key)
-    :s3_staging_dir                (tx/db-test-env-var-or-throw :athena :s3-staging-dir)
-    :workgroup                     "primary"
-    ;; HACK -- this is here so the Athena driver sync code only syncs the database in question -- see documentation
-    ;; for [[metabase.driver.athena/fast-active-tables]] for more information.
-    :metabase.driver.athena/schema (some->> database-name (ddl.i/format-name driver))}))
+  {:region                        (tx/db-test-env-var-or-throw :athena :region)
+   :access_key                    (tx/db-test-env-var-or-throw :athena :access-key)
+   :secret_key                    (tx/db-test-env-var-or-throw :athena :secret-key)
+   :s3_staging_dir                (tx/db-test-env-var-or-throw :athena :s3-staging-dir)
+   :workgroup                     "primary"
+   ;; HACK -- this is here so the Athena driver sync code only syncs the database in question -- see documentation
+   ;; for [[metabase.driver.athena/fast-active-tables]] for more information.
+   :metabase.driver.athena/schema (some->> database-name (ddl.i/format-name driver))})
 
 ;; TODO: We need a better way to have an isolated test environment for Athena
 ;; If other tables exist, the tests start to query them for some reason,

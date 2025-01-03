@@ -109,6 +109,14 @@
      :breakouts      0
      :default-column "count"}
 
+    :test.query/orders-by-product-id
+    {:query          (-> (lib/query metadata-provider (meta/table-metadata :orders))
+                         (lib/breakout (meta/field-metadata :orders :product-id)))
+     :row            {"PRODUCT_ID" 77}
+     :aggregations   0
+     :breakouts      1
+     :default-column "PRODUCT_ID"}
+
     :test.query/orders-count-by-product-id
     {:query          (-> (lib/query metadata-provider (meta/table-metadata :orders))
                          (lib/aggregate (lib/count))
@@ -270,6 +278,12 @@
 
          ;; Singular aggregation for Orders, just clicking that single cell.
          [(click (test-case metadata-provider :test.query/orders-count) :cell "count" :aggregation :number)]
+
+         ;; Breakout-only for Orders by Product ID - click both cell and header.
+         (let [tc (test-case metadata-provider :test.query/orders-by-product-id)]
+           [(click tc :cell "PRODUCT_ID" :breakout    :fk)
+
+            (click tc :header "PRODUCT_ID" :breakout    :fk)])
 
          ;; Count broken out by Product ID - click both count and Product ID, both the cells and headers; also a pivot.
          (let [tc (test-case metadata-provider :test.query/orders-count-by-product-id)]

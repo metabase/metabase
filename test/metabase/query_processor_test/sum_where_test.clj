@@ -104,17 +104,16 @@
                                       {:cards [{:id            1
                                                 :database-id   (mt/id)
                                                 :name          "Metric 1"
-                                                :dataset-query {:database (mt/id)
-                                                                :type :query
-                                                                :query {:source-table (mt/id :venues)
-                                                                        :aggregation  [:sum-where
-                                                                                       [:field (mt/id :venues :price) nil]
-                                                                                       [:< [:field (mt/id :venues :price) nil] 4]]}}
+                                                :dataset-query (mt/mbql-query venues
+                                                                 {:source-table (mt/id :venues)
+                                                                  :aggregation  [:sum-where
+                                                                                 $price
+                                                                                 [:< $price 4]]})
                                                 :type          :metric}]})
       (is (= 179.0
-             (->> {:aggregation [[:metric 1]]
-                   :source-table "card__1"}
-                  (mt/run-mbql-query venues)
+             (->> (mt/run-mbql-query venues
+                    {:aggregation [[:metric 1]]
+                     :source-table "card__1"})
                   mt/rows
                   ffirst
                   double))))))

@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import type { DashCardCustomMenuItem } from "embedding-sdk";
+import type { DashboardCardCustomMenuItem } from "embedding-sdk";
 import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
+import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { editQuestion } from "metabase/dashboard/actions";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import { useDispatch } from "metabase/lib/redux";
@@ -32,8 +33,8 @@ export const DashCardMenuItems = ({
       dispatch(editQuestion(question, mode)),
   } = useInteractiveDashboardContext();
 
-  const dashcardMenuItems = plugins?.dashboard?.dashcardMenu as
-    | DashCardCustomMenuItem
+  const dashcardMenuItems = plugins?.dashboard?.dashboardCardMenu as
+    | DashboardCardCustomMenuItem
     | undefined;
 
   const {
@@ -91,7 +92,7 @@ export const DashCardMenuItems = ({
         ...customItems.map(item => {
           const customItem =
             typeof item === "function"
-              ? item({ question: question.card() })
+              ? item({ question: transformSdkQuestion(question) })
               : item;
 
           return {

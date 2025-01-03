@@ -71,11 +71,7 @@
                                      :type :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests)))))))
 
 (defn- ignore? [node error-type]
-  (when-let [ignores (some-> node meta :clj-kondo/ignore hooks/sexpr)]
-    (when-let [ignores (cond
-                         (coll? ignores)    (set ignores)
-                         (keyword? ignores) #{ignores})]
-      (contains? ignores error-type))))
+  (contains? (hooks.common/ignored-linters node) error-type))
 
 (defn deftest-check-no-driver-keywords [node {:keys [drivers], :as _config}]
   ;; fail fast after we see the first error, where we see one hardcoded driver name there are likely several more and we

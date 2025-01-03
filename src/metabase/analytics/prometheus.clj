@@ -11,7 +11,7 @@
    [iapetos.collector.ring :as collector.ring]
    [iapetos.core :as prometheus]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.server :as server]
+   [metabase.server.core :as server]
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
    [potemkin :as p]
@@ -203,6 +203,10 @@
                        {:description "Number of successful SDK requests."})
    (prometheus/counter :metabase-sdk/response-error
                        {:description "Number of errors when responding to SDK requests."})
+   (prometheus/counter :metabase-embedding-iframe/response-ok
+                       {:description "Number of successful iframe embedding requests."})
+   (prometheus/counter :metabase-embedding-iframe/response-error
+                       {:description "Number of errors when responding to iframe embedding requests."})
    (prometheus/counter :metabase-scim/response-ok
                        {:description "Number of successful responses from SCIM endpoints"})
    (prometheus/counter :metabase-scim/response-error
@@ -210,7 +214,16 @@
    (prometheus/counter :metabase-query-processor/metrics-adjust
                        {:description "Number of queries with metrics processed by the metrics adjust middleware."})
    (prometheus/counter :metabase-query-processor/metrics-adjust-errors
-                       {:description "Number of errors when processing metrics in the metrics adjust middleware."})])
+                       {:description "Number of errors when processing metrics in the metrics adjust middleware."})
+   (prometheus/counter :metabase-search/index
+                       {:description "Number of entries indexed for search"
+                        :labels      [:model]})
+   (prometheus/counter :metabase-search/index-ms
+                       {:description "Total number of ms indexing took"})
+   (prometheus/counter :metabase-search/response-ok
+                       {:description "Number of successful search requests."})
+   (prometheus/counter :metabase-search/response-error
+                       {:description "Number of errors when responding to search requests."})])
 
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
@@ -267,8 +280,15 @@
 (defn inc!
   "Call iapetos.core/inc on the metric in the global registry,
    if it has already been initialized and the metric is registered."
-  [metric]
-  (some-> system .-registry metric prometheus/inc))
+  ([metric] (inc! metric nil 1))
+  ([metric labels-or-amount]
+   (if (seq? labels-or-amount)
+     (inc! metric labels-or-amount 1)
+     (inc! metric nil labels-or-amount)))
+  ([metric labels amount]
+   (when-let [registry (some-> system .-registry)]
+     (when (metric registry)
+       (prometheus/inc registry metric labels amount)))))
 
 (comment
   (require 'iapetos.export)

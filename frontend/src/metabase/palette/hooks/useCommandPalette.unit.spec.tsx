@@ -87,10 +87,21 @@ describe("useCommandPalette", () => {
       const mockRecentItem = createMockRecentCollectionItem();
       const mockRecentTableItem = createMockRecentTableItem();
 
-      expect(getRecentItemSubtext(mockRecentItem)).toBe("My Cool Collection");
-      expect(getRecentItemSubtext(mockRecentTableItem)).toBe(
-        "My Cool Database (PUBLIC)",
+      render(
+        <div>
+          <div data-testid="recent-item">
+            {getRecentItemSubtext(mockRecentItem)}
+          </div>
+          <div data-testid="recent-table-item">
+            {getRecentItemSubtext(mockRecentTableItem)}
+          </div>
+        </div>,
       );
+
+      expect(await screen.findByText("My Cool Collection")).toBeInTheDocument();
+      expect(
+        await screen.findByText("My Cool Database (PUBLIC)"),
+      ).toBeInTheDocument();
     });
   });
 });

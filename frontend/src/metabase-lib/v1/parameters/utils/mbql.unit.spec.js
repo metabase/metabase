@@ -295,7 +295,7 @@ describe("parameters/utils/mbql", () => {
       ).toBe(query);
     });
 
-    it("should add a filter fora  date parameter", () => {
+    it("should add a filter for a date parameter", () => {
       const newQuery = applyFilterParameter(query, stageIndex, {
         target: ["dimension", ["field", PRODUCTS.CREATED_AT, null]],
         type: "date/single",
@@ -304,6 +304,22 @@ describe("parameters/utils/mbql", () => {
       const [filter] = Lib.filters(newQuery, -1);
       expect(Lib.displayInfo(query, stageIndex, filter)).toMatchObject({
         displayName: "Created At is on 01-01-2020",
+      });
+    });
+
+    it("should add a relative date filter with an offset for a date parameter with a correct operator (metabase#49853)", () => {
+      const newQuery = applyFilterParameter(query, stageIndex, {
+        target: ["dimension", ["field", PRODUCTS.CREATED_AT, null]],
+        type: "date/all-options",
+        value: "past3months-from-9months",
+      });
+      const [filter] = Lib.filters(newQuery, stageIndex);
+      expect(Lib.expressionParts(query, stageIndex, filter)).toMatchObject({
+        operator: "relative-time-interval",
+      });
+      expect(Lib.displayInfo(query, stageIndex, filter)).toMatchObject({
+        displayName:
+          "Created At is in the previous 3 months, starting 9 months ago",
       });
     });
 

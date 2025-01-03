@@ -10,12 +10,12 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import _ from "underscore";
 
-import { waitTimeContext } from "metabase/context/wait-time";
 import CS from "metabase/css/core/index.css";
 import { isCypressActive } from "metabase/env";
+import { delay } from "metabase/lib/delay";
 import resizeObserver from "metabase/lib/resize-observer";
 
-const WAIT_TIME = 300;
+const WAIT_TIME = delay(300);
 
 const REFRESH_MODE = {
   throttle: (fn: () => void) => _.throttle(fn, WAIT_TIME),
@@ -47,6 +47,9 @@ type InnerProps = {
 
 type ExplicitSizeOuterProps<T> = Omit<T, "width" | "height">;
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 function ExplicitSize<T>({
   selector,
   wrapped = false,
@@ -56,8 +59,6 @@ function ExplicitSize<T>({
     const displayName = ComposedComponent.displayName || ComposedComponent.name;
 
     class WrappedComponent extends Component<T & InnerProps> {
-      static contextType = waitTimeContext;
-
       static displayName = `ExplicitSize[${displayName}]`;
 
       state: SizeState = {
@@ -75,11 +76,11 @@ function ExplicitSize<T>({
 
       _updateSize: () => void;
 
-      constructor(props: T & InnerProps, context: unknown) {
-        super(props, context);
+      constructor(props: T & InnerProps) {
+        super(props);
 
         this._printMediaQuery = window.matchMedia && window.matchMedia("print");
-        if (this.context === 0) {
+        if (WAIT_TIME === 0) {
           this._refreshMode = "none";
         } else {
           this._refreshMode =

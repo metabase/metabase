@@ -98,8 +98,11 @@ export const QueryValidator = () => {
     },
   );
 
-  const handleCollectionChange = (collection: CollectionPickerValueItem) => {
-    setCollectionId(collection.id);
+  const handleCollectionChange = (item: CollectionPickerValueItem) => {
+    if (item.model !== "collection") {
+      throw new Error("QueryValidator requires a collection as a filter");
+    }
+    setCollectionId(item.id);
     setCollectionPickerOpen(false);
   };
 

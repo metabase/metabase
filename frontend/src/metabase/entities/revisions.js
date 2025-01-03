@@ -9,7 +9,7 @@ const REVERT = "metabase/entities/revisions/REVERT_REVISION";
 /**
  * @deprecated use "metabase/api" instead
  */
-const Revision = createEntity({
+const Revisions = createEntity({
   name: "revisions",
   api: {
     list: ({ model_type, model_id }, dispatch) =>
@@ -45,7 +45,7 @@ const Revision = createEntity({
         revisionApi.endpoints.revertRevision,
       );
 
-      dispatch(Revision.actions.invalidateLists());
+      dispatch(Revisions.actions.invalidateLists());
       dispatch({ type: REVERT, payload: revision });
     },
   },
@@ -59,4 +59,4 @@ const Revision = createEntity({
   },
 });
 
-export default Revision;
+export default Revisions;

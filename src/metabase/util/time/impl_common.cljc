@@ -94,17 +94,17 @@
 (defn matches-time?
   "Matches a local time string."
   [input]
-  (re-matches local-time-regex input))
+  (boolean (re-matches local-time-regex input)))
 
 (defn matches-date?
   "Matches a local date string."
   [input]
-  (re-matches local-date-regex input))
+  (boolean (re-matches local-date-regex input)))
 
 (defn matches-date-time?
   "Matches a local AND offset date time string."
   [input]
-  (re-matches (re-pattern (str date-time-part (optional offset-part))) input))
+  (boolean (re-matches (re-pattern (str date-time-part (optional offset-part))) input)))
 
 (defn drop-trailing-time-zone
   "Strips off a trailing +0500, -0430, or Z from a time string."

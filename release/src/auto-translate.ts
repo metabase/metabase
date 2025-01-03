@@ -82,7 +82,7 @@ const autoTranslate = async (language: string) => {
 }
 
 function getExistingLanguages() {
-  const localeFiles = fs.readdirSync("../locales");
+  const localeFiles = fs.readdirSync("./locales");
 
   return localeFiles.filter(f => /\.po$/.test(f))
     .map(f => f.replace(/\.po$/, ""));

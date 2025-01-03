@@ -55,12 +55,6 @@
   [graph & [_opts]]
   graph)
 
-(defn get-dbs-and-groups
-  "Given an api permission graph, this returns the groups and db-ids"
-  [graph]
-  {:group-ids (->> graph :groups keys set)
-   :db-ids (->> graph :groups vals (mapcat keys) set)})
-
 (mu/defn ellide? :- :boolean
   "If a table has the least permissive value for a perm type, leave it out,
    Unless it's :data perms, in which case, leave it out only if it's no-self-service"
@@ -368,8 +362,7 @@
                          (map keys)
                          (apply concat))]
     (when (some #{audit/audit-db-id} changes-ids)
-      (throw (ex-info (tru
-                       (str "Audit database permissions can only be changed by updating audit collection permissions."))
+      (throw (ex-info (tru "Audit database permissions can only be changed by updating audit collection permissions.")
                       {:status-code 400})))))
 
 (mu/defn update-data-perms-graph!*

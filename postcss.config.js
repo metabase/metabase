@@ -20,6 +20,6 @@ module.exports = {
       },
     },
     "postcss-discard-comments": {},
-    "postcss-nesting": {},
+    "postcss-nested": {},
   },
 };

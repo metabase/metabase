@@ -57,7 +57,7 @@ export function useNumberFilter({
     isValid,
     getDefaultValues,
     getFilterClause: (
-      operator: Lib.NumberFilterOperatorName,
+      operator: Lib.NumberFilterOperator,
       values: NumberValue[],
     ) => getFilterClause(operator, column, values),
     setOperator,

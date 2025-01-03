@@ -12,14 +12,15 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import {
-  adjustCase,
+  adjustCaseOrIf,
+  adjustMultiArgOptions,
   adjustOffset,
   adjustOptions,
   useShorthands,
 } from "./recursive-parser";
 import { resolve } from "./resolver";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
-import type { ErrorWithMessage } from "./types";
+import type { ErrorWithMessage, Token } from "./types";
 
 import {
   MBQL_CLAUSES,
@@ -28,13 +29,6 @@ import {
   parseMetric,
   parseSegment,
 } from "./index";
-
-type Token = {
-  type: number;
-  op: string;
-  start: number;
-  end: number;
-};
 
 // e.g. "COUNTIF(([Total]-[Tax] <5" returns 2 (missing parentheses)
 export function countMatchingParentheses(tokens: Token[]) {
@@ -237,7 +231,8 @@ function prattCompiler({
       adjustOptions,
       useShorthands,
       adjustOffset,
-      adjustCase,
+      adjustCaseOrIf,
+      adjustMultiArgOptions,
       expression =>
         resolve({
           expression,

@@ -53,49 +53,59 @@
                   table-columns)
       table-columns)))
 
+(defn- pivot-grouping-exists?
+  "Returns `true` if there's a column with the :name \"pivot-grouping\",
+  which is an internal detail from the pivot qp."
+  [cols]
+  (some #(= (:name %) "pivot-grouping") cols))
+
 (defn- export-column-order
   "For each entry in `table-columns` that is enabled, finds the index of the corresponding
   entry in `cols` by name or id. If a col has been remapped, uses the index of the new column.
 
   The resulting list of indices determines the order of column names and data in exports."
   [cols table-columns]
-  (let [table-columns'     (or (validate-table-columms table-columns cols)
-                               ;; If table-columns is not provided (e.g. for saved cards), we can construct a fake one
-                               ;; that retains the original column ordering in `cols`
-                               (for [col cols]
-                                 (let [col-name   (:name col)
-                                       id-or-name (or (:id col) col-name)
-                                       field-ref  (:field_ref col)]
-                                   {::mb.viz/table-column-field-ref (or field-ref [:field id-or-name nil])
-                                    ::mb.viz/table-column-enabled true
-                                    ::mb.viz/table-column-name col-name})))
-        enabled-table-cols (filter ::mb.viz/table-column-enabled table-columns')
-        cols-vector        (into [] cols)
-        ;; cols-index is a map from keys representing fields to their indices into `cols`
-        cols-index         (reduce-kv (fn [m i col]
-                                        ;; Always add col-name as a key, so that native queries and remapped fields work correctly
-                                        (let [m' (assoc m (:name col) i)]
-                                          (if-let [field-ref (:field_ref col)]
-                                            ;; Add a map key based on the column's field-ref, if available
-                                            (assoc m' field-ref i)
-                                            m')))
-                                      {}
-                                      cols-vector)]
-    (->> (map
-          (fn [{field-ref ::mb.viz/table-column-field-ref, col-name ::mb.viz/table-column-name}]
-            (let [index              (or (get cols-index field-ref)
-                                         (get cols-index col-name))
-                  col                (get cols-vector index)
-                  remapped-to-name   (:remapped_to col)
-                  remapped-from-name (:remapped_from col)]
-              (cond
-                remapped-to-name
-                (get cols-index remapped-to-name)
+  (if (pivot-grouping-exists? cols)
+    ;; If the columns contain a pivot-grouping, we're exporting a pivot and the cols order is not used,
+    ;; so we can just pass the indices in order.
+    (range (count cols))
+    (let [table-columns'     (or (validate-table-columms table-columns cols)
+                                 ;; If table-columns is not provided (e.g. for saved cards), we can construct a fake one
+                                 ;; that retains the original column ordering in `cols`
+                                 (for [col cols]
+                                   (let [col-name   (:name col)
+                                         id-or-name (or (:id col) col-name)
+                                         field-ref  (:field_ref col)]
+                                     {::mb.viz/table-column-field-ref (or field-ref [:field id-or-name nil])
+                                      ::mb.viz/table-column-enabled   true
+                                      ::mb.viz/table-column-name      col-name})))
+          enabled-table-cols (filter ::mb.viz/table-column-enabled table-columns')
+          cols-vector        (into [] cols)
+          ;; cols-index is a map from keys representing fields to their indices into `cols`
+          cols-index         (reduce-kv (fn [m i col]
+                                          ;; Always add col-name as a key, so that native queries and remapped fields work correctly
+                                          (let [m' (assoc m (:name col) i)]
+                                            (if-let [field-ref (:field_ref col)]
+                                              ;; Add a map key based on the column's field-ref, if available
+                                              (assoc m' field-ref i)
+                                              m')))
+                                        {}
+                                        cols-vector)]
+      (->> (map
+            (fn [{field-ref ::mb.viz/table-column-field-ref, col-name ::mb.viz/table-column-name}]
+              (let [index              (or (get cols-index field-ref)
+                                           (get cols-index col-name))
+                    col                (get cols-vector index)
+                    remapped-to-name   (:remapped_to col)
+                    remapped-from-name (:remapped_from col)]
+                (cond
+                  remapped-to-name
+                  (get cols-index remapped-to-name)
 
-                (not remapped-from-name)
-                index)))
-          enabled-table-cols)
-         (remove nil?))))
+                  (not remapped-from-name)
+                  index)))
+            enabled-table-cols)
+           (remove nil?)))))
 
 (defn order-cols
   "Dedups and orders `cols` based on the contents of table-columns in the provided viz settings. Also
@@ -136,18 +146,17 @@
 (mu/defn- streaming-result-fn :- fn?
   [results-writer   :- (lib.schema.common/instance-of-class metabase.query_processor.streaming.interface.StreamingResultsWriter)
    ^OutputStream os :- (lib.schema.common/instance-of-class OutputStream)]
-  (let [orig qp.pipeline/*result*]
-    (fn result [result]
-      (when (= (:status result) :completed)
-        (log/debug "Finished writing results; closing results writer.")
-        (try
-          (qp.si/finish! results-writer result)
-          (catch EofException e
-            (log/error e "Client closed connection prematurely")))
-        (u/ignore-exceptions
-          (.flush os)
-          (.close os)))
-      (orig result))))
+  (fn result [result]
+    (when (= (:status result) :completed)
+      (log/debug "Finished writing results; closing results writer.")
+      (try
+        (qp.si/finish! results-writer result)
+        (catch EofException _e
+          (log/warn "Client closed connection prematurely")))
+      (u/ignore-exceptions
+        (.flush os)
+        (.close os)))
+    (qp.pipeline/default-result-handler result)))
 
 (defn do-with-streaming-rff
   "Context to pass to the QP to streaming results as `export-format` to an output stream. Can be used independently of

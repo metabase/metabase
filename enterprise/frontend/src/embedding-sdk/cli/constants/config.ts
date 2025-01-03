@@ -19,3 +19,5 @@ export const HARDCODED_JWT_SHARED_SECRET =
 
 // Name of the permission groups and collections to create.
 export const SANDBOXED_GROUP_NAMES = ["Customer A", "Customer B", "Customer C"];
+
+export const GENERATED_COMPONENTS_DEFAULT_PATH = "./src/components/metabase";

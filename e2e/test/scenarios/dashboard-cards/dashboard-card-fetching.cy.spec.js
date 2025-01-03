@@ -1,8 +1,8 @@
+import { H } from "e2e/support";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { updateDashboardCards, visitDashboard } from "e2e/support/helpers";
 
 const cards = [
   {
@@ -30,7 +30,7 @@ describe("dashboard card fetching", () => {
   });
 
   it("should pass same dashboard_load_id to every query to enable metadata cache sharing", () => {
-    createDashboardWithCards({ cards }).then(visitDashboard);
+    createDashboardWithCards({ cards }).then(H.visitDashboard);
 
     cy.wait(["@dashcardQuery", "@dashcardQuery"]).then(interceptions => {
       const query1 = interceptions[0].request.body;
@@ -50,7 +50,7 @@ function createDashboardWithCards({
   return cy
     .createDashboard({ name: dashboardName })
     .then(({ body: { id } }) => {
-      updateDashboardCards({
+      H.updateDashboardCards({
         dashboard_id: id,
         cards,
       });

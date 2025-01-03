@@ -30,16 +30,6 @@
                                   (t2/select :model/Channel)
                                   (t2/select :model/Channel :active true))))
 
-(defn- test-channel-connection!
-  "Test if a channel can be connected, throw an exception if it fails."
-  [type details]
-  (try
-    (let [result (channel/can-connect? type details)]
-      (when-not (true? result)
-        (throw (ex-info "Unable to connect channel" (merge {:status-code 400} result)))))
-    (catch Exception e
-      (throw (ex-info "Unable to connect channel" (merge {:status-code 400} (ex-data e)))))))
-
 (def ^:private ChannelType
   (mu/with-api-error-message
    [:fn {:decode/string keyword}
@@ -58,7 +48,6 @@
   (when (t2/exists? :model/Channel :name name)
     (throw (ex-info "Channel with that name already exists" {:status-code 409
                                                              :errors      {:name "Channel with that name already exists"}})))
-  (test-channel-connection! type details)
   (u/prog1 (t2/insert-returning-instance! :model/Channel body)
     (events/publish-event! :event/channel-create {:object <> :user-id api/*current-user-id*})))
 
@@ -78,25 +67,33 @@
    details     [:maybe :map]
    active      [:maybe :boolean]}
   (validation/check-has-application-permission :setting)
-  (let [channel-before-update (api/check-404 (t2/select-one :model/Channel id))
-        details-changed? (some-> details (not= (:details channel-before-update)))
-        type-changed?    (some-> type (not= (:type channel-before-update)))]
-
-    (when (or details-changed? type-changed?)
-      (test-channel-connection! (or type (:type channel-before-update))
-                                (or details (:details channel-before-update))))
+  (let [channel-before-update (api/check-404 (t2/select-one :model/Channel id))]
     (t2/update! :model/Channel id body)
     (u/prog1 (t2/select-one :model/Channel id)
       (events/publish-event! :event/channel-update {:object          <>
                                                     :user-id         api/*current-user-id*
                                                     :previous-object channel-before-update}))))
 
+(defn- test-channel-connection!
+  "Test if a channel can be connected, throw an exception if it fails."
+  [type details]
+  (try
+    (let [result (channel/can-connect? type details)]
+      (if-not (true? result)
+        {:status 400
+         :body   {:message "Unable to connect channel"
+                  :data    {:connection-result result}}}
+        {:ok true}))
+    (catch Exception e
+      {:status 400
+       :body   {:message     (ex-message e)
+                :data        (ex-data e)}})))
+
 (api/defendpoint POST "/test"
   "Test a channel connection"
   [:as {{:keys [type details]} :body}]
   {type    ChannelType
    details :map}
-  (test-channel-connection! type details)
-  {:ok true})
+  (test-channel-connection! type details))
 
 (api/define-routes)

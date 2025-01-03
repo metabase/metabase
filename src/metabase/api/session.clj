@@ -11,13 +11,10 @@
    [metabase.events :as events]
    [metabase.integrations.google :as google]
    [metabase.integrations.ldap :as ldap]
-   [metabase.models.login-history :refer [LoginHistory]]
-   [metabase.models.session :refer [Session]]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.models.user :as user :refer [User]]
+   [metabase.models.user :as user]
    [metabase.public-settings :as public-settings]
-   [metabase.server.middleware.session :as mw.session]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -34,10 +31,10 @@
 (mu/defn- record-login-history!
   [session-id  :- uuid?
    user-id     :- ms/PositiveInt
-   device-info :- req.util/DeviceInfo]
-  (t2/insert! LoginHistory (merge {:user_id    user-id
-                                   :session_id (str session-id)}
-                                  device-info)))
+   device-info :- request/DeviceInfo]
+  (t2/insert! :model/LoginHistory (merge {:user_id    user-id
+                                          :session_id (str session-id)}
+                                         device-info)))
 
 (defmulti create-session!
   "Generate a new Session for a User. `session-type` is the currently either `:password` (for email + password login) or
@@ -59,9 +56,9 @@
     [:type [:enum :normal :full-app-embed]]]])
 
 (mu/defmethod create-session! :sso :- SessionSchema
-  [_ user :- CreateSessionUserInfo device-info :- req.util/DeviceInfo]
+  [_ user :- CreateSessionUserInfo device-info :- request/DeviceInfo]
   (let [session-uuid (random-uuid)
-        session      (first (t2/insert-returning-instances! Session
+        session      (first (t2/insert-returning-instances! :model/Session
                                                             :id      (str session-uuid)
                                                             :user_id (u/the-id user)))]
     (assert (map? session))
@@ -77,7 +74,7 @@
 (mu/defmethod create-session! :password :- SessionSchema
   [session-type
    user         :- CreateSessionUserInfo
-   device-info  :- req.util/DeviceInfo]
+   device-info  :- request/DeviceInfo]
   ;; this is actually the same as `create-session!` for `:sso` but we check whether password login is enabled.
   (when-not (public-settings/enable-password-login)
     (throw (ex-info (str (tru "Password login is disabled for this instance.")) {:status-code 400})))
@@ -103,7 +100,7 @@
 (mu/defn- ldap-login :- [:maybe [:map [:id uuid?]]]
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
-  [username password device-info :- req.util/DeviceInfo]
+  [username password device-info :- request/DeviceInfo]
   (when (api.ldap/ldap-enabled)
     (try
       (when-let [user-info (ldap/find-user username)]
@@ -127,8 +124,8 @@
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username    :- ms/NonBlankString
    password    :- [:maybe ms/NonBlankString]
-   device-info :- req.util/DeviceInfo]
-  (if-let [user (t2/select-one [User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
+   device-info :- request/DeviceInfo]
+  (if-let [user (t2/select-one [:model/User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
     (when (u.password/verify-password password (:password_salt user) (:password user))
       (if (:is_active user)
         (create-session! :password user device-info)
@@ -153,7 +150,7 @@
   throwing an Exception if login could not be completed."
   [username    :- ms/NonBlankString
    password    :- ms/NonBlankString
-   device-info :- req.util/DeviceInfo]
+   device-info :- request/DeviceInfo]
   ;; Primitive "strategy implementation", should be reworked for modular providers in #3210
   (or (ldap-login username password device-info)  ; First try LDAP if it's enabled
       (email-login username password device-info) ; Then try local authentication
@@ -182,12 +179,12 @@
   [:as {{:keys [username password]} :body, :as request}]
   {username ms/NonBlankString
    password ms/NonBlankString}
-  (let [ip-address   (req.util/ip-address request)
+  (let [ip-address   (request/ip-address request)
         request-time (t/zoned-date-time (t/zone-id "GMT"))
         do-login     (fn []
-                       (let [{session-uuid :id, :as session} (login username password (req.util/device-info request))
+                       (let [{session-uuid :id, :as session} (login username password (request/device-info request))
                              response                        {:id (str session-uuid)}]
-                         (mw.session/set-session-cookies request response session request-time)))]
+                         (request/set-session-cookies request response session request-time)))]
     (if throttling-disabled?
       (do-login)
       (http-401-on-error
@@ -199,9 +196,9 @@
   "Logout."
   ;; `metabase-session-id` gets added automatically by the [[metabase.server.middleware.session]] middleware
   [:as {:keys [metabase-session-id]}]
-  (api/check-exists? Session metabase-session-id)
-  (t2/delete! Session :id metabase-session-id)
-  (mw.session/clear-session-cookie api/generic-204-no-content))
+  (api/check-exists? :model/Session metabase-session-id)
+  (t2/delete! :model/Session :id metabase-session-id)
+  (request/clear-session-cookie api/generic-204-no-content))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
 ;; hashed. So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g.
@@ -220,7 +217,7 @@
     (when-let [{user-id      :id
                 sso-source   :sso_source
                 is-active?   :is_active :as user}
-               (t2/select-one [User :id :sso_source :is_active]
+               (t2/select-one [:model/User :id :sso_source :is_active]
                               :%lower.email
                               (u/lower-case-en email))]
       (if (some? sso-source)
@@ -238,7 +235,7 @@
   [:as {{:keys [email]} :body, :as request}]
   {email ms/Email}
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
-  (let [request-source (req.util/ip-address request)]
+  (let [request-source (request/ip-address request)]
     (throttle-check (forgot-password-throttlers :ip-address) request-source))
   (throttle-check (forgot-password-throttlers :email) email)
   (forgot-password-impl email)
@@ -261,7 +258,7 @@
   [^String token]
   (when-let [[_ user-id] (re-matches #"(^\d+)_.+$" token)]
     (let [user-id (Integer/parseInt user-id)]
-      (when-let [{:keys [reset_token reset_triggered], :as user} (t2/select-one [User :id :last_login :reset_triggered
+      (when-let [{:keys [reset_token reset_triggered], :as user} (t2/select-one [:model/User :id :last_login :reset_triggered
                                                                                  :reset_token]
                                                                                 :id user-id, :is_active true)]
         ;; Make sure the plaintext token matches up with the hashed one for this user
@@ -281,7 +278,7 @@
   [:as {{:keys [token password]} :body, :as request}]
   {token    ms/NonBlankString
    password ms/ValidPassword}
-  (let [request-source (req.util/ip-address request)]
+  (let [request-source (request/ip-address request)]
     (throttle-check reset-password-throttler request-source))
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
         (let [reset-token (t2/select-one-fn :reset_token :model/User :id user-id)]
@@ -291,12 +288,12 @@
           (if (:last_login user)
             (events/publish-event! :event/password-reset-successful {:object (assoc user :token reset-token)})
             ;; Send all the active admins an email :D
-            (messages/send-user-joined-admin-notification-email! (t2/select-one User :id user-id)))
+            (messages/send-user-joined-admin-notification-email! (t2/select-one :model/User :id user-id)))
           ;; after a successful password update go ahead and offer the client a new session that they can use
-          (let [{session-uuid :id, :as session} (create-session! :password user (req.util/device-info request))
+          (let [{session-uuid :id, :as session} (create-session! :password user (request/device-info request))
                 response                        {:success    true
                                                  :session_id (str session-uuid)}]
-            (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
+            (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
 (api/defendpoint GET "/password_reset_token_valid"
@@ -321,16 +318,16 @@
   (if throttling-disabled?
     (google/do-google-auth request)
     (http-401-on-error
-      (throttle/with-throttling [(login-throttlers :ip-address) (req.util/ip-address request)]
+      (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
         (let [user (google/do-google-auth request)
-              {session-uuid :id, :as session} (create-session! :sso user (req.util/device-info request))
+              {session-uuid :id, :as session} (create-session! :sso user (request/device-info request))
               response {:id (str session-uuid)}
-              user (t2/select-one [User :id :is_active], :email (:email user))]
+              user (t2/select-one [:model/User :id :is_active], :email (:email user))]
           (if (and user (:is_active user))
-            (mw.session/set-session-cookies request
-                                            response
-                                            session
-                                            (t/zoned-date-time (t/zone-id "GMT")))
+            (request/set-session-cookies request
+                                         response
+                                         session
+                                         (t/zoned-date-time (t/zone-id "GMT")))
             (throw (ex-info (str disabled-account-message)
                             {:status-code 401
                              :errors      {:account disabled-account-snippet}}))))))))

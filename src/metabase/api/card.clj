@@ -1,7 +1,6 @@
 (ns metabase.api.card
   "/api/card endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.java.io :as io]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
@@ -19,8 +18,6 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models :refer [Card CardBookmark Collection Database
-                            PersistedInfo Table]]
    [metabase.models.card :as card]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
@@ -37,12 +34,13 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
-   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.request.core :as request]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -64,17 +62,17 @@
 ;; return all Cards. This is the default filter option.
 (defmethod cards-for-filter-option* :all
   [_]
-  (t2/select Card, :archived false, order-by-name))
+  (t2/select :model/Card, :archived false, order-by-name))
 
 ;; return Cards created by the current user
 (defmethod cards-for-filter-option* :mine
   [_]
-  (t2/select Card, :creator_id api/*current-user-id*, :archived false, order-by-name))
+  (t2/select :model/Card, :creator_id api/*current-user-id*, :archived false, order-by-name))
 
 ;; return all Cards bookmarked by the current user.
 (defmethod cards-for-filter-option* :bookmarked
   [_]
-  (let [bookmarks (t2/select [CardBookmark :card_id] :user_id api/*current-user-id*)]
+  (let [bookmarks (t2/select [:model/CardBookmark :card_id] :user_id api/*current-user-id*)]
     (->> (t2/hydrate bookmarks :card)
          (map :card)
          (remove :archived)
@@ -83,30 +81,30 @@
 ;; Return all Cards belonging to Database with `database-id`.
 (defmethod cards-for-filter-option* :database
   [_ database-id]
-  (t2/select Card, :database_id database-id, :archived false, order-by-name))
+  (t2/select :model/Card, :database_id database-id, :archived false, order-by-name))
 
 ;; Return all Cards belonging to `Table` with `table-id`.
 (defmethod cards-for-filter-option* :table
   [_ table-id]
-  (t2/select Card, :table_id table-id, :archived false, order-by-name))
+  (t2/select :model/Card, :table_id table-id, :archived false, order-by-name))
 
 ;; Cards that have been archived.
 (defmethod cards-for-filter-option* :archived
   [_]
-  (t2/select Card, :archived true, order-by-name))
+  (t2/select :model/Card, :archived true, order-by-name))
 
 ;; Cards that are using a given model.
 (defmethod cards-for-filter-option* :using_model
   [_filter-option model-id]
-  (->> (t2/select Card {:select [:c.*]
-                        :from [[:report_card :m]]
-                        :join [[:report_card :c] [:and
-                                                  [:= :c.database_id :m.database_id]
-                                                  [:or
-                                                   [:like :c.dataset_query (format "%%card__%s%%" model-id)]
-                                                   [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
-                        :where [:and [:= :m.id model-id] [:not :c.archived]]
-                        :order-by [[[:lower :c.name] :asc]]})
+  (->> (t2/select :model/Card {:select [:c.*]
+                               :from [[:report_card :m]]
+                               :join [[:report_card :c] [:and
+                                                         [:= :c.database_id :m.database_id]
+                                                         [:or
+                                                          [:like :c.dataset_query (format "%%card__%s%%" model-id)]
+                                                          [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
+                               :where [:and [:= :m.id model-id] [:not :c.archived]]
+                               :order-by [[[:lower :c.name] :asc]]})
        ;; now check if model-id really occurs as a card ID
        (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))))
 
@@ -158,11 +156,11 @@
       (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
                                                          (name f)))
       (case f
-        :database      (api/read-check Database model_id)
-        :table         (api/read-check Database (t2/select-one-fn :db_id Table, :id model_id))
-        :using_model   (api/read-check Card model_id)
-        :using_metric  (api/read-check Database (db-id-via-table :metric model_id))
-        :using_segment (api/read-check Database (db-id-via-table :segment model_id))))
+        :database      (api/read-check :model/Database model_id)
+        :table         (api/read-check :model/Database (t2/select-one-fn :db_id :model/Table, :id model_id))
+        :using_model   (api/read-check :model/Card model_id)
+        :using_metric  (api/read-check :model/Database (db-id-via-table :metric model_id))
+        :using_segment (api/read-check :model/Database (db-id-via-table :segment model_id))))
     (let [cards          (filter mi/can-read? (cards-for-filter-option f model_id))
           last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
       (into []
@@ -183,9 +181,10 @@
     (-> card
         (t2/hydrate :based_on_upload
                     :creator
-                    :dashboard_count
                     :can_write
                     :can_run_adhoc_query
+                    :dashboard_count
+                    [:dashboard :moderation_status]
                     :average_query_time
                     :last_query_start
                     :parameter_usage_count
@@ -194,6 +193,7 @@
                     :can_manage_db
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details])
+        (update :dashboard #(some-> % (select-keys [:name :id :moderation_status])))
         (cond->
          (card/model? card) (t2/hydrate :persisted
                                         ;; can_manage_db determines whether we should enable model persistence settings
@@ -203,7 +203,7 @@
   "Get `Card` with ID."
   [id]
   (let [with-last-edit-info #(first (last-edit/with-last-edit-info [%] :card))
-        raw-card (t2/select-one Card :id id)]
+        raw-card (t2/select-one :model/Card :id id)]
     (-> raw-card
         api/read-check
         hydrate-card-details
@@ -225,6 +225,22 @@
                                {:object-id (:id <>)
                                 :user-id api/*current-user-id*
                                 :context (or context :question)})))))
+
+(defn- check-allowed-to-remove-from-existing-dashboards [card]
+  (let [dashboards (or (:in_dashboards card)
+                       (:in_dashboards (t2/hydrate card :in_dashboards)))]
+    (doseq [dashboard dashboards]
+      (api/write-check dashboard))))
+
+(api/defendpoint GET "/:id/dashboards"
+  "Get a list of `{:name ... :id ...}` pairs for all the dashboards this card appears in."
+  [id]
+  {id ms/PositiveInt}
+  (let [card (get-card id)
+        dashboards (:in_dashboards (t2/hydrate card :in_dashboards))]
+    (doseq [dashboard dashboards]
+      (api/write-check dashboard))
+    (map #(dissoc % :collection_id) dashboards)))
 
 (defn- dataset-query->query
   "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
@@ -314,7 +330,7 @@
   Provide `page-size` to limit the number of cards returned, it does not guaranteed to return exactly `page-size` cards.
   Use `fetch-compatible-series` for that."
   [card database-id->metadata-provider {:keys [query last-cursor page-size exclude-ids] :as _options}]
-  (let [matching-cards  (t2/select Card
+  (let [matching-cards  (t2/select :model/Card
                                    :archived false
                                    :display [:in supported-series-display-type]
                                    :id [:not= (:id card)]
@@ -412,7 +428,7 @@
      {:exclude-ids exclude_ids
       :query       query
       :last-cursor last_cursor
-      :page-size   mw.offset-paging/*limit*})))
+      :page-size   (request/limit)})))
 
 (api/defendpoint GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
@@ -421,7 +437,7 @@
    include [:maybe [:= "events"]]
    start   [:maybe ms/TemporalString]
    end     [:maybe ms/TemporalString]}
-  (let [{:keys [collection_id] :as _card} (api/read-check Card id)]
+  (let [{:keys [collection_id] :as _card} (api/read-check :model/Card id)]
     ;; subtlety here. timeline access is based on the collection at the moment so this check should be identical. If
     ;; we allow adding more timelines to a card in the future, we will need to filter on read-check and i don't think
     ;; the read-checks are particularly fast on multiple items
@@ -468,11 +484,12 @@
 
 (api/defendpoint POST "/"
   "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
-  [:as {{:keys [collection_id collection_position dataset_query description display name
-                parameters parameter_mappings result_metadata visualization_settings cache_ttl type], :as body} :body}]
+  [:as {{:keys [collection_id collection_position dashboard_id dataset_query description display entity_id
+                name parameters parameter_mappings result_metadata visualization_settings cache_ttl type], :as body} :body}]
   {name                   ms/NonBlankString
    type                   [:maybe ::card-type]
    dataset_query          ms/Map
+   entity_id              [:maybe ms/NonBlankString] ;; TODO: Make that a NanoID regex schema?
    parameters             [:maybe [:sequential ms/Parameter]]
    parameter_mappings     [:maybe [:sequential ms/ParameterMapping]]
    description            [:maybe ms/NonBlankString]
@@ -481,7 +498,8 @@
    collection_id          [:maybe ms/PositiveInt]
    collection_position    [:maybe ms/PositiveInt]
    result_metadata        [:maybe analyze/ResultsMetadata]
-   cache_ttl              [:maybe ms/PositiveInt]}
+   cache_ttl              [:maybe ms/PositiveInt]
+   dashboard_id           [:maybe ms/PositiveInt]}
   (check-if-card-can-be-saved dataset_query type)
   ;; check that we have permissions to run the query that we're trying to save
   (check-permissions-for-query dataset_query)
@@ -497,7 +515,7 @@
   "Copy a `Card`, with the new name 'Copy of _name_'"
   [id]
   {id [:maybe ms/PositiveInt]}
-  (let [orig-card (api/read-check Card id)
+  (let [orig-card (api/read-check :model/Card id)
         new-name  (trs "Copy of {0}" (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
     (-> (card/create-card! new-card @api/*current-user*)
@@ -522,37 +540,46 @@
     (validation/check-embedding-enabled)
     (api/check-superuser)))
 
-(api/defendpoint PUT "/:id"
-  "Update a `Card`."
-  [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
-                   collection_position enable_embedding embedding_params result_metadata parameters
-                   cache_ttl collection_preview type]
-            :as   card-updates} :body}]
-  {id                     ms/PositiveInt
-   name                   [:maybe ms/NonBlankString]
-   parameters             [:maybe [:sequential ms/Parameter]]
-   dataset_query          [:maybe ms/Map]
-   type                   [:maybe ::card-type]
-   display                [:maybe ms/NonBlankString]
-   description            [:maybe :string]
-   visualization_settings [:maybe ms/Map]
-   archived               [:maybe :boolean]
-   enable_embedding       [:maybe :boolean]
-   embedding_params       [:maybe ms/EmbeddingParams]
-   collection_id          [:maybe ms/PositiveInt]
-   collection_position    [:maybe ms/PositiveInt]
-   result_metadata        [:maybe analyze/ResultsMetadata]
-   cache_ttl              [:maybe ms/PositiveInt]
-   collection_preview     [:maybe :boolean]}
+(defn- check-allowed-to-move [card-before-update card-updates]
+  (when (api/column-will-change? :dashboard_id card-before-update card-updates)
+    (check-allowed-to-remove-from-existing-dashboards card-before-update))
+  (collection/check-allowed-to-change-collection card-before-update card-updates))
+
+(def ^:private CardUpdateSchema
+  [:map
+   [:name                   {:optional true} [:maybe ms/NonBlankString]]
+   [:parameters             {:optional true} [:maybe [:sequential ms/Parameter]]]
+   [:dataset_query          {:optional true} [:maybe ms/Map]]
+   [:type                   {:optional true} [:maybe ::card-type]]
+   [:display                {:optional true} [:maybe ms/NonBlankString]]
+   [:description            {:optional true} [:maybe :string]]
+   [:visualization_settings {:optional true} [:maybe ms/Map]]
+   [:archived               {:optional true} [:maybe :boolean]]
+   [:enable_embedding       {:optional true} [:maybe :boolean]]
+   [:embedding_params       {:optional true} [:maybe ms/EmbeddingParams]]
+   [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
+   [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
+   [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_preview     {:optional true} [:maybe :boolean]]
+   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]])
+
+(mu/defn update-card!
+  "Updates a card - impl"
+  [id :- ms/PositiveInt
+   {:keys [dataset_query
+           result_metadata
+           type] :as card-updates} :- CardUpdateSchema
+   delete-old-dashcards? :- :boolean]
   (check-if-card-can-be-saved dataset_query type)
-  (let [card-before-update     (t2/hydrate (api/write-check Card id)
+  (let [card-before-update     (t2/hydrate (api/write-check :model/Card id)
                                            [:moderation_reviews :moderator_details])
         card-updates           (api/updates-with-archived-directly card-before-update card-updates)
         is-model-after-update? (if (nil? type)
                                  (card/model? card-before-update)
                                  (card/model? card-updates))]
     ;; Do various permissions checks
-    (doseq [f [collection/check-allowed-to-change-collection
+    (doseq [f [check-allowed-to-move
                check-allowed-to-modify-query
                check-allowed-to-change-embedding]]
       (f card-before-update card-updates))
@@ -565,20 +592,37 @@
           card-updates                       (merge card-updates
                                                     (when (and (some? type)
                                                                is-model-after-update?)
-                                                      {:display :table}))
+                                                      {:display :table})
+                                                    (when (and
+                                                           (api/column-will-change? :dashboard_id
+                                                                                    card-before-update
+                                                                                    card-updates)
+                                                           (:dashboard_id card-updates))
+                                                      (api/check-400
+                                                       (not (:archived card-updates)))
+                                                      {:archived false}))
           card-updates                       (cond-> card-updates
                                                metadata
                                                (assoc :result_metadata           metadata
                                                       :verified-result-metadata? true))
-          card                               (-> (card/update-card! {:card-before-update card-before-update
-                                                                     :card-updates       card-updates
-                                                                     :actor              @api/*current-user*})
+          card                               (-> (card/update-card! {:card-before-update    card-before-update
+                                                                     :card-updates          card-updates
+                                                                     :actor                 @api/*current-user*
+                                                                     :delete-old-dashcards? delete-old-dashcards?})
                                                  hydrate-card-details
                                                  (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))]
       (when metadata-future
         (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
         (card.metadata/save-metadata-async! metadata-future card))
       card)))
+
+(api/defendpoint PUT "/:id"
+  "Update a `Card`."
+  [id delete_old_dashcards :as {body :body}]
+  {id ms/PositiveInt
+   delete_old_dashcards [:maybe :boolean]
+   body CardUpdateSchema}
+  (update-card! id body (boolean delete_old_dashcards)))
 
 (api/defendpoint GET "/:id/query_metadata"
   "Get all of the required query metadata for a card."
@@ -592,8 +636,8 @@
   "Hard delete a Card. To soft delete, use `PUT /api/card/:id`"
   [id]
   {id ms/PositiveInt}
-  (let [card (api/write-check Card id)]
-    (t2/delete! Card :id id)
+  (let [card (api/write-check :model/Card id)]
+    (t2/delete! :model/Card :id id)
     (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
@@ -607,7 +651,7 @@
   [new-collection-id-or-nil cards]
   ;; Sorting by `:collection_position` to ensure lower position cards are appended first
   (let [sorted-cards        (sort-by :collection_position cards)
-        max-position-result (t2/select-one [Card [:%max.collection_position :max_position]]
+        max-position-result (t2/select-one [:model/Card [:%max.collection_position :max_position]]
                                            :collection_id new-collection-id-or-nil)
         ;; collection_position for the next card in the collection
         starting-position   (inc (get max-position-result :max_position 0))]
@@ -621,7 +665,7 @@
             (api/reconcile-position-for-collection! collection_id collection_position nil)
             ;; Now we can update the card with the new collection and a new calculated position
             ;; that appended to the end
-            (t2/update! Card
+            (t2/update! :model/Card
                         (u/the-id card)
                         {:collection_position idx
                          :collection_id       new-collection-id-or-nil}))
@@ -634,10 +678,10 @@
 (defn- move-cards-to-collection! [new-collection-id-or-nil card-ids]
   ;; if moving to a collection, make sure we have write perms for it
   (when new-collection-id-or-nil
-    (api/write-check Collection new-collection-id-or-nil))
+    (api/write-check :model/Collection new-collection-id-or-nil))
   ;; for each affected card...
   (when (seq card-ids)
-    (let [cards (t2/select [Card :id :collection_id :collection_position :dataset_query]
+    (let [cards (t2/select [:model/Card :id :collection_id :collection_position :dataset_query]
                            {:where [:and [:in :id (set card-ids)]
                                     [:or [:not= :collection_id new-collection-id-or-nil]
                                      (when new-collection-id-or-nil
@@ -647,7 +691,7 @@
         (api/write-check card))
       ;; ...and check that we have write permissions for the old collections if applicable
       (doseq [old-collection-id (set (filter identity (map :collection_id cards)))]
-        (api/write-check Collection old-collection-id))
+        (api/write-check :model/Collection old-collection-id))
 
       ;; Ensure all of the card updates occur in a transaction. Read commited (the default) really isn't what we want
       ;; here. We are querying for the max card position for a given collection, then using that to base our position
@@ -663,7 +707,7 @@
         (when-let [cards-without-position (seq (for [card cards
                                                      :when (not (:collection_position card))]
                                                  (u/the-id card)))]
-          (t2/update! (t2/table-name Card)
+          (t2/update! (t2/table-name :model/Card)
                       {:id [:in (set cards-without-position)]}
                       {:collection_id new-collection-id-or-nil})))))
   (when new-collection-id-or-nil
@@ -713,7 +757,7 @@
    export-format (into [:enum] api.dataset/export-formats)}
   (qp.card/process-query-for-card
    card-id export-format
-   :parameters  (json/parse-string parameters keyword)
+   :parameters  (json/decode+kw parameters)
    :constraints nil
    :context     (api.dataset/export-format->context export-format)
    :middleware  {:process-viz-settings?  true
@@ -733,11 +777,11 @@
   {card-id ms/PositiveInt}
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
-  (api/check-not-archived (api/read-check Card card-id))
-  (let [{existing-public-uuid :public_uuid} (t2/select-one [Card :public_uuid] :id card-id)]
+  (api/check-not-archived (api/read-check :model/Card card-id))
+  (let [{existing-public-uuid :public_uuid} (t2/select-one [:model/Card :public_uuid] :id card-id)]
     {:uuid (or existing-public-uuid
                (u/prog1 (str (random-uuid))
-                 (t2/update! Card card-id
+                 (t2/update! :model/Card card-id
                              {:public_uuid       <>
                               :made_public_by_id api/*current-user-id*})))}))
 
@@ -747,8 +791,8 @@
   {card-id ms/PositiveInt}
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
-  (api/check-exists? Card :id card-id, :public_uuid [:not= nil])
-  (t2/update! Card card-id
+  (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil])
+  (t2/update! :model/Card card-id
               {:public_uuid       nil
                :made_public_by_id nil})
   {:status 204, :body nil})
@@ -758,7 +802,7 @@
   []
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
-  (t2/select [Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+  (t2/select [:model/Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
 (api/defendpoint GET "/embeddable"
   "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints
@@ -766,7 +810,7 @@
   []
   (validation/check-has-application-permission :setting)
   (validation/check-embedding-enabled)
-  (t2/select [Card :name :id], :enable_embedding true, :archived false))
+  (t2/select [:model/Card :name :id], :enable_embedding true, :archived false))
 
 (api/defendpoint POST "/pivot/:card-id/query"
   "Run the query associated with a Card."
@@ -785,8 +829,8 @@
   [card-id]
   {card-id ms/PositiveInt}
   (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
-  (api/let-404 [{:keys [database_id] :as card} (t2/select-one Card :id card-id)]
-    (let [database (t2/select-one Database :id database_id)]
+  (api/let-404 [{:keys [database_id] :as card} (t2/select-one :model/Card :id card-id)]
+    (let [database (t2/select-one :model/Database :id database_id)]
       (api/write-check database)
       (when-not (driver.u/supports? (:engine database) :persist-models database)
         (throw (ex-info (tru "Database does not support persisting")
@@ -806,13 +850,13 @@
   "Refresh the persisted model caching `card-id`."
   [card-id]
   {card-id ms/PositiveInt}
-  (api/let-404 [card           (t2/select-one Card :id card-id)
-                persisted-info (t2/select-one PersistedInfo :card_id card-id)]
+  (api/let-404 [card           (t2/select-one :model/Card :id card-id)
+                persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
     (when (not (card/model? card))
       (throw (ex-info (trs "Cannot refresh a non-model question") {:status-code 400})))
     (when (:archived card)
       (throw (ex-info (trs "Cannot refresh an archived model") {:status-code 400})))
-    (api/write-check (t2/select-one Database :id (:database_id persisted-info)))
+    (api/write-check (t2/select-one :model/Database :id (:database_id persisted-info)))
     (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
     api/generic-204-no-content))
 
@@ -822,9 +866,9 @@
   [card-id]
   {card-id ms/PositiveInt}
   (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
-  (api/let-404 [_card (t2/select-one Card :id card-id)]
-    (api/let-404 [persisted-info (t2/select-one PersistedInfo :card_id card-id)]
-      (api/write-check (t2/select-one Database :id (:database_id persisted-info)))
+  (api/let-404 [_card (t2/select-one :model/Card :id card-id)]
+    (api/let-404 [persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
+      (api/write-check (t2/select-one :model/Database :id (:database_id persisted-info)))
       (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off")
       api/generic-204-no-content)))
 
@@ -865,7 +909,7 @@
   [card-id param-key]
   {card-id   ms/PositiveInt
    param-key ms/NonBlankString}
-  (param-values (api/read-check Card card-id) param-key))
+  (param-values (api/read-check :model/Card card-id) param-key))
 
 (api/defendpoint GET "/:card-id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`.
@@ -878,7 +922,7 @@
   {card-id   ms/PositiveInt
    param-key ms/NonBlankString
    query     ms/NonBlankString}
-  (param-values (api/read-check Card card-id) param-key query))
+  (param-values (api/read-check :model/Card card-id) param-key query))
 
 (defn- from-csv!
   "This helper function exists to make testing the POST /api/card/from-csv endpoint easier."

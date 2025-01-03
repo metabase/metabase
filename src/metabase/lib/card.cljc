@@ -93,6 +93,9 @@
                    card-id
                    (assoc :lib/card-id card-id)
 
+                   (:metabase.lib.field/temporal-unit col)
+                   (assoc :inherited-temporal-unit (:metabase.lib.field/temporal-unit col))
+
                    (and *force-broken-card-refs*
                         ;; never force broken refs for Models, because Models can have give columns with completely
                         ;; different names the Field ID of a different column, somehow. See #22715

@@ -68,12 +68,13 @@
   (log/info "Reading available locales from locales.clj...")
   (some-> (io/resource "locales.clj") slurp edn/read-string :locales (->> (apply sorted-set))))
 
-(def ^{:arglists '([])} available-locale-names
-  "Return sorted set of available locales, as Strings.
+(let [locales (delay (available-locale-names*))]
+  (defn available-locale-names
+    "Return sorted set of available locales, as Strings.
 
     (available-locale-names) ; -> #{\"en\" \"nl\" \"pt-BR\" \"zh\"}"
-  (let [locales (delay (available-locale-names*))]
-    (fn [] @locales)))
+    []
+    @locales))
 
 (defn- find-fallback-locale*
   ^Locale [^Locale a-locale]
@@ -89,6 +90,7 @@
 (def ^:private ^{:arglists '([a-locale])} find-fallback-locale
   (memoize find-fallback-locale*))
 
+;; Note: this logic should be kept in sync with the one in `frontend/src/metabase/public/LocaleProvider.tsx`
 (defn fallback-locale
   "Find a translated fallback Locale in the following order:
     1) If it is a language + country Locale, try the language-only Locale

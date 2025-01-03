@@ -3,7 +3,6 @@ import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/testing-library";
 import { type ComponentProps, useEffect } from "react";
-import { Provider } from "react-redux";
 
 import { getStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
@@ -13,7 +12,7 @@ import {
   NumberColumn,
   StringColumn,
 } from "__support__/visualizations";
-import { waitTimeContext } from "metabase/context/wait-time";
+import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { publicReducers } from "metabase/reducers-public";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
@@ -43,7 +42,6 @@ export default {
   component: PublicOrEmbeddedQuestionView,
   decorators: [
     ReduxDecorator,
-    FasterExplicitSizeUpdateDecorator,
     WaitForResizeToStopDecorator,
     MockIsEmbeddingDecorator,
   ],
@@ -54,24 +52,15 @@ export default {
 
 function ReduxDecorator(Story: StoryFn) {
   return (
-    <Provider store={store}>
+    <MetabaseReduxProvider store={store}>
       <Story />
-    </Provider>
-  );
-}
-
-function FasterExplicitSizeUpdateDecorator(Story: StoryFn) {
-  return (
-    <waitTimeContext.Provider value={0}>
-      <Story />
-    </waitTimeContext.Provider>
+    </MetabaseReduxProvider>
   );
 }
 
 /**
  * This is an arbitrary number, it should be big enough to pass CI tests.
- * This value works together with FasterExplicitSizeUpdateDecorator which
- * make sure we finish resizing any ExplicitSize components the fastest.
+ * This works because we set delays for ExplicitSize to 0 in storybook.
  */
 const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1000;
 function WaitForResizeToStopDecorator(Story: StoryFn) {

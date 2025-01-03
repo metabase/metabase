@@ -4,8 +4,8 @@
    [java-time.api :as t]
    [metabase.search.config :as search.config]
    [metabase.search.in-place.filter-test :as search.filter-test]
+   [metabase.search.in-place.legacy :as search.legacy]
    [metabase.search.in-place.scoring :as scoring]
-   [metabase.search.legacy :as search.legacy]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -214,7 +214,7 @@
       (is (= [1 2 3 4]
              (->> [(item 1 (days-ago 0))
                    (item 2 (days-ago 1))
-                   (item 3 (days-ago 50))
+                   (item 3 (days-ago 20))
                    (item 4 nil)]
                   shuffle
                   (sort-by score)
@@ -223,7 +223,7 @@
     (testing "it treats stale items as being equally old"
       (let [stale search.config/stale-time-in-days]
         (is (= [1 2 3 4]
-               (->> [(item 1 (days-ago (+ stale 1)))
+               (->> [(item 1 (days-ago (inc stale)))
                      (item 2 (days-ago (+ stale 50)))
                      (item 3 nil)
                      (item 4 (days-ago stale))]

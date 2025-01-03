@@ -4,8 +4,6 @@ import {
   popover,
 } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
-import { updateSetting } from "./api";
-
 export function setDropdownFilterType() {
   cy.findByText("Dropdown list").click();
 }
@@ -82,8 +80,4 @@ export function checkFilterListSourceHasValue({ values }) {
 export function setConnectedFieldSource(table, field) {
   popover().findByText(table).click();
   popover().findByText(field).click();
-}
-
-export function changeSynchronousBatchUpdateSetting(value) {
-  updateSetting("synchronous-batch-updates", value);
 }

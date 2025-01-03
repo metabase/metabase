@@ -20,13 +20,12 @@
   (is (some? (dashboard-templates/get-dashboard-templates ["table" "GenericTable" "ByCountry"]))))
 
 (deftest ^:parallel dimension-form?-test
-  (are [x expected] (= expected
-                       (dashboard-templates/dimension-form? x))
-    [:dimension "Foo"]  true
-    ["dimension" "Foo"] true
-    ["DIMENSION" "Foo"] true
-    42                  false
-    [:baz :bar]         false))
+  (are [x pred] (pred (dashboard-templates/dimension-form? x))
+    [:dimension "Foo"]  true?
+    ["dimension" "Foo"] true?
+    ["DIMENSION" "Foo"] true?
+    42                  false?
+    [:baz :bar]         false?))
 
 (deftest ^:parallel collect-dimensions-test
   (is (= ["Foo" "Baz" "Bar"]

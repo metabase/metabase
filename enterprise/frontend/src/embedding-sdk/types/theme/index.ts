@@ -36,6 +36,12 @@ export interface MetabaseColors {
   /** Primary brand color used for buttons and links */
   brand?: string;
 
+  /** Lighter variation of the brand color. Used for hover and accented elements. */
+  "brand-hover"?: string;
+
+  /** Lightest variation of the brand color. Used for hover and accented elements. */
+  "brand-hover-light"?: string;
+
   /** Text color on dark elements. Should be a lighter color for readability. */
   "text-primary"?: string;
 
@@ -48,8 +54,14 @@ export interface MetabaseColors {
   /** Default background color. */
   background?: string;
 
+  /** Slightly muted background color. */
+  "background-secondary"?: string;
+
   /** Slightly darker background color used for hover and accented elements. */
   "background-hover"?: string;
+
+  /** Muted background color used for disabled elements, such as disabled buttons and inputs. */
+  "background-disabled"?: string;
 
   /** Color used for borders */
   border?: string;
@@ -85,6 +97,12 @@ export type MetabaseColor = keyof MetabaseColors;
 export type MetabaseComponentTheme = {
   dashboard: {
     backgroundColor: string;
+
+    /**
+     * Border color of the dashboard grid, shown only when editing dashboards.
+     * Defaults to `colors.border`
+     **/
+    gridBorderColor?: string;
 
     card: {
       backgroundColor: string;
@@ -168,9 +186,25 @@ export type MetabaseComponentTheme = {
     };
   };
 
+  /** Tooltip */
+  tooltip?: {
+    /** Tooltip text color. */
+    textColor?: string;
+
+    /** Secondary text color shown in the tooltip, e.g. for tooltip headers and percentage changes. */
+    secondaryTextColor?: string;
+
+    /** Tooltip background color. */
+    backgroundColor?: string;
+
+    /** Tooltip background color for focused rows. */
+    focusedBackgroundColor?: string;
+  };
+
   /** Popover */
-  popover?: {
-    /** z-index of the popover. Useful for embedding components in a modal. Defaults to 4. */
+  popover: {
+    /** z-index of overlays. Useful for embedding components in a modal.
+     * Defaults to 200. */
     zIndex?: number;
   };
 

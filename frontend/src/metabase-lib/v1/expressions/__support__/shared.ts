@@ -1,5 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
+import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
 import { createMockSegment } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -55,9 +56,17 @@ const userName = checkNotNull(metadata.field(ORDERS.USER_ID))
 
 const segment = checkNotNull(metadata.segment(SEGMENT_ID)).filterClause();
 
-const legacyQuery = checkNotNull(metadata.table(ORDERS_ID)).legacyQuery({
-  foo: 42,
+const query = createQueryWithClauses({
+  query: createQuery({ metadata }),
+  expressions: [
+    {
+      name: "foo",
+      operator: "+",
+      args: [1, 2],
+    },
+  ],
 });
+const stageIndex = -1;
 
 // shared test cases used in compile, formatter, and syntax tests:
 //
@@ -115,6 +124,18 @@ const expression = [
       { default: "OK" },
     ],
     "case statement with default",
+  ],
+  [
+    'if([Total] > 10, "GOOD", [Total] < 5, "BAD", "OK")',
+    [
+      "if",
+      [
+        [[">", total, 10], "GOOD"],
+        [["<", total, 5], "BAD"],
+      ],
+      { default: "OK" },
+    ],
+    "if statement with default",
   ],
   // should not compile:
   // ["\"Hell\" + 1", null, "adding a string to a number"],
@@ -185,6 +206,108 @@ const expression = [
       ],
     ],
     "should handle priority for addition and subtraction with parenthesis",
+  ],
+
+  [
+    'contains([Product → Ean], "A", "B")',
+    [
+      "contains",
+      {},
+      ["field", PRODUCTS.EAN, { "source-field": ORDERS.PRODUCT_ID }],
+      "A",
+      "B",
+    ],
+    "should handle contains with multiple arguments and empty options",
+  ],
+
+  [
+    'contains([Product → Ean], "A", "B", "case-insensitive")',
+    [
+      "contains",
+      { "case-sensitive": false },
+      ["field", PRODUCTS.EAN, { "source-field": ORDERS.PRODUCT_ID }],
+      "A",
+      "B",
+    ],
+    "should handle contains with multiple arguments and non-empty options",
+  ],
+
+  [
+    'doesNotContain([User → Name], "A", "B", "C")',
+    [
+      "does-not-contain",
+      {},
+      ["field", PEOPLE.NAME, { "source-field": ORDERS.USER_ID }],
+      "A",
+      "B",
+      "C",
+    ],
+    "should handle doesNotContain with multiple arguments and empty options",
+  ],
+
+  [
+    'doesNotContain([User → Name], "A", "B", "C", "case-insensitive")',
+    [
+      "does-not-contain",
+      { "case-sensitive": false },
+      ["field", PEOPLE.NAME, { "source-field": ORDERS.USER_ID }],
+      "A",
+      "B",
+      "C",
+    ],
+    "should handle doesNotContain with multiple arguments and empty options",
+  ],
+
+  [
+    'startsWith([Product → Category], "A", "B")',
+    [
+      "starts-with",
+      {},
+      ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+      "A",
+      "B",
+    ],
+    "should handle startsWith with multiple arguments and empty options",
+  ],
+
+  [
+    'startsWith([Product → Category], "A", "B", "case-insensitive")',
+    [
+      "starts-with",
+      { "case-sensitive": false },
+      ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+      "A",
+      "B",
+    ],
+    "should handle startsWith with multiple arguments and non-empty options",
+  ],
+
+  [
+    'endsWith([User → Email], "A", "B", "C", "D")',
+    [
+      "ends-with",
+      {},
+      ["field", PEOPLE.EMAIL, { "source-field": ORDERS.USER_ID }],
+      "A",
+      "B",
+      "C",
+      "D",
+    ],
+    "should handle endsWith with multiple arguments and empty options",
+  ],
+
+  [
+    'endsWith([User → Email], "A", "B", "C", "D", "case-insensitive")',
+    [
+      "ends-with",
+      { "case-sensitive": false },
+      ["field", PEOPLE.EMAIL, { "source-field": ORDERS.USER_ID }],
+      "A",
+      "B",
+      "C",
+      "D",
+    ],
+    "should handle endsWith with multiple arguments and non-empty options",
   ],
 ];
 
@@ -280,9 +403,9 @@ const filter = [
 ];
 
 export const dataForFormatting = [
-  ["expression", expression, { startRule: "expression", legacyQuery }],
-  ["aggregation", aggregation, { startRule: "aggregation", legacyQuery }],
-  ["filter", filter, { startRule: "boolean", legacyQuery }],
+  ["expression", expression, { startRule: "expression", query, stageIndex }],
+  ["aggregation", aggregation, { startRule: "aggregation", query, stageIndex }],
+  ["filter", filter, { startRule: "boolean", query, stageIndex }],
 ];
 
 /**

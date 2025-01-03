@@ -1,0 +1,202 @@
+[
+  {
+    "data": {
+      "rows": [
+        ["level_1", "level_2", 100000000],
+        ["level_2", "level_3", 10000000],
+        ["level_3", "level_4", 1000000],
+        ["level_4", "level_5", 100000000],
+        ["level_5", "level_6", 150000000]
+      ],
+      "cols": [
+        {
+          "display_name": "s",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "s",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "s",
+          "base_type": "type/Text",
+          "database_type": "text",
+          "effective_type": "type/Text"
+        },
+        {
+          "display_name": "t",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "t",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "t",
+          "base_type": "type/Text",
+          "database_type": "text",
+          "effective_type": "type/Text"
+        },
+        {
+          "display_name": "v",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "v",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "v",
+          "base_type": "type/Integer",
+          "database_type": "int4",
+          "effective_type": "type/Integer"
+        }
+      ],
+      "native_form": {
+        "params": null,
+        "query": "SELECT 'level_1' AS s, 'level_2' AS t, 100000000 AS v\nUNION ALL SELECT 'level_2', 'level_3', 10000000\nUNION ALL SELECT 'level_3', 'level_4', 1000000\nUNION ALL SELECT 'level_4', 'level_5', 100000000\nUNION ALL SELECT 'level_5', 'level_6', 150000000"
+      },
+      "results_timezone": "UTC",
+      "requested_timezone": "UTC",
+      "format-rows?": true,
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "s",
+            "field_ref": [
+              "field",
+              "s",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "name": "s",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 7
+                }
+              }
+            }
+          },
+          {
+            "display_name": "t",
+            "field_ref": [
+              "field",
+              "t",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "name": "t",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 7
+                }
+              }
+            }
+          },
+          {
+            "display_name": "v",
+            "field_ref": [
+              "field",
+              "v",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "name": "v",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1000000,
+                  "q1": 7750000,
+                  "q3": 120943058.49579051,
+                  "max": 150000000,
+                  "sd": 64297744.90602295,
+                  "avg": 72200000
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    },
+    "cached": null,
+    "database_id": 2,
+    "started_at": "2024-11-22T16:44:59.074428-05:00",
+    "json_query": {
+      "database": 2,
+      "type": "native",
+      "native": {
+        "query": "SELECT 'level_1' AS s, 'level_2' AS t, 100000000 AS v\nUNION ALL SELECT 'level_2', 'level_3', 10000000\nUNION ALL SELECT 'level_3', 'level_4', 1000000\nUNION ALL SELECT 'level_4', 'level_5', 100000000\nUNION ALL SELECT 'level_5', 'level_6', 150000000",
+        "template-tags": {}
+      },
+      "middleware": {
+        "js-int-to-string?": true,
+        "userland-query?": true,
+        "add-default-userland-constraints?": true
+      }
+    },
+    "average_execution_time": null,
+    "status": "completed",
+    "context": "ad-hoc",
+    "row_count": 5,
+    "running_time": 14,
+    "card": {
+      "displayIsLocked": true,
+      "parameters": [],
+      "visualization_settings": {
+        "sankey.show_edge_labels": true,
+        "sankey.label_value_formatting": "auto",
+        "sankey.edge_color": "gray"
+      },
+      "type": "question",
+      "display": "sankey",
+      "dataset_query": {
+        "database": 2,
+        "type": "native",
+        "native": {
+          "query": "SELECT 'level_1' AS s, 'level_2' AS t, 100000000 AS v\nUNION ALL SELECT 'level_2', 'level_3', 10000000\nUNION ALL SELECT 'level_3', 'level_4', 1000000\nUNION ALL SELECT 'level_4', 'level_5', 100000000\nUNION ALL SELECT 'level_5', 'level_6', 150000000",
+          "template-tags": {}
+        }
+      },
+      "creationType": "native_question",
+      "collection_id": null
+    }
+  }
+]

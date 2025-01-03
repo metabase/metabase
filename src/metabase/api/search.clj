@@ -1,17 +1,21 @@
 (ns metabase.api.search
-  ;; Allowing search.config to be accessed for developer API to set weights
-  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [clojure.string :as str]
    [compojure.core :refer [GET]]
    [java-time.api :as t]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.public-settings :as public-settings]
-   [metabase.search :as search]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.request.core :as request]
+   ;; Allowing search.config to be accessed for developer API to set weights
+   ^{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [metabase.search.config :as search.config]
-   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.search.core :as search]
    [metabase.task :as task]
    [metabase.task.search-index :as task.search-index]
+   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]))
 
@@ -44,50 +48,53 @@
                 raise)))
    (meta handler)))
 
-(api/defendpoint POST "/force-reindex"
-  "If fulltext search is enabled, this will trigger a synchronous reindexing operation."
+(api/defendpoint POST "/re-init"
+  "This will blow away any search indexes, re-create, and re-populate them."
   []
   (api/check-superuser)
-  (cond
-    (not (public-settings/experimental-fulltext-search-enabled))
-    (throw (ex-info "Search index is not enabled." {:status-code 501}))
-
-    (search/supports-index?)
-    (if (task/job-exists? task.search-index/reindex-job-key)
-      (do (task/trigger-now! task.search-index/reindex-job-key) {:message "task triggered"})
-      (do (search/reindex!) {:message "done"}))
-
-    :else
+  (if (search/supports-index?)
+    {:message (search/init-index! {:force-reset? true})}
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
-(defn- set-weights! [overrides]
+(api/defendpoint POST "/force-reindex"
+  "This will trigger an immediate reindexing, if we are using search index."
+  []
   (api/check-superuser)
-  (let [allowed-key? (set (keys @#'search.config/default-weights))
-        unknown-weights (seq (remove allowed-key? (keys overrides)))]
-    (when unknown-weights
-      (throw (ex-info (str "Unknown weights: " (str/join ", " (map name (sort unknown-weights))))
+  (if  (search/supports-index?)
+    ;; The job appears to wait on the main thread when run from tests, so, unfortunately, testing this branch is hard.
+    (if (and (task/job-exists? task.search-index/reindex-job-key) (not config/is-test?))
+      (do (task/trigger-now! task.search-index/reindex-job-key) {:message "task triggered"})
+      (do (task.search-index/reindex!) {:message "done"}))
+
+    (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
+
+(defn- set-weights! [context overrides]
+  (api/check-superuser)
+  (when (= context :all)
+    (throw (ex-info "Cannot set weights for all context"
+                    {:status-code 400})))
+  (let [known-ranker?   (set (keys (:default @#'search.config/static-weights)))
+        rankers         (into #{} (map (fn [k] (keyword (first (str/split (name k) #"/"))))) (keys overrides))
+        unknown-rankers (seq (remove known-ranker? rankers))]
+    (when unknown-rankers
+      (throw (ex-info (str "Unknown rankers: " (str/join ", " (map name (sort unknown-rankers))))
                       {:status-code 400})))
     (public-settings/experimental-search-weight-overrides!
-     (merge (public-settings/experimental-search-weight-overrides) overrides))
-    (search.config/weights)))
+     (merge-with merge (public-settings/experimental-search-weight-overrides) {context overrides}))))
 
 (api/defendpoint GET "/weights"
   "Return the current weights being used to rank the search results"
   [:as {overrides :params}]
   ;; remove cookie
-  (let [overrides (-> overrides (dissoc :search_engine) (update-vals parse-double))]
-    (if (seq overrides)
-      (set-weights! overrides)
-      (search.config/weights))))
-
-(api/defendpoint PUT "/weights"
-  "Return the current weights being used to rank the search results"
-  [:as {overrides :body}]
-  (set-weights! overrides))
+  (let [context   (keyword (:context overrides :default))
+        overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
+    (when (seq overrides)
+      (set-weights! context overrides))
+    (search.config/weights context)))
 
 (api/defendpoint GET "/"
   "Search for items in Metabase.
-  For the list of supported models, check [[metabase.search/all-models]].
+  For the list of supported models, check [[metabase.search.config/all-models]].
 
   Filters:
   - `archived`: set to true to search archived items only, default is false
@@ -107,14 +114,15 @@
   - The `verified` filter supports models and cards.
 
   A search query that has both filters applied will only return models and cards."
-  [q archived created_at created_by table_db_id models last_edited_at last_edited_by
+  [q context archived created_at created_by table_db_id models last_edited_at last_edited_by
    filter_items_in_personal_collection model_ancestors search_engine search_native_query
-   verified ids calculate_available_models]
+   verified ids calculate_available_models include_dashboard_questions]
   {q                                   [:maybe ms/NonBlankString]
+   context                             [:maybe :keyword]
    archived                            [:maybe :boolean]
    table_db_id                         [:maybe ms/PositiveInt]
    models                              [:maybe (ms/QueryVectorOf search/SearchableModel)]
-   filter_items_in_personal_collection [:maybe [:enum "only" "exclude"]]
+   filter_items_in_personal_collection [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]
    created_at                          [:maybe ms/NonBlankString]
    created_by                          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    last_edited_at                      [:maybe ms/NonBlankString]
@@ -124,32 +132,41 @@
    search_native_query                 [:maybe true?]
    verified                            [:maybe true?]
    ids                                 [:maybe (ms/QueryVectorOf ms/PositiveInt)]
-   calculate_available_models          [:maybe true?]}
-  (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
-  (let  [models-set (if (seq models)
-                      (set models)
-                      search/all-models)]
-    (search/search
-     (search/search-context
-      {:archived                            archived
-       :created-at                          created_at
-       :created-by                          (set created_by)
-       :current-user-id                     api/*current-user-id*
-       :is-superuser?                       api/*is-superuser?*
-       :current-user-perms                  @api/*current-user-permissions-set*
-       :filter-items-in-personal-collection filter_items_in_personal_collection
-       :last-edited-at                      last_edited_at
-       :last-edited-by                      (set last_edited_by)
-       :limit                               mw.offset-paging/*limit*
-       :model-ancestors?                    model_ancestors
-       :models                              models-set
-       :offset                              mw.offset-paging/*offset*
-       :search-engine                       search_engine
-       :search-native-query                 search_native_query
-       :search-string                       q
-       :table-db-id                         table_db_id
-       :verified                            verified
-       :ids                                 (set ids)
-       :calculate-available-models?         calculate_available_models}))))
+   calculate_available_models          [:maybe true?]
+   include_dashboard_questions         [:maybe :boolean]}
+  (api/check-valid-page-params (request/limit) (request/offset))
+  (try
+    (u/prog1 (search/search
+              (search/search-context
+               {:archived                            archived
+                :context                             context
+                :created-at                          created_at
+                :created-by                          (set created_by)
+                :current-user-id                     api/*current-user-id*
+                :is-impersonated-user?               (premium-features/impersonated-user?)
+                :is-sandboxed-user?                  (premium-features/sandboxed-user?)
+                :is-superuser?                       api/*is-superuser?*
+                :current-user-perms                  @api/*current-user-permissions-set*
+                :filter-items-in-personal-collection filter_items_in_personal_collection
+                :last-edited-at                      last_edited_at
+                :last-edited-by                      (set last_edited_by)
+                :limit                               (request/limit)
+                :model-ancestors?                    model_ancestors
+                :models                              (not-empty (set models))
+                :offset                              (request/offset)
+                :search-engine                       search_engine
+                :search-native-query                 search_native_query
+                :search-string                       q
+                :table-db-id                         table_db_id
+                :verified                            verified
+                :ids                                 (set ids)
+                :calculate-available-models?         calculate_available_models
+                :include-dashboard-questions?        include_dashboard_questions}))
+      (prometheus/inc! :metabase-search/response-ok))
+    (catch Exception e
+      (let [status-code (:status-code (ex-data e))]
+        (when (or (not status-code) (= 5 (quot status-code 100)))
+          (prometheus/inc! :metabase-search/response-error)))
+      (throw e))))
 
 (api/define-routes +engine-cookie)

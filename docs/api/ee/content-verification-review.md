@@ -20,7 +20,7 @@ You must be a superuser to do this.
 
 -  **`moderated_item_id`** value must be an integer greater than zero.
 
--  **`moderated_item_type`** enum of card, :card.
+-  **`moderated_item_type`** enum of card, :card, dashboard, :dashboard.
 
 -  **`status`** nullable nullable enum of verified.
 

@@ -1,297 +1,418 @@
+import dayjs from "dayjs";
+import { assocIn } from "icepick";
+import { P, isMatching } from "ts-pattern";
+
+import { H } from "e2e/support";
 import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
-const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 import {
   FIRST_COLLECTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  createCollection,
-  describeEE,
-  describeWithSnowplowEE,
-  enableTracking,
-  expectGoodSnowplowEvent,
-  expectNoBadSnowplowEvents,
-  getCollectionActions,
-  main,
-  modal,
-  navigationSidebar,
-  onlyOnOSS,
-  popover,
-  resetSnowplow,
-  restore,
-  setTokenFeatures,
-  undo,
-  visitCollection,
-} from "e2e/support/helpers";
+const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 
 describe("scenarios > collections > clean up", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
   });
 
   describe("oss", { tags: "@OSS" }, () => {
     beforeEach(() => {
-      onlyOnOSS();
+      H.onlyOnOSS();
       cy.signInAsAdmin();
     });
 
     it("feature should not be available in OSS", () => {
-      visitCollection(FIRST_COLLECTION_ID);
+      H.visitCollection(FIRST_COLLECTION_ID);
+      cleanUpAlert().should("not.exist");
       collectionMenu().click();
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("Clean things up").should("not.exist");
       });
     });
   });
 
-  describeEE("action menu", () => {
-    it("should show in proper contexts", () => {
-      cy.signInAsAdmin();
-      setTokenFeatures("all");
+  H.describeEE("ee", () => {
+    H.describeEE("action menu", () => {
+      it("should show in proper contexts", () => {
+        cy.signInAsAdmin();
+        H.setTokenFeatures("all");
 
-      cy.log("should not show in custom analytics collections");
-      visitCollection("root");
-      navigationSidebar().within(() => {
-        cy.findByText("Usage analytics").click();
-        cy.findByText("Custom reports").click();
-      });
-      collectionMenu().click();
-      popover().within(() => {
-        cy.findByText("Clean things up").should("not.exist");
-      });
-
-      cy.log(
-        "should show in a normal collection that user has write access to",
-      );
-      visitCollection(FIRST_COLLECTION_ID);
-      collectionMenu().click();
-      popover().within(() => {
-        cy.findByText("Clean things up").should("exist");
-      });
-
-      cy.log("should not show in custom analytics collections");
-      popover().within(() => {
-        cy.findByText("Move to trash").click();
-      });
-      modal().within(() => {
-        cy.findByText("Move to trash").click();
-      });
-      cy.findByTestId("archive-banner").should("exist");
-      getCollectionActions().should("not.exist");
-
-      cy.log("empty collection");
-      createCollection({ name: "Empty" }).then(({ body: { id } }) => {
-        visitCollection(id);
+        cy.log("should not show in custom analytics collections");
+        H.visitCollection("root");
+        H.navigationSidebar().within(() => {
+          cy.findByText("Usage analytics").click();
+          cy.findByText("Custom reports").click();
+        });
         collectionMenu().click();
-        popover().within(() => {
+        H.popover().within(() => {
           cy.findByText("Clean things up").should("not.exist");
         });
-      });
-    });
 
-    it("should not show to users who do not have write permissions to a collection", () => {
-      cy.signIn("readonly");
-      visitCollection(FIRST_COLLECTION_ID);
-      collectionMenu().should("not.exist");
-    });
-  });
-
-  describeWithSnowplowEE("clean up collection modal", () => {
-    beforeEach(() => {
-      resetSnowplow();
-      cy.signInAsAdmin();
-      setTokenFeatures("all");
-      enableTracking();
-    });
-
-    afterEach(() => {
-      expectNoBadSnowplowEvents();
-    });
-
-    it("should be able to clean up stale items", () => {
-      seedMainTestData().then(seedData => {
-        const firstAlphabeticalName = "Bulk dashboard 1";
-        const lastAlphabeticalName = "Bulk question 9";
-
-        cy.log("should be able to navigate to clean up modal");
-        visitCollection(seedData.collection.id);
-        selectCleanThingsUpCollectionAction();
-        cy.url().should("include", "cleanup");
-
-        cy.log("should render all items of current collection");
-        assertStaleItemCount(seedData.totalStaleItemCount);
-
-        cy.log("should be able to filter to fewer items");
-        setDateFilter("1 year");
-        assertNoPagination();
-
-        cy.log("should be able to recursively show stale items");
-        setDateFilter("6 months");
-        recursiveFilter().click();
-        assertStaleItemCount(seedData.recursiveTotalItemCount);
-
-        cy.log("pagination should work as expected");
-        pagination().within(() => {
-          cy.findByText("1 - 10").should("exist");
-        });
-        cleanUpModal().within(() => {
-          cy.findByText(lastAlphabeticalName).should("not.exist");
-        });
-        pagination().within(() => {
-          cy.findAllByTestId("next-page-btn").click();
-          cy.findByText("11 - 19").should("exist");
-        });
-        cleanUpModal().within(() => {
-          cy.findByText(lastAlphabeticalName).should("exist");
-        });
-        pagination().within(() => {
-          cy.findAllByTestId("previous-page-btn").click();
-          cy.findByText("1 - 10").should("exist");
-          cy.findAllByTestId("next-page-btn").click();
-          cy.findByText("11 - 19").should("exist");
+        cy.log(
+          "should show in a normal collection that user has write access to",
+        );
+        H.visitCollection(FIRST_COLLECTION_ID);
+        collectionMenu().click();
+        H.popover().within(() => {
+          cy.findByText("Clean things up").should("exist");
         });
 
-        cy.log("pagination should reset when the date filter changes");
-        setDateFilter("3 months");
-        pagination().within(() => {
-          cy.findByText("1 - 10").should("exist");
-          cy.findAllByTestId("next-page-btn").click();
-          cy.findByText("11 - 19").should("exist");
+        cy.log("should not show in custom analytics collections");
+        H.popover().within(() => {
+          cy.findByText("Move to trash").click();
         });
-
-        // pagination should reset when the recursive filter changes
-        recursiveFilter().click();
-        pagination().within(() => {
-          cy.findByText("1 - 10").should("exist");
+        H.modal().within(() => {
+          cy.findByText("Move to trash").click();
         });
-        recursiveFilter().click();
+        cy.findByTestId("archive-banner").should("exist");
+        H.getCollectionActions().should("not.exist");
 
-        cy.log("should be able to sort items by name and last used at columns");
-        cleanUpModal().within(() => {
-          cy.get("table").within(() => {
-            cy.findByText(firstAlphabeticalName).should("exist");
-            cy.findByText(lastAlphabeticalName).should("not.exist");
-            cy.findByText(/Name/).click();
-            cy.findByText(firstAlphabeticalName).should("not.exist");
-            cy.findByText(lastAlphabeticalName).should("exist");
-            cy.findByText(/Name/).click();
-            cy.findByText(firstAlphabeticalName).should("exist");
-            cy.findByText(lastAlphabeticalName).should("not.exist");
+        cy.log("should not show in empty collections");
+        H.createCollection({ name: "Empty" }).then(({ body: { id } }) => {
+          H.visitCollection(id);
+          collectionMenu().click();
+          H.popover().within(() => {
+            cy.findByText("Clean things up").should("not.exist");
           });
         });
 
-        cy.log("should be able to move stale items to the trash");
-        recursiveFilter().click();
-        assertStaleItemCount(seedData.totalStaleItemCount);
+        cy.log("should not show in sample collections");
+        H.createCollection({ name: "Fake sample collection" }).then(
+          ({ body: { id } }) => {
+            // make sure that it has one stale item
+            bulkCreateQuestions(1, { collection_id: id }).then(([question]) => {
+              makeItemsStale(
+                [question.id],
+                "card",
+                dayjs()
+                  .startOf("day")
+                  .subtract(6, "months")
+                  .format("YYYY-MM-DD"),
+              );
 
-        selectAllItems();
-        moveToTrash();
-        assertNoPagination();
+              // trip is_sample flag
+              cy.intercept("GET", `/api/collection/${id}`, req => {
+                req.on("response", res => {
+                  res.send(assocIn(res.body, ["is_sample"], true));
+                });
+              });
 
-        // Because cutoff_date will be relative to the current date, we simply check
-        // that it exists and is a string. Snowplow will assert that it is in the correct
-        // format
-        expectGoodSnowplowEvent(
-          event =>
-            event &&
-            event.event === "stale_items_archived" &&
-            event.collection_id === seedData.collection.id &&
-            event.total_items_archived === 10 &&
-            typeof event.cutoff_date === "string",
+              // assert we don't show clean up option
+              H.visitCollection(id);
+              collectionMenu().click();
+              H.popover().within(() => {
+                cy.findByText("Clean things up").should("not.exist");
+              });
+              cleanUpAlert().should("not.exist");
+            });
+          },
         );
+      });
 
-        undo();
-        assertStaleItemCount(seedData.totalStaleItemCount);
-
-        selectAllItems();
-        moveToTrash();
-        assertNoPagination();
-
-        selectAllItems();
-        moveToTrash();
-
-        closeCleanUpModal();
-        cy.url().should("not.include", "cleanup");
-
-        cy.log(
-          "collection items view should reflect the actions taken in the clean up modal",
-        );
-        main().within(() => {
-          cy.get("tr").should(
-            "have.length",
-            seedData.notStaleItemCount +
-              1 + // child collection
-              1, // header row
-          );
-        });
-
-        makeItemStale(ORDERS_QUESTION_ID, "card");
-
-        cy.findByRole("navigation").findByText("Our analytics").click();
-        selectCleanThingsUpCollectionAction();
-        cy.url().should("include", "cleanup");
-
-        selectAllItems();
-        moveToTrash();
-
-        // Ensure that stale items in Our Analytics are maked with a null collection id
-        expectGoodSnowplowEvent(
-          event =>
-            event &&
-            event.event === "stale_items_archived" &&
-            event.collection_id === null &&
-            event.total_items_archived === 1 &&
-            typeof event.cutoff_date === "string",
-        );
+      it("should not show to users who do not have write permissions to a collection", () => {
+        cy.signIn("readonly");
+        H.visitCollection(FIRST_COLLECTION_ID);
+        collectionMenu().should("not.exist");
       });
     });
 
-    it("show empty and error states correctly", () => {
-      cy.log("should handle empty state");
-      cy.intercept("GET", "/api/ee/stale/**?**").as("stale-items");
+    H.describeWithSnowplowEE("clean up collection modal", () => {
+      beforeEach(() => {
+        H.resetSnowplow();
+        cy.signInAsAdmin();
+        H.setTokenFeatures("all");
+        H.enableTracking();
+      });
 
-      // visit collection w/ items but no stale items
-      createCollection({ name: "Not empty w/ not stale items" })
-        .then(({ body: { id } }) => id)
-        .as("collectionId");
+      afterEach(() => {
+        H.expectNoBadSnowplowEvents();
+      });
 
-      cy.get("@collectionId").then(id => {
-        return bulkCreateQuestions(2, { collection_id: id }).then(() => {
-          visitCollection(id);
+      it("should be able to clean up stale items", () => {
+        seedMainTestData().then(seedData => {
+          const firstAlphabeticalName = "Bulk dashboard 1";
+          const lastAlphabeticalName = "Bulk question 9";
+
+          cy.log("should be able to navigate to clean up modal");
+          H.visitCollection(seedData.collection.id);
+          cleanUpAlert().should("exist");
+          selectCleanThingsUpCollectionAction();
+          cy.url().should("include", "cleanup");
+
+          cy.log("should render all items of current collection");
+          assertStaleItemCount(seedData.totalStaleItemCount);
+
+          cy.log("should be able to filter to fewer items");
+          setDateFilter("1 year");
+          assertNoPagination();
+
+          cy.log("should be able to recursively show stale items");
+          setDateFilter("6 months");
+          recursiveFilter().click();
+          assertStaleItemCount(seedData.recursiveTotalItemCount);
+
+          cy.log("pagination should work as expected");
+          pagination().within(() => {
+            cy.findByText("1 - 10").should("exist");
+          });
+          cleanUpModal().within(() => {
+            cy.findByText(lastAlphabeticalName).should("not.exist");
+          });
+          pagination().within(() => {
+            cy.findAllByTestId("next-page-btn").click();
+            cy.findByText("11 - 19").should("exist");
+          });
+          cleanUpModal().within(() => {
+            cy.findByText(lastAlphabeticalName).should("exist");
+          });
+          pagination().within(() => {
+            cy.findAllByTestId("previous-page-btn").click();
+            cy.findByText("1 - 10").should("exist");
+            cy.findAllByTestId("next-page-btn").click();
+            cy.findByText("11 - 19").should("exist");
+          });
+
+          cy.log("pagination should reset when the date filter changes");
+          setDateFilter("3 months");
+          pagination().within(() => {
+            cy.findByText("1 - 10").should("exist");
+            cy.findAllByTestId("next-page-btn").click();
+            cy.findByText("11 - 19").should("exist");
+          });
+
+          // pagination should reset when the recursive filter changes
+          recursiveFilter().click();
+          pagination().within(() => {
+            cy.findByText("1 - 10").should("exist");
+          });
+          recursiveFilter().click();
+
+          cy.log(
+            "should be able to sort items by name and last used at columns",
+          );
+          cleanUpModal().within(() => {
+            cy.get("table").within(() => {
+              cy.findByText(firstAlphabeticalName).should("exist");
+              cy.findByText(lastAlphabeticalName).should("not.exist");
+              cy.findByText(/Name/).click();
+              cy.findByText(firstAlphabeticalName).should("not.exist");
+              cy.findByText(lastAlphabeticalName).should("exist");
+              cy.findByText(/Name/).click();
+              cy.findByText(firstAlphabeticalName).should("exist");
+              cy.findByText(lastAlphabeticalName).should("not.exist");
+            });
+          });
+
+          cy.log("should be able to move stale items to the trash");
+          recursiveFilter().click();
+          assertStaleItemCount(seedData.totalStaleItemCount);
+
+          selectAllItems();
+          moveToTrash();
+          assertNoPagination();
+
+          H.expectGoodSnowplowEvent(
+            event =>
+              isMatching(
+                {
+                  event: "moved-to-trash",
+                  event_detail: P.union("dashboard", "question"),
+                  target_id: P.number,
+                  triggered_from: "cleanup_modal",
+                  duration_ms: P.number,
+                  result: "success",
+                },
+                event,
+              ),
+            10,
+          );
+
+          // Because cutoff_date will be relative to the current date, we simply check
+          // that it exists and is a string. Snowplow will assert that it is in the correct
+          // format
+          H.expectGoodSnowplowEvent(
+            event =>
+              event &&
+              event.event === "stale_items_archived" &&
+              event.collection_id === seedData.collection.id &&
+              event.total_items_archived === 10 &&
+              typeof event.cutoff_date === "string",
+          );
+
+          H.undo();
+          assertStaleItemCount(seedData.totalStaleItemCount);
+
+          selectAllItems();
+          moveToTrash();
+          assertNoPagination();
+
+          selectAllItems();
+          moveToTrash();
+
+          closeCleanUpModal();
+          cy.url().should("not.include", "cleanup");
+
+          cy.log(
+            "collection items view should reflect the actions taken in the clean up modal",
+          );
+          H.main().within(() => {
+            cy.get("tr").should(
+              "have.length",
+              seedData.notStaleItemCount +
+                1 + // child collection
+                1, // header row
+            );
+          });
+
+          makeItemStale(ORDERS_QUESTION_ID, "card");
+
+          cy.findByRole("navigation").findByText("Our analytics").click();
+          selectCleanThingsUpCollectionAction();
+          cy.url().should("include", "cleanup");
+
+          selectAllItems();
+          moveToTrash();
+
+          cy.log(
+            "should not longer show alert if user has used the clean up feature",
+          );
+          closeCleanUpModal();
+          cleanUpAlert().should("not.exist");
+
+          // Ensure that stale items in Our Analytics are maked with a null collection id
+          H.expectGoodSnowplowEvent(
+            event =>
+              event &&
+              event.event === "stale_items_archived" &&
+              event.collection_id === null &&
+              event.total_items_archived === 1 &&
+              typeof event.cutoff_date === "string",
+          );
         });
       });
 
-      cy.log("should render a table w/ contents");
-      main().within(() => {
-        cy.findByText("Type");
-        cy.findByText("Name");
+      it("show empty and error states correctly", () => {
+        cy.log("should handle empty state");
+        cy.intercept("GET", "/api/ee/stale/**?**").as("stale-items");
+
+        // visit collection w/ items but no stale items
+        H.createCollection({ name: "Not empty w/ not stale items" })
+          .then(({ body: { id } }) => id)
+          .as("collectionId");
+
+        cy.get("@collectionId").then(id => {
+          return bulkCreateQuestions(2, { collection_id: id }).then(() => {
+            H.visitCollection(id);
+          });
+        });
+
+        cy.log("should render a table w/ contents");
+        H.main().within(() => {
+          cy.findByText("Type");
+          cy.findByText("Name");
+        });
+
+        selectCleanThingsUpCollectionAction();
+
+        cy.wait("@stale-items");
+
+        cleanUpModal().within(() => {
+          emptyState().should("exist");
+        });
+
+        cy.log("should handle error state");
+        cy.intercept("GET", "/api/ee/stale/**?**", {
+          statusCode: 500,
+        }).as("stale-items");
+
+        setDateFilter("1 year");
+        cy.wait("@stale-items");
+        errorState().should("exist");
+      });
+    });
+
+    H.describeEE("clean up collection alert", () => {
+      beforeEach(() => {
+        cy.signInAsAdmin();
+        H.setTokenFeatures("all");
       });
 
-      selectCleanThingsUpCollectionAction();
+      it("should show admins a dismissible clean up alert if there's something to clean up in a collection", () => {
+        cy.log("should not show alert if there's nothing stale");
+        cy.intercept("GET", "/api/ee/stale/*").as("staleItems");
+        H.visitCollection(FIRST_COLLECTION_ID);
 
-      cy.wait("@stale-items");
+        // seed slightly stale content
+        cy.createQuestion({
+          name: "Not stale enough",
+          collection_id: FIRST_COLLECTION_ID,
+          query: { "source-table": STATIC_ORDERS_ID },
+        }).then(req => {
+          makeItemsStale(
+            [req.body.id],
+            "card",
+            dayjs().startOf("day").subtract(2, "months").format("YYYY-MM-DD"),
+          );
 
-      cleanUpModal().within(() => {
-        emptyState().should("exist");
+          cy.log("should not be shown with 2 month stale content");
+          cy.reload();
+          cleanUpAlert().should("not.exist");
+        });
+
+        // seed stale enough content
+        cy.createQuestion({
+          name: "Stale enough",
+          collection_id: FIRST_COLLECTION_ID,
+          query: { "source-table": STATIC_ORDERS_ID },
+        }).then(req => {
+          makeItemsStale(
+            [req.body.id],
+            "card",
+            dayjs().startOf("day").subtract(3, "months").format("YYYY-MM-DD"),
+          );
+
+          cy.log("should be shown with 3 month stale content");
+          cy.reload();
+          cleanUpAlert()
+            .should("exist")
+            .findByText(/Keep your collections tidy/)
+            .click();
+          cy.url().should("include", "cleanup");
+          closeCleanUpModal();
+
+          cy.log("should be able to dismiss the banner");
+          cleanUpAlert().findByRole("button").click();
+          cleanUpAlert().should("not.exist");
+
+          cy.log("dismissing banner should persist on page refresh");
+          cy.reload();
+          H.collectionTable().within(() => {
+            cy.findByText("Second collection").should("exist");
+          });
+          cleanUpAlert().should("not.exist");
+        });
       });
 
-      cy.log("should handle error state");
-      cy.intercept("GET", "/api/ee/stale/**?**", {
-        statusCode: 500,
-      }).as("stale-items");
-
-      setDateFilter("1 year");
-      cy.wait("@stale-items");
-      errorState().should("exist");
+      it("should not show non-admins a clean up alert if there's something to clean up in a collection", () => {
+        cy.signOut();
+        cy.signInAsNormalUser();
+        cy.intercept("GET", "/api/ee/stale/*").as("staleItems");
+        H.visitCollection(FIRST_COLLECTION_ID);
+        H.collectionTable().within(() => {
+          cy.findByText("Second collection").should("exist");
+        });
+        cleanUpAlert().should("not.exist");
+      });
     });
   });
 });
 
 // elements
-const collectionMenu = () => getCollectionActions().icon("ellipsis");
+const collectionMenu = () => H.getCollectionActions().icon("ellipsis");
 const cleanUpModal = () => cy.findAllByTestId("cleanup-collection-modal");
 const closeCleanUpModal = () =>
   cy.findAllByTestId("cleanup-collection-modal-close-btn").click();
+const cleanUpAlert = () => cy.findByTestId("cleanup-alert");
 const recursiveFilter = () =>
   cy.findByText(/Include items in sub-collections/).should("exist");
 const dateFilter = () => cy.findByTestId("cleanup-date-filter");
@@ -301,9 +422,9 @@ const errorState = () => cy.findByText(/An error occurred/);
 
 // actions
 const selectCleanThingsUpCollectionAction = () => {
-  getCollectionActions().should("exist");
+  H.getCollectionActions().should("exist");
   collectionMenu().should("exist").click();
-  popover()
+  H.popover()
     .should("exist")
     .within(() => {
       cy.findByText("Clean things up").click();
@@ -311,9 +432,7 @@ const selectCleanThingsUpCollectionAction = () => {
 };
 const setDateFilter = timeSpan => {
   dateFilter().click();
-  popover().within(() => {
-    cy.findByText(timeSpan).click();
-  });
+  H.selectDropdown().findByText(timeSpan).click();
 };
 
 const selectAllItems = () => {
@@ -421,7 +540,7 @@ function seedMainTestData() {
   //
   // also create a child collection with a few stale items so that we can test for
   // the recursive filter
-  createCollection({ name: "Clean up test" })
+  H.createCollection({ name: "Clean up test" })
     .then(({ body }) => {
       collection = body;
       return body;
@@ -437,7 +556,6 @@ function seedMainTestData() {
       notStaleQuestionIds.push(...questions.slice(8).map(({ id }) => id));
       makeItemsStale(veryStaleQuestionIds, "card", "2000-01-01");
       makeItemsStale(staleQuestionIds, "card");
-      cy.log("TESTING");
     });
 
   cy.get("@cleanUpCollection")
@@ -452,7 +570,7 @@ function seedMainTestData() {
     });
 
   cy.get("@cleanUpCollection").then(({ id }) => {
-    createCollection({ name: "Child clean up test", parent_id: id })
+    H.createCollection({ name: "Child clean up test", parent_id: id })
       .then(({ body: collection }) => collection)
       .as("cleanUpChildCollection");
   });

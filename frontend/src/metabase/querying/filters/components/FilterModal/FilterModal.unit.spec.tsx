@@ -11,11 +11,14 @@ import {
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
+  SAMPLE_METADATA,
   columnFinder,
   createQuery,
   createQueryWithClauses,
 } from "metabase-lib/test-helpers";
-import { createMockField } from "metabase-types/api/mocks";
+import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { createMockCard, createMockField } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   SAMPLE_DB_FIELD_VALUES,
@@ -26,16 +29,18 @@ import { FilterModal } from "./FilterModal";
 
 interface SetupOpts {
   query: Lib.Query;
+  metadata?: Metadata;
 }
 
-function setup({ query }: SetupOpts) {
+function setup({ query, metadata = SAMPLE_METADATA }: SetupOpts) {
   const onSubmit = jest.fn();
   const onClose = jest.fn();
+  const question = new Question(createMockCard(), metadata).setQuery(query);
 
   setupFieldsValuesEndpoints(SAMPLE_DB_FIELD_VALUES);
 
   renderWithProviders(
-    <FilterModal query={query} onSubmit={onSubmit} onClose={onClose} />,
+    <FilterModal question={question} onSubmit={onSubmit} onClose={onClose} />,
   );
 
   const getNextQuery = () => {
@@ -118,7 +123,10 @@ describe("FilterModal", () => {
       databases: [createSampleDatabase()],
       fields: [unknownField],
     });
-    const { getNextQuery } = setup({ query: createQuery({ metadata }) });
+    const { getNextQuery } = setup({
+      query: createQuery({ metadata }),
+      metadata,
+    });
 
     const columnSection = screen.getByTestId(`filter-column-Unknown`);
     await userEvent.click(within(columnSection).getByLabelText("Is empty"));

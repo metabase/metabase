@@ -46,6 +46,7 @@ export function getUrl(
 
 export function getUrlWithParameters(
   question: Question,
+  originalQuestion: Question,
   parameters: ParameterWithTarget[],
   parameterValues: Record<ParameterId, ParameterValueOrArray>,
   { objectId }: { objectId?: string | number } = {},
@@ -62,16 +63,16 @@ export function getUrlWithParameters(
     if (isEditable) {
       // treat the dataset/model question like it is already composed so that we can apply
       // dataset/model-specific metadata to the underlying dimension options
-      questionWithParameters =
-        question.type() !== "question"
-          ? question.composeQuestionAdhoc().setParameters(parameters)
-          : questionWithParameters;
+      const needsComposing = question.type() !== "question";
+      questionWithParameters = needsComposing
+        ? question.composeQuestionAdhoc().setParameters(parameters)
+        : questionWithParameters;
       questionWithParameters = questionWithParameters
         .setParameterValues(parameterValues)
-        ._convertParametersToMbql();
+        ._convertParametersToMbql({ isComposed: needsComposing });
 
       return getUrl(questionWithParameters, {
-        originalQuestion: question,
+        originalQuestion,
         includeDisplayIsLocked,
         query: objectId === undefined ? {} : { objectId },
       });

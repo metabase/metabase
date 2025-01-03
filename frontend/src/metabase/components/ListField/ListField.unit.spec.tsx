@@ -1,8 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import type { JSX } from "react";
 
-import { renderWithProviders, screen } from "__support__/ui";
-import { waitTimeContext } from "metabase/context/wait-time";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { RowValue } from "metabase-types/api";
 import { PRODUCT_CATEGORY_VALUES } from "metabase-types/api/mocks/presets";
 
@@ -29,18 +28,15 @@ function setup({
   const onChange = jest.fn();
 
   renderWithProviders(
-    <waitTimeContext.Provider value={0}>
-      <ListField
-        value={value}
-        options={options}
-        optionRenderer={optionRenderer}
-        placeholder={placeholder}
-        checkedColor={checkedColor}
-        isDashboardFilter={isDashboardFilter}
-        onChange={onChange}
-      />
-      ,
-    </waitTimeContext.Provider>,
+    <ListField
+      value={value}
+      options={options}
+      optionRenderer={optionRenderer}
+      placeholder={placeholder}
+      checkedColor={checkedColor}
+      isDashboardFilter={isDashboardFilter}
+      onChange={onChange}
+    />,
   );
 
   return { onChange };
@@ -85,8 +81,13 @@ describe("ListField", () => {
     await userEvent.type(screen.getByPlaceholderText("Search the list"), "get");
     expect(screen.getByLabelText("Gadget")).toBeInTheDocument();
     expect(screen.getByLabelText("Widget")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Gizmo")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Doohickey")).not.toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Gizmo")).not.toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Doohickey")).not.toBeInTheDocument(),
+    );
 
     const checkbox = screen.getByLabelText("Select these");
     expect(checkbox).not.toBeChecked();
@@ -120,7 +121,10 @@ describe("ListField", () => {
       "Gadget",
     );
     expect(screen.getByLabelText("Gadget")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Widget")).not.toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Widget")).not.toBeInTheDocument(),
+    );
 
     const checkbox = screen.getByLabelText("Select none");
     expect(checkbox).toBeChecked();
@@ -138,7 +142,11 @@ describe("ListField", () => {
       screen.getByPlaceholderText("Search the list"),
       "Invalid",
     );
-    expect(screen.queryByLabelText("Select all")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Select none")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Select all")).not.toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Select none")).not.toBeInTheDocument(),
+    );
   });
 });

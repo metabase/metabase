@@ -160,7 +160,6 @@
     (the-driver :baby)     ; -> Exception"
   [driver]
   {:pre [((some-fn keyword? string?) driver)]}
-  (classloader/the-classloader)
   (let [driver (keyword driver)]
     (driver.impl/load-driver-namespace-if-needed! driver)
     driver))
@@ -187,8 +186,12 @@
 (defn the-initialized-driver
   "Like [[the-driver]], but also initializes the driver if not already initialized."
   [driver]
-  (let [driver (the-driver driver)]
-    (driver.impl/initialize-if-needed! driver initialize!)
+  (let [driver (keyword driver)]
+    ;; Fastpath: an initialized driver `driver` is always already registered. Checking for `initialized?` is faster
+    ;; than doing the `registered?` check inside `load-driver-namespace-if-needed!`.
+    (when-not (driver.impl/initialized? driver)
+      (driver.impl/load-driver-namespace-if-needed! driver)
+      (driver.impl/initialize-if-needed! driver initialize!))
     driver))
 
 (defn dispatch-on-initialized-driver
@@ -345,6 +348,20 @@
   Currently we only sync single column indexes or the first column of a composite index.
   Results should match the [[metabase.sync.interface/TableIndexMetadata]] schema."
   {:added "0.49.0" :arglists '([driver database table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti describe-indexes
+  "Returns a reducible collection of maps, each containing information about the indexes of a database.
+  Currently we only sync single column indexes or the first column of a composite index. We currently only support
+   indexes on unnested fields (i.e., where parent_id is null).
+
+  Takes keyword arguments to narrow down the results to a set of
+  `schema-names` or `table-names`.
+
+  Results match [[metabase.sync.interface/FieldIndexMetadata]].
+  Results are optionally filtered by `schema-names` and `table-names` provided."
+  {:added "0.51.4" :arglists '([driver database & {:keys [schema-names table-names]}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -655,6 +672,10 @@
     ;; Does the driver support a faster `sync-fields` step by fetching all FK metadata in a single collection?
     ;; if so, `metabase.driver/describe-fields` must be implemented instead of `metabase.driver/describe-table`
     :describe-fields
+
+    ;; Does the driver support a faster `sync-indexes` step by fetching all index metadata in a single collection?
+    ;; If true, `metabase.driver/describe-indexes` must be implemented instead of `metabase.driver/describe-table-indexes`
+    :describe-indexes
 
     ;; Does the driver support automatically adding a primary key column to a table for uploads?
     ;; If so, Metabase will add an auto-incrementing primary key column called `_mb_row_id` for any table created or

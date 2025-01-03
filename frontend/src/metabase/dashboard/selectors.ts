@@ -6,7 +6,7 @@ import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
-import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import { LOAD_COMPLETE_FAVICON } from "metabase/hooks/use-favicon";
 import * as Urls from "metabase/lib/urls";
 import {
   getDashboardQuestions,
@@ -520,7 +520,7 @@ export function getInitialSelectedTabId(
       const searchParams = new URLSearchParams(window.location.search);
       const tabParam = searchParams.get("tab");
       const tabId = tabParam ? parseInt(tabParam, 10) : null;
-      const hasTab = dashboard.tabs?.find?.(tab => tab.id === tabId);
+      const hasTab = dashboard.tabs?.some?.(tab => tab.id === tabId);
       if (hasTab) {
         return tabId;
       }

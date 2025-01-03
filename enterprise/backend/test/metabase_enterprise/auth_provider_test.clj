@@ -1,6 +1,5 @@
 (ns metabase-enterprise.auth-provider-test
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.auth-provider :as auth-provider]
@@ -9,7 +8,8 @@
    [metabase.http-client :as client]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.util.http :as u.http])
+   [metabase.util.http :as u.http]
+   [metabase.util.json :as json])
   (:import
    [java.util Properties]))
 

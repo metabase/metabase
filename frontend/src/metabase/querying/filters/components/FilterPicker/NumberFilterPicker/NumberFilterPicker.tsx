@@ -49,7 +49,7 @@ export function NumberFilterPicker({
     filter,
   });
 
-  const handleOperatorChange = (newOperator: Lib.NumberFilterOperatorName) => {
+  const handleOperatorChange = (newOperator: Lib.NumberFilterOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
   };

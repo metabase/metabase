@@ -149,6 +149,14 @@ export const AllNegative = {
   },
 };
 
+export const AllNegativeWithOther = {
+  render: Template,
+  args: {
+    rawSeries: data.allNegativeWithOther as any,
+    renderingContext,
+  },
+};
+
 export const MixedPositiveNegative = {
   render: Template,
   args: {

@@ -1,5 +1,6 @@
 (ns metabase.driver.databricks
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
@@ -45,6 +46,17 @@
     #"timestamp_ntz" :type/DateTime
     ((get-method sql-jdbc.sync/database-type->base-type :hive-like)
      driver database-type)))
+
+(defn- catalog-present?
+  [jdbc-spec catalog]
+  (let [sql "select 0 from `system`.`information_schema`.`catalogs` where catalog_name = ?"]
+    (= 1 (count (jdbc/query jdbc-spec [sql catalog])))))
+
+(defmethod driver/can-connect? :databricks
+  [driver details]
+  (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
+    (and (catalog-present? jdbc-spec (:catalog details))
+         (sql-jdbc.conn/can-connect-with-spec? jdbc-spec))))
 
 (defn- get-tables-sql
   [catalog]
@@ -130,7 +142,7 @@
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
 
-(defmethod driver/describe-fields :sql-jdbc
+(defmethod driver/describe-fields :databricks
   [driver database & {:as args}]
   (let [catalog (get-in database [:details :catalog])]
     (sql-jdbc.sync/describe-fields driver database (assoc args :catalog catalog))))
@@ -164,7 +176,7 @@
                :order-by [:fk-table-schema :fk-table-name]}
               :dialect (sql.qp/quote-style driver)))
 
-(defmethod driver/describe-fks :sql-jdbc
+(defmethod driver/describe-fks :databricks
   [driver database & {:as args}]
   (let [catalog (get-in database [:details :catalog])]
     (sql-jdbc.sync/describe-fks driver database (assoc args :catalog catalog))))
@@ -189,29 +201,35 @@
     (str/replace-first additional-options #"^(?!;)" ";")))
 
 (defmethod sql-jdbc.conn/connection-details->spec :databricks
-  [_driver {:keys [catalog host http-path log-level token additional-options] :as _details}]
+  [_driver {:keys [catalog host http-path use-m2m token client-id oauth-secret log-level additional-options] :as _details}]
   (assert (string? (not-empty catalog)) "Catalog is mandatory.")
-  (merge
-   {:classname        "com.databricks.client.jdbc.Driver"
-    :subprotocol      "databricks"
-    ;; Reading through the changelog revealed `EnableArrow=0` solves multiple problems. Including the exception logged
-    ;; during first `can-connect?` call. Ref:
-    ;; https://databricks-bi-artifacts.s3.us-east-2.amazonaws.com/simbaspark-drivers/jdbc/2.6.40/docs/release-notes.txt
-    :subname          (str "//" host ":443/;EnableArrow=0"
-                           ";ConnCatalog=" (codec/url-encode catalog)
-                           (preprocess-additional-options additional-options))
-    :transportMode  "http"
-    :ssl            1
-    :AuthMech       3
-    :HttpPath       http-path
-    :uid            "token"
-    :pwd            token
-    :UserAgentEntry (format "Metabase/%s" (:tag config/mb-version-info))
-    :UseNativeQuery 1}
-   ;; Following is used just for tests. See the [[metabase.driver.sql-jdbc.connection-test/perturb-db-details]]
-   ;; and test that is using the function.
-   (when log-level
-     {:LogLevel log-level})))
+  (let [base-spec
+        {:classname      "com.databricks.client.jdbc.Driver"
+         :subprotocol    "databricks"
+         ;; Reading through the changelog revealed `EnableArrow=0` solves multiple problems. Including the exception logged
+         ;; during first `can-connect?` call. Ref:
+         ;; https://databricks-bi-artifacts.s3.us-east-2.amazonaws.com/simbaspark-drivers/jdbc/2.6.40/docs/release-notes.txt
+         :subname        (str "//" host ":443/;EnableArrow=0"
+                              ";ConnCatalog=" (codec/url-encode catalog)
+                              (preprocess-additional-options additional-options))
+         :transportMode  "http"
+         :ssl            1
+         :HttpPath       http-path
+         :UserAgentEntry (format "Metabase/%s" (:tag config/mb-version-info))
+         :UseNativeQuery 1}]
+    (merge base-spec
+           (when log-level
+             {:LogLevel log-level})
+           (if use-m2m
+             ;; M2M OAuth
+             {:AuthMech 11
+              :Auth_Flow 1
+              :OAuth2ClientId client-id
+              :OAuth2Secret oauth-secret}
+             ;; PAT authentication
+             {:AuthMech 3
+              :uid "token"
+              :pwd token}))))
 
 (defmethod sql.qp/quote-style :databricks
   [_driver]

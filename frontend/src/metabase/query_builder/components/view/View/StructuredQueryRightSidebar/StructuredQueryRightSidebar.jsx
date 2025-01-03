@@ -49,6 +49,7 @@ export const StructuredQueryRightSidebar = ({
             });
           }}
           onClose={onCloseSummary}
+          stageIndex={-1}
         />
       ),
     )

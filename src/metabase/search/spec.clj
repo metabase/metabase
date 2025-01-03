@@ -6,8 +6,10 @@
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.config :as config]
+   [metabase.search.config :as search.config]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.transformed :as t2.transformed]))
 
 (def ^:private SearchModel
   [:enum "dashboard" "table" "dataset" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"])
@@ -22,6 +24,26 @@
   - map: a sub-select"
   [:union :boolean :keyword vector? :map])
 
+(def attr-types
+  "The abstract types of each attribute."
+  {:archived            :boolean
+   :collection-id       :pk
+   :created-at          :timestamp
+   :creator-id          :pk
+   :dashboardcard-count :int
+   :database-id         :pk
+   :id                  :pk
+   :last-edited-at      :timestamp
+   :last-editor-id      :pk
+   :last-viewed-at      :timestamp
+   :name                :text
+   :native-query        nil
+   :official-collection :boolean
+   :pinned              :boolean
+   :updated-at          :timestamp
+   :verified            :boolean
+   :view-count          :int})
+
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
   [:archived
@@ -29,20 +51,20 @@
 
 (def ^:private optional-attrs
   "These attributes may be omitted (for now) in the interest of brevity in the definitions."
-  [:id
-   :name
-   :created-at
-   :creator-id
-   :database-id
-   :native-query
-   :official-collection
-   :dashboardcard-count
-   :last-edited-at
-   :last-editor-id
-   :pinned
-   :verified
-   :view-count
-   :updated-at])
+  (->> (keys (apply dissoc search.config/filters explicit-attrs))
+       ;; identifiers and rankers
+       (into
+        [:id                                                ;;  in addition to being a filter, this is a key property
+         :name
+         :official-collection
+         :dashboardcard-count
+         :last-viewed-at
+         :pinned
+         :verified                                          ;;  in addition to being a filter, this is also a ranker
+         :view-count
+         :updated-at])
+       distinct
+       vec))
 
 (def ^:private default-attrs
   {:id   true
@@ -51,6 +73,9 @@
 (def ^:private attr-keys
   "Keys of a search-model that correspond to concrete columns in the index"
   (into explicit-attrs optional-attrs))
+
+;; Make sure to keep attr-types up to date
+(assert (= (set (keys attr-types)) (set attr-keys)))
 
 (def attr-columns
   "Columns of an ingestion query that correspond to concrete columns in the index"
@@ -76,6 +101,7 @@
 (def ^:private Specification
   [:map {:closed true}
    [:name SearchModel]
+   [:visibility [:enum :all :app-user]]
    [:model :keyword]
    [:attrs Attrs]
    [:search-terms [:sequential {:min 1} :keyword]]
@@ -124,8 +150,9 @@
 (defn- find-fields-kw [kw]
   ;; Filter out SQL functions
   (when-not (str/starts-with? (name kw) "%")
-    (let [table (get-table kw)]
-      (list [(or table :this) (remove-table table kw)]))))
+    (when-not (#{:else :integer :float} kw)
+      (let [table (get-table kw)]
+        (list [(or table :this) (remove-table table kw)])))))
 
 (defn- find-fields-expr [expr]
   (cond
@@ -168,7 +195,7 @@
                (mapcat
                 find-fields-top
                 ;; Remove the keys with special meanings (should probably switch this to an allowlist rather)
-                (vals (dissoc spec :name :native-query :where :joins :bookmark :model)))
+                (vals (dissoc spec :name :visibility :native-query :where :joins :bookmark :model)))
                (find-fields-expr (:where spec)))))
 
 (defn- replace-qualification [expr from to]
@@ -244,6 +271,7 @@
   [search-model spec]
   `(let [spec# (-> ~spec
                    (assoc :name ~search-model)
+                   (update :visibility #(or % :all))
                    (update :attrs #(merge ~default-attrs %)))]
      (validate-spec! spec#)
      (derive (:model spec#) :hook/search-index)
@@ -257,15 +285,26 @@
    (for [[search-model spec-fn] (methods spec)]
      (search-model-hooks (spec-fn search-model)))))
 
+(defn- instance->db-values
+  "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
+  [instance]
+  (let [xforms (#'t2.transformed/in-transforms (t2/model instance))]
+    (reduce-kv
+     (fn [m k v]
+       (assoc m k (if-let [f (get xforms k)] (f v) v)))
+     {}
+     instance)))
+
 (defn search-models-to-update
   "Given an updated or created instance, return a description of which search-models to (re)index."
   [instance & [always?]]
-  (into #{}
-        (keep
-         (fn [{:keys [search-model fields where]}]
-           (when (or always? (and fields (some fields (keys (or (t2/changes instance) instance)))))
-             [search-model (insert-values where :updated instance)])))
-        (get (model-hooks) (t2/model instance))))
+  (let [raw-values (delay (instance->db-values instance))]
+    (into #{}
+          (keep
+           (fn [{:keys [search-model fields where]}]
+             (when (or always? (and fields (some fields (keys (or (t2/changes instance) instance)))))
+               [search-model (insert-values where :updated @raw-values)])))
+          (get (model-hooks) (t2/model instance)))))
 
 (comment
   (doseq [d (descendants :hook/search-index)]

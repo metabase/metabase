@@ -32,14 +32,17 @@
    [clojure.set :as set]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.time :as u.time]))
 
 (defn- mbql-clause?
   "True if `x` is an MBQL clause (a sequence with a token as its first arg). (This is different from the implementation
@@ -94,6 +97,7 @@
       (:base-type opts)      (update :base-type keyword)
       (:effective-type opts) (update :effective-type keyword)
       (:temporal-unit opts)  (update :temporal-unit keyword)
+      (:inherited-temporal-unit opts)  (update :inherited-temporal-unit keyword)
       (:binning opts)        (update :binning (fn [binning]
                                                 (cond-> binning
                                                   (:strategy binning) (update :strategy keyword)))))))
@@ -192,6 +196,12 @@
     [:get-week (normalize-tokens field :ignore-path) (maybe-normalize-token mode)]
     [:get-week (normalize-tokens field :ignore-path)]))
 
+(defmethod normalize-mbql-clause-tokens :get-day-of-week
+  [[_ field mode]]
+  (if mode
+    [:get-day-of-week (normalize-tokens field :ignore-path) (maybe-normalize-token mode)]
+    [:get-day-of-week (normalize-tokens field :ignore-path)]))
+
 (defmethod normalize-mbql-clause-tokens :temporal-extract
   [[_ field unit mode]]
   (if mode
@@ -204,6 +214,10 @@
    (normalize-tokens x :ignore-path)
    (normalize-tokens y :ignore-path)
    (maybe-normalize-token unit)])
+
+(defmethod normalize-mbql-clause-tokens :during
+  [[_ field value unit]]
+  [:during (normalize-tokens field :ignore-path) value (maybe-normalize-token unit)])
 
 (defmethod normalize-mbql-clause-tokens :value
   ;; The args of a `value` clause shouldn't be normalized.
@@ -365,7 +379,8 @@
   {:pre [(map? metadata)]}
   (-> (reduce #(m/update-existing %1 %2 keyword) metadata [:base_type :effective_type :semantic_type :visibility_type :source :unit])
       (m/update-existing :field_ref normalize-field-ref)
-      (m/update-existing :fingerprint walk/keywordize-keys)))
+      (m/update-existing :fingerprint walk/keywordize-keys)
+      (m/update-existing-in [:binning_info :binning_strategy] keyword)))
 
 (defn- normalize-native-query
   "For native queries, normalize the top-level keys, and template tags, but nothing else."
@@ -378,6 +393,12 @@
   (cond-> row
     (map? row) (update-keys u/qualified-name)))
 
+(defn- normalize-ident-index [index]
+  (cond
+    (string? index)  (parse-long index)
+    (keyword? index) (-> index name parse-long)
+    :else            index))
+
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
   `:expressions` key in an MBQL query should preserve the case of the expression names; this custom behavior is
@@ -385,12 +406,15 @@
   {:type            maybe-normalize-token
    ;; don't normalize native queries
    :native          normalize-native-query
-   :query           {:aggregation     normalize-ag-clause-tokens
-                     :expressions     normalize-expressions-tokens
-                     :order-by        normalize-order-by-tokens
-                     :source-query    normalize-source-query
-                     :source-metadata {::sequence normalize-source-metadata}
-                     :joins           {::sequence normalize-join}}
+   :query           {:aggregation        normalize-ag-clause-tokens
+                     :aggregation-idents #(update-keys % normalize-ident-index)
+                     :breakout-idents    #(update-keys % normalize-ident-index)
+                     :expressions        normalize-expressions-tokens
+                     :expression-idents  #(update-keys % lib.schema.common/normalize-string-key)
+                     :order-by           normalize-order-by-tokens
+                     :source-query       normalize-source-query
+                     :source-metadata    {::sequence normalize-source-metadata}
+                     :joins              {::sequence normalize-join}}
    ;; we smuggle metadata for Models and want to preserve their "database" form vs a normalized form so it matches
    ;; the style in annotate.clj
    :info            {:metadata/model-metadata identity
@@ -588,6 +612,7 @@
         (map canonicalize-mbql-clause other-args)))
 
 (doseq [clause-name [:= :!= :< :<= :> :>=
+                     :in :not-in
                      :is-empty :not-empty :is-null :not-null
                      :between]]
   (defmethod canonicalize-mbql-clause clause-name
@@ -664,13 +689,14 @@
   [[_ field filter-subclause]]
   [:sum-where (canonicalize-mbql-clause field) (canonicalize-mbql-clause filter-subclause)])
 
-(defmethod canonicalize-mbql-clause :case
-  [[_ clauses options]]
-  (if options
-    (conj (canonicalize-mbql-clause [:case clauses])
-          (normalize-tokens options :ignore-path))
-    [:case (vec (for [[pred expr] clauses]
-                  [(canonicalize-mbql-clause pred) (canonicalize-mbql-clause expr)]))]))
+(doseq [tag [:case :if]]
+  (defmethod canonicalize-mbql-clause tag
+    [[_ clauses options]]
+    (if options
+      (conj (canonicalize-mbql-clause [tag clauses])
+            (normalize-tokens options :ignore-path))
+      [tag (vec (for [[pred expr] clauses]
+                  [(canonicalize-mbql-clause pred) (canonicalize-mbql-clause expr)]))])))
 
 (defmethod canonicalize-mbql-clause :substring
   [[_ arg start & more]]
@@ -899,6 +925,94 @@
                       e)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             LEGACY FILTER CLAUSES                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- temporal-unit
+  [field]
+  (-> field mbql.u/field-options :temporal-unit))
+
+(defn- temporal-unit-is? [units]
+  #(units (temporal-unit %)))
+
+(defn- remove-temporal-unit
+  [field]
+  (mbql.u/update-field-options field dissoc :temporal-unit :original-temporal-unit))
+
+(mu/defn ^:private replace-relative-date-filters :- mbql.s/Filter
+  "Replaces broken relative date filter clauses with `:relative-time-interval` calls.
+
+  Previously we generated a complex expression for relative date filters with an offset on the FE. It turned out that
+  the expression was wrong by 1 offset unit, e.g. if the offset was by months, it was wrong by 1 month. To fix the issue
+  we introduced a new `:relative-time-interval` function that served several purposes. It captured the user intent
+  clearly while hiding the implementation details; it also fixed the underlying expression. Here we match the old
+  expression and convert it to a `:relative-time-interval` call, honoring the original user intent. See #46211 and
+  #46438 for details."
+  [filter-clause :- mbql.s/Filter]
+  (lib.util.match/replace filter-clause
+    [:between
+     [:+
+      field
+      [:interval (offset-value :guard integer?) (offset-unit :guard keyword?)]]
+     [:relative-datetime
+      (start-value :guard integer?)
+      (start-unit :guard keyword?)]
+     [:relative-datetime
+      (end-value :guard integer?)
+      (end-unit :guard keyword?)]]
+    (let [offset-value (- offset-value)]
+      (if (and (= start-unit end-unit)
+               (or (and (pos? offset-value) (zero? start-value) (pos? end-value))
+                   (and (neg? offset-value) (neg? start-value) (zero? end-value))))
+        [:relative-time-interval
+         field
+         (if (neg? offset-value) start-value end-value)
+         start-unit
+         offset-value
+         offset-unit]
+        &match))))
+
+(mu/defn ^:private replace-exclude-date-filters :- mbql.s/Filter
+  "Replaces legacy exclude date filter clauses that rely on temporal bucketing with `:temporal-extract` function calls."
+  [filter-clause :- mbql.s/Filter]
+  (lib.util.match/replace filter-clause
+    [:!=
+     (field :guard (every-pred mbql.preds/Field? (temporal-unit-is? #{:hour-of-day})))
+     & (args :guard #(every? number? %))]
+    (into [:!= [:get-hour (remove-temporal-unit field)]] args)
+
+    [:!=
+     (field :guard (every-pred mbql.preds/Field? (temporal-unit-is? #{:day-of-week :month-of-year :quarter-of-year})))
+     & (args :guard #(every? u.time/timestamp-coercible? %))]
+    (let [args (mapv u.time/coerce-to-timestamp args)]
+      (if (every? u.time/valid? args)
+        (let [unit         (temporal-unit field)
+              field        (remove-temporal-unit field)
+              extract-expr (case unit
+                             :day-of-week     [:get-day-of-week field :iso]
+                             :month-of-year   [:get-month field]
+                             :quarter-of-year [:get-quarter field])
+              extract-unit (if (= unit :day-of-week) :day-of-week-iso unit)]
+          (into [:!= extract-expr]
+                (map #(u.time/extract % extract-unit))
+                args))
+        &match))))
+
+(defn- replace-legacy-filters
+  "Replaces legacy filter clauses with modern alternatives."
+  [query]
+  (try
+    (lib.util.match/replace query
+      (filter-clause :guard mbql.preds/Filter?)
+      (-> filter-clause
+          replace-relative-date-filters
+          replace-exclude-date-filters))
+    (catch #?(:clj Throwable :cljs :default) e
+      (throw (ex-info (i18n/tru "Error replacing legacy filters")
+                      {:query query}
+                      e)))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             REMOVING EMPTY CLAUSES                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -987,20 +1101,21 @@
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^{:arglists '([outer-query])} normalize
+(defn normalize
   "Normalize the tokens in a Metabase query (i.e., make them all `lisp-case` keywords), rewrite deprecated clauses as
   up-to-date MBQL 2000, and remove empty clauses."
-  (let [normalize* (comp remove-empty-clauses
-                         perform-whole-query-transformations
-                         canonicalize
-                         normalize-tokens)]
-    (fn [query]
-      (try
-        (normalize* query)
-        (catch #?(:clj Throwable :cljs js/Error) e
-          (throw (ex-info (i18n/tru "Error normalizing query: {0}" (ex-message e))
-                          {:query query}
-                          e)))))))
+  [query]
+  (try
+    (-> query
+        normalize-tokens
+        canonicalize
+        perform-whole-query-transformations
+        replace-legacy-filters
+        remove-empty-clauses)
+    (catch #?(:clj Throwable :cljs js/Error) e
+      (throw (ex-info (i18n/tru "Error normalizing query: {0}" (ex-message e))
+                      {:query query}
+                      e)))))
 
 (mu/defn normalize-or-throw :- ::mbql.s/Query
   "Like [[normalize]], but checks the result against the Malli schema for a legacy query, which will cause it to throw

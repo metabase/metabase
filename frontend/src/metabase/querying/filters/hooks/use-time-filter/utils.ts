@@ -4,7 +4,7 @@ import { isNotNull } from "metabase/lib/types";
 import {
   getAvailableOperatorOptions,
   getDefaultAvailableOperator,
-} from "metabase/querying/filters/utils/operators";
+} from "metabase/querying/filters/utils";
 import * as Lib from "metabase-lib";
 
 import { OPERATOR_OPTIONS } from "./constants";
@@ -23,13 +23,13 @@ export function getAvailableOptions(
   );
 }
 
-export function getOptionByOperator(operator: Lib.TimeFilterOperatorName) {
+export function getOptionByOperator(operator: Lib.TimeFilterOperator) {
   return OPERATOR_OPTIONS[operator];
 }
 
 export function getDefaultOperator(
   availableOptions: OperatorOption[],
-): Lib.TimeFilterOperatorName {
+): Lib.TimeFilterOperator {
   return getDefaultAvailableOperator(availableOptions, "<");
 }
 
@@ -38,7 +38,7 @@ function getDefaultValue() {
 }
 
 export function getDefaultValues(
-  operator: Lib.TimeFilterOperatorName,
+  operator: Lib.TimeFilterOperator,
   values: TimeValue[],
 ): TimeValue[] {
   const { valueCount } = OPERATOR_OPTIONS[operator];
@@ -49,7 +49,7 @@ export function getDefaultValues(
 }
 
 export function isValidFilter(
-  operator: Lib.TimeFilterOperatorName,
+  operator: Lib.TimeFilterOperator,
   column: Lib.ColumnMetadata,
   values: TimeValue[],
 ) {
@@ -57,7 +57,7 @@ export function isValidFilter(
 }
 
 export function getFilterClause(
-  operator: Lib.TimeFilterOperatorName,
+  operator: Lib.TimeFilterOperator,
   column: Lib.ColumnMetadata,
   values: TimeValue[],
 ) {
@@ -70,7 +70,7 @@ export function getFilterClause(
 }
 
 function getFilterParts(
-  operator: Lib.TimeFilterOperatorName,
+  operator: Lib.TimeFilterOperator,
   column: Lib.ColumnMetadata,
   values: TimeValue[],
 ): Lib.TimeFilterParts | undefined {

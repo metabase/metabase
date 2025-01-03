@@ -7,9 +7,8 @@
    [metabase.config :as config]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
-   [metabase.models :refer [PulseChannel]]
    [metabase.models.pulse :as models.pulse]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [throttle.core :as throttle]
@@ -33,12 +32,12 @@
   {pulse-id ms/PositiveInt
    email    :string
    hash     :string}
-  (check-hash pulse-id email hash (req.util/ip-address request))
+  (check-hash pulse-id email hash (request/ip-address request))
   (t2/with-transaction [_conn]
-    (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
+    (api/let-404 [pulse-channel (t2/select-one :model/PulseChannel :pulse_id pulse-id :channel_type "email")]
       (let [emails (get-in pulse-channel [:details :emails])]
         (if (some #{email} emails)
-          (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] #(remove #{email} %)))
+          (t2/update! :model/PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] #(remove #{email} %)))
           (throw (ex-info (tru "Email for pulse-id doesn't exist.")
                           {:type        type
                            :status-code 400}))))
@@ -51,15 +50,15 @@
   {pulse-id ms/PositiveInt
    email    :string
    hash     :string}
-  (check-hash pulse-id email hash (req.util/ip-address request))
+  (check-hash pulse-id email hash (request/ip-address request))
   (t2/with-transaction [_conn]
-    (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
+    (api/let-404 [pulse-channel (t2/select-one :model/PulseChannel :pulse_id pulse-id :channel_type "email")]
       (let [emails (get-in pulse-channel [:details :emails])]
         (if (some #{email} emails)
           (throw (ex-info (tru "Email for pulse-id already exists.")
                           {:type        type
                            :status-code 400}))
-          (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email))))
+          (t2/update! :model/PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email))))
       (events/publish-event! :event/subscription-unsubscribe-undo {:object {:email email}})
       {:status :success :title (:name (models.pulse/retrieve-notification pulse-id :archived false))})))
 

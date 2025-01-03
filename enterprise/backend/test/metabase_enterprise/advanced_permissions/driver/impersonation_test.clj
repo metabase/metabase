@@ -3,15 +3,12 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.advanced-permissions.api.util-test
-    :as advanced-perms.api.tu]
-   [metabase-enterprise.advanced-permissions.driver.impersonation
-    :as impersonation]
+   [metabase-enterprise.advanced-permissions.api.util-test :as advanced-perms.api.tu]
+   [metabase-enterprise.advanced-permissions.driver.impersonation :as impersonation]
    [metabase.driver.postgres-test :as postgres-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.models.database :refer [Database]]
    [metabase.query-processor :as qp]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
@@ -19,16 +16,18 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(deftest connection-impersonation-role-test
+(deftest ^:parallel connection-impersonation-role-test
   (testing "Returns nil when no impersonations are in effect"
-    (is (nil? (@#'impersonation/connection-impersonation-role (mt/db)))))
+    (is (nil? (@#'impersonation/connection-impersonation-role (mt/db))))))
 
+(deftest connection-impersonation-role-test-2
   (testing "Correctly fetches the impersonation when one is in effect"
     (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                  :attributes     {"impersonation_attr" "impersonation_role"}}
       (is (= "impersonation_role"
-             (@#'impersonation/connection-impersonation-role (mt/db))))))
+             (@#'impersonation/connection-impersonation-role (mt/db)))))))
 
+(deftest connection-impersonation-role-test-3
   (testing "Throws exception if multiple conflicting impersonations are in effect"
     ;; Use nested `with-impersonations!` macros so that different groups are used
     (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr_1"}]
@@ -38,35 +37,40 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Multiple conflicting connection impersonation policies found for current user"
-             (@#'impersonation/connection-impersonation-role (mt/db)))))))
+             (@#'impersonation/connection-impersonation-role (mt/db))))))))
 
+(deftest connection-impersonation-role-test-4
   (testing "Returns nil if the permissions in another group supercede the impersonation"
     (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                  :attributes     {"impersonation_attr" "impersonation_role"}}
       ;; `with-impersonations!` creates a new group and revokes data perms in `all users`, so if we re-grant data perms
       ;; for all users, it should supercede the impersonation policy in the new group
       (mt/with-full-data-perms-for-all-users!
-        (is (nil? (@#'impersonation/connection-impersonation-role (mt/db)))))))
+        (is (nil? (@#'impersonation/connection-impersonation-role (mt/db))))))))
 
+(deftest connection-impersonation-role-test-5
   (testing "Returns nil for superuser, even if they are in a group with an impersonation policy defined"
     (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                  :attributes     {"impersonation_attr" "impersonation_role"}}
-      (mw.session/as-admin
-        (is (nil? (@#'impersonation/connection-impersonation-role (mt/db)))))))
+      (request/as-admin
+        (is (nil? (@#'impersonation/connection-impersonation-role (mt/db))))))))
 
+(deftest connection-impersonation-role-test-6
   (testing "Does not throw an exception if passed a nil `database-or-id`"
     (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                  :attributes     {"impersonation_attr" "impersonation_role"}}
-      (is (nil? (@#'impersonation/connection-impersonation-role nil)))))
+      (is (nil? (@#'impersonation/connection-impersonation-role nil))))))
 
+(deftest connection-impersonation-role-test-7
   (testing "Throws an exception if impersonation should be enforced, but the user doesn't have the required attribute"
     (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                  :attributes     {}}
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"User does not have attribute required for connection impersonation."
-           (@#'impersonation/connection-impersonation-role (mt/db))))))
+           (@#'impersonation/connection-impersonation-role (mt/db)))))))
 
+(deftest connection-impersonation-role-test-8
   (testing "Throws an exception if impersonation should be enforced, but the user's attribute is not a single string"
     (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                  :attributes     {"impersonation_attr" ["one" "two" "three"]}}
@@ -91,7 +95,7 @@
                            "REVOKE ALL PRIVILEGES ON DATABASE \"conn_impersonation_test\" FROM \"impersonation.role\";"
                            "GRANT SELECT ON TABLE \"conn_impersonation_test\".PUBLIC.table_with_access TO \"impersonation.role\";"]]
           (jdbc/execute! spec [statement]))
-        (t2.with-temp/with-temp [Database database {:engine :postgres, :details details}]
+        (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details details}]
           (mt/with-db database (sync/sync-database! database)
             (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                          :attributes     {"impersonation_attr" "impersonation.role"}}
@@ -114,7 +118,7 @@
             spec    (sql-jdbc.conn/connection-details->spec :redshift details)
             user    (u/lower-case-en (mt/random-name))
             schema  (sql.tx/session-schema :redshift)]
-        (mt/with-temp [Database database {:engine :redshift, :details details}]
+        (mt/with-temp [:model/Database database {:engine :redshift, :details details}]
           (try
             (doseq [statement [(format "DROP TABLE IF EXISTS \"%s\".table_with_access;" schema)
                                (format "DROP TABLE IF EXISTS \"%s\".table_without_access;" schema)
@@ -158,7 +162,7 @@
              #"Connection impersonation is enabled for this database, but no default role is found"
              (mt/run-mbql-query venues
                {:aggregation [[:count]]})))
-        (mw.session/as-admin
+        (request/as-admin
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Connection impersonation is enabled for this database, but no default role is found"
@@ -178,7 +182,7 @@
                  {:aggregation [[:count]]})))
 
           ;; Non-impersonated user should stil be able to query the table
-          (mw.session/as-admin
+          (request/as-admin
             (is (= [100]
                    (mt/first-row
                     (mt/run-mbql-query venues
@@ -208,10 +212,9 @@
                   (let [persisted-info (t2/select-one :model/PersistedInfo
                                                       :database_id (mt/id)
                                                       :card_id (:id model))
-                        query          {:type     :query
-                                        :query    {:aggregation  [:count]
-                                                   :source-table (str "card__" (:id model))}
-                                        :database (mt/id)}]
+                        query          (mt/mbql-query nil
+                                         {:aggregation  [:count]
+                                          :source-table (str "card__" (:id model))})]
                     (let [impersonated-result (mt/with-test-user :rasta (qp/process-query query))
                           ;; Make sure we run admin query second to reset the DB role on the connection for other tests!
                           admin-result        (mt/as-admin (qp/process-query query))]

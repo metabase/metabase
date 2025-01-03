@@ -1,0 +1,13 @@
+.BorderedViewTitleHeader {
+  border-bottom: 1px solid var(--mb-color-border);
+  padding-top: 8px;
+  padding-bottom: 8px;
+  min-height: 4rem;
+}
+
+.QueryBuilderViewHeaderContainer {
+  flex-shrink: 0;
+  background-color: var(--mb-color-bg-white);
+  position: relative;
+  z-index: 3;
+}

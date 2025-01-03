@@ -102,24 +102,27 @@
   [filter-clause & more-filter-clauses]
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
 
-(defn- legacy-last-stage-number
+(defn legacy-last-stage-number
   "Returns the canonical stage number of the last stage of the legacy `inner-query`."
   [inner-query]
-  (loop [{:keys [source-query]} inner-query, n 0]
-    (if-not source-query
+  (loop [{:keys [source-query qp/stage-had-source-card]} inner-query, n 0]
+    (if (or (nil? source-query)
+            stage-had-source-card)
       n
       (recur source-query (inc n)))))
 
-(defn- stage-path
+(defn stage-path
   "Returns a vector consisting of :source-query elements that address the stage of `inner-query`
   specified by `stage-number`.
 
   Stage numbers are used as described in [[add-filter-clause]]."
   [inner-query stage-number]
-  (let [elements (if (neg? stage-number)
-                   (dec (- stage-number))
-                   (- (legacy-last-stage-number inner-query) stage-number))]
-    (into [] (repeat elements :source-query))))
+  (if-not stage-number
+    []
+    (let [elements (if (neg? stage-number)
+                     (dec (- stage-number))
+                     (- (legacy-last-stage-number inner-query) stage-number))]
+      (into [] (repeat elements :source-query)))))
 
 (mu/defn add-filter-clause-to-inner-query :- mbql.s/MBQLQuery
   "Add a additional filter clause to an *inner* MBQL query, merging with the existing filter clause with `:and` if
@@ -131,9 +134,7 @@
    new-clause   :- [:maybe mbql.s/Filter]]
   (if (not new-clause)
     inner-query
-    (let [path (if-not stage-number
-                 []
-                 (stage-path inner-query stage-number))]
+    (let [path (stage-path inner-query stage-number)]
       (update-in inner-query (conj path :filter) combine-filter-clauses new-clause))))
 
 (mu/defn add-filter-clause :- mbql.s/Query
@@ -145,6 +146,29 @@
    stage-number :- [:maybe number?]
    new-clause   :- [:maybe mbql.s/Filter]]
   (update outer-query :query add-filter-clause-to-inner-query stage-number new-clause))
+
+(defn- map-stages*
+  "Helper for [[map-stages]]; call that instead."
+  [f {:keys [source-query] :as inner-query}]
+  (if source-query
+    ;; Recursive case: Call `map-stages*` on the `:source-query`, then `f` on this stage. Increment the stage count.
+    (let [[new-source-query stage-count] (map-stages* f source-query)]
+      [(-> (assoc inner-query :source-query new-source-query)
+           (f stage-count))
+       (inc stage-count)])
+    ;; Base case: No `:source-query`, so just call `f` and return a `stage-count` of 1.
+    [(f inner-query 0) 1]))
+
+(defn map-stages
+  "Given a function `(f inner-query stage-number)`, recursively calls it on the stages of this (legacy MBQL)
+  `inner-query`.
+
+  The calls run postorder, that is the earliest/innermost stage first.
+
+  Returns the updated `inner-query`."
+  [f inner-query]
+  (let [[updated-inner-query _stage-count] (map-stages* f inner-query)]
+    updated-inner-query))
 
 (defn desugar-inside
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."
@@ -261,6 +285,39 @@
        [:>= col-default-bucket lower-with-offset]
        [:<  col-default-bucket upper-with-offset]])))
 
+(defn desugar-during
+  "Transform a `:during` expression to an `:and` expression."
+  [m]
+  (lib.util.match/replace
+    m
+    [:during col value unit]
+    (let [col-default-bucket (cond-> col
+                               (and (vector? col) (= 3 (count col)))
+                               (update 2 assoc :temporal-unit :default))
+          lower-bound (u.time/truncate value unit)
+          upper-bound (u.time/add lower-bound unit 1)]
+      [:and
+       [:>= col-default-bucket lower-bound]
+       [:<  col-default-bucket upper-bound]])))
+
+(defn desugar-if
+  "Transform a `:if` expression to an `:case` expression."
+  [m]
+  (lib.util.match/replace
+    m
+    [:if & args]
+    (into [:case] args)))
+
+(defn desugar-in
+  "Transform `:in` and `:not-in` expressions to `:=` and `:!=` expressions."
+  [m]
+  (lib.util.match/replace m
+    [:in & args]
+    (into [:=] args)
+
+    [:not-in & args]
+    (into [:!=] args)))
+
 (defn desugar-does-not-contain
   "Rewrite `:does-not-contain` filter clauses as simpler `[:not [:contains ...]]` clauses.
 
@@ -327,6 +384,7 @@
    [:get-week        :instance] :week-of-year-instance
    [:get-day         nil]       :day-of-month
    [:get-day-of-week nil]       :day-of-week
+   [:get-day-of-week :iso]      :day-of-week-iso
    [:get-hour        nil]       :hour-of-day
    [:get-minute      nil]       :minute-of-hour
    [:get-second      nil]       :second-of-minute})
@@ -400,6 +458,7 @@
   [filter-clause :- mbql.s/Filter]
   (-> filter-clause
       desugar-current-relative-datetime
+      desugar-in
       desugar-multi-argument-comparisons
       desugar-does-not-contain
       desugar-time-interval
@@ -409,6 +468,8 @@
       desugar-inside
       simplify-compound-filter
       desugar-temporal-extract
+      desugar-during
+      desugar-if
       maybe-desugar-expression))
 
 (defmulti ^:private negate* first)
@@ -773,6 +834,11 @@
 
     :else
     x))
+
+(defn field-options
+  "Returns options in a `:field`, `:expression`, or `:aggregation` clause."
+  [[_ _ opts]]
+  opts)
 
 (mu/defn update-field-options :- mbql.s/Reference
   "Like [[clojure.core/update]], but for the options in a `:field`, `:expression`, or `:aggregation` clause."

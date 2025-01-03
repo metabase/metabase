@@ -2,7 +2,7 @@ import type { MantineThemeOverride } from "@mantine/core";
 
 export const getListOverrides = (): MantineThemeOverride["components"] => ({
   List: {
-    styles: theme => {
+    styles: () => {
       return {
         root: {
           // to revert "none" from the reset
@@ -10,7 +10,7 @@ export const getListOverrides = (): MantineThemeOverride["components"] => ({
         },
         item: {
           lineHeight: "1.5",
-          color: theme.fn.themeColor("text-dark"),
+          color: "var(--mb-color-text-primary)",
         },
       };
     },

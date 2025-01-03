@@ -12,7 +12,7 @@ import {
   COLUMN_SPLIT_SETTING,
   isPivotGroupColumn,
 } from "metabase/lib/data_grid";
-import { formatColumn } from "metabase/lib/formatting";
+import { displayNameForColumn } from "metabase/lib/formatting";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -41,7 +41,7 @@ export const getTitleForColumn = (
 ) => {
   const { column: _column, column_title: columnTitle } =
     settings.column(column);
-  return columnTitle || formatColumn(_column);
+  return columnTitle || displayNameForColumn(_column);
 };
 
 export const settings = {
@@ -246,9 +246,19 @@ export const _columnSettings = {
       columnSettings: DatasetColumn,
       { settings }: { settings: VisualizationSettings },
     ) => {
-      //Default to showing totals if appropriate
+      // Default to showing totals if appropriate
       const rows = settings[COLUMN_SPLIT_SETTING]?.rows || [];
-      return rows.slice(0, -1).some(row => _.isEqual(row, column.name));
+
+      // `rows` can be either in a legacy format where it's a field ref, or in a new format where it's a column name.
+      // All new questions visualized as pivot tables will have column name settings only. We migrate
+      // `COLUMN_SPLIT_SETTING` for existing questions only on an explicit change from the user; therefore we need to
+      // support both column names and field refs for now.
+      return rows
+        .slice(0, -1)
+        .some(
+          row =>
+            _.isEqual(row, column.name) || _.isEqual(row, column.field_ref),
+        );
     },
     getHidden: (
       column: DatasetColumn,
@@ -265,6 +275,6 @@ export const _columnSettings = {
   column_title: {
     title: t`Column title`,
     widget: "input",
-    getDefault: formatColumn,
+    getDefault: displayNameForColumn,
   },
 };

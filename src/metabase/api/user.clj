@@ -12,19 +12,15 @@
    [metabase.config :as config]
    [metabase.events :as events]
    [metabase.integrations.google :as google]
-   [metabase.models.collection :as collection :refer [Collection]]
-   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.models.login-history :refer [LoginHistory]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :as user]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.server.middleware.offset-paging :as mw.offset-paging]
-   [metabase.server.middleware.session :as mw.session]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.schema :as ms]
@@ -98,7 +94,7 @@
       (let [{email :email} user-before-update
             new-collection-name (collection/format-personal-collection-name first_name last_name email :site)]
         (when-not (= new-collection-name (:name collection))
-          (t2/update! Collection (:id collection) {:name new-collection-name}))))))
+          (t2/update! :model/Collection (:id collection) {:name new-collection-name}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
@@ -159,8 +155,8 @@
                                                         [:= :core_user.id :permissions_group_membership.user_id])
     (some? group_ids)                                  (sql.helpers/where
                                                         [:in :permissions_group_membership.group_id group_ids])
-    (some? mw.offset-paging/*limit*)                   (sql.helpers/limit mw.offset-paging/*limit*)
-    (some? mw.offset-paging/*offset*)                  (sql.helpers/offset mw.offset-paging/*offset*)))
+    (some? (request/limit))                            (sql.helpers/limit (request/limit))
+    (some? (request/offset))                           (sql.helpers/offset (request/offset))))
 
 (defn- filter-clauses-without-paging
   "Given a where clause, return a clause that can be used to count."
@@ -219,8 +215,8 @@
                          (filter-clauses-without-paging clauses)))
                  first
                  :count)
-     :limit  mw.offset-paging/*limit*
-     :offset mw.offset-paging/*offset*}))
+     :limit  (request/limit)
+     :offset (request/offset)}))
 
 (defn- same-groups-user-ids
   "Return a list of all user-ids in the same group with the user with id `user-id`.
@@ -248,20 +244,20 @@
                                     (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                     {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
                      :total  (t2/count :model/User (filter-clauses-without-paging clauses))
-                     :limit  mw.offset-paging/*limit*
-                     :offset mw.offset-paging/*offset*}))
+                     :limit  (request/limit)
+                     :offset (request/offset)}))
           (within-group [] (let [user-ids (same-groups-user-ids api/*current-user-id*)
                                  clauses  (cond-> (user-clauses nil nil nil nil)
                                             (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
                                             true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                              {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
                               :total  (t2/count :model/User (filter-clauses-without-paging clauses))
-                              :limit  mw.offset-paging/*limit*
-                              :offset mw.offset-paging/*offset*}))
+                              :limit  (request/limit)
+                              :offset (request/offset)}))
           (just-me [] {:data   [(fetch-user :id api/*current-user-id*)]
                        :total  1
-                       :limit  mw.offset-paging/*limit*
-                       :offset mw.offset-paging/*offset*})]
+                       :limit  (request/limit)
+                       :offset (request/offset)})]
     (cond
       ;; if they're sandboxed OR if they're a superuser, ignore the setting and just give them nothing or everything,
       ;; respectively.
@@ -315,7 +311,7 @@
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
   [{:keys [id] :as user}]
   (let [ts (or
-            (:timestamp (t2/select-one [LoginHistory :timestamp] :user_id id
+            (:timestamp (t2/select-one [:model/LoginHistory :timestamp] :user_id id
                                        {:order-by [[:timestamp :asc]]}))
             (t/offset-date-time))]
     (assoc user :first_login ts)))
@@ -325,7 +321,7 @@
   [user]
   (let [enabled? (public-settings/custom-homepage)
         id       (public-settings/custom-homepage-dashboard)
-        dash     (t2/select-one Dashboard :id id)
+        dash     (t2/select-one :model/Dashboard :id id)
         valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? dash))]
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id}))))
@@ -516,10 +512,10 @@
     (user/set-password! id password)
     ;; after a successful password update go ahead and offer the client a new session that they can use
     (when (= id api/*current-user-id*)
-      (let [{session-uuid :id, :as session} (api.session/create-session! :password user (req.util/device-info request))
+      (let [{session-uuid :id, :as session} (api.session/create-session! :password user (request/device-info request))
             response                        {:success    true
                                              :session_id (str session-uuid)}]
-        (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))))
+        (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |

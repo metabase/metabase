@@ -11,7 +11,7 @@
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.models :refer [Table]]
+   [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.log :as log]
@@ -39,7 +39,7 @@
       (binding [mdb.connection/*application-db* (mdb.connection/application-db target-db-type target-data-source)]
         (load-from-h2/load-from-h2! h2-filename)
         (is (= 4
-               (t2/count Table)))
+               (t2/count :model/Table)))
         (thunk)))))
 
 (deftest load-from-h2-test
@@ -68,7 +68,8 @@
   [db-type db-def data-source]
   (tx/destroy-db! db-type db-def)
   (tx/create-db! db-type db-def)
-  (mdb.setup/setup-db! db-type data-source true false))
+  (mdb.setup/setup-db! db-type data-source true false)
+  (search/reset-tracking!))
 
 (defn- dump-filename
   [h2-filename version]

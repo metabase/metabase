@@ -5,12 +5,8 @@
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id*]]
    [metabase.db.query :as mdb.query]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
-   [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.models.recent-views :as recent-views]
-   [metabase.models.table :refer [Table]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -20,15 +16,16 @@
   [model ids]
   (t2/select
    (case model
-     "card"      [Card
+     "card"      [:model/Card
                   :id :name :collection_id :description :display
                   :dataset_query :type :archived
-                  :collection.authority_level [:collection.name :collection_name]]
-     "dashboard" [Dashboard
+                  :collection.authority_level [:collection.name :collection_name]
+                  [:dashboard.name :dashboard_name] :dashboard_id]
+     "dashboard" [:model/Dashboard
                   :id :name :collection_id :description
                   :archived
                   :collection.authority_level [:collection.name :collection_name]]
-     "table"     [Table
+     "table"     [:model/Table
                   :id :name :db_id :active
                   :display_name [:metabase_database.initial_sync_status :initial-sync-status]
                   [:visibility_type :visibility_type]
@@ -36,9 +33,11 @@
    (let [model-symb (symbol (str/capitalize model))
          self-qualify #(mdb.query/qualify model-symb %)]
      {:where [:in (self-qualify :id) ids]
-      :left-join (if (= model "table")
-                   [:metabase_database [:= :metabase_database.id (self-qualify :db_id)]]
-                   [:collection [:= :collection.id (self-qualify :collection_id)]])})))
+      :left-join (case model
+                   "table" [:metabase_database [:= :metabase_database.id (self-qualify :db_id)]]
+                   "card" [:collection [:= :collection.id (self-qualify :collection_id)]
+                           [:report_dashboard :dashboard] [:= :dashboard.id (self-qualify :dashboard_id)]]
+                   "dashboard" [:collection [:= :collection.id (self-qualify :collection_id)]])})))
 
 (defn- models-for-views
   "Returns a map of {model {id instance}} for activity views suitable for looking up by model and id to get a model."
@@ -90,12 +89,12 @@
                                                           [:and
                                                            [:= :model "table"]
                                                            [:= :t.id :model_id]]]})
-        card-runs                 (->> (t2/select [QueryExecution
+        card-runs                 (->> (t2/select [:model/QueryExecution
                                                    [:%min.executor_id :user_id]
-                                                   [(mdb.query/qualify QueryExecution :card_id) :model_id]
+                                                   [(mdb.query/qualify :model/QueryExecution :card_id) :model_id]
                                                    [:%count.* :cnt]
                                                    [:%max.started_at :max_ts]]
-                                                  {:group-by [(mdb.query/qualify QueryExecution :card_id) :context]
+                                                  {:group-by [(mdb.query/qualify :model/QueryExecution :card_id) :context]
                                                    :where    [:and
                                                               [:= :context (h2x/literal :question)]]
                                                    :order-by [[:max_ts :desc]]
@@ -141,7 +140,7 @@
    in the last 24 hours."
   []
   (if-let [dashboard-id (recent-views/most-recently-viewed-dashboard-id api/*current-user-id*)]
-    (let [dashboard (-> (t2/select-one Dashboard :id dashboard-id)
+    (let [dashboard (-> (t2/select-one :model/Dashboard :id dashboard-id)
                         api/check-404
                         (t2/hydrate [:collection :is_personal]))]
       (if (mi/can-read? dashboard)

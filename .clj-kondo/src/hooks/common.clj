@@ -1,13 +1,86 @@
 (ns hooks.common
   (:require
    [clj-kondo.hooks-api :as hooks]
-   [clojure.pprint]))
+   [clojure.pprint]
+   [clojure.set :as set]))
 
 (defn with-macro-meta
   "When introducing internal nodes (let, defn, etc) it is important to provide a meta of an existing token
    as the current version of kondo will use the whole form by default."
   [new-node hook-node]
   (with-meta new-node (meta (first (:children hook-node)))))
+
+;;; Kondo stores information about ignored linters as rewrite-clj forms matching how they are specified in the code, so
+;;; either
+;;;
+;;;    <vector-node [<token-node :discouraged-namespace>]>
+;;;
+;;; or
+;;;
+;;;    <token-node :discouraged-namespace>
+;;;
+;;; these are stored in
+;;;
+;;;     (-> node meta :clj-kondo/ignore :linters).
+;;;
+;;; These are not a convenient shape(s) to work with, so the next few functions abstract that shape out and work with a
+;;; set of keywords like
+;;;
+;;;    #{:discouraged-namespace}
+;;;
+;;; instead.
+
+(defn- unwrap-ignored-linters [linters]
+  (cond
+    (or (hooks/vector-node? linters)
+        (hooks/list-node? linters))
+    (into #{}
+          (map hooks/sexpr)
+          (:children linters))
+
+    (hooks/keyword-node? linters)
+    #{(hooks/sexpr linters)}
+
+    (and (set? linters)
+         (every? keyword? linters))
+    linters
+
+    (and (sequential? linters)
+         (every? keyword? linters))
+    (into #{} linters)
+
+    (keyword? linters)
+    #{linters}))
+
+(defn- wrap-ignored-linters [linters]
+  (hooks/vector-node (mapv hooks/keyword-node linters)))
+
+(defn ignored-linters
+  "Return a set of keywords all ignored linters associated with a node by looking at its metadata."
+  [node]
+  (or (some-> node meta :clj-kondo/ignore :linters unwrap-ignored-linters)
+      ;; deal with the old pre-2024.09 shape mentioned in https://github.com/clj-kondo/clj-kondo/issues/2414
+      (some-> node :meta first hooks/sexpr :clj-kondo/ignore unwrap-ignored-linters)))
+
+(defn update-ignored-linters
+  "Update the `:clj-kondo/ignore` linters in `node`'s metadata. `linters` should be a set of keywords."
+  [node f & args]
+  (letfn [(apply-f [linters]
+            (apply f linters args))
+          (update-linters [linters]
+            (-> (or (unwrap-ignored-linters linters)
+                    #{})
+                apply-f
+                wrap-ignored-linters))]
+    (vary-meta node update-in [:clj-kondo/ignore :linters] update-linters)))
+
+(defn merge-ignored-linters
+  "Merge the ignored linters from `source-nodes` into `node`. You can use this to propagate
+  ignored linters from parent nodes to child nodes."
+  [node & source-nodes]
+  (if-let [linters (not-empty (transduce (map ignored-linters) set/union #{} source-nodes))]
+    (update-ignored-linters node set/union linters)
+    node))
 
 ;;; This stuff is to help debug hooks. Trace a function and it will pretty-print the before & after sexprs.
 ;;;
@@ -48,9 +121,9 @@
   [{{[_ & args] :children, :as node} :node}]
   (let [node* (-> (hooks/list-node
                    (list*
-                    (with-meta (hooks/token-node 'do) {:clj-kondo/ignore [:redundant-do]})
+                    (update-ignored-linters (hooks/token-node 'do) conj :redundant-do)
                     (for [arg args]
-                      (vary-meta arg update :clj-kondo/ignore #(conj (vec %) :unused-value)))))
+                      (update-ignored-linters arg conj :unused-value))))
                   (with-meta (meta node)))]
     {:node node*}))
 
@@ -373,6 +446,28 @@
                 body))]
     {:node node*}))
 
+(defn with-used-first-two-args
+  "For macros like
+
+    (with-limit-and-offset limit offset
+      ...)
+
+    =>
+
+    (let [_123 limit
+         [_456 offset]
+      ...)
+
+  where the first arg should be linted and appear to be used."
+  [{{[_ x y & body] :children} :node}]
+  (let [node* (hooks/list-node
+               (list*
+                (hooks/token-node 'let)
+                (hooks/vector-node [(hooks/token-node (gensym "_")) x
+                                    (hooks/token-node (gensym "_")) y])
+                body))]
+    {:node node*}))
+
 (defn with-vec-first-binding
   "For macros like
 
@@ -439,9 +534,4 @@
 
   metadata to a node to suppress LSP warnings."
   [node]
-  (letfn [(update-ignores [existing-ignores]
-            (hooks/vector-node
-             (cons
-              (hooks/keyword-node :clojure-lsp/unused-public-var)
-              (:children existing-ignores))))]
-    (vary-meta node update :clj-kondo/ignore update-ignores)))
+  (update-ignored-linters node conj :clojure-lsp/unused-public-var))

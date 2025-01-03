@@ -34,17 +34,11 @@ describe("nav > containers > MainNavbar", () => {
   });
 
   describe("how to use Metabase", () => {
-    it("should render for admins", async () => {
-      await setup({ user: createMockUser({ is_superuser: true }) });
+    it.each(["admin", "non-admin"])("should render for %s", async user => {
+      await setup({ user: createMockUser({ is_superuser: user === "admin" }) });
       const link = screen.getByRole("link", { name: /How to use Metabase/i });
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", "/getting-started");
-    });
-
-    it("should not render for non-admins", async () => {
-      await setup({ user: createMockUser({ is_superuser: false }) });
-      const link = screen.queryByRole("link", { name: /How to use Metabase/i });
-      expect(link).not.toBeInTheDocument();
     });
 
     it("should be highlighted if selected", async () => {

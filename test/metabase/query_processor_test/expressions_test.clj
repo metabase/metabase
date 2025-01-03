@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -490,7 +489,7 @@
                                        [:field (mt/id :lots-of-fields :a) nil]
                                        [:field (mt/id :lots-of-fields :b) nil]]}
                      :fields      (into [[:expression "c"]]
-                                        (for [{:keys [id]} (t2/select [Field :id]
+                                        (for [{:keys [id]} (t2/select [:model/Field :id]
                                                                       :table_id (mt/id :lots-of-fields)
                                                                       :id       [:not-in #{(mt/id :lots-of-fields :a)
                                                                                            (mt/id :lots-of-fields :b)}]
@@ -679,3 +678,18 @@
           (is (= [[5] [4] [4]]
                  (mt/formatted-rows
                   [int] (qp/process-query query)))))))))
+
+(deftest ^:parallel coercion-with-expression-test
+  (testing "Coerced fields should be possible to use in aggregation even in the presence of an expression (#48721)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+      (mt/dataset sad-toucan-incidents
+        (let [query (mt/mbql-query incidents
+                      {:expressions {"double severity" [:* $severity 2]}
+                       :aggregation [[:aggregation-options
+                                      [:sum-where
+                                       [:expression "double severity" {:base-type :type/Integer}]
+                                       [:between $timestamp "2015-06-01" "2015-06-30"]]
+                                      {:name "sum double severity June 2015"}]]})]
+          (mt/with-native-query-testing-context query
+            (is (= [[1020]]
+                   (mt/formatted-rows [int] (qp/process-query query))))))))))

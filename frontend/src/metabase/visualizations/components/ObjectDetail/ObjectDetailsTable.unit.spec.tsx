@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { testDataset } from "__support__/testDataset";
 import { DetailsTable } from "metabase/visualizations/components/ObjectDetail/ObjectDetailsTable";
@@ -106,8 +106,30 @@ describe("ObjectDetailsTable", () => {
       />,
     );
 
-    expect(screen.getByText("Small Marble Shoes")).toBeInTheDocument();
+    expect(
+      screen.getAllByTestId("object-details-table-cell")[5],
+    ).toHaveTextContent("Small Marble Shoes");
     expect(screen.getByText("Doohickey")).toBeInTheDocument();
+  });
+
+  it("should not open a drill popup", () => {
+    const onVisualizationClickSpy = jest.fn();
+    render(
+      <DetailsTable
+        data={testDataset as any}
+        zoomedRow={testDataset.rows[1]}
+        onVisualizationClick={() => null}
+        visualizationIsClickable={onVisualizationClickSpy}
+        settings={{
+          column: () => null,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("View more")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("View more"));
+
+    expect(onVisualizationClickSpy).not.toHaveBeenCalled();
   });
 
   describe("image rendering", () => {

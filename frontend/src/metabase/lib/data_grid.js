@@ -2,7 +2,7 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { formatColumn, formatValue } from "metabase/lib/formatting";
+import { displayNameForColumn, formatValue } from "metabase/lib/formatting";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 
@@ -368,7 +368,7 @@ function formatValuesInTree(
 function addValueColumnNodes(nodes, valueColumns) {
   const leafNodes = valueColumns.map(([column, columnSettings]) => {
     return {
-      value: columnSettings.column_title || formatColumn(column),
+      value: columnSettings.column_title || displayNameForColumn(column),
       children: [],
       isValueColumn: true,
     };

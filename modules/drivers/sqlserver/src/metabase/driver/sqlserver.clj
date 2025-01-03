@@ -4,6 +4,7 @@
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
@@ -24,7 +25,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log])
   (:import
-   (java.sql Connection ResultSet Time)
+   (java.sql Connection PreparedStatement ResultSet Time)
    (java.time
     LocalDate
     LocalDateTime
@@ -300,19 +301,29 @@
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
   (date-add :minute (h2x// expr 60) (h2x/literal "1970-01-01")))
 
+(defn- sanitize-contents
+  "Parsed xml may contain whitespace elements as `\"\n\n\t\t\"` in its contents. Leave only maps in content for
+  purposes of [[zone-id->windows-zone]]."
+  [parsed]
+  (walk/postwalk
+   (fn [x]
+     (if (and (map? x)
+              (contains? x :content)
+              (seq (:content x)))
+       (update x :content (partial filter map?))
+       x))
+   parsed))
+
 (defonce
   ^{:private true
     :doc     "A map of all zone-id to the corresponding windows-zone.
              I.e {\"Asia/Tokyo\" \"Tokyo Standard Time\"}"}
   zone-id->windows-zone
-  (let [data (-> (io/resource "timezones/windowsZones.xml")
-                 io/reader
-                 xml/parse
-                 :content
-                 second
-                 :content
-                 first
-                 :content)]
+  (let [parsed (-> (io/resource "timezones/windowsZones.xml")
+                   io/reader
+                   xml/parse)
+        sanitized (sanitize-contents parsed)
+        data (-> sanitized :content second :content first :content)]
     (->> (for [mapZone data
                :let [attrs       (:attrs mapZone)
                      window-zone (:other attrs)
@@ -794,6 +805,12 @@
 (defmethod sql-jdbc.execute/set-parameter [:sqlserver OffsetTime]
   [driver ps i t]
   (sql-jdbc.execute/set-parameter driver ps i (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
+
+;; Azure Synapse supports the uuid data type, but it errors if you actually pass it a uuid as a parameter.
+;; Passing uuids as strings avoids that issue, and normal SQL Server also seems to be fine with this.
+(defmethod sql-jdbc.execute/set-parameter [:sqlserver UUID]
+  [_ ^PreparedStatement prepared-statement i object]
+  (.setObject prepared-statement i (str object)))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:sqlserver java.sql.Types/CHAR]
   [driver ^java.sql.ResultSet rs ^java.sql.ResultSetMetaData rsmeta ^Integer i]

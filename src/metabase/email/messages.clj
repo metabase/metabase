@@ -5,7 +5,6 @@
   NOTE: This namespace is deprecated, all of these emails will soon be converted to System Email Notifications."
   (:require
    [buddy.core.codecs :as codecs]
-   [cheshire.core :as json]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.channel.render.core :as channel.render]
@@ -17,7 +16,6 @@
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
-   [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -25,6 +23,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :as i18n :refer [trs tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.urls :as urls]
@@ -190,9 +189,9 @@
      (concat
       (all-admin-recipients)
       (when (seq user-ids)
-        (t2/select-fn-set :email User {:where [:and
-                                               [:= :is_active true]
-                                               [:in :id user-ids]]}))))))
+        (t2/select-fn-set :email :model/User {:where [:and
+                                                      [:= :is_active true]
+                                                      [:in :id user-ids]]}))))))
 
 (defn send-persistent-model-error-email!
   "Format and send an email informing the user about errors in the persistent model refresh task."
@@ -250,7 +249,7 @@
   {:pre [(u/email? email)]}
   (let [encoded-info    (when blob
                           (-> blob
-                              json/generate-string
+                              json/encode
                               .getBytes
                               codecs/bytes->b64-str))
         context (merge (common-context)
@@ -272,9 +271,9 @@
   [pulse-id email]
   (codecs/bytes->hex
    (encryption/validate-and-hash-secret-key
-    (json/generate-string {:salt     (public-settings/site-uuid-for-unsubscribing-url)
-                           :email    email
-                           :pulse-id pulse-id}))))
+    (json/encode {:salt     (public-settings/site-uuid-for-unsubscribing-url)
+                  :email    email
+                  :pulse-id pulse-id}))))
 
 (defn pulse->alert-condition-kwd
   "Given an `alert` return a keyword representing what kind of goal needs to be met."
