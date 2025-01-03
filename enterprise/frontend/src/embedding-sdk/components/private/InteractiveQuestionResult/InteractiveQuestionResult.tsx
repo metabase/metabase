@@ -8,6 +8,7 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Box, Divider, Group, Stack } from "metabase/ui";
@@ -51,19 +52,22 @@ export const InteractiveQuestionResult = ({
     onSave,
     isSaveEnabled,
     saveToCollectionId,
+    isCardIdError,
   } = useInteractiveQuestionContext();
 
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
 
   // When visualizing a question for the first time, there is no query result yet.
-  const isQueryResultLoading = question && !queryResults;
+  const isQueryResultLoading =
+    question && shouldRunCardQuery(question) && !queryResults;
 
   if (isQuestionLoading || isQueryResultLoading) {
     return <SdkLoader />;
   }
 
-  if (!question) {
+  // `isCardError: true` when the entity ID couldn't be resolved
+  if (!question || isCardIdError) {
     return (
       <SdkError
         message={jt`Question ${(

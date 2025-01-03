@@ -59,7 +59,7 @@ export const InteractiveQuestionProvider = ({
   const {
     id: cardId,
     isLoading: isLoadingValidatedId,
-    isError: isEntityIdError,
+    isError: isCardIdError,
   } = useValidatedEntityId({
     type: "card",
     id: initId,
@@ -76,7 +76,7 @@ export const InteractiveQuestionProvider = ({
       await onBeforeSave?.(sdkQuestion, saveContext);
       await handleSaveQuestion(question);
       onSave?.(sdkQuestion, saveContext);
-      await loadQuestion();
+      await loadAndQueryQuestion();
     }
   };
 
@@ -107,9 +107,9 @@ export const InteractiveQuestionProvider = ({
     isQuestionLoading,
     isQueryRunning,
 
-    runQuestion,
+    queryQuestion,
     replaceQuestion,
-    loadQuestion,
+    loadAndQueryQuestion,
     updateQuestion,
     navigateToNewCard,
   } = useLoadQuestion({
@@ -133,10 +133,10 @@ export const InteractiveQuestionProvider = ({
     originalId: initId,
     isQuestionLoading: isQuestionLoading || isLoadingValidatedId,
     isQueryRunning,
-    resetQuestion: loadQuestion,
-    onReset: loadQuestion,
+    resetQuestion: loadAndQueryQuestion,
+    onReset: loadAndQueryQuestion,
     onNavigateBack,
-    runQuestion,
+    queryQuestion,
     replaceQuestion,
     updateQuestion,
     navigateToNewCard,
@@ -150,14 +150,12 @@ export const InteractiveQuestionProvider = ({
     modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypeFilter),
     isSaveEnabled,
     saveToCollectionId,
+    isCardIdError,
   };
 
   useEffect(() => {
-    if (isEntityIdError || isLoadingValidatedId) {
-      return;
-    }
-    loadQuestion();
-  }, [isEntityIdError, isLoadingValidatedId, loadQuestion]);
+    loadAndQueryQuestion();
+  }, [loadAndQueryQuestion]);
 
   return (
     <InteractiveQuestionContext.Provider value={questionContext}>

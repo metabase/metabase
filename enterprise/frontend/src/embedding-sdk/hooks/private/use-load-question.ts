@@ -3,11 +3,11 @@ import { useAsyncFn, useUnmount } from "react-use";
 
 import type { ParameterValues } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import {
-  runQuestionOnLoadSdk,
+  loadQuestionSdk,
   runQuestionOnNavigateSdk,
+  runQuestionQuerySdk,
   updateQuestionSdk,
 } from "embedding-sdk/lib/interactive-question";
-import { runQuestionQuerySdk } from "embedding-sdk/lib/interactive-question/run-question-query";
 import { useSdkDispatch } from "embedding-sdk/store";
 import type {
   LoadSdkQuestionParams,
@@ -33,9 +33,9 @@ export interface LoadQuestionHookResult {
   isQuestionLoading: boolean;
   isQueryRunning: boolean;
 
-  runQuestion(): Promise<void>;
+  queryQuestion(): Promise<void>;
 
-  loadQuestion(): LoadQuestionResult;
+  loadAndQueryQuestion(): LoadQuestionResult;
 
   updateQuestion(
     question: Question,
@@ -61,7 +61,7 @@ export function useLoadQuestion({
 
   // Keep track of the latest question and query results.
   // They can be updated from the below actions.
-  const [questionState, setQuestionState] = useReducer(questionReducer, {});
+  const [questionState, mergeQuestionState] = useReducer(questionReducer, {});
   const { question, originalQuestion, queryResults } = questionState;
 
   const deferredRef = useRef<Deferred>();
@@ -82,23 +82,30 @@ export function useLoadQuestion({
   // Avoid re-running the query if the parameters haven't changed.
   const sqlParameterKey = getParameterDependencyKey(initialSqlParameters);
 
-  const [loadQuestionState, loadQuestion] = useAsyncFn(async () => {
-    const state = await dispatch(
-      runQuestionOnLoadSdk({
+  const [loadQuestionState, loadAndQueryQuestion] = useAsyncFn(async () => {
+    const questionState = await dispatch(
+      loadQuestionSdk({
         options,
         deserializedCard,
         cardId,
-        cancelDeferred: deferred(),
         initialSqlParameters,
       }),
     );
 
-    setQuestionState(state);
+    mergeQuestionState(questionState);
 
-    return state;
+    const results = await runQuestionQuerySdk({
+      question: questionState.question,
+      originalQuestion: questionState.originalQuestion,
+      cancelDeferred: deferred(),
+    });
+
+    mergeQuestionState(results);
+
+    return { ...results, originalQuestion };
   }, [dispatch, options, deserializedCard, cardId, sqlParameterKey]);
 
-  const [runQuestionState, runQuestion] = useAsyncFn(async () => {
+  const [runQuestionState, queryQuestion] = useAsyncFn(async () => {
     if (!question) {
       return;
     }
@@ -109,7 +116,7 @@ export function useLoadQuestion({
       cancelDeferred: deferred(),
     });
 
-    setQuestionState(state);
+    mergeQuestionState(state);
   }, [dispatch, question, originalQuestion]);
 
   const [updateQuestionState, updateQuestion] = useAsyncFn(
@@ -126,12 +133,13 @@ export function useLoadQuestion({
           previousQuestion: question,
           originalQuestion,
           cancelDeferred: deferred(),
-          optimisticUpdateQuestion: question => setQuestionState({ question }),
+          optimisticUpdateQuestion: question =>
+            mergeQuestionState({ question }),
           shouldRunQueryOnQuestionChange: run,
         }),
       );
 
-      setQuestionState(state);
+      mergeQuestionState(state);
     },
     [dispatch, question, originalQuestion],
   );
@@ -143,8 +151,9 @@ export function useLoadQuestion({
           ...params,
           originalQuestion,
           cancelDeferred: deferred(),
-          onQuestionChange: question => setQuestionState({ question }),
-          onClearQueryResults: () => setQuestionState({ queryResults: [null] }),
+          onQuestionChange: question => mergeQuestionState({ question }),
+          onClearQueryResults: () =>
+            mergeQuestionState({ queryResults: [null] }),
         }),
       );
 
@@ -152,7 +161,7 @@ export function useLoadQuestion({
         return;
       }
 
-      setQuestionState(state);
+      mergeQuestionState(state);
     },
     [dispatch, originalQuestion],
   );
@@ -163,7 +172,7 @@ export function useLoadQuestion({
     navigateToNewCardState.loading;
 
   const replaceQuestion = (question: Question) =>
-    setQuestionState({ question, originalQuestion: question });
+    mergeQuestionState({ question, originalQuestion: question });
 
   return {
     question,
@@ -174,9 +183,9 @@ export function useLoadQuestion({
     isQuestionLoading: loadQuestionState.loading,
     isQueryRunning,
 
-    runQuestion,
+    queryQuestion,
     replaceQuestion,
-    loadQuestion,
+    loadAndQueryQuestion,
     updateQuestion,
     navigateToNewCard,
   };
