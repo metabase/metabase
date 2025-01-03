@@ -31,7 +31,7 @@
     }
   }
 
-  > :global(.Icon) {
+  .ViewButtonIcon {
     opacity: 0.6;
   }
 }

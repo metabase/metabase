@@ -14,7 +14,6 @@
    [metabase.driver.sync :as driver.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models :refer [Database]]
    [metabase.models.table :as table]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -713,7 +712,7 @@
     (let [updated-db (-> (assoc-in database [:details :dataset-filters-type] "inclusion")
                          (assoc-in [:details :dataset-filters-patterns] dataset-id)
                          (m/dissoc-in [:details :dataset-id]))]
-      (t2/update! Database db-id {:details (:details updated-db)})
+      (t2/update! :model/Database db-id {:details (:details updated-db)})
       updated-db)))
 
 ;; TODO: THIS METHOD SHOULD NOT BE UPDATING THE APP-DB (which it does in [convert-dataset-id-to-filters!])

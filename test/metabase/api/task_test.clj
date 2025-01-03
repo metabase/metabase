@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.models.task-history :refer [TaskHistory]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -35,8 +34,8 @@
           task-hist-1 (assoc task-hist-1 :duration 100)
           task-hist-2 (assoc task-hist-1 :duration 200 :task_details {:some "complex", :data "here"})
           task-names (set (map :task [task-hist-1 task-hist-2]))]
-      (mt/with-temp [TaskHistory _ task-hist-1
-                     TaskHistory _ task-hist-2]
+      (mt/with-temp [:model/TaskHistory _ task-hist-1
+                     :model/TaskHistory _ task-hist-2]
         (is (= (set (map (fn [task-hist]
                            (merge default-task-history (select-keys task-hist [:task :duration :task_details])))
                          [task-hist-2 task-hist-1]))
@@ -57,8 +56,8 @@
                            :started_at now-1s
                            :ended_at   now-1s}
           task-names      (set (map :task [task-hist-1 task-hist-2]))]
-      (mt/with-temp [TaskHistory _ task-hist-1
-                     TaskHistory _ task-hist-2]
+      (mt/with-temp [:model/TaskHistory _ task-hist-1
+                     :model/TaskHistory _ task-hist-2]
         (is (= (map (fn [{:keys [task]}]
                       (assoc default-task-history :task task))
                     [task-hist-2 task-hist-1])
@@ -77,12 +76,12 @@
 
 (deftest paging-test
   (testing "Check that paging information is applied when provided and included in the response"
-    (t2/delete! TaskHistory)
+    (t2/delete! :model/TaskHistory)
     (let [[task-hist-1 task-hist-2 task-hist-3 task-hist-4] (generate-tasks 4)]
-      (mt/with-temp [TaskHistory _ task-hist-1
-                     TaskHistory _ task-hist-2
-                     TaskHistory _ task-hist-3
-                     TaskHistory _ task-hist-4]
+      (mt/with-temp [:model/TaskHistory _ task-hist-1
+                     :model/TaskHistory _ task-hist-2
+                     :model/TaskHistory _ task-hist-3
+                     :model/TaskHistory _ task-hist-4]
         (is (= {:total 4, :limit 2, :offset 0
                 :data  (map (fn [{:keys [task]}]
                               (assoc default-task-history :task task))
@@ -103,14 +102,14 @@
 
 (deftest fetch-perms-test
   (testing "Regular users can't query for a specific TaskHistory"
-    (t2.with-temp/with-temp [TaskHistory task]
+    (t2.with-temp/with-temp [:model/TaskHistory task]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 (format "task/%s" (u/the-id task))))))))
 
 (deftest fetch-test
   (testing "Superusers querying for specific TaskHistory will get that task info"
-    (t2.with-temp/with-temp [TaskHistory task {:task     "Test Task"
-                                               :duration 100}]
+    (t2.with-temp/with-temp [:model/TaskHistory task {:task     "Test Task"
+                                                      :duration 100}]
       (is (= (merge default-task-history {:task "Test Task", :duration 100})
              (mt/boolean-ids-and-timestamps
               (mt/user-http-request :crowberto :get 200 (format "task/%s" (u/the-id task)))))))))

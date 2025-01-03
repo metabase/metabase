@@ -14,10 +14,12 @@ import {
 } from "metabase/visualizer/selectors";
 import { isReferenceToColumn } from "metabase/visualizer/utils";
 import {
+  addColumn,
   removeColumn,
   removeDataSource,
   toggleDataSourceExpanded,
 } from "metabase/visualizer/visualizer.slice";
+import type { DatasetColumn } from "metabase-types/api";
 import type { VisualizerDataSource } from "metabase-types/store/visualizer";
 
 import { ColumnListItem, type ColumnListItemProps } from "./ColumnListItem";
@@ -30,6 +32,13 @@ export const DatasetList = () => {
   const expandedDataSources = useSelector(getExpandedDataSources);
   const referencedColumns = useSelector(getReferencedColumns);
   const dispatch = useDispatch();
+
+  const handleAddColumn = (
+    dataSource: VisualizerDataSource,
+    column: DatasetColumn,
+  ) => {
+    dispatch(addColumn({ dataSource, column }));
+  };
 
   const handleRemoveColumn = (columnRefName: string) => {
     dispatch(removeColumn({ name: columnRefName }));
@@ -95,6 +104,11 @@ export const DatasetList = () => {
                         column={column}
                         dataSource={source}
                         isSelected={isSelected}
+                        onClick={() => {
+                          if (!isSelected) {
+                            handleAddColumn(source, column);
+                          }
+                        }}
                         onRemove={
                           isSelected
                             ? () => handleRemoveColumn(columnReference.name)

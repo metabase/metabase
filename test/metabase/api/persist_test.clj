@@ -1,7 +1,6 @@
 (ns metabase.api.persist-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.database :refer [Database]]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -15,7 +14,7 @@
   (mt/with-temp-scheduler!
     (#'task.persist-refresh/job-init!)
     (mt/with-temporary-setting-values [:persisted-models-enabled true]
-      (mt/with-temp [Database db {:settings {:persist-models-enabled true}}]
+      (mt/with-temp [:model/Database db {:settings {:persist-models-enabled true}}]
         (task.persist-refresh/schedule-persistence-for-database! db default-cron)
         (f db)))))
 

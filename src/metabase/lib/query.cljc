@@ -265,7 +265,7 @@
 (defmethod query-method :metadata/card
   [metadata-providerable card-metadata]
   (if (or (= (:type card-metadata) :metric)
-          (= (:lib/type card-metadata) :metdata/metric))
+          (= (:lib/type card-metadata) :metadata/metric))
     (metric-query metadata-providerable card-metadata)
     (query-with-stages metadata-providerable
                        [{:lib/type :mbql.stage/mbql

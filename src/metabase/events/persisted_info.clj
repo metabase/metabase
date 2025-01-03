@@ -1,7 +1,6 @@
 (ns metabase.events.persisted-info
   (:require
    [metabase.events :as events]
-   [metabase.models :refer [Database PersistedInfo]]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.public-settings :as public-settings]
    [metabase.util.log :as log]
@@ -21,8 +20,8 @@
     ;; is only supposed to be that initial edge when the dataset is being changed.
     (when (and (= (:type card) :model)
                (public-settings/persisted-models-enabled)
-               (get-in (t2/select-one Database :id (:database_id card)) [:settings :persist-models-enabled])
-               (nil? (t2/select-one-fn :id PersistedInfo :card_id (:id card))))
+               (get-in (t2/select-one :model/Database :id (:database_id card)) [:settings :persist-models-enabled])
+               (nil? (t2/select-one-fn :id :model/PersistedInfo :card_id (:id card))))
       (persisted-info/turn-on-model! user-id card))
     (catch Throwable e
       (log/warnf e "Failed to process persisted-info event. %s" topic))))

@@ -19,6 +19,7 @@ import type {
   Card,
   CardId,
   Dataset,
+  DatasetColumn,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -63,6 +64,7 @@ const initialCommonState: VisualizerCommonState = {
   loadingDataSources: {},
   loadingDatasets: {},
   expandedDataSources: {},
+  isFullscreen: false,
   isVizSettingsSidebarOpen: false,
   error: null,
   draggedItem: null,
@@ -166,35 +168,30 @@ const visualizerHistoryItemSlice = createSlice({
   initialState: initialVisualizerHistoryItem,
   reducers: {
     setDisplay: (state, action: PayloadAction<VisualizationDisplay | null>) => {
+      const previousDisplay = state.display;
       const display = action.payload;
 
+      state.display = display;
+
       if (
-        display &&
-        state.display &&
-        isCartesianChart(display) &&
-        isCartesianChart(state.display)
+        display === "pivot" &&
+        !state.columns.some(col => col.name === "pivot-grouping")
       ) {
-        state.display = display;
-        return;
+        state.columns.push({
+          name: "pivot-grouping",
+          display_name: "pivot-grouping",
+          expression_name: "pivot-grouping",
+          field_ref: ["expression", "pivot-grouping"],
+          base_type: "type/Integer",
+          effective_type: "type/Integer",
+          source: "artificial",
+        });
       }
 
-      state.display = display;
-      state.settings = {};
-      state.columns = [];
-      state.columnValuesMapping = {};
-
-      if (display === "pivot") {
-        state.columns = [
-          {
-            name: "pivot-grouping",
-            display_name: "pivot-grouping",
-            expression_name: "pivot-grouping",
-            field_ref: ["expression", "pivot-grouping"],
-            base_type: "type/Integer",
-            effective_type: "type/Integer",
-            source: "artificial",
-          },
-        ];
+      if (previousDisplay === "pivot" && display !== "pivot") {
+        state.columns = state.columns.filter(
+          col => col.name !== "pivot-grouping",
+        );
       }
     },
     updateSettings: (state, action: PayloadAction<VisualizationSettings>) => {
@@ -202,6 +199,29 @@ const visualizerHistoryItemSlice = createSlice({
         ...state.settings,
         ...action.payload,
       };
+    },
+    addColumn: (
+      state,
+      action: PayloadAction<{
+        dataSource: VisualizerDataSource;
+        column: DatasetColumn;
+      }>,
+    ) => {
+      const { dataSource, column } = action.payload;
+
+      if (!state.display) {
+        return;
+      }
+
+      const columnRef = createVisualizerColumnReference(
+        dataSource,
+        column,
+        extractReferencedColumns(state.columnValuesMapping),
+      );
+
+      const newColumn = copyColumn(columnRef.name, column);
+      state.columns.push(newColumn);
+      state.columnValuesMapping[newColumn.name] = [columnRef];
     },
     removeColumn: (state, action: PayloadAction<{ name: string }>) => {
       const { name } = action.payload;
@@ -311,8 +331,21 @@ const visualizerSlice = createSlice({
       state.expandedDataSources[action.payload] =
         !state.expandedDataSources[action.payload];
     },
+    toggleFullscreenMode: state => {
+      state.isFullscreen = !state.isFullscreen;
+      if (!state.isFullscreen) {
+        state.isVizSettingsSidebarOpen = false;
+      }
+    },
+    turnOffFullscreenMode: state => {
+      state.isFullscreen = false;
+      state.isVizSettingsSidebarOpen = false;
+    },
     toggleVizSettingsSidebar: state => {
       state.isVizSettingsSidebarOpen = !state.isVizSettingsSidebarOpen;
+    },
+    closeVizSettingsSidebar: state => {
+      state.isVizSettingsSidebarOpen = false;
     },
     undo: state => {
       const canUndo = state.past.length > 0;
@@ -518,13 +551,16 @@ function maybeCombineDataset(
   return state;
 }
 
-export const { setDisplay, updateSettings, removeColumn } =
+export const { setDisplay, updateSettings, addColumn, removeColumn } =
   visualizerHistoryItemSlice.actions;
 
 export const {
   setDraggedItem,
   toggleDataSourceExpanded,
+  toggleFullscreenMode,
+  turnOffFullscreenMode,
   toggleVizSettingsSidebar,
+  closeVizSettingsSidebar,
   undo,
   redo,
   resetVisualizer,

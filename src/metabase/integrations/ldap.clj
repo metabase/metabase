@@ -4,7 +4,6 @@
    [metabase.config :as config]
    [metabase.integrations.ldap.default-implementation :as default-impl]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.models.user :refer [User]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -269,7 +268,7 @@
     username        :- ms/NonBlankString]
    (default-impl/find-user ldap-connection username (ldap-settings))))
 
-(mu/defn fetch-or-create-user! :- (ms/InstanceOf User)
+(mu/defn fetch-or-create-user! :- (ms/InstanceOf :model/User)
   "Using the `user-info` (from [[find-user]]) get the corresponding Metabase user, creating it if necessary."
   [user-info :- default-impl/UserInfo]
   (default-impl/fetch-or-create-user! user-info (ldap-settings)))

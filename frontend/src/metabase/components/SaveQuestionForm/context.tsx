@@ -70,7 +70,7 @@ export const SaveQuestionProvider = ({
 
   const [hasLoadedRecentItems, setHasLoadedRecentItems] = useState(false);
   const { data: recentItems, isLoading } = useListRecentsQuery(
-    { context: ["selections", "views"] },
+    { context: ["selections"] },
     { skip: hasLoadedRecentItems },
   );
   // We need to stop refetching recent items as the user makes selections in the ui that could cause a refetch
@@ -82,9 +82,23 @@ export const SaveQuestionProvider = ({
     }
   }, [isLoading]);
 
-  const lastUsedDashboard = recentItems?.find(
-    item => item.model === "dashboard",
-  ) as RecentCollectionItem | undefined;
+  const defaultDashboard = useMemo(() => {
+    if (!recentItems || recentItems.length === 0) {
+      return undefined;
+    }
+    const lastUsedDashboardIndex = recentItems?.findIndex(
+      item => item.model === "dashboard",
+    );
+    const lastUsedEntityModelIndex = recentItems?.findIndex(
+      item => item.model === "collection" || item.model === "dashboard",
+    );
+
+    if (lastUsedDashboardIndex === lastUsedEntityModelIndex) {
+      return recentItems[lastUsedDashboardIndex] as RecentCollectionItem;
+    } else {
+      return undefined;
+    }
+  }, [recentItems]);
 
   // analytics questions should not default to saving in dashboard
   const isAnalytics = isInstanceAnalyticsCollection(question.collection());
@@ -92,13 +106,13 @@ export const SaveQuestionProvider = ({
   const initialDashboardId =
     question.type() === "question" &&
     !isAnalytics &&
-    lastUsedDashboard?.can_write
-      ? lastUsedDashboard?.id
+    defaultDashboard?.can_write
+      ? defaultDashboard?.id
       : undefined;
 
   const initialCollectionId = isAnalytics
     ? defaultCollectionId
-    : (lastUsedDashboard?.parent_collection.id ?? defaultCollectionId);
+    : (defaultDashboard?.parent_collection.id ?? defaultCollectionId);
 
   const initialValues: FormValues = useMemo(
     () =>

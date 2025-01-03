@@ -81,10 +81,6 @@
       nil)
     (catch InterruptedException _
       (a/>!! canceled-chan ::thread-interrupted)
-      nil)
-    (catch Throwable e
-      (log/error e "Caught unexpected Exception in streaming response body")
-      (write-error! os e nil)
       nil)))
 
 (defn- do-f-async
@@ -96,8 +92,9 @@
                (try
                  (do-f* f os finished-chan canceled-chan)
                  (catch Throwable e
-                   (log/error e "bound-fn caught unexpected Exception")
-                   (a/>!! finished-chan :unexpected-error))
+                   (log/error e "Caught unexpected Exception in streaming response body")
+                   (a/>!! finished-chan :unexpected-error)
+                   (write-error! os e nil))
                  (finally
                    (a/>!! finished-chan (if (a/poll! canceled-chan)
                                           :canceled

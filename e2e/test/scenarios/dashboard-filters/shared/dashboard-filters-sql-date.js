@@ -6,7 +6,7 @@ export const DASHBOARD_SQL_DATE_FILTERS = {
   "Month and Year": {
     sqlFilter: "date/month-year",
     value: {
-      month: "September",
+      month: "Sep",
       year: "2022",
     },
     representativeResult: "Rene Muller",

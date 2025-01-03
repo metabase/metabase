@@ -1,7 +1,9 @@
 import type { FormEvent } from "react";
 import { t } from "ttag";
 
+import type { DatePickerUnit } from "metabase/querying/filters/types";
 import {
+  Box,
   Button,
   Divider,
   Group,
@@ -11,7 +13,6 @@ import {
   Text,
 } from "metabase/ui";
 
-import type { DatePickerUnit } from "../../types";
 import type { DateIntervalValue, DateOffsetIntervalValue } from "../types";
 import {
   formatDateRange,
@@ -20,7 +21,7 @@ import {
   setInterval,
 } from "../utils";
 
-import { PickerGrid } from "./DateOffsetIntervalPicker.styled";
+import S from "./DateOffsetIntervalPicker.module.css";
 import {
   getDirectionText,
   getOffsetInterval,
@@ -33,8 +34,8 @@ import {
 
 interface DateOffsetIntervalPickerProps {
   value: DateOffsetIntervalValue;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
-  isNew: boolean;
+  availableUnits: DatePickerUnit[];
+  submitButtonLabel: string;
   onChange: (value: DateIntervalValue) => void;
   onSubmit: () => void;
 }
@@ -42,7 +43,7 @@ interface DateOffsetIntervalPickerProps {
 export function DateOffsetIntervalPicker({
   value,
   availableUnits,
-  isNew,
+  submitButtonLabel,
   onChange,
   onSubmit,
 }: DateOffsetIntervalPickerProps) {
@@ -90,7 +91,7 @@ export function DateOffsetIntervalPicker({
 
   return (
     <form onSubmit={handleSubmit}>
-      <PickerGrid p="md">
+      <Box className={S.PickerGrid} p="md">
         <Text>{directionText}</Text>
         <NumberInput
           value={interval}
@@ -125,7 +126,7 @@ export function DateOffsetIntervalPicker({
           aria-label={t`Remove offset`}
           onClick={handleOffsetRemove}
         />
-      </PickerGrid>
+      </Box>
       <Divider />
       <Group px="md" py="sm" spacing="sm" position="apart">
         <Group c="text-medium" spacing="sm">
@@ -133,7 +134,7 @@ export function DateOffsetIntervalPicker({
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
         <Button variant="filled" type="submit">
-          {isNew ? t`Add filter` : t`Update filter`}
+          {submitButtonLabel}
         </Button>
       </Group>
     </form>

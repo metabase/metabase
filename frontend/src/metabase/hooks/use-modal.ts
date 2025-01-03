@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-type ModalHookResult = {
+export type ModalHookResult = {
   opened: boolean;
   open: () => void;
   close: () => void;

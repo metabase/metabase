@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.advanced-config.api.logs :as ee.api.logs]
-   [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]))
 
@@ -25,12 +24,12 @@
       ;; QueryExecution is an unbounded mega table and query it could result in a full table scan :( (See: #29103)
       ;; Run the test in an empty database to make querying less intense.
       (mt/with-empty-h2-app-db
-        (mt/with-temp [QueryExecution qe-a (merge query-execution-defaults {}
-                                                  {:executor_id user-id
-                                                   :started_at  (t/minus now (t/days 2))})
-                       QueryExecution qe-b (merge query-execution-defaults {}
-                                                  {:executor_id user-id
-                                                   :started_at  (t/minus now (t/days 32))})]
+        (mt/with-temp [:model/QueryExecution qe-a (merge query-execution-defaults {}
+                                                         {:executor_id user-id
+                                                          :started_at  (t/minus now (t/days 2))})
+                       :model/QueryExecution qe-b (merge query-execution-defaults {}
+                                                         {:executor_id user-id
+                                                          :started_at  (t/minus now (t/days 32))})]
           (mt/with-premium-features #{:audit-app}
             (testing "Query Executions within `:yyyy-mm` are returned."
               (is (= [(select-keys qe-a [:started_at :id])]
