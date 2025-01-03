@@ -6,6 +6,8 @@ title: LDAP
 
 Metabase supports authentication with Lightweight Directory Access Protocol (LDAP).
 
+You can find SSO options under **Admin settings** > **Settings** > **Authentication**.
+
 ## Required LDAP attributes
 
 You need to set up your LDAP directory with these attributes:
@@ -22,23 +24,33 @@ Your LDAP directory must have the email field populated for each entry that will
 
 ## Enabling LDAP authentication
 
-In the **Admin** > **Authentication** tab, go to the LDAP section and click **Configure**. Click the toggle at the top of the form to enable LDAP, then fill out the form with the following information about your LDAP server:
+In the **Admin settings** > **Settings** > **Authentication** tab, go to the LDAP section and click **Set up**. Click the toggle at the top of the form to enable LDAP, then fill out the form with the relevant details.
 
-- hostname
-- port
-- security settings
-- LDAP admin username
-- LDAP admin password
+## User provisioning
+
+When a person logs in via LDAP, Metabase can create a Metabase account for them automatically (if they don't already have a Metabase account).
+
+## Server settings
+
+- LDAP Host. Your server name. E.g., ldap.yourdomain.org
+- LDAP Port. The Server port, usually 389 or 636 if SSL is used.
+- LDAP Security settings. Options are None, SSL, or StarTLS.
+- LDAP admin username. The distinguished name to bind as (if any). This user will be used to look up information about other users.
+- LDAP admin password.
 
 Then save your changes. Metabase will automatically pull the [required attributes](#required-ldap-attributes) from your LDAP directory.
 
-## LDAP user schema
+## User schema
 
 The **User Schema** section on this same page is where you can adjust settings related to where and how Metabase connects to your LDAP server to authenticate users.
+
+### User search base
 
 The **User search base** field should be completed with the _distinguished name_ (DN) of the entry in your LDAP server that is the starting point when searching for users.
 
 For example, let's say you're configuring LDAP for your company, WidgetCo, where your base DN is `dc=widgetco,dc=com`. If entries for employees are all stored within an organizational unit in your LDAP server named `People`, you'll want to supply the user search base field with the DN `ou=People,dc=widgetco,dc=com`. This tells Metabase to begin searching for matching entries at that location within the LDAP server.
+
+### User filter
 
 You'll see the following grayed-out default value in the **User filter** field:
 
