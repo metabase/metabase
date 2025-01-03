@@ -15,7 +15,7 @@
    [metabase.api.channel :as api.channel]
    [metabase.api.cloud-migration :as api.cloud-migration]
    [metabase.api.collection :as api.collection]
-   [metabase.api.common :as api :refer [defroutes context]]
+   [metabase.api.common :as api :refer [context defroutes]]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.database :as api.database]
    [metabase.api.dataset :as api.dataset]

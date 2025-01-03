@@ -13,6 +13,7 @@
    [metabase-enterprise.billing.api.routes :as billing]
    [metabase-enterprise.content-verification.api.routes
     :as content-verification]
+   [metabase-enterprise.gsheets :as gsheets.api]
    [metabase-enterprise.llm.api :as llm.api]
    [metabase-enterprise.query-reference-validation.api :as api.query-reference-validation]
    [metabase-enterprise.sandbox.api.routes :as sandbox]
@@ -46,6 +47,12 @@
     (context
       "/billing" []
       billing/routes)
+    (context
+        "/gsheets" []
+      ;;TEMP (gsheets):
+      ;; The dev token doesn't get the :attached-dwh feature, so we can't require it here yet:
+      ;;(ee.api.common/+require-premium-feature :attached-dwh (deferred-tru "Google Sheets Integration"))
+      gsheets.api/routes)
     (context
       "/logs" []
       (ee.api.common/+require-premium-feature :audit-app (deferred-tru "Audit app") logs/routes))
