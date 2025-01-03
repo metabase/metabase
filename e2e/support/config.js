@@ -3,6 +3,7 @@ import path from "node:path";
 
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
+import cypressSplit from "cypress-split";
 import {
   removeDirectory,
   verifyDownloadTasks,
@@ -155,6 +156,7 @@ const defaultConfig = {
     };
 
     require("@cypress/grep/src/plugin")(config);
+    cypressSplit(on, config);
 
     return config;
   },
