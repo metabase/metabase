@@ -85,6 +85,12 @@
     (str "---\ntitle: \"" ep "\""
          "\nsummary: " desc "\n---\n\n")))
 
+(def ^:private endpoint-page-banner
+  "A header for the API docs page."
+  "> You can view live OpenAPI docs in your own running Metabase at `/api/docs`.
+   So if your Metabase is at https://www.your-metabase.com you could view
+   the API docs at https://www.your-metabase.com/api/docs.")
+
 (defn- endpoint-page-title
   "Creates a page title for a set of endpoints, e.g., `# Card`."
   [ep-title]
@@ -171,6 +177,7 @@
   (apply str
          (endpoint-page-frontmatter ep ep-data)
          (endpoint-page-title ep)
+         (str endpoint-page-banner "\n\n")
          (endpoint-page-description ep ep-data)
          (endpoint-docs ep-data)
          (endpoint-footer ep-data)))

@@ -6,6 +6,10 @@ summary: |
 
 # Dashboard
 
+> You can view live OpenAPI docs in your own running Metabase at `/api/docs`.
+   So if your Metabase is at https://www.your-metabase.com you could view
+   the API docs at https://www.your-metabase.com/api/docs.
+
 /api/dashboard endpoints.
 
 ## `DELETE /api/dashboard/:dashboard-id/public_link`
@@ -61,6 +65,14 @@ Get Dashboard with ID.
 -  **`id`** value must be an integer greater than zero.
 
 -  **`dashboard-load-id`**
+
+## `GET /api/dashboard/:id/items`
+
+Get Dashboard with ID.
+
+### PARAMS:
+
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/dashboard/:id/params/:param-key/search/:query`
 

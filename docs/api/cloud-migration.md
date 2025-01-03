@@ -9,6 +9,10 @@ summary: |
 
 # Cloud migration
 
+> You can view live OpenAPI docs in your own running Metabase at `/api/docs`.
+   So if your Metabase is at https://www.your-metabase.com you could view
+   the API docs at https://www.your-metabase.com/api/docs.
+
 /api/cloud-migration endpoints.
   Only one migration should be happening at any given time.
   But if something weird happens with concurrency, /cancel will

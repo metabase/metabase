@@ -14,6 +14,10 @@ summary: |
 
 # Preview embed
 
+> You can view live OpenAPI docs in your own running Metabase at `/api/docs`.
+   So if your Metabase is at https://www.your-metabase.com you could view
+   the API docs at https://www.your-metabase.com/api/docs.
+
 Endpoints for previewing how Cards and Dashboards will look when embedding them.
    These endpoints are basically identical in functionality to the ones in `/api/embed`, but:
 

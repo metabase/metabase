@@ -6,6 +6,10 @@ summary: |
 
 # Database
 
+> You can view live OpenAPI docs in your own running Metabase at `/api/docs`.
+   So if your Metabase is at https://www.your-metabase.com you could view
+   the API docs at https://www.your-metabase.com/api/docs.
+
 /api/database endpoints.
 
 ## `DELETE /api/database/:id`
@@ -112,6 +116,8 @@ Return a list of `Card` autocomplete suggestions for a given `query` in a given 
 -  **`id`** value must be an integer greater than zero.
 
 -  **`query`** value must be a non-blank string.
+
+-  **`include_dashboard_questions`** value must be a valid boolean string ('true' or 'false').
 
 ## `GET /api/database/:id/fields`
 
