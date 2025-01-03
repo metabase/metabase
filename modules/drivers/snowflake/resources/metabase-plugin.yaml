@@ -24,7 +24,7 @@ driver:
         use-hostname: false
     - user
     - name: use-password
-      display-name: "Use password"
+      display-name: "Authenticate with user and password"
       description: Snowflake will soon block password authentication.
       type: boolean
       default: false
