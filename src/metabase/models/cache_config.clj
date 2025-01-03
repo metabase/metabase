@@ -49,7 +49,9 @@
      :model_id (:model_id row)
      :strategy (-> (:config row)
                    (assoc :type (:strategy row))
-                   (assoc :refresh_automatically (:refresh_automatically row)))}))
+                   (cond->
+                     (#{:duration :schedule} (:strategy row))
+                     (assoc :refresh_automatically (:refresh_automatically row))))}))
 
 (defn card-strategy
   "Shapes `row` into strategy for a given `card`."

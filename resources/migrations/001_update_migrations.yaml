@@ -10418,7 +10418,12 @@ databaseChangeLog:
             tableName: cache_config
             columnName: refresh_automatically
             columnDataType: ${boolean.type}
-
+      rollback:
+        - addNotNullConstraint:
+            tableName: cache_config
+            columnName: refresh_automatically
+            columnDataType: ${boolean.type}
+            defaultNullValue: false
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
