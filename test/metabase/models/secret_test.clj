@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.models.secret :as secret]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2]
@@ -14,6 +15,8 @@
    (java.nio.charset StandardCharsets)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
 (defn- value-matches?
   "Returns true iff `expected` value matches the `actual` (bytes) value. If `expected` is a String, then `actual` is
@@ -105,20 +108,20 @@
       (testing "from the database"
         (t2.with-temp/with-temp [:model/Secret {id :id} {:name       "private-key"
                                                          :kind       ::secret/pem-cert
+                                                         :source     :file-path
                                                          :value      file-db
                                                          :creator_id (mt/user->id :crowberto)}]
           (is (= "titok"
                  (secret/value-as-string
                   :secret-test-driver
-                  {:keystore-id      id
-                   :keystore-options "local"}
+                  {:keystore-id id}
                   "keystore")))
           (testing "but prefer value if both value and id are given (#33452)"
             (is (= "psszt!"
                    (secret/value-as-string
                     :secret-test-driver
                     {:keystore-id      id
-                     :keystore-value   file-value
+                     :keystore-path    file-value
                      :keystore-options "local"}
                     "keystore")))))))))
 
