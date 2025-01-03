@@ -21,5 +21,5 @@ export function restore(name = "default") {
   cy.skipOn(name.includes("mongo") && Cypress.env("QA_DB_MONGO") !== true);
 
   cy.log("Restore Data Set");
-  cy.request("POST", `/api/testing/restore/${name}`);
+  return cy.request("POST", `/api/testing/restore/${name}`);
 }
