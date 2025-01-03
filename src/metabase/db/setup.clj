@@ -129,10 +129,8 @@
   Encryption status is tracked by an 'encryption-check' value in the settings table.
   NOTE: the encryption-check setting is not managed like most settings with 'defsetting' so we can manage checking the raw values in the database"
   []
-  (let [raw (try (-> (t2/select-one :setting :key "encryption-check") :value)
-                 (catch Throwable e (do
-                                      (log/warn e "Error checking encryption status, assuming unencrypted")
-                                      nil)))
+  (let [raw (try (t2/select-one-fn :value :setting :key "encryption-check")
+                 (catch Throwable e (log/warn e "Error checking encryption status, assuming unencrypted")))
         looks-encrypted (not= raw "unencrypted")]
     (log/debug "Checking encryption configuration")
     (when-not (nil? raw)
