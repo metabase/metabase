@@ -592,7 +592,7 @@ describe("AddToDashSelectDashModal", () => {
   });
 
   describe('"Create a new dashboard" option', () => {
-    it('should render "Create a new dashboard" option', async () => {
+    it('should render "New dashboard" option', async () => {
       await setup();
       expect(
         await screen.findByRole("button", {

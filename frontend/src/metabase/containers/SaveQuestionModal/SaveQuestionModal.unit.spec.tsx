@@ -844,7 +844,7 @@ describe("SaveQuestionModal", () => {
         await waitFor(async () =>
           expect(
             await screen.findByRole("heading", {
-              name: "Create a new collection",
+              name: "New collection",
             }),
           ).toBeInTheDocument(),
         );
