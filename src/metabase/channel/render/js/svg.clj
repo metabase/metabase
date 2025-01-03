@@ -9,10 +9,12 @@
    [metabase.channel.render.style :as style]
    [metabase.config :as config]
    [metabase.public-settings :as public-settings]
+   [metabase.util.delay :as delay]
    [metabase.util.json :as json])
   (:import
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (java.nio.charset StandardCharsets)
+   (java.util.concurrent TimeUnit)
    (org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument)
    (org.apache.batik.transcoder TranscoderInput TranscoderOutput)
    (org.apache.batik.transcoder.image PNGTranscoder)
@@ -42,9 +44,13 @@
     (js.engine/load-resource interface-path)))
 
 (def ^:private static-viz-context-delay
-  "Delay containing a graal js context. It has the chart bundle and the above `src-api` in its environment suitable
-  for creating charts."
-  (delay (load-viz-bundle (js.engine/context))))
+  "Delay containing a graal js context. It has the chart bundle and the above `src-api` in its environment suitable for
+  creating charts. However, under some circumstances, the Truffle JS engine tends to leak memory, so we don't want to
+  keep the reference to the engine forever. Ideally, we would like to make the engine lifetime bound to a single
+  request or something like that, but that would introduce a lot of changes and noise to the system. Hence, with this
+  bandaid, we keep the JS engine for some reasonable time (10 minutes) before recreating it."
+  (delay/delay-with-ttl (.toMillis TimeUnit/MINUTES 10)
+                        #(load-viz-bundle (js.engine/context))))
 
 (defn- context
   "Returns a static viz context. In dev mode, this will be a new context each time. In prod or test modes, it will
