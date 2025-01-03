@@ -112,8 +112,9 @@
 (defn- email-attachment
   [rendered-cards parts]
   (filter some?
+          ;; maybe we need to rewrite this into a transudcer?
           (concat (map make-message-attachment (apply merge (map :attachments (u/one-or-many rendered-cards))))
-                  (mapcat (comp email.result-attachment/result-attachment channel.shared/realize-data-rows) parts))))
+                  (mapcat email.result-attachment/result-attachment parts))))
 
 (defn- icon-bundle
   "Bundle an icon.
@@ -250,9 +251,9 @@
         icon-attachment     (apply make-message-attachment (icon-bundle :dashboard))
         attachments         (concat
                              [icon-attachment]
-                             (email-attachment rendered-cards (assoc-attachment-booleans
-                                                               (:dashboard_subscription_dashcards dashboard_subscription)
-                                                               dashboard_parts)))
+                             #_(email-attachment rendered-cards (assoc-attachment-booleans
+                                                                 (:dashboard_subscription_dashcards dashboard_subscription)
+                                                                 dashboard_parts)))
         message-context-fn  (fn [non-user-email]
                               (-> notification-payload
                                   (assoc :computed {:dashboard_content  (html (vec (cons :div (map :content rendered-cards))))
