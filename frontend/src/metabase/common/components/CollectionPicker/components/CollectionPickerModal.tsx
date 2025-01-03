@@ -90,6 +90,7 @@ export const CollectionPickerModal = ({
 
   const pickerRef = useRef<{
     onNewCollection: (item: CollectionPickerItem) => void;
+    onNewDashboard: (item: CollectionPickerItem) => void;
   }>();
 
   const handleInit = useCallback((item: CollectionPickerItem) => {
@@ -175,8 +176,6 @@ export const CollectionPickerModal = ({
   };
 
   const handleNewDashboardCreate = (newDashboard: CollectionPickerItem) => {
-    // TODO: this doesn't work, but we don't have the same guarantees here as the dashboard picker :thinking:
-    // @ts-expect-error -- property isn't defined... will get to it
     pickerRef.current?.onNewDashboard(newDashboard);
   };
 
