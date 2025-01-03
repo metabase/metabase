@@ -126,7 +126,7 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
    ;; Only retry once instead of the default of 30 (#51176)
    ;; While a couple queries may fail during a reboot, this should allow quicker recovery and less spinning on outdated
    ;; credentials
-   "acquireRetryAttempts"         1
+   "acquireRetryAttempts"         0
    ;; [From dox] Seconds a Connection can remain pooled but unused before being discarded.
    "maxIdleTime"                  (* 3 60 60) ; 3 hours
    "minPoolSize"                  1

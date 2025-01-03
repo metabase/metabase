@@ -284,18 +284,20 @@
 (deftest test-bad-connection-detail-acquisition
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (let [original-details (:details (mt/db))]
-      (t2.with-temp/with-temp [Database db {:engine (tx/driver), :details original-details}]
-        (mt/with-db db
-          (sync/sync-database! (mt/db))
-          (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))
-          (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
-          (let [new-details (assoc original-details :user "baduser")
-                start (t/instant)]
-            (t2/update! :model/Database :id (mt/id) {:details new-details})
-            (mt/with-db (assoc db :details new-details)
-              (is (thrown-with-msg? Exception #"Connections could not be acquired from the underlying database!" (mt/rows (mt/run-mbql-query venues {:limit 1}))))
-              ;; Should be around 1 second
-              (is (> 10 (.getSeconds (t/duration start (t/instant))))))))))))
+      ;; Only test drivers that use a username to log in
+      (when (:user original-details)
+        (t2.with-temp/with-temp [Database db {:engine (tx/driver), :details original-details}]
+          (mt/with-db db
+            (sync/sync-database! (mt/db))
+            (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))
+            (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+            (let [new-details (assoc original-details :user "baduser")
+                  start (t/instant)]
+              (t2/update! :model/Database :id (mt/id) {:details new-details})
+              (mt/with-db (assoc db :details new-details)
+                (is (thrown-with-msg? Exception #"Connections could not be acquired from the underlying database!" (mt/rows (mt/run-mbql-query venues {:limit 1}))))
+                ;; Should be around 1 second
+                (is (> 10 (.getSeconds (t/duration start (t/instant)))))))))))))
 
 ;;; TODO Not clear why we're only testing Postgres here, do we support Azure Managed Identity for any other app DB type?
 ;;; Needs a comment please.
