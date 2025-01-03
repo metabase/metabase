@@ -10,7 +10,6 @@ import FormInput from "metabase/core/components/FormInput";
 import FormRadio from "metabase/core/components/FormRadio";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormTextArea from "metabase/core/components/FormTextArea";
-import CoreStyles from "metabase/css/core/index.css";
 import { Form, FormSubmitButton } from "metabase/forms";
 import { isNullOrUndefined } from "metabase/lib/types";
 import type { Dashboard } from "metabase-types/api";
@@ -75,7 +74,7 @@ export const SaveQuestionForm = ({
         />
       )}
       {values.saveType === "create" && (
-        <div className={CoreStyles.overflowHidden}>
+        <div>
           <FormInput
             name="name"
             title={t`Name`}

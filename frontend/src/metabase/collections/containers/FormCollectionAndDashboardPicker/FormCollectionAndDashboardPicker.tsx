@@ -98,6 +98,7 @@ export function FormCollectionAndDashboardPicker({
   const error = dashboardIdMeta.error || collectionIdMeta.error;
 
   const formFieldRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
   const openCollection = useSelector(state =>
@@ -162,6 +163,13 @@ export function FormCollectionAndDashboardPicker({
     [collectionIdHelpers, dashboardIdHelpers],
   );
 
+  const handleModalClose = () => {
+    setIsPickerOpen(false);
+    // restore focus to form element so if Esc key is pressed multiple times,
+    // nested modals close in sequence
+    buttonRef.current?.focus();
+  };
+
   return (
     <>
       <FormField
@@ -174,6 +182,7 @@ export function FormCollectionAndDashboardPicker({
       >
         <Button
           data-testid="dashboard-and-collection-picker-button"
+          ref={buttonRef}
           id={id}
           onClick={() => setIsPickerOpen(true)}
           fullWidth
@@ -202,7 +211,7 @@ export function FormCollectionAndDashboardPicker({
           title={t`Select a collection or dashboard`}
           value={pickerValue}
           onChange={handleChange}
-          onClose={() => setIsPickerOpen(false)}
+          onClose={handleModalClose}
           options={options}
           {...collectionPickerModalProps}
         />
