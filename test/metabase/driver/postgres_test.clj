@@ -1393,7 +1393,7 @@
   (testing "ssl key can be set via the gui (#20319)"
     (with-redefs [secret/value-as-file!
                   (fn [driver details secret-property & [_ext]]
-                    (str "file:" secret-property "="  (:value (#'secret/resolve-secret-map driver details secret-property))))]
+                    (str "file:" secret-property "="  (u/bytes-to-string (:value (#'secret/resolve-secret-map driver details secret-property)))))]
       (is (= "file:ssl-key=/clientkey.pkcs12"
              (:sslkey
               (#'postgres/ssl-params
