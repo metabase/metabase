@@ -19,6 +19,10 @@ clojure -M:ee:doc api-documentation
 
 Check out an introduction to the [Metabase API](https://www.metabase.com/learn/administration/metabase-api.html).
 
+## Live OpenAPI docs
+
+You can view live OpenAPI docs in your own running Metabase at `/api/docs`. So if your Metabase is at https://www.your-metabase.com you could view the API docs at https://www.your-metabase.com/api/docs.
+
 ## API keys
 
 Create keys to authenticate programmatic requests to your Metabase. See [API keys](./people-and-groups/api-keys.md).
