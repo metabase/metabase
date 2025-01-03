@@ -1,11 +1,11 @@
 import { useEffect } from "react";
-import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { getParentPath } from "metabase/hoc/ModalRoute";
+import { connect } from "metabase/lib/redux";
 import {
   getGroupTableAccessPolicy,
   getPolicyRequestState,

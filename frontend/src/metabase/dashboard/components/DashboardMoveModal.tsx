@@ -1,4 +1,3 @@
-import { connect } from "react-redux";
 import { c, t } from "ttag";
 import _ from "underscore";
 
@@ -7,6 +6,7 @@ import { MoveModal } from "metabase/containers/MoveModal";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import { color } from "metabase/lib/colors";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Icon } from "metabase/ui";
 import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";

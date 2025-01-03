@@ -1,9 +1,9 @@
-import { connect } from "react-redux";
 import { goBack, push } from "react-router-redux";
 import _ from "underscore";
 
 import TimelineEvents from "metabase/entities/timeline-events";
 import Timelines from "metabase/entities/timelines";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import EditEventModal from "metabase/timelines/common/components/EditEventModal";
 import type { Timeline, TimelineEvent } from "metabase-types/api";

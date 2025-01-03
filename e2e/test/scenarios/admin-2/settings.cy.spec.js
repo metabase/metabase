@@ -7,12 +7,6 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-import {
-  WEBHOOK_TEST_DASHBOARD,
-  WEBHOOK_TEST_HOST,
-  WEBHOOK_TEST_SESSION_ID,
-} from "../../../support/helpers/e2e-notification-helpers";
-
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 const { SMTP_PORT, WEB_PORT } = WEBMAIL_CONFIG;
 
@@ -165,13 +159,15 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     cy.visit("/admin/settings/localization");
 
     cy.findByTestId("custom-formatting-setting")
-      .findByText("January 31, 2018")
+      .findByDisplayValue("January 31, 2018")
       .click({ force: true });
 
     H.popover().findByText("2018/1/31").click({ force: true });
     cy.wait("@saveFormatting");
 
-    cy.findAllByTestId("select-button-content").should("contain", "2018/1/31");
+    cy.findByTestId("chart-settings-widget-date_style")
+      .findByTestId("chart-setting-select")
+      .should("have.value", "2018/1/31");
 
     cy.findByTestId("custom-formatting-setting")
       .findByText("17:24 (24-hour clock)")
@@ -909,8 +905,7 @@ describe("scenarios > admin > localization", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Unit of currency");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("US Dollar").click();
+    cy.findByDisplayValue("US Dollar").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Euro").click();
     H.undoToast().findByText("Changes saved").should("be.visible");
@@ -948,17 +943,16 @@ describe("scenarios > admin > localization", () => {
 
     cy.findByTestId("custom-formatting-setting").within(() => {
       // update the date style setting to YYYY/MM/DD
-      cy.findByText("January 31, 2018").click();
+      cy.findByDisplayValue("January 31, 2018").click();
     });
 
     H.popover().findByText("2018/1/31").click();
     cy.wait("@updateFormatting");
 
     cy.findByTestId("custom-formatting-setting").within(() => {
-      cy.findAllByTestId("select-button-content").should(
-        "contain",
-        "2018/1/31",
-      );
+      cy.findByTestId("chart-settings-widget-date_style")
+        .findByTestId("chart-setting-select")
+        .should("have.value", "2018/1/31");
 
       // update the time style setting to 24 hour
       cy.findByText("17:24 (24-hour clock)").click();
@@ -1122,19 +1116,16 @@ describe("notifications", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    cy.request({
+      failOnStatusCode: false,
+      url: `${H.WEBHOOK_TEST_HOST}/api/session/${H.WEBHOOK_TEST_SESSION_ID}/requests`,
+      method: "DELETE",
+    }).then(response => {
+      cy.log("Deleted requests.");
+    });
   });
 
   describe("Auth", () => {
-    afterEach(() => {
-      cy.request(
-        "DELETE",
-        `${WEBHOOK_TEST_HOST}/api/session/${WEBHOOK_TEST_SESSION_ID}/requests`,
-        { failOnStatusCode: false },
-      ).then(response => {
-        cy.log("Deleted requests.");
-      });
-    });
-
     const COMMON_FIELDS = [
       {
         label: "Webhook URL",
@@ -1214,7 +1205,7 @@ describe("notifications", { tags: "@external" }, () => {
 
         cy.findByRole("heading", { name: "Awesome Hook" }).should("exist");
 
-        cy.visit(WEBHOOK_TEST_DASHBOARD);
+        cy.visit(H.WEBHOOK_TEST_DASHBOARD);
         cy.findByRole("heading", { name: /Requests 1/ }).should("exist");
 
         auth.validate();
@@ -1234,7 +1225,25 @@ describe("notifications", { tags: "@external" }, () => {
 
       cy.findByLabelText("Give it a name").type("Awesome Hook");
       cy.findByLabelText("Description").type("The best hook ever");
+
+      cy.log("should show error responses when testing");
+
+      cy.findByLabelText("Webhook URL").clear().type(H.WEBHOOK_TEST_HOST);
+      cy.button("Send a test").click();
+      cy.findByText("Test response").should("exist");
+      cy.findByTestId("notification-test-response").should(
+        "contain.text",
+        "request-status",
+      );
+      cy.findByTestId("notification-test-response").should(
+        "contain.text",
+        "request-body",
+      );
+
       cy.findByLabelText("Webhook URL").clear().type(H.WEBHOOK_TEST_URL);
+      cy.button("Send a test").click();
+      cy.findByText("Test response").should("not.exist");
+
       cy.button("Create destination").click();
     });
 

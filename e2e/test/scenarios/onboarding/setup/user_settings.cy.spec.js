@@ -165,6 +165,7 @@ describe("user > settings", () => {
 
     // should be redirected to new question page
     cy.wait("@getUser");
+    H.entityPickerModalTab("Collections").click();
     H.entityPickerModal().findByText("Orders Model").click();
     cy.findByTestId("step-summarize-0-0")
       .findByText("Summarize")

@@ -1,0 +1,2 @@
+[:multi {:dispatch :key}
+ ["meow" [:map [:value [:maybe :string]]]]]

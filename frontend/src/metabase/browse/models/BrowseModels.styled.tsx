@@ -8,7 +8,7 @@ export const BannerCloseButton = styled(IconButtonWrapper)`
   margin-inline-start: auto;
 `;
 
-export const FixedSizeIcon = styled(Icon)<{ size?: number }>`
+const FixedSizeIcon = styled(Icon)<{ size?: number }>`
   min-width: ${({ size }) => size ?? 16}px;
   min-height: ${({ size }) => size ?? 16}px;
 `;

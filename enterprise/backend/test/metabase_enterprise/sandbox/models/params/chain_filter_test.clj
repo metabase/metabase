@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
-   [metabase.models :refer [FieldValues]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.field-values :as field-values]
    [metabase.models.params.chain-filter :as chain-filter]
@@ -11,14 +10,14 @@
 
 (deftest chain-filter-sandboxed-field-values-test
   (testing "When chain-filter would normally return cached FieldValues (#13832), make sure sandboxing is respected"
-    (mt/with-model-cleanup [FieldValues]
+    (mt/with-model-cleanup [:model/FieldValues]
       (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
         (field-values/clear-advanced-field-values-for-field! (mt/id :categories :name))
         (testing "values"
           (is (= {:values          [["African"] ["American"]]
                   :has_more_values false}
                  (mt/$ids (chain-filter/chain-filter %categories.name nil))))
-          (is (= 1 (t2/count FieldValues :field_id (mt/id :categories :name) :type :sandbox))))
+          (is (= 1 (t2/count :model/FieldValues :field_id (mt/id :categories :name) :type :sandbox))))
 
         (testing "search"
           (is (= {:values          [["African"] ["American"]]
@@ -32,11 +31,11 @@
                       :has_more_values false}
                      (mt/$ids (chain-filter/chain-filter %categories.name
                                                          [{:field-id %categories.id :op := :value 3}])))))
-            (is (= 1 (t2/count FieldValues :field_id (mt/id :categories :name) :type :linked-filter))))
+            (is (= 1 (t2/count :model/FieldValues :field_id (mt/id :categories :name) :type :linked-filter))))
 
           (testing "creates another linked-filter FieldValues if sandboxed"
             (is (= {:values          []
                     :has_more_values false}
                    (mt/$ids (chain-filter/chain-filter %categories.name
                                                        [{:field-id %categories.id :op := :value 3}]))))
-            (is (= 2 (t2/count FieldValues :field_id (mt/id :categories :name) :type :linked-filter)))))))))
+            (is (= 2 (t2/count :model/FieldValues :field_id (mt/id :categories :name) :type :linked-filter)))))))))

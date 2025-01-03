@@ -18,6 +18,7 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.visit(`/dashboard/${S.ORDERS_DASHBOARD_ID}`);
 
       H.newButton("Question").click();
+      H.entityPickerModalTab("Collections").click();
       H.entityPickerModal().findByText("Orders Model").click();
       H.getNotebookStep("filter")
         .findByText("Add filters to narrow your answer")
@@ -56,6 +57,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.modal().button("Done").click();
       H.undoToast().findByText("First collection");
       H.appBar().findByText("First collection"); // breadcrumb should change
+      H.appBar().findByText("Orders in a dashboard").should("not.exist"); // dashboard name should no longer be visible
 
       // card should still be visible in dashboard
       cy.visit(`/dashboard/${S.ORDERS_DASHBOARD_ID}`);
@@ -98,7 +100,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.openQuestionActions();
       H.popover().findByText("Turn into a model").should("not.exist");
       H.popover().findByText("Add to dashboard").should("not.exist");
-      cy.findByRole("banner", { name: "Navigation bar" }).should(
+      cy.findByLabelText("Navigation bar").should(
         "contain.text",
         "Orders in a dashboard",
       );
@@ -259,6 +261,52 @@ describe("Dashboard > Dashboard Questions", () => {
       H.dashboardCards().findByText("Orders, Count");
     });
 
+    it("should tell users which dashboards will be affected when doing bulk question moves", () => {
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "Sample Question",
+          collection_id: S.THIRD_COLLECTION_ID,
+          query: {
+            "source-table": SAMPLE_DATABASE.PRODUCTS_ID,
+            limit: 1,
+          },
+          display: "scalar",
+        },
+        dashboardDetails: {
+          collection_id: S.THIRD_COLLECTION_ID,
+          name: "Test Dashboard",
+        },
+      });
+
+      H.visitCollection(S.THIRD_COLLECTION_ID);
+      selectCollectionItem("Sample Question");
+
+      cy.findByTestId("toast-card").button("Move").click();
+
+      H.entityPickerModal().within(() => {
+        cy.findByRole("button", { name: /Orders in a dashboard/ }).click();
+        cy.button("Move").click();
+      });
+
+      cy.findByRole("dialog", { name: /Move this question/ }).should("exist");
+
+      H.modal().within(() => {
+        cy.findByText("Sample Question").should("exist");
+        cy.findByText("Test Dashboard").should("exist");
+
+        cy.button("Move it").should("exist").click();
+      });
+
+      H.collectionTable().findByText("Test Dashboard").click();
+
+      cy.findByTestId("dashboard-empty-state")
+        .findByText("This dashboard is looking empty.")
+        .should("exist");
+
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      H.dashboardCards().findByText("Sample Question").should("exist");
+    });
+
     it("can edit a dashboard question", () => {
       cy.intercept("PUT", "/api/card/*").as("updateCard");
       H.createQuestion(
@@ -299,8 +347,15 @@ describe("Dashboard > Dashboard Questions", () => {
       );
 
       cy.get("@dashboardId").then(dashboardId => {
-        H.visitDashboard(dashboardId);
+        //Simulate having picked the dashboard in the entity picker previously
+        cy.request("POST", "/api/activity/recents", {
+          context: "selection",
+          model: "dashboard",
+          model_id: dashboardId,
+        });
       });
+
+      cy.visit("/");
 
       cy.findByLabelText("Navigation bar").findByText("New").click();
       H.popover().findByText("Question").click();
@@ -351,7 +406,7 @@ describe("Dashboard > Dashboard Questions", () => {
       });
 
       H.startNewQuestion();
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       H.entityPickerModal().findByText("Orders in a dashboard").click();
       H.entityPickerModal()
         .findByText("Total Orders Dashboard Question")
@@ -712,7 +767,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       // add the quanity question to the blue dashboard
       H.editDashboard();
-      H.openAddQuestionMenu("Existing Question");
+      H.openQuestionsSidebar();
 
       H.sidebar().findByText("First collection").click();
       H.sidebar().findByText("Average Quantity by Month Question").click();
@@ -724,7 +779,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       // add the total question to the purple dashboard
       H.editDashboard();
-      H.openAddQuestionMenu("Existing Question");
+      H.openQuestionsSidebar();
 
       H.sidebar().findByText("First collection").click();
       H.sidebar().findByText("Average Order Total by Month Question").click();
@@ -748,11 +803,34 @@ describe("Dashboard > Dashboard Questions", () => {
       H.entityPickerModal().findByText("Orders in a dashboard").click();
       H.entityPickerModal().button("Move").click();
 
+      let shouldError = true;
+
+      // Simulate an error to ensure that it's passed back and shown in the modal.
+      cy.get("@avgQuanityQuestionId").then(questionId => {
+        cy.intercept("PUT", `**/api/card/${questionId}**`, req => {
+          if (shouldError === true) {
+            shouldError = false;
+            req.reply({
+              statusCode: 400,
+              body: {
+                message: "Ryan said no",
+              },
+            });
+          } else {
+            req.continue();
+          }
+        });
+      });
+
       // should warn about removing from 2 dashboards
       H.modal().within(() => {
         cy.findByText(/will be removed from/i);
         cy.findByText(/purple dashboard/i);
         cy.findByText(/blue dashboard/i);
+        cy.button("Move it").click();
+        cy.findByText("Ryan said no");
+
+        //Continue with the expected behavior
         cy.button("Move it").click();
       });
 
@@ -834,7 +912,7 @@ describe("Dashboard > Dashboard Questions", () => {
       });
 
       H.editDashboard();
-      H.openAddQuestionMenu("Existing Question");
+      H.openQuestionsSidebar();
       H.sidebar()
         .findByText(/our analyt/i)
         .click();

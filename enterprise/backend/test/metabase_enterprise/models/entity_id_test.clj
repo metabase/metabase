@@ -79,6 +79,7 @@
     :model/QueryTable
     :model/RecentViews
     :model/Revision
+    :model/SearchIndexMetadata
     :model/Secret
     :model/Session
     :model/TablePrivileges
@@ -86,6 +87,7 @@
     :model/TimelineEvent
     :model/User
     :model/UserParameterValue
+    :model/UserKeyValue
     :model/ViewLog
     :model/GroupTableAccessPolicy
     :model/ConnectionImpersonation

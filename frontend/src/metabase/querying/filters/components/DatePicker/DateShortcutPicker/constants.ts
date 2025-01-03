@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { ShortcutOption } from "../types";
+import type { ShortcutOption } from "metabase/querying/filters/types";
 
 import type { TypeOption } from "./types";
 

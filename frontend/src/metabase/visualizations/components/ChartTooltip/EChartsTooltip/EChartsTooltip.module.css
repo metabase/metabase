@@ -9,6 +9,7 @@
 
 .Table {
   min-width: 240px;
+  width: 100%;
   border-collapse: collapse;
   margin: 0.25rem 0 0.875rem 0;
 }

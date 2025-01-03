@@ -3,11 +3,13 @@ import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
 
 import Subhead from "metabase/components/type/Subhead";
 import CS from "metabase/css/core/index.css";
-import { Flex } from "metabase/ui";
+import { Flex, type FlexProps } from "metabase/ui";
 
 import S from "./ViewSection.module.css";
 
-export interface ViewSectionProps extends HTMLAttributes<HTMLDivElement> {
+export interface ViewSectionProps
+  extends HTMLAttributes<HTMLDivElement>,
+    FlexProps {
   className?: string;
   style?: CSSProperties;
   children?: ReactNode;

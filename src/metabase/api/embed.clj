@@ -22,8 +22,6 @@
    [metabase.api.embed.common :as api.embed.common]
    [metabase.api.public :as api.public]
    [metabase.events :as events]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.dashboard :refer [Dashboard]]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -89,7 +87,7 @@
      :export-format     export-format
      :card-id           card-id
      :token-params      (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-     :embedding-params  (t2/select-one-fn :embedding_params Card :id card-id)
+     :embedding-params  (t2/select-one-fn :embedding_params :model/Card :id card-id)
      :query-params      (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
      :qp                qp
      :constraints       constraints
@@ -159,7 +157,7 @@
      :dashboard-id     dashboard-id
      :dashcard-id      dashcard-id
      :card-id          card-id
-     :embedding-params (t2/select-one-fn :embedding_params Dashboard :id dashboard-id)
+     :embedding-params (t2/select-one-fn :embedding_params :model/Dashboard :id dashboard-id)
      :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
      :query-params     (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
      :constraints      constraints
@@ -299,7 +297,7 @@
   [token param-key]
   (let [unsigned (unsign-and-translate-ids token)
         card-id  (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
-        card     (t2/select-one Card :id card-id)]
+        card     (t2/select-one :model/Card :id card-id)]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.embed.common/card-param-values {:unsigned-token unsigned
                                          :card           card
@@ -310,7 +308,7 @@
   [token param-key prefix]
   (let [unsigned (unsign-and-translate-ids token)
         card-id  (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
-        card     (t2/select-one Card :id card-id)]
+        card     (t2/select-one :model/Card :id card-id)]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.embed.common/card-param-values {:unsigned-token unsigned
                                          :card           card

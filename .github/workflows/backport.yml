@@ -210,7 +210,7 @@ jobs:
         if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'false' }}
         uses: juliangruber/approve-pull-request-action@v1
         with:
-          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           number: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
       - name: Enable Pull Request Automerge
         if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'false' }}

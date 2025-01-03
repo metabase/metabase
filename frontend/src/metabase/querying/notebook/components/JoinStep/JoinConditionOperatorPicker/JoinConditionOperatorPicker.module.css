@@ -1,0 +1,51 @@
+.OperatorList {
+  width: 80px;
+  padding: 0.5rem;
+}
+
+.OperatorListItem {
+  padding: 0.5rem 0.5rem 0.5rem 1rem;
+}
+
+.OperatorPickerButton {
+  font-size: 16px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    background 300ms linear,
+    border 300ms linear,
+    color 300ms linear;
+
+  &.disabled {
+    cursor: default;
+  }
+
+  &.completeCondition {
+    color: var(--mb-color-text-white);
+    background-color: transparent;
+
+    &.isOpened {
+      background-color: color-mix(in srgb, var(--mb-color-brand), white 10%);
+    }
+
+    &:hover,
+    &:focus {
+      background-color: color-mix(in srgb, var(--mb-color-brand), white 10%);
+    }
+  }
+
+  &.incompleteCondition {
+    color: var(--mb-color-brand);
+    border: 2px solid transparent;
+
+    &.isOpened {
+      border-color: var(--mb-color-brand);
+    }
+
+    &:hover,
+    &:focus {
+      border: 2px solid var(--mb-color-brand);
+    }
+  }
+}
