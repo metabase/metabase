@@ -12,7 +12,7 @@
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.request.core :as request]
    [metabase.util :as u]

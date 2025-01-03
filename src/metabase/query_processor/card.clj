@@ -13,7 +13,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.cache-config :as cache-config]
    [metabase.models.query :as query]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]

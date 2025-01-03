@@ -14,7 +14,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]

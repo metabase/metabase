@@ -24,8 +24,8 @@
    [metabase.models.interface :as mi]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.table :as table]
+   [metabase.permissions.util :as perms-util]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -448,7 +448,7 @@
       (ex-info (tru "Uploads are not enabled.")
                {:status-code 422})
 
-      (premium-features/sandboxed-user?)
+      (perms-util/sandboxed-user?)
       (ex-info (tru "Uploads are not permitted for sandboxed users.")
                {:status-code 403})
 

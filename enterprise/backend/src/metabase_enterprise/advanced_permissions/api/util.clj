@@ -2,7 +2,7 @@
   (:require
    [metabase-enterprise.advanced-permissions.driver.impersonation :as advanced-perms.driver.impersonation]
    [metabase.api.common :refer [*current-user-id* *is-superuser?*]]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 

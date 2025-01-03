@@ -8,7 +8,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]

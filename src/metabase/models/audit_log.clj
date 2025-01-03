@@ -7,7 +7,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]

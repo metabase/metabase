@@ -16,7 +16,7 @@
    [metabase.models.field :as field]
    [metabase.models.serialization :as serdes]
    [metabase.plugins :as plugins]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.setup :as setup]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs]]

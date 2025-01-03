@@ -1,13 +1,14 @@
-(ns metabase.test.util.public-settings
+(ns metabase.premium-features.test-util
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.token-check :as token-check]
    [metabase.test.util.thread-local :as tu.thread-local]))
 
 ;;; This is actually thread-safe by default unless you're using [[metabase.test/test-helpers-set-global-values!]]
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-premium-features
+  "Implementation of `with-premium-features"
   [features thunk]
   (let [features (set (map name features))]
     (testing (format "\nWith premium token features = %s" (pr-str features))
@@ -15,11 +16,11 @@
              ;; happened already then the binding it establishes will shadow the value set by [[with-redefs]].
              ;; See [[with-premium-features-test]] below.
       (let [thunk (^:once fn* []
-                    (binding [premium-features/*token-features* (constantly features)]
+                    (binding [token-check/*token-features* (constantly features)]
                       (thunk)))]
         (if tu.thread-local/*thread-local*
           (thunk)
-          (with-redefs [premium-features/*token-features* (constantly features)]
+          (with-redefs [token-check/*token-features* (constantly features)]
             (thunk)))))))
 
 (defmacro with-premium-features
@@ -52,7 +53,7 @@
   {:style/indent 1}
   [features & body]
   `(do-with-premium-features
-    (set/union (premium-features/*token-features*) ~features)
+    (set/union (token-check/*token-features*) ~features)
     (^:once fn* [] ~@body)))
 
 (defn assert-has-premium-feature-error

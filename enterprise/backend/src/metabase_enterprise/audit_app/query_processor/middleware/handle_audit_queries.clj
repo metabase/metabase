@@ -41,9 +41,7 @@
    [clojure.data :as data]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase.api.common.validation :as validation]
-   [metabase.public-settings.premium-features
-    :as premium-features
-    :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]

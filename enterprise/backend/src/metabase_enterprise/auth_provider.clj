@@ -1,6 +1,6 @@
 (ns metabase-enterprise.auth-provider
   (:require
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.http :as u.http]))
 
 (defmulti ^:private fetch-auth*

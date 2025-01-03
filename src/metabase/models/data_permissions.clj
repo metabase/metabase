@@ -7,7 +7,7 @@
    [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.models.interface :as mi]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]

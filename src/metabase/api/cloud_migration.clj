@@ -7,7 +7,7 @@
    [compojure.core :refer [GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.models.cloud-migration :as cloud-migration]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [toucan2.core :as t2]))
 
 (api/defendpoint POST "/"

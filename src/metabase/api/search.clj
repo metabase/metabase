@@ -6,10 +6,9 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
    [metabase.config :as config]
+   [metabase.permissions.util :as perms-util]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
-   [metabase.request.core :as request]
-   ;; Allowing search.config to be accessed for developer API to set weights
+   [metabase.request.core :as request] ;; Allowing search.config to be accessed for developer API to set weights
    ^{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
@@ -143,8 +142,8 @@
                 :created-at                          created_at
                 :created-by                          (set created_by)
                 :current-user-id                     api/*current-user-id*
-                :is-impersonated-user?               (premium-features/impersonated-user?)
-                :is-sandboxed-user?                  (premium-features/sandboxed-user?)
+                :is-impersonated-user?               (perms-util/impersonated-user?)
+                :is-sandboxed-user?                  (perms-util/sandboxed-user?)
                 :is-superuser?                       api/*is-superuser?*
                 :current-user-perms                  @api/*current-user-permissions-set*
                 :filter-items-in-personal-collection filter_items_in_personal_collection

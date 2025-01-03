@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.http-client :as client]
    [metabase.models.data-permissions.graph :as data-perms.graph]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [toucan2.core :as t2]

@@ -6,7 +6,7 @@
   all middleware is combined. See [[handle-audit-app-internal-queries]]
   and [[handle-audit-app-internal-queries-middleware]] for example."
   (:require
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :as i18n]))
 

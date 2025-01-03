@@ -10,7 +10,7 @@
    [metabase.db :as mdb]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]

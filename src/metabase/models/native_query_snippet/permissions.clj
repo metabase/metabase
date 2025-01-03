@@ -4,7 +4,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.public-settings.premium-features :refer [defenterprise]]))
+   [metabase.premium-features.core :refer [defenterprise]]))
 
 (defn has-any-native-permissions?
   "Checks whether the current user has native query permissions for any database."

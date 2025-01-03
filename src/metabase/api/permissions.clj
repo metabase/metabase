@@ -18,7 +18,7 @@
    [metabase.models.permissions-revision :as perms-revision]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.permissions.util :as perms.u]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]

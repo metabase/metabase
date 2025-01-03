@@ -1,9 +1,8 @@
 (ns metabase.search.test-util
   (:require
    [metabase.api.common :as api]
-   [metabase.public-settings.premium-features :as premium-features]
-   [metabase.request.core :as request]
-   ;; For now, this is specialized to the appdb engine, but we should be able to generalize it to all engines.
+   [metabase.permissions.util :as perms-util]
+   [metabase.request.core :as request] ;; For now, this is specialized to the appdb engine, but we should be able to generalize it to all engines.
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
@@ -54,8 +53,8 @@
                             {:current-user-id       api/*current-user-id*
                              :current-user-perms    @api/*current-user-permissions-set*
                              :is-superuser?         api/*is-superuser?*
-                             :is-impersonated-user? (premium-features/impersonated-user?)
-                             :is-sandboxed-user?    (premium-features/impersonated-user?)})
+                             :is-impersonated-user? (perms-util/impersonated-user?)
+                             :is-sandboxed-user?    (perms-util/impersonated-user?)})
                         {:archived         false
                          :context          :default
                          :search-string    search-string

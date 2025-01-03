@@ -7,7 +7,7 @@
    [compojure.core :refer [GET]]
    [java-time.api :as t]
    [metabase.api.common :as api]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.date-2.parse :as u.date.parse]
    [metabase.util.i18n :as i18n]
@@ -35,8 +35,7 @@
    :ttl/threshold (u/minutes->ms 5)))
 
 (defn- valid-thru []
-  (some->> (premium-features/premium-embedding-token)
-           premium-features/fetch-token-status
+  (some->> (premium-features/token-status)
            :valid-thru
            u.date.parse/parse
            (t/format "MMMM d, YYYY")))

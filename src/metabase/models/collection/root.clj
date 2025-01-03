@@ -3,7 +3,7 @@
    [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [potemkin.types :as p.types]
@@ -34,6 +34,7 @@
   {:pre [(map? collection)]}
   ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
   (if (and (= (u/qualified-name (:namespace collection)) "snippets")
+           #_{:clj-kondo/ignore [:deprecated-var]}
            (not (premium-features/enable-enhancements?)))
     #{}
     #{((case read-or-write

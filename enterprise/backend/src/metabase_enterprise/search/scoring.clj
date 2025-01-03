@@ -1,7 +1,7 @@
 (ns metabase-enterprise.search.scoring
   ;; TODO -- move to `metabase-enterprise.<feature>.*`
   (:require
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.search.appdb.scoring :as appdb.scoring]
    [metabase.search.config :as search.config]
    [metabase.search.in-place.scoring :as scoring]))

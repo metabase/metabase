@@ -56,7 +56,7 @@
    [metabase.models.user :as user]
    [metabase.models.view-log :as view-log]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [methodical.core :as methodical]

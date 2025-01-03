@@ -2,7 +2,7 @@
   (:require
    [metabase.models.collection :as collection]
    [metabase.models.permissions :as perms]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.permissions.util :as perms-util]
    [metabase.search.config :refer [SearchContext]]
    [metabase.util.malli :as mu]))
 
@@ -15,14 +15,14 @@
       ;; TODO Make this parameter non-optional, and fix code paths that omit it. Then remove this fallback.
       (when (nil? is-impersonated-user?)
         (assert-current-user! :is-impersonated-user?)
-        (premium-features/impersonated-user?))))
+        (perms-util/impersonated-user?))))
 
 (defn- sandboxed-user? [{:keys [is-sandboxed-user?] :as _search-ctx}]
   (or is-sandboxed-user?
       ;; TODO Make this parameter non-optional, and fix code paths that omit it. Then remove this fallback.
       (when (nil? is-sandboxed-user?)
         (assert-current-user! :is-sandboxed-user?)
-        (premium-features/sandboxed-user?))))
+        (perms-util/sandboxed-user?))))
 
 (defn sandboxed-or-impersonated-user?
   "Is the current user sandboxed or impersonated?"

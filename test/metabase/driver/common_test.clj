@@ -5,7 +5,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.util :as driver.u]
    [metabase.models.setting :as setting]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]))
 
 (deftest ^:parallel base-type-inference-test

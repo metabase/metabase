@@ -23,7 +23,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.api-key :as api-key]
    [metabase.models.user :as user]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]

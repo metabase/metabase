@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.task.cache :as task.cache]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]

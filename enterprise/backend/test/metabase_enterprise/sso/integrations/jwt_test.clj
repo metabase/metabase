@@ -10,8 +10,8 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.config :as config]
    [metabase.http-client :as client]
+   [metabase.premium-features.token-check :as token-check]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -39,7 +39,7 @@
 (def ^:private default-jwt-secret (crypto-random/hex 32))
 
 (defn- call-with-default-jwt-config! [f]
-  (let [current-features (premium-features/*token-features*)]
+  (let [current-features (token-check/*token-features*)]
     (mt/with-additional-premium-features #{:sso-jwt}
       (mt/with-temporary-setting-values
         [jwt-enabled
@@ -213,7 +213,7 @@
                                                     :last_name  "Toucan"
                                                     :extra      "keypairs"
                                                     :are        "also present"
-                                                        ;; registerd claims should not be synced as login attributes
+                                                       ;; registerd claims should not be synced as login attributes
                                                     :iss        "issuer"
                                                     :exp        (+ (buddy-util/now) 3600)
                                                     :iat        (buddy-util/now)}

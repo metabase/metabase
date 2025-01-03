@@ -102,7 +102,7 @@
    [metabase-enterprise.advanced-config.file.users]
    [metabase.driver.common.parameters]
    [metabase.driver.common.parameters.parse :as params.parse]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs tru]]

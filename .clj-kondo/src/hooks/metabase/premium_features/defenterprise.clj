@@ -1,4 +1,4 @@
-(ns hooks.metabase.public-settings.premium-features
+(ns hooks.metabase.premium-features.defenterprise
   (:require
    [clj-kondo.hooks-api :as hooks]
    [hooks.common]))

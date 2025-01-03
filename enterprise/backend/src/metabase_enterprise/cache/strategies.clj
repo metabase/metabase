@@ -2,7 +2,7 @@
   (:require
    [java-time.api :as t]
    [metabase.models.cache-config :as cache-config]
-   [metabase.public-settings.premium-features :refer [defenterprise defenterprise-schema]]
+   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
