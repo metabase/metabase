@@ -149,7 +149,7 @@
                                                       :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
         (let [notification-payload (notification.payload/notification-payload notification-info)]
           (if (notification.payload/should-send-notification? notification-payload)
-            (try
+            (do
               (log/debugf "[Notification %d] Found %d handlers" (:id notification-info) (count handlers))
               (doseq [handler handlers]
                 (let [channel-type (:channel_type handler)
@@ -167,9 +167,7 @@
                                (:id notification-info) (:channel_type handler))
                     (channel-send-retrying! (:id notification-info) (:payload_type notification-info) handler message))))
               (do-after-notification-sent notification-info)
-              (log/infof "[Notification %d] Sent successfully" (:id notification-info))
-              (finally
-                (clean-up-disk-maps notification-payload)))
+              (log/infof "[Notification %d] Sent successfully" (:id notification-info)))
             (log/infof "[Notification %d] Skipping" (:id notification-info))))))
     (catch Exception e
       (log/errorf e "[Notification %d] Failed to send" (:id notification-info))
