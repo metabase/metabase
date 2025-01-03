@@ -11,6 +11,10 @@ summary: |
 
 # Advanced config logs
 
+> You can view live OpenAPI docs in your own running Metabase at `/api/docs`.
+   So if your Metabase is at https://www.your-metabase.com you could view
+   the API docs at https://www.your-metabase.com/api/docs.
+
 /api/logs endpoints.
 
   These endpoints are meant to be used by admins to download logs before entries are auto-removed after the day limit.

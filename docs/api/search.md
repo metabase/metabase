@@ -6,6 +6,10 @@ summary: |
 
 # Search
 
+> You can view live OpenAPI docs in your own running Metabase at `/api/docs`.
+   So if your Metabase is at https://www.your-metabase.com you could view
+   the API docs at https://www.your-metabase.com/api/docs.
+
 API endpoints for Search.
 
 ## `GET /api/search/`
@@ -43,6 +47,8 @@ Search for items in Metabase.
 -  **`verified`** nullable true.
 
 -  **`created_at`** nullable value must be a non-blank string.
+
+-  **`include_dashboard_questions`** nullable boolean.
 
 -  **`archived`** nullable boolean.
 

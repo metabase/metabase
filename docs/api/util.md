@@ -7,6 +7,10 @@ summary: |
 
 # Util
 
+> You can view live OpenAPI docs in your own running Metabase at `/api/docs`.
+   So if your Metabase is at https://www.your-metabase.com you could view
+   the API docs at https://www.your-metabase.com/api/docs.
+
 Random utilty endpoints for things that don't belong anywhere else in particular, e.g. endpoints for certain admin
   page tasks.
 

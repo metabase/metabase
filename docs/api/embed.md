@@ -20,6 +20,10 @@ summary: |
 
 # Embed
 
+> You can view live OpenAPI docs in your own running Metabase at `/api/docs`.
+   So if your Metabase is at https://www.your-metabase.com you could view
+   the API docs at https://www.your-metabase.com/api/docs.
+
 Various endpoints that use [JSON web tokens](https://jwt.io/introduction/) to fetch Cards and Dashboards.
    The endpoints are the same as the ones in `api/public/`, and differ only in the way they are authorized.
 

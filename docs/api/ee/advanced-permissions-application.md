@@ -8,6 +8,10 @@ summary: |
 
 # Advanced permissions application
 
+> You can view live OpenAPI docs in your own running Metabase at `/api/docs`.
+   So if your Metabase is at https://www.your-metabase.com you could view
+   the API docs at https://www.your-metabase.com/api/docs.
+
 `/advanced-permisisons/application` Routes.
   Implements the Permissions routes needed for application permission - a class of permissions that control access to features
   like access Setting pages, access monitoring tools ... etc.

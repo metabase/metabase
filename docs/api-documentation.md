@@ -19,6 +19,10 @@ clojure -M:ee:doc api-documentation
 
 Check out an introduction to the [Metabase API](https://www.metabase.com/learn/administration/metabase-api.html).
 
+## Live OpenAPI docs
+
+You can view live OpenAPI docs in your own running Metabase at `/api/docs`. So if your Metabase is at https://www.your-metabase.com you could view the API docs at https://www.your-metabase.com/api/docs.
+
 ## API keys
 
 Create keys to authenticate programmatic requests to your Metabase. See [API keys](./people-and-groups/api-keys.md).
@@ -44,6 +48,7 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [Bookmark](api/bookmark.md)
 - [Cache](api/cache.md)
 - [Card](api/card.md)
+- [Cards](api/cards.md)
 - [Channel](api/channel.md)
 - [Cloud migration](api/cloud-migration.md)
 - [Collection](api/collection.md)
@@ -93,4 +98,5 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [Timeline event](api/timeline-event.md)
 - [Upload management*](api/ee/upload-management.md)
 - [User](api/user.md)
+- [User key value](api/user-key-value.md)
 - [Util](api/util.md)

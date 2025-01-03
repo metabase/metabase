@@ -6,6 +6,10 @@ summary: |
 
 # Serialization
 
+> You can view live OpenAPI docs in your own running Metabase at `/api/docs`.
+   So if your Metabase is at https://www.your-metabase.com you could view
+   the API docs at https://www.your-metabase.com/api/docs.
+
 API endpoints for Serialization.
 
 ## `POST /api/ee/serialization/export`
