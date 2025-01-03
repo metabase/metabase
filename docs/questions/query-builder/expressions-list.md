@@ -453,7 +453,17 @@ Related: [domain](#domain), [subdomain](#subdomain).
 
 ### [in](./expressions/in.md)
 
-Returns true if value1 equals value2 (or value3, etc., if specified).
+Returns true if `value1` equals `value2` (or `value3`, etc., if specified).
+
+```
+in(value1, value2, ...)
+```
+
+`value1` is the column or value to check.
+
+`value2, ...` is the list of columns or values to check.
+
+Related: [contains](#contains), [startsWith](#startswith), [endsWith](#endswith).
 
 ### [isempty](./expressions/isempty.md)
 

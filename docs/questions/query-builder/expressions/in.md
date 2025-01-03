@@ -4,7 +4,7 @@ title: in
 
 # In
 
-`in` compare values and returns true if `value1` equals `value2` (OR `value3`, etc., if specified).
+lin` compares values and returns true if `value1` equals `value2` (OR `value3`, etc., if specified).
 
 ## Syntax
 
@@ -16,12 +16,12 @@ in(value1, value2, ...)
 
 `value2, ...` is the list of columns or values to check.
 
-Metabase will return results where the `value1` equals `value2` OR `value3`, etc. Matches must be exact (e.g., strings are case sensitive).
+Metabase will return rows where the `value1` equals `value2` OR `value3`, etc. Matches must be exact (e.g., strings are case sensitive).
 
-You can choose multiple columns. For example, let's say you wanted to look for the string `Gadget` in both the `title` and `category` columns. You could write:
+You can choose multiple columns. For example, let's say you wanted to look for the string `Gadget` in both the `[Title]` and `[Category]` columns. You could write:
 
 ```
-in("Gadget", [title], [category])
+in("Gadget", [Title], [Category])
 ```
 
 which would return rows where either the title or the category columns were equal to "Gadget".
@@ -38,7 +38,7 @@ So if you have the expression: `in[title], "Lightweight Wool Computer", "Aerodyn
 title IN ('Lightweight Wool Computer', 'Aerodynamic Cotton Lamp')
 ```
 
-But under the hood, Metabase translates this `IN` to a `WHERE` clause that uses the `OR` operator:
+But under the hood, Metabase translates this `IN` expression to a `WHERE` clause that uses the `OR` operator:
 
 ```sql
 WHERE
