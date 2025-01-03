@@ -6,7 +6,7 @@ redirect_from:
 
 # Google Sign-In
 
-Enabling [Google Sign-In](https://developers.google.com/identity/sign-in/web/sign-in) or [LDAP](https://www.metabase.com/glossary/ldap) for single sign-on (SSO) lets your team log in with a click instead of using email and password. SSO can also be used to let people create Metabase accounts without asking an admin to add each person manually. You can find SSO options under **Settings** > **Admin settings** > **Authentication**.
+Enabling [Google Sign-In](https://developers.google.com/identity/sign-in/web/sign-in) for single sign-on (SSO) lets your team log in with a click instead of using email and password. SSO can also be used to let people create Metabase accounts without asking an admin to add each person manually. You can find SSO options under **Settings** > **Admin settings** > **Authentication**.
 
 If you'd like to have people authenticate with [SAML][saml-docs] or [JWT][jwt-docs], Metabase's [Pro and Enterprise](https://www.metabase.com/pricing) let you do just that.
 
