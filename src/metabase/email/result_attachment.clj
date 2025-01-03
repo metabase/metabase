@@ -53,7 +53,7 @@
          (map-indexed
           (fn [i row]
             (qp.si/write-row! w row i ordered-cols viz-settings'))
-          (u/maybe-deref rows)))
+          rows))
         (qp.si/finish! w results)))))
 
 (defn- create-temp-file
@@ -87,7 +87,7 @@
   "Create result attachments for an email."
   [{{card-name :name format-rows :format_rows pivot-results :pivot_results :as card} :card
     {{:keys [rows]} :data :as result}                                                :result}]
-  (when (seq (u/maybe-deref rows))
+  (when (seq rows)
     [(when-let [temp-file (and (:include_csv card)
                                (create-temp-file-or-throw "csv"))]
        (with-open [os (io/output-stream temp-file)]

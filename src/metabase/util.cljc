@@ -1202,9 +1202,3 @@
     (if res
       (assoc m k res)
       (dissoc m k))))
-
-(defn maybe-deref
-  [x]
-  (if (instance? clojure.lang.IDeref x)
-    @x
-    x))

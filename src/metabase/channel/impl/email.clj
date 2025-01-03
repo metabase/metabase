@@ -6,6 +6,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.shared :as channel.shared]
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
@@ -69,7 +70,7 @@
   [timezone part options]
   (case (:type part)
     :card
-    (channel.render/render-pulse-section timezone (update-in part [:result :data :rows] u/maybe-deref) options)
+    (channel.render/render-pulse-section timezone (channel.shared/realize-data-rows part) options)
 
     :text
     {:content (markdown/process-markdown (:text part) :html)}
@@ -112,7 +113,7 @@
   [rendered-cards parts]
   (filter some?
           (concat (map make-message-attachment (apply merge (map :attachments (u/one-or-many rendered-cards))))
-                  (mapcat email.result-attachment/result-attachment parts))))
+                  (mapcat (comp email.result-attachment/result-attachment realize-data-rows) parts))))
 
 (defn- icon-bundle
   "Bundle an icon.

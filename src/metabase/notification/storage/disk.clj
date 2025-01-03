@@ -56,15 +56,11 @@
       (when (.exists file)
         (.delete file))))
 
-  clojure.lang.IDeref
-  (deref [this]
-    (storage/retrieve this))
-
   Object
   (toString [this]
     (str "#<DiskStorage@" (.path this) ">")))
 
-(defn store!
+(defn to-disk-storage!
   "Store data in a temporary file and return a reference to it"
   [data]
   (let [s (DiskStorage. nil)]
@@ -72,12 +68,9 @@
     s))
 
 (comment
-  (ngoc/with-tc
-    (store! {:foo "bar"}))
+  (store! {:foo "bar"})
   #_@(.getPath (store! {:foo "bar"})))
 
 ;; Ensure the scheduler is shut down when the JVM exits
 #_(.addShutdownHook (Runtime/getRuntime)
                     (Thread. ^Runnable #(.shutdown deletion-scheduler)))
-
-(store! {:foo "bar"})

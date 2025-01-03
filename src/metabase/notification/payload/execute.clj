@@ -6,7 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.params.shared :as shared.params]
    [metabase.models.serialization :as serdes]
-   [metabase.notification.storage.disk :as storage.disk]
+   [metabase.notification.storage.core :as notification.storage]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -164,7 +164,7 @@
                                 :dashcard dashcard
                                 ;; TODO should this be dashcard?
                                 :type     :card
-                                :result   result #_(update-in result [:data :rows] storage.disk/store!)}))
+                                :result   result #_(update-in result [:data :rows] storage.core/to-disk-storage!)}))
             result         (result-fn card_id)
             series-results (mapv (comp result-fn :id) multi-cards)]
         (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
@@ -279,7 +279,7 @@
                               (process-query))
                             (process-query))]
         {:card   card
-         :result (update-in result [:result :data :rows] storage.disk/store!)
+         :result (update-in result [:result :data :rows] notification.storage/to-disk-storage!)
          :type   :card}))
     (catch Throwable e
       (log/warnf e "Error running query for Card %s" card-id))))
