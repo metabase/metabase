@@ -41,6 +41,7 @@ export const VisualizationWrapper = ({
       store={store}
       withRouter={false}
       withKBar={false}
+      withNotebook={false}
       theme={theme}
       withDND
     >

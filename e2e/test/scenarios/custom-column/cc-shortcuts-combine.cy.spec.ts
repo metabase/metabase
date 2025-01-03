@@ -109,7 +109,8 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
 
     H.popover().findByText("Count of rows").click();
 
-    H.addCustomColumn();
+    // add custom column
+    cy.findAllByTestId("action-buttons").first().icon("add_data").click();
     selectCombineColumns();
 
     selectColumn(0, "User", "Email");

@@ -7,7 +7,7 @@ import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { color as c } from "metabase/lib/colors";
 import { Box, Flex } from "metabase/ui";
-import type { Query } from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 import type {
   NotebookStep as INotebookStep,
@@ -30,7 +30,7 @@ interface NotebookStepProps {
   reportTimezone: string;
   readOnly?: boolean;
   openStep: (id: string) => void;
-  updateQuery: (query: Query) => Promise<void>;
+  updateQuery: (query: Lib.Query) => Promise<void>;
 }
 
 export function NotebookStep({
@@ -46,9 +46,15 @@ export function NotebookStep({
     useToggle(false);
 
   const actionButtons = useMemo(() => {
+    const { query, stageIndex } = step;
+    const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
+    const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
+
     const actions = [];
     const hasLargeActionButtons =
-      isLastStep && step.actions.some(hasLargeButton);
+      isLastStep &&
+      !(hasAggregations && !hasBreakouts) &&
+      step.actions.some(hasLargeButton);
 
     actions.push(
       ...step.actions.map(action => {
@@ -77,7 +83,7 @@ export function NotebookStep({
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
     return actions.map(action => action.button);
-  }, [step.actions, isLastStep, openStep]);
+  }, [step, isLastStep, openStep]);
 
   const handleClickRevert = useCallback(() => {
     if (step.revert) {
