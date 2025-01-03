@@ -1,6 +1,5 @@
 import { Box, SimpleGrid } from "@mantine/core";
 import {
-  type DatePickerValue,
   MonthPicker,
   type MonthPickerProps,
   PickerControl,
@@ -68,13 +67,13 @@ export const QuarterPicker = forwardRef(function QuarterPicker(
       {level === "year" && (
         <SimpleGrid cols={2} spacing="sm">
           {QUARTERS.map(quarter => (
-            <QuarterPickerControl
+            <PickerControl
               key={quarter}
-              value={value}
-              date={date}
-              quarter={quarter}
-              onChange={setValue}
-            />
+              selected={value != null && isSelected(value, date, quarter)}
+              onClick={() => setValue(getQuarterValue(date, quarter))}
+            >
+              Q{quarter}
+            </PickerControl>
           ))}
         </SimpleGrid>
       )}
@@ -82,34 +81,11 @@ export const QuarterPicker = forwardRef(function QuarterPicker(
   );
 });
 
-type QuarterPickerControlProps = {
-  value: DatePickerValue;
-  date: Date;
-  quarter: number;
-  onChange: (value: Date) => void;
-};
-
-function QuarterPickerControl({
-  value,
-  date,
-  quarter,
-  onChange,
-}: QuarterPickerControlProps) {
-  const isSelected =
-    value != null && isSameYearQuarter(value, date.getFullYear(), quarter);
-
-  const handleClick = () => {
-    onChange(dayjs(date).quarter(quarter).startOf("quarter").toDate());
-  };
-
-  return (
-    <PickerControl selected={isSelected} onClick={handleClick}>
-      Q{quarter}
-    </PickerControl>
-  );
+function getQuarterValue(date: Date, quarter: number) {
+  return dayjs(date).quarter(quarter).startOf("quarter").toDate();
 }
 
-function isSameYearQuarter(value: Date, year: number, quarter: number) {
-  const date = dayjs(value);
-  return date.year() === year && date.quarter() === quarter;
+function isSelected(value: Date, date: Date, quarter: number) {
+  const day = dayjs(value);
+  return day.year() === date.getFullYear() && day.quarter() === quarter;
 }
