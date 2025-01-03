@@ -2,6 +2,7 @@
 title: Google Sign-In
 redirect_from:
   - /docs/latest/administration-guide/10-single-sign-on
+  - /docs/latest/people-and-groups/google-and-ldap
 ---
 
 # Google Sign-In
