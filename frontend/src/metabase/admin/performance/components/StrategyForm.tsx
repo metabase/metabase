@@ -276,19 +276,23 @@ const StrategyFormBody = ({
                   />
                 </Field>
                 <input type="hidden" name="unit" />
-                <PreemptiveCachingSwitch
-                  enabled={values.refresh_automatically}
-                  handleSwitchToggle={handleSwitchToggle}
-                />
+                {targetModel !== "database" && (
+                  <PreemptiveCachingSwitch
+                    enabled={values.refresh_automatically}
+                    handleSwitchToggle={handleSwitchToggle}
+                  />
+                )}
               </>
             )}
             {selectedStrategyType === "schedule" && (
               <>
                 <ScheduleStrategyFormFields />
-                <PreemptiveCachingSwitch
-                  enabled={values.refresh_automatically}
-                  handleSwitchToggle={handleSwitchToggle}
-                />
+                {targetModel !== "database" && (
+                  <PreemptiveCachingSwitch
+                    enabled={values.refresh_automatically}
+                    handleSwitchToggle={handleSwitchToggle}
+                  />
+                )}
               </>
             )}
           </Stack>
@@ -336,6 +340,7 @@ const PreemptiveCachingSwitch = ({
     <Switch
       checked={currentRefreshValue}
       onChange={handleSwitchToggle}
+      role="switch"
       size="sm"
       label="Refresh cache automatically"
       description="As soon as cached results expire, run and cache the query again to update
