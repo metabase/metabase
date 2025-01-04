@@ -1,8 +1,8 @@
 import {
-  type DatePickerType,
   type DatePickerValue,
   MonthPicker,
   type MonthPickerProps,
+  type PickerControlProps,
 } from "@mantine/dates";
 import { useUncontrolled } from "@mantine/hooks";
 import cx from "classnames";
@@ -11,19 +11,16 @@ import { type Ref, forwardRef } from "react";
 
 import S from "./QuarterPicker.module.css";
 
-export type QuarterPickerProps<T extends DatePickerType = "default"> =
-  MonthPickerProps<T>;
+export type QuarterPickerProps = MonthPickerProps;
 
-export const QuarterPicker = forwardRef(function QuarterPicker<
-  T extends DatePickerType = "default",
->(
+export const QuarterPicker = forwardRef(function QuarterPicker(
   {
     classNames,
     value: valueProp,
     defaultValue,
     onChange,
     ...props
-  }: QuarterPickerProps<T>,
+  }: QuarterPickerProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const [value, setValue] = useUncontrolled({
@@ -41,25 +38,21 @@ export const QuarterPicker = forwardRef(function QuarterPicker<
         monthsListRow: cx(S.monthsListRow, classNames?.monthsListRow),
         monthsListCell: cx(S.monthsListCell, classNames?.monthsListCell),
       }}
-      value={getValue(value)}
+      value={getQuarterValue(value)}
       monthsListFormat="[Q]Q"
       onChange={setValue}
+      getMonthControlProps={getMonthControlProps}
     />
   );
 });
 
-function getValue<T extends DatePickerType, V extends DatePickerValue<T>>(
-  value: V,
-): V {
-  if (Array.isArray(value)) {
-    return value.map(date => (date ? getStartOfQuarter(date) : date)) as V;
-  } else if (value) {
-    return getStartOfQuarter(value) as V;
-  } else {
-    return value;
-  }
+function getQuarterValue(value: DatePickerValue): DatePickerValue {
+  return value ? dayjs(value).startOf("quarter").toDate() : null;
 }
 
-function getStartOfQuarter(date: Date) {
-  return dayjs(date).startOf("quarter").toDate();
+function getMonthControlProps(date: Date): Partial<PickerControlProps> {
+  if (dayjs(date).month() !== dayjs(date).startOf("quarter").month()) {
+    return { disabled: true, style: { display: "none" } };
+  }
+  return {};
 }

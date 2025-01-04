@@ -20,7 +20,7 @@ describe("DateQuarterYearWidget", () => {
       value: "Q1-2020",
     });
 
-    await userEvent.click(screen.getByText("Q2"));
+    await userEvent.click(screen.getByRole("button", { name: "Q2" }));
 
     expect(onChange).toHaveBeenCalledWith("Q2-2020");
   });
@@ -32,7 +32,7 @@ describe("DateQuarterYearWidget", () => {
 
     await userEvent.click(screen.getByText("2020"));
     await userEvent.click(screen.getByText("2024"));
-    await userEvent.click(screen.getByText("Q3"));
+    await userEvent.click(screen.getByRole("button", { name: "Q3" }));
 
     expect(onChange).toHaveBeenCalledWith("Q3-2024");
   });
@@ -42,6 +42,6 @@ describe("DateQuarterYearWidget", () => {
       value: "2024-10-20",
     });
 
-    expect(screen.getByText("Q1")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Q1" })).toBeInTheDocument();
   });
 });
