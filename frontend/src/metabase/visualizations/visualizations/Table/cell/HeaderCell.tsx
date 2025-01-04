@@ -1,31 +1,42 @@
-import type { MouseEvent, ReactNode } from "react";
-import type { RenderHeaderCellProps } from "react-data-grid";
+import cx from "classnames";
+import type { MouseEvent } from "react";
+import type React from "react";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import type { RowValue } from "metabase-types/api";
+import { Icon } from "metabase/ui";
 
-import { BaseCell } from "./BaseCell";
 import styles from "./HeaderCell.module.css";
 
-export type HeaderCellProps = RenderHeaderCellProps<RowValue[]> & {
-  textAlign?: "left" | "right";
-  children?: ReactNode;
-  onHeaderClick?: (event: MouseEvent<HTMLDivElement>) => void;
+export type HeaderCellProps = {
+  align?: "left" | "right";
+  name?: React.ReactNode;
+  sort?: "asc" | "desc";
+  onClick?: (event: MouseEvent<HTMLDivElement>) => void;
 };
 
 export const HeaderCell = ({
-  column,
-  textAlign = "left",
-  children,
-  onHeaderClick,
+  name,
+  align = "left",
+  sort,
+  onClick,
 }: HeaderCellProps) => {
   return (
-    <BaseCell
-      textAlign={textAlign}
-      className={styles.headerCell}
-      onClick={onHeaderClick}
+    <div
+      className={cx(styles.root, {
+        [styles.leftAligned]: align === "left",
+        [styles.rightAligned]: align === "right",
+      })}
     >
-      <Ellipsified tooltip={column.name}>{children}</Ellipsified>
-    </BaseCell>
+      <div className={styles.content} onClick={onClick}>
+        {sort != null ? (
+          <Icon
+            mr="0.25rem"
+            name={sort === "asc" ? "chevronup" : "chevrondown"}
+            size={10}
+          />
+        ) : null}
+        <Ellipsified tooltip={name}>{name}</Ellipsified>
+      </div>
+    </div>
   );
 };

@@ -4,54 +4,19 @@
   font-size: 12.5px;
   font-weight: 700;
   --rdg-color: var(--mb-color-text-dark);
-  --rdg-border-color: var(--mb-color-border);
+  --rdg-border-color: var(--mb-color-border-alpha-30);
   --rdg-background-color: var(--mb-color-bg-white);
   --rdg-header-background-color: var(--mb-color-bg-white);
   --rdg-row-hover-background-color: var(--mb-color-background-hover);
   --rdg-selection-color: transparent;
 }
 
+.table [role="columnheader"],
 .table [role="gridcell"] {
   padding: 0;
+  border-right: 0;
 }
 
-.cellWrapper {
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  height: 100%;
-  width: 100%;
-}
-
-.cellData {
-  padding: 0 0.75em;
-  display: block;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow-x: hidden;
-  width: 100%;
-}
-
-.idCell {
-  color: var(--mb-color-text-dark);
-}
-
-.idCell .cellData {
-  border: 1px solid transparent;
-  padding: 0.25em 0.65em;
-  border-radius: 99px;
-  min-width: 35px;
-  text-align: center;
-}
-
-.fkCell {
-  color: var(--mb-color-brand);
-}
-
-.fkCell .cellData {
-  border: 1px solid transparent;
-  padding: 0.25em 0.65em;
-  border-radius: 99px;
-  min-width: 35px;
-  text-align: center;
+.table [role="columnheader"] {
+  border-color: var(--mb-color-border);
 }
