@@ -11,7 +11,10 @@ import { c } from "ttag";
 
 import S from "./QuarterPicker.module.css";
 
-export type QuarterPickerProps = Omit<MonthPickerProps, "monthListFormat"> & {
+export type QuarterPickerProps = Omit<
+  MonthPickerProps,
+  "monthListFormat" | "getMonthControlProps"
+> & {
   quarterListFormat?: string;
 };
 
