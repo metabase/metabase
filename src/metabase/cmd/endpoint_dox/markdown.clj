@@ -1,4 +1,4 @@
-(ns metabase.cmd.endpoint-dox.yaml
+(ns metabase.cmd.endpoint-dox.markdown
   "Code for generating YAML based on the endpoint metadata returned by [[metabase.cmd.endpoint-dox.metadata]]. This does
   not include the code for WRITING the YAML; that code lives in [[metabase.cmd.endpoint-dox]]."
   (:require

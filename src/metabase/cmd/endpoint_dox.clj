@@ -4,8 +4,8 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.cmd.endpoint-dox.markdown :as endpoint-dox.markdown]
    [metabase.cmd.endpoint-dox.metadata :as endpoint-dox.metadata]
-   [metabase.cmd.endpoint-dox.yaml :as endpoint-dox.yaml]
    [metabase.config :as config]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -33,15 +33,15 @@
 (mu/defn- generate-index-page!
   "Creates an index page that lists links to all endpoint pages."
   [pages :- ::endpoint-dox.metadata/pages]
-  (spit "docs/api-documentation.md" (endpoint-dox.yaml/index-page pages)))
+  (spit "docs/api-documentation.md" (endpoint-dox.markdown/index-page pages)))
 
 (mu/defn- generate-endpoint-pages!
   "Takes a map of endpoint groups and generates markdown
   pages for all API endpoint groups."
   [pages :- ::endpoint-dox.metadata/pages]
   (doseq [page pages]
-    (let [file     (endpoint-dox.yaml/page-filename (str "docs/" (if (:paid? page) "api/ee/" "api/")) (:name page))
-          contents (endpoint-dox.yaml/page page)]
+    (let [file     (endpoint-dox.markdown/page-filename (str "docs/" (if (:paid? page) "api/ee/" "api/")) (:name page))
+          contents (endpoint-dox.markdown/page page)]
       (io/make-parents file)
       (spit file contents))))
 
