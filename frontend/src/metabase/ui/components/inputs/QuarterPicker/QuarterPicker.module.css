@@ -1,7 +1,30 @@
-.yearLevel {
-  min-width: 11rem;
-}
-
 .monthsList {
-  display: none;
+  display: block;
+
+  .monthsListRow {
+    display: block;
+    float: left;
+
+    &:nth-child(odd) {
+      clear: left;
+    }
+
+    .monthsListCell {
+      &:not(:first-child) {
+        display: none;
+      }
+    }
+
+    &:nth-child(2) {
+      .monthsListCell {
+        padding-top: 0;
+      }
+    }
+
+    &:nth-child(even) {
+      .monthsListCell {
+        padding-right: 0;
+      }
+    }
+  }
 }
