@@ -43,7 +43,7 @@ export const QuarterPicker = forwardRef(function QuarterPicker(
   const [date, setDate] = useUncontrolled({
     value: dateProp,
     defaultValue: defaultDate,
-    finalValue: new Date(),
+    finalValue: value ?? new Date(),
     onChange: onDateChange,
   });
 
