@@ -1,0 +1,44 @@
+.root {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  padding: 0 0.75em;
+}
+
+.content {
+  display: block;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.pill {
+  color: var(--mb-color-brand);
+  border: 1px solid rgba(80, 158, 227, 0.14);
+  background-color: rgba(80, 158, 227, 0.08);
+  border-radius: 99px;
+  padding: 0.25em 0.65em;
+  width: auto;
+  min-width: 35px;
+  text-align: center;
+}
+
+.minibar {
+  border: 1px solid transparent;
+  border-radius: 99px;
+}
+
+.alignLeft {
+  text-align: left;
+}
+
+.alignRight {
+  text-align: right;
+}

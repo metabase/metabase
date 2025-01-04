@@ -17,6 +17,7 @@ export const isVirtualCardDisplayType = (
 
 const cardDisplayTypes = [
   "table",
+  "table-new",
   "bar",
   "line",
   "pie",

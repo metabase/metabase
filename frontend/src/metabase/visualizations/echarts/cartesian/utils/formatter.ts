@@ -1,8 +1,10 @@
 import type { RowValue } from "metabase-types/api";
 
-import type { RawValueFormatter } from "../model/types";
+type BaseFormatter = (value: unknown) => unknown;
 
-export const cachedFormatter = (formatter: RawValueFormatter) => {
+export const cachedFormatter = <TFormatter extends BaseFormatter>(
+  formatter: TFormatter,
+) => {
   const cache = new Map();
   return (value: RowValue) => {
     if (cache.has(value)) {

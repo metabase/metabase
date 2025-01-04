@@ -1,0 +1,22 @@
+.table {
+  block-size: 100%;
+  border: none;
+  font-size: 12.5px;
+  font-weight: 700;
+  --rdg-color: var(--mb-color-text-dark);
+  --rdg-border-color: var(--mb-color-border-alpha-30);
+  --rdg-background-color: var(--mb-color-bg-white);
+  --rdg-header-background-color: var(--mb-color-bg-white);
+  --rdg-row-hover-background-color: var(--mb-color-background-hover);
+  --rdg-selection-color: transparent;
+}
+
+.table [role="columnheader"],
+.table [role="gridcell"] {
+  padding: 0;
+  border-right: 0;
+}
+
+.table [role="columnheader"] {
+  border-color: var(--mb-color-border);
+}
