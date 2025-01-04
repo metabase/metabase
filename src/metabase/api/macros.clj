@@ -398,27 +398,6 @@
     (clout/route-compile ~(:path route) ~(:regexes route))
     ~base-handler))
 
-(mu/defn defendpoint-dox :- string?
-  "Generate Markdown-formatted documentation for an API endpoint based on parsed `args`. This is used to generate the
-  documentation in `docs/api`. See [[metabase.cmd.endpoint-dox.metadata]]."
-  {:style/indent [:form]}
-  [parsed-args :- ::parsed-args]
-  (let [method        (u/upper-case-en (name (:method parsed-args)))
-        route         (get-in parsed-args [:route :path])
-        docstr        (:docstr parsed-args)
-        args          nil
-        param->schema (into {}
-                            (keep (fn [[param-type {:keys [schema]}]]
-                                    (when schema
-                                      [(case param-type
-                                         :route "Route parameters"
-                                         :query "Query parameters"
-                                         :body  "Request Body")
-                                       schema])))
-                            (:params parsed-args))
-        body          (:body parsed-args)]
-    (metabase.api.common.internal/route-dox method route docstr args param->schema body)))
-
 (mu/defn defendpoint-openapi-spec
   "Generate OpenAPI specs for an API endpoint based on parsed `args`."
   {:style/indent [:form]}
@@ -540,14 +519,6 @@
 
   (find-route 'metabase.api.timeline :get "/")
   (find-route 'metabase.api.timeline :get "/:id")
-  (find-route-fn 'metabase.api.timeline :get "/:id")
-
-  (let [s (metabase.api.macros/defendpoint-dox (:form (find-route 'metabase.api.timeline :get "/")))]
-    (println s)
-    nil)
-
-  (let [s (metabase.api.macros/defendpoint-dox (:form (find-route 'metabase.api.timeline :get "/:id")))]
-    (println s)
-    nil))
+  (find-route-fn 'metabase.api.timeline :get "/:id"))
 
 ;;; PLEASE DON'T ADD ANY MORE CODE AFTER THE EXAMPLE USAGES ABOVE, GO ADD IT SOMEWHERE ELSE.

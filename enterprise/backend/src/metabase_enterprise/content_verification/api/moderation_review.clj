@@ -1,4 +1,5 @@
-(ns metabase-enterprise.content-verification.api.review
+(ns metabase-enterprise.content-verification.api.moderation-review
+  "`api/ee/moderation-review` routes."
   (:require
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]

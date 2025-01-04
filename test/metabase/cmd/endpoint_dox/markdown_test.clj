@@ -35,7 +35,7 @@
 (deftest ^:parallel build-endpoint-link-test
   (testing "Links to endpoint pages are generated correctly."
     (is (= "- [Activity](api/activity.md)"
-           (#'endpoint-dox.markdown/build-endpoint-link page)))))
+           (#'endpoint-dox.markdown/endpoint-link page)))))
 
 (deftest ^:parallel page-test
   (testing "Endpoint pages are formatted correctly."

@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.tools.namespace.find :as ns.find]
    [metabase.api.macros :as api.macros]
+   [metabase.cmd.endpoint-dox.markdown.defendpoint :as markdown.defendpoint]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -37,7 +38,8 @@
   [:map
    [::sort-key ::endpoint-sort-key]
    [:ns        (ms/InstanceOfClass clojure.lang.Namespace)]
-   [:doc       string?]])
+   ;; either a string or a hiccup-style Markdown node
+   [:doc       any?]])
 
 (mr/def ::page-name
   string?)
@@ -151,7 +153,7 @@
           (assoc (:form metadata)
                  ::sort-key (defendpoint-2-sort-key k)
                  :ns        (the-ns ns-symb)
-                 :doc       (api.macros/defendpoint-dox (:form metadata))))
+                 :doc       (markdown.defendpoint/defendpoint-dox (:form metadata))))
         (:api/endpoints (meta (the-ns ns-symb)))))
 
 (mu/defn- ns-endpoints :- [:sequential ::endpoint]
@@ -167,32 +169,22 @@
   []
   (mapcat ns-endpoints (api-namespace-symbols)))
 
-(mu/defn- endpoint-str :- string?
-  "Creates a name for an endpoint: VERB /path/to/endpoint.
-  Used to build anchor links in the table of contents."
+(mu/defn- route :- string?
+  "Creates a name for an endpoint: VERB /path/to/endpoint."
   [endpoint :- ::endpoint]
-  (-> (:doc endpoint)
-      (str/split #"\n")
-      first
-      str/trim))
+  (:path endpoint))
 
 (mu/defn- paid?
   "Is the endpoint a paid feature?"
-  [endpoint :- ::endpoint]
-  (let [endpoint-str (endpoint-str endpoint)]
-    (or (str/includes? endpoint-str "/api/ee")
-        ;; some ee endpoints are inconsistent in naming, see #22687
-        (str/includes? endpoint-str "/api/mt")
-        (= 'metabase-enterprise.sandbox.api.table (ns-name (:ns endpoint)))
-        (str/includes? endpoint-str "/auth/sso")
-        (str/includes? endpoint-str "/api/moderation-review"))))
+  [namespace]
+  (str/includes? (ns-name namespace) "metabase-enterprise"))
 
 (mu/defn- page :- ::page
   [page-name :- ::page-name
    endpoints :- [:sequential ::endpoint]]
   {:name      page-name
    :ns        (:ns (first endpoints))
-   :paid?     (boolean (paid? (first endpoints)))
+   :paid?     (boolean (paid? (:ns (first endpoints))))
    :endpoints endpoints})
 
 (mu/defn- endpoints->pages :- ::pages
@@ -209,7 +201,16 @@
   []
   (endpoints->pages (all-endpoints)))
 
+;;;;
+;;;; Example usages
+;;;;
+
 (comment
   (ns-endpoints 'metabase.api.timeline)
 
-  (endpoints->pages (ns-endpoints 'metabase.api.timeline)))
+  (endpoints->pages (ns-endpoints 'metabase.api.timeline))
+
+  ;; EE namespace, should be paid.
+  (endpoints->pages (ns-endpoints 'metabase-enterprise.advanced-permissions.api.application)))
+
+;;; PLEASE DON'T ADD ANY MORE CODE AFTER THE EXAMPLE USAGES ABOVE, GO ADD IT SOMEWHERE ELSE.
