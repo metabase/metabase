@@ -58,7 +58,7 @@ const SERIALIZERS: Serializer[] = [
       }
     },
   },
-  // entire quarter, `Q2
+  // entire quarter, `Q2`
   {
     regex: /^Q([1-4])-([0-9]{4})$/,
     serialize: value => {
