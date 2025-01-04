@@ -3,7 +3,6 @@ import {
   MonthPicker,
   type MonthPickerProps,
   PickerControl,
-  type PickerControlProps,
 } from "@mantine/dates";
 import { useUncontrolled } from "@mantine/hooks";
 import dayjs from "dayjs";
@@ -11,8 +10,6 @@ import { type Ref, forwardRef } from "react";
 import { c } from "ttag";
 
 import S from "./QuarterPicker.module.css";
-
-const QUARTERS = [1, 2, 3, 4];
 
 export type QuarterPickerProps = Omit<MonthPickerProps, "monthListFormat"> & {
   quarterListFormat?: string;
@@ -64,32 +61,31 @@ export const QuarterPicker = forwardRef(function QuarterPicker(
         value={value}
         date={date}
         level={level}
-        getMonthControlProps={getMonthControlProps}
         onChange={setValue}
         onDateChange={setDate}
         onLevelChange={setLevel}
       />
       {level === "year" && (
         <SimpleGrid cols={2} spacing="sm">
-          {QUARTERS.map(quarter => getQuarterDate(date, quarter)).map(
-            (quarterDate, quarterIndex) => (
-              <PickerControl
-                key={quarterIndex}
-                selected={value != null && isSelected(value, quarterDate)}
-                onClick={() => setValue(quarterDate)}
-              >
-                {dayjs(quarterDate).format(quarterListFormat)}
-              </PickerControl>
-            ),
-          )}
+          {getQuarters(date).map((quarter, index) => (
+            <PickerControl
+              key={index}
+              selected={value != null && isSelected(value, quarter)}
+              onClick={() => setValue(quarter)}
+            >
+              {dayjs(quarter).format(quarterListFormat)}
+            </PickerControl>
+          ))}
         </SimpleGrid>
       )}
     </Box>
   );
 });
 
-function getQuarterDate(date: Date, quarter: number) {
-  return dayjs(date).quarter(quarter).startOf("quarter").toDate();
+function getQuarters(date: Date) {
+  return Array.from({ length: 4 }, (_, index) =>
+    dayjs(date).startOf("year").add(index, "quarter").toDate(),
+  );
 }
 
 function getQuarterFormat() {
@@ -101,8 +97,4 @@ function getQuarterFormat() {
 function isSelected(value: Date, quarter: Date) {
   const date = dayjs(value);
   return date.isSame(quarter, "year") && date.isSame(quarter, "quarter");
-}
-
-function getMonthControlProps(): Partial<PickerControlProps> {
-  return { disabled: true };
 }
