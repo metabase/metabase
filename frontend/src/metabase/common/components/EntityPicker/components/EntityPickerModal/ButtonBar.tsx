@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { Button, Flex, Text } from "metabase/ui";
 
 export const ButtonBar = ({
-  modalRef,
   onConfirm,
   onCancel,
   canConfirm,
@@ -12,7 +11,6 @@ export const ButtonBar = ({
   confirmButtonText,
   cancelButtonText,
 }: {
-  modalRef: React.RefObject<HTMLElement>;
   onConfirm: () => void;
   onCancel: () => void;
   canConfirm?: boolean;
@@ -21,17 +19,18 @@ export const ButtonBar = ({
   cancelButtonText?: string;
 }) => {
   const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     const handleEnter = (e: KeyboardEvent) => {
       if (canConfirm && e.key === "Enter") {
         onConfirm();
       }
     };
-    // TODO: kinda iffy on this idea...
-    const modal = modalRef.current;
-    modal?.addEventListener("keypress", handleEnter);
-    return () => modal?.removeEventListener("keypress", handleEnter);
-  }, [canConfirm, onConfirm, modalRef]);
+    document.addEventListener("keypress", handleEnter);
+    return () => {
+      document.removeEventListener("keypress", handleEnter);
+    };
+  }, [canConfirm, onConfirm]);
 
   return (
     <Flex

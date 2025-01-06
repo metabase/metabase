@@ -207,7 +207,9 @@ export const CollectionPickerModal = ({
         title={title}
         onItemSelect={handleItemSelect}
         canSelectItem={
-          !isCreateCollectionDialogOpen && canSelectItem(selectedItem)
+          !isCreateCollectionDialogOpen &&
+          !isCreateDashboardDialogOpen &&
+          canSelectItem(selectedItem)
         }
         onConfirm={handleConfirm}
         onClose={onClose}
