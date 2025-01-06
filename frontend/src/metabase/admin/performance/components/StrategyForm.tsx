@@ -278,7 +278,6 @@ const StrategyFormBody = ({
                 <input type="hidden" name="unit" />
                 {targetModel !== "database" && (
                   <PreemptiveCachingSwitch
-                    enabled={values.refresh_automatically}
                     handleSwitchToggle={handleSwitchToggle}
                   />
                 )}
@@ -289,7 +288,6 @@ const StrategyFormBody = ({
                 <ScheduleStrategyFormFields />
                 {targetModel !== "database" && (
                   <PreemptiveCachingSwitch
-                    enabled={values.refresh_automatically}
                     handleSwitchToggle={handleSwitchToggle}
                   />
                 )}
@@ -312,30 +310,13 @@ const StrategyFormBody = ({
 };
 
 const PreemptiveCachingSwitch = ({
-  enabled,
   handleSwitchToggle,
 }: {
   enabled?: boolean;
   handleSwitchToggle: () => void;
 }) => {
-  const { values } = useFormikContext<CacheStrategy>();
-
-  const hasRefreshAutomatically = (
-    strategy: CacheStrategy,
-  ): strategy is DurationStrategy | ScheduleStrategy => {
-    return strategy.type === "duration" || strategy.type === "schedule";
-  };
-
-  const currentRefreshValue = hasRefreshAutomatically(values)
-    ? values.refresh_automatically
-    : false;
-
-  useEffect(() => {
-    if (hasRefreshAutomatically(values) && enabled !== currentRefreshValue) {
-      handleSwitchToggle();
-    }
-  }, [enabled, currentRefreshValue, handleSwitchToggle, values]);
-
+  const { values } = useFormikContext<DurationStrategy | ScheduleStrategy>();
+  const currentRefreshValue = values.refresh_automatically ?? false;
   return (
     <Switch
       checked={currentRefreshValue}
