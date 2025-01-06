@@ -329,7 +329,6 @@ const PreemptiveCachingSwitch = ({
       styles={{
         labelWrapper: { paddingLeft: "16px" },
         label: { fontWeight: "bold" },
-        description: { fontWeight: "normal" },
       }}
       wrapperProps={{
         "data-testid": "preemptive-caching-switch",
