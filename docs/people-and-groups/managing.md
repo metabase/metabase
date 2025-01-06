@@ -1,12 +1,18 @@
 ---
-title: Managing people and groups
+title: People and groups
 redirect_from:
   - /docs/latest/administration-guide/04-managing-users
 ---
 
-# Managing people and groups
+# People and groups
 
-To start managing people:
+People can have [accounts](#creating-an-account) in Metabase, and those accounts can be members of [groups](#groups). These groups are used to define [permissions](../permissions/introduction.md). People can be in multiple groups.
+
+> This page covers accounts people use to log in to _your_ Metabase(s). These accounts are distinct from [Metabase _store_ accounts](https://store.metabase.com), which are used to manage paid Metabase plans.
+
+## Managing people and groups
+
+To start managing people and groups:
 
 Hit Cmd/Ctrl + K to bring up the command palette and search for "People". Click on the **People** settings result.
 
@@ -18,11 +24,13 @@ Click on the **gear** icon > **Admin settings** > **People**. You'll see a list 
 
 ## Creating an account
 
-To add a new person, click **Invite someone** in the upper right corner. You’ll be prompted to enter their email, and optionally their first and last names–only the email is required.
+Admins can add people to their Metabase. To add a new person manually, click on the gear icon and select **Admin settings**. Under the **People** tab, click **Invite someone** in the upper right corner. You’ll be prompted to enter their email, and optionally their first and last names–only the email is required.
 
 Click **Create** to activate an account. An account becomes active once you click **Create**, even if the person never signs into the account. The account remains active until you [deactivate the account](#deactivating-an-account). If you're on a Pro or Enterprise Metabase plan, all active accounts will count toward your user account total. If one person has more than one account, each account will count toward the total (see [how billing works](https://www.metabase.com/pricing/how-billing-works)).
 
 If you’ve already [configured Metabase to use email](../configuring-metabase/email.md), Metabase will send the person an email inviting them to log into Metabase. If you haven't yet setup email for your Metabase, Metabase will give you a temporary password that you’ll have to manually send to the person.
+
+To create accounts with SSO, check out [authentication options](./start.md#authentication).
 
 ## Editing an account
 
@@ -168,7 +176,7 @@ To make someone an admin of Metabase, you just need to add them to the Administr
 
 #### All users
 
-The **All Users** group is another special one. Every Metabase user is always a member of this group, though they can also be a member of as many other groups as you want. We recommend using the All Users group as a way to set default access levels for new Metabase users. If you have [Google single sign-on](./google-and-ldap.md) enabled, new users who join that way will be automatically added to the All Users group.
+The **All Users** group is another special one. Every Metabase user is always a member of this group, though they can also be a member of as many other groups as you want. We recommend using the All Users group as a way to set default access levels for new Metabase users. If you have [Google single sign-on](./google-sign-in.md) enabled, new users who join that way will be automatically added to the All Users group.
 
 It's important that your All Users group should never have _greater_ access for an item than a group for which you're trying to restrict access — otherwise the more permissive setting will win out. See [Setting permissions](../permissions/start.md).
 
