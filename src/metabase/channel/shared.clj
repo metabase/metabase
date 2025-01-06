@@ -3,7 +3,7 @@
   (:require
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.notification.storage.core :as notification.storage]
+   [metabase.notification.payload.core :as notification.payload]
    [metabase.util.i18n :refer [tru]]))
 
 (defn validate-channel-details
@@ -16,10 +16,11 @@
 
 (defn- maybe-retrieve
   [x]
-  (if (satisfies? notification.storage/NotificationStorage x)
-    (notification.storage/retrieve x)
+  (if (notification.payload/notification-storage? x)
+    (notification.payload/retrieve x)
     x))
 
 (defn realize-data-rows
+  "Realize the data rows in a [[metabase.notification.payload.execute/Part]]"
   [part]
   (update-in part [:result :data :rows] maybe-retrieve))

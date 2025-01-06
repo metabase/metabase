@@ -6,7 +6,6 @@
    [metabase.models.setting :as setting]
    [metabase.models.task-history :as task-history]
    [metabase.notification.payload.core :as notification.payload]
-   [metabase.notification.storage.core :as notification.storage]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]

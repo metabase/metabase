@@ -2,14 +2,12 @@
   (:require
    [clojure.java.io :as io]
    [java-time.api :as t]
-   [metabase.channel.shared :as channel.shared]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -90,7 +88,8 @@
     result :result
     :as part}]
   (when (pos-int? (:row_count result))
-    (let [result (:result (channel.shared/realize-data-rows part))]
+    (let [realize-data-rows (requiring-resolve 'metabase.channel.shared/realize-data-rows)
+          result (:result (realize-data-rows part))]
       [(when-let [temp-file (and (:include_csv card)
                                  (create-temp-file-or-throw "csv"))]
          (with-open [os (io/output-stream temp-file)]

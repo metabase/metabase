@@ -1,7 +1,6 @@
-(ns metabase.notification.storage.disk
+(ns metabase.notification.payload.disk-storage
   (:require
    [clojure.java.io :as io]
-   [metabase.notification.storage.protocols :as storage]
    [metabase.util :as u]
    [metabase.util.random :as random]
    [taoensso.nippy :as nippy])
@@ -10,6 +9,23 @@
    (java.util.concurrent Executors ScheduledThreadPoolExecutor TimeUnit)))
 
 (set! *warn-on-reflection* true)
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                           Protocols                                             ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(defprotocol NotificationStorage
+  "Protocol for storing and retrieving notification payload data"
+  (store! [this data]
+    "Store the data and return a reference that can be used to retrieve it later")
+  (retrieve [this]
+    "Retrieve the data")
+  (cleanup! [this]
+    "Clean up any resources"))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                           DiskStorage                                           ;;
+;; ------------------------------------------------------------------------------------------------;;
 
 (def ^:private temp-dir
   (delay
@@ -39,7 +55,7 @@
     (.deleteOnExit)))
 
 (deftype DiskStorage [file]
-  storage/NotificationStorage
+  NotificationStorage
   (store! [this data]
     (nippy/freeze-to-file file data)
     this)
@@ -58,6 +74,21 @@
   (toString [this]
     (str "#<DiskStorage@" (.file this) ">")))
 
+(.addShutdownHook
+ (Runtime/getRuntime)
+ (Thread. ^Runnable (fn []
+                      (when @deletion-scheduler
+                        (.shutdown ^ScheduledThreadPoolExecutor @deletion-scheduler)))))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                           Public APIs                                           ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(defn notification-storage?
+  "Check if the given object satisfies the {[NotificationStorage}] protocol."
+  [x]
+  (satisfies? NotificationStorage x))
+
 (defn to-disk-storage!
   "Store data in a temporary file and return a reference to it.
   Optional expiry-seconds parameter specifies how long to keep the file before deletion (defaults to 5 minutes)"
@@ -68,14 +99,8 @@
   ([data expired-seconds]
    (let [f (temp-file)
          s (DiskStorage. f)]
-     (u/prog1 (storage/store! s data)
+     (u/prog1 (store! s data)
        (-> f (schedule-deletion! expired-seconds))))))
 
 (comment
   (to-disk-storage! {:foo "bar"} 20))
-
-(.addShutdownHook
- (Runtime/getRuntime)
- (Thread. ^Runnable (fn []
-                      (when @deletion-scheduler
-                        (.shutdown ^ScheduledThreadPoolExecutor @deletion-scheduler)))))

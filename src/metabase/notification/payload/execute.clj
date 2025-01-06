@@ -6,7 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.params.shared :as shared.params]
    [metabase.models.serialization :as serdes]
-   [metabase.notification.storage.core :as notification.storage]
+   [metabase.notification.payload.disk-storage :as notification.disk-storage]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -133,6 +133,10 @@
                                    tag-names)]
     (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (public-settings/site-locale) (escape-markdown-chars? dashcard))))
 
+(defn- data-rows-to-disk!
+  [qp-result]
+  (update-in qp-result [:data :rows] notification.disk-storage/to-disk-storage!))
+
 (defn execute-dashboard-subscription-card
   "Returns subscription result for a card.
 
@@ -164,7 +168,7 @@
                                 :dashcard dashcard
                                 ;; TODO should this be dashcard?
                                 :type     :card
-                                :result   #_result (update-in result [:data :rows] notification.storage/to-disk-storage!)}))
+                                :result   (data-rows-to-disk! result)}))
             result         (result-fn card_id)
             series-results (mapv (comp result-fn :id) multi-cards)]
         (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
@@ -279,7 +283,7 @@
                               (process-query))
                             (process-query))]
         {:card   card
-         :result (update-in result [:result :data :rows] notification.storage/to-disk-storage!)
+         :result result
          :type   :card}))
     (catch Throwable e
       (log/warnf e "Error running query for Card %s" card-id))))
