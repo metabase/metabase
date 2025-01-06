@@ -10,7 +10,6 @@ export const getOffsetPeriod = (
   stageIndex: number,
 ): string => {
   const firstBreakout = Lib.breakouts(query, stageIndex)[0];
-
   if (!firstBreakout) {
     return t`period`;
   }
@@ -20,13 +19,11 @@ export const getOffsetPeriod = (
     stageIndex,
     firstBreakout,
   );
-
-  if (!Lib.isTemporal(firstBreakoutColumn)) {
+  if (!Lib.isTemporalBucketable(query, stageIndex, firstBreakoutColumn)) {
     return t`rows`;
   }
 
   const bucket = Lib.temporalBucket(firstBreakout);
-
   if (!bucket) {
     return t`period`;
   }

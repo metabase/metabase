@@ -29,7 +29,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   if (aggregations.length === 1 && breakouts.length === 1) {
-    const [{ column }] = getBreakoutsWithColumns(query, stageIndex, breakouts);
+    const [column] = getBreakoutColumns(query, stageIndex);
 
     if (Lib.isState(column)) {
       return {
@@ -53,11 +53,8 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   if (aggregations.length >= 1 && breakouts.length === 1) {
-    const [{ breakout, column }] = getBreakoutsWithColumns(
-      query,
-      stageIndex,
-      breakouts,
-    );
+    const [breakout] = breakouts;
+    const [column] = getBreakoutColumns(query, stageIndex);
 
     if (Lib.isTemporal(column)) {
       const info = Lib.displayInfo(query, stageIndex, breakout);
@@ -82,20 +79,16 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   if (aggregations.length === 1 && breakouts.length === 2) {
-    const breakoutsWithColumns = getBreakoutsWithColumns(
-      query,
-      stageIndex,
-      breakouts,
-    );
+    const breakoutColumns = getBreakoutColumns(query, stageIndex);
 
-    const isAnyBreakoutTemporal = breakoutsWithColumns.some(({ column }) => {
+    const isAnyBreakoutTemporal = breakoutColumns.some(column => {
       return Lib.isTemporal(column);
     });
     if (isAnyBreakoutTemporal) {
       return { display: "line" };
     }
 
-    const areBreakoutsCoordinates = breakoutsWithColumns.every(({ column }) => {
+    const areBreakoutsCoordinates = breakoutColumns.every(column => {
       return Lib.isCoordinate(column);
     });
     if (areBreakoutsCoordinates) {
@@ -120,7 +113,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       };
     }
 
-    const areBreakoutsCategories = breakoutsWithColumns.every(({ column }) => {
+    const areBreakoutsCategories = breakoutColumns.every(column => {
       return Lib.isCategory(column);
     });
     if (areBreakoutsCategories) {
@@ -131,13 +124,13 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
   return { display: "table" };
 };
 
-const getBreakoutsWithColumns = (
-  query: Lib.Query,
-  stageIndex: number,
-  breakouts: Lib.BreakoutClause[],
-) => {
-  return breakouts.map(breakout => {
-    const column = Lib.breakoutColumn(query, stageIndex, breakout);
-    return { breakout, column };
+const getBreakoutColumns = (query: Lib.Query, stageIndex: number) => {
+  return Lib.breakoutableColumns(query, stageIndex).filter(column => {
+    const { breakoutPositions = [] } = Lib.displayInfo(
+      query,
+      stageIndex,
+      column,
+    );
+    return breakoutPositions.length > 0;
   });
 };

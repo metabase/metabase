@@ -115,19 +115,6 @@
   [column]
   (clojure.core/isa? (:semantic-type column) :type/Description))
 
-(defn ^:export dimension?
-  "Is `column` a dimension?"
-  [column]
-  (and column
-       (not= (:lib/source column) :source/aggregations)
-       (not (description? column))))
-
-(defn ^:export metric?
-  "Is `column` a metric?"
-  [column]
-  (and (not= (:lib/source column) :source/breakouts)
-       (summable? column)))
-
 (defn ^:export foreign-key?
   "Is `column` a foreign-key?"
   [column]

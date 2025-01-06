@@ -37,13 +37,11 @@
 (def type-hierarchies
   "A front-end specific type hierarchy used by [[metabase.lib.types.isa/field-type?]].
   It is not meant to be used directly."
-  {::temporal    {:effective-type [:type/Temporal]
-                  :semantic-type  [:type/Temporal]}
+  {::temporal    {:effective-type [:type/Temporal]}
    ::number      {:effective-type [:type/Number]
                   :semantic-type  [:type/Number]}
    ::integer     {:effective-type [:type/Integer]}
-   ::string      {:effective-type [:type/Text]
-                  :semantic-type  [:type/Text :type/Category]}
+   ::string      {:effective-type [:type/Text]}
    ::string_like {:effective-type [:type/TextLike]}
    ::boolean     {:effective-type [:type/Boolean]}
    ::coordinate  {:semantic-type [:type/Coordinate]}

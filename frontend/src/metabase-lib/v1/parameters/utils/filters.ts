@@ -52,7 +52,8 @@ export function columnFilterForParameter(
       return column => Lib.isNumber(column) && !Lib.isLocation(column);
     case "string":
       return column =>
-        Lib.isStringOrStringLike(column) && !Lib.isLocation(column);
+        (Lib.isStringOrStringLike(column) || Lib.isCategory(column)) &&
+        !Lib.isLocation(column);
     case "temporal-unit":
       return column => Lib.isTemporalBucketable(query, stageIndex, column);
   }
