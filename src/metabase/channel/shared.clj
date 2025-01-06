@@ -16,7 +16,7 @@
 
 (defn- maybe-retrieve
   [x data-provider]
-  (if (notification.payload/path? x)
+  (if (notification.payload/entry-ref? x)
     (notification.payload/retrieve-by-path data-provider x)
     x))
 

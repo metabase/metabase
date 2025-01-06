@@ -16,7 +16,7 @@
   process-virtual-dashcard]
  [notification.data-provider
   retrieve-by-path
-  path?
+  entry-ref?
   cleanup!])
 
 (def Notification

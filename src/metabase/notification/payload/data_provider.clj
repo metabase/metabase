@@ -24,7 +24,7 @@
   (cleanup! [this] "Clean up all resources"))
 
 ;; ------------------------------------------------------------------------------------------------;;
-;;                                           DiskStorage                                           ;;
+;;                                         DiskDataProvider                                        ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
 (def ^:private deletion-scheduler
@@ -101,7 +101,7 @@
                             (= ::path (first path))
                             last)))
 
-(defn path?
+(defn entry-ref?
   [x]
   (and (sequential? x) (= ::path (first x))))
 

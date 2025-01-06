@@ -90,7 +90,7 @@
 
 (defrecord InMemmoryDataProvider [store]
   notification.data-provider/DataProvider
-  (store! [this dest-path data]
+  (store! [_this dest-path data]
     (swap! store assoc dest-path data))
   (retrieve [_this source-path]
     (get @store source-path))
