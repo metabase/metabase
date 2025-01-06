@@ -101,7 +101,7 @@
                                 :text {:type "plain_text"
                                        :text (str "🔔 " (-> payload :card :name))
                                        :emoji true}}]}
-                     (part->attachment-data (channel.shared/realize-data-rows (:card_part payload)) (slack/files-channel))]]
+                     (part->attachment-data (:card_part payload) (slack/files-channel))]]
     (for [channel-id channel-ids]
       {:channel-id  channel-id
        :attachments attachments})))
@@ -140,19 +140,19 @@
 
 (defn- create-slack-attachment-data
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
-  [parts]
+  [data-provider parts]
   (let [channel-id (slack/files-channel)]
     (for [part  parts
-          :let  [attachment (part->attachment-data (channel.shared/realize-data-rows part) channel-id)]
+          :let  [attachment (part->attachment-data (update part :result channel.shared/realize-qp-data-rows data-provider) channel-id)]
           :when attachment]
       attachment)))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload creator]} _template channel-ids]
+  [_channel-type {:keys [payload creator data-provider]} _template channel-ids]
   (let [parameters (:parameters payload)
         dashboard  (:dashboard payload)]
     (for [channel-id channel-ids]
       {:channel-id  channel-id
        :attachments (remove nil?
                             (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
-                                      (create-slack-attachment-data (:dashboard_parts payload))]))})))
+                                      (create-slack-attachment-data data-provider (:dashboard_parts payload))]))})))

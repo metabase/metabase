@@ -2,7 +2,7 @@
   (:require
    [metabase.channel.render.core :as channel.render]
    [metabase.models.notification :as models.notification]
-   [metabase.notification.payload.disk-storage :as notification.disk-storage]
+   [metabase.notification.payload.data-provider :as notification.data-provider]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
@@ -14,9 +14,10 @@
 (p/import-vars
  [notification.payload.execute
   process-virtual-dashcard]
- [notification.disk-storage
-  retrieve
-  notification-storage?])
+ [notification.data-provider
+  retrieve-by-path
+  path?
+  cleanup!])
 
 (def Notification
   "Schema for the notification."
@@ -143,15 +144,17 @@
 
 (defmulti payload
   "Given a notification info, return the notification payload."
-  :payload_type)
+  (fn [notification _data-provider]
+    (:payload_type notification)))
 
 (mu/defn notification-payload :- NotificationPayload
   "Realize notification-info with :context and :payload."
-  [notification :- Notification]
+  [notification :- Notification data-provider]
   (assoc (select-keys notification [:payload_type])
          :creator (t2/select-one [:model/User :id :first_name :last_name :email] (:creator_id notification))
-         :payload (payload notification)
-         :context (default-context)))
+         :payload (payload notification data-provider)
+         :context (default-context)
+         :data-provider data-provider))
 
 (defmulti should-send-notification?
   "Determine whether a notification should be sent. Default to true."

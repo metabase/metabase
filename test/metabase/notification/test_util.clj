@@ -6,6 +6,7 @@
    [metabase.events.notification :as events.notification]
    [metabase.notification.core :as notification]
    [metabase.notification.payload.core :as notification.payload]
+   [metabase.notification.payload.data-provider :as notification.data-provider]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -31,7 +32,7 @@
   [notification-info])
 
 (defmethod notification.payload/payload :notification/testing
-  [_notification]
+  [_notification _data-provider]
   {::payload? true})
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
@@ -86,6 +87,21 @@
   `(mt/with-model-cleanup [:model/Notification]
      (with-send-notification-sync
        ~@body)))
+
+(defrecord InMemmoryDataProvider [store]
+  notification.data-provider/DataProvider
+  (store! [this dest-path data]
+    (swap! store assoc dest-path data))
+  (retrieve [_this source-path]
+    (get @store source-path))
+  (entries [_this]
+    (keys @store))
+  (cleanup! [_this]
+    (reset! store {})))
+
+(defn init-in-memory-data-provider
+  []
+  (InMemmoryDataProvider. (atom {})))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Dummy Data                                              ;;

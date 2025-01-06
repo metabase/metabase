@@ -67,10 +67,10 @@
                            :pulse-id dashboard-subscription-id})))
 
 (defn- render-part
-  [timezone part options]
+  [data-provider timezone part options]
   (case (:type part)
     :card
-    (channel.render/render-pulse-section timezone (channel.shared/realize-data-rows part) options)
+    (channel.render/render-pulse-section timezone (update part :result channel.shared/realize-qp-data-rows data-provider) options)
 
     :text
     {:content (markdown/process-markdown (:text part) :html)}
@@ -166,12 +166,12 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/email :notification/card] :- [:sequential EmailMessage]
-  [_channel-type {:keys [payload] :as notification-payload} template recipients]
+  [_channel-type {:keys [payload data-provider] :as notification-payload} template recipients]
   (let [{:keys [card_part
                 alert
                 card]}     payload
         timezone           (channel.render/defaulted-timezone card)
-        rendered-card      (render-part timezone card_part {:channel.render/include-title? true})
+        rendered-card      (render-part data-provider timezone card_part {:channel.render/include-title? true})
         icon-attachment    (apply make-message-attachment (icon-bundle :bell))
         attachments        (concat [icon-attachment]
                                    (email-attachment rendered-card
@@ -241,13 +241,13 @@
         [:tr {} row])])))
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
-  [_channel-type {:keys [payload] :as notification-payload} template recipients]
+  [_channel-type {:keys [payload data-provider] :as notification-payload} template recipients]
   (let [{:keys [dashboard_parts
                 dashboard_subscription
                 parameters
                 dashboard]} payload
         timezone            (some->> dashboard_parts (some :card) channel.render/defaulted-timezone)
-        rendered-cards      (map #(render-part timezone % {:channel.render/include-title? true}) dashboard_parts)
+        rendered-cards      (map #(render-part data-provider timezone % {:channel.render/include-title? true}) dashboard_parts)
         icon-attachment     (apply make-message-attachment (icon-bundle :dashboard))
         attachments         (concat
                              [icon-attachment]

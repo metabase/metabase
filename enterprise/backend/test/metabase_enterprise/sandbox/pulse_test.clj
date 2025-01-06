@@ -53,7 +53,9 @@
                                                  :user_id          (mt/user->id :rasta)}]
     (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
       (let [pulse (models.pulse/retrieve-pulse pulse)]
-        (-> (notification.payload.execute/execute-card (:creator_id pulse) (-> pulse :cards first :id)) :result)))))
+        (-> (notification.payload.execute/execute-card
+             (notification.tu/init-in-memory-data-provider)
+             (:creator_id pulse) (-> pulse :cards first :id)) :result)))))
 
 (deftest dashboard-subscription-send-event-test
   (testing "When we send a pulse, we also log the event:"

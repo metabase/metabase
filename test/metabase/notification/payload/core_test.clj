@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.notification.payload.core :as notification.payload]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]))
 
 (deftest default-context-test
@@ -28,5 +29,7 @@
                 :creator     nil}
                (-> (notification.payload/notification-payload {:payload_type :notification/system-event
                                                                :payload      {:event_topic :event/user-joined
-                                                                              :event_info {:foo :bar}}})
-                   (update-in [:context :style :button] string?))))))))
+                                                                              :event_info {:foo :bar}}}
+                                                              (notification.tu/init-in-memory-data-provider))
+                   (update-in [:context :style :button] string?)
+                   (dissoc :data-provider))))))))

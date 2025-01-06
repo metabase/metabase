@@ -10,6 +10,7 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.formatter :as formatter]
    [metabase.notification.payload.execute :as notification.execute]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -620,7 +621,9 @@
                                                                                          [:avg $subtotal]]})
                                                          :creator_id    (mt/user->id :crowberto)}]
           (let [data                   (qp/process-query dataset-query)
-                combined-cards-results [(notification.execute/execute-card (:creator_id card) (:id card) nil)]
+                combined-cards-results [(notification.execute/execute-card
+                                         (notification.tu/init-in-memory-data-provider)
+                                         (:creator_id card) (:id card) nil)]
                 cards-with-data        (map
                                         (comp
                                          #'body/add-dashcard-timeline-events

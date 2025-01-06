@@ -6,6 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.params.shared :as shared.params]
    [metabase.models.serialization :as serdes]
+   [metabase.notification.payload.data-provider :as notification.data-provider]
    [metabase.notification.payload.disk-storage :as notification.disk-storage]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
@@ -133,9 +134,9 @@
                                    tag-names)]
     (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (public-settings/site-locale) (escape-markdown-chars? dashcard))))
 
-(defn- data-rows-to-disk!
-  [qp-result]
-  (update-in qp-result [:data :rows] notification.disk-storage/to-disk-storage!))
+(defn- store-data-rows-in-provider!
+  [qp-result data-provider id]
+  (update-in qp-result [:data :rows] #(notification.data-provider/store-rows! data-provider id %)))
 
 (defn execute-dashboard-subscription-card
   "Returns subscription result for a card.
@@ -168,7 +169,7 @@
                                 :dashcard dashcard
                                 ;; TODO should this be dashcard?
                                 :type     :card
-                                :result   (data-rows-to-disk! result)}))
+                                :result   result}))
             result         (result-fn card_id)
             series-results (mapv (comp result-fn :id) multi-cards)]
         (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
@@ -181,12 +182,14 @@
   "Given a dashcard returns its part based on its type.
 
   The result will follow the pulse's creator permissions."
-  [dashcard parameters]
+  [data-provider dashcard parameters]
   (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (cond
     (:card_id dashcard)
-    (let [parameters (merge-default-values parameters)]
-      (execute-dashboard-subscription-card dashcard parameters))
+    (let [parameters (merge-default-values parameters)
+          part      (execute-dashboard-subscription-card dashcard parameters)
+          dashcard-id (-> part :dashcard :id)]
+      (update part :result store-data-rows-in-provider! data-provider dashcard-id))
 
     (virtual-card-of-type? dashcard "iframe")
     nil
@@ -211,9 +214,9 @@
               (assoc :type :text)))))
 
 (defn- dashcards->part
-  [dashcards parameters]
+  [data-provider dashcards parameters]
   (let [ordered-dashcards (sort dashboard-card/dashcard-comparator dashcards)]
-    (doall (keep #(dashcard->part % parameters) ordered-dashcards))))
+    (doall (keep #(dashcard->part data-provider % parameters) ordered-dashcards))))
 
 (def Part
   "Part."
@@ -233,7 +236,7 @@
 
 (mu/defn execute-dashboard :- [:sequential Part]
   "Execute a dashboard and return its parts."
-  [dashboard-id user-id parameters]
+  [data-provider dashboard-id user-id parameters]
   (request/with-current-user user-id
     (if (render-tabs? dashboard-id)
       (let [tabs               (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)
@@ -243,14 +246,15 @@
                           (concat
                            (when should-render-tab?
                              [(tab->part tab)])
-                           (dashcards->part cards parameters))))))
-      (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) parameters))))
+                           (dashcards->part data-provider cards parameters))))))
+      (dashcards->part data-provider (t2/select :model/DashboardCard :dashboard_id dashboard-id) parameters))))
 
 ;; TODO - this should be done async
 ;; TODO - this and `execute-multi-card` should be made more efficient: eg. we query for the card several times
 (mu/defn execute-card :- [:maybe Part]
   "Returns the result for a card."
-  [creator-id :- pos-int?
+  [data-provider
+   creator-id :- pos-int?
    card-id :- pos-int?
    & {:as options}]
   (try
@@ -283,7 +287,7 @@
                               (process-query))
                             (process-query))]
         {:card   card
-         :result result
+         :result (store-data-rows-in-provider! result data-provider card-id)
          :type   :card}))
     (catch Throwable e
       (log/warnf e "Error running query for Card %s" card-id))))

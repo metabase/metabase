@@ -8,9 +8,10 @@
    [toucan2.core :as t2]))
 
 (mu/defmethod notification.payload/payload :notification/card
-  [{:keys [creator_id alert] :as _notification-info} :- notification.payload/Notification]
+  [{:keys [creator_id alert] :as _notification-info} :- notification.payload/Notification data-provider]
   (let [card_id (:card_id alert)]
-    {:card_part   (notification.execute/execute-card creator_id card_id
+    {:card_part   (notification.execute/execute-card data-provider
+                                                     creator_id card_id
                                                      ;; for query_execution's context purposes
                                                      ;; TODO: check whether we can remove this or name it?
                                                      :pulse-id (:id alert))

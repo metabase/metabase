@@ -15,12 +15,12 @@
     (throw (ex-info (tru "Invalid channel details") {:errors errors}))))
 
 (defn- maybe-retrieve
-  [x]
-  (if (notification.payload/notification-storage? x)
-    (notification.payload/retrieve x)
+  [x data-provider]
+  (if (notification.payload/path? x)
+    (notification.payload/retrieve-by-path data-provider x)
     x))
 
-(defn realize-data-rows
-  "Realize the data rows in a [[metabase.notification.payload.execute/Part]]"
-  [part]
-  (update-in part [:result :data :rows] maybe-retrieve))
+(defn realize-qp-data-rows
+  "Sometimes rows of a query result are stored on disk to reduce memory usage, so we need to read it on-demand."
+  [part data-provider]
+  (update-in part [:data :rows] maybe-retrieve data-provider))
