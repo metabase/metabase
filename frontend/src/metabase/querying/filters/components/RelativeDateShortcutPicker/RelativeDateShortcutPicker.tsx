@@ -60,7 +60,6 @@ function ShortcutButton({ value, shortcut, onChange }: ShortcutButtonProps) {
   return (
     <Button
       variant={isSelected ? "filled" : "default"}
-      compact
       fw="normal"
       aria-selected={isSelected}
       onClick={() => onChange(shortcut.value)}
