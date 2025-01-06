@@ -2,7 +2,7 @@ import { USERS } from "e2e/support/cypress_data";
 declare global {
   namespace Cypress {
     interface Chainable {
-      signIn: (user?: keyof typeof USERS) => void;
+      signIn: (user?: keyof typeof USERS, options?: LoginOptions) => void;
       signInAsAdmin: () => void;
       signInAsNormalUser: () => void;
       signInAsSandboxedUser: () => void;
@@ -37,31 +37,44 @@ try {
   console.warn("No login cache found in cypress_sample_instance_data");
 }
 
-Cypress.Commands.add("signIn", (user = "admin", setupCache = false) => {
-  if (loginCache[user]) {
-    const { sessionId, deviceId } = loginCache[user];
-    cy.log("Using cached login token for user", user);
-    cy.setCookie("metabase.SESSION", sessionId, { httpOnly: true });
-    cy.setCookie("metabase.TIMEOUT", "alive");
-    cy.setCookie("metabase.DEVICE", deviceId ?? "", { httpOnly: true });
-    return;
-  }
+type LoginOptions = {
+  setupCache?: boolean;
+  skipCache?: boolean;
+};
 
-  cy.log(`Logging in as ${user}`);
-
-  const { email: username, password } = USERS[user];
-  cy.request("POST", "/api/session", { username, password }).then(response => {
-    if (setupCache) {
-      cy.log("saving login token for user", user);
-      cy.getCookie("metabase.DEVICE").then(deviceCookie => {
-        loginCache[user] = {
-          sessionId: response.body.id,
-          deviceId: deviceCookie?.value ?? "my-device-id",
-        };
-      });
+Cypress.Commands.add(
+  "signIn",
+  (
+    user = "admin",
+    { setupCache, skipCache } = { setupCache: false, skipCache: false },
+  ) => {
+    if (!skipCache && !setupCache && loginCache[user]) {
+      const { sessionId, deviceId } = loginCache[user];
+      cy.log("Using cached login token for user", user);
+      cy.setCookie("metabase.SESSION", sessionId, { httpOnly: true });
+      cy.setCookie("metabase.TIMEOUT", "alive");
+      cy.setCookie("metabase.DEVICE", deviceId ?? "", { httpOnly: true });
+      return;
     }
-  });
-});
+
+    cy.log(`Logging in as ${user}`);
+
+    const { email: username, password } = USERS[user];
+    cy.request("POST", "/api/session", { username, password }).then(
+      response => {
+        if (setupCache) {
+          cy.log("saving login token for user", user);
+          cy.getCookie("metabase.DEVICE").then(deviceCookie => {
+            loginCache[user] = {
+              sessionId: response.body.id,
+              deviceId: deviceCookie?.value ?? "my-device-id",
+            };
+          });
+        }
+      },
+    );
+  },
+);
 
 Cypress.Commands.add("signInAsAdmin", () => {
   return cy.signIn("admin");

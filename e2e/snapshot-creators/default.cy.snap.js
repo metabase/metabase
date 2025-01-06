@@ -88,6 +88,8 @@ describe("snapshots", () => {
       // Dismiss `it's ok to play around` modal for admin
       cy.request("PUT", `/api/user/${id}/modal/qbnewb`);
     });
+
+    cy.signIn("admin", { setupCache: true }); // cache admin credentials
   }
 
   function updateSettings() {
@@ -147,7 +149,11 @@ describe("snapshots", () => {
     cy.request("GET", "/api/user");
 
     Object.keys(USERS).forEach(user => {
-      cy.signIn(user, true);
+      if (user === "admin") {
+        // we already cached admin user credentials during setup
+        return;
+      }
+      cy.signIn(user, { setupCache: true });
     });
 
     cy.signInAsAdmin();
