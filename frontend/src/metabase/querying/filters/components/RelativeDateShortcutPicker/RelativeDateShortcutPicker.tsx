@@ -20,7 +20,7 @@ export function RelativeDateShortcutPicker({
   return (
     <Stack p="md" spacing="md">
       {groups.map((group, groupIndex) => (
-        <div key={groupIndex}>
+        <section key={groupIndex}>
           {group.label && (
             <Divider
               label={
@@ -42,7 +42,7 @@ export function RelativeDateShortcutPicker({
               />
             ))}
           </SimpleGrid>
-        </div>
+        </section>
       ))}
     </Stack>
   );

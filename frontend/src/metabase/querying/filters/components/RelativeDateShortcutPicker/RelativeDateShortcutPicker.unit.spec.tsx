@@ -15,6 +15,18 @@ const TEST_CASES: TestCase[] = [
     label: "Today",
     value: { type: "relative", value: "current", unit: "day" },
   },
+  {
+    label: "Yesterday",
+    value: { type: "relative", value: -1, unit: "day" },
+  },
+  {
+    label: "Previous 7 days",
+    value: { type: "relative", value: -7, unit: "day" },
+  },
+  {
+    label: "Previous 30 days",
+    value: { type: "relative", value: -30, unit: "day" },
+  },
 ];
 
 type SetupOpts = {
