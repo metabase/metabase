@@ -342,9 +342,9 @@ const PreemptiveCachingSwitch = ({
       onChange={handleSwitchToggle}
       role="switch"
       size="sm"
-      label="Refresh cache automatically"
-      description="As soon as cached results expire, run and cache the query again to update
-      the results and refresh the cache."
+      label={t`Refresh cache automatically`}
+      description={t`As soon as cached results expire, run and cache the query again to update the results and refresh
+        the cache.`}
       styles={{
         labelWrapper: { paddingLeft: "16px" },
         label: { fontWeight: "bold" },
