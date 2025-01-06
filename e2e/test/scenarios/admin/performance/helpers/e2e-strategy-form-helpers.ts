@@ -101,7 +101,7 @@ export const openStrategyFormForDatabaseOrDefaultPolicy = (
   currentStrategyLabel?: string,
 ) => {
   cy.visit("/admin/performance");
-  cy.findByRole("tablist").get("aria-selected").contains("Database caching");
+  cy.findByRole("tablist").get("[aria-selected]").contains("Database caching");
   cy.log(`Open strategy form for ${databaseNameOrDefaultPolicy}`);
   formLauncher(
     databaseNameOrDefaultPolicy,
