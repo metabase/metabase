@@ -312,7 +312,6 @@ const StrategyFormBody = ({
 const PreemptiveCachingSwitch = ({
   handleSwitchToggle,
 }: {
-  enabled?: boolean;
   handleSwitchToggle: () => void;
 }) => {
   const { values } = useFormikContext<DurationStrategy | ScheduleStrategy>();
