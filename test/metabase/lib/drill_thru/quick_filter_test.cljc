@@ -88,12 +88,44 @@
                               {:name "="}
                               {:name "≠"}]}}))
 
+(deftest ^:parallel returns-quick-filter-multi-stage-query-test-5
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type  :drill-thru/quick-filter
+    :click-type  :cell
+    :query-type  :aggregated
+    :column-name "CREATED_AT"
+    :custom-query (lib.drill-thru.tu/append-filter-stage
+                   (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query])
+                   "count")
+    :expected    {:type      :drill-thru/quick-filter
+                  :value     (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "CREATED_AT"])
+                  :operators [{:name "<"}
+                              {:name ">"}
+                              {:name "="}
+                              {:name "≠"}]}}))
+
 (deftest ^:parallel returns-quick-filter-test-6
   (lib.drill-thru.tu/test-returns-drill
    {:drill-type  :drill-thru/quick-filter
     :click-type  :cell
     :query-type  :aggregated
     :column-name "count"
+    :expected    {:type      :drill-thru/quick-filter
+                  :value     (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "count"])
+                  :operators [{:name "<"}
+                              {:name ">"}
+                              {:name "="}
+                              {:name "≠"}]}}))
+
+(deftest ^:parallel returns-quick-filter-multi-stage-query-test-6
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type  :drill-thru/quick-filter
+    :click-type  :cell
+    :query-type  :aggregated
+    :column-name "count"
+    :custom-query (lib.drill-thru.tu/append-filter-stage
+                   (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query])
+                   "count")
     :expected    {:type      :drill-thru/quick-filter
                   :value     (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "count"])
                   :operators [{:name "<"}
@@ -114,6 +146,22 @@
                               {:name "="}
                               {:name "≠"}]}}))
 
+(deftest ^:parallel returns-quick-filter-multi-stage-query-test-7
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type  :drill-thru/quick-filter
+    :click-type  :cell
+    :query-type  :aggregated
+    :column-name "sum"
+    :custom-query (lib.drill-thru.tu/append-filter-stage
+                   (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query])
+                   "sum")
+    :expected    {:type      :drill-thru/quick-filter
+                  :value     (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "sum"])
+                  :operators [{:name "<"}
+                              {:name ">"}
+                              {:name "="}
+                              {:name "≠"}]}}))
+
 (deftest ^:parallel returns-quick-filter-test-8
   (testing "quick-filter should not return < or > for cell with no value (#34445)"
     (lib.drill-thru.tu/test-returns-drill
@@ -121,6 +169,21 @@
       :click-type  :cell
       :query-type  :aggregated
       :column-name "max"
+      :expected    {:type      :drill-thru/quick-filter
+                    :value     :null
+                    :operators [{:name "="}
+                                {:name "≠"}]}})))
+
+(deftest ^:parallel returns-quick-filter-multi-stage-query-test-8
+  (testing "quick-filter should not return < or > for cell with no value for multi-stage queries"
+    (lib.drill-thru.tu/test-returns-drill
+     {:drill-type  :drill-thru/quick-filter
+      :click-type  :cell
+      :query-type  :aggregated
+      :column-name "max"
+      :custom-query (lib.drill-thru.tu/append-filter-stage
+                     (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query])
+                     "max")
       :expected    {:type      :drill-thru/quick-filter
                     :value     :null
                     :operators [{:name "="}
@@ -157,26 +220,51 @@
 
 (deftest ^:parallel apply-quick-filter-on-correct-level-test
   (testing "quick-filter on an aggregation should introduce an new stage (#34346)"
-    (testing "native query"
-      (lib.drill-thru.tu/test-drill-application
-       {:click-type     :cell
-        :query-type     :aggregated
-        :query-kinds    [:mbql]
-        :column-name    "sum"
-        :drill-type     :drill-thru/quick-filter
-        :expected       {:type         :drill-thru/quick-filter
-                         :operators    [{:name "<"}
-                                        {:name ">"}
-                                        {:name "="}
-                                        {:name "≠"}]
-                         :query        {:stages [{} {}]}
-                         :stage-number -1
-                         :value        1}
-        :drill-args     ["="]
-        :expected-query {:stages [{}
-                                  {:filters [[:= {}
-                                              [:field {} "sum"]
-                                              (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "sum"])]]}]}}))))
+    (lib.drill-thru.tu/test-drill-application
+     {:click-type     :cell
+      :query-type     :aggregated
+      :query-kinds    [:mbql]
+      :column-name    "sum"
+      :drill-type     :drill-thru/quick-filter
+      :expected       {:type         :drill-thru/quick-filter
+                       :operators    [{:name "<"}
+                                      {:name ">"}
+                                      {:name "="}
+                                      {:name "≠"}]
+                       :query        {:stages [{} {}]}
+                       :stage-number -1
+                       :value        1}
+      :drill-args     ["="]
+      :expected-query {:stages [{}
+                                {:filters [[:= {}
+                                            [:field {} "sum"]
+                                            (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "sum"])]]}]}})))
+
+(deftest ^:parallel apply-quick-filter-on-correct-level-multi-stage-query-test
+  (testing "quick-filter on an aggregation should not introduce an new stage if one already exists"
+    (lib.drill-thru.tu/test-drill-application
+     {:click-type     :cell
+      :query-type     :aggregated
+      :query-kinds    [:mbql]
+      :column-name    "sum"
+      :drill-type     :drill-thru/quick-filter
+      :custom-query   (lib.drill-thru.tu/append-filter-stage
+                       (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query])
+                       "sum")
+      :expected       {:type         :drill-thru/quick-filter
+                       :operators    [{:name "<"}
+                                      {:name ">"}
+                                      {:name "="}
+                                      {:name "≠"}]
+                       :query        {:stages [{} {}]}
+                       :stage-number -1
+                       :value        1}
+      :drill-args     ["="]
+      :expected-query {:stages [{}
+                                {:filters [[:> {} [:field {} "sum"] -1]
+                                           [:= {}
+                                            [:field {} "sum"]
+                                            (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "sum"])]]}]}})))
 
 (deftest ^:parallel apply-quick-filter-on-correct-level-test-2
   (testing "quick-filter on a breakout should not introduce a new stage"
@@ -199,6 +287,33 @@
                                                                                      "CREATED_AT")]
                                             (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "CREATED_AT"])]]}]}})))
 
+(deftest ^:parallel apply-quick-filter-on-correct-level-mutli-stage-query-test-2
+  (testing "quick-filter on a breakout should not introduce a new stage if one already exists"
+    (lib.drill-thru.tu/test-drill-application
+     {:click-type     :cell
+      :query-type     :aggregated
+      :query-kinds    [:mbql]
+      :column-name    "CREATED_AT"
+      :drill-type     :drill-thru/quick-filter
+      :custom-query   (lib.drill-thru.tu/append-filter-stage
+                       (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query])
+                       "sum")
+      :expected       {:type         :drill-thru/quick-filter
+                       :operators    [{:name "<"}
+                                      {:name ">"}
+                                      {:name "="}
+                                      {:name "≠"}]
+                       :query        {:stages [{} {}]}
+                       :stage-number -1
+                       :value        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "CREATED_AT"])}
+      :drill-args     ["<"]
+      :expected-query {:stages [{}
+                                {:filters [[:> {} [:field {} "sum"] -1]
+                                           [:< {}
+                                            [:field {} (lib.drill-thru.tu/field-key= (meta/id :orders :created-at)
+                                                                                     "CREATED_AT")]
+                                            (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "CREATED_AT"])]]}]}})))
+
 (deftest ^:parallel apply-quick-filter-on-correct-level-test-3
   (testing "quick-filter on an aggregation should introduce an new stage (#34346)"
     (lib.drill-thru.tu/test-drill-application
@@ -216,6 +331,28 @@
       :drill-args     ["≠"]
       :expected-query {:stages [{}
                                 {:filters [[:not-null {} [:field {} "max"]]]}]}})))
+
+(deftest ^:parallel apply-quick-filter-on-correct-level-mutli-stage-query-test-3
+  (testing "quick-filter on an aggregation should not introduce an new stage if one already exists"
+    (lib.drill-thru.tu/test-drill-application
+     {:click-type     :cell
+      :query-type     :aggregated
+      :query-kinds    [:mbql]
+      :column-name    "max"
+      :drill-type     :drill-thru/quick-filter
+      :custom-query   (lib.drill-thru.tu/append-filter-stage
+                       (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query])
+                       "max")
+      :expected       {:type         :drill-thru/quick-filter
+                       :operators    [{:name "=", :filter [:is-null {} [:field {} "max"]]}
+                                      {:name "≠", :filter [:not-null {} [:field {} "max"]]}]
+                       :query        {:stages [{} {}]}
+                       :stage-number -1
+                       :value        :null}
+      :drill-args     ["≠"]
+      :expected-query {:stages [{}
+                                {:filters [[:> {} [:field {} "max"] -1]
+                                           [:not-null {} [:field {} "max"]]]}]}})))
 
 (deftest ^:parallel contains-does-not-contain-test
   (testing "Should return :contains/:does-not-contain for text columns (#33560)"
