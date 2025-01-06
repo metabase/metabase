@@ -306,6 +306,11 @@ export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
  * @see https://metaboat.slack.com/archives/C505ZNNH4/p1684753502335459?thread_ts=1684751522.480859&cid=C505ZNNH4
  */
 export const waitForLoaderToBeRemoved = async () => {
+  // By waiting for the loader to appear, we avoid letting the next assertion
+  // pass in cases where the loader has not displayed yet
+  // expect(
+  //   await screen.findByTestId("loading-indicator", { timeout: 5000 }),
+  // ).toBeInTheDocument();
   await waitFor(
     () => {
       expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
