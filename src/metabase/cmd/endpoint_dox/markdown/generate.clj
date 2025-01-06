@@ -20,7 +20,7 @@
 (defmethod print-markdown Object [s]
   (print (str s)))
 
-(defn- print-with-seperator [separator [item & more :as items]]
+(defn- print-with-seperator [separator [item & more]]
   (if (nil? item)
     (when (seq more)
       (recur separator more))
