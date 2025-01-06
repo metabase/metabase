@@ -54,7 +54,7 @@
    ::structured  {:effective-type [:type/Structured]}
    ::summable    {:include [::number]
                   :exclude [::entity ::location ::temporal]}
-   ::scope       {:include [::number ::temporal ::category ::entity ::string]
+   ::scope       {:include [::number ::temporal ::category ::entity ::string ::boolean]
                   :exclude [::location]}
    ::category    {:semantic-type  [:type/Category]}
    ;; NOTE: this is defunct right now.  see definition of metabase.lib.types.isa/dimension?.
