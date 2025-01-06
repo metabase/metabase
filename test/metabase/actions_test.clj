@@ -565,7 +565,7 @@
   "Combines [[mt/with-actions-test-data-and-actions-enabled]] with full permissions."
   {:style/indent 0}
   [& body]
-  `(mt/with-temp-test-data [["people"
+  `(mt/with-temp-test-data [["ants"
                              [{:field-name "id"
                                :base-type :type/UUID
                                :pk? true}
@@ -585,11 +585,11 @@
         (is (= {:rows-updated [1]}
                (actions/perform-action!
                 :row/update
-                (assoc (mt/mbql-query people {:filter [:= $id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]})
+                (assoc (mt/mbql-query ants {:filter [:= $id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]})
                        :update_row {(format-field-name :name) "updated_row"})))
             "Update should return the right shape")
         (is (= "updated_row"
-               (-> (mt/rows (mt/run-mbql-query people
+               (-> (mt/rows (mt/run-mbql-query ants
                               {:filter [:= $id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]}))
                    last
                    last))
@@ -601,7 +601,7 @@
       (with-uuids-test-data-and-actions-permissively-enabled!
         (let [response (actions/perform-action!
                         :row/create
-                        (assoc (mt/mbql-query people)
+                        (assoc (mt/mbql-query ants)
                                :create-row {(format-field-name :id) "5cba6f11-2325-400f-8f2e-82fbdc6f181c"
                                             (format-field-name :name) "created_row"}))]
           (is (=? {:created-row {(format-field-name :id) #uuid "5cba6f11-2325-400f-8f2e-82fbdc6f181c"
@@ -609,7 +609,7 @@
                   response)
               "Create should return the entire row")
           (is (= "created_row"
-                 (-> (mt/rows (mt/run-mbql-query people
+                 (-> (mt/rows (mt/run-mbql-query ants
                                 {:filter [:= $id "5cba6f11-2325-400f-8f2e-82fbdc6f181c"]}))
                      last
                      last))
@@ -622,8 +622,8 @@
         (is (= {:rows-deleted [1]}
                (actions/perform-action!
                 :row/delete
-                (mt/mbql-query people {:filter [:= $id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]})))
+                (mt/mbql-query ants {:filter [:= $id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]})))
             "Delete should return the right shape")
-        (is (= 2 (first (mt/first-row (mt/run-mbql-query people {:aggregation [[:count]], :limit 1})))))
-        (is (= [] (mt/rows (mt/run-mbql-query people {:filter [:= $id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]})))
+        (is (= 2 (first (mt/first-row (mt/run-mbql-query ants {:aggregation [[:count]], :limit 1})))))
+        (is (= [] (mt/rows (mt/run-mbql-query ants {:filter [:= $id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]})))
             "Selecting for deleted rows should return an empty result")))))
