@@ -1,7 +1,7 @@
 import { isMatching } from "ts-pattern";
 
 import type { RelativeDatePickerValue } from "metabase/querying/filters/types";
-import { Box, Button, Divider, SimpleGrid } from "metabase/ui";
+import { Button, Divider, SimpleGrid, Stack, Text } from "metabase/ui";
 
 import type { Shortcut } from "./types";
 import { getShortcutGroups } from "./utils";
@@ -18,10 +18,16 @@ export function RelativeDateShortcutPicker({
   const groups = getShortcutGroups();
 
   return (
-    <Box>
+    <Stack p="md" spacing="md">
       {groups.map((group, groupIndex) => (
         <div key={groupIndex}>
-          {group.label && <Divider label={group.label} />}
+          {group.label && (
+            <Divider
+              label={<Text c="inherit">{group.label}</Text>}
+              labelPosition="center"
+              mb="sm"
+            />
+          )}
           <SimpleGrid cols={group.columns}>
             {group.shortcuts.map((shortcut, shortcutIndex) => (
               <ShortcutButton
@@ -34,7 +40,7 @@ export function RelativeDateShortcutPicker({
           </SimpleGrid>
         </div>
       ))}
-    </Box>
+    </Stack>
   );
 }
 
