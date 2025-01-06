@@ -51,14 +51,16 @@
 
   (defendpoint-dox (:form (metabase.api.macros/find-route 'metabase.api.timeline :get "/:id")))
 
+  #_{:clj-kondo/ignore [:unresolved-namespace]}
   (metabase.cmd.endpoint-dox.markdown.generate/print-markdown
    (defendpoint-dox (:form (metabase.api.macros/find-route 'metabase.api.timeline :get "/:id"))))
 
   #_(with-open [os (java.io.FileWriter. "dox.md")]
-    (binding [*out* os]
-      (metabase.cmd.endpoint-dox.markdown.generate/print-markdown
-       (defendpoint-dox (:form (metabase.api.macros/find-route 'metabase.api.timeline :get "/:id"))))))
+      (binding [*out* os]
+        (metabase.cmd.endpoint-dox.markdown.generate/print-markdown
+         (defendpoint-dox (:form (metabase.api.macros/find-route 'metabase.api.timeline :get "/:id"))))))
 
+  #_{:clj-kondo/ignore [:unresolved-namespace]}
   (spit "dox.md"
         (metabase.cmd.endpoint-dox.markdown.generate/->markdown
          (defendpoint-dox (:form (metabase.api.macros/find-route 'metabase.api.timeline :get "/:id")))))

@@ -17,7 +17,6 @@
    [malli.error :as me]
    [malli.transform :as mtx]
    [metabase.api.common.internal]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -485,9 +484,9 @@
              quote-param-bindings-of-type
              params
              [:route :query :body]))]
-  (-> parsed
-      (update :body quote-form)
-      (update :params quote-param-bindings))))
+    (-> parsed
+        (update :body quote-form)
+        (update :params quote-param-bindings))))
 
 (defmacro defendpoint
   "NEW macro for defining REST API endpoints. See

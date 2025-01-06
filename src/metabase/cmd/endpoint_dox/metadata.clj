@@ -135,7 +135,7 @@
 
 (mu/defn- defendpoint-2-sort-key :- ::endpoint-sort-key
   "Create a sort key based on the [[metabase.api.macros/defendpoint-unique-key]] for this endpoint."
-  [[method route regexes :as _unique-key] :- :metabase.api.macros/unique-key]
+  [[method route regexes :as _unique-key] :- ::api.macros/unique-key]
   (into [method route] cat (into (sorted-map) regexes)))
 
 (mu/defn- ns-defendpoint-1-metadatas :- [:sequential ::endpoint]
@@ -168,11 +168,6 @@
   "Returns a sorted sequence of metadata maps for all API endpoints."
   []
   (mapcat ns-endpoints (api-namespace-symbols)))
-
-(mu/defn- route :- string?
-  "Creates a name for an endpoint: VERB /path/to/endpoint."
-  [endpoint :- ::endpoint]
-  (:path endpoint))
 
 (mu/defn- paid?
   "Is the endpoint a paid feature?"

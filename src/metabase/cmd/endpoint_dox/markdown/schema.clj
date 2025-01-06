@@ -69,15 +69,6 @@
   (let [[child] (mc/children schema)]
     (schema->hiccup child)))
 
-(defn- schema-title [schema]
-  (or (some-> (:doc/title (mc/properties schema)) str)
-      (when-not (instance? malli.core.Schema schema)
-        (schema-title (mc/schema schema)))
-      (when (mc/-ref-schema? schema)
-        (schema-title (mc/deref schema)))
-      (when (keyword? schema)
-        [:pre (name schema)])))
-
 ;;; keyword schema
 (defmethod schema->hiccup-method :malli.core/schema
   [schema]
@@ -267,10 +258,13 @@
 
   (schema->hiccup :metabase.analyze.fingerprint.schema/NumberFingerprint)
 
+  #_{:clj-kondo/ignore [:unresolved-namespace]}
   (schema->hiccup metabase.util.malli.schema/TemporalString)
 
-  (schema->hiccup [:fn #(metabase.util/ignore-exceptions (boolean (metabase.util.date-2/parse %)))])
+  #_{:clj-kondo/ignore [:unresolved-namespace]}
+  (schema->hiccup [:fn #(boolean (metabase.util.date-2/parse %))])
 
+  #_{:clj-kondo/ignore [:unresolved-namespace]}
   (schema->hiccup metabase.util.malli.schema/PositiveInt))
 
 ;;; PLEASE DON'T ADD ANY MORE CODE AFTER THE EXAMPLE USAGES ABOVE, GO ADD IT SOMEWHERE ELSE.
