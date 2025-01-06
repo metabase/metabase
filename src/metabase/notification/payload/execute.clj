@@ -7,7 +7,6 @@
    [metabase.models.params.shared :as shared.params]
    [metabase.models.serialization :as serdes]
    [metabase.notification.payload.data-provider :as notification.data-provider]
-   [metabase.notification.payload.disk-storage :as notification.disk-storage]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.dashboard :as qp.dashboard]

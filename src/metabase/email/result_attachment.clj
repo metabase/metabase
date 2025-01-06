@@ -84,12 +84,13 @@
 
 (defn result-attachment
   "Create result attachments for an email."
-  [{{card-name :name format-rows :format_rows pivot-results :pivot_results :as card} :card
+  [data-provider
+   {{card-name :name format-rows :format_rows pivot-results :pivot_results :as card} :card
     result :result
     :as part}]
   (when (pos-int? (:row_count result))
     (let [realize-qp-data-rows (requiring-resolve 'metabase.channel.shared/realize-qp-data-rows)
-          result               (realize-qp-data-rows (:result part))]
+          result               (realize-qp-data-rows (:result part) data-provider)]
       [(when-let [temp-file (and (:include_csv card)
                                  (create-temp-file-or-throw "csv"))]
          (with-open [os (io/output-stream temp-file)]

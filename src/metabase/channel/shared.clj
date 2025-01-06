@@ -17,7 +17,7 @@
 (defn- maybe-retrieve
   [x data-provider]
   (if (notification.payload/entry-ref? x)
-    (notification.payload/retrieve-by-path data-provider x)
+    (notification.payload/retrieve-by-ref data-provider x)
     x))
 
 (defn realize-qp-data-rows

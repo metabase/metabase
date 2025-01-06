@@ -110,11 +110,11 @@
       result)))
 
 (defn- email-attachment
-  [rendered-cards parts]
+  [data-provider rendered-cards parts]
   (filter some?
           ;; maybe we need to rewrite this into a transudcer?
           (concat (map make-message-attachment (apply merge (map :attachments (u/one-or-many rendered-cards))))
-                  (mapcat email.result-attachment/result-attachment parts))))
+                  (mapcat #(email.result-attachment/result-attachment data-provider %) parts))))
 
 (defn- icon-bundle
   "Bundle an icon.
@@ -174,7 +174,8 @@
         rendered-card      (render-part data-provider timezone card_part {:channel.render/include-title? true})
         icon-attachment    (apply make-message-attachment (icon-bundle :bell))
         attachments        (concat [icon-attachment]
-                                   (email-attachment rendered-card
+                                   (email-attachment data-provider
+                                                     rendered-card
                                                      (assoc-attachment-booleans [alert] [card_part])))
         goal               (ui-logic/find-goal-value payload)
         message-context-fn (fn [non-user-email]
@@ -251,7 +252,8 @@
         icon-attachment     (apply make-message-attachment (icon-bundle :dashboard))
         attachments         (concat
                              [icon-attachment]
-                             (email-attachment rendered-cards (assoc-attachment-booleans
+                             (email-attachment data-provider
+                                               rendered-cards (assoc-attachment-booleans
                                                                (:dashboard_subscription_dashcards dashboard_subscription)
                                                                dashboard_parts)))
         message-context-fn  (fn [non-user-email]

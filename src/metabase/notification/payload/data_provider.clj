@@ -3,6 +3,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [taoensso.nippy :as nippy])
   (:import
    (com.google.common.io Files)
@@ -89,21 +91,27 @@
 ;;                                           Public APIs                                           ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defn store-rows!
+(mr/def ::EntryRef
+  [:tuple
+   [:fn #(= ::ref %)]
+   :any])
+
+(mu/defn store-rows! :- ::EntryRef
+  "Store the data and return a reference that can be used to retrieve it later."
   [data-provider card-id data]
   (let [dest [:rows card-id]]
     (store! data-provider dest data)
-    [::path dest]))
-
-(defn retrieve-by-path
-  [data-provider path]
-  (retrieve data-provider (cond-> path
-                            (= ::path (first path))
-                            last)))
+    [::ref dest]))
 
 (defn entry-ref?
+  "Check if the given object is an entry-ref."
   [x]
-  (and (sequential? x) (= ::path (first x))))
+  (mr/validate ::EntryRef x))
+
+(mu/defn retrieve-by-ref
+  "Retrieve the rows of data by the given entry-ref."
+  [data-provider entry-ref]
+  (retrieve data-provider (last entry-ref)))
 
 (defn data-provider?
   "Check if the given object satisfies the {[NotificationStorage}] protocol."

@@ -15,7 +15,7 @@
  [notification.payload.execute
   process-virtual-dashcard]
  [notification.data-provider
-  retrieve-by-path
+  retrieve-by-ref
   entry-ref?
   cleanup!])
 
