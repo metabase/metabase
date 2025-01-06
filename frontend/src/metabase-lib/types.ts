@@ -596,10 +596,6 @@ export type FilterDrillDetails = {
   column: ColumnMetadata;
 };
 
-export type AggregationDrillDetails = {
-  aggregation: AggregationClause;
-};
-
 export type PivotType = "category" | "location" | "time";
 
 export interface ClickObjectDimension {
