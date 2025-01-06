@@ -5,6 +5,41 @@ import type { TemporalUnit } from "metabase-types/api";
 
 import type { ColumnType } from "./types";
 
+export const getOffsetPeriod = (
+  query: Lib.Query,
+  stageIndex: number,
+): string => {
+  const firstBreakout = Lib.breakouts(query, stageIndex)[0];
+
+  if (!firstBreakout) {
+    return t`period`;
+  }
+
+  const firstBreakoutColumn = Lib.breakoutColumn(
+    query,
+    stageIndex,
+    firstBreakout,
+  );
+
+  if (!Lib.isTemporal(firstBreakoutColumn)) {
+    return t`rows`;
+  }
+
+  const bucket = Lib.temporalBucket(firstBreakout);
+
+  if (!bucket) {
+    return t`period`;
+  }
+
+  const bucketInfo = Lib.displayInfo(query, stageIndex, bucket);
+  const periodPlural = Lib.describeTemporalUnit(
+    bucketInfo.shortName,
+    2,
+  ).toLowerCase();
+
+  return periodPlural;
+};
+
 export const getTitle = (
   query: Lib.Query,
   stageIndex: number,
