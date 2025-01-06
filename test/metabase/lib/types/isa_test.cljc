@@ -156,6 +156,7 @@
              {:pred #'lib.types.isa/string?,             :positive :type/Text,              :negative :type/URL}
              {:pred #'lib.types.isa/string-like?,        :positive :type/TextLike,          :negative :type/Address}
              {:pred #'lib.types.isa/summable?,           :positive :type/Number,            :negative :type/Address}
+             {:pred #'lib.types.isa/category?,           :positive :type/Category,          :negative :type/Boolean}
              {:pred #'lib.types.isa/category?,           :positive :type/Company,           :negative :type/URL}
              {:pred #'lib.types.isa/location?,           :positive :type/Address,           :negative :type/Number}
              {:pred #'lib.types.isa/description?,        :positive :type/Description,       :negative :type/City}

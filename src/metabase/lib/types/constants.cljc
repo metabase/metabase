@@ -56,8 +56,6 @@
                   :exclude [::entity ::location ::temporal]}
    ::scope       {:include [::number ::temporal ::category ::entity ::string]
                   :exclude [::location]}
-   ::category    {:effective-type [:type/Boolean]
-                  :semantic-type  [:type/Category]
-                  :include        [::location]}
+   ::category    {:semantic-type  [:type/Category]}
    ;; NOTE: this is defunct right now.  see definition of metabase.lib.types.isa/dimension?.
    ::dimension   {:include [::temporal ::category ::entity]}})

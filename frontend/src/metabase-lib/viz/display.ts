@@ -74,7 +74,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       return { display: "bar" };
     }
 
-    if (Lib.isCategory(column)) {
+    if (Lib.isBoolean(column) || Lib.isCategory(column)) {
       return { display: "bar" };
     }
   }
@@ -119,7 +119,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
     }
 
     const areBreakoutsCategories = breakoutsWithColumns.every(({ column }) => {
-      return Lib.isCategory(column);
+      return Lib.isBoolean(column) || Lib.isCategory(column);
     });
     if (areBreakoutsCategories) {
       return { display: "bar" };
