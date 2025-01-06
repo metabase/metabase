@@ -6,6 +6,8 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
@@ -113,6 +115,38 @@
   [& exps]
   (fn [x]
     (some #(= x %) exps)))
+
+(defmulti column-by-name
+  "Return the first column with :name `column-name` in `query-or-columns`.
+
+  If `query-or-columns` is a ::lib.schema/query, then search it's `lib/returned-columns`.
+  Otherwise, `query-or-columns` should be the collection of columns to search."
+  {:arglists '([query-or-columns column-name])}
+  (fn [query-or-columns & _] (lib.dispatch/dispatch-value query-or-columns))
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod column-by-name :mbql/query
+  [query column-name]
+  (column-by-name (lib/returned-columns query) column-name))
+
+(defmethod column-by-name :dispatch-type/sequential
+  [columns column-name]
+  (m/find-first #(= (:name %) column-name) columns))
+
+(defn append-filter-stage
+  "Append a new stage to `query` and add a filter there targeting `column-name`.
+
+  The two-arg arity adds a simple `col > -1` filter.
+
+  The three-arg arity will pass the first column it finds with `column-name` to `column-filter-fn` to create the
+  filter."
+  ([query column-name]
+   (append-filter-stage query column-name #(lib/> % -1)))
+  ([query column-name column-filter-fn]
+   (let [query'           (lib/append-stage query)
+         column-to-filter (column-by-name query' column-name)]
+     (assert (some? column-to-filter) (str "Failed to find " column-name " in " query))
+     (lib/filter query' (column-filter-fn column-to-filter)))))
 
 (def ^:private unsupported-on-native
   #{:drill-thru/automatic-insights
