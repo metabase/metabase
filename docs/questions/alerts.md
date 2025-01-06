@@ -104,7 +104,7 @@ You'll be able to edit alerts that you set up. Admins get additional special pri
 
 - Admins can edit and delete any alert. This can't be undone, so be careful!
 - Admins can add or remove recipients on any alert, even ones that they did not create themselves.
-- Admins can remove all alerts created by a Metabase user and unsubscribe that user from all other alerts from the [People menu in Admin settings](../people-and-groups/managing.md#unsubscribe-from-all-subscriptions--alerts).
+- Admins can remove all alerts created by a Metabase user and unsubscribe that user from all other alerts from the [People menu in Admin settings](../people-and-groups/managing.md#unsubscribe-from-all-subscriptions-and-alerts).
 
 ## Avoid changing the name of the alerted channel in Slack
 
