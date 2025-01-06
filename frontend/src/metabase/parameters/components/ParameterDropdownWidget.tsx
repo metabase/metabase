@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { DateRelativeWidget } from "metabase/components/DateRelativeWidget";
 import { TextWidget } from "metabase/components/TextWidget";
 import type { ParameterValueWidgetProps } from "metabase/parameters/components/ParameterValueWidget";
 import { NumberInputWidget } from "metabase/parameters/components/widgets/NumberInputWidget";
@@ -10,6 +9,7 @@ import { DateAllOptionsWidget } from "metabase/querying/parameters/components/Da
 import { DateMonthYearWidget } from "metabase/querying/parameters/components/DateMonthYearWidget";
 import { DateQuarterYearWidget } from "metabase/querying/parameters/components/DateQuarterYearWidget";
 import { DateRangeWidget } from "metabase/querying/parameters/components/DateRangeWidget";
+import { DateRelativeWidget } from "metabase/querying/parameters/components/DateRelativeWidget";
 import { DateSingleWidget } from "metabase/querying/parameters/components/DateSingleWidget";
 import type {
   FieldFilterUiParameter,
@@ -70,11 +70,8 @@ export const ParameterDropdownWidget = ({
       "date/range": DateRangeWidget,
       "date/month-year": DateMonthYearWidget,
       "date/quarter-year": DateQuarterYearWidget,
-      "date/all-options": DateAllOptionsWidget,
-    }[parameter.type];
-
-    const LegacyDateWidget = {
       "date/relative": DateRelativeWidget,
+      "date/all-options": DateAllOptionsWidget,
     }[parameter.type];
 
     if (DateWidget) {
@@ -87,16 +84,6 @@ export const ParameterDropdownWidget = ({
             setValue?.(value);
             onPopoverClose?.();
           }}
-        />
-      );
-    }
-
-    if (LegacyDateWidget) {
-      return (
-        <LegacyDateWidget
-          value={value}
-          setValue={setValue}
-          onClose={() => onPopoverClose?.()}
         />
       );
     }
