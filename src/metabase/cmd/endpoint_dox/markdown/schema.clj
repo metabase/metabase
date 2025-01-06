@@ -118,14 +118,11 @@
 (defn- generate-table-rows-for-keyed-children [children]
   (mapv (fn [[k opts child]]
           [:tr
-           {:style "border: 1px solid black;"}
            [:td
-            {:style "border: 1px solid black; background: #cccccc;"}
             [:pre k]
             (when ((some-fn :optional :default) opts)
               [:i "Optional."])]
            [:td
-            {:style "border: 1px solid black;"}
             (when-let [description (:description opts)]
               [:div (str description)])
             [:div (schema->hiccup child)]
