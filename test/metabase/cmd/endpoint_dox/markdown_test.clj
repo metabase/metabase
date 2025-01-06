@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.activity]
-   [metabase.cmd.endpoint-dox.markdown :as endpoint-dox.markdown]))
+   [metabase.cmd.endpoint-dox.markdown :as endpoint-dox.markdown]
+   [metabase.cmd.endpoint-dox.markdown.generate :as endpoint-dox.markdown.generate]))
 
 (comment metabase.api.activity/keep-me)
 
@@ -34,11 +35,14 @@
 
 (deftest ^:parallel build-endpoint-link-test
   (testing "Links to endpoint pages are generated correctly."
+    (is (= [:bullet-point [:link "Activity" "api/activity.md"]]
+           (#'endpoint-dox.markdown/endpoint-link page)))
     (is (= "- [Activity](api/activity.md)"
-           (#'endpoint-dox.markdown/endpoint-link page)))))
+           (endpoint-dox.markdown.generate/->markdown (#'endpoint-dox.markdown/endpoint-link page))))))
 
 (deftest ^:parallel page-test
   (testing "Endpoint pages are formatted correctly."
     (is (= (str "---\ntitle: \"Activity\"\nsummary: |\n  API endpoints for Activity.\n---\n\n# Activity\n\nAPI endpoints for Activity.\n\n## `GET /api/activity/`\n\nGet recent activity.\n\n## `GET /api/activity/recent_views`\n\nGet the list of 10 things the current user has been viewing most recently."
-                (#'endpoint-dox.markdown/endpoint-footer page))
+                "\n\n"
+                (endpoint-dox.markdown.generate/->markdown (#'endpoint-dox.markdown/endpoint-footer page)))
            (endpoint-dox.markdown/page page)))))
