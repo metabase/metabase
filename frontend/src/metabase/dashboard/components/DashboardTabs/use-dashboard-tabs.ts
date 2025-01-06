@@ -78,8 +78,16 @@ export function useDashboardTabs({
     createNewTab: () => dispatch(createNewTab()),
     duplicateTab,
     deleteTab,
-    renameTab: (tabId: SelectedTabId, name: string) =>
-      dispatch(renameTab({ tabId, name })),
+    renameTab: (tabId: SelectedTabId, name: string) => {
+      name = name.trim();
+      if (name.length === 0) {
+        // Revert to default tab name if entered name is just whitespace
+        const tabIdx =
+          Number(Object.keys(tabs).find(key => tabs[key].id === tabId)) + 1;
+        name = `Tab ${tabIdx}`;
+      }
+      dispatch(renameTab({ tabId, name }));
+    },
     selectTab: (tabId: SelectedTabId) => dispatch(selectTab({ tabId })),
     moveTab,
   };
