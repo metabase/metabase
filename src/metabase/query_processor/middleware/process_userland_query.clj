@@ -49,7 +49,7 @@
   :default false)
 
 (defonce ^:private
- field-usages-queue
+  field-usages-queue
   (delay (grouper/start!
           (fn [inputs]
             (try

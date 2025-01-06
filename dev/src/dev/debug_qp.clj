@@ -102,7 +102,6 @@
        form))
    query))
 
-
 ;;;; [[add-names]]
 
 (defn- field-and-table-name [field-id]
@@ -148,7 +147,6 @@
              &match)))
        x)
       ->sorted-mbql-query-map))
-
 
 ;;;; [[process-query-debug]]
 
@@ -255,7 +253,6 @@
   (print-transform-result before after))
 
 (def ^:private ^:dynamic *printer* print-formatted-event)
-
 
 ;;;; [[to-mbql-shorthand]]
 
