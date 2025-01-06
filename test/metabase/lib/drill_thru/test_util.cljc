@@ -63,18 +63,23 @@
                 (lib/aggregate (lib/count)))
      :row   {"count" 200}}}})
 
+(defn- schema-or-update-fn
+  [schema]
+  [:or schema [:-> schema schema]])
+
 (def ^:private Row
   [:map-of :string :any])
 
 (def ^:private TestCase
   [:map
-   [:click-type      [:enum :cell :header]]
-   [:query-type      [:enum :aggregated :unaggregated]]
-   [:column-name     :string]
+   [:click-type    [:enum :cell :header]]
+   [:query-type    [:enum :aggregated :unaggregated]]
+   [:column-name   :string]
    ;; defaults to "ORDERS"
-   [:query-table  {:optional true} [:maybe [:enum "ORDERS" "PRODUCTS"]]]
-   [:custom-query {:optional true} [:maybe ::lib.schema/query]]
-   [:custom-row   {:optional true} [:maybe Row]]])
+   [:query-table   {:optional true} [:maybe [:enum "ORDERS" "PRODUCTS"]]]
+   [:custom-query  {:optional true} [:maybe (schema-or-update-fn ::lib.schema/query)]]
+   [:custom-native {:optional true} [:maybe (schema-or-update-fn ::lib.schema/query)]]
+   [:custom-row    {:optional true} [:maybe (schema-or-update-fn Row)]]])
 
 (def ^:private native-card-id 12)
 
@@ -156,6 +161,11 @@
     :drill-thru/zoom-in.geographic
     :drill-thru/zoom-in.timeseries})
 
+(defn- custom-value [custom-value-or-fn default-value]
+  (if (fn? custom-value-or-fn)
+    (custom-value-or-fn default-value)
+    (or custom-value-or-fn default-value)))
+
 (mu/defn query-and-row-for-test-case :- [:map
                                          [:mbql   ::lib.schema/query]
                                          [:native [:maybe ::lib.schema/query]]
@@ -163,16 +173,19 @@
   [{:keys [query-table query-type custom-query custom-native custom-row]
     :or   {query-table "ORDERS"}
     :as   test-case} :- TestCase]
-  (let [queries (if custom-query
-                  {:mbql   custom-query
-                   :native (or custom-native (->native custom-query))}
-                  (when-let [mbql (get-in test-queries [query-table query-type :query])]
-                    {:mbql   mbql
-                     :native (->native mbql)}))
-        row     (or custom-row (get-in test-queries [query-table query-type :row]))]
-    (when-not (and queries row)
-      (throw (ex-info "Invalid query-table/query-:type no matching test query" {:test-case test-case})))
-    (assoc queries :row row)))
+  (let [mbql   (custom-value custom-query  (get-in test-queries [query-table query-type :query]))
+        row    (custom-value custom-row    (get-in test-queries [query-table query-type :row]))
+        native (custom-value custom-native (->native mbql))]
+    (doseq [[value value-name custom-name] [[mbql "query" "custom-query"]
+                                            [native "native query" "custom-native"]
+                                            [row "row" "custom-row"]]]
+      (when-not value
+        (throw (ex-info (str "Invalid " value-name ". You either provided an invalid " custom-name ", or else the "
+                             value-name " could not be looked up for the given query-table and query-type")
+                        {:test-case test-case}))))
+    {:mbql mbql
+     :native native
+     :row row}))
 
 (mu/defn test-case-context :- ::lib.schema.drill-thru/context
   [{:keys [mbql row]} :- [:map] ;; TODO: Better type? Does one exist?
