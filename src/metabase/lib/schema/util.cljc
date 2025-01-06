@@ -83,6 +83,29 @@
        x))
    x))
 
+(defn- indexed-order-bys-for-stage
+  "Convert all order-bys in a stage to refer to aggregations by index instead of uuid"
+  [{:keys [aggregation order-by] :as stage}]
+  (if (and aggregation order-by)
+    (let [agg-lookups (->> aggregation
+                           (map-indexed (fn [i [_type {agg-uuid :lib/uuid}]]
+                                          [agg-uuid i]))
+                           (into {}))]
+      (update stage :order-by (fn [order-bys]
+                                (map (fn [[_dir _opts [order-type _agg-opts agg-uuid] :as order-by]]
+                                       (if (= order-type :aggregation)
+                                         (assoc order-by 2 [order-type (agg-lookups agg-uuid)])
+                                         order-by))
+                                     order-bys))))
+    stage))
+
+(defn indexed-order-bys
+  "Convert all order-bys in a query to refer to aggregations by index instead of uuid"
+  [query]
+  (if (:stages query)
+    (update query :stages #(map indexed-order-bys-for-stage %))
+    query))
+
 (mr/def ::distinct-ignoring-uuids
   [:fn
    {:error/message "values must be distinct ignoring uuids"
