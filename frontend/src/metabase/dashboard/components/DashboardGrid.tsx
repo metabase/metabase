@@ -149,6 +149,7 @@ type OwnProps = {
   ) => void;
   onEditingChange?: (dashboard: Dashboard | null) => void;
   downloadsEnabled: boolean;
+  scrollToCardOnLoad?: DashCardId;
 };
 
 type DashboardGridProps = OwnProps &
@@ -512,11 +513,13 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       gridItemWidth,
       totalNumGridCols,
       downloadsEnabled,
+      shouldAutoScrollTo,
     }: {
       isMobile: boolean;
       gridItemWidth: number;
       totalNumGridCols: number;
       downloadsEnabled: boolean;
+      shouldAutoScrollTo: boolean;
     },
   ) {
     return (
@@ -552,6 +555,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
         clickBehaviorSidebarDashcard={this.props.clickBehaviorSidebarDashcard}
         downloadsEnabled={downloadsEnabled}
+        shouldAutoScrollTo={shouldAutoScrollTo}
       />
     );
   }
@@ -575,7 +579,8 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     gridItemWidth: number;
     totalNumGridCols: number;
   }) => {
-    const { isEditing } = this.props;
+    const { isEditing, scrollToCardOnLoad } = this.props;
+    const shouldAutoScrollTo = scrollToCardOnLoad === dc.id;
 
     const shouldChangeResizeHandle = isEditingTextOrHeadingCard(
       dc.card.display,
@@ -601,6 +606,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
           gridItemWidth,
           totalNumGridCols,
           downloadsEnabled: this.props.downloadsEnabled,
+          shouldAutoScrollTo,
         })}
       </DashboardCardContainer>
     );

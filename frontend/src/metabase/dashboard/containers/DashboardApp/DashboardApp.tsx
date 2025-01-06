@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { ConnectedProps } from "react-redux";
 import type { Route, WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
@@ -22,9 +22,7 @@ import { useFavicon } from "metabase/hooks/use-favicon";
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
-import { parseHashOptions } from "metabase/lib/browser";
 import { connect, useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { closeNavbar, setErrorPage } from "metabase/redux/app";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { getIsNavbarOpen } from "metabase/selectors/app";
@@ -59,6 +57,8 @@ import {
   getSidebar,
   getSlowCards,
 } from "../../selectors";
+
+import { getDashboardId, getDashboardUrlHashOptions } from "./utils";
 
 type OwnProps = {
   dashboardId?: DashboardId;
@@ -105,7 +105,7 @@ const mapDispatchToProps = {
 const connector = connect(mapStateToProps, mapDispatchToProps);
 type ReduxProps = ConnectedProps<typeof connector>;
 
-type DashboardAppProps = OwnProps & ReduxProps & WithRouterProps;
+export type DashboardAppProps = OwnProps & ReduxProps & WithRouterProps;
 
 const DashboardApp = (props: DashboardAppProps) => {
   useFavicon({ favicon: props.pageFavicon });
@@ -131,9 +131,12 @@ const DashboardApp = (props: DashboardAppProps) => {
 
   const parameterQueryParams = location.query;
   const dashboardId = getDashboardId(props);
-  const options = parseHashOptions(window.location.hash);
-  const editingOnLoad = options.edit;
-  const addCardOnLoad = options.add != null ? Number(options.add) : undefined;
+
+  const locationHash = window.location.hash;
+  const { editingOnLoad, addCardOnLoad, scrollToCardOnLoad } = useMemo(() => {
+    const dashcards = dashboard?.dashcards || [];
+    return getDashboardUrlHashOptions(locationHash, dashcards);
+  }, [locationHash, dashboard?.dashcards]);
 
   const dispatch = useDispatch();
 
@@ -224,6 +227,7 @@ const DashboardApp = (props: DashboardAppProps) => {
         dashboardId={dashboardId}
         editingOnLoad={editingOnLoad}
         addCardOnLoad={addCardOnLoad}
+        scrollToCardOnLoad={scrollToCardOnLoad}
         isFullscreen={isFullscreen}
         refreshPeriod={refreshPeriod}
         isNightMode={isNightMode}
@@ -240,14 +244,6 @@ const DashboardApp = (props: DashboardAppProps) => {
     </div>
   );
 };
-
-function getDashboardId({ dashboardId, params }: DashboardAppProps) {
-  if (dashboardId) {
-    return dashboardId;
-  }
-
-  return Urls.extractEntityId(params.slug) as DashboardId;
-}
 
 export const DashboardAppConnected = _.compose(
   connector,

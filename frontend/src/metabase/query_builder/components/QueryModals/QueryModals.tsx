@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
+import { getDashboard } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import Modal from "metabase/components/Modal";
 import QuestionSavedModal from "metabase/components/QuestionSavedModal";
@@ -114,16 +115,25 @@ export function QueryModals({
   );
 
   const nativeToDashboarQuestionDashboard = useCallback(
-    (question: Question) => {
+    async (question: Question) => {
+      const cardId = question.id();
       const dashboardId = question.dashboardId();
-
       if (!dashboardId) {
         throw new Error("must provide a valid dashboard question");
       }
 
-      dispatch(
-        push(Urls.dashboard({ id: dashboardId, name: "" }, { editMode: true })),
-      );
+      // TODO: think through error handling...
+      const dashboard = await dispatch(
+        getDashboard.initiate({ id: dashboardId }),
+      ).unwrap();
+      const dashcard = dashboard.dashcards.find(c => c.card_id === cardId);
+
+      if (!dashcard) {
+        throw new Error("dashboard does not contain dashboard question");
+      }
+
+      const options = { editMode: true, scrollToDashcard: dashcard.id };
+      dispatch(push(Urls.dashboard(dashboard, options)));
     },
     [dispatch],
   );

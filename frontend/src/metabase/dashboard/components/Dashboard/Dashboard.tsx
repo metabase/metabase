@@ -87,6 +87,7 @@ export type DashboardProps = {
   isNavigatingBackToDashboard: boolean;
   addCardOnLoad?: DashCardId;
   editingOnLoad?: string | string[] | boolean;
+  scrollToCardOnLoad?: DashCardId;
   dashboardId: DashboardId;
   parameterQueryParams: Query;
 
@@ -191,6 +192,7 @@ function Dashboard(props: DashboardProps) {
     isSharing,
     onRefreshPeriodChange,
     parameterValues,
+    scrollToCardOnLoad,
     selectedTabId,
     setEditingDashboard,
     setErrorPage,
@@ -391,6 +393,7 @@ function Dashboard(props: DashboardProps) {
         selectedTabId={selectedTabId}
         onEditingChange={handleSetEditing}
         downloadsEnabled={downloadsEnabled}
+        scrollToCardOnLoad={scrollToCardOnLoad}
       />
     );
   };

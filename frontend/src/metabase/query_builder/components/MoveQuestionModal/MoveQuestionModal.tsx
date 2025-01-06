@@ -3,7 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useUpdateCardMutation } from "metabase/api";
+import { getDashboard, useUpdateCardMutation } from "metabase/api";
 import { QuestionMoveConfirmModal } from "metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal";
 import type { MoveDestination } from "metabase/collections/types";
 import { canonicalCollectionId } from "metabase/collections/utils";
@@ -63,49 +63,49 @@ export const MoveQuestionModal = ({
             collection_id: canonicalCollectionId(destination.id),
           };
 
-    await updateQuestion({
-      id: question.id(),
-      delete_old_dashcards: deleteOldDashcards,
-      ...update,
-    })
-      .unwrap()
-      .then(updatedCard => {
-        // HACK: entity framework would previously keep the qb in sync
-        // with changing where the question lived
-        dispatch({ type: API_UPDATE_QUESTION, payload: updatedCard });
-        dispatch({
-          type: INJECT_RTK_QUERY_QUESTION_VALUE,
-          payload: updatedCard,
-        });
+    try {
+      const cardId = question.id();
+      const updatedCard = await updateQuestion({
+        id: cardId,
+        delete_old_dashcards: deleteOldDashcards,
+        ...update,
+      }).unwrap();
 
-        dispatch(
-          addUndo({
-            message: (
-              <QuestionMoveToast
-                destination={destination}
-                question={question}
-              />
-            ),
-            undo: false,
-          }),
-        );
+      // HACK: entity framework would previously keep the qb in sync
+      // with changing where the question lived
+      dispatch({ type: API_UPDATE_QUESTION, payload: updatedCard });
+      dispatch({
+        type: INJECT_RTK_QUERY_QUESTION_VALUE,
+        payload: updatedCard,
+      });
 
-        if (destination.model === "dashboard") {
-          dispatch(
-            push(
-              Urls.dashboard(
-                { id: destination.id, name: "" },
-                { editMode: true },
-              ),
-            ),
-          );
+      dispatch(
+        addUndo({
+          message: (
+            <QuestionMoveToast destination={destination} question={question} />
+          ),
+          undo: false,
+        }),
+      );
+
+      if (destination.model === "dashboard") {
+        // TODO: think through error handling
+        const dashboard = await dispatch(
+          getDashboard.initiate({ id: destination.id }),
+        ).unwrap();
+        const dashcard = dashboard.dashcards.find(c => c.card_id === cardId);
+        if (!dashcard) {
+          throw new Error("dashboard does not contain dashboard question");
         }
 
-        onClose();
-      })
-      .catch(e => {
-        setErrorMessage(getResponseErrorMessage(e));
-      });
+        const options = { editMode: true, scrollToDashcard: dashcard.id };
+        dispatch(push(Urls.dashboard(dashboard, options)));
+      }
+
+      onClose();
+    } catch (e) {
+      setErrorMessage(getResponseErrorMessage(e));
+    }
   };
 
   const handleMoveConfirm = () => {

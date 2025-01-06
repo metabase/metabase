@@ -42,6 +42,7 @@ import type {
   CardType,
   CollectionId,
   DashCardId,
+  Dashboard,
   DashboardId,
   DatabaseId,
   DatasetData,
