@@ -741,14 +741,8 @@ export const LightThemeDateFilterQuarterYearDropdown = {
     await userEvent.click(filter);
 
     const popover = getLastPopover();
-
-    await userEvent.click(
-      popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
-    );
-    const dropdown = getLastPopover();
-    dropdown
-      .getByRole("option", { name: "2023" })
-      .setAttribute("data-hovered", "true");
+    const quarter = popover.getByText("Q2");
+    quarter.classList.add("pseudo-hover");
   },
 };
 
