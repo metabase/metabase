@@ -102,7 +102,7 @@
   [{:keys [model] :as revision}]
   ;; in some cases (such as tests) we have 'fake' models that cannot be resolved normally; don't fail entirely in
   ;; those cases
-  (let [model (u/ignore-exceptions (t2.model/resolve-model (symbol model)))]
+  (let [model (u/ignore-exceptions (t2.model/resolve-model (keyword "model" model)))]
     (cond-> revision
       model (update :object (partial mi/do-after-select model)))))
 
