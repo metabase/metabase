@@ -75,7 +75,10 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
 
     getSdkRoot().within(() => {
       cy.contains("Orders in a dashboard").should("be.visible");
-      cy.findByText("Orders").click();
+
+      // We have two Orders dashcard with the same title.
+      cy.findAllByText("Orders").eq(0).click();
+
       cy.contains("Orders").should("be.visible");
       cy.contains("This is a custom question layout.");
     });
