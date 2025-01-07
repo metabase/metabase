@@ -18,7 +18,8 @@ export const isTime: TypeFn = TYPES.time_QMARK_;
 
 // Checks for both effective and semantic types. This hack is required to
 // support numbers stored as strings in MySQL until there is a proper
-// coercion strategy.
+// coercion strategy. `isString` and `isNumeric` would be both `true` for such
+// columns; that's why `isNumeric` needs to be called first.
 export const isNumeric: TypeFn = TYPES.numeric_QMARK_;
 
 // Semantic type checks. A semantic type can be assigned to a column with an
