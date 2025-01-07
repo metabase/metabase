@@ -1,7 +1,7 @@
 ---
 title: Contributing to Metabase
 redirect_from:
-  - /docs/latest/contributing
+  - /docs/latest/developers-guide/contributing
 ---
 
 # Contributing to Metabase
