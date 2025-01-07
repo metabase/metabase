@@ -154,13 +154,22 @@ export async function reportCIFailure({
     return null;
   }
 
-  await updateComment({
+  const response = await updateComment({
     fileName: spec.name,
     testName: test.titlePath.join(" > "),
   });
 
-  console.log(
-    `Sent failure notice to PR: ${PR_NUMBER} - ${spec.name} - ${test.titlePath.join(" > ")}`,
-  );
+  console.log("response", response);
+
+  if (response?.ok) {
+    console.log(
+      `Updated failure notice in PR: ${PR_NUMBER} - ${spec.name} - ${test.titlePath.join(
+        " > ",
+      )}`,
+    );
+    const payload = response.json();
+    console.log(payload);
+  }
+
   return null;
 }
