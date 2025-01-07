@@ -114,9 +114,19 @@ Cypress.on("window:load", window => {
   };
 });
 
-// FIXME: move to a CI only block
+// Fast failure notifications
 afterEach(() => {
-  cy.task("reportCIFailure", { spec: Cypress.spec, test: Cypress.currentTest });
+  const testState = Cypress.mocha.getRunner().suite.ctx.currentTest.state;
+  const testInfo = Cypress.mocha.getRunner().suite.ctx.currentTest;
+
+  const isLastRetry = testInfo.currentRetry() === testInfo.retries();
+
+  if (testState === "failed" && isLastRetry) {
+    cy.task("reportCIFailure", {
+      spec: Cypress.spec,
+      test: Cypress.currentTest,
+    });
+  }
 });
 
 // cypress-terminal-report
