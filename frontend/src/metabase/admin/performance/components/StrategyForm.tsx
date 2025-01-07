@@ -276,7 +276,7 @@ const StrategyFormBody = ({
                   />
                 </Field>
                 <input type="hidden" name="unit" />
-                {targetModel !== "database" && (
+                {["question", "dashboard"].includes(targetModel) && (
                   <PreemptiveCachingSwitch
                     handleSwitchToggle={handleSwitchToggle}
                   />
@@ -286,7 +286,7 @@ const StrategyFormBody = ({
             {selectedStrategyType === "schedule" && (
               <>
                 <ScheduleStrategyFormFields />
-                {targetModel !== "database" && (
+                {["question", "dashboard"].includes(targetModel) && (
                   <PreemptiveCachingSwitch
                     handleSwitchToggle={handleSwitchToggle}
                   />
