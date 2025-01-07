@@ -428,18 +428,26 @@
   by [[metabase.api.macros/defendpoint]]."
   [nmspace]
   ;; this fetches the handler from the namespace
-  (let [nmspace (the-ns nmspace)
-        handler (fn []
-                  (:api/handler (meta nmspace)))]
+  (let [nmspace    (the-ns nmspace)
+        handler-fn (fn []
+                     (:api/handler (meta nmspace)))]
     ;; for dev, fetch the handler from the metadata on every request so we get nice live reloading if the endpoints in a
     ;; namespace change. For prod that's not necessary since they shouldn't change
-    (if config/is-dev?
-      (fn
-        ([request]
-         ((handler) request))
-        ([request respond raise]
-         ((handler) request respond raise)))
-      (handler))))
+    (some-> (if config/is-dev?
+              (fn
+                ([request]
+                 (when-let [handler (handler-fn)]
+                   (handler request)))
+                ([request respond raise]
+                 (if-let [handler (handler-fn)]
+                   (handler request respond raise)
+                   (respond nil))))
+              (handler-fn))
+            ;; attach the namespace to the handler so we can use it to build OpenAPI documentation
+            ;; in [[metabase.api.common.openapi/collect-routes]]. This is kind of a roundabout way of doing things but I'm
+            ;; running with it for now to avoid having to rewrite too much stuff as we transition from defendpoint 1 to
+            ;; defendpoint 2.
+            (vary-meta assoc :ns nmspace, :api/defendpoint-2-handler? true))))
 
 (defn- namespace->api-route-fns
   "Return a sequence of all API endpoint functions defined by `defendpoint` in a namespace."

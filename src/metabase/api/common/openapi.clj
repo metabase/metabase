@@ -5,7 +5,9 @@
    [clojure.string :as str]
    [malli.json-schema :as mjs]
    [medley.core :as m]
+   [metabase.api.macros :as api.macros]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
   (:import
    (clojure.lang PersistentVector)))
@@ -78,20 +80,43 @@
 
 ;;; OpenAPI generation
 
-(defn- collect-routes
+(mu/defn- collect-routes :- [:sequential
+                             [:or
+                              ;; defendpoint 1 handler var
+                              [:map
+                               [:path string?]
+                               [:route (ms/InstanceOfClass clojure.lang.Var)]]
+                              ;; defendpoint 2 parsed args
+                              [:map
+                               [:path string?]
+                               [:defendpoint-2-definition ::api.macros/parsed-args]]]]
   "Collect routes with schemas with their full paths."
   [root]
-  (let [first-if-vec #(if (vector? %) (first %) %)
-        walk         (fn walk [{:keys [prefix tag]} route]
-                       (let [tag  (or (not-empty tag) (some-> (not-empty prefix) (subs 1)))
-                             path (str prefix (-> route meta :path first-if-vec))]
-                         (cons {:path  (path->openapi path)
-                                :tag   tag
-                                :route route}
-                               (when (-> route meta :routes)
-                                 (mapcat (partial walk {:prefix path :tag tag}) (-> route meta :routes))))))]
+  (letfn [(first-if-vec [x]
+            (if (vector? x) (first x) x))
+          (collect-defendpoint-1-routes [{:keys [prefix tag]} handler-var]
+            (let [tag  (or (not-empty tag) (some-> (not-empty prefix) (subs 1)))
+                  path (str prefix (-> handler-var meta :path first-if-vec))]
+              (cons {:path  (path->openapi path)
+                     :tag   tag
+                     :route handler-var}
+                    (when-let [routes (-> handler-var meta :routes not-empty)]
+                      (mapcat (partial walk {:prefix path :tag tag})
+                              routes)))))
+          (collect-defendpoint-2-routes [{:keys [prefix tag]} handler]
+            (when-let [namespac (some-> handler meta :ns the-ns)]
+              (for [route (vals (-> namespac meta :api/endpoints))]
+                {:path                     (path->openapi (str prefix (get-in route [:form :route :path])))
+                 :tag                      (or (not-empty tag) (some-> (not-empty prefix) (subs 1)))
+                 :defendpoint-2-definition (:form route)})))
+          (walk [context handler]
+            (if (:api/defendpoint-2-handler? (meta handler))
+              (collect-defendpoint-2-routes context handler)
+              (collect-defendpoint-1-routes context handler)))]
     (->> (walk {:prefix ""} root)
-         (filter #(-> % :route meta :schema)))))
+         (filter #(or
+                   (-> % :route meta :schema) ; defendpoint 1 handler
+                   (:defendpoint-2-definition %))))))
 
 (defn- compojure-query-params
   "This function is not trying to parse whole compojure syntax, just get the names of query parameters out"
@@ -129,29 +154,38 @@
 
 (defn- schema->params
   "https://spec.openapis.org/oas/latest.html#parameter-object"
-  [full-path args schema]
-  (let [{:keys [properties required]} (mjs-collect-definitions schema)
-        required                      (set required)
-        in-path?                      (set (map (comp keyword second) (re-seq #"\{([^}]+)\}" full-path)))
-        in-query?                     (set (compojure-query-params args))
-        renames                       (compojure-renames args)]
-    (for [[k param-schema] properties
-          :let             [k (get renames k k)]
-          :when            (or (in-path? k) (in-query? k))
-          :let             [schema    (fix-json-schema param-schema)
-                            ;; if schema does not indicate it's optional, it's not :)
-                            optional? (:optional schema)]]
-      (cond-> {:in          (if (in-path? k) :path :query)
-               :name        k
-               :required    (and (contains? required k) (not optional?))
-               :schema      (dissoc schema :optional :description)}
-        (:description schema) (assoc :description (:description schema))))))
+  ([full-path args schema]
+   (let [in-path?  (set (map (comp keyword second) (re-seq #"\{([^}]+)\}" full-path)))
+         in-query? (set (compojure-query-params args))
+         in-fn     (fn [k]
+                     (cond
+                       (in-path? k)  :path
+                       (in-query? k) :query))
+         renames   (some-> args compojure-renames)]
+     (schema->params full-path schema in-fn renames)))
 
-(defn- defendpoint->path-item
-  "Generate OpenAPI desc for a single handler
+  ([full-path schema in-fn renames]
+   (let [{:keys [properties required]} (mjs-collect-definitions schema)
+         required                      (set required)]
+     (for [[k param-schema] properties
+           :let             [k (get renames k k)]
+           :when            (in-fn k)
+           :let             [schema    (fix-json-schema param-schema)
+                             ;; if schema does not indicate it's optional, it's not :)
+                             optional? (:optional schema)]]
+       (cond-> {:in          (in-fn k)
+                :name        k
+                :required    (and (contains? required k) (not optional?))
+                :schema      (dissoc schema :optional :description)}
+         (:description schema) (assoc :description (str (:description schema))))))))
+
+(mu/defn- defendpoint->path-item
+  "Generate OpenAPI desc for a single legacy `defendpoint` handler
 
   https://spec.openapis.org/oas/latest.html#path-item-object"
-  [tag full-path handler-var]
+  [tag
+   full-path   :- string?
+   handler-var :- (ms/InstanceOfClass clojure.lang.Var)]
   (let [{:keys [method] :as data} (meta handler-var)
         params                    (schema->params full-path (:args data) (:schema data))
         non-body-param?           (set (map :name params))
@@ -171,6 +205,39 @@
               tag         (assoc :tags [tag])
               body-schema (assoc :requestBody {:content {ctype {:schema body-schema}}}))}))
 
+(mu/defn- defendpoint-2->path-item
+  "Generate OpenAPI desc for `defendpoint` 2.0 ([[metabase.api.macros/defendpoint]]) handler.
+
+  https://spec.openapis.org/oas/latest.html#path-item-object"
+  [tag
+   full-path :- string?
+   form      :- ::api.macros/parsed-args]
+  (let [method                    (:method form)
+        route-params              (when-let [schema (get-in form [:params :route :schema])]
+                                    (schema->params full-path schema (constantly :path) nil))
+        query-params              (when-let [schema (get-in form [:params :query :schema])]
+                                    (schema->params full-path
+                                                    schema
+                                                    (constantly :query)
+                                                    nil))
+        params                    (concat
+                                   (for [param route-params]
+                                     (assoc param :in :path))
+                                   query-params)
+        body-schema               (some-> (get-in form [:params :body :schema])
+                                          mjs-collect-definitions
+                                          fix-json-schema)
+        ;; multipart is not yet implemented for defendpoint 2 but this is a placeholder until it is I guess
+        ctype                     (if (get-in form [:metadata :multipart])
+                                    "multipart/form-data"
+                                    "application/json")]
+    ;; summary is the string in the sidebar of Scalar
+    {method (cond-> {:summary     (str (u/upper-case-en (name method)) " " full-path)
+                     :description (:docstr form)
+                     :parameters params}
+              tag         (assoc :tags [tag])
+              body-schema (assoc :requestBody {:content {ctype {:schema body-schema}}}))}))
+
 (defn openapi-object
   "Generate base object for OpenAPI (/paths and /components/schemas)
 
@@ -181,9 +248,11 @@
     (let [paths (reduce (fn [acc [k v]]
                           (merge-with into acc {k v}))
                         {}
-                        (for [{:keys [path tag route]} (collect-routes root)]
+                        (for [{:keys [path tag route defendpoint-2-definition]} (collect-routes root)]
                           (try
-                            [path (defendpoint->path-item tag path route)]
+                            [path (if defendpoint-2-definition
+                                    (defendpoint-2->path-item tag path defendpoint-2-definition)
+                                    (defendpoint->path-item tag path route))]
                             (catch Exception e
                               (throw (ex-info (str "Exception at " path) {} e))))))]
       {:paths      paths
@@ -193,7 +262,15 @@
   ;; See what is the result of generation, could be helpful debugging what's wrong with display in rapidoc
   ;; `resolve` is to appease clj-kondo which will complain for #'
   (defendpoint->path-item nil "/path" (resolve 'metabase-enterprise.serialization.api/POST_export))
+
+  (collect-routes (requiring-resolve 'metabase.api.timeline/routes))
+
+  (openapi-object (requiring-resolve 'metabase.api.timeline/routes))
+
+  (get-in (openapi-object (requiring-resolve 'metabase.api.routes/routes)) [:paths "/timeline/"])
+
   (openapi-object (resolve 'metabase.api.pulse/routes))
+
   (->> (openapi-object (resolve 'metabase.api.routes/routes))
        :paths
        (map #(second (str/split (key %) #"/")))

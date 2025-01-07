@@ -17,6 +17,7 @@
    [malli.error :as me]
    [malli.transform :as mtx]
    [metabase.api.common.internal]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -41,7 +42,7 @@
     [:schema {:optional true} [:any {:description "Malli map schema for all the params of this type"}]]]])
 
 (mr/def ::method
-  [:enum :get :post :update :delete])
+  [:enum :get :post :put :delete])
 
 (mr/def ::parsed-args
   [:map
@@ -164,7 +165,7 @@
 
 (s/def ::defendpoint
   (s/cat
-   :method          #{:get :post :update :delete}
+   :method          #{:get :post :put :delete}
    :route           ::defendpoint.route
    :response-schema ::defendpoint.schema-specifier
    :docstr          (s/? string?)
@@ -291,11 +292,24 @@
               `[(validate-and-encode-response ~response-schema (do ~@body))]
               body))))))
 
+(defn validate-schema
+  "Impl for [[defendpoint-core-fn]]: validate the schemas used for validation at evaluation time, so we can get instant
+  feedback if they're bad as opposed to waiting for someone to actually use the endpoint."
+  [schema-type schema]
+  (try
+    (mc/schema schema)
+    (catch Throwable e#
+      (throw (ex-info (format "Invalid %s schema: %s\n\n%s"
+                              (name schema-type)
+                              (ex-message e#)
+                              (u/pprint-to-str schema))
+                      {:schema schema})))))
+
 (defmacro defendpoint-core-fn-with-optimized-schemas
-  "Helper macro for [[defendpoint-core-fn]]. This is not strictly necessary, but improves performance somewhat by rewriting the
-  code so parameter and response schemas are defined one time outside the underlying endpoints functions and lexically
-  closed over rather than being defined inline and re-evaluated on each API request. E.g. instead of defining a core
-  function like
+  "Helper macro for [[defendpoint-core-fn]]. This is not strictly necessary, but improves performance somewhat by
+  rewriting the code so parameter and response schemas are defined one time outside the underlying endpoints functions
+  and lexically closed over rather than being defined inline and re-evaluated on each API request. E.g. instead of
+  defining a core function like
 
     (-defendpoint-core-fn
      (fn [_route-params _query-params body-params-1234]
@@ -346,6 +360,16 @@
                [body-params-schema (get-in parsed [:params :body :schema])])
            ~@(when response-schema
                [response-schema (:response-schema parsed)])]
+       ;; make sure all the schemas are actually valid at eval time, this will save us a lot of drama if we know right
+       ;; away as opposed to not finding out until we actually use the endpoints
+       ~@(when route-params-schema
+           `[(validate-schema :route ~route-params-schema)])
+       ~@(when query-params-schema
+           `[(validate-schema :query ~query-params-schema)])
+       ~@(when body-params-schema
+           `[(validate-schema :body ~body-params-schema)])
+       ~@(when response-schema
+           `[(validate-schema :response ~response-schema)])
        (~f ~parsed'))))
 
 (defmacro defendpoint-core-fn
@@ -432,7 +456,9 @@
                      (= (second k) route)))
            routes))))
 
-(mu/defn find-route :- ::info
+(mu/defn find-route :- [:schema
+                        {:description (format "Tip: you can use %s to list all the defendpoint 2 routes in a namespace" `ns-routes)}
+                        ::info]
   "Find the info for a specific route."
   [nmspace
    method :- ::method
