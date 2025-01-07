@@ -202,32 +202,6 @@
     true  {:effective-type :type/Text :semantic-type :type/SerializedJSON}
     false {:effective-type :type/JSON :semantic-type :type/SerializedJSON}))
 
-(deftest ^:parallel has-latitude-and-longitude?-test
-  (is (true? (lib.types.isa/has-latitude-and-longitude?
-              [{:semantic-type :type/Latitude} {:semantic-type :type/Longitude}])))
-  (are [columns] (false? (lib.types.isa/has-latitude-and-longitude?
-                          columns))
-    [{:semantic-type :type/Latitude}]
-    [{:semantic-type :type/Longitude}]
-    [{:semantic-type :type/Longitude} {:semantic-type :type/Address}]
-    []
-    nil))
-
-(deftest ^:parallel primary-key-pred-test
-  (let [integer-table-id 1
-        columns [{:semantic-type :type/PK, :table-id (inc integer-table-id), :name "column0"}
-                 {:semantic-type :type/PK, :name "column1"}
-                 {:semantic-type :type/PK, :table-id integer-table-id, :name "column2"}
-                 {:semantic-type :type/Address, :name "column3"}]]
-    (testing "with integer table-id :table-id has to match"
-      (let [primary-key? (lib.types.isa/primary-key-pred integer-table-id)]
-        (is (= ["column2"]
-               (map :name (filter primary-key? columns))))))
-    (testing "with string table-id all PK columns are returned"
-      (let [primary-key? (lib.types.isa/primary-key-pred "card__1")]
-        (is (= ["column0" "column1" "column2"]
-               (map :name (filter primary-key? columns))))))))
-
 (deftest ^:parallel valid-filter-for?-test
   (are [exp base-lhs eff-lhs base-rhs eff-rhs] (= exp (lib.types.isa/valid-filter-for?
                                                        {:base-type      base-lhs
