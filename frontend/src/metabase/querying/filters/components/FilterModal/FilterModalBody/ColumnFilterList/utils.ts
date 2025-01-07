@@ -17,7 +17,6 @@ function isCategoryAndNotNameOrAddress(column: Lib.ColumnMetadata) {
 function isNumberAndNotKeyOrCoordinate(column: Lib.ColumnMetadata) {
   return (
     Lib.isNumeric(column) &&
-    !Lib.isStringOrStringLike(column) &&
     !Lib.isPrimaryKey(column) &&
     !Lib.isForeignKey(column) &&
     !Lib.isCoordinate(column)

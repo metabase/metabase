@@ -11,11 +11,15 @@ export const isTemporal: TypeFn = TYPES.temporal_QMARK_;
 export const isDateOrDateTime: TypeFn = TYPES.date_or_datetime_QMARK_;
 export const isDateWithoutTime: TypeFn = TYPES.date_without_time_QMARK_;
 export const isInteger: TypeFn = TYPES.integer_QMARK_;
-export const isNumeric: TypeFn = TYPES.numeric_QMARK_;
 export const isString: TypeFn = TYPES.string_QMARK_;
 export const isStringLike: TypeFn = TYPES.string_like_QMARK_;
 export const isStringOrStringLike: TypeFn = TYPES.string_or_string_like_QMARK_;
 export const isTime: TypeFn = TYPES.time_QMARK_;
+
+// Checks for both effective and semantic types. This hack is required to
+// support numbers stored as strings in MySQL until there is a proper
+// coercion strategy.
+export const isNumeric: TypeFn = TYPES.numeric_QMARK_;
 
 // Semantic type checks. A semantic type can be assigned to a column with an
 // unrelated effective type. Do not imply any effective type when checking for a

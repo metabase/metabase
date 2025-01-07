@@ -51,7 +51,6 @@ export function columnFilterForParameter(
     case "number":
       return column =>
         Lib.isNumeric(column) &&
-        !Lib.isStringOrStringLike(column) &&
         !Lib.isPrimaryKey(column) &&
         !Lib.isForeignKey(column) &&
         !Lib.isLocation(column);
