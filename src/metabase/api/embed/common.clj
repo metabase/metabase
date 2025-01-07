@@ -12,6 +12,7 @@
    [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.eid-translation :as eid-translation]
+   [metabase.models :as models]
    [metabase.models.card :as card]
    [metabase.models.params :as params]
    [metabase.models.setting :refer [defsetting]]
@@ -20,13 +21,15 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
-   [metabase.util.i18n
-    :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(comment
+  models/keep-me)
 
 (set! *warn-on-reflection* true)
 

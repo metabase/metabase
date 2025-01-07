@@ -5,10 +5,7 @@
    [metabase.api.common :as api]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
-   [metabase.models.timeline :refer [Timeline]]
-   [metabase.models.timeline-event
-    :as timeline-event
-    :refer [TimelineEvent]]
+   [metabase.models.timeline-event :as timeline-event]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli.schema :as ms]
@@ -35,7 +32,7 @@
             {:creator_id api/*current-user-id*}
             (when-not icon
               {:icon timeline-event/default-icon}))]
-    (first (t2/insert-returning-instances! Timeline tl))))
+    (first (t2/insert-returning-instances! :model/Timeline tl))))
 
 (api/defendpoint GET "/"
   "Fetch a list of [[Timelines]]. Can include `archived=true` to return archived timelines."
@@ -43,7 +40,7 @@
   {include  [:maybe Include]
    archived [:maybe ms/BooleanValue]}
   (let [archived? archived
-        timelines (->> (t2/select Timeline
+        timelines (->> (t2/select :model/Timeline
                                   {:where    [:and
                                               [:= :archived archived?]
                                               (collection/visible-collection-filter-clause)]
@@ -63,7 +60,7 @@
    start    [:maybe ms/TemporalString]
    end      [:maybe ms/TemporalString]}
   (let [archived? archived
-        timeline  (api/read-check (t2/select-one Timeline :id id))]
+        timeline  (api/read-check (t2/select-one :model/Timeline :id id))]
     (cond-> (t2/hydrate timeline :creator [:collection :can_write])
       ;; `collection_id` `nil` means we need to assoc 'root' collection
       ;; because hydrate `:collection` needs a proper `:id` to work.
@@ -86,23 +83,23 @@
    icon          [:maybe timeline-event/Icon]
    collection_id [:maybe ms/PositiveInt]
    archived      [:maybe :boolean]}
-  (let [existing (api/write-check Timeline id)
-        current-archived (:archived (t2/select-one Timeline :id id))]
+  (let [existing (api/write-check :model/Timeline id)
+        current-archived (:archived (t2/select-one :model/Timeline :id id))]
     (collection/check-allowed-to-change-collection existing timeline-updates)
-    (t2/update! Timeline id
+    (t2/update! :model/Timeline id
                 (u/select-keys-when timeline-updates
                                     :present #{:description :icon :collection_id :default :archived}
                                     :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
-      (t2/update! TimelineEvent {:timeline_id id} {:archived archived}))
-    (t2/hydrate (t2/select-one Timeline :id id) :creator [:collection :can_write])))
+      (t2/update! :model/TimelineEvent {:timeline_id id} {:archived archived}))
+    (t2/hydrate (t2/select-one :model/Timeline :id id) :creator [:collection :can_write])))
 
 (api/defendpoint DELETE "/:id"
   "Delete a [[Timeline]]. Will cascade delete its events as well."
   [id]
   {id ms/PositiveInt}
-  (api/write-check Timeline id)
-  (t2/delete! Timeline :id id)
+  (api/write-check :model/Timeline id)
+  (t2/delete! :model/Timeline :id id)
   api/generic-204-no-content)
 
 (api/define-routes)

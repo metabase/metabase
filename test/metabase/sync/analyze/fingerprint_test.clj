@@ -4,8 +4,6 @@
    [clojure.test :refer :all]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.db.query :as mdb.query]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.interface :as i]
@@ -154,8 +152,8 @@
                                                     [_query rff]
                                                     (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
                     sync.fingerprint/save-fingerprint! (fn [& _] (reset! fingerprinted? true))]
-        (t2.with-temp/with-temp [Table table {}
-                                 Field _     (assoc field-properties :table_id (u/the-id table))]
+        (t2.with-temp/with-temp [:model/Table table {}
+                                 :model/Field _     (assoc field-properties :table_id (u/the-id table))]
           [(sync.fingerprint/fingerprint-fields! table)
            @fingerprinted?])))))
 
@@ -262,11 +260,11 @@
 
 (deftest fingerprint-table!-test
   (testing "the `fingerprint!` function is correctly updating the correct columns of Field"
-    (t2.with-temp/with-temp [Field field {:base_type           :type/Integer
-                                          :table_id            (data/id :venues)
-                                          :fingerprint         nil
-                                          :fingerprint_version 1
-                                          :last_analyzed       #t "2017-08-09T00:00:00"}]
+    (t2.with-temp/with-temp [:model/Field field {:base_type           :type/Integer
+                                                 :table_id            (data/id :venues)
+                                                 :fingerprint         nil
+                                                 :fingerprint_version 1
+                                                 :last_analyzed       #t "2017-08-09T00:00:00"}]
       (binding [i/*latest-fingerprint-version* 3]
         (with-redefs [qp/process-query             (fn [_query rff]
                                                      (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
@@ -275,23 +273,23 @@
                   :failed-fingerprints    0
                   :updated-fingerprints   1
                   :fingerprints-attempted 1}
-                 (#'sync.fingerprint/fingerprint-table! (t2/select-one Table :id (data/id :venues)) [field])))
+                 (#'sync.fingerprint/fingerprint-table! (t2/select-one :model/Table :id (data/id :venues)) [field])))
           (is (= {:fingerprint         {:experimental {:fake-fingerprint? true}}
                   :fingerprint_version 3
                   :last_analyzed       nil}
-                 (into {} (t2/select-one [Field :fingerprint :fingerprint_version :last_analyzed] :id (u/the-id field))))))))))
+                 (into {} (t2/select-one [:model/Field :fingerprint :fingerprint_version :last_analyzed] :id (u/the-id field))))))))))
 
 (deftest test-fingerprint-failure
   (testing "if fingerprinting fails, the exception should not propagate"
     (with-redefs [sync.fingerprint/fingerprint-table! (fn [_ _] (throw (Exception. "expected")))]
       (is (= (sync.fingerprint/empty-stats-map 0)
-             (sync.fingerprint/fingerprint-fields! (t2/select-one Table :id (data/id :venues))))))))
+             (sync.fingerprint/fingerprint-fields! (t2/select-one :model/Table :id (data/id :venues))))))))
 
 (deftest fingerprint-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Fingerprints should actually get saved with the correct values"
       (testing "Text fingerprints"
-        (sync.fingerprint/fingerprint-fields! (t2/select-one Table :id (data/id :venues)))
+        (sync.fingerprint/fingerprint-fields! (t2/select-one :model/Table :id (data/id :venues)))
         (is (=? {:global {:distinct-count 100
                           :nil%           0.0}
                  :type   {:type/Text {:percent-json   0.0
@@ -299,17 +297,17 @@
                                       :percent-email  0.0
                                       :average-length #(< 15 % 16)
                                       :percent-state  0.0}}}
-                (t2/select-one-fn :fingerprint Field :id (mt/id :venues :name))))))))
+                (t2/select-one-fn :fingerprint :model/Field :id (mt/id :venues :name))))))))
 
 (deftest fingerprinting-test
   (testing "fingerprinting truncates text fields (see #13288)"
     (doseq [size [4 8 10]]
-      (let [table (t2/select-one Table :id (mt/id :categories))
-            field (t2/select-one Field :id (mt/id :categories :name))]
+      (let [table (t2/select-one :model/Table :id (mt/id :categories))
+            field (t2/select-one :model/Field :id (mt/id :categories :name))]
         (binding [sync.fingerprint/*truncation-size* size]
           (is (=? {:updated-fingerprints 1}
                   (#'sync.fingerprint/fingerprint-table! table [field])))
-          (let [field' (t2/select-one [Field :fingerprint] :id (u/id field))
+          (let [field' (t2/select-one [:model/Field :fingerprint] :id (u/id field))
                 fingerprinted-size (get-in field' [:fingerprint :type :type/Text :average-length])]
             (is fingerprinted-size)
             (is (<= fingerprinted-size size))))))))

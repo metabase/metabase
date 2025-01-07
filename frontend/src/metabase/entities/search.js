@@ -1,4 +1,13 @@
-import { cardApi, collectionApi, searchApi } from "metabase/api";
+import { useMemo } from "react";
+
+import {
+  cardApi,
+  collectionApi,
+  searchApi,
+  skipToken,
+  useListCollectionItemsQuery,
+  useSearchQuery,
+} from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { entityForObject } from "metabase/lib/schema";
@@ -20,6 +29,10 @@ import Snippets from "./snippets";
 export default createEntity({
   name: "search",
   path: "/api/search",
+
+  rtk: {
+    useListQuery,
+  },
 
   api: {
     list: async (query = {}, dispatch) => {
@@ -180,4 +193,82 @@ export default createEntity({
 function warnEntityAndReturnObject(object) {
   console.warn("Couldn't find entity for object", object);
   return object;
+}
+
+function useListQuery(query = {}, options) {
+  const collectionItemsQuery = useListCollectionItemsQuery(
+    query.collection ? getCollectionItemsQueryPayload(query) : skipToken,
+    options,
+  );
+  const collectionItems = useMemo(() => {
+    return {
+      ...collectionItemsQuery,
+      data: collectionItemsQuery.data
+        ? collectionItemsQuery.data.data.map(item => ({
+            collection_id: canonicalCollectionId(query.collection),
+            archived: query.archived || false,
+            ...item,
+          }))
+        : [],
+    };
+  }, [collectionItemsQuery, query]);
+
+  const searchQuery = useSearchQuery(
+    query.collection ? skipToken : query,
+    options,
+  );
+  const search = useMemo(() => {
+    return {
+      ...searchQuery,
+      data: searchQuery.data
+        ? searchQuery.data.data.map(item => {
+            const collectionKey = item.collection
+              ? { collection_id: item.collection.id }
+              : {};
+            return {
+              ...collectionKey,
+              ...item,
+            };
+          })
+        : [],
+    };
+  }, [searchQuery]);
+
+  return query.collection ? collectionItems : search;
+}
+
+function getCollectionItemsQueryPayload(query) {
+  const {
+    collection,
+    archived,
+    models,
+    namespace,
+    pinned_state,
+    limit,
+    offset,
+    sort_column,
+    sort_direction,
+    show_dashboard_questions,
+    ...unsupported
+  } = query;
+
+  if (Object.keys(unsupported).length > 0) {
+    throw new Error(
+      "search with `collection` filter does not support these filters: " +
+        Object.keys(unsupported).join(", "),
+    );
+  }
+
+  return {
+    id: collection,
+    archived,
+    models,
+    namespace,
+    pinned_state,
+    limit,
+    offset,
+    sort_column,
+    sort_direction,
+    show_dashboard_questions,
+  };
 }

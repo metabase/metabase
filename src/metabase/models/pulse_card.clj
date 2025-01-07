@@ -6,11 +6,6 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(def PulseCard
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all these symbols in our codebase."
-  :model/PulseCard)
-
 (methodical/defmethod t2/table-name :model/PulseCard [_model] :pulse_card)
 
 (doto :model/PulseCard
@@ -21,7 +16,7 @@
   "Return the next available `pulse_card.position` for the given `pulse`"
   [pulse-id]
   {:pre [(integer? pulse-id)]}
-  (-> (t2/select-one [PulseCard [:%max.position :max]] :pulse_id pulse-id)
+  (-> (t2/select-one [:model/PulseCard [:%max.position :max]] :pulse_id pulse-id)
       :max
       (some-> inc)
       (or 0)))
@@ -41,7 +36,7 @@
   "Creates new PulseCards, joining the given card, pulse, and dashboard card and setting appropriate defaults for other
   values if they're not provided."
   [new-pulse-cards :- [:sequential NewPulseCard]]
-  (t2/insert! PulseCard
+  (t2/insert! :model/PulseCard
               (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls format_rows pivot_results]} new-pulse-cards]
                 {:card_id           card_id
                  :pulse_id          pulse_id

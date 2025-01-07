@@ -12,11 +12,17 @@ import {
   adaptiveRadioButton,
   cacheStrategyForm,
   cancelConfirmationModal,
+  checkPreemptiveCachingDisabled,
+  checkPreemptiveCachingEnabled,
+  dashboardAndQuestionsTable,
+  disablePreemptiveCaching,
   dontCacheResultsRadioButton,
   durationRadioButton,
+  enablePreemptiveCaching,
   formLauncher,
   openSidebarCacheStrategyForm,
   openStrategyFormForDatabaseOrDefaultPolicy,
+  preemptiveCachingSwitch,
   saveCacheStrategyForm,
   scheduleRadioButton,
 } from "./helpers/e2e-strategy-form-helpers";
@@ -352,11 +358,7 @@ describe("scenarios > admin > performance > strategy form", () => {
       it("can configure Sample Database on the 'Dashboard and question caching' tab", () => {
         interceptPerformanceRoutes();
         visitDashboardAndQuestionCachingTab();
-        const table = () =>
-          cy.findByRole("table", {
-            name: /Here are the dashboards and questions/,
-          });
-        table()
+        dashboardAndQuestionsTable()
           .should("be.visible")
           .contains(
             "No dashboards or questions have their own caching policies yet.",
@@ -367,7 +369,7 @@ describe("scenarios > admin > performance > strategy form", () => {
         cy.findByLabelText(/Cache results for this many hours/).type("99");
         saveCacheStrategyForm({ strategyType: "duration", model: "database" });
         visitDashboardAndQuestionCachingTab();
-        table()
+        dashboardAndQuestionsTable()
           .contains("Duration: 99h")
           .within(() => {
             cy.findByText("Duration: 99h").click();
@@ -379,11 +381,7 @@ describe("scenarios > admin > performance > strategy form", () => {
       it("confirmation modal appears before dirty form is abandoned", () => {
         interceptPerformanceRoutes();
         visitDashboardAndQuestionCachingTab();
-        const table = () =>
-          cy.findByRole("table", {
-            name: /Here are the dashboards and questions/,
-          });
-        table()
+        dashboardAndQuestionsTable()
           .should("be.visible")
           .contains(
             "No dashboards or questions have their own caching policies yet.",
@@ -394,7 +392,7 @@ describe("scenarios > admin > performance > strategy form", () => {
         cy.findByLabelText(/Cache results for this many hours/).type("99");
         saveCacheStrategyForm({ strategyType: "duration", model: "database" });
         visitDashboardAndQuestionCachingTab();
-        table()
+        dashboardAndQuestionsTable()
           .contains("Duration: 99h")
           .within(() => {
             cy.findByText("Duration: 99h").click();
@@ -408,8 +406,8 @@ describe("scenarios > admin > performance > strategy form", () => {
         cy.findByLabelText(/Cache results for this many hours/).type("24");
         saveCacheStrategyForm({ strategyType: "duration", model: "database" });
         visitDashboardAndQuestionCachingTab();
-        table().contains("Adaptive");
-        table()
+        dashboardAndQuestionsTable().contains("Adaptive");
+        dashboardAndQuestionsTable()
           .contains("Duration: 24h")
           .within(() => {
             cy.findByText("Duration: 24h").click();
@@ -419,7 +417,7 @@ describe("scenarios > admin > performance > strategy form", () => {
         scheduleRadioButton().click();
 
         cy.log("Modal appears when another row's form launcher is clicked");
-        table()
+        dashboardAndQuestionsTable()
           .contains("Adaptive")
           .within(() => {
             cy.findByText("Adaptive").click();
@@ -435,6 +433,80 @@ describe("scenarios > admin > performance > strategy form", () => {
         cy.log("Modal appears when another Performance tab is clicked");
         cy.findByRole("tab", { name: "Database caching" }).click();
         cancelConfirmationModal();
+      });
+    });
+
+    describe("Preemptive caching", () => {
+      it("Preemptive caching can be enabled and disabled for duration-based caches", () => {
+        // Enable preemptive caching in question settings sidebar
+        H.visitQuestion(ORDERS_QUESTION_ID);
+        openSidebarCacheStrategyForm("question");
+        durationRadioButton().click();
+        enablePreemptiveCaching();
+        saveCacheStrategyForm({ strategyType: "duration", model: "database" });
+        cy.findByLabelText("When to get new results").click();
+        checkPreemptiveCachingEnabled();
+
+        // Check that it's also enabled on the "Dashboard and question caching" admin page
+        visitDashboardAndQuestionCachingTab();
+        dashboardAndQuestionsTable()
+          .contains("Duration: 24h")
+          .within(() => {
+            cy.findByText("Duration: 24h").click();
+          });
+        checkPreemptiveCachingEnabled();
+
+        // Disable preemptive caching on the admin page
+        disablePreemptiveCaching();
+        saveCacheStrategyForm({ strategyType: "duration", model: "database" });
+        checkPreemptiveCachingDisabled();
+
+        // Check that it's also disabled in the question sidebar
+        H.visitQuestion(ORDERS_QUESTION_ID);
+        openSidebarCacheStrategyForm("question");
+        checkPreemptiveCachingDisabled();
+      });
+
+      it("Preemptive caching can be enabled and disabled for schedule-based caches", () => {
+        // Enable preemptive caching in question settings sidebar
+        H.visitQuestion(ORDERS_QUESTION_ID);
+        openSidebarCacheStrategyForm("question");
+        scheduleRadioButton().click();
+        enablePreemptiveCaching();
+        saveCacheStrategyForm({ strategyType: "schedule", model: "database" });
+        cy.findByLabelText("When to get new results").click();
+        checkPreemptiveCachingEnabled();
+
+        // Check that it's also enabled on the "Dashboard and question caching" admin page
+        visitDashboardAndQuestionCachingTab();
+        dashboardAndQuestionsTable()
+          .contains("Scheduled: hourly")
+          .within(() => {
+            cy.findByText("Scheduled: hourly").click();
+          });
+        checkPreemptiveCachingEnabled();
+
+        // Disable preemptive caching on the admin page
+        disablePreemptiveCaching();
+        saveCacheStrategyForm({ strategyType: "schedule", model: "database" });
+        checkPreemptiveCachingDisabled();
+
+        // Check that it's also disabled in the question sidebar
+        H.visitQuestion(ORDERS_QUESTION_ID);
+        openSidebarCacheStrategyForm("question");
+        checkPreemptiveCachingDisabled();
+      });
+
+      it("Preemptive caching is not available for other caching policies", () => {
+        H.visitQuestion(ORDERS_QUESTION_ID);
+        openSidebarCacheStrategyForm("question");
+        preemptiveCachingSwitch().should("not.exist");
+
+        adaptiveRadioButton().click();
+        preemptiveCachingSwitch().should("not.exist");
+
+        dontCacheResultsRadioButton().click();
+        preemptiveCachingSwitch().should("not.exist");
       });
     });
   });

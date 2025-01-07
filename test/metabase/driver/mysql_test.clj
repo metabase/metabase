@@ -17,9 +17,6 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.action :as action]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.string-extracts-test
     :as string-extracts-test]
@@ -70,7 +67,7 @@
                      "INSERT INTO `exciting-moments-in-history` (`id`, `moment`) VALUES (1, '0000-00-00');"]]
           (jdbc/execute! spec [sql]))
         ;; create & sync MB DB
-        (t2.with-temp/with-temp [Database database {:engine "mysql", :details details}]
+        (t2.with-temp/with-temp [:model/Database database {:engine "mysql", :details details}]
           (sync/sync-database! database)
           (mt/with-db database
             ;; run the query
@@ -89,7 +86,7 @@
         (jdbc/execute! spec [(format "CREATE TABLE same_table_name (%s_a integer, %s_b integer, %s_c integer);" dbname dbname dbname)]))
       (doseq [details [(tx/dbdef->connection-details :mysql :db {:database-name "dbone"})
                        (set/rename-keys (tx/dbdef->connection-details :mysql :db {:database-name "dbone"}) {:db :dbname})]]
-        (t2.with-temp/with-temp [Database database {:engine "mysql", :details details}]
+        (t2.with-temp/with-temp [:model/Database database {:engine "mysql", :details details}]
           (sync/sync-database! database)
           (is (= #{"dbone_a" "dbone_b" "dbone_c"}
                  (into #{} (map :name) (driver/describe-fields :mysql database)))))))))
@@ -147,8 +144,8 @@
 (defn db->fields
   "Given a DB return its fields as a set."
   [db]
-  (let [table-ids (t2/select-pks-set Table :db_id (u/the-id db))]
-    (set (map (partial into {}) (t2/select [Field :name :base_type :semantic_type] :table_id [:in table-ids])))))
+  (let [table-ids (t2/select-pks-set :model/Table :db_id (u/the-id db))]
+    (set (map (partial into {}) (t2/select [:model/Field :name :base_type :semantic_type] :table_id [:in table-ids])))))
 
 (deftest tiny-int-1-test
   (mt/test-driver :mysql
@@ -162,9 +159,9 @@
                (db->fields (mt/db)))))
 
       (testing "if someone says specifies `tinyInt1isBit=false`, it should come back as a number instead"
-        (t2.with-temp/with-temp [Database db {:engine  "mysql"
-                                              :details (assoc (:details (mt/db))
-                                                              :additional-options "tinyInt1isBit=false")}]
+        (t2.with-temp/with-temp [:model/Database db {:engine  "mysql"
+                                                     :details (assoc (:details (mt/db))
+                                                                     :additional-options "tinyInt1isBit=false")}]
           (sync/sync-database! db)
           (is (= #{{:name "number-of-cans", :base_type :type/Integer, :semantic_type :type/Quantity}
                    {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
@@ -183,8 +180,8 @@
         (is (= #{{:name "year_column", :base_type :type/Integer, :semantic_type nil}
                  {:name "id", :base_type :type/Integer, :semantic_type :type/PK}}
                (db->fields (mt/db)))))
-      (let [table  (t2/select-one Table :db_id (u/id (mt/db)))
-            fields (t2/select Field :table_id (u/id table) :name "year_column")]
+      (let [table  (t2/select-one :model/Table :db_id (u/id (mt/db)))
+            fields (t2/select :model/Field :table_id (u/id table) :name "year_column")]
         (testing "Can select from this table"
           (is (= [[2001] [2002] [1999]]
                  (metadata-queries/table-rows-sample table fields (constantly conj)))))
@@ -353,7 +350,7 @@
                           false
                           (throw se))))]
         (when compat
-          (t2.with-temp/with-temp [Database database {:engine "mysql", :details details}]
+          (t2.with-temp/with-temp [:model/Database database {:engine "mysql", :details details}]
             (sync/sync-database! database)
             (is (= [{:name   "src1"
                      :fields [{:name      "id"
@@ -365,7 +362,7 @@
                                :base_type :type/Integer}
                               {:name      "t"
                                :base_type :type/Text}]}]
-                   (->> (t2/hydrate (t2/select Table :db_id (:id database) {:order-by [:name]}) :fields)
+                   (->> (t2/hydrate (t2/select :model/Table :db_id (:id database) {:order-by [:name]}) :fields)
                         (map table-fingerprint))))))))))
 
 (defn- create-enums-table! [db]
@@ -528,16 +525,16 @@
                        (sql-jdbc.sync/describe-nested-field-columns
                         driver/*driver*
                         database
-                        (t2/select-one Table :db_id (mt/id) :name "json_table"))))))))))))
+                        (t2/select-one :model/Table :db_id (mt/id) :name "json_table"))))))))))))
 
 (deftest json-alias-test
   (mt/test-driver :mysql
     (when (not (mysql/mariadb? (mt/db)))
       (testing "json breakouts and order bys have alias coercion"
         (mt/dataset json
-          (let [table  (t2/select-one Table :db_id (u/id (mt/db)) :name "json")]
+          (let [table  (t2/select-one :model/Table :db_id (u/id (mt/db)) :name "json")]
             (sync/sync-table! table)
-            (let [field (t2/select-one Field :table_id (u/id table) :name "json_bit → 1234")
+            (let [field (t2/select-one :model/Field :table_id (u/id table) :name "json_bit → 1234")
                   compile-res (qp.compile/compile
                                (mt/mbql-query nil
                                  {:source-table (u/the-id table)
@@ -561,9 +558,9 @@
       (testing "Deal with complicated identifier (#22967, but for mysql)"
         (mt/dataset json
           (let [database (mt/db)
-                table    (t2/select-one Table :db_id (u/id database) :name "json")]
+                table    (t2/select-one :model/Table :db_id (u/id database) :name "json")]
             (sync/sync-table! table)
-            (let [field    (t2/select-one Field :table_id (u/id table) :name "json_bit → 1234")]
+            (let [field    (t2/select-one :model/Field :table_id (u/id table) :name "json_bit → 1234")]
               (mt/with-metadata-provider (mt/id)
                 (let [field-clause [:field (u/the-id field) {:binning
                                                              {:strategy :num-bins,

@@ -144,13 +144,16 @@ jobs:
       MB_DATABRICKS_TEST_HTTP_PATH: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH }}
       MB_DATABRICKS_TEST_TOKEN: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN }}
       MB_DATABRICKS_TEST_CATALOG: 'metabase_ci'
+      MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
+      MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
     steps:
     - uses: actions/checkout@v4
     - name: Test Databricks driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
