@@ -19,7 +19,10 @@ H.describeEE("scenarios > admin > settings > SSO > JWT", () => {
   it("should allow to save and enable jwt", () => {
     cy.visit("/admin/settings/authentication/jwt");
 
-    H.typeAndBlurUsingLabel(/JWT Identity Provider URI/, "https://example.test");
+    H.typeAndBlurUsingLabel(
+      /JWT Identity Provider URI/,
+      "https://example.test",
+    );
     cy.button("Generate key").click();
     cy.button("Save and enable").click();
     cy.wait("@updateSettings");
