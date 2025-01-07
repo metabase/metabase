@@ -453,13 +453,13 @@
         (model-index/add-values! model-index)
         (let [miv (t2/select-one :model/ModelIndexValue :model_index_id (:id model-index))]
           (testing "Adding values indexes them"
-            (is (=? (index-entity
-                     {:model         "indexed-entity"
-                      :model_id      (model-id miv)
-                      :name          (:name miv)
-                      :database_id   (mt/id)
-                      :collection_id coll-id})
-                    (fetch-one "indexed-entity" :name (:name miv)))))
+            (is (=? [(index-entity
+                      {:model         "indexed-entity"
+                       :model_id      (model-id miv)
+                       :name          (:name miv)
+                       :database_id   (mt/id)
+                       :collection_id coll-id})]
+                    (fetch "indexed-entity" :name (:name miv)))))
           (testing "Changing values syncs the index"
             (t2/update! :model/Card (:id model) (assoc-in model
                                                           [:dataset_query :query :filter]

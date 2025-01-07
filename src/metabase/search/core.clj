@@ -85,6 +85,8 @@
 (defn delete!
   "Given a model and a list of model's ids, remove corresponding search entries."
   [model ids]
-  (doseq [e                      (search.engine/active-engines)
-          {:keys [search-model]} (get (search.spec/model-hooks) model)]
+  (doseq [e            (search.engine/active-engines)
+          search-model (->> (vals (search.spec/specifications))
+                            (filter (comp #{model} :model))
+                            (map :name))]
     (search.engine/delete! e search-model ids)))

@@ -183,7 +183,7 @@
 (search/define-spec "indexed-entity"
   {:model        :model/ModelIndexValue
    :visibility   :app-user
-   :attrs        {:id            [:concat :model_index_id ":" :model_pk]
+   :attrs        {:id            [:concat_ws ";" :model_index_id :model_pk]
                   :collection-id :collection.id
                   :creator-id    false
                   ;; this seems wrong, I'd expect it to track whether the model is archived.
