@@ -160,6 +160,7 @@ function DateFilterPopover({
           availableOperators={availableOperators}
           availableShortcuts={isExpanded ? undefined : SECONDARY_SHORTCUTS}
           availableUnits={availableUnits}
+          submitButtonLabel={value ? t`Update filter` : t`Add filter`}
           onChange={handleChange}
         />
       </Popover.Dropdown>

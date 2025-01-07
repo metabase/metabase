@@ -55,7 +55,6 @@ export function AggregationItem({
           clause={aggregation}
           clauseIndex={aggregationIndex}
           operators={operators}
-          allowTemporalComparisons
           onQueryChange={onQueryChange}
         />
       </Popover.Dropdown>

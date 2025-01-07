@@ -2,8 +2,6 @@
   (:require
    [metabase-enterprise.advanced-permissions.driver.impersonation :as advanced-perms.driver.impersonation]
    [metabase.api.common :refer [*current-user-id* *is-superuser?*]]
-   [metabase.models.permissions-group-membership
-    :refer [PermissionsGroupMembership]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
@@ -32,7 +30,7 @@
   (boolean
    (when-not *is-superuser?*
      (if *current-user-id*
-       (let [group-ids (t2/select-fn-set :group_id PermissionsGroupMembership :user_id *current-user-id*)]
+       (let [group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id *current-user-id*)]
          (seq
           (when (seq group-ids)
             (t2/select :model/ConnectionImpersonation :group_id [:in group-ids]))))

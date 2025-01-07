@@ -8,7 +8,6 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [Database Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
@@ -41,7 +40,7 @@
 
 (deftest ^:parallel simple-select-probe-query-test-3
   (testing "simple-select-probe-query shouldn't actually return any rows"
-    (let [{:keys [name schema]} (t2/select-one Table :id (mt/id :venues))]
+    (let [{:keys [name schema]} (t2/select-one :model/Table :id (mt/id :venues))]
       (is (= []
              (mt/rows
               (qp/process-query
@@ -120,7 +119,7 @@
 
 (defn- count-active-tables-in-db
   [db-id]
-  (t2/count Table
+  (t2/count :model/Table
             :db_id  db-id
             :active true))
 
@@ -146,9 +145,9 @@
              (describe-database-with-open-resultset-count! driver/*driver* (mt/db)))))))
 
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
-  (t2.with-temp/with-temp [Database db-filtered database]
+  (t2.with-temp/with-temp [:model/Database db-filtered database]
     (sync/sync-database! db-filtered {:scan :schema})
-    (let [tables (t2/select Table :db_id (u/the-id db-filtered))]
+    (let [tables (t2/select :model/Table :db_id (u/the-id db-filtered))]
       (doseq [table tables]
         (assert-table-fn table)))))
 

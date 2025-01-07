@@ -26,39 +26,29 @@ describe("scenarios > visualizations > maps", () => {
       cy.icon("gear").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Map type").next().click();
-    H.popover().contains("Pin map").click();
+    toggleFieldSelectElement("Map type");
+    H.popover().findByText("Pin map").click();
 
     // When the settings sidebar opens, both latitude and longitude selects are
     // open. That makes it difficult to select each in Cypress, so we click
     // inside both of them before reopening them one-by-one. :(
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
     ["Latitude field", "Longitude field"].map(field =>
-      H.leftSidebar()
-        .findByText(field)
-        .parent()
-        .within(() => {
-          cy.findByPlaceholderText("Select a field").click();
-        }),
+      H.leftSidebar().within(() => {
+        toggleFieldSelectElement(field);
+      }),
     );
 
     // select both columns
-    H.leftSidebar()
-      .findByText("Latitude field")
-      .parent()
-      .within(() => {
-        cy.findByPlaceholderText("Select a field").click();
-      });
-    H.popover().contains("LAT").click();
+    H.leftSidebar().within(() => {
+      toggleFieldSelectElement("Latitude field");
+    });
+    H.popover().findByText("LAT").click();
 
-    H.leftSidebar()
-      .findByText("Longitude field")
-      .parent()
-      .within(() => {
-        cy.findByPlaceholderText("Select a field").click();
-      });
-    H.popover().contains("LNG").click();
+    H.leftSidebar().within(() => {
+      toggleFieldSelectElement("Longitude field");
+    });
+    H.popover().findByText("LNG").click();
 
     // check that a map appears
     cy.get(".leaflet-container");
@@ -262,3 +252,9 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByTestId("filter-pill").should("have.length", 1);
   });
 });
+
+function toggleFieldSelectElement(field) {
+  return cy.get(`[data-field-title="${field}"]`).within(() => {
+    cy.findByTestId("chart-setting-select").click();
+  });
+}
