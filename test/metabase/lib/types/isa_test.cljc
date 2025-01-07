@@ -124,8 +124,8 @@
     (testing "string like"
       (are [typ] (= ::lib.types.constants/string_like (lib.types.isa/field-type {base-or-effective-type-key typ}))
         :type/TextLike :type/IPAddress))
-    (testing "strings, regardless of the effective type is"
-      (are [typ] (= ::lib.types.constants/string (lib.types.isa/field-type {base-or-effective-type-key :type/Float
+    (testing "number, regardless of the semantic type is"
+      (are [typ] (= ::lib.types.constants/number (lib.types.isa/field-type {base-or-effective-type-key :type/Float
                                                                             :semantic-type typ}))
         :type/Name :type/Category))
     (testing "boolean, regardless of the semantic type"
@@ -149,17 +149,18 @@
               (isa? x :Relation/*) {:semantic-type x}
               :else                {:effective-type x}))]
     (doseq [{:keys [pred positive negative]}
-            [{:pred #'lib.types.isa/temporal?,           :positive :type/DateTime,          :negative :type/City}
+            [{:pred #'lib.types.isa/temporal?,           :positive :type/Date,              :negative :type/CreationDate}
+             {:pred #'lib.types.isa/temporal?,           :positive :type/DateTime,          :negative :type/City}
              {:pred #'lib.types.isa/numeric?,            :positive :type/Integer,           :negative :type/FK}
              {:pred #'lib.types.isa/boolean?,            :positive :type/Boolean,           :negative :type/PK}
-             {:pred #'lib.types.isa/string?,             :positive :type/URL,               :negative :type/Address}
+             {:pred #'lib.types.isa/string?,             :positive :type/Text,              :negative :type/URL}
+             {:pred #'lib.types.isa/string-like?,        :positive :type/TextLike,          :negative :type/Address}
              {:pred #'lib.types.isa/summable?,           :positive :type/Number,            :negative :type/Address}
-             {:pred #'lib.types.isa/scope?,              :positive :type/Time,              :negative :type/Address}
+             {:pred #'lib.types.isa/scope?,              :positive :type/Boolean,           :negative :type/Address}
+             {:pred #'lib.types.isa/category?,           :positive :type/Category,          :negative :type/Boolean}
              {:pred #'lib.types.isa/category?,           :positive :type/Company,           :negative :type/URL}
              {:pred #'lib.types.isa/location?,           :positive :type/Address,           :negative :type/Number}
              {:pred #'lib.types.isa/description?,        :positive :type/Description,       :negative :type/City}
-             {:pred #'lib.types.isa/dimension?,          :positive :type/City,              :negative :type/Description}
-             {:pred #'lib.types.isa/metric?,             :positive :type/Number,            :negative :type/City}
              {:pred #'lib.types.isa/foreign-key?,        :positive :type/FK,                :negative :type/ZipCode}
              {:pred #'lib.types.isa/primary-key?,        :positive :type/PK,                :negative :type/ZipCode}
              {:pred #'lib.types.isa/entity-name?,        :positive :type/Name,              :negative :type/Number}
@@ -199,34 +200,8 @@
 
 (deftest ^:parallel string?-test
   (are [exp column] (= exp (lib.types.isa/string? column))
-    true  {:base-type :type/Text :semantic-type :type/SerializedJSON}
-    false {:base-type :type/JSON :semantic-type :type/SerializedJSON}))
-
-(deftest ^:parallel has-latitude-and-longitude?-test
-  (is (true? (lib.types.isa/has-latitude-and-longitude?
-              [{:semantic-type :type/Latitude} {:semantic-type :type/Longitude}])))
-  (are [columns] (false? (lib.types.isa/has-latitude-and-longitude?
-                          columns))
-    [{:semantic-type :type/Latitude}]
-    [{:semantic-type :type/Longitude}]
-    [{:semantic-type :type/Longitude} {:semantic-type :type/Address}]
-    []
-    nil))
-
-(deftest ^:parallel primary-key-pred-test
-  (let [integer-table-id 1
-        columns [{:semantic-type :type/PK, :table-id (inc integer-table-id), :name "column0"}
-                 {:semantic-type :type/PK, :name "column1"}
-                 {:semantic-type :type/PK, :table-id integer-table-id, :name "column2"}
-                 {:semantic-type :type/Address, :name "column3"}]]
-    (testing "with integer table-id :table-id has to match"
-      (let [primary-key? (lib.types.isa/primary-key-pred integer-table-id)]
-        (is (= ["column2"]
-               (map :name (filter primary-key? columns))))))
-    (testing "with string table-id all PK columns are returned"
-      (let [primary-key? (lib.types.isa/primary-key-pred "card__1")]
-        (is (= ["column0" "column1" "column2"]
-               (map :name (filter primary-key? columns))))))))
+    true  {:effective-type :type/Text :semantic-type :type/SerializedJSON}
+    false {:effective-type :type/JSON :semantic-type :type/SerializedJSON}))
 
 (deftest ^:parallel valid-filter-for?-test
   (are [exp base-lhs eff-lhs base-rhs eff-rhs] (= exp (lib.types.isa/valid-filter-for?

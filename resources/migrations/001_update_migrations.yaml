@@ -10410,6 +10410,31 @@ databaseChangeLog:
       rollback: # will be deleted with table
 
   - changeSet:
+      id: v53.2024-12-27T17:33:54
+      author: nvoxland
+      comment: Adds encryption-check setting to encryption management
+      changes:
+        - insert:
+            tableName: setting
+            columns:
+              - column:
+                  name: key
+                  value: encryption-check
+              - column:
+                  name: value
+                  value: "unencrypted"
+      rollback:
+        - sql:
+            sql: "delete from setting where \"key\"='encryption-check'"
+            dbms: postgresql
+        - sql:
+            sql: "delete from setting where `key`='encryption-check'"
+            dbms: mysql,mariadb
+        - sql:
+            sql: "delete from setting where \"KEY\"='encryption-check'"
+            dbms: h2
+
+  - changeSet:
       id: v53.2024-12-27T20:17:23
       author: noahmoss
       comment: Drop unnecessary NOT NULL constraint from cache_config.refresh_automatically column
