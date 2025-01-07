@@ -2,7 +2,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.models.database :refer [Database]]
    [metabase.plugins :as plugins]
    [metabase.sync :as sync]
    [metabase.util.files :as u.files]
@@ -72,9 +71,9 @@
   (try
     (log/info "Loading sample database")
     (let [details (try-to-extract-sample-database!)
-          db (if (t2/exists? Database :is_sample true)
-               (t2/select-one Database (first (t2/update-returning-pks! Database :is_sample true {:details details})))
-               (first (t2/insert-returning-instances! Database
+          db (if (t2/exists? :model/Database :is_sample true)
+               (t2/select-one :model/Database (first (t2/update-returning-pks! :model/Database :is_sample true {:details details})))
+               (first (t2/insert-returning-instances! :model/Database
                                                       :name      sample-database-name
                                                       :details   details
                                                       :engine    :h2
@@ -88,10 +87,10 @@
 (defn update-sample-database-if-needed!
   "Update the path to the sample database DB if it exists in case the JAR has moved."
   ([]
-   (update-sample-database-if-needed! (t2/select-one Database :is_sample true)))
+   (update-sample-database-if-needed! (t2/select-one :model/Database :is_sample true)))
 
   ([sample-db]
    (when sample-db
      (let [intended (try-to-extract-sample-database!)]
        (when (not= (:details sample-db) intended)
-         (t2/update! Database (:id sample-db) {:details intended}))))))
+         (t2/update! :model/Database (:id sample-db) {:details intended}))))))

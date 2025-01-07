@@ -10,9 +10,8 @@
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.collection :as collection :refer [Collection]]
-   [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
+   [metabase.models.collection :as collection]
+   [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
@@ -39,11 +38,6 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
-(def Dashboard
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model
-  name. We'll keep this till we replace all the Dashboard symbol in our codebase."
-  :model/Dashboard)
-
 (methodical/defmethod t2/table-name :model/Dashboard [_model] :report_dashboard)
 
 (methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :dashboard]
@@ -56,7 +50,7 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defmethod mi/can-write? Dashboard
+(defmethod mi/can-write? :model/Dashboard
   ([instance]
    ;; Dashboards in audit collection should be read only
    (if (and
@@ -70,7 +64,7 @@
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Dashboard :id pk))))
 
-(defmethod mi/can-read? Dashboard
+(defmethod mi/can-read? :model/Dashboard
   ([instance]
    (perms/can-read-audit-helper :model/Dashboard instance))
   ([_ pk]
@@ -92,7 +86,7 @@
         dashboard (merge defaults dashboard)]
     (u/prog1 dashboard
       (params/assert-valid-parameters dashboard)
-      (collection/check-collection-namespace Dashboard (:collection_id dashboard)))))
+      (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard)))))
 
 (t2/define-after-insert :model/Dashboard
   [dashboard]
@@ -106,7 +100,7 @@
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
         (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
-      (collection/check-collection-namespace Dashboard (:collection_id dashboard))
+      (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard))
       (when (:archived changes)
         (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
 
@@ -133,7 +127,7 @@
                                       set)
             cards-to-add         (set/difference correct-card-ids stale-card-ids)
             card-id->dashcard-id (when (seq cards-to-add)
-                                   (t2/select-fn->pk :card_id DashboardCard :dashboard_id dashboard-id
+                                   (t2/select-fn->pk :card_id :model/DashboardCard :dashboard_id dashboard-id
                                                      :card_id [:in cards-to-add]))
             positions-for        (fn [pulse-id] (drop (pulse-card/next-position-for pulse-id)
                                                       (range)))
@@ -372,7 +366,7 @@
 
                                     :else
                                     (deferred-tru "modified the series on card {0}" (get-in prev-dashboard [:cards idx :card_id]))))))]
-    (-> [(when-let [default-description (u/build-sentence ((get-method revision/diff-strings :default) Dashboard prev-dashboard dashboard))]
+    (-> [(when-let [default-description (u/build-sentence ((get-method revision/diff-strings :default) :model/Dashboard prev-dashboard dashboard))]
            (cond-> default-description
              (str/ends-with? default-description ".") (subs 0 (dec (count default-description)))))
          (when (:cache_ttl changes)
@@ -433,7 +427,7 @@
 (defn- dashboard-id->param-field-ids
   "Get the set of Field IDs referenced by the parameters in this Dashboard."
   [dashboard-or-id]
-  (let [dash (-> (t2/select-one Dashboard :id (u/the-id dashboard-or-id))
+  (let [dash (-> (t2/select-one :model/Dashboard :id (u/the-id dashboard-or-id))
                  (t2/hydrate [:dashcards :card]))]
     (params/dashcards->param-field-ids (:dashcards dash))))
 
@@ -507,13 +501,13 @@
   [card]
   (cond
     ;; If this is a pre-existing card, just return it
-    (and (integer? (:id card)) (t2/select-one Card :id (:id card)))
+    (and (integer? (:id card)) (t2/select-one :model/Card :id (:id card)))
     card
 
     ;; Don't save text cards
     (-> card :dataset_query not-empty)
     (let [card (first (t2/insert-returning-instances!
-                       Card
+                       :model/Card
                        (-> card
                            (update :result_metadata #(or % (-> card
                                                                :dataset_query
@@ -525,9 +519,9 @@
 
 (defn- ensure-unique-collection-name
   [collection-name parent-collection-id]
-  (let [c (t2/count Collection
+  (let [c (t2/count :model/Collection
                     :name     [:like (format "%s%%" collection-name)]
-                    :location (collection/children-location (t2/select-one [Collection :location :id]
+                    :location (collection/children-location (t2/select-one [:model/Collection :location :id]
                                                                            :id parent-collection-id)))]
     (if (zero? c)
       collection-name
@@ -655,7 +649,7 @@
 (defmethod serdes/descendants "Dashboard" [_model-name id]
   (let [dashcards (t2/select ['DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
                              :dashboard_id id)
-        dashboard (t2/select-one Dashboard :id id)
+        dashboard (t2/select-one :model/Dashboard :id id)
         dash-id   id]
     (merge-with
      merge
@@ -686,7 +680,7 @@
 
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------
 
-(defmethod audit-log/model-details Dashboard
+(defmethod audit-log/model-details :model/Dashboard
   [dashboard event-type]
   (case event-type
     (:dashboard-create :dashboard-delete :dashboard-read)
@@ -696,7 +690,7 @@
     (-> (select-keys dashboard [:description :name :parameters :dashcards])
         (update :dashcards (fn [dashcards]
                              (for [{:keys [id card_id]} dashcards]
-                               (-> (t2/select-one [Card :name :description], :id card_id)
+                               (-> (t2/select-one [:model/Card :name :description], :id card_id)
                                    (assoc :id id)
                                    (assoc :card_id card_id))))))
 

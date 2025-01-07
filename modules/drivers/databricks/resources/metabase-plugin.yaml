@@ -1,7 +1,7 @@
 info:
   name: Metabase Databricks Driver
-  version: 1.0.0
-  description: Allows Metabase to connect to Databricks SQL warehouse
+  version: 1.2.0
+  description: Allows Metabase to connect to Databricks SQL warehouse with personal access tokens or OAuth M2M
 dependencies:
   - plugin: Metabase Hive Like Abstract Driver
 driver:
@@ -12,27 +12,58 @@ driver:
     connection-properties:
       - merge:
         - host
-        - placeholder: 'xxxxxxxxxx.cloud.databricks.com'
+        - display-name: Host
+          required: true
+          placeholder: xxxxxxxxxx.cloud.databricks.com
+          helper-text: The Databricks host URL. Could also be adb-xxxxx.azuredatabricks.net
       - name: http-path
-        display-name: HTTP path
+        display-name: HTTP Path
         helper-text: Found in SQL Warehouses > Connection details
         required: true
+        placeholder: /sql/1.0/endpoints/abcdef1234567890
+      - name: use-m2m
+        display-name: Use Machine to Machine (M2M) authentication
+        type: boolean
+        default: true
+        helper-text: Use Personal Access Token for authentication.
       - merge:
         - password
         - name: token
           display-name: Personal Access Token
           required: true
+          helper-text: Personal Access Token for authentication. Not required if using OAuth M2M.
+          placeholder: dapiXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+          visible-if:
+            use-m2m: false
+      - name: client-id
+        display-name: Service Principal Client ID
+        placeholder: e26ce240-0a12-454f-934f-4c646603cb61
+        helper-text: For M2M OAuth authentication, corresponds to the service principal's Client ID.
+        required: true
+        visible-if:
+          use-m2m: true
+      - merge:
+        - password
+        - name: oauth-secret
+          display-name: Service Principal OAuth Secret
+          placeholder: dosexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          helper-text: OAuth Secret for M2M OAuth authentication.
+          required: true
+          visible-if:
+            use-m2m: true
       - name: catalog
         display-name: Catalog
         default: default
         required: true
+        helper-text: Specify the catalog to connect to.
       - name: schema-filters
         type: schema-filters
         display-name: Schemas
+        helper-text: Optionally filter which schemas are visible.
       - advanced-options-start
       - merge:
-        - additional-options
-        - placeholder: 'IgnoreTransactions=0'
+          - additional-options
+          - placeholder: IgnoreTransactions=0
       - default-advanced-options
 init:
   - step: load-namespace

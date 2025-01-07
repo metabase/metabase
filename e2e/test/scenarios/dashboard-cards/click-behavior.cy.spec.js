@@ -1282,7 +1282,7 @@ H.describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.popover().should("contain.text", "Filter by this value");
 
       getTableCell(COLUMN_INDEX.CREATED_AT).click();
-      H.popover().should("contain.text", "Filter by this date");
+      H.popover().should("contain.text", "Filter by this date and time");
 
       H.editDashboard();
 

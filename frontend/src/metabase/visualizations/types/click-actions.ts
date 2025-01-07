@@ -29,7 +29,6 @@ export type ClickActionSection =
   | "breakout-popover"
   | "combine"
   | "combine-popover"
-  | "compare-aggregations"
   | "details"
   | "extract"
   | "extract-popover"

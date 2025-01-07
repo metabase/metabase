@@ -316,8 +316,12 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     // turn off subtotals for User -> Source
     openColumnSettings("User → Source");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Show totals").parent().find("input").click({ force: true });
+    cy.findByTestId(
+      "chart-settings-widget-pivot_table.column_show_totals",
+    ).within(() => {
+      cy.findByText("Show totals").should("be.visible");
+      cy.findByRole("switch").click({ force: true });
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("3,520").should("not.exist"); // the subtotal has disappeared!
@@ -344,8 +348,12 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     // turn off subtotals for User -> Source
     openColumnSettings("User → Source");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Show totals").parent().find("input").click({ force: true });
+    cy.findByTestId(
+      "chart-settings-widget-pivot_table.column_show_totals",
+    ).within(() => {
+      cy.findByText("Show totals").should("be.visible");
+      cy.findByRole("switch").click({ force: true });
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("3,520").should("not.exist"); // the subtotal isn't there

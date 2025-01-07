@@ -109,15 +109,6 @@
          :drill-thru/pivot
          (log/warn "drill-thru-method is not yet implemented for :drill-thru/pivot (#33559)")
 
-         ;; Expected to throw - not intended that drill-thru should be called directly for these drills.
-         :drill-thru/compare-aggregations
-         (testing (str "\ndrill =\n" (u/pprint-to-str drill)
-                       "throws when [drill-thru] called")
-           (is (thrown-with-msg?
-                #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
-                #"Do not call drill-thru for "
-                (apply lib/drill-thru query -1 nil drill args))))
-
          (testing (str "\nquery =\n" (u/pprint-to-str query)
                        "\ndrill =\n" (u/pprint-to-str drill)
                        "\nargs =\n" (u/pprint-to-str args))
@@ -520,9 +511,7 @@
                     :initial-op {:display-name-variant :equal-to
                                  :short :=}}
                    {:type   :drill-thru/sort
-                    :column {:name "count"}}
-                   {:type   :drill-thru/compare-aggregations
-                    :aggregation [:count {}]}]
+                    :column {:name "count"}}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))
     (testing "Drills for max(discount) aggregation"
@@ -538,9 +527,7 @@
                     :initial-op {:display-name-variant :equal-to
                                  :short :=}}
                    {:type   :drill-thru/sort
-                    :column {:display-name "Max of Discount"}}
-                   {:type   :drill-thru/compare-aggregations
-                    :aggregation [:max {} [:field {} (meta/id :orders :discount)]]}]
+                    :column {:display-name "Max of Discount"}}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))))
 
