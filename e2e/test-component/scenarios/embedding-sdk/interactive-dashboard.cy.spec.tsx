@@ -3,8 +3,14 @@ import {
   InteractiveQuestion,
 } from "@metabase/embedding-sdk-react";
 
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { POPOVER_ELEMENT, describeEE, popover } from "e2e/support/helpers";
+import { H } from "e2e/support";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  POPOVER_ELEMENT,
+  cartesianChartCircle,
+  describeEE,
+  popover,
+} from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
@@ -13,39 +19,64 @@ import {
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { Stack } from "metabase/ui";
 
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+
 describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
-    const questionCard = {
-      id: 64,
-      card_id: ORDERS_QUESTION_ID,
-      row: 0,
-      col: 0,
-      size_x: 8,
-      size_y: 8,
-    };
-
-    const questionCardWithClickBehavior = {
-      ...questionCard,
-      id: 65,
-      col: 8,
-      visualization_settings: {
-        click_behavior: {
-          type: "link",
-          linkType: "url",
-          linkTemplate: "https://metabase.com",
+    H.createDashboardWithQuestions({
+      dashboardName: "Orders in a dashboard",
+      questions: [
+        {
+          name: "Orders",
+          query: { "source-table": ORDERS_ID, limit: 5 },
         },
-      },
-    };
-
-    cy.createDashboard(
-      {
-        name: "Orders in a dashboard",
-        dashcards: [questionCard, questionCardWithClickBehavior],
-      },
-      { wrapId: true },
-    );
+        {
+          name: "Line chart with click behavior",
+          display: "line",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+            limit: 5,
+          },
+        },
+      ],
+      cards: [
+        {
+          size_x: 8,
+          col: 0,
+          visualization_settings: {
+            column_settings: {
+              '["name","SUBTOTAL"]': {
+                click_behavior: {
+                  type: "link",
+                  linkType: "url",
+                  linkTemplate: "https://metabase.com",
+                  linkTextTemplate: "Link Text Applied",
+                },
+              },
+            },
+          },
+        },
+        {
+          size_x: 8,
+          col: 8,
+          visualization_settings: {
+            click_behavior: {
+              type: "link",
+              linkType: "url",
+              linkTemplate: "https://metabase.com",
+            },
+          },
+        },
+      ],
+    }).then(({ dashboard }) => {
+      cy.wrap(dashboard.id).as("dashboardId");
+    });
 
     cy.signOut();
 
@@ -75,16 +106,13 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
 
     getSdkRoot().within(() => {
       cy.contains("Orders in a dashboard").should("be.visible");
-
-      // We have two Orders dashcard with the same title.
-      cy.findAllByText("Orders").eq(0).click();
-
+      cy.findByText("Orders").click();
       cy.contains("Orders").should("be.visible");
       cy.contains("This is a custom question layout.");
     });
   });
 
-  it("should not trigger url click behaviors when clicking on cards (metabase#51099)", () => {
+  it("should not trigger url click behaviors in the sdk (metabase#51099)", () => {
     cy.get<string>("@dashboardId").then(dashboardId => {
       mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
     });
@@ -94,28 +122,34 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
         cy.wrap(location.pathname).as("initialPath");
       });
 
-      getSdkRoot().within(() => {
-        const dashcards = cy.findAllByTestId("dashcard");
-        dashcards.should("have.length", 2);
+      const root = getSdkRoot();
 
-        // Drill-through should work on cards without click behavior
-        dashcards.eq(0).findAllByTestId("cell-data").eq(1).click();
-        popover().should("contain.text", "View details");
+      root.within(() => {
+        // Drill-through should work on columns without click behavior
+        H.getDashboardCard(0).findByText("2.07").click();
+        popover().should("contain.text", "Filter by this value");
 
-        // Click on the second card with url click behavior
-        cy.findAllByTestId("dashcard")
-          .eq(1)
-          .findAllByTestId("cell-data")
-          .eq(1)
-          .click();
-
-        // Drill-through should not activate on cards with url click behavior
+        // Table column click behavior should be disabled in the sdk
+        H.getDashboardCard(0).should("not.contain.text", "Link Text Applied");
+        H.getDashboardCard(0).findByText("37.65").click();
         cy.get(POPOVER_ELEMENT).should("not.exist");
 
-        // We should not be navigated away from the current page
-        cy.location().then(location => {
-          cy.get("@initialPath").should("eq", location.pathname);
+        // Line chart click behavior should be disabled in the sdk
+        H.getDashboardCard(1).within(() => {
+          cartesianChartCircle()
+            .eq(0)
+            .then(([circle]) => {
+              const { left, top } = circle.getBoundingClientRect();
+              root.click(left, top);
+            });
         });
+
+        cy.get(POPOVER_ELEMENT).should("not.exist");
+      });
+
+      // We should not be navigated away from the current page
+      cy.location().then(location => {
+        cy.get("@initialPath").should("eq", location.pathname);
       });
     });
   });
