@@ -393,3 +393,30 @@
                           expected-native)
                         (clean-expected-query expected-query))
                     query'))))))))
+
+(mu/defn test-drill-variants-with-merged-args
+  "Run `test-fn` first with `base-case` then with each of the specified `variants`.
+
+  `test-fn` is probably one of these functions, but could be any func that can be called with a single map argument:
+
+    - [[test-returns-drill]]
+    - [[test-drill-not-returned]]
+    - [[test-drill-application]]
+
+  `base-desc` will be passed directly to [[clojure.test/testing]].
+  `base-case` will be passed unmodified to `test-fn`. It is probably a TestCase derivative, but could be any map.
+  `variants` is a flat sequence of `variant-desc` `variant-case` pairs indicating variations on the base-case.
+
+  For each `variants` pair:
+    - `variant-desc` will be passed directly to [[clojure.test/testing]].
+    - `variant-case` will be `merge`d with the `base-case` and the result will be passed to `test-fn`."
+  [test-fn   :- [:-> :map :any]
+   base-desc :- :string
+   base-case :- :map
+   & variants]
+  (assert (even? (count variants)) "variants must come in variant-desc and variant-case pairs")
+  (testing base-desc
+    (test-fn base-case))
+  (doseq [[variant-desc variant-case] (partition 2 variants)]
+    (testing variant-desc
+      (test-fn (merge base-case variant-case)))))
