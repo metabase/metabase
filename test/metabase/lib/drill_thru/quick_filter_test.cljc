@@ -25,7 +25,10 @@
                 (seq dimensions)))))))
 
 (deftest ^:parallel returns-quick-filter-test-1
-  (lib.drill-thru.tu/test-returns-drill
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-returns-drill
+
+   "quick-filter on unaggregated numeric column\n"
    {:drill-type  :drill-thru/quick-filter
     :click-type  :cell
     :query-type  :unaggregated
@@ -35,19 +38,27 @@
                   :operators [{:name "<"}
                               {:name ">"}
                               {:name "="}
-                              {:name "≠"}]}}))
+                              {:name "≠"}]}}
+
+   "quick-filter on unaggregated numeric column for multi-stage query\n"
+   {:custom-query #(lib.drill-thru.tu/append-filter-stage % "SUBTOTAL")}))
 
 (deftest ^:parallel returns-quick-filter-test-2
-  (testing "if the value is NULL, only = and ≠ are allowed"
-    (lib.drill-thru.tu/test-returns-drill
-     {:drill-type  :drill-thru/quick-filter
-      :click-type  :cell
-      :query-type  :unaggregated
-      :column-name "DISCOUNT"
-      :expected    {:type      :drill-thru/quick-filter
-                    :value     :null
-                    :operators [{:name "="}
-                                {:name "≠"}]}})))
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-returns-drill
+
+   "if the value is NULL, only = and ≠ are allowed\n"
+   {:drill-type  :drill-thru/quick-filter
+    :click-type  :cell
+    :query-type  :unaggregated
+    :column-name "DISCOUNT"
+    :expected    {:type      :drill-thru/quick-filter
+                  :value     :null
+                  :operators [{:name "="}
+                              {:name "≠"}]}}
+
+   "if the value is NULL, only = and ≠ are allowed for multi-stage query\n"
+   {:custom-query #(lib.drill-thru.tu/append-filter-stage % "DISCOUNT")}))
 
 (deftest ^:parallel returns-quick-filter-test-3
   (lib.drill-thru.tu/test-returns-drill
