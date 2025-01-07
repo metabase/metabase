@@ -76,7 +76,7 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
   PickerControl: {
     styles: theme => ({
       pickerControl: {
-        color: theme.fn.themeColor("text-dark"),
+        color: "var(--mb-color-text-primary)",
         fontSize: theme.fontSizes.md,
         lineHeight: rem(24),
         width: rem(80),
@@ -84,7 +84,8 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
         borderRadius: theme.radius.sm,
 
         "&:hover": {
-          backgroundColor: theme.fn.themeColor("bg-light"),
+          color: "var(--mb-color-text-hover)",
+          backgroundColor: "var(--mb-color-background-hover)",
         },
         "&[data-disabled]": {
           color: theme.fn.themeColor("bg-dark"),
@@ -96,12 +97,16 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
           color: theme.fn.themeColor("bg-dark"),
         },
         "&[data-in-range]": {
-          color: theme.fn.themeColor("text-medium"),
+          color: "var(--mb-color-text-selected)",
           borderRadius: 0,
-          backgroundColor: theme.fn.themeColor("brand-lighter"),
+          backgroundColor: "var(--mb-color-background-selected)",
           "&:hover": {
-            backgroundColor: theme.fn.themeColor("brand-lighter"),
+            backgroundColor: "var(--mb-color-background-hover)",
           },
+        },
+        "&[data-selected]": {
+          color: "var(--mb-color-text-selected)",
+          backgroundColor: "var(--mb-color-background-selected)",
         },
       },
     }),
@@ -140,22 +145,22 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
       },
       calendarHeaderLevel: {
         height: rem(32),
-        color: theme.fn.themeColor("text-dark"),
+        color: "var(--mb-color-text-primary)",
         fontSize: theme.fontSizes.md,
         fontWeight: "bold",
         lineHeight: rem(24),
 
         "&:hover": {
-          backgroundColor: theme.fn.themeColor("bg-light"),
+          backgroundColor: "var(--mb-color-background-hover)",
         },
       },
       calendarHeaderControl: {
         width: rem(32),
         height: rem(32),
         borderRadius: theme.radius.xs,
-        color: theme.fn.themeColor("bg-dark"),
+        color: "var(--mb-color-text-primary)",
         "&:hover": {
-          backgroundColor: theme.fn.themeColor("bg-light"),
+          backgroundColor: "var(--mb-color-background-hover)",
         },
       },
     }),
