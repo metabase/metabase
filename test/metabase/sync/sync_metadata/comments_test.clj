@@ -15,7 +15,7 @@
 
 (defn- db->fields [db]
   (let [table-ids (t2/select-pks-set :model/Table :db_id (u/the-id db))]
-    (set (map (partial into {}) (t2/select ['Field :name :description] :table_id [:in table-ids])))))
+    (set (map (partial into {}) (t2/select [:model/Field :name :description] :table_id [:in table-ids])))))
 
 (tx/defdataset basic-field-comments
   [["basic_field_comments"

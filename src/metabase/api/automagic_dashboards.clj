@@ -170,7 +170,7 @@
      (fn [{:keys [table_id id]}]
        {:linked-table-id table_id
         :linked-field-id id})
-     (t2/select 'Field :fk_target_field_id field-id))))
+     (t2/select :model/Field :fk_target_field_id field-id))))
 
 (defn- add-source-model-link
   "Insert a source model link card into the sequence of passed in cards."

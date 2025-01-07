@@ -1826,7 +1826,7 @@
                      :post 200
                      (format "public/action/%s/execute" public_uuid)
                      {:parameters {:id 1 :name "European"}})
-                    (is (= {:data   {"action_id" (t2/select-one-pk 'Action :public_uuid public_uuid)
+                    (is (= {:data   {"action_id" (t2/select-one-pk :model/Action :public_uuid public_uuid)
                                      "event"     "action_executed"
                                      "source"    "public_form"
                                      "type"      "query"}

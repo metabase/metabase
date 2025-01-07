@@ -822,7 +822,7 @@
   "Creates the basic context for storage. This is a map with a single entry: `:collections` is a map from collection ID
   to the path of collections."
   []
-  (let [colls      (t2/select ['Collection :id :entity_id :location :slug])
+  (let [colls      (t2/select [:model/Collection :id :entity_id :location :slug])
         coll-names (into {} (for [{:keys [id entity_id slug]} colls]
                               [(str id) (storage-leaf-file-name entity_id slug)]))
         coll->path (into {} (for [{:keys [entity_id id location]} colls
@@ -1081,7 +1081,7 @@
         [:dimension (mbql-id->fully-qualified-name dim)]
 
         [:metric (id :guard integer?)]
-        [:metric (*export-fk* id 'Card)]
+        [:metric (*export-fk* id :model/Card)]
 
         [:segment (id :guard integer?)]
         [:segment (*export-fk* id 'Segment)])))
@@ -1094,7 +1094,7 @@
                      (str/split #"__")
                      second
                      Integer/parseInt)
-                 'Card)
+                 :model/Card)
     (*export-table-fk* source-table)))
 
 (defn- ids->fully-qualified-names
@@ -1112,8 +1112,8 @@
                                             (if (= db-id lib.schema.id/saved-questions-virtual-database-id)
                                               "database/__virtual"
                                               (t2/select-one-fn :name :model/Database :id db-id))))
-      (m/update-existing entity :card_id #(*export-fk* % 'Card)) ; attibutes that refer to db fields use _
-      (m/update-existing entity :card-id #(*export-fk* % 'Card)) ; template-tags use dash
+      (m/update-existing entity :card_id #(*export-fk* % :model/Card)) ; attibutes that refer to db fields use _
+      (m/update-existing entity :card-id #(*export-fk* % :model/Card)) ; template-tags use dash
       (m/update-existing entity :source-table export-source-table)
       (m/update-existing entity :source_table export-source-table)
       (m/update-existing entity :breakout    (fn [breakout]
@@ -1171,11 +1171,11 @@
 
     {:card-id (entity-id :guard portable-id?)}
     (-> &match
-        (assoc :card-id (*import-fk* entity-id 'Card))
+        (assoc :card-id (*import-fk* entity-id :model/Card))
         mbql-fully-qualified-names->ids*) ; Process other keys
 
     [(:or :metric "metric") (entity-id :guard portable-id?)]
-    [:metric (*import-fk* entity-id 'Card)]
+    [:metric (*import-fk* entity-id :model/Card)]
 
     [(:or :segment "segment") (fully-qualified-name :guard portable-id?)]
     [:segment (*import-fk* fully-qualified-name 'Segment)]
@@ -1192,12 +1192,12 @@
 
     (_ :guard (every-pred map? (comp portable-id? :source-table)))
     (-> &match
-        (assoc :source-table (str "card__" (*import-fk* (:source-table &match) 'Card)))
+        (assoc :source-table (str "card__" (*import-fk* (:source-table &match) :model/Card)))
         mbql-fully-qualified-names->ids*)
 
     (_ :guard (every-pred map? (comp portable-id? :source_table)))
     (-> &match
-        (assoc :source_table (str "card__" (*import-fk* (:source_table &match) 'Card)))
+        (assoc :source_table (str "card__" (*import-fk* (:source_table &match) :model/Card)))
         mbql-fully-qualified-names->ids*) ;; process other keys
 
     (_ :guard (every-pred map? (comp portable-id? :snippet-id)))
@@ -1280,7 +1280,7 @@
   [mappings]
   (->> mappings
        (map mbql-fully-qualified-names->ids)
-       (map #(m/update-existing % :card_id *import-fk* 'Card))))
+       (map #(m/update-existing % :card_id *import-fk* :model/Card))))
 
 (defn export-parameters
   "Given the :parameter field of a `Card` or `Dashboard`, as a vector of maps, converts
@@ -1295,7 +1295,7 @@
   (for [param parameters]
     (-> param
         mbql-fully-qualified-names->ids
-        (m/update-existing-in [:values_source_config :card_id] *import-fk* 'Card))))
+        (m/update-existing-in [:values_source_config :card_id] *import-fk* :model/Card))))
 
 (defn parameters-deps
   "Given the :parameters (possibly nil) for an entity, return any embedded serdes-deps as a set.
