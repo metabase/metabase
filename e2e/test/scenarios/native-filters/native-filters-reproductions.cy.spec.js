@@ -1,5 +1,9 @@
 import { H } from "e2e/support";
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
@@ -959,7 +963,31 @@ describe("issue 27257", () => {
 });
 
 describe("issue 29786", { tags: "@external" }, () => {
-  const SQL_QUERY = "SELECT * FROM PRODUCTS WHERE {{f1}} AND {{f2}}";
+  const questionDetails = {
+    dataset_query: {
+      type: "native",
+      database: WRITABLE_DB_ID,
+      native: {
+        query: "SELECT * FROM PRODUCTS WHERE {{f1}} AND {{f2}}",
+        "template-tags": {
+          f1: {
+            id: "3ff86eea-2559-5ab7-af10-e532a54661c5",
+            name: "f1",
+            "display-name": "F1",
+            type: "text",
+            default: null,
+          },
+          f2: {
+            id: "3ff86eea-2559-5ab7-af10-e532a54661c6",
+            name: "f2",
+            "display-name": "F2",
+            type: "text",
+            default: null,
+          },
+        },
+      },
+    },
+  };
 
   beforeEach(() => {
     H.restore("mysql-8");
@@ -971,9 +999,9 @@ describe("issue 29786", { tags: "@external" }, () => {
     "should allow using field filters with null schema (metabase#29786)",
     { tags: "@flaky" },
     () => {
-      H.openNativeEditor({ databaseName: "QA MySQL8" });
-      SQLFilter.enterParameterizedQuery(SQL_QUERY);
+      H.visitQuestionAdhoc(questionDetails);
 
+      cy.findByTestId("native-query-editor-sidebar").icon("variable").click();
       cy.findAllByTestId("variable-type-select").first().click();
       SQLFilter.chooseType("Field Filter");
       FieldFilter.mapTo({ table: "Products", field: "Category" });
@@ -982,7 +1010,7 @@ describe("issue 29786", { tags: "@external" }, () => {
       FieldFilter.mapTo({ table: "Products", field: "Vendor" });
 
       H.filterWidget().first().click();
-      FieldFilter.addWidgetStringFilter("Widget");
+      FieldFilter.selectFilterValueFromList("Widget");
       H.filterWidget().last().click();
       FieldFilter.addWidgetStringFilter("Von-Gulgowski");
 
