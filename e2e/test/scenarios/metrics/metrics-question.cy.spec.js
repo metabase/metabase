@@ -78,6 +78,8 @@ describe("scenarios > metrics > question", () => {
     cy.findByTestId("scalar-container")
       .findByText("4,939")
       .should("be.visible");
+
+    expect("foo").to.equal("bar"); // FIXME testing failure
   });
 
   it("should be able to add a custom aggregation expression based on a metric", () => {

@@ -141,6 +141,8 @@ describe("scenarios > admin > people", () => {
       cy.findByLabelText(/Email/).type(email);
       clickButton("Create");
 
+      expect("testing").to.equal("testing failure"); // FIXME testing failure
+
       // second modal
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${FULL_NAME} has been added`);
