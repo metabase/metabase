@@ -16,9 +16,6 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(defn by-name [cols column-name]
-  (first (filter #(= (:name %) column-name) cols)))
-
 (def ^:private orders-query
   (lib/query meta/metadata-provider (meta/table-metadata :orders)))
 
@@ -540,7 +537,7 @@
                                              (meta/field-metadata :orders :created-at)
                                              :month)))
             columns      (lib/returned-columns query)
-            sum          (by-name columns "sum")
+            sum          (lib.drill-thru.tu/column-by-name columns "sum")
             sum-dim      {:column     sum
                           :column-ref (lib/ref sum)
                           :value      42295.12}
