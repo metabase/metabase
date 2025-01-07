@@ -2,7 +2,6 @@
   (:require
    [metabase.channel.render.core :as channel.render]
    [metabase.models.notification :as models.notification]
-   [metabase.notification.payload.disk-storage :as notification.disk-storage]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
@@ -13,10 +12,7 @@
 
 (p/import-vars
  [notification.payload.execute
-  process-virtual-dashcard]
- [notification.disk-storage
-  retrieve
-  notification-storage?])
+  process-virtual-dashcard])
 
 (def Notification
   "Schema for the notification."

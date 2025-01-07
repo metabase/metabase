@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.render.body :as body]
+   [metabase.channel.shared :as channel.shared]
    [metabase.email.result-attachment :as email.result-attachment]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
@@ -220,7 +221,10 @@
 ;;; |                                                     Tests                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def execute-dashboard (requiring-resolve 'metabase.notification.payload.execute/execute-dashboard))
+(defn execute-dashboard
+  [& args]
+  (let [dashboard-result (apply (requiring-resolve 'metabase.notification.payload.execute/execute-dashboard) args)]
+    (map channel.shared/realize-data-rows dashboard-result)))
 
 (deftest ^:parallel execute-dashboard-test
   (testing "it runs for each non-virtual card"
