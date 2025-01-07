@@ -159,6 +159,18 @@
      (assert (some? column-to-filter) (str "Failed to find " column-name " in " query))
      (lib/filter query' (column-filter-fn column-to-filter)))))
 
+(mu/defn prepend-filter-to-stage :- :map
+  "Prepend `filter-expr` to the filters in `expected-query`.
+
+  Useful for updating the `:expected-query` for [[test-drill-application]] when the `:custom-query` was modified
+  by [[append-filter-stage]]."
+  [expected-query :- :map
+   stage-number   :- :int
+   filter-expr    :- vector?]
+  (update-in expected-query
+             [:stages (lib.util/canonical-stage-index expected-query stage-number) :filters]
+             #(into [filter-expr] %)))
+
 (def ^:private unsupported-on-native
   #{:drill-thru/automatic-insights
     :drill-thru/pivot
