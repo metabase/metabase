@@ -1,3 +1,4 @@
+import type { NotificationTriggerOption } from "metabase/notifications/modals/CreateOrUpdateAlertModal/types";
 import type {
   CardId,
   ChannelApiResponse,
@@ -22,10 +23,12 @@ export const getDefaultQuestionAlertRequest = ({
   cardId,
   userId,
   channelSpec,
+  availableTriggerOptions,
 }: {
   cardId: CardId;
   userId: UserId;
   channelSpec: ChannelApiResponse | undefined;
+  availableTriggerOptions: NotificationTriggerOption[];
 }): CreateAlertNotificationRequest => {
   const recipients: NotificationRecipient[] = userId
     ? [
@@ -50,12 +53,14 @@ export const getDefaultQuestionAlertRequest = ({
     });
   }
 
+  const sendCondition = availableTriggerOptions[0].value;
+
   return {
     payload_type: "notification/card",
     payload: {
       card_id: cardId,
       send_once: false,
-      send_condition: "goal_above",
+      send_condition: sendCondition,
     },
     handlers,
     subscriptions: [
@@ -65,7 +70,6 @@ export const getDefaultQuestionAlertRequest = ({
         cron_schedule: DEFAULT_ALERT_CRON_SCHEDULE,
       },
     ],
-    creator_id: userId,
   };
 };
 

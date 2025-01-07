@@ -4,14 +4,21 @@ import {
   formatDateTimeWithUnit,
   formatTimeWithUnit,
 } from "metabase/lib/formatting";
-import { recipientIsValid, scheduleIsValid } from "metabase/lib/pulse";
+import { recipientIsValid } from "metabase/lib/pulse";
 import Settings from "metabase/lib/settings";
 import { formatFrame } from "metabase/lib/time";
 import * as Urls from "metabase/lib/urls";
+import {
+  ALERT_TYPE_PROGRESS_BAR_GOAL,
+  ALERT_TYPE_TIMESERIES_GOAL,
+} from "metabase-lib/v1/Alert";
+import type Question from "metabase-lib/v1/Question";
 import type {
   ChannelApiResponse,
   CreateNotificationRequest,
+  NotificationCardSendCondition,
   NotificationHandler,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 export const formatTitle = (item, type) => {
@@ -172,4 +179,42 @@ export function alertIsValid(
     handlers.every(channel => channelIsValid(channel)) &&
     handlers.every(c => channelSpec?.channels[c.channel_type]?.configured)
   );
+}
+
+function hasProperGoalForAlert({
+  question,
+  visualizationSettings,
+}: {
+  question: Question | undefined;
+  visualizationSettings: VisualizationSettings;
+}): boolean {
+  const alertType = question?.alertType(visualizationSettings);
+
+  if (!alertType) {
+    return false;
+  }
+
+  return (
+    alertType === ALERT_TYPE_TIMESERIES_GOAL ||
+    alertType === ALERT_TYPE_PROGRESS_BAR_GOAL
+  );
+}
+
+export function getAlertTriggerOptions({
+  question,
+  visualizationSettings,
+}: {
+  question: Question | undefined;
+  visualizationSettings: VisualizationSettings;
+}): NotificationCardSendCondition[] {
+  const hasValidGoal = hasProperGoalForAlert({
+    question,
+    visualizationSettings,
+  });
+
+  if (hasValidGoal) {
+    return ["has_result", "goal_above", "goal_below"];
+  }
+
+  return ["has_result"];
 }

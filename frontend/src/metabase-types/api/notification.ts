@@ -7,7 +7,7 @@ export type NotificationId = number;
 export type NotificationCardSendCondition =
   | "goal_above"
   | "goal_below"
-  | "has_results";
+  | "has_result";
 
 //#region Payload union type
 type NotificationCardPayload = {
@@ -110,7 +110,6 @@ export type CreateNotificationRequest = NotificationPayload & {
 export type CreateAlertNotificationRequest = NotificationCardPayload & {
   handlers: NotificationHandler[];
   subscriptions: [NotificationCronSubscription];
-  creator_id: UserId;
 };
 
 // export interface UpdateNotificationRequest extends NotificationCardPayload {}

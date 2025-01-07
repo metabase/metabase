@@ -15,10 +15,11 @@ import ModalContent from "metabase/components/ModalContent";
 import SchedulePicker from "metabase/containers/SchedulePicker";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
-import { alertIsValid } from "metabase/lib/notifications";
+import { getAlertTriggerOptions } from "metabase/lib/notifications";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { AlertModalSettingsBlock } from "metabase/notifications/modals/CreateOrUpdateAlertModal/AlertModalSettingsBlock";
 import { AlertTriggerIcon } from "metabase/notifications/modals/CreateOrUpdateAlertModal/AlertTriggerIcon";
+import type { NotificationTriggerOption } from "metabase/notifications/modals/CreateOrUpdateAlertModal/types";
 import { NotificationChannelsPicker } from "metabase/notifications/modals/components/NotificationChannelsPicker";
 import {
   DEFAULT_ALERT_SCHEDULE,
@@ -39,25 +40,23 @@ import type {
   ScheduleType,
 } from "metabase-types/api";
 
-// TODO: combine this with api types
-type NotificationTriggerOption = {
-  value: NotificationCardSendCondition;
-  label: string;
-};
-const ALERT_TRIGGER_OPTIONS: NotificationTriggerOption[] = [
-  {
-    value: "has_results" as const,
+const ALERT_TRIGGER_OPTIONS_MAP: Record<
+  NotificationCardSendCondition,
+  NotificationTriggerOption
+> = {
+  has_result: {
+    value: "has_result" as const,
     label: t`When this has results`,
   },
-  {
+  goal_above: {
     value: "goal_above" as const,
     label: t`When results go above the goal line`,
   },
-  {
+  goal_below: {
     value: "goal_below" as const,
     label: t`When results go below the goal line`,
   },
-];
+};
 
 const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
   "hourly",
@@ -92,6 +91,15 @@ export const CreateAlertModalContent = ({
 
   const [createNotification] = useCreateNotificationMutation();
 
+  const questionId = question?.id();
+
+  const triggerOptions = getAlertTriggerOptions({
+    question,
+    visualizationSettings,
+  }).map(trigger => ALERT_TRIGGER_OPTIONS_MAP[trigger]);
+
+  const hasSingleTriggerOption = triggerOptions.length === 1;
+
   // useEffect(() => {
   //   if (question && alert) {
   //     setAlert({
@@ -102,28 +110,31 @@ export const CreateAlertModalContent = ({
   // }, [question]);
 
   useEffect(() => {
-    if (question && channelSpec && user && !notification) {
+    if (questionId && channelSpec && user && !notification) {
       setNotification(
         getDefaultQuestionAlertRequest({
-          cardId: question.id(),
+          cardId: questionId,
           userId: user.id,
           channelSpec,
+          availableTriggerOptions: triggerOptions,
         }),
       );
     }
-  }, [notification, channelSpec, question, user]);
+  }, [notification, channelSpec, questionId, triggerOptions, user]);
+
+  const onCreateAlert = async () => {
+    if (notification) {
+      await createNotification(notification);
+
+      await dispatch(updateUrl(question, { dirty: false }));
+
+      onAlertCreated();
+    }
+  };
 
   if (!notification || !subscription) {
     return null;
   }
-
-  const onCreateAlert = async () => {
-    await createNotification(notification);
-
-    await dispatch(updateUrl(question, { dirty: false }));
-
-    onAlertCreated();
-  };
 
   // TODO: add validity check for new data format
   // const isValid = alertIsValid(notification, channelSpec);
@@ -151,9 +162,10 @@ export const CreateAlertModalContent = ({
           <Flex gap="1.5rem">
             <AlertTriggerIcon />
             <Select
-              data={ALERT_TRIGGER_OPTIONS}
+              data={triggerOptions}
               value={notification.payload.send_condition}
               w={276}
+              disabled={hasSingleTriggerOption}
               onChange={value =>
                 setNotification({
                   ...notification,
