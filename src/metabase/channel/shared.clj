@@ -13,7 +13,7 @@
                             me/humanize)]
     (throw (ex-info (tru "Invalid channel details") {:errors errors}))))
 
-(defn- maybe-defer
+(defn- maybe-deref
   [x]
   (if (instance? clojure.lang.IDeref x)
     @x
@@ -22,4 +22,4 @@
 (defn realize-data-rows
   "Realize the data rows in a [[metabase.notification.payload.execute/Part]]"
   [part]
-  (update-in part [:result :data :rows] maybe-defer))
+  (update-in part [:result :data :rows] maybe-deref))
