@@ -308,7 +308,7 @@ describe("scenarios > question > native subquery", () => {
       ({ body: { id: baseQuestionId } }) => {
         const tagID = `#${baseQuestionId}`;
 
-        H.startNewNativeQuestion();
+        H.startNewNativeQuestion({ display: "table" });
         H.focusNativeEditor().type(`SELECT * FROM {{${tagID}`);
 
         H.runNativeQuery();

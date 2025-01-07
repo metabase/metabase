@@ -28,7 +28,7 @@ export function addWidgetStringFilter(
   { buttonLabel = "Add filter" } = {},
 ) {
   setWidgetStringFilter(value);
-  selectFilterValueFromList(value, { buttonLabel });
+  cy.button(buttonLabel).click();
 }
 
 export function clearWidgetValue() {

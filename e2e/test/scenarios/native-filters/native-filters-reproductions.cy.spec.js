@@ -971,7 +971,10 @@ describe("issue 29786", { tags: "@external" }, () => {
     "should allow using field filters with null schema (metabase#29786)",
     { tags: "@flaky" },
     () => {
-      H.startNewNativeQuestion({ display: "table" });
+      H.startNewNativeQuestion({
+        display: "table",
+        collection_id: COLLECTION_GROUP,
+      });
 
       cy.findByTestId("gui-builder-data").click();
       cy.findByLabelText("QA MySQL8").click();
@@ -986,7 +989,7 @@ describe("issue 29786", { tags: "@external" }, () => {
       FieldFilter.mapTo({ table: "Products", field: "Vendor" });
 
       H.filterWidget().first().click();
-      FieldFilter.addWidgetStringFilter("Widget");
+      FieldFilter.selectFilterValueFromList("Widget");
       H.filterWidget().last().click();
       FieldFilter.addWidgetStringFilter("Von-Gulgowski");
 

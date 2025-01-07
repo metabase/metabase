@@ -90,7 +90,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
   context("ID filter", () => {
     beforeEach(() => {
-      H.startNewNativeQuestion();
+      H.startNewNativeQuestion({ display: "table" });
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM products WHERE {{filter}}",
       );
@@ -128,7 +128,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
   context("None", () => {
     beforeEach(() => {
-      H.startNewNativeQuestion();
+      H.startNewNativeQuestion({ display: "table" });
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM people WHERE {{filter}}",
       );
