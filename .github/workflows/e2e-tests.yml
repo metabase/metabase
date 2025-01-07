@@ -123,7 +123,7 @@ jobs:
             const comment = comments.find((comment) => comment.body.includes('## e2e tests failed on '));
 
             if (comment) {
-              await github.issues.deleteComment({
+              await github.rest.issues.deleteComment({
                 owner,
                 repo,
                 comment_id: comment.id,
