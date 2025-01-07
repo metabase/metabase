@@ -1,25 +1,17 @@
-import cx from "classnames";
 import { useCallback, useMemo, useRef } from "react";
-import DataGrid, {
-  type Column,
-  type DataGridHandle,
-  type RenderHeaderCellProps,
-} from "react-data-grid";
+import DataGrid, { type Column, type DataGridHandle } from "react-data-grid";
 import _ from "underscore";
 
 import { formatValue } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
-import { zoomInRow } from "metabase/query_builder/actions";
 import {
   getIsShowingRawTable,
   getQueryBuilderMode,
-  getRowIndexToPKMap,
   getUiControls,
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { Box } from "metabase/ui";
 import { cachedFormatter } from "metabase/visualizations/echarts/cartesian/utils/formatter";
-import type { ColumnDescriptor } from "metabase/visualizations/lib/graph/columns";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { isFK, isNumber, isPK } from "metabase-lib/v1/types/utils/isa";
 import type { RowValue } from "metabase-types/api";
@@ -31,63 +23,31 @@ import { BodyCell } from "./cell/BodyCell";
 import { HeaderCell } from "./cell/HeaderCell";
 import { IndexCell } from "./cell/IndexCell";
 import { IndexHeaderCell } from "./cell/IndexHeaderCell";
-import { TABLE_DEFINITION } from "./chart-definition";
+import { useMeasureCells } from "./hooks/use-measure-cells";
+import { useObjectDetail } from "./hooks/use-object-detail";
 
 const ROW_HEIGHT = 36;
 const HEADER_ROW_HEIGHT = 36;
 const MIN_COLUMN_WIDTH = 50;
-const MAX_COLUMN_WIDTH = 300;
 
 const INDEX_COLUMN_ID = "\0_index";
 
 // Table adds an index column at the beginning of the columns array so we need to subtract 1 to get the correct index in the data array
 const toDataColumnIndex = (displayIndex: number) => displayIndex - 1;
-const toDisplayColumnIndex = (dataIndex: number) => dataIndex + 1;
 
 export const _Table = ({
   data,
   height,
   settings,
   width,
-  onZoomRow,
-  rowIndexToPkMap,
   onVisualizationClick,
   onUpdateVisualizationSettings,
 }: VisualizationProps) => {
+  const onOpenObjectDetail = useObjectDetail(data);
   const dataGridRef = useRef<DataGridHandle>(null);
   const { rows, cols } = data;
 
-  const primaryKeyColumn: ColumnDescriptor | null = useMemo(() => {
-    const primaryKeyColumns = data.cols.filter(isPK);
-
-    // As of now, we support object detail drill on datasets with single column PK
-    if (primaryKeyColumns.length !== 1) {
-      return null;
-    }
-    const primaryKeyColumn = primaryKeyColumns[0];
-
-    return {
-      column: primaryKeyColumn,
-      index: data.cols.indexOf(primaryKeyColumn),
-    };
-  }, [data.cols]);
-
-  const handleRowZoom = useCallback(
-    (rowIndex: number) => {
-      let objectId;
-
-      if (primaryKeyColumn) {
-        objectId = rows[rowIndex][primaryKeyColumn.index];
-      } else {
-        objectId = rowIndexToPkMap[rowIndex] ?? rowIndex;
-      }
-
-      onZoomRow?.(objectId);
-    },
-    [onZoomRow, primaryKeyColumn, rowIndexToPkMap, rows],
-  );
-
-  const columnWidths = useMemo(
+  const columnWidthsSetting = useMemo(
     () => settings["table.column_widths"] || [],
     [settings],
   );
@@ -99,14 +59,14 @@ export const _Table = ({
         return;
       }
 
-      const newColumnWidths = [...columnWidths];
+      const newColumnWidths = [...columnWidthsSetting];
       newColumnWidths[dataIndex] = width;
 
       onUpdateVisualizationSettings({
         "table.column_widths": newColumnWidths,
       });
     },
-    [columnWidths, onUpdateVisualizationSettings],
+    [columnWidthsSetting, onUpdateVisualizationSettings],
   );
 
   const handleColumnReorder = useCallback(
@@ -164,6 +124,66 @@ export const _Table = ({
     });
   }, [cols, settings]);
 
+  const renderBodyCell = useCallback(
+    ({ row, column }: { row: RowValue[]; column: Column<RowValue[]> }) => {
+      const columnIndex = parseInt(column.key as string, 10);
+      const value = row[columnIndex];
+      const col = cols[columnIndex];
+      const align = isNumber(col) ? "right" : "left";
+      const isPill = isPK(col) || isFK(col);
+      const backgroundColor = settings["table._cell_background_getter"]?.(
+        value,
+        columnIndex,
+        col.name,
+      );
+
+      return (
+        <BodyCell
+          variant={isPill ? "pill" : "text"}
+          value={value}
+          formatter={columnFormatters[columnIndex]}
+          align={align}
+          backgroundColor={backgroundColor}
+          onClick={event => {
+            onVisualizationClick?.({
+              value,
+              column: col,
+              element: event.currentTarget,
+            });
+          }}
+        />
+      );
+    },
+    [cols, columnFormatters, onVisualizationClick, settings],
+  );
+
+  const renderHeaderCell = useCallback(
+    ({ column }: { column: Column<RowValue[]> }) => {
+      const columnIndex = parseInt(column.key as string, 10);
+      const col = cols[columnIndex];
+      const align = isNumber(col) ? "right" : "left";
+
+      return (
+        <HeaderCell
+          name={col.display_name}
+          align={align}
+          onClick={event => handleHeaderClick(col, event.currentTarget)}
+        />
+      );
+    },
+    [cols, handleHeaderClick],
+  );
+
+  const { columnWidths } = useMeasureCells({
+    columns: cols.map((col, index) => ({
+      key: index.toString(),
+      name: col.display_name,
+    })),
+    rows,
+    renderCell: renderBodyCell,
+    renderHeaderCell,
+  });
+
   const columns = useMemo(() => {
     const indexColumn: Column<RowValue[]> = {
       key: INDEX_COLUMN_ID,
@@ -176,69 +196,33 @@ export const _Table = ({
       renderCell: ({ rowIdx }) => (
         <IndexCell
           rowNumber={rowIdx + 1}
-          onClick={() => {
-            console.log(">>>here");
-            handleRowZoom(rowIdx);
-          }}
+          onClick={() => onOpenObjectDetail(rowIdx)}
         />
       ),
     };
 
     const valueColumns = cols.map<Column<RowValue[]>>((col, index) => {
-      const align = isNumber(col) ? "right" : "left";
-      const isPill = isPK(col) || isFK(col);
-
       return {
         key: index.toString(),
         name: col.display_name,
-        width: columnWidths[index] || "max-content",
+        width:
+          columnWidthsSetting[index] || columnWidths[index] || "max-content",
         resizable: true,
         draggable: true,
         minWidth: MIN_COLUMN_WIDTH,
-        renderHeaderCell: (props: RenderHeaderCellProps<RowValue[]>) => (
-          <HeaderCell
-            name={props.column.name}
-            align={align}
-            onClick={event => handleHeaderClick(col, event.currentTarget)}
-          />
-        ),
-        renderCell: ({ row, rowIdx }) => {
-          const value = row[index];
-          const backgroundColor = settings["table._cell_background_getter"]?.(
-            value,
-            rowIdx,
-            col.name,
-          );
-
-          return (
-            <BodyCell
-              variant={isPill ? "pill" : "text"}
-              value={value}
-              formatter={columnFormatters[index]}
-              align={align}
-              backgroundColor={backgroundColor}
-              onClick={event => {
-                onVisualizationClick?.({
-                  value,
-                  column: col,
-                  element: event.currentTarget,
-                });
-              }}
-            />
-          );
-        },
+        renderHeaderCell,
+        renderCell: renderBodyCell,
       };
     });
 
     return [indexColumn, ...valueColumns];
   }, [
     cols,
-    handleRowZoom,
+    onOpenObjectDetail,
     columnWidths,
-    handleHeaderClick,
-    settings,
-    columnFormatters,
-    onVisualizationClick,
+    columnWidthsSetting,
+    renderHeaderCell,
+    renderBodyCell,
   ]);
 
   return (
@@ -273,18 +257,11 @@ export const _Table = ({
   );
 };
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state: any) => ({
   queryBuilderMode: getQueryBuilderMode(state),
-  rowIndexToPkMap: getRowIndexToPKMap(state),
   isEmbeddingSdk: getIsEmbeddingSdk(state),
   scrollToLastColumn: getUiControls(state).scrollToLastColumn,
   isRawTable: getIsShowingRawTable(state),
 });
 
-const mapDispatchToProps = dispatch => ({
-  onZoomRow: objectId => dispatch(zoomInRow({ objectId })),
-});
-
-export const Table = connect(mapStateToProps, mapDispatchToProps)(_Table);
-
-Object.assign(Table, TABLE_DEFINITION);
+export const Table = connect(mapStateToProps, null)(_Table);

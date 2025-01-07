@@ -24,8 +24,8 @@ import { SankeyChart } from "./visualizations/SankeyChart";
 import { Scalar } from "./visualizations/Scalar";
 import { ScatterPlot } from "./visualizations/ScatterPlot";
 import { SmartScalar } from "./visualizations/SmartScalar";
-import { Table } from "./visualizations/Table";
-import TableLegacy from "./visualizations/TableLegacy";
+// import { Table } from "./visualizations/Table";
+import Table from "./visualizations/TableLegacy";
 import { Text } from "./visualizations/Text";
 import { WaterfallChart } from "./visualizations/WaterfallChart";
 
@@ -34,8 +34,8 @@ export default function () {
   registerVisualization(SmartScalar);
   registerVisualization(Progress);
   registerVisualization(Gauge);
+  // registerVisualization(Table);
   registerVisualization(Table);
-  registerVisualization(TableLegacy);
   registerVisualization(LineChart);
   registerVisualization(AreaChart);
   registerVisualization(BarChart);
@@ -57,5 +57,5 @@ export default function () {
   registerVisualization(Text);
   registerVisualization(IFrameViz);
 
-  setDefaultVisualization(TableLegacy);
+  setDefaultVisualization(Table);
 }

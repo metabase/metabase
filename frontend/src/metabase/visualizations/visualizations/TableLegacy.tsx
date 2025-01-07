@@ -44,9 +44,10 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
 import { TableSimple } from "../components/TableSimple";
 import type { ColumnSettingDefinition, VisualizationProps } from "../types";
+
+import { Table as TableInteractive } from "./Table";
 
 interface TableProps extends VisualizationProps {
   isShowingDetailsOnlyColumns?: boolean;
@@ -59,7 +60,7 @@ interface TableState {
 
 class Table extends Component<TableProps, TableState> {
   static uiName = t`Table`;
-  static identifier = "table-old";
+  static identifier = "table";
   static iconName = "table2";
   static canSavePng = false;
 
