@@ -110,7 +110,7 @@ jobs:
           script: | # js
             const { owner, repo } = context.repo;
 
-            const { data: comments } = await github.issues.listComments({
+            const { data: comments } = await github.rest.issues.listComments({
               owner,
               repo,
               issue_number: context.issue.number,
