@@ -140,15 +140,17 @@
         (resolve-enterprise-model x))))
   x)
 
-(methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol
-  "Handle models deriving from :metabase/model."
-  [symb]
-  (or
-   (when (simple-symbol? symb)
-     (let [metabase-models-keyword (keyword "model" (name symb))]
-       (when (isa? metabase-models-keyword :metabase/model)
-         metabase-models-keyword)))
-   (next-method symb)))
+#_(methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol
+    "Handle models deriving from :metabase/model."
+    [symb]
+    (when config/is-dev?
+      (throw (ex-info (format "Using symbol with toucan2 is deprecated, use keyword instead. E.g: :model/%s" symb) {:symbol symb})))
+    (or
+     (when (simple-symbol? symb)
+       (let [metabase-models-keyword (keyword "model" (name symb))]
+         (when (isa? metabase-models-keyword :metabase/model)
+           metabase-models-keyword)))
+     (next-method symb)))
 
 ;; Models must derive from :hook/search-index if their state can influence the contents of the Search Index.
 ;; Note that it might not be the model itself that depends on it, for example, Dashcards are used in Card entries.
