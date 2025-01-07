@@ -18,8 +18,6 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.table :refer [Table]]
    [metabase.util :as u]
    [portal.api]
    [toucan2.core :as t2]))
@@ -102,16 +100,15 @@
        form))
    query))
 
-
 ;;;; [[add-names]]
 
 (defn- field-and-table-name [field-id]
-  (let [{field-name :name, table-id :table_id} (t2/select-one [Field :name :table_id] :id field-id)]
-    [(t2/select-one-fn :name Table :id table-id) field-name]))
+  (let [{field-name :name, table-id :table_id} (t2/select-one [:model/Field :name :table_id] :id field-id)]
+    [(t2/select-one-fn :name :model/Table :id table-id) field-name]))
 
 (defn- add-table-id-name [table-id]
   (list 'do
-        (symbol (format "#_%s" (pr-str (t2/select-one-fn :name Table :id table-id))))
+        (symbol (format "#_%s" (pr-str (t2/select-one-fn :name :model/Table :id table-id))))
         table-id))
 
 (defn add-names
@@ -148,7 +145,6 @@
              &match)))
        x)
       ->sorted-mbql-query-map))
-
 
 ;;;; [[process-query-debug]]
 
@@ -256,7 +252,6 @@
 
 (def ^:private ^:dynamic *printer* print-formatted-event)
 
-
 ;;;; [[to-mbql-shorthand]]
 
 (defn- strip-$ [coll]
@@ -331,7 +326,7 @@
 
       (m :guard (every-pred map? (comp pos-int? :source-table)))
       (-> (update m :source-table (fn [table-id]
-                                    [::$$ (some-> (t2/select-one-fn :name Table :id table-id) u/lower-case-en)]))
+                                    [::$$ (some-> (t2/select-one-fn :name :model/Table :id table-id) u/lower-case-en)]))
           (expand table))
 
       (m :guard (every-pred map? (comp pos-int? :fk-field-id)))
@@ -371,7 +366,7 @@
 (defn- query-table-name [{:keys [source-table source-query], :as inner-query}]
   (cond
     (pos-int? source-table)
-    (u/lower-case-en (or (t2/select-one-fn :name Table :id source-table)
+    (u/lower-case-en (or (t2/select-one-fn :name :model/Table :id source-table)
                          (throw (ex-info (format "Table %d does not exist!" source-table)
                                          {:source-table source-table, :inner-query inner-query}))))
 

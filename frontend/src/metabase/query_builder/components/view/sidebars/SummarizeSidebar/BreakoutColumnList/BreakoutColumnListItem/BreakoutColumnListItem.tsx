@@ -89,6 +89,7 @@ export function BreakoutColumnListItem({
       aria-label={displayName}
       aria-selected={isSelected}
       data-testid="dimension-list-item"
+      className={BreakoutColumnListItemS.Root}
     >
       <Flex
         className={BreakoutColumnListItemS.Content}

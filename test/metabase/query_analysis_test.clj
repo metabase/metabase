@@ -5,7 +5,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models :refer [Card]]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.public-settings :as public-settings]
    [metabase.query-analysis :as query-analysis]
@@ -47,17 +46,17 @@
 
 (deftest parse-mbql-test
   (testing "Parsing MBQL query returns correct used fields"
-    (mt/with-temp [Card c1 {:dataset_query (mt/mbql-query venues
-                                             {:aggregation [[:distinct $name]
-                                                            [:distinct $price]]
-                                              :limit       5})}
-                   Card c2 {:dataset_query {:query    {:source-table (str "card__" (:id c1))}
-                                            :database (:id (mt/db))
-                                            :type     :query}}
-                   Card c3 {:dataset_query (mt/mbql-query checkins
-                                             {:joins [{:source-table (str "card__" (:id c2))
-                                                       :alias        "Venues"
-                                                       :condition    [:= $checkins.venue_id $venues.id]}]})}]
+    (mt/with-temp [:model/Card c1 {:dataset_query (mt/mbql-query venues
+                                                    {:aggregation [[:distinct $name]
+                                                                   [:distinct $price]]
+                                                     :limit       5})}
+                   :model/Card c2 {:dataset_query {:query    {:source-table (str "card__" (:id c1))}
+                                                   :database (:id (mt/db))
+                                                   :type     :query}}
+                   :model/Card c3 {:dataset_query (mt/mbql-query checkins
+                                                    {:joins [{:source-table (str "card__" (:id c2))
+                                                              :alias        "Venues"
+                                                              :condition    [:= $checkins.venue_id $venues.id]}]})}]
       (is (= (mt/$ids
                [{:table-id (mt/id :venues), :table "venues", :field-id %venues.name, :column "name", :explicit-reference true}
                 {:table-id (mt/id :venues), :table "venues", :field-id %venues.price, :column "price", :explicit-reference true}])
@@ -82,17 +81,17 @@
 
 (deftest parse-native-test
   (testing "Parsing Native queries that reference models do not return cache tables"
-    (mt/with-temp [Card c1 {:type          :model
-                            :dataset_query (mt/mbql-query venues
-                                             {:aggregation [[:distinct $name]
-                                                            [:distinct $price]]
-                                              :limit       5})}
-                   Card c2 {:dataset_query (let [tag-name (str "#" (:id c1) "-some-card")]
-                                             (mt/native-query {:query         (format "SELECT * FROM t JOIN {{%s}} ON true" tag-name)
-                                                               :template-tags {tag-name {:name         tag-name
-                                                                                         :display-name tag-name
-                                                                                         :type         "card"
-                                                                                         :card-id      (:id c1)}}}))}]
+    (mt/with-temp [:model/Card c1 {:type          :model
+                                   :dataset_query (mt/mbql-query venues
+                                                    {:aggregation [[:distinct $name]
+                                                                   [:distinct $price]]
+                                                     :limit       5})}
+                   :model/Card c2 {:dataset_query (let [tag-name (str "#" (:id c1) "-some-card")]
+                                                    (mt/native-query {:query         (format "SELECT * FROM t JOIN {{%s}} ON true" tag-name)
+                                                                      :template-tags {tag-name {:name         tag-name
+                                                                                                :display-name tag-name
+                                                                                                :type         "card"
+                                                                                                :card-id      (:id c1)}}}))}]
         ;; TODO extract model persistence logic from the task, so that we can use the module API for this
       (let [pi (persisted-info/turn-on-model! (t2/select-one-pk :model/User) c1)]
         (t2/update! :model/PersistedInfo (:id pi) {:active true
@@ -125,7 +124,7 @@
   (with-analysis-on
     (testing "Nested queries within crosstab expressions are ignored"
       (let [sql "SELECT * FROM CROSSTAB($$ wat $$, $$ wut $$) AS ct(page INTEGER, \"foo\" FLOAT)"]
-        (mt/with-temp [Card {c-id :id} {:dataset_query (mt/native-query {:query sql})}]
+        (mt/with-temp [:model/Card {c-id :id} {:dataset_query (mt/native-query {:query sql})}]
           (testing "We record that analysis was successful"
             (is (t2/exists? :model/QueryAnalysis :card_id c-id)))
           (testing "But there are no identifiers saved to the database"
@@ -137,9 +136,9 @@
     (testing "Long identifiers are truncated"
       (let [long-column (monstrous-name)
             long-table  (monstrous-name)]
-        (mt/with-temp [Card {c-id :id} {:dataset_query (mt/native-query {:query (format "SELECT c, %s FROM t, %s"
-                                                                                        long-column
-                                                                                        long-table)})}]
+        (mt/with-temp [:model/Card {c-id :id} {:dataset_query (mt/native-query {:query (format "SELECT c, %s FROM t, %s"
+                                                                                               long-column
+                                                                                               long-table)})}]
           (let [columns (t2/select-fn-set :column :model/QueryField :card_id c-id)
                 tables  (t2/select-fn-set :table :model/QueryTable :card_id c-id)]
             (is (= 2 (count columns)))
@@ -158,7 +157,7 @@
   (with-analysis-on
     (testing "Errors analyzing queries will not prevent cards being created or updated"
       (mt/with-dynamic-redefs [query-analysis/update-query-analysis-for-card! throw-empty-exception]
-        (mt/with-temp [Card {c-id :id} {:dataset_query (mt/native-query {:query "SELECT c FROM t"})}]
+        (mt/with-temp [:model/Card {c-id :id} {:dataset_query (mt/native-query {:query "SELECT c FROM t"})}]
           (testing "The card was created"
             (is (t2/exists? :model/Card c-id)))
           (testing "The analysis was not"

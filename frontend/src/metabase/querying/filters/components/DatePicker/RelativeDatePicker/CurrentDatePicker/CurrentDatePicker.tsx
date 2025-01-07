@@ -1,20 +1,20 @@
 import { t } from "ttag";
 
-import { Button, Group, Stack, Tooltip } from "metabase/ui";
-import * as Lib from "metabase-lib";
-
 import type {
   DatePickerTruncationUnit,
   DatePickerUnit,
   RelativeDatePickerValue,
-} from "../../types";
+} from "metabase/querying/filters/types";
+import { Button, Group, Stack, Tooltip } from "metabase/ui";
+import * as Lib from "metabase-lib";
+
 import { formatDateRange } from "../utils";
 
 import { getCurrentValue, getUnitGroups } from "./utils";
 
 interface CurrentDatePickerProps {
   value: RelativeDatePickerValue | undefined;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
+  availableUnits: DatePickerUnit[];
   onChange: (value: RelativeDatePickerValue) => void;
 }
 

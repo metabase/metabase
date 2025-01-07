@@ -14,8 +14,9 @@ redirect_from:
 
 A dashboard comprises a set of cards arranged on a grid. These cards can be:
 
-- Questions, such as [tables, charts, or maps](../questions/sharing/visualizing-results.md)
+- [Questions](../questions/introduction.md). You can add questions from collections, or saved questions directly to a dashboard.
 - [Text and header cards](#adding-headings-or-descriptions-with-text-cards)
+- [Iframe cards](#iframe-cards)
 - [Link cards](#link-cards)
 
 You can add [filter widgets to dashboards](./filters.md) that filter data identically across multiple questions, and [customize what happens when people click on a chart or a table](./interactive.md).
@@ -26,18 +27,27 @@ You can make as many dashboards as you want. Go nuts.
 
 In the top right of the screen, click the **+ New** > **Dashboard**. Give your new dashboard a name and a description, choose which [collections](../exploration-and-organization/collections.md) the dashboard should go in, then click **Create**, and Metabase will take you to your shiny new dashboard.
 
-## Adding questions to a dashboard
+## Adding or saving questions to a dashboard
 
-There are two ways to add questions to a dashboard: from the dashboard, or from the question you want to add.
+You can add questions that are saved to collections, or save questions directly to a dashboard.
 
-- **From a question**: You can add a newly saved question to a dashboard directly from the modal that pops up after you save the question for the first time. You can also add a question to a dashboard by clicking on the ellipsis (**...**) at the top right of a question and selecting **Add to dashboard**.
-- **From a dashboard**: Click on the **pencil** icon to **edit the dashboard**. Then click the **+** icon in the top right of the dashboard editing interface (not the **+** in the main navigation bar) to add any of your saved questions to the dashboard, regardless of which collection the questions are in.
+### From a dashboard
 
-> If your question is saved to your personal collection, you'll only be able to add that question to dashboards in your personal collection. If you want to add the question to a dashboard in a public collection, you'll need to move your question to that collection (or any other public collection).
+When editing a dashboard, you can add a question by clicking the **+** icon in the top right. You can add a chart from a new question, SQL/native query, or an existing question.
 
-Once you add a question to your dashboard, it’ll look something like this:
+You can't add questions that are saved to other dashboards. If you want to add a question to multiple dashboards, you should save that question to a collection. Alternatively, if the questions don't need to stay in sync, you could duplicate a question, and save that duplicate to your dashboard. Just keep in mind that changes to one question won't affect the duplicate question.
 
-![First Dashboard](images/first.png)
+### From a question
+
+When creating or editing a question, you can [save the question directly to a dashboard](../questions/introduction.md#saving-questions-to-dashboards). That question can only be used by that dashboard.
+
+### Adding a question saved to a collection
+
+To add a question saved to a collection to a dashboard, visit the question and click on the three-dot menu (**...**) at the top right and select **Add to dashboard**. You can also [browse questions from dashboard edit mode](#from-a-dashboard).
+
+Adding a question to a dashboard does not save the question to the dashboard.
+
+If a question is saved to your personal collection, you'll only be able to add that question to dashboards _in_ your personal collection. If you want to add the question to a dashboard in a public collection, you'll need to move your question out of your personal collection.
 
 ## Adding headings or descriptions with text cards
 
@@ -257,7 +267,7 @@ See [Caching per dashboard](../configuring-metabase/caching.md#dashboard-caching
 
 ## Sharing dashboards with public links
 
-If your Metabase administrator has enabled [public sharing](../questions/sharing/answers.md) on a saved question or dashboard, you can go to that question or dashboard and click on the **sharing** icon to find its public links.
+If your Metabase administrator has enabled [public sharing](../embedding/public-links.md) on a saved question or dashboard, you can go to that question or dashboard and click on the **sharing** icon to find its public links.
 
 ![Share icon](./images/share-icon.png)
 
@@ -265,7 +275,7 @@ Public links can be viewed by anyone, even if they don't have access to Metabase
 
 ## Exporting results from a dashboard
 
-See [Exporting results](../questions/sharing/exporting-results.md#exporting-results-of-a-dashboard).
+See [Exporting results](../questions/exporting-results.md).
 
 ## Configuring a dashboard through its URL
 
@@ -299,8 +309,7 @@ See [content verification](../exploration-and-organization/content-verification.
 
 ## Deleting a dashboard
 
-You can move a dashboard to Trash or permanently delete a dashboard that you no longer need.
-See [Archiving a dashboard](../exploration-and-organization/delete-and-restore.md).
+See [deleting and restoring](../exploration-and-organization/delete-and-restore.md).
 
 ## Tips on creating helpful dashboards
 

@@ -59,10 +59,10 @@ describe("ChartSettingFieldPicker", () => {
     const fields = screen.getAllByTestId("chartsettings-field-picker");
 
     expect(
-      within(fields[0]).getByTestId("chartsettings-field-picker-select"),
+      within(fields[0]).getByTestId("chart-setting-select"),
     ).toHaveDisplayValue("FOO");
     expect(
-      within(fields[1]).getByTestId("chartsettings-field-picker-select"),
+      within(fields[1]).getByTestId("chart-setting-select"),
     ).toHaveDisplayValue("BAR");
 
     expect(

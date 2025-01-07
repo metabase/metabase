@@ -11,9 +11,6 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync :as sync]
@@ -81,9 +78,9 @@
             [3 "The Apple Pan"]
             [4 "Wurstküche"]
             [5 "Brite Spot Family Restaurant"]]
-           (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
-                                                    [(t2/select-one Field :id (mt/id :venues :id))
-                                                     (t2/select-one Field :id (mt/id :venues :name))]
+           (->> (metadata-queries/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
+                                                    [(t2/select-one :model/Field :id (mt/id :venues :id))
+                                                     (t2/select-one :model/Field :id (mt/id :venues :name))]
                                                     (constantly conj))
                 (sort-by first)
                 (take 5))))))
@@ -218,12 +215,12 @@
                        (format "DROP SCHEMA IF EXISTS %s" s)
                        (format "CREATE SCHEMA %s" s)
                        (format "CREATE TABLE %s.%s (pk INTEGER, val1 VARCHAR(512))" s t)])
-        (t2.with-temp/with-temp [Database db {:engine :presto-jdbc, :name "Temp Presto JDBC Schema DB", :details with-schema}]
+        (t2.with-temp/with-temp [:model/Database db {:engine :presto-jdbc, :name "Temp Presto JDBC Schema DB", :details with-schema}]
           (mt/with-db db
             ;; same as test_data, but with schema, so should NOT pick up venues, users, etc.
             (sync/sync-database! db)
             (is (= [{:name t, :schema s, :db_id (mt/id)}]
-                   (map #(select-keys % [:name :schema :db_id]) (t2/select Table :db_id (mt/id)))))))
+                   (map #(select-keys % [:name :schema :db_id]) (t2/select :model/Table :db_id (mt/id)))))))
         (execute-ddl! [(format "DROP TABLE %s.%s" s t)
                        (format "DROP SCHEMA %s" s)])))))
 

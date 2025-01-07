@@ -97,6 +97,10 @@ const theme = defineMetabaseTheme({
       // Background color for all dashboards
       backgroundColor: "#2F3640",
 
+      // Border color of the dashboard grid, shown only when editing dashboards.
+      // Defaults to `colors.border`
+      gridBorderColor: "#EEECEC",
+
       card: {
         // Background color for all dashboard cards
         backgroundColor: "#2D2D30",

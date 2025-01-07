@@ -1,13 +1,12 @@
-import * as Lib from "metabase-lib";
-
-import { DATE_PICKER_TRUNCATION_UNITS } from "../constants";
+import { DATE_PICKER_TRUNCATION_UNITS } from "metabase/querying/filters/constants";
 import type {
   DatePickerTruncationUnit,
   DatePickerUnit,
   DatePickerValue,
   RelativeDatePickerValue,
   RelativeIntervalDirection,
-} from "../types";
+} from "metabase/querying/filters/types";
+import * as Lib from "metabase-lib";
 
 import { DEFAULT_VALUE } from "./constants";
 import type { DateIntervalValue, DateOffsetIntervalValue } from "./types";
@@ -107,9 +106,7 @@ export function setInterval(
   };
 }
 
-export function getAvailableTruncationUnits(
-  availableUnits: ReadonlyArray<DatePickerUnit>,
-) {
+export function getAvailableTruncationUnits(availableUnits: DatePickerUnit[]) {
   return DATE_PICKER_TRUNCATION_UNITS.filter(unit =>
     availableUnits.includes(unit),
   );
@@ -117,7 +114,7 @@ export function getAvailableTruncationUnits(
 
 export function getUnitOptions(
   value: DateIntervalValue,
-  availableUnits: ReadonlyArray<DatePickerUnit>,
+  availableUnits: DatePickerUnit[],
 ) {
   const truncationUnits = getAvailableTruncationUnits(availableUnits);
   const interval = getInterval(value);
