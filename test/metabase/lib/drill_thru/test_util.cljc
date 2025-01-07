@@ -11,6 +11,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
@@ -130,24 +131,29 @@
   (fn [query-or-columns & _] (lib.dispatch/dispatch-value query-or-columns))
   :hierarchy lib.hierarchy/hierarchy)
 
-(defmethod column-by-name :mbql/query
-  [query column-name]
+(mu/defmethod column-by-name :mbql/query :- ::lib.schema.metadata/column
+  [query       :- ::lib.schema/query
+   column-name :- :string]
   (column-by-name (lib/returned-columns query) column-name))
 
-(defmethod column-by-name :dispatch-type/sequential
-  [columns column-name]
+(mu/defmethod column-by-name :dispatch-type/sequential :- ::lib.schema.metadata/column
+  [columns     :- [:sequential ::lib.schema.metadata/column]
+   column-name :- :string]
   (m/find-first #(= (:name %) column-name) columns))
 
-(defn append-filter-stage
+(mu/defn append-filter-stage :- ::lib.schema/query
   "Append a new stage to `query` and add a filter there targeting `column-name`.
 
   The two-arg arity adds a simple `col > -1` filter.
 
-  The three-arg arity will pass the first column it finds with `column-name` to `column-filter-fn` to create the
-  filter."
-  ([query column-name]
+  The three-arg arity will pass the first column it finds with `column-name` to `column-filter-fn`, which should
+  return a boolean expression that can be passed as the second arg to [[lib/filter]]."
+  ([query       :- ::lib.schema/query
+    column-name :- :string]
    (append-filter-stage query column-name #(lib/> % -1)))
-  ([query column-name column-filter-fn]
+  ([query            :- ::lib.schema/query
+    column-name      :- :string
+    column-filter-fn :- [:-> ::lib.schema.metadata/column :any]]
    (let [query'           (lib/append-stage query)
          column-to-filter (column-by-name query' column-name)]
      (assert (some? column-to-filter) (str "Failed to find " column-name " in " query))
