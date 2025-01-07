@@ -33,22 +33,28 @@
         (m/update-existing :required #(vec (remove optional? %)))
         (m/update-existing :properties #(update-vals % (fn [v] (dissoc v :optional)))))))
 
-(let [file-schema (mjs/transform ms/File)]
-  (defn- fix-json-schema
-    "Clean-up JSON schema to make it more understandable for OpenAPI tools.
+(def ^:private file-schema (mjs/transform ms/File))
 
-    Returns a new schema WITH an indicator if it's *NOT* required.
+(mu/defn- fix-json-schema :- [:map
+                              [:description {:optional true} [:maybe string?]]]
+  "Clean-up JSON schema to make it more understandable for OpenAPI tools.
 
-    NOTE: maybe instead of fixing it up later we should re-work Malli's json-schema transformation into a way we want it to be?"
-    [schema]
+  Returns a new schema WITH an indicator if it's *NOT* required.
+
+  NOTE: maybe instead of fixing it up later we should re-work Malli's json-schema transformation into a way we want it
+  to be?"
+  [schema]
+  (let [schema (m/update-existing schema :description str)]
     (cond
       ;; we're using `[:maybe ...]` a lot, and it generates `{:oneOf [... {:type "null"}]}`
       ;; it needs to be cleaned up to be presented in OpenAPI viewers
       (and (:oneOf schema)
            (= (second (:oneOf schema)) {:type "null"}))
-      (recur (-> (first (:oneOf schema))
-                 (merge (select-keys schema [:description :default]))
-                 (assoc :optional true)))
+      (recur (merge (first (:oneOf schema))
+                    (when-let [description (:description schema)]
+                      {:description (str description)})
+                    (select-keys schema [:default])
+                    {:optional true}))
 
       ;; this happens when we use `[:and ... [:fn ...]]`, the `:fn` schema gets converted into an empty object
       (:allOf schema)
@@ -200,8 +206,9 @@
                                     "application/json")]
     ;; summary is the string in the sidebar of Scalar
     {method (cond-> {:summary     (str (u/upper-case-en (name method)) " " full-path)
-                     :description (or (:orig-doc data)
-                                      (:doc data))
+                     :description (some-> (or (:orig-doc data)
+                                              (:doc data))
+                                          str)
                      :parameters params}
               tag         (assoc :tags [tag])
               body-schema (assoc :requestBody {:content {ctype {:schema body-schema}}}))}))
@@ -231,7 +238,7 @@
                                     "application/json")]
     ;; summary is the string in the sidebar of Scalar
     {method (cond-> {:summary     (str (u/upper-case-en (name method)) " " full-path)
-                     :description (:docstr form)
+                     :description (some-> (:docstr form) str)
                      :parameters params}
               tag         (assoc :tags [tag])
               body-schema (assoc :requestBody {:content {ctype {:schema body-schema}}}))}))

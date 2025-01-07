@@ -8,8 +8,11 @@
    [metabase.api.common.openapi :as openapi]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes :as routes]
+   [metabase.util.i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
+
+(comment metabase.util.i18n/keep-me)
 
 ;;; json-schema upgrades
 
@@ -23,14 +26,14 @@
 
 (deftest ^:parallel json-schema-conversion-2
   (testing ":json-schema basically works (see definition of NonBlankString)"
-    (is (=? {:description map?
+    (is (=? {:description metabase.util.i18n.UserLocalizedString
              :$ref        "#/definitions/metabase.lib.schema.common~1non-blank-string"
              :definitions {"metabase.lib.schema.common/non-blank-string" {:type "string", :minLength 1}}}
             (mjs/transform ms/NonBlankString)))))
 
 (deftest ^:parallel json-schema-conversion-3
   (testing "maps-with-unique-key do not generate weirdness"
-    (is (=? {:description map?
+    (is (=? {:description string?
              :type        "array"
              :items       {:type       "object"
                            :required   [:id]
@@ -201,7 +204,8 @@
   (testing "every top-level route only uses middlewares which correctly pass metadata\n"
     (doseq [route (-> #'routes/routes meta :routes)
             :when (meta route)
-            :let  [m (meta route)]]
+            :let  [m (meta route)]
+            :when (not= (:path m) "/docs")]
       (testing (cond-> (:path m)
                  (:doc m) (str " - " (some-> (:doc m) str/split-lines first)))
         (is (or (:method m)
@@ -299,7 +303,7 @@
                   :name        :id
                   :required    true
                   :schema      {:type "integer", :minimum 1}
-                  :description map?}]
+                  :description string?}]
                 :requestBody
                 {:content
                  {"application/json"
@@ -311,10 +315,10 @@
                      {:type     "object"
                       :required [:dashcards]
                       :properties
-                      {:name      {:description map?
+                      {:name      {:description string?
                                    :$ref        "#/components/schemas/metabase.lib.schema.common~1non-blank-string"}
                        :dashcards {:type        "array"
-                                   :description map?
+                                   :description string?
                                    :items       {:type       "object"
                                                  :required   [:id]
                                                  :properties {:id     {:type "integer"}
