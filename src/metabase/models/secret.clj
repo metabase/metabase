@@ -135,14 +135,25 @@
    The `-options` property may, or may not be present. If not `-value` should be used."
   [details conn-prop]
   (let [kws (->possible-secret-property-names (:name conn-prop))
-        value (when-let [value (get details (:value kws))]
-                (let [encoded? (re-find uploaded-base-64-prefix-pattern value)
+        value (when-let [^String value (get details (:value kws))]
+                (let [data-uri? (re-find uploaded-base-64-prefix-pattern value)
                       secret-props (m/index-by (comp keyword :name) (driver.u/expand-secret-conn-prop conn-prop))
                       treatment (get-in secret-props [(:value kws) :treat-before-posting] "base64")]
-                  (cond-> value
-                    (and encoded? (= treatment "base64"))
-                    (-> (str/replace-first uploaded-base-64-prefix-pattern "")
-                        u/decode-base64-to-bytes))))
+                  (cond
+                    (and data-uri? (= treatment "base64"))
+                    (-> value
+                        (str/replace-first uploaded-base-64-prefix-pattern "")
+                        u/decode-base64-to-bytes)
+
+                    (= treatment "base64")
+                    (try
+                      (u/decode-base64-to-bytes value)
+                      (catch IllegalArgumentException _
+                        (.getBytes value "UTF-8")))
+
+                    :else
+                    ;; This shouldn't happen in reality but tests might not encode their values.
+                    (.getBytes value "UTF-8"))))
         has-path? (contains? details (:path kws))
         has-value? (contains? details (:value kws))
         options (get details (:options kws))
