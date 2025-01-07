@@ -54,9 +54,9 @@
 
     (testing "returns set of user attributes"
       (t2.with-temp/with-temp
-        ['User _ {:login_attributes {:foo "bar"}}
-         'User _ {:login_attributes {:foo "baz"
-                                     :miz "bar"}}]
+        [:model/User _ {:login_attributes {:foo "bar"}}
+         :model/User _ {:login_attributes {:foo "baz"
+                                           :miz "bar"}}]
         (is (= ["foo" "miz"]
                (mt/user-http-request :crowberto :get 200 "mt/user/attributes")))))))
 
@@ -76,7 +76,7 @@
 
     (testing "Admin can update user attributes"
       (t2.with-temp/with-temp
-        ['User {id :id} {}]
+        [:model/User {id :id} {}]
         (mt/user-http-request :crowberto :put 200 (format "mt/user/%d/attributes" id) {:login_attributes {"foo" "bar"}})
         (is (= {"foo" "bar"}
-               (t2/select-one-fn :login_attributes 'User :id id)))))))
+               (t2/select-one-fn :login_attributes :model/User :id id)))))))

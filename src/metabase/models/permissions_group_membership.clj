@@ -17,7 +17,7 @@
 
 (defonce ^:dynamic ^{:doc "Should we allow people to be added to or removed from the All Users permissions group? By
   default, this is `false`, but enable it when adding or deleting users."}
-  *allow-changing-all-users-group-members*
+ *allow-changing-all-users-group-members*
   false)
 
 (defn- check-not-all-users-group
@@ -56,7 +56,7 @@
     ;; ...and this is the last membership, throw an exception
     (throw-if-last-admin!)
     ;; ...otherwise we're ok. Unset the `:is_superuser` flag for the user whose membership was revoked
-    (t2/update! 'User user_id {:is_superuser false})))
+    (t2/update! :model/User user_id {:is_superuser false})))
 
 (t2/define-before-insert :model/PermissionsGroupMembership
   [{:keys [group_id], :as membership}]

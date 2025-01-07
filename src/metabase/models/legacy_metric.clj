@@ -53,7 +53,7 @@
 (defmethod mi/perms-objects-set :model/LegacyMetric
   [metric read-or-write]
   (let [table (or (:table metric)
-                  (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id metric))))]
+                  (t2/select-one [:model/Table :db_id :schema :id] :id (u/the-id (:table_id metric))))]
     (mi/perms-objects-set table read-or-write)))
 
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------

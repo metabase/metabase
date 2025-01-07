@@ -390,7 +390,7 @@
                                                 :database_id (mt/id)}]
                 (persist-models!)
                 (testing "tag uses persisted table"
-                  (let [pi (t2/select-one 'PersistedInfo :card_id (u/the-id model))]
+                  (let [pi (t2/select-one :model/PersistedInfo :card_id (u/the-id model))]
                     (is (= "persisted" (:state pi)))
                     (is (re-matches #"select \* from \"metabase_cache_[a-z0-9]+_[0-9]+\".\"model_[0-9]+_model\""
                                     (:query

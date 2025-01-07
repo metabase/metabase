@@ -2175,7 +2175,7 @@
 
             (testing "should be able to persit an database"
               (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/persist"))
-              (is (= "creating" (t2/select-one-fn :state 'PersistedInfo
+              (is (= "creating" (t2/select-one-fn :state :model/PersistedInfo
                                                   :database_id db-id
                                                   :card_id     (:id card))))
               (is (true? (t2/select-one-fn (comp :persist-models-enabled :settings)

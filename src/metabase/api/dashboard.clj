@@ -1075,7 +1075,7 @@
   [:as {dashboard :body}]
   (let [parent-collection-id (if api/*is-superuser?*
                                (:id (xrays/get-or-create-root-container-collection))
-                               (t2/select-one-fn :id 'Collection
+                               (t2/select-one-fn :id :model/Collection
                                                  :personal_owner_id api/*current-user-id*))
         dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})

@@ -72,7 +72,7 @@
   [_dashboard-card]
   [(serdes/hydrated-hash :card) ; :card is optional, eg. text cards
    (comp serdes/identity-hash
-         #(t2/select-one 'Dashboard :id %)
+         #(t2/select-one :model/Dashboard :id %)
          :dashboard_id)
    :visualization_settings
    :row :col
@@ -350,7 +350,7 @@
 
 (defmethod serdes/generate-path "DashboardCard" [_ dashcard]
   (remove nil?
-          [(serdes/infer-self-path "Dashboard" (t2/select-one 'Dashboard :id (:dashboard_id dashcard)))
+          [(serdes/infer-self-path "Dashboard" (t2/select-one :model/Dashboard :id (:dashboard_id dashcard)))
            (when (:dashboard_tab_id dashcard)
              (serdes/infer-self-path "DashboardTab" (t2/select-one :model/DashboardTab :id (:dashboard_tab_id dashcard))))
            (serdes/infer-self-path "DashboardCard" dashcard)]))

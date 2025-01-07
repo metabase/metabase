@@ -330,7 +330,7 @@
                                                           [:user_id          ms/PositiveInt]
                                                           [:is_group_manager :boolean]]]]
                     result))
-        (is (= (t2/select-fn-set :id 'User)
+        (is (= (t2/select-fn-set :id :model/User)
                (conj (set (keys result)) config/internal-mb-user-id)))))))
 
 (deftest add-group-membership-test

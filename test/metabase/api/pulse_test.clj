@@ -54,7 +54,7 @@
     pulse
     [:id :name :created_at :updated_at :creator_id :collection_id :collection_position :entity_id :archived
      :skip_if_empty :dashboard_id :parameters])
-   {:creator  (user-details (t2/select-one 'User :id (:creator_id pulse)))
+   {:creator  (user-details (t2/select-one :model/User :id (:creator_id pulse)))
     :cards    (map pulse-card-details (:cards pulse))
     :channels (map pulse-channel-details (:channels pulse))}))
 

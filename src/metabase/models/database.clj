@@ -384,9 +384,9 @@
 (defn pk-fields
   "Return all the primary key `Fields` associated with this `database`."
   [{:keys [id]}]
-  (let [table-ids (t2/select-pks-set 'Table, :db_id id, :active true)]
+  (let [table-ids (t2/select-pks-set :model/Table, :db_id id, :active true)]
     (when (seq table-ids)
-      (t2/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.query/isa :type/PK)))))
+      (t2/select :model/Field, :table_id [:in table-ids], :semantic_type (mdb.query/isa :type/PK)))))
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
 

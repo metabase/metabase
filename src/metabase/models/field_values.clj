@@ -242,7 +242,7 @@
   [field-or-field-id]
   (if-not (map? field-or-field-id)
     (let [field-id (u/the-id field-or-field-id)]
-      (recur (or (t2/select-one ['Field :base_type :visibility_type :has_field_values] :id field-id)
+      (recur (or (t2/select-one [:model/Field :base_type :visibility_type :has_field_values] :id field-id)
                  (throw (ex-info (tru "Field {0} does not exist." field-id)
                                  {:field-id field-id, :status-code 404})))))
     (let [{base-type        :base_type
@@ -463,7 +463,7 @@
               " Switching Field to use a search widget instead.")
          field-name
          (count values))
-        (t2/update! 'Field (u/the-id field) {:has_field_values nil})
+        (t2/update! :model/Field (u/the-id field) {:has_field_values nil})
         (clear-field-values-for-field! field)
         ::fv-deleted)
 
@@ -535,9 +535,9 @@
   [table-ids]
   (let [table-ids            (set table-ids)
         table-id->db-id      (when (seq table-ids)
-                               (t2/select-pk->fn :db_id 'Table :id [:in table-ids]))
+                               (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]))
         db-id->is-on-demand? (when (seq table-id->db-id)
-                               (t2/select-pk->fn :is_on_demand 'Database
+                               (t2/select-pk->fn :is_on_demand :model/Database
                                                  :id [:in (set (vals table-id->db-id))]))]
     (into {} (for [table-id table-ids]
                [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
@@ -548,7 +548,7 @@
   [field-ids]
   (let [fields (when (seq field-ids)
                  (filter field-should-have-field-values?
-                         (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
+                         (t2/select [:model/Field :name :id :base_type :effective_type :coercion_strategy
                                      :semantic_type :visibility_type :table_id :has_field_values]
                                     :id [:in field-ids])))
         table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))]
@@ -565,7 +565,7 @@
 (defmethod serdes/entity-id "FieldValues" [_ _] nil)
 
 (defmethod serdes/generate-path "FieldValues" [_ {:keys [field_id]}]
-  (let [field (t2/select-one 'Field :id field_id)]
+  (let [field (t2/select-one :model/Field :id field_id)]
     (conj (serdes/generate-path "Field" field)
           {:model "FieldValues" :id "0"})))
 

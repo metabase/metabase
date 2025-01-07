@@ -339,7 +339,7 @@
   [user-or-id user-or-site]
   (let [{first-name :first_name
          last-name  :last_name
-         email      :email} (t2/select-one ['User :first_name :last_name :email]
+         email      :email} (t2/select-one [:model/User :first_name :last_name :email]
                                            :id (u/the-id user-or-id))]
     (format-personal-collection-name first-name last-name email user-or-site)))
 
@@ -1322,7 +1322,7 @@
   in the single case of deleting a User themselves, we need to allow this. (Note that in normal usage, Users never get
   deleted, but rather archived; thus this code is used solely by our test suite, by things such as the `with-temp`
   macros.)"}
-  *allow-deleting-personal-collections*
+ *allow-deleting-personal-collections*
   false)
 
 (t2/define-before-delete :model/Collection

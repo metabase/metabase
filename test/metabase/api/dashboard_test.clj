@@ -1249,10 +1249,10 @@
                                             :collection_id (u/the-id dest-coll)})]
             (is (= (:collection_id resp) (u/the-id dest-coll))
                 "Dashboard should go into the destination collection")
-            (is (= 3 (count (t2/select 'Card :collection_id (u/the-id source-coll)))))
-            (let [copied-cards (t2/select 'Card :collection_id (u/the-id dest-coll))
-                  copied-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))
-                  source-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id dashboard))]
+            (is (= 3 (count (t2/select :model/Card :collection_id (u/the-id source-coll)))))
+            (let [copied-cards (t2/select :model/Card :collection_id (u/the-id dest-coll))
+                  copied-db-cards (t2/select :model/DashboardCard :dashboard_id (u/the-id (:id resp)))
+                  source-db-cards (t2/select :model/DashboardCard :dashboard_id (u/the-id dashboard))]
               (testing "Copies all of the questions on the dashboard"
                 (is (= 2 (count copied-cards))))
               (testing "Copies all of the dashboard cards"
@@ -1332,8 +1332,8 @@
                                               :collection_id (u/the-id dest-coll)})]
               (is (= (:collection_id resp) (u/the-id dest-coll))
                   "Dashboard should go into the destination collection")
-              (let [copied-cards (t2/select 'Card :collection_id (u/the-id dest-coll))
-                    copied-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))]
+              (let [copied-cards (t2/select :model/Card :collection_id (u/the-id dest-coll))
+                    copied-db-cards (t2/select :model/DashboardCard :dashboard_id (u/the-id (:id resp)))]
                 (testing "Copies only one of the questions on the dashboard"
                   (is (= 1 (count copied-cards))))
                 (testing "Copies one of the dashboard cards"
@@ -1409,7 +1409,7 @@
                                                :description "A new description"
                                                :is_deep_copy true
                                                :collection_id (u/the-id source-coll)})
-                  cards-in-coll (t2/select 'Card :collection_id (u/the-id source-coll))]
+                  cards-in-coll (t2/select :model/Card :collection_id (u/the-id source-coll))]
               ;; original 3 plust 3 duplicates
               (is (= 6 (count cards-in-coll)) "Not all cards were copied")
               (is (= (into #{} (comp (map :name)
@@ -3113,7 +3113,7 @@
         (let [metadata (-> (qp/process-query (:dataset_query native-card))
                            :data :results_metadata :columns)]
           (is (seq metadata) "Did not get metadata")
-          (t2/update! 'Card {:id model-id}
+          (t2/update! :model/Card {:id model-id}
                       {:result_metadata (json/encode
                                          (assoc-in metadata [0 :id]
                                                    (mt/id :products :category)))}))

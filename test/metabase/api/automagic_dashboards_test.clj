@@ -424,7 +424,7 @@
                            (by-id "id") :id)
                        id-field-id)
                     "Metadata not updated with the mapping to the database column")
-            (let [model (t2/select-one 'Card :id (:id model))
+            (let [model (t2/select-one :model/Card :id (:id model))
                   dash  (#'api.magic/create-linked-dashboard
                          {:model             model
                           :model-index       model-index

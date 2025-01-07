@@ -167,7 +167,7 @@
       (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
     ;; delete all subscriptions to pulses/alerts/etc. if the User is getting archived (`:is_active` status changes)
     (when (false? active?)
-      (t2/delete! 'PulseChannelRecipient :user_id id))
+      (t2/delete! :model/PulseChannelRecipient :user_id id))
     ;; If we're setting the reset_token then encrypt it before it goes into the DB
     (cond-> user
       true        (merge (hashed-password-values (t2/changes user)))

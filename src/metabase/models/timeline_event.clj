@@ -43,7 +43,7 @@
 (defmethod mi/perms-objects-set :model/TimelineEvent
   [event read-or-write]
   (let [timeline (or (:timeline event)
-                     (t2/select-one 'Timeline :id (:timeline_id event)))]
+                     (t2/select-one :model/Timeline :id (:timeline_id event)))]
     (mi/perms-objects-set timeline read-or-write)))
 
 ;;;; hydration

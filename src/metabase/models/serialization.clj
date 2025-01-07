@@ -938,8 +938,8 @@
   [[import-table-fk]] is the inverse."
   [table-id]
   (when table-id
-    (let [{:keys [db_id name schema]} (t2/select-one 'Table :id table-id)
-          db-name                     (t2/select-one-fn :name 'Database :id db_id)]
+    (let [{:keys [db_id name schema]} (t2/select-one :model/Table :id table-id)
+          db-name                     (t2/select-one-fn :name :model/Database :id db_id)]
       [db-name schema name])))
 
 (defn ^:dynamic ^::cache *import-table-fk*
@@ -947,13 +947,13 @@
   The input might be nil, in which case so is the output. This is legal for a native question."
   [[db-name schema table-name :as table-id]]
   (when table-id
-    (if-let [db-id (t2/select-one-fn :id 'Database :name db-name)]
-      (or (t2/select-one-fn :id 'Table :name table-name :schema schema :db_id db-id)
+    (if-let [db-id (t2/select-one-fn :id :model/Database :name db-name)]
+      (or (t2/select-one-fn :id :model/Table :name table-name :schema schema :db_id db-id)
           (throw (ex-info (format "table id present, but no table found: %s" table-id)
                           {:table-id table-id})))
       (throw (ex-info (format "table id present, but database not found: %s" table-id)
                       {:table-id table-id
-                       :database-names (sort (t2/select-fn-vec :name 'Table))})))))
+                       :database-names (sort (t2/select-fn-vec :name :model/Table))})))))
 
 (defn table->path
   "Given a `table_id` as exported by [[export-table-fk]], turn it into a `[{:model ...}]` path for the Table.
@@ -1105,7 +1105,7 @@
       (m/update-existing entity :database (fn [db-id]
                                             (if (= db-id lib.schema.id/saved-questions-virtual-database-id)
                                               "database/__virtual"
-                                              (t2/select-one-fn :name 'Database :id db-id))))
+                                              (t2/select-one-fn :name :model/Database :id db-id))))
       (m/update-existing entity :card_id #(*export-fk* % 'Card)) ; attibutes that refer to db fields use _
       (m/update-existing entity :card-id #(*export-fk* % 'Card)) ; template-tags use dash
       (m/update-existing entity :source-table export-source-table)
@@ -1160,7 +1160,7 @@
     (-> &match
         (assoc :database (if (= fully-qualified-name "database/__virtual")
                            lib.schema.id/saved-questions-virtual-database-id
-                           (t2/select-one-pk 'Database :name fully-qualified-name)))
+                           (t2/select-one-pk :model/Database :name fully-qualified-name)))
         mbql-fully-qualified-names->ids*) ; Process other keys
 
     {:card-id (entity-id :guard portable-id?)}
@@ -1327,7 +1327,7 @@
      (merge entity
             {:id (case model
                    "table"    (*export-table-fk* id)
-                   "database" (*export-fk-keyed* id 'Database :name)
+                   "database" (*export-fk-keyed* id :model/Database :name)
                    (*export-fk* id (link-card-model->toucan-model model)))}))))
 
 (defn- json-ids->fully-qualified-names
@@ -1466,7 +1466,7 @@
      (merge entity
             {:id (case model
                    "table"    (*import-table-fk* id)
-                   "database" (*import-fk-keyed* id 'Database :name)
+                   "database" (*import-fk-keyed* id :model/Database :name)
                    (*import-fk* id (link-card-model->toucan-model model)))}))))
 
 (defn- import-visualizations [entity]

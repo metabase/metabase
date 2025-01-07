@@ -69,7 +69,7 @@
                        :database-type "integer"
                        :base-type     :type/Integer
                        :database-position 0}}}
-           (driver/describe-table :presto-jdbc (mt/db) (t2/select-one 'Table :id (mt/id :venues)))))))
+           (driver/describe-table :presto-jdbc (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))))))
 
 (deftest ^:parallel table-rows-sample-test
   (mt/test-driver :presto-jdbc

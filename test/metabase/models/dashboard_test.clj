@@ -809,12 +809,12 @@
                :parameterized_object_type :dashboard
                :parameterized_object_id   dashboard-id
                :parameter_id              "_CATEGORY_NAME_"}
-              (t2/select-one 'ParameterCard :card_id card-id)))))
+              (t2/select-one :model/ParameterCard :card_id card-id)))))
 
   (testing "Adding a card_id creates a new ParameterCard"
     (t2.with-temp/with-temp [:model/Card      {card-id :id}      {}
                              :model/Dashboard {dashboard-id :id} {:parameters [default-parameter]}]
-      (is (nil? (t2/select-one 'ParameterCard :card_id card-id)))
+      (is (nil? (t2/select-one :model/ParameterCard :card_id card-id)))
       (t2/update! :model/Dashboard dashboard-id {:parameters [(merge default-parameter
                                                                      {:values_source_type    "card"
                                                                       :values_source_config {:card_id card-id}})]})
@@ -822,7 +822,7 @@
                :parameterized_object_type :dashboard
                :parameterized_object_id   dashboard-id
                :parameter_id              "_CATEGORY_NAME_"}
-              (t2/select-one 'ParameterCard :card_id card-id)))))
+              (t2/select-one :model/ParameterCard :card_id card-id)))))
 
   (testing "Removing a card_id deletes old ParameterCards"
     (t2.with-temp/with-temp [:model/Card      {card-id :id}      {}
@@ -831,7 +831,7 @@
                                                                                        :values_source_config {:card_id card-id}})]}]
         ;; same setup as earlier test, we know the ParameterCard exists right now
       (t2/delete! :model/Dashboard :id dashboard-id)
-      (is (nil? (t2/select-one 'ParameterCard :card_id card-id))))))
+      (is (nil? (t2/select-one :model/ParameterCard :card_id card-id))))))
 
 (deftest do-not-update-parameter-card-if-it-doesn't-change-test
   (testing "Do not update ParameterCard if updating a Dashboard doesn't change the parameters"

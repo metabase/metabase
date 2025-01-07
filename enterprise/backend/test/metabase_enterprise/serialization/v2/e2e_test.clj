@@ -187,7 +187,7 @@
                                                                :collection_id [:coll 100]})
               :timeline-event          (many-random-fks 90 {} {:timeline_id   [:timeline 10]})}))
 
-          (is (= 101 (count (t2/select-fn-set :email 'User)))) ; +1 for the internal user
+          (is (= 101 (count (t2/select-fn-set :email :model/User)))) ; +1 for the internal user
 
           (testing "extraction"
             (reset! extraction (serdes/with-cache (into [] (extract/extract {}))))
@@ -310,7 +310,7 @@
                 (doseq [{[db schema table] :table_id name :name :as coll} (get @entities "Field")]
                   (is (nil? schema))
                   (let [db (t2/select-one-pk 'Database :name db)
-                        table (t2/select-one-fn :id 'Table :schema schema :name table :db_id db)]
+                        table (t2/select-one-fn :id :model/Table :schema schema :name table :db_id db)]
                     (is (= (clean-entity coll)
                            (-> (ts/extract-one "Field" [:and [:= :name name] [:= :table_id table]])
                                clean-entity))))))
@@ -451,7 +451,7 @@
                                  :parameters
                                  first
                                  :values_source_config)))
-                      (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
+                      (is (some? (t2/select-one :model/ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
 
                     (testing "parameter on card is loaded correctly"
                       (is (= {:card_id     (:id card1d),
@@ -460,7 +460,7 @@
                                  :parameters
                                  first
                                  :values_source_config)))
-                      (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d)))))))))))))))
+                      (is (some? (t2/select-one :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d)))))))))))))))
 
 (deftest dashcards-with-link-cards-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -549,11 +549,11 @@
                       "successful"))
 
                 (doseq [[name model]
-                        [[db-name    'Database]
-                         [table-name 'Table]
-                         [card-name  'Card]
-                         [model-name 'Card]
-                         [dash-name  'Dashboard]]]
+                        [[db-name    :model/Database]
+                         [table-name :model/Table]
+                         [card-name  :model/Card]
+                         [model-name :model/Card]
+                         [dash-name  :model/Dashboard]]]
                   (testing (format "model %s from link cards are loaded properly" model)
                     (is (some? (t2/select model :name name)))))
 
