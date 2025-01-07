@@ -384,6 +384,10 @@
         (re-find #"(?s)(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
     (str header (str/replace body #"\s+|\\n" "\n") footer)))
 
+(defn- ->data-uri [private-key-value]
+  (str "data:application/octet-stream;base64,"
+       (u/encode-base64 private-key-value)))
+
 (deftest can-connect-test
   (let [pk-key (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
         pk-user (tx/db-test-env-var :snowflake :pk-user)
@@ -415,12 +419,10 @@
                 (spit pk-path pk-key)
                 (doseq [to-merge [{:private-key-value pk-key                      ;; uploaded string
                                    :private-key-options "uploaded"}
-                                  {:private-key-value (u/encode-base64 pk-key)
+                                  {:private-key-value (->data-uri pk-key)
                                    :private-key-options "uploaded"}               ;; uploaded byte array
-                                  {:private-key-value (u/encode-base64 pk-key)}   ;; uploaded byte array without private-key-options
-                                  {:private-key-options "local"
-                                   :private-key-source "file-path"
-                                   :private-key-id secret-id}]]              ;; local file path
+                                  {:private-key-value (->data-uri pk-key)}   ;; uploaded byte array without private-key-options
+                                  {:private-key-id secret-id}]]              ;; local file path
                   (let [details (-> (:details (mt/db))
                                     (dissoc :password)
                                     (merge {:db pk-db :user pk-user} to-merge))]
@@ -446,8 +448,7 @@
                                        :advanced-options    false
                                        :schema-filters-type "all"
                                        :account             account
-                                       :private-key-value   (str "data:application/octet-stream;base64,"
-                                                                 (u/encode-base64 private-key-value))
+                                       :private-key-value   (->data-uri private-key-value)
                                        :tunnel-enabled      false
                                        :user                user}}]
      ;; TODO: We should make those message returned when role is incorrect more descriptive!
@@ -506,8 +507,7 @@
                                        :advanced-options    false
                                        :schema-filters-type "all"
                                        :account             account
-                                       :private-key-value   (str "data:application/octet-stream;base64,"
-                                                                 (u/encode-base64 private-key-value))
+                                       :private-key-value   (->data-uri private-key-value)
                                        :tunnel-enabled      false
                                        :user                user}}]
       (testing "Database can be created using _default_ `nil` role"
