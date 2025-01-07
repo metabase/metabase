@@ -124,10 +124,6 @@ function MainNavbar({
     <Sidebar
       isOpen={isOpen}
       aria-hidden={!isOpen}
-      style={{
-        // To make the sidebar non-tabbable when closed
-        visibility: isOpen ? "visible" : "hidden",
-      }}
       data-testid="main-navbar-root"
       data-element-id="navbar-root"
     >

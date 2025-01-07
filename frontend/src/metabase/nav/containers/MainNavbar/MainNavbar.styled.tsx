@@ -23,6 +23,7 @@ const openSidebarCSS = css`
 
 const closeSidebarCSS = css`
   opacity: 0;
+  visibility: hidden;
 `;
 
 export const Sidebar = styled.aside<{ isOpen: boolean }>`

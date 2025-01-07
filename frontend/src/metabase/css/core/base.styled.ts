@@ -68,7 +68,6 @@ export const baseStyle = css`
   button:focus,
   [role="button"]:focus {
     outline: 2px solid var(--mb-color-focus);
-    transition: outline 0ms;
   }
 
   a {
