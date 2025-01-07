@@ -303,13 +303,13 @@
                   (is (= (clean-entity coll)
                          (-> (ts/extract-one "Table" [:and
                                                       [:= :name name]
-                                                      [:= :db_id (t2/select-one-pk 'Database :name db_id)]])
+                                                      [:= :db_id (t2/select-one-pk :model/Database :name db_id)]])
                              clean-entity)))))
 
               (testing "for Fields"
                 (doseq [{[db schema table] :table_id name :name :as coll} (get @entities "Field")]
                   (is (nil? schema))
-                  (let [db (t2/select-one-pk 'Database :name db)
+                  (let [db (t2/select-one-pk :model/Database :name db)
                         table (t2/select-one-fn :id :model/Table :schema schema :name table :db_id db)]
                     (is (= (clean-entity coll)
                            (-> (ts/extract-one "Field" [:and [:= :name name] [:= :table_id table]])

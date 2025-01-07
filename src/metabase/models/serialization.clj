@@ -75,6 +75,12 @@
 ;; there was no science behind picking 100 as a number
 (def ^:private extract-nested-batch-limit "max amount of entities to fetch nested entities for" 100)
 
+(defn- model-name->model [model-name]
+  (cond
+    (string? model-name) (keyword "model" model-name)
+    (symbol? model-name) (keyword "model" (name model-name))
+    :else model-name))
+
 ;;; # Serialization Overview
 ;;;
 ;;; Serialization (or "serdes") is a system for exporting entities (Dashboards, Cards, Collections, etc.) from one
@@ -134,7 +140,7 @@
   NOTE: Not implemented for `Database`, `Table` and `Field`, since those rely more on `path` than a single id. To be
   done if a need arises."
   [model-name eid]
-  (let [model (keyword "model" model-name)
+  (let [model (model-name->model model-name)
         pk    (first (t2/primary-keys model))
         eid   (cond-> eid
                 (str/starts-with? eid "eid:") (subs 4))]
@@ -255,7 +261,7 @@
 (defn infer-self-path
   "Returns `{:model \"ModelName\" :id \"id-string\"}`"
   [model-name entity]
-  (let [model (t2.model/resolve-model (symbol model-name))
+  (let [model (t2.model/resolve-model (model-name->model model-name))
         pk    (first (t2/primary-keys model))]
     {:model model-name
      :id    (or (entity-id model-name entity)
@@ -458,7 +464,7 @@
                     (:continue-on-error opts))
         (throw (ex-info (format "Error extracting %s %s" model (:id instance))
                         {:model     model
-                         :table     (->> model (keyword "model") t2/table-name)
+                         :table     (->> model model-name->model t2/table-name)
                          :id        (:id instance)
                          :entity_id (:entity_id instance)
                          :cause     (.getMessage e)}
@@ -518,7 +524,7 @@
 (defmethod extract-query :default [model-name opts]
   (let [spec    (make-spec model-name opts)
         nested? (some ::nested (vals (:transform spec)))]
-    (cond->> (extract-query-collections (keyword "model" model-name) opts)
+    (cond->> (extract-query-collections (model-name->model model-name) opts)
       nested? (extract-reducible-nested model-name (dissoc opts :where)))))
 
 (defmulti descendants
@@ -619,7 +625,7 @@
 
 (defmethod load-find-local :default [path]
   (let [{id :id model-name :model} (last path)
-        model                      (t2.model/resolve-model (symbol model-name))]
+        model                      (t2.model/resolve-model (model-name->model model-name))]
     (when model
       (lookup-by-id model id))))
 
@@ -662,7 +668,7 @@
   (fn [model _ _] model))
 
 (defmethod load-update! :default [model-name ingested local]
-  (let [model    (t2.model/resolve-model (symbol model-name))
+  (let [model    (t2.model/resolve-model (model-name->model model-name))
         pk       (first (t2/primary-keys model))
         id       (get local pk)]
     (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
@@ -687,7 +693,7 @@
 
 (defmethod load-insert! :default [model-name ingested]
   (log/tracef "Inserting %s: %s" model-name (pr-str ingested))
-  (first (t2/insert-returning-instances! (t2.model/resolve-model (symbol model-name)) ingested)))
+  (t2/insert-returning-instance! (t2.model/resolve-model (model-name->model model-name)) ingested))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.
@@ -776,7 +782,7 @@
   Returns a Toucan entity or nil."
   [model id-str]
   (if (entity-id? id-str)
-    (t2/select-one model :entity_id id-str)
+    (t2/select-one (model-name->model model) :entity_id id-str)
     (find-by-identity-hash model id-str)))
 
 (def ^:private max-label-length 100)
@@ -916,7 +922,7 @@
   This just calls [[export-fk-keyed]], but the counterpart [[import-user]] is more involved. This is a unique function
   so they form a pair."
   [id]
-  (when id (*export-fk-keyed* id 'User :email)))
+  (when id (*export-fk-keyed* id :model/User :email)))
 
 (defn ^:dynamic ^::cache *import-user*
   "Imports a user by their email address.
@@ -925,7 +931,7 @@
   Does not send any invite emails."
   [email]
   (when email
-    (or (*import-fk-keyed* email 'User :email)
+    (or (*import-fk-keyed* email :model/User :email)
         ;; Need to break a circular dependency here.
         (:id ((resolve 'metabase.models.user/serdes-synthesize-user!) {:email email})))))
 

@@ -31,7 +31,7 @@
         (log/error e "Error updating used cards")))))
 
 (defonce ^:private
-  update-used-cards-queue
+ update-used-cards-queue
   (delay
     (grouper/start!
      update-used-cards!*
