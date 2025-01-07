@@ -1,0 +1,78 @@
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import {Chip, Stack, Group} from "metabase/ui"
+
+export const args = {
+  multiple: false
+};
+
+export const argTypes = {
+  multiple: {
+    control: { type: "boolean" },
+  },
+};
+
+
+<Meta title="Inputs/Chip" component={Chip} args={args} argTypes={argTypes} />
+
+# Radio
+
+Our themed wrapper around [Mantine Chip](https://v6.mantine.dev/core/chip/).
+
+## When to use Chip
+
+Use it in cases where you might otherwise use radio buttons, a dropdown, or a checkbox list, where a user is selected one or multiple options; but where you:
+
+- need a more compact and visually appealing alternative to radio buttons, especially in space-constrained situations
+- want to have all the options visible
+- want to highlight the options visually
+- have options where the text labels of each are fairly short (3–4 words max.)
+- have fewer than ~10 total options to display
+- find that a horizontal arrangement fits better in your layout
+
+## Docs
+
+- [Figma File](https://www.figma.com/design/iDerq0WExIcm3dtIhbbIwc/Input-%2F-Chip?node-id=5-70&t=3pGdl7ss7JgSaRqC-0)
+- [Mantine Chip Docs](https://v6.mantine.dev/core/chip/)
+
+## Examples
+
+export const DefaultTemplate = args => <Chip>I'm a chip</Chip>;
+
+export const ChipGroupTemplate = args => (
+ <Chip.Group {...args}>
+  <Group>
+    <Chip value="cool_ranch" >Cool Ranch</Chip>
+    <Chip value="sea_sand_&_vinegar" >Sea Salt & Vinegar</Chip>
+    <Chip value="garden_salsa" >Garden Salsa Sun Chips</Chip>
+    <Chip value="pringles" >Pringles</Chip>
+  </Group>
+ </Chip.Group>
+)
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Chip.Group
+
+export const ChipGroup = ChipGroupTemplate.bind({});
+
+<Canvas>
+  <Story name="Chip group">{ChipGroup}</Story>
+</Canvas>
+
+### Chip.Group Multiple
+
+export const ChipGroupMultiple = ChipGroupTemplate.bind({});
+ChipGroupMultiple.args = {
+  multiple: true
+}
+
+<Canvas>
+  <Story name="Chip group multiple">{ChipGroupMultiple}</Story>
+</Canvas>
+
+
+
