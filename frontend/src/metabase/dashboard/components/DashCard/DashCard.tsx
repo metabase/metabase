@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { LocationDescriptor } from "history";
 import { getIn } from "icepick";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useMount, useUpdateEffect } from "react-use";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -136,10 +136,11 @@ function DashCardInner({
   }, []);
 
   useMount(() => {
+    if (dashcard.justAdded || shouldAutoScrollTo) {
+      cardRootRef?.current?.scrollIntoView({ block: "nearest" });
+    }
+
     if (dashcard.justAdded) {
-      cardRootRef?.current?.scrollIntoView({
-        block: "nearest",
-      });
       markNewCardSeen(dashcard.id);
     }
   });
@@ -292,12 +293,6 @@ function DashCardInner({
       },
       [dashcard, navigateToNewCardFromDashboard],
     );
-
-  useEffect(() => {
-    if (shouldAutoScrollTo) {
-      cardRootRef?.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [shouldAutoScrollTo]);
 
   return (
     <ErrorBoundary>

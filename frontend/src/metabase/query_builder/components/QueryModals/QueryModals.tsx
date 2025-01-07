@@ -114,7 +114,7 @@ export function QueryModals({
     [onCloseModal, onCreate],
   );
 
-  const nativeToDashboarQuestionDashboard = useCallback(
+  const navigateToDashboardQuestionDashboard = useCallback(
     async (question: Question) => {
       const cardId = question.id();
       const dashboardId = question.dashboardId();
@@ -122,18 +122,24 @@ export function QueryModals({
         throw new Error("must provide a valid dashboard question");
       }
 
-      // TODO: think through error handling...
       const dashboard = await dispatch(
         getDashboard.initiate({ id: dashboardId }),
-      ).unwrap();
-      const dashcard = dashboard.dashcards.find(c => c.card_id === cardId);
+      )
+        .unwrap()
+        .catch(() => undefined); // we can fallback to navigation w/o this info
+      const dashcard = dashboard?.dashcards.find(c => c.card_id === cardId);
 
-      if (!dashcard) {
-        throw new Error("dashboard does not contain dashboard question");
+      if (!dashboard || !dashcard) {
+        console.warn(
+          "Could not fetch dashcard position on dashboard, falling back to navigation without auto-scrolling",
+        );
       }
 
-      const options = { editMode: true, scrollToDashcard: dashcard.id };
-      dispatch(push(Urls.dashboard(dashboard, options)));
+      const url = Urls.dashboard(
+        { id: dashboardId, name: "", ...question.dashboard(), ...dashboard },
+        { editMode: true, scrollToDashcard: dashcard?.id },
+      );
+      dispatch(push(url));
     },
     [dispatch],
   );
@@ -148,7 +154,7 @@ export function QueryModals({
         onCloseModal();
         setQueryBuilderMode("view");
       } else if (isDashboardQuestion) {
-        nativeToDashboarQuestionDashboard(newQuestion);
+        navigateToDashboardQuestionDashboard(newQuestion);
       } else {
         onOpenModal(MODAL_TYPES.SAVED);
       }
@@ -160,7 +166,7 @@ export function QueryModals({
       onCreate,
       onOpenModal,
       setQueryBuilderMode,
-      nativeToDashboarQuestionDashboard,
+      navigateToDashboardQuestionDashboard,
     ],
   );
 
@@ -169,12 +175,12 @@ export function QueryModals({
       const isDashboardQuestion = _.isNumber(newQuestion.dashboardId());
 
       if (isDashboardQuestion) {
-        nativeToDashboarQuestionDashboard(newQuestion);
+        navigateToDashboardQuestionDashboard(newQuestion);
       } else {
         onOpenModal(MODAL_TYPES.SAVED);
       }
     },
-    [onOpenModal, nativeToDashboarQuestionDashboard],
+    [onOpenModal, navigateToDashboardQuestionDashboard],
   );
 
   switch (modal) {

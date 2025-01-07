@@ -88,19 +88,24 @@ export const MoveQuestionModal = ({
         }),
       );
 
-      if (destination.model === "dashboard") {
-        // TODO: think through error handling
-        const dashboard = await dispatch(
-          getDashboard.initiate({ id: destination.id }),
-        ).unwrap();
-        const dashcard = dashboard.dashcards.find(c => c.card_id === cardId);
-        if (!dashcard) {
-          throw new Error("dashboard does not contain dashboard question");
-        }
+      const dashboard = await dispatch(
+        getDashboard.initiate({ id: destination.id }),
+      )
+        .unwrap()
+        .catch(() => undefined); // we can fallback to navigation w/o this info
+      const dashcard = dashboard?.dashcards.find(c => c.card_id === cardId);
 
-        const options = { editMode: true, scrollToDashcard: dashcard.id };
-        dispatch(push(Urls.dashboard(dashboard, options)));
+      if (!dashboard || !dashcard) {
+        console.warn(
+          "Could not fetch dashcard position on dashboard, falling back to navigation without auto-scrolling",
+        );
       }
+
+      const url = Urls.dashboard(
+        { id: destination.id, name: "", ...dashboard },
+        { editMode: true, scrollToDashcard: dashcard?.id },
+      );
+      dispatch(push(url));
 
       onClose();
     } catch (e) {
