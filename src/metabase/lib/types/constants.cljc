@@ -40,7 +40,7 @@
   {::temporal    {:effective-type [:type/Temporal]}
    ;; Checks for both effective and semantic types. This hack is required to
    ; support numbers stored as strings in MySQL until there is a proper
-   ; coercion strategy.
+   ; coercion strategy. See #44431.
    ::number      {:effective-type [:type/Number]
                   :semantic-type  [:type/Number]}
    ::integer     {:effective-type [:type/Integer]}
