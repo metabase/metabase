@@ -247,7 +247,6 @@
   doall-recursive
   file->bytes
   file-path->bytes
-  is-uuid-string?
   latest-audit-log-entry
   let-url
   obj->json->obj

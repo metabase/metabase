@@ -90,7 +90,7 @@ export function QueryColumnFingerprintInfo({
         fingerprintTypeInfo={fingerprint?.type?.["type/Number"]}
       />
     );
-  } else if (Lib.isCategory(column)) {
+  } else if (Lib.isBoolean(column) || Lib.isCategory(column)) {
     const info = Lib.fieldValuesSearchInfo(query, column);
 
     return (
