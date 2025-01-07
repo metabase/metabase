@@ -61,7 +61,6 @@
   :metabase/require-shape-checker                      {:level :warning}
   :metabase/test-helpers-use-non-thread-safe-functions {:level :warning}
   :metabase/validate-logging                           {:level :warning}
-  :metabase/toucan2-validate-model                     {:level :warning}
   :metabase/validate-mb-driver-tests                   {:level :warning}
   :metabase/validate-mb-once                           {:level :warning}
 
@@ -967,25 +966,7 @@
    metabase.util.log/warnf                                                                                                   hooks.metabase.util.log/infof
    metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def
    metabase.util/case-enum                                                                                                   hooks.metabase.util/case-enum
-   metabase.util/format-color                                                                                                hooks.metabase.util/format-color
-   toucan2.core/count                                                                                                        hooks.metabase.models.toucan2/toucan-call-first
-   toucan2.core/exists?                                                                                                      hooks.metabase.models.toucan2/toucan-call-first
-   toucan2.core/reducible-select                                                                                             hooks.metabase.models.toucan2/toucan-call-first
-   toucan2.core/select-fn->fn                                                                                                hooks.metabase.models.toucan2/toucan-call-third
-   toucan2.core/select-fn->pk                                                                                                hooks.metabase.models.toucan2/toucan-call-second
-   toucan2.core/select-fn-reducible                                                                                          hooks.metabase.models.toucan2/toucan-call-second
-   toucan2.core/select-fn-set                                                                                                hooks.metabase.models.toucan2/toucan-call-second
-   toucan2.core/select-fn-vec                                                                                                hooks.metabase.models.toucan2/toucan-call-second
-   toucan2.core/select-one                                                                                                   hooks.metabase.models.toucan2/toucan-call-first
-   toucan2.core/select-one-fn                                                                                                hooks.metabase.models.toucan2/toucan-call-second
-   toucan2.core/select-pk->fn                                                                                                hooks.metabase.models.toucan2/toucan-call-second
-   toucan2.core/select-pks-set                                                                                               hooks.metabase.models.toucan2/toucan-call-first
-   toucan2.core/select-pks-vec                                                                                               hooks.metabase.models.toucan2/toucan-call-first
-   toucan2.core/reducible-update                                                                                             hooks.metabase.models.toucan2/toucan-call-first
-   toucan2.core/reducible-update-returning-pks                                                                               hooks.metabase.models.toucan2/toucan-call-first
-   toucan2.core/update!                                                                                                      hooks.metabase.models.toucan2/toucan-call-first
-   toucan2.core/update-returning-pks!                                                                                        hooks.metabase.models.toucan2/toucan-call-first
-   toucan2.core/delete!                                                                                                      hooks.metabase.models.toucan2/toucan-call-first}
+   metabase.util/format-color                                                                                                hooks.metabase.util/format-color}
 
   :macroexpand
   {clojurewerkz.quartzite.jobs/build                                             macros.quartz/build-job
