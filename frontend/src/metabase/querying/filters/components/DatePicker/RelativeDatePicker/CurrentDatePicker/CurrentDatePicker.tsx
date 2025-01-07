@@ -45,6 +45,7 @@ export function CurrentDatePicker({
               <Button
                 variant={unit === value?.unit ? "filled" : "default"}
                 radius="xl"
+                aria-selected={unit === value?.unit}
                 onClick={() => handleClick(unit)}
               >
                 {Lib.describeTemporalUnit(unit)}

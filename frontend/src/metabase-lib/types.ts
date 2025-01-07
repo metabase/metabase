@@ -474,7 +474,6 @@ export type DrillThruType =
   | "drill-thru/column-extract"
   | "drill-thru/column-filter"
   | "drill-thru/combine-columns"
-  | "drill-thru/compare-aggregations"
   | "drill-thru/distribution"
   | "drill-thru/fk-details"
   | "drill-thru/fk-filter"
@@ -507,9 +506,6 @@ export type ColumnExtractDrillThruInfo =
     displayName: string;
     extractions: ColumnExtractionInfo[];
   };
-
-export type CompareAggregationsDrillThruInfo =
-  BaseDrillThruInfo<"drill-thru/compare-aggregations">;
 
 export type CombineColumnsDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/combine-columns">;
@@ -580,7 +576,6 @@ export type ZoomTimeseriesDrillThruInfo =
 export type DrillThruDisplayInfo =
   | ColumnExtractDrillThruInfo
   | CombineColumnsDrillThruInfo
-  | CompareAggregationsDrillThruInfo
   | QuickFilterDrillThruInfo
   | PKDrillThruInfo
   | ZoomDrillThruInfo
@@ -599,16 +594,6 @@ export type FilterDrillDetails = {
   query: Query;
   stageIndex: number;
   column: ColumnMetadata;
-};
-
-export type CombineColumnsDrillDetails = {
-  query: Query;
-  stageIndex: number;
-  column: ColumnMetadata;
-};
-
-export type AggregationDrillDetails = {
-  aggregation: AggregationClause;
 };
 
 export type PivotType = "category" | "location" | "time";

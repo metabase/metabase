@@ -121,7 +121,7 @@ If you're a Metabase admin and have access to the server console, you can get Me
     ```
 6.  You should now see a page where you can input a new password for the admin account.
 
-## Unsubscribe from all subscriptions / alerts
+## Unsubscribe from all subscriptions and alerts
 
 This action will delete any dashboard subscriptions or alerts the person has created, and remove them as a recipient from any other subscriptions or alerts.
 
