@@ -92,18 +92,19 @@
                                           [agg-uuid i]))
                            (into {}))]
       (update stage :order-by (fn [order-bys]
-                                (map (fn [[_dir _opts [order-type _agg-opts agg-uuid] :as order-by]]
-                                       (if (= order-type :aggregation)
-                                         (assoc order-by 2 [order-type (agg-lookups agg-uuid)])
-                                         order-by))
-                                     order-bys))))
+                                (mapv (fn [[_dir _opts [order-type agg-opts agg-uuid] :as order-by]]
+                                        (if (= order-type :aggregation)
+                                          (assoc order-by 2 [order-type agg-opts (agg-lookups agg-uuid)])
+                                          order-by))
+                                      order-bys))))
     stage))
 
 (defn indexed-order-bys
-  "Convert all order-bys in a query to refer to aggregations by index instead of uuid"
+  "Convert all order-bys in a query to refer to aggregations by index instead of uuid. The result is
+  not a valid query, but avoiding random uuids is important during hashing."
   [query]
   (if (:stages query)
-    (update query :stages #(map indexed-order-bys-for-stage %))
+    (update query :stages #(mapv indexed-order-bys-for-stage %))
     query))
 
 (mr/def ::distinct-ignoring-uuids
