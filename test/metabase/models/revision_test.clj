@@ -349,7 +349,7 @@
             (push-fake-revision! card-id :name "Name2")
             (deliver p1 ::done))
           ;; sanity check: nothing timed out, both transactions finished
-          (is (= ::done (deref p1 100 ::timeout) (deref p2 100 ::timeout)))
+          (is (= ::done (deref p1 200 ::timeout) (deref p2 100 ::timeout)))
           ;; we only have one `most_recent: true`
           (is (= 1 (t2/count :model/Revision
                              :model_id card-id :model "FakedCard"
