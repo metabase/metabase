@@ -1,14 +1,8 @@
 import fetch from "node-fetch"; // must be node-fetch v2 because it's non-esm
 
-const {
-  GITHUB_RUN_ID,
-  GITHUB_TOKEN,
-  GITHUB_SHA,
-  PR_NUMBER,
-  GITHUB_REPOSITORY,
-} = process.env;
+const { GITHUB_RUN_ID, GITHUB_TOKEN, HASH, PR_NUMBER, GITHUB_REPOSITORY } =
+  process.env;
 
-const HASH = GITHUB_SHA;
 const MAX_TEST_LENGTH = 10;
 
 type TestInfo = {
