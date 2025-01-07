@@ -100,10 +100,9 @@ export const cardApi = Api.injectEndpoints({
           return {
             method: "POST",
             url: "/api/card/from-csv",
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-            data: formData,
+            body: { formData },
+            formData: true,
+            fetch: true,
           };
         },
         invalidatesTags: (_, error) =>
