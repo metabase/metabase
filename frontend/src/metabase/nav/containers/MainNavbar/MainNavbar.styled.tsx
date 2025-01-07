@@ -1,4 +1,3 @@
-import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
@@ -12,33 +11,21 @@ import { Box, type BoxProps, Icon } from "metabase/ui";
 import { SidebarLink } from "./SidebarItems";
 import { ExpandToggleButton } from "./SidebarItems/SidebarItems.styled";
 
-const openSidebarCSS = css`
-  width: ${NAV_SIDEBAR_WIDTH};
-  border-inline-end: 1px solid var(--mb-color-border);
-
-  ${breakpointMaxSmall} {
-    width: 90vw;
-  }
-`;
-
-const closeSidebarCSS = css`
-  opacity: 0;
-`;
-
 export const Sidebar = styled.aside<{ isOpen: boolean }>`
-  width: 0;
+  ${({ isOpen }) => (isOpen ? "" : "display: none")};
+
   height: 100%;
   position: relative;
   flex-shrink: 0;
   align-items: center;
   background-color: var(--mb-color-bg-white);
   overflow: auto;
-  overflow-x: hidden;
   z-index: 4;
-
-  ${props => (props.isOpen ? openSidebarCSS : closeSidebarCSS)};
+  width: ${NAV_SIDEBAR_WIDTH};
+  border-inline-end: 1px solid var(--mb-color-border);
 
   ${breakpointMaxSmall} {
+    width: 90vw;
     position: absolute;
     top: 0;
     inset-inline-start: 0;
@@ -54,12 +41,6 @@ export const NavRoot = styled.nav<{ isOpen: boolean }>`
   background-color: transparent;
   overflow-x: hidden;
   overflow-y: auto;
-  opacity: ${props => (props.isOpen ? 1 : 0)};
-  transition: opacity 0.2s;
-
-  @media (prefers-reduced-motion) {
-    transition: none;
-  }
 
   ${breakpointMinSmall} {
     width: ${props => (props.isOpen ? NAV_SIDEBAR_WIDTH : 0)};
