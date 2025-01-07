@@ -497,7 +497,7 @@ describe("scenarios > admin > performance > strategy form", () => {
         checkPreemptiveCachingDisabled();
       });
 
-      it("Preemptive caching is not available for other caching policies", () => {
+      it("Preemptive caching is not available for other caching policies, or for databases", () => {
         H.visitQuestion(ORDERS_QUESTION_ID);
         openSidebarCacheStrategyForm("question");
         preemptiveCachingSwitch().should("not.exist");
@@ -506,6 +506,24 @@ describe("scenarios > admin > performance > strategy form", () => {
         preemptiveCachingSwitch().should("not.exist");
 
         dontCacheResultsRadioButton().click();
+        preemptiveCachingSwitch().should("not.exist");
+
+        openStrategyFormForDatabaseOrDefaultPolicy(
+          "default policy",
+          "No caching",
+        );
+        durationRadioButton().click();
+        preemptiveCachingSwitch().should("not.exist");
+        scheduleRadioButton().click();
+        preemptiveCachingSwitch().should("not.exist");
+
+        openStrategyFormForDatabaseOrDefaultPolicy(
+          "Sample Database",
+          "No caching",
+        );
+        durationRadioButton().click();
+        preemptiveCachingSwitch().should("not.exist");
+        scheduleRadioButton().click();
         preemptiveCachingSwitch().should("not.exist");
       });
     });
