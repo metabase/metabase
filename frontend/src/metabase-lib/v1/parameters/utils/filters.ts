@@ -45,14 +45,17 @@ export function columnFilterForParameter(
     case "id":
       return column => Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
     case "category":
-      return column => Lib.isCategory(column);
+      return column => Lib.isCategory(column) || Lib.isBoolean(column);
     case "location":
       return column => Lib.isLocation(column);
     case "number":
       return column => Lib.isNumber(column) && !Lib.isLocation(column);
     case "string":
       return column =>
-        Lib.isStringOrStringLike(column) && !Lib.isLocation(column);
+        (Lib.isStringOrStringLike(column) ||
+          Lib.isCategory(column) ||
+          Lib.isBoolean(column)) &&
+        !Lib.isLocation(column);
     case "temporal-unit":
       return column => Lib.isTemporalBucketable(query, stageIndex, column);
   }

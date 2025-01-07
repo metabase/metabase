@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { loginCache } from "e2e/support/commands/user/authentication";
 import {
   METABASE_SECRET_KEY,
   SAMPLE_DB_ID,
@@ -87,6 +88,8 @@ describe("snapshots", () => {
       // Dismiss `it's ok to play around` modal for admin
       cy.request("PUT", `/api/user/${id}/modal/qbnewb`);
     });
+
+    cy.signIn("admin", { setupCache: true }); // cache admin credentials
   }
 
   function updateSettings() {
@@ -144,6 +147,16 @@ describe("snapshots", () => {
 
     // Make a call to `/api/user` because some things (personal collections) get created there
     cy.request("GET", "/api/user");
+
+    Object.keys(USERS).forEach(user => {
+      if (user === "admin") {
+        // we already cached admin user credentials during setup
+        return;
+      }
+      cy.signIn(user, { setupCache: true });
+    });
+
+    cy.signInAsAdmin();
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
@@ -344,6 +357,8 @@ describe("snapshots", () => {
 
 function getDefaultInstanceData() {
   const instanceData = {};
+
+  instanceData.loginCache = loginCache;
 
   cy.request("/api/card").then(({ body: cards }) => {
     instanceData.questions = cards;
