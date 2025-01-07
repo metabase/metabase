@@ -35,6 +35,7 @@
    [metabase.api.premium-features :as api.premium-features]
    [metabase.api.preview-embed :as api.preview-embed]
    [metabase.api.public :as api.public]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.api.pulse :as api.pulse]
    [metabase.api.pulse.unsubscribe :as api.pulse.unsubscribe]
    [metabase.api.revision :as api.revision]

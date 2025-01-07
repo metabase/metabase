@@ -134,10 +134,10 @@
 (api.macros/defendpoint :post "/d2/export"
   "docstring"
   [_route-params
-   {:keys [collection settings data-model]} :- [:map
-                                                [:collection [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
-                                                [:settings   [:maybe ms/BooleanValue]]
-                                                [:data-model ms/MaybeBooleanValue]]]
+   {:keys [collection settings]} :- [:map
+                                     [:collection [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+                                     [:settings   [:maybe ms/BooleanValue]]
+                                     [:data-model ms/MaybeBooleanValue]]]
   {:collections collection :settings settings})
 
 (api.macros/defendpoint :get "/d2/rename"

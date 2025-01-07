@@ -152,32 +152,33 @@
                          (apply merge))]
         (update-keys renames keyword)))))
 
+(defn- schema->params*
+  [schema in-fn renames]
+  (let [{:keys [properties required]} (mjs-collect-definitions schema)
+        required                      (set required)]
+    (for [[k param-schema] properties
+          :let             [k (get renames k k)]
+          :when            (in-fn k)
+          :let             [schema    (fix-json-schema param-schema)
+                            ;; if schema does not indicate it's optional, it's not :)
+                            optional? (:optional schema)]]
+      (cond-> {:in          (in-fn k)
+               :name        k
+               :required    (and (contains? required k) (not optional?))
+               :schema      (dissoc schema :optional :description)}
+        (:description schema) (assoc :description (str (:description schema)))))))
+
 (defn- schema->params
   "https://spec.openapis.org/oas/latest.html#parameter-object"
-  ([full-path args schema]
-   (let [in-path?  (set (map (comp keyword second) (re-seq #"\{([^}]+)\}" full-path)))
-         in-query? (set (compojure-query-params args))
-         in-fn     (fn [k]
-                     (cond
-                       (in-path? k)  :path
-                       (in-query? k) :query))
-         renames   (some-> args compojure-renames)]
-     (schema->params full-path schema in-fn renames)))
-
-  ([full-path schema in-fn renames]
-   (let [{:keys [properties required]} (mjs-collect-definitions schema)
-         required                      (set required)]
-     (for [[k param-schema] properties
-           :let             [k (get renames k k)]
-           :when            (in-fn k)
-           :let             [schema    (fix-json-schema param-schema)
-                             ;; if schema does not indicate it's optional, it's not :)
-                             optional? (:optional schema)]]
-       (cond-> {:in          (in-fn k)
-                :name        k
-                :required    (and (contains? required k) (not optional?))
-                :schema      (dissoc schema :optional :description)}
-         (:description schema) (assoc :description (str (:description schema))))))))
+  [full-path args schema]
+  (let [in-path?  (set (map (comp keyword second) (re-seq #"\{([^}]+)\}" full-path)))
+        in-query? (set (compojure-query-params args))
+        in-fn     (fn [k]
+                    (cond
+                      (in-path? k)  :path
+                      (in-query? k) :query))
+        renames   (some-> args compojure-renames)]
+    (schema->params* schema in-fn renames)))
 
 (mu/defn- defendpoint->path-item
   "Generate OpenAPI desc for a single legacy `defendpoint` handler
@@ -214,12 +215,9 @@
    form      :- ::api.macros/parsed-args]
   (let [method                    (:method form)
         route-params              (when-let [schema (get-in form [:params :route :schema])]
-                                    (schema->params full-path schema (constantly :path) nil))
+                                    (schema->params* schema (constantly :path) nil))
         query-params              (when-let [schema (get-in form [:params :query :schema])]
-                                    (schema->params full-path
-                                                    schema
-                                                    (constantly :query)
-                                                    nil))
+                                    (schema->params* schema (constantly :query) nil))
         params                    (concat
                                    (for [param route-params]
                                      (assoc param :in :path))

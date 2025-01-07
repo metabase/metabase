@@ -56,7 +56,7 @@
    (try
      (respond (redirect-handler request))
      (catch Throwable e
-       (throw e)))))
+       (raise e)))))
 
 (def routes
   "/api/docs routes"
