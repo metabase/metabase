@@ -114,7 +114,7 @@ jobs:
               owner,
               repo,
               issue_number: context.issue.number,
-            }).catch((console.error));
+            }).catch(console.error);
 
             if (!comments) {
               return;
