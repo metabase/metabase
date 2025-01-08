@@ -14,7 +14,7 @@ const RELOAD_INTERVAL = 2000;
 const databasesProps = {
   loadingAndErrorWrapper: false,
   reloadInterval: (state: State, props: unknown, databases: Database[] = []) =>
-    databases.some(isSyncInProgress) ? RELOAD_INTERVAL : undefined,
+    databases.some(isSyncInProgress) ? RELOAD_INTERVAL : 0,
 };
 
 const mapStateToProps = (state: State) => ({

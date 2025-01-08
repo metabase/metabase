@@ -360,7 +360,7 @@ const getReloadInterval = (
   _props: TableLoaderProps,
   tables = [],
 ) => {
-  return tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : undefined;
+  return tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

@@ -33,7 +33,7 @@ const getSchemaName = props => {
 };
 
 const getReloadInterval = (_state, _props, tables = []) => {
-  return tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : undefined;
+  return tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;
 };
 
 export const getTableUrl = (table, metadata) => {
