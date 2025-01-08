@@ -329,6 +329,7 @@
   "Returns true if mu.fn/fn and mu/defn in a namespace should be instrumented with malli schema validation."
   [namespace]
   (or (true? (:instrument/always (meta namespace)))
+      ;; bump
       config/is-dev?
       config/is-test?))
 
