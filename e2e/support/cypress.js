@@ -124,12 +124,10 @@ if (isCI) {
 
   // Fast failure notifications
   afterEach(() => {
-    const testState = Cypress.mocha.getRunner().suite.ctx.currentTest.state;
     const testInfo = Cypress.mocha.getRunner().suite.ctx.currentTest;
-
     const isLastRetry = testInfo.currentRetry() === testInfo.retries();
 
-    if (testState === "failed" && isLastRetry) {
+    if (testInfo.state === "failed" && isLastRetry) {
       cy.task("reportCIFailure", {
         spec: Cypress.spec,
         test: Cypress.currentTest,
