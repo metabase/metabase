@@ -168,12 +168,11 @@
   (let [notification (get-notification id)]
     (api/check-403 (models.notification/can-unsubscribe? notification))
     (models.notification/unsubscribe-user! id api/*current-user-id*)
-    (let [notification (get-notification id)]
-      (when (card-notification? notification)
+    (u/prog1 (get-notification id)
+      (when (card-notification? <>)
         (u/ignore-exceptions
           (messages/send-you-unsubscribed-notification-card-email!
-           (update notification :payload t2/hydrate :card)
-           [(:email @api/*current-user*)])))
-      notification)))
+           (update <> :payload t2/hydrate :card)
+           [(:email @api/*current-user*)]))))))
 
 (api/define-routes)
