@@ -89,7 +89,7 @@
      {:model "card" :id 5 :name "orders, invoices, other stuff", :description "a verbose description"}
      {:model "card" :id 6 :name "ordering"}]
     (case (mdb/db-type)
-      :postgres
+      (:postgres :mysql)
         ;; WARNING: this is likely to diverge between appdb types as we support more.
       (testing "Preferences according to textual matches"
           ;; Note that, ceteris paribus, the ordering in the database is currently stable - this might change!
@@ -103,7 +103,7 @@
                 ["card" 3 "classified"]]
                (search-results :text "order"))))
       :h2
-      ;; TODO text ranking (probably in-memory
+      ;; TODO text ranking (probably in-memory)
       nil)))
 
 (deftest ^:parallel exact-test
