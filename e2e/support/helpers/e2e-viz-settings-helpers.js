@@ -19,3 +19,11 @@ export function openSeriesSettings(field, isBreakout = false) {
       .click();
   }
 }
+
+export function openVizTypeSidebar() {
+  cy.findByTestId("viz-type-button").click();
+}
+
+export function openVizSettingsSidebar() {
+  cy.findByTestId("viz-settings-button").click();
+}
