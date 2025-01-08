@@ -412,16 +412,25 @@
     - `variant-case` will be `merge`d with the `base-case` and the result will be passed to `test-fn`.
 
   If any `base-desc` or `variant-desc` is the special string \"SKIP\", then the corresponding case will be
-  skipped. Useful when you want to debug one of the `variants` in isolation."
+  skipped. Useful when you want to debug one of the `variants` in isolation.
+
+  If any `variant-case` is a fn, it should be of type map -> map and will be passed the `base-case` and the returned
+  map will be merged with `base-case` instead."
   [test-fn   :- [:-> :map :any]
    base-desc :- :string
    base-case :- :map
    & variants]
   (assert (even? (count variants)) "variants must come in variant-desc and variant-case pairs")
+
   (when-not (= "SKIP" base-desc)
     (testing base-desc
       (test-fn base-case)))
-  (doseq [[variant-desc variant-case] (partition 2 variants)]
+
+  (doseq [[variant-desc variant-case-or-fn] (partition 2 variants)]
     (when-not (= "SKIP" variant-desc)
       (testing variant-desc
-        (test-fn (merge base-case variant-case))))))
+        (test-fn (merge base-case
+                        (cond (fn? variant-case-or-fn) (variant-case-or-fn base-case)
+                              (map? variant-case-or-fn) variant-case-or-fn
+                              :else (throw (ex-info "Invalid variant case. Must be a fn or map."
+                                                    {:variant-case variant-case-or-fn})))))))))
