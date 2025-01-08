@@ -10,6 +10,7 @@ export * from "./MonthPicker";
 export * from "./MultiAutocomplete";
 export * from "./MultiSelect";
 export * from "./NumberInput";
+export * from "./QuarterPicker";
 export * from "./Radio";
 export * from "./Select";
 export * from "./Textarea";

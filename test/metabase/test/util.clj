@@ -594,12 +594,6 @@
   [model object-or-id column->temp-value & body]
   `(do-with-temp-vals-in-db ~model ~object-or-id ~column->temp-value (fn [] ~@body)))
 
-(defn is-uuid-string?
-  "Is string `s` a valid UUID string?"
-  ^Boolean [^String s]
-  (boolean (when (string? s)
-             (re-matches #"^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$" s))))
-
 (defn postwalk-pred
   "Transform `form` by applying `f` to each node where `pred` returns true"
   [pred f form]

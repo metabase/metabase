@@ -136,7 +136,7 @@ describe("scenarios > visualizations > waterfall", () => {
     };
 
     function testSwitchingToWaterfall() {
-      cy.findByTestId("viz-type-button").click();
+      H.openVizTypeSidebar();
       switchToWaterfallDisplay();
 
       H.echartsContainer().within(() => {
@@ -377,7 +377,7 @@ describe("scenarios > visualizations > waterfall", () => {
     });
     H.assertEChartsTooltipNotContain(["Sum of Total"]);
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     H.leftSidebar().within(() => {
       cy.findByText("Display").click();
