@@ -1,16 +1,12 @@
-import { useState } from "react";
-
 import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
 import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { DashboardSubscriptionMenuItem } from "metabase/notifications/NotificationsActionsMenu/DashboardSubscriptionMenuItem";
-import type { DashboardNotificationsModalType } from "metabase/notifications/NotificationsActionsMenu/types";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Flex } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import { NotificationsMenu } from "./NotificationsMenu";
-import { NotificationsModals } from "./NotificationsModals";
 
 export function DashboardNotificationsMenu({
   dashboard,
@@ -26,9 +22,6 @@ export function DashboardNotificationsMenu({
     dispatch(
       setDashboardSubscriptionSidebarOpen(!isDashboardSubscriptionSidebarOpen),
     );
-
-  const [modalType, setModalType] =
-    useState<DashboardNotificationsModalType | null>(null);
 
   const isArchived = dashboard.archived;
 
@@ -48,11 +41,6 @@ export function DashboardNotificationsMenu({
       <NotificationsMenu>
         <DashboardSubscriptionMenuItem onClick={toggleSubscriptionSidebar} />
       </NotificationsMenu>
-      <NotificationsModals
-        modalType={modalType}
-        dashboard={dashboard}
-        onClose={() => setModalType(null)}
-      />
     </Flex>
   );
 }

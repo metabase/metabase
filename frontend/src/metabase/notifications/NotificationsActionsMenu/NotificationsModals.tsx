@@ -1,10 +1,20 @@
+import { type Ref, forwardRef } from "react";
+
+import { AlertPopover } from "metabase/notifications/AlertListPopoverContent/AlertPopover";
 import type {
   DashboardNotificationsModalType,
   QuestionNotificationsModalType,
 } from "metabase/notifications/NotificationsActionsMenu/types";
-import { AlertListModal } from "metabase/notifications/modals/AlertListModal/AlertListModal";
+import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Dashboard } from "metabase-types/api";
+
+const MenuTarget = forwardRef(function _MenuTarget(
+  _props,
+  ref: Ref<HTMLDivElement>,
+) {
+  return <Box h="2rem" ref={ref} />;
+});
 
 type BaseNotificationsModalsProps = {
   onClose: () => void;
@@ -33,32 +43,15 @@ export const NotificationsModals = ({
   modalType,
   onClose,
   question,
-  dashboard,
 }: NotificationsModalsProps) => {
   if (modalType === "question-alert") {
     return (
-      <AlertListModal
-        notificationType="alert"
+      <AlertPopover
         question={question}
+        target={<MenuTarget />}
         onClose={onClose}
       />
     );
-  }
-
-  if (modalType === "question-subscription") {
-    return (
-      <AlertListModal
-        notificationType="subscription"
-        question={question}
-        onClose={onClose}
-      />
-    );
-  }
-
-  if (modalType === "dashboard-subscription") {
-    dashboard;
-    // TODO: add dashboard subscription modal component
-    return null;
   }
 
   return null;
