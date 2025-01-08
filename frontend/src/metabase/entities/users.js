@@ -174,8 +174,8 @@ const Users = createEntity({
   },
 });
 
-const useGetQuery = ({ id }) => {
-  return useGetUserQuery(id);
+const useGetQuery = ({ id }, options) => {
+  return useGetUserQuery(id, options);
 };
 
 function useListQuery({ recipients = false, ...args } = {}, options) {

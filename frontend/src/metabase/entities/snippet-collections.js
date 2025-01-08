@@ -72,7 +72,7 @@ const SnippetCollections = createEntity({
   },
 });
 
-const useGetQuery = query => {
+const useGetQuery = (query, options) => {
   return useGetCollectionQuery(
     query === skipToken
       ? skipToken
@@ -80,6 +80,7 @@ const useGetQuery = query => {
           namespace: "snippets",
           ...query,
         },
+    options,
   );
 };
 

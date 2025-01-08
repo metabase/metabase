@@ -55,8 +55,8 @@ const Snippets = createEntity({
   },
 });
 
-const useGetQuery = ({ id }) => {
-  return useGetSnippetQuery(id);
+const useGetQuery = ({ id }, options) => {
+  return useGetSnippetQuery(id, options);
 };
 
 export default Snippets;

@@ -98,13 +98,15 @@ const PersistedModels = createEntity({
   },
 });
 
-const useGetQuery = ({ id, type }) => {
+const useGetQuery = ({ id, type }, options) => {
   const persistedInfoByCard = useGetPersistedInfoByCardQuery(
     type === "byModelId" ? id : skipToken,
+    options,
   );
 
   const persistedInfo = useGetPersistedInfoQuery(
     type === "byModelId" ? skipToken : id,
+    options,
   );
 
   return type === "byModelId" ? persistedInfoByCard : persistedInfo;
