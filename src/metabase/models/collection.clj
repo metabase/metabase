@@ -1322,7 +1322,7 @@
   in the single case of deleting a User themselves, we need to allow this. (Note that in normal usage, Users never get
   deleted, but rather archived; thus this code is used solely by our test suite, by things such as the `with-temp`
   macros.)"}
- *allow-deleting-personal-collections*
+  *allow-deleting-personal-collections*
   false)
 
 (t2/define-before-delete :model/Collection
