@@ -16,15 +16,14 @@
 
   work correctly as cache keys instead of creating new entries every time the code is evaluated."
   [x]
-  #?(:clj (if (and (vector? x)
-                   (= (first x) :re))
-            (into (empty x)
-                  (map (fn [child]
-                         (cond-> child
-                           (instance? java.util.regex.Pattern child) str)))
-                  x)
-            x)
-     :cljs x))
+  (if (and (vector? x)
+           (= (first x) :re))
+    (into (empty x)
+          (map (fn [child]
+                 (cond-> child
+                   (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) child) str)))
+          x)
+    x))
 
 (defn cached
   "Get a cached value for `k` + `schema`. Cache is cleared whenever a schema is (re)defined
