@@ -13,7 +13,6 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.models :refer [Card Collection NativeQuerySnippet]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -385,10 +384,10 @@
         (mt/dataset test-data
           (mt/with-persistence-enabled! [persist-models!]
             (let [mbql-query (mt/mbql-query categories)]
-              (mt/with-temp [Card model {:name "model"
-                                         :type :model
-                                         :dataset_query mbql-query
-                                         :database_id (mt/id)}]
+              (mt/with-temp [:model/Card model {:name "model"
+                                                :type :model
+                                                :dataset_query mbql-query
+                                                :database_id (mt/id)}]
                 (persist-models!)
                 (testing "tag uses persisted table"
                   (let [pi (t2/select-one 'PersistedInfo :card_id (u/the-id model))]
@@ -480,17 +479,17 @@
         (mt/with-no-data-perms-for-all-users!
           (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
           (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
-          (mt/with-temp [Collection collection {}
-                         Card       {card-1-id :id} {:collection_id (u/the-id collection)
-                                                     :dataset_query (mt/mbql-query venues
-                                                                      {:order-by [[:asc $id]] :limit 2})}
-                         Card       card-2 {:collection_id (u/the-id collection)
-                                            :dataset_query (mt/native-query
-                                                             {:query         "SELECT * FROM {{card}}"
-                                                              :template-tags {"card" {:name         "card"
-                                                                                      :display-name "card"
-                                                                                      :type         :card
-                                                                                      :card-id      card-1-id}}})}]
+          (mt/with-temp [:model/Collection collection {}
+                         :model/Card       {card-1-id :id} {:collection_id (u/the-id collection)
+                                                            :dataset_query (mt/mbql-query venues
+                                                                             {:order-by [[:asc $id]] :limit 2})}
+                         :model/Card       card-2 {:collection_id (u/the-id collection)
+                                                   :dataset_query (mt/native-query
+                                                                    {:query         "SELECT * FROM {{card}}"
+                                                                     :template-tags {"card" {:name         "card"
+                                                                                             :display-name "card"
+                                                                                             :type         :card
+                                                                                             :card-id      card-1-id}}})}]
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
             (mt/with-test-user :rasta
               (binding [qp.perms/*card-id* (u/the-id card-2)]
@@ -532,8 +531,8 @@
 
 (deftest snippet-happy-path-test
   (testing "Snippet parsing should work correctly for a valid Snippet"
-    (t2.with-temp/with-temp [NativeQuerySnippet {snippet-id :id} {:name    "expensive-venues"
-                                                                  :content "venues WHERE price = 4"}]
+    (t2.with-temp/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name    "expensive-venues"
+                                                                         :content "venues WHERE price = 4"}]
       (let [expected {"expensive-venues" (params/map->ReferencedQuerySnippet {:snippet-id snippet-id
                                                                               :content    "venues WHERE price = 4"})}]
         (is (= expected

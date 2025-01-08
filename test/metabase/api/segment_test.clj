@@ -3,8 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.http-client :as client]
-   [metabase.models :refer [Database Revision Table]]
-   [metabase.models.segment :refer [Segment]]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -69,8 +67,8 @@
                                                                   :definition "foobar"})))))
 
 (deftest create-segment-test
-  (mt/with-temp [Database {database-id :id} {}
-                 Table    {:keys [id]} {:db_id database-id}]
+  (mt/with-temp [:model/Database {database-id :id} {}
+                 :model/Table    {:keys [id]} {:db_id database-id}]
     (is (= {:name                    "A Segment"
             :description             "I did it!"
             :show_in_getting_started false
@@ -97,7 +95,7 @@
 (deftest update-permissions-test
   (testing "PUT /api/segment/:id"
     (testing "test security. requires superuser perms"
-      (t2.with-temp/with-temp [Segment segment]
+      (t2.with-temp/with-temp [:model/Segment segment]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (str "segment/" (:id segment))
                                      {:name             "abc"
@@ -123,9 +121,9 @@
 
 (deftest update-test
   (testing "PUT /api/segment/:id"
-    (mt/with-temp [Database {database-id :id} {}
-                   Table    {table-id :id} {:db_id database-id}
-                   Segment  {:keys [id]}   {:table_id table-id}]
+    (mt/with-temp [:model/Database {database-id :id} {}
+                   :model/Table    {table-id :id} {:db_id database-id}
+                   :model/Segment  {:keys [id]}   {:table_id table-id}]
       (is (= {:name                    "Costa Rica"
               :description             nil
               :show_in_getting_started false
@@ -154,7 +152,7 @@
 (deftest partial-update-test
   (testing "PUT /api/segment/:id"
     (testing "Can I update a segment's name without specifying `:points_of_interest` and `:show_in_getting_started`?"
-      (t2.with-temp/with-temp [Segment segment]
+      (t2.with-temp/with-temp [:model/Segment segment]
         ;; just make sure API call doesn't barf
         (is (some? (mt/user-http-request :crowberto :put 200 (str "segment/" (u/the-id segment))
                                          {:name             "Cool name"
@@ -164,27 +162,27 @@
 (deftest archive-test
   (testing "PUT /api/segment/:id"
     (testing "Can we archive a Segment with the PUT endpoint?"
-      (t2.with-temp/with-temp [Segment {:keys [id]}]
+      (t2.with-temp/with-temp [:model/Segment {:keys [id]}]
         (is (map? (mt/user-http-request :crowberto :put 200 (str "segment/" id)
                                         {:archived true, :revision_message "Archive the Segment"})))
         (is (= true
-               (t2/select-one-fn :archived Segment :id id)))))))
+               (t2/select-one-fn :archived :model/Segment :id id)))))))
 
 (deftest unarchive-test
   (testing "PUT /api/segment/:id"
     (testing "Can we unarchive a Segment with the PUT endpoint?"
-      (t2.with-temp/with-temp [Segment {:keys [id]} {:archived true}]
+      (t2.with-temp/with-temp [:model/Segment {:keys [id]} {:archived true}]
         (is (map? (mt/user-http-request :crowberto :put 200 (str "segment/" id)
                                         {:archived false, :revision_message "Unarchive the Segment"})))
         (is (= false
-               (t2/select-one-fn :archived Segment :id id)))))))
+               (t2/select-one-fn :archived :model/Segment :id id)))))))
 
 ;; ## DELETE /api/segment/:id
 
 (deftest delete-permissions-test
   (testing "DELETE /api/segment/:id"
     (testing "test security. requires superuser perms"
-      (t2.with-temp/with-temp [Segment {:keys [id]}]
+      (t2.with-temp/with-temp [:model/Segment {:keys [id]}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :delete 403 (str "segment/" id)
                                      :revision_message "yeeeehaw!")))))))
@@ -199,9 +197,9 @@
 
 (deftest delete-test
   (testing "DELETE /api/segment/:id"
-    (mt/with-temp [Database {database-id :id} {}
-                   Table    {table-id :id} {:db_id database-id}
-                   Segment  {:keys [id]} {:table_id table-id}]
+    (mt/with-temp [:model/Database {database-id :id} {}
+                   :model/Table    {table-id :id} {:db_id database-id}
+                   :model/Segment  {:keys [id]} {:table_id table-id}]
       (is (= nil
              (mt/user-http-request :crowberto :delete 204 (format "segment/%d" id) :revision_message "carryon")))
       (testing "should still be able to fetch the archived segment"
@@ -225,20 +223,20 @@
 (deftest fetch-segment-permissions-test
   (testing "GET /api/segment/:id"
     (testing "test security. Requires read perms for the Table it references"
-      (mt/with-temp [Database db      {}
-                     Table    table   {:db_id (u/the-id db)}
-                     Segment  segment {:table_id (u/the-id table)}]
+      (mt/with-temp [:model/Database db      {}
+                     :model/Table    table   {:db_id (u/the-id db)}
+                     :model/Segment  segment {:table_id (u/the-id table)}]
         (mt/with-no-data-perms-for-all-users!
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (str "segment/" (u/the-id segment))))))))))
 
 (deftest fetch-segment-test
   (testing "GET /api/segment/:id"
-    (mt/with-temp [Database {database-id :id} {}
-                   Table    {table-id :id}    {:db_id database-id}
-                   Segment  {:keys [id]}      {:creator_id (mt/user->id :crowberto)
-                                               :table_id   table-id
-                                               :definition {:filter [:= [:field 2 nil] "cans"]}}]
+    (mt/with-temp [:model/Database {database-id :id} {}
+                   :model/Table    {table-id :id}    {:db_id database-id}
+                   :model/Segment  {:keys [id]}      {:creator_id (mt/user->id :crowberto)
+                                                      :table_id   table-id
+                                                      :definition {:filter [:= [:field 2 nil] "cans"]}}]
       (mt/with-full-data-perms-for-all-users!
         (is (= {:name                    "Toucans in the rainforest"
                 :description             "Lookin' for a blueberry"
@@ -261,9 +259,9 @@
 (deftest revisions-permissions-test
   (testing "GET /api/segment/:id/revisions"
     (testing "test security. Requires read perms for the Table it references"
-      (mt/with-temp [Database db {}
-                     Table    table   {:db_id (u/the-id db)}
-                     Segment  segment {:table_id (u/the-id table)}]
+      (mt/with-temp [:model/Database db {}
+                     :model/Table    table   {:db_id (u/the-id db)}
+                     :model/Segment  segment {:table_id (u/the-id table)}]
         (mt/with-no-data-perms-for-all-users!
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "segment/%d/revisions" (u/the-id segment))))))))))
@@ -271,23 +269,23 @@
 (deftest revisions-test
   (testing "GET /api/segment/:id/revisions"
     (mt/with-temp
-      [Database {database-id :id} {}
-       Table    {table-id :id}    {:db_id database-id}
-       Segment  {:keys [id]}      {:creator_id (mt/user->id :crowberto)
-                                   :table_id   table-id
-                                   :definition {:database 123
-                                                :query    {:filter [:= [:field 2 nil] "cans"]}}}
-       Revision _                 {:model       "Segment"
-                                   :model_id    id
-                                   :object      {:name       "b"
-                                                 :definition {:filter [:and [:> 1 25]]}}
-                                   :is_creation true}
-       Revision _                 {:model    "Segment"
-                                   :model_id id
-                                   :user_id  (mt/user->id :crowberto)
-                                   :object   {:name       "c"
-                                              :definition {:filter [:and [:> 1 25]]}}
-                                   :message  "updated"}]
+      [:model/Database {database-id :id} {}
+       :model/Table    {table-id :id}    {:db_id database-id}
+       :model/Segment  {:keys [id]}      {:creator_id (mt/user->id :crowberto)
+                                          :table_id   table-id
+                                          :definition {:database 123
+                                                       :query    {:filter [:= [:field 2 nil] "cans"]}}}
+       :model/Revision _                 {:model       "Segment"
+                                          :model_id    id
+                                          :object      {:name       "b"
+                                                        :definition {:filter [:and [:> 1 25]]}}
+                                          :is_creation true}
+       :model/Revision _                 {:model    "Segment"
+                                          :model_id id
+                                          :user_id  (mt/user->id :crowberto)
+                                          :object   {:name       "c"
+                                                     :definition {:filter [:and [:> 1 25]]}}
+                                          :message  "updated"}]
       (mt/with-full-data-perms-for-all-users!
         (is (=? [{:is_reversion false
                   :is_creation  false
@@ -312,7 +310,7 @@
 (deftest revert-permissions-test
   (testing "POST /api/segment/:id/revert"
     (testing "test security.  requires superuser perms"
-      (t2.with-temp/with-temp [Segment {:keys [id]}]
+      (t2.with-temp/with-temp [:model/Segment {:keys [id]}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 (format "segment/%d/revert" id) {:revision_id 56})))))))
 
@@ -327,39 +325,39 @@
 (deftest revert-test
   (testing "POST /api/segment/:id/revert"
     (mt/with-temp
-      [Database {database-id :id} {}
-       Table    {table-id :id}    {:db_id database-id}
-       Segment  {:keys [id]}      {:creator_id              (mt/user->id :crowberto)
-                                   :table_id                table-id
-                                   :name                    "One Segment to rule them all, one segment to define them"
-                                   :description             "One segment to bring them all, and in the DataModel bind them"
-                                   :show_in_getting_started false
-                                   :caveats                 nil
-                                   :points_of_interest      nil
-                                   :definition              {:filter [:= [:field 2 nil] "cans"]}}
-       Revision {revision-id :id} {:model       "Segment"
-                                   :model_id    id
-                                   :object      {:creator_id              (mt/user->id :crowberto)
-                                                 :table_id                table-id
-                                                 :name                    "One Segment to rule them all, one segment to define them"
-                                                 :description             "One segment to bring them all, and in the DataModel bind them"
-                                                 :show_in_getting_started false
-                                                 :caveats                 nil
-                                                 :points_of_interest      nil
-                                                 :definition              {:filter [:= [:field 2 nil] "cans"]}}
-                                   :is_creation true}
-       Revision _                 {:model    "Segment"
-                                   :model_id id
-                                   :user_id  (mt/user->id :crowberto)
-                                   :object   {:creator_id              (mt/user->id :crowberto)
-                                              :table_id                table-id
-                                              :name                    "Changed Segment Name"
-                                              :description             "One segment to bring them all, and in the DataModel bind them"
-                                              :show_in_getting_started false
-                                              :caveats                 nil
-                                              :points_of_interest      nil
-                                              :definition              {:filter [:= [:field 2 nil] "cans"]}}
-                                   :message  "updated"}]
+      [:model/Database {database-id :id} {}
+       :model/Table    {table-id :id}    {:db_id database-id}
+       :model/Segment  {:keys [id]}      {:creator_id              (mt/user->id :crowberto)
+                                          :table_id                table-id
+                                          :name                    "One Segment to rule them all, one segment to define them"
+                                          :description             "One segment to bring them all, and in the DataModel bind them"
+                                          :show_in_getting_started false
+                                          :caveats                 nil
+                                          :points_of_interest      nil
+                                          :definition              {:filter [:= [:field 2 nil] "cans"]}}
+       :model/Revision {revision-id :id} {:model       "Segment"
+                                          :model_id    id
+                                          :object      {:creator_id              (mt/user->id :crowberto)
+                                                        :table_id                table-id
+                                                        :name                    "One Segment to rule them all, one segment to define them"
+                                                        :description             "One segment to bring them all, and in the DataModel bind them"
+                                                        :show_in_getting_started false
+                                                        :caveats                 nil
+                                                        :points_of_interest      nil
+                                                        :definition              {:filter [:= [:field 2 nil] "cans"]}}
+                                          :is_creation true}
+       :model/Revision _                 {:model    "Segment"
+                                          :model_id id
+                                          :user_id  (mt/user->id :crowberto)
+                                          :object   {:creator_id              (mt/user->id :crowberto)
+                                                     :table_id                table-id
+                                                     :name                    "Changed Segment Name"
+                                                     :description             "One segment to bring them all, and in the DataModel bind them"
+                                                     :show_in_getting_started false
+                                                     :caveats                 nil
+                                                     :points_of_interest      nil
+                                                     :definition              {:filter [:= [:field 2 nil] "cans"]}}
+                                          :message  "updated"}]
       (testing "the api response"
         (is (=? {:is_reversion true
                  :is_creation  false
@@ -403,16 +401,16 @@
 
 (deftest list-test
   (testing "GET /api/segment/"
-    (t2.with-temp/with-temp [Segment {id-1 :id} {:name     "Segment 1"
-                                                 :table_id (mt/id :users)}
-                             Segment {id-2 :id} {:name       "Segment 2"
-                                                 :definition (:query (mt/mbql-query venues
-                                                                       {:filter
-                                                                        [:and
-                                                                         [:= $price 4]
-                                                                         [:= $category_id->categories.name "BBQ"]]}))}
+    (t2.with-temp/with-temp [:model/Segment {id-1 :id} {:name     "Segment 1"
+                                                        :table_id (mt/id :users)}
+                             :model/Segment {id-2 :id} {:name       "Segment 2"
+                                                        :definition (:query (mt/mbql-query venues
+                                                                              {:filter
+                                                                               [:and
+                                                                                [:= $price 4]
+                                                                                [:= $category_id->categories.name "BBQ"]]}))}
                              ;; inactive segments shouldn't show up
-                             Segment {id-3 :id} {:archived true}]
+                             :model/Segment {id-3 :id} {:archived true}]
       (mt/with-full-data-perms-for-all-users!
         (is (=? [{:id                     id-1
                   :name                   "Segment 1"
@@ -430,7 +428,7 @@
 (deftest related-entities-test
   (testing "GET /api/segment/:id/related"
     (testing "related/recommended entities"
-      (t2.with-temp/with-temp [Segment {segment-id :id}]
+      (t2.with-temp/with-temp [:model/Segment {segment-id :id}]
         (is (= #{:table :metrics :segments :linked-from}
                (-> (mt/user-http-request :crowberto :get 200 (format "segment/%s/related" segment-id))
                    keys

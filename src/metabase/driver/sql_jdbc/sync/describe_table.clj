@@ -15,7 +15,6 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.literal :as lib.schema.literal]
-   [metabase.models :refer [Field]]
    [metabase.models.setting :as setting]
    [metabase.models.table :as table]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -583,7 +582,7 @@
         json-fields  (filter #(isa? (:base-type %) :type/JSON) table-fields)]
     (if-not (seq json-fields)
       #{}
-      (let [existing-fields-by-name (m/index-by :name (t2/select Field :table_id (u/the-id table)))
+      (let [existing-fields-by-name (m/index-by :name (t2/select :model/Field :table_id (u/the-id table)))
             should-not-unfold?      (fn [field]
                                       (when-let [existing-field (existing-fields-by-name (:name field))]
                                         (false? (:json_unfolding existing-field))))]

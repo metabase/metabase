@@ -29,15 +29,9 @@ jobs:
           filters: .github/file-paths.yaml
 
   e2e-matrix-builder:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 5
-    outputs:
-      matrix: ${{ steps.e2e-matrix.outputs.matrix }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Generate matrix for E2E tests
-        id: e2e-matrix
-        uses: ./.github/actions/build-e2e-matrix
+    uses: ./.github/workflows/e2e-matrix-builder.yml
+    with:
+      chunks: 50
 
   # if this is a test on a release branch, we need to check the build requirements
   get-build-requirements:
@@ -70,12 +64,12 @@ jobs:
               node_version: requirements.node,
             };
 
+
   build:
-    needs: [files-changed, e2e-matrix-builder, get-build-requirements]
+    needs: [files-changed, get-build-requirements]
     if: |
       !cancelled() &&
       github.event.pull_request.draft == false &&
-      needs.e2e-matrix-builder.result == 'success' &&
       needs.files-changed.outputs.e2e_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 25
@@ -108,179 +102,58 @@ jobs:
           name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
   e2e-tests:
+    name: ${{ matrix.name }}-${{ matrix.edition }}
+    uses: ./.github/workflows/e2e-test.yml
     needs: [build, e2e-matrix-builder]
     if: |
       !cancelled() && needs.build.result == 'success'
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
-    name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      DISPLAY: ""
-      QA_DB_ENABLED: true
-      # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
-      # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
-      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
-      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
-      CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
-      COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
-      MB_SNOWPLOW_AVAILABLE: true
-      MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
-      TZ: US/Pacific # to make node match the instance tz
-      CYPRESS_CI: true
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.e2e-matrix-builder.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
+    secrets: inherit
+    with:
+      name: ${{ matrix.name }}
+      edition: ${{ matrix.edition }}
+      specs: ${{ matrix.specs }}
+      tags: ${{ matrix.tags }}
+      runner: ${{ matrix.runner }}
 
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Prepare Docker containers
-        uses: ./.github/actions/e2e-prepare-containers
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-          maildev: true
-          openldap: ${{ startsWith(matrix.name, 'admin') }}
-          postgres: ${{ matrix.name != 'mongo'}}
-          mysql: ${{ matrix.name != 'mongo'}}
-          mongo: ${{ matrix.name == 'mongo'}}
-          webhook: true
-
-      - name: Retrieve uberjar artifact for ${{ matrix.edition }}
-        uses: actions/download-artifact@v4
-        with:
-          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-
-      - name: Get the version info
-        run: |
-          jar xf target/uberjar/metabase.jar version.properties
-          mv version.properties resources/
-
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-
-      - name: Prepare JDK ${{ matrix.java-version }}
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ matrix.java-version }}
-          distribution: "temurin"
-
-      - name: Prepare Cypress environment
-        id: cypress-prep
-        uses: ./.github/actions/prepare-cypress
-
-      - name: Run Snowplow micro
-        uses: ./.github/actions/run-snowplow-micro
-
-      - name: Run OSS-specific Cypress tests
-        if: matrix.edition == 'oss' && github.event_name != 'schedule'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags=@OSS,grepOmitFiltered=true \
-          --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
-
-      - name: Run slow and resource-intensive Cypress tests
-        if: matrix.name == 'slow' && github.event_name != 'schedule'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags="@slow",grepOmitFiltered=true \
-          --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
-
-      - name: Run Flaky Cypress tests
-        if: matrix.name == 'flaky' && github.event_name != 'schedule'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags="@flaky --@quarantine",grepOmitFiltered=true \
-          --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
-
-      - name: Run EE Cypress tests on ${{ matrix.name }}
-        if: matrix.context == 'folder' && github.event_name != 'schedule'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags="-@slow+-@mongo+-@flaky --@quarantine",grepOmitFiltered=true \
-          --folder ${{ matrix.name }} \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
-
-      - name: Run E2E tests that depend on Mongo
-        if: matrix.name == 'mongo'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags="@mongo --@quarantine",grepOmitFiltered=true \
-          --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
-        env:
-          CYPRESS_QA_DB_MONGO: true
-
-      - name: Run Embedding SDK Storybook
-        if: matrix.context == 'embedding-sdk' && github.event_name != 'schedule'
-        uses: ./.github/actions/run-embedding-sdk-storybook
-
-      - name: Run E2E tests for Embedding SDK
-        if: matrix.context == 'embedding-sdk' && github.event_name != 'schedule'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags="-@slow+-@flaky --@quarantine",grepOmitFiltered=true \
-          --folder 'embedding-sdk' \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
-        env:
-          CYPRESS_IS_EMBEDDING_SDK: true
-        shell: bash
-
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit
-          output-name: e2e-${{ matrix.name }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-
-      - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: cypress-recording-${{ matrix.name }}-${{ matrix.edition }}
-          path: |
-            ./cypress
-            ./logs/test.log
-          if-no-files-found: ignore
-
-      - name: Publish Summary
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: | #js
-            const {
-               parseReport,
-               formatSummary
-             } = require("./.github/scripts/handle-mochawesome-report.js");
-
-             const report = parseReport();
-             const summary = formatSummary(report);
-
-             await core.summary.addRaw(summary).write();
-
-  e2e-tests-skipped-stub:
-    needs: [e2e-tests, e2e-matrix-builder]
+  # run this separately to make it non-blocking
+  flaky-e2e-tests:
+    name: Flaky e2e Tests
+    uses: ./.github/workflows/e2e-test.yml
+    needs: build
     if: |
-      !cancelled() &&
-      needs.e2e-tests.result == 'skipped'
-    runs-on: ${{ matrix.runner }}
+      !cancelled() && needs.build.result == 'success'
+    secrets: inherit
+    with:
+      name: Flaky
+      tags: "@flaky"
+
+  e2e-tests-result:
+    needs: [e2e-tests, flaky-e2e-tests]
+    runs-on: ubuntu-latest
     timeout-minutes: 5
-    name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJSON(needs.e2e-matrix-builder.outputs.matrix) }}
+    name: e2e-tests-result
+    if: always() && !cancelled()
+    env:
+      E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
+      FLAKY_E2E_TESTS_RESULT: ${{ needs.flaky-e2e-tests.result }}
     steps:
-      - run: |
+      - name: Stub
+        if: ${{ needs.e2e-tests.result == 'skipped' }}
+        run: |
           echo "Didn't run due to conditional filtering"
+      - name: Test results
+        if: ${{ needs.e2e-tests.result != 'skipped' }}
+        run: | # sh
+          echo "E2E Tests: ${{ needs.e2e-tests.result }}"
+          echo "Flaky E2E Tests: ${{ needs.flaky-e2e-tests.result }}"
+
+          if [ "${{ needs.e2e-tests.result }}" != "success" ]; then
+            echo "E2E Tests failed"
+            exit 1
+          fi
 
   pr-env:
     needs: [build]

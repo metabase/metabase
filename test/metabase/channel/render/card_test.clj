@@ -7,8 +7,6 @@
    [metabase.channel.render.card :as channel.render.card]
    [metabase.channel.render.core :as channel.render]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models
-    :refer [Card Dashboard DashboardCard DashboardCardSeries]]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -38,10 +36,10 @@
     (let [query (mt/mbql-query orders
                   {:aggregation  [[:count]]
                    :breakout     [!month.created_at]})]
-      (t2.with-temp/with-temp [Card card {:dataset_query          query
-                                          :display                :line
-                                          :visualization_settings {:graph.dimensions ["CREATED_AT"]
-                                                                   :graph.metrics    ["count"]}}]
+      (t2.with-temp/with-temp [:model/Card card {:dataset_query          query
+                                                 :display                :line
+                                                 :visualization_settings {:graph.dimensions ["CREATED_AT"]
+                                                                          :graph.metrics    ["count"]}}]
         (is (some? (lib.util.match/match-one
                      (render-pulse-card card)
                      [:img _])))))))
@@ -157,11 +155,11 @@
 (deftest ^:parallel detect-pulse-chart-type-test-9
   (testing "Dashboard Cards can return `:multiple`."
     (is (= :javascript_visualization
-           (mt/with-temp [Card                card1 {:display :pie}
-                          Card                card2 {:display :funnel}
-                          Dashboard           dashboard {}
-                          DashboardCard       dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}
-                          DashboardCardSeries _   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]
+           (mt/with-temp [:model/Card                card1 {:display :pie}
+                          :model/Card                card2 {:display :funnel}
+                          :model/Dashboard           dashboard {}
+                          :model/DashboardCard       dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}
+                          :model/DashboardCardSeries _   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]
              (channel.render/detect-pulse-chart-type card1
                                                      dc1
                                                      {:cols [{:base_type :type/Temporal}
@@ -169,11 +167,11 @@
                                                       :rows [[#t "2020" 2]
                                                              [#t "2021" 3]]}))))
     (is (= :javascript_visualization
-           (mt/with-temp [Card                card1 {:display :line}
-                          Card                card2 {:display :funnel}
-                          Dashboard           dashboard {}
-                          DashboardCard       dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}
-                          DashboardCardSeries _   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]
+           (mt/with-temp [:model/Card                card1 {:display :line}
+                          :model/Card                card2 {:display :funnel}
+                          :model/Dashboard           dashboard {}
+                          :model/DashboardCard       dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}
+                          :model/DashboardCardSeries _   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]
              (channel.render/detect-pulse-chart-type card1
                                                      dc1
                                                      {:cols [{:base_type :type/Temporal}
@@ -183,64 +181,64 @@
 
 (deftest ^:parallel make-description-if-needed-test
   (testing "Use Visualization Settings's description if it exists"
-    (mt/with-temp [Card          card {:description "Card description"}
-                   Dashboard     dashboard {}
-                   DashboardCard dc1 {:dashboard_id (:id dashboard) :card_id (:id card)
-                                      :visualization_settings {:card.description "Visualization description"}}]
+    (mt/with-temp [:model/Card          card {:description "Card description"}
+                   :model/Dashboard     dashboard {}
+                   :model/DashboardCard dc1 {:dashboard_id (:id dashboard) :card_id (:id card)
+                                             :visualization_settings {:card.description "Visualization description"}}]
       (is (= "<p>Visualization description</p>\n"
              (last (:content (#'channel.render.card/make-description-if-needed dc1 card {:channel.render/include-description? true}))))))))
 
 (deftest ^:parallel make-description-if-needed-test-2
   (testing "Fallback to Card's description if Visualization Settings's description not exists"
-    (mt/with-temp [Card          card {:description "Card description"}
-                   Dashboard     dashboard {}
-                   DashboardCard dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]
+    (mt/with-temp [:model/Card          card {:description "Card description"}
+                   :model/Dashboard     dashboard {}
+                   :model/DashboardCard dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]
       (is (= "<p>Card description</p>\n"
              (last (:content (#'channel.render.card/make-description-if-needed dc1 card {:channel.render/include-description? true}))))))))
 
 (deftest ^:parallel make-description-if-needed-test-3
   (testing "Test markdown converts to html"
-    (mt/with-temp [Card          card {:description "# Card description"}
-                   Dashboard     dashboard {}
-                   DashboardCard dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]
+    (mt/with-temp [:model/Card          card {:description "# Card description"}
+                   :model/Dashboard     dashboard {}
+                   :model/DashboardCard dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]
       (is (= "<h1>Card description</h1>\n"
              (last (:content (#'channel.render.card/make-description-if-needed dc1 card {:channel.render/include-description? true}))))))))
 
 (deftest ^:parallel table-rendering-of-percent-types-test
   (testing "If a column is marked as a :type/Percentage semantic type it should render as a percent"
     (mt/dataset test-data
-      (mt/with-temp [Card {base-card-id :id} {:dataset_query {:database (mt/id)
-                                                              :type     :query
-                                                              :query    {:source-table (mt/id :orders)
-                                                                         :expressions  {"Tax Rate" [:/
-                                                                                                    [:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                                                                    [:field (mt/id :orders :total) {:base-type :type/Float}]]},
-                                                                         :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                                                        [:field (mt/id :orders :total) {:base-type :type/Float}]
-                                                                                        [:expression "Tax Rate"]]
-                                                                         :limit        10}}}
-                     Card {model-card-id  :id
-                           model-query    :dataset_query
-                           model-metadata :result_metadata
-                           :as            model-card} {:type            :model
-                                                       :dataset_query   {:type     :query
-                                                                         :database (mt/id)
-                                                                         :query    {:source-table (format "card__%s" base-card-id)}}
-                                                       :result_metadata [{:name         "TAX"
-                                                                          :display_name "Tax"
-                                                                          :base_type    :type/Float}
-                                                                         {:name         "TOTAL"
-                                                                          :display_name "Total"
-                                                                          :base_type    :type/Float}
-                                                                         {:name          "Tax Rate"
-                                                                          :display_name  "Tax Rate"
-                                                                          :base_type     :type/Float
-                                                                          :semantic_type :type/Percentage
-                                                                          :field_ref     [:field "Tax Rate" {:base-type :type/Float}]}]}
-                     Card {question-query :dataset_query
-                           :as            question-card} {:dataset_query {:type     :query
-                                                                          :database (mt/id)
-                                                                          :query    {:source-table (format "card__%s" model-card-id)}}}]
+      (mt/with-temp [:model/Card {base-card-id :id} {:dataset_query {:database (mt/id)
+                                                                     :type     :query
+                                                                     :query    {:source-table (mt/id :orders)
+                                                                                :expressions  {"Tax Rate" [:/
+                                                                                                           [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                                           [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                                                                                :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                               [:field (mt/id :orders :total) {:base-type :type/Float}]
+                                                                                               [:expression "Tax Rate"]]
+                                                                                :limit        10}}}
+                     :model/Card {model-card-id  :id
+                                  model-query    :dataset_query
+                                  model-metadata :result_metadata
+                                  :as            model-card} {:type            :model
+                                                              :dataset_query   {:type     :query
+                                                                                :database (mt/id)
+                                                                                :query    {:source-table (format "card__%s" base-card-id)}}
+                                                              :result_metadata [{:name         "TAX"
+                                                                                 :display_name "Tax"
+                                                                                 :base_type    :type/Float}
+                                                                                {:name         "TOTAL"
+                                                                                 :display_name "Total"
+                                                                                 :base_type    :type/Float}
+                                                                                {:name          "Tax Rate"
+                                                                                 :display_name  "Tax Rate"
+                                                                                 :base_type     :type/Float
+                                                                                 :semantic_type :type/Percentage
+                                                                                 :field_ref     [:field "Tax Rate" {:base-type :type/Float}]}]}
+                     :model/Card {question-query :dataset_query
+                                  :as            question-card} {:dataset_query {:type     :query
+                                                                                 :database (mt/id)
+                                                                                 :query    {:source-table (format "card__%s" model-card-id)}}}]
         ;; NOTE -- The logic in metabase.formatter/number-formatter renders values between 1 and 100 as an
         ;; integer value. IDK if this is what we want long term, but this captures the current logic. If we do extend
         ;; the significant digits in the formatter, we'll need to modify this test as well.
@@ -268,8 +266,8 @@
 
 (deftest title-should-be-an-a-tag-test
   (testing "the title of the card should be an <a> tag so you can click on title using old outlook clients (#12901)"
-    (mt/with-temp [Card card {:name          "A Card"
-                              :dataset_query (mt/mbql-query venues {:limit 1})}]
+    (mt/with-temp [:model/Card card {:name          "A Card"
+                                     :dataset_query (mt/mbql-query venues {:limit 1})}]
       (mt/with-temp-env-var-value! [mb-site-url "https://mb.com"]
         (let [rendered-card-content (:content (channel.render/render-pulse-card :inline
                                                                                 (channel.render/defaulted-timezone card)
