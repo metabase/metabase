@@ -147,20 +147,20 @@
 
   (testing "card notification requires a card_id"
     (is (=? {:specific-errors {:body {:payload {:card_id ["missing required key, received: nil"]}}}}
-            (mt/user-http-request :crowberto :post 400 "notification" {:creator_id   (mt/user->id :crowberto)
-                                                                       :payload      {}
+            (mt/user-http-request :crowberto :post 400 "notification" {:payload      {}
                                                                        :payload_type "notification/card"}))))
 
-  (mt/with-temp [:model/Card {card-id :id}]
-    (testing "creator id is not required"
-      (is (some? (mt/user-http-request :crowberto :post 200 "notification" {:payload      {:card_id card-id}
-                                                                            :payload_type "notification/card"}))))
-    (testing "automatically override creator_id to current user"
-      (is (= (mt/user->id :crowberto)
-             (-> (mt/user-http-request :crowberto :post 200 "notification" {:creator_id   (mt/user->id :rasta)
-                                                                            :payload      {:card_id card-id}
-                                                                            :payload_type "notification/card"})
-                 :creator_id))))))
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-temp [:model/Card {card-id :id}]
+      (testing "creator id is not required"
+        (is (some? (mt/user-http-request :crowberto :post 200 "notification" {:payload      {:card_id card-id}
+                                                                              :payload_type "notification/card"}))))
+      (testing "automatically override creator_id to current user"
+        (is (= (mt/user->id :crowberto)
+               (-> (mt/user-http-request :crowberto :post 200 "notification" {:creator_id   (mt/user->id :rasta)
+                                                                              :payload      {:card_id card-id}
+                                                                              :payload_type "notification/card"})
+                   :creator_id)))))))
 
 (defn- update-cron-subscription
   [{:keys [subscriptions] :as notification} new-schedule]
@@ -386,7 +386,7 @@
                                             (mt/user-http-request user-or-id :put expected-status (format "notification/%d" (:id notification))
                                                                   (assoc notification :updated_at (t/offset-date-time))))
               change-notification-creator (fn [user-id]
-                                            (t2/update! :model/Notification (:id notification) {:creator_id user-id}))
+                                            (t2/update! :notification (:id notification) {:creator_id user-id}))
               move-card-collection        (fn [user-id]
                                             (t2/update! :model/Card (-> notification :payload :card_id)
                                                         {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id user-id)}))]
@@ -427,7 +427,6 @@
                        (finally
                          ;; move it back
                          (move-card-collection (mt/user->id :rasta)))))))
-
                (finally
                  (perms/grant-application-permissions! (perms-group/all-users) :subscription)
                  (change-notification-creator (mt/user->id :rasta))

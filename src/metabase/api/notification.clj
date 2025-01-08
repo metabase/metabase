@@ -92,7 +92,9 @@
   (api/create-check :model/Notification body)
   (let [notification (models.notification/hydrate-notification
                       (models.notification/create-notification!
-                       (dissoc body :handlers :subscriptions)
+                       (-> body
+                           (assoc :creator_id api/*current-user-id*)
+                           (dissoc :handlers :subscriptions))
                        (:subscriptions body)
                        (:handlers body)))]
     (when (card-notification? notification)
