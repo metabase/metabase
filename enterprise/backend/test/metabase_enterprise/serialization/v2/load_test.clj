@@ -821,9 +821,9 @@
             (testing "both existing User and the new one are set up properly"
               (is (= (:id @user1d) (:creator_id @metric1d)))
               (let [user2d-id (:creator_id @metric2d)
-                    user2d    (t2/select-one User :id user2d-id)]
-                (is (any? user2d))
-                (is (= (:email @user2s) (:email user2d)))))))))))
+                    user2d    (t2/select-one [User :email :is_active] :id user2d-id)]
+                (is (= (:email @user2s) (:email user2d)))
+                (is (false? (:is_active user2d)))))))))))
 
 (deftest field-values-test
   ;; FieldValues are a bit special - they map 1-1 with Fields but are a separate table serialized separately.
