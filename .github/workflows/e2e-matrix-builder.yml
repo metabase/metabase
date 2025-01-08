@@ -32,6 +32,7 @@ jobs:
           script: | # js
             const java = 21;
             const defaultRunner = "ubuntu-22.04";
+            const beefyRunner = "them-good-ones";
 
             const defaultOptions = {
               "java-version": java,
@@ -54,6 +55,7 @@ jobs:
             const regularTests = new Array(regularChunks).fill(1)
               .map((files, index) => ({
                 name: `e2e-group-${index + 1}`,
+                runner: index < 5 ? beefyRunner : defaultRunner, // FOR TESTING
               }));
 
             // regular chunks need to come before special chunks
