@@ -409,14 +409,19 @@
 
   For each `variants` pair:
     - `variant-desc` will be passed directly to [[clojure.test/testing]].
-    - `variant-case` will be `merge`d with the `base-case` and the result will be passed to `test-fn`."
+    - `variant-case` will be `merge`d with the `base-case` and the result will be passed to `test-fn`.
+
+  If any `base-desc` or `variant-desc` is the special string \"SKIP\", then the corresponding case will be
+  skipped. Useful when you want to debug one of the `variants` in isolation."
   [test-fn   :- [:-> :map :any]
    base-desc :- :string
    base-case :- :map
    & variants]
   (assert (even? (count variants)) "variants must come in variant-desc and variant-case pairs")
-  (testing base-desc
-    (test-fn base-case))
+  (when-not (= "SKIP" base-desc)
+    (testing base-desc
+      (test-fn base-case)))
   (doseq [[variant-desc variant-case] (partition 2 variants)]
-    (testing variant-desc
-      (test-fn (merge base-case variant-case)))))
+    (when-not (= "SKIP" variant-desc)
+      (testing variant-desc
+        (test-fn (merge base-case variant-case))))))
