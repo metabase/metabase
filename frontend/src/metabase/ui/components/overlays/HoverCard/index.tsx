@@ -47,6 +47,7 @@ const HoverCardTarget = forwardRef<HTMLDivElement, HoverCardTargetProps>(
           onFocus={() => trigger("mouseover")}
           onBlur={() => trigger("mouseout")}
           ref={ref}
+          tabIndex={0}
         >
           {props.children}
         </div>
