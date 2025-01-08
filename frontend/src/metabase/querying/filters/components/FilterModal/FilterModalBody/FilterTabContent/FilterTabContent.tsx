@@ -26,6 +26,8 @@ export function FilterTabContent({
   onInput,
   onTabChange,
 }: FilterTabContentProps) {
+  console.log("@m5nm9z9k", "groupItems", groupItems);
+
   return (
     <Tabs value={tab} onTabChange={onTabChange} orientation="vertical" h="100%">
       <Flex direction="row" w="100%">

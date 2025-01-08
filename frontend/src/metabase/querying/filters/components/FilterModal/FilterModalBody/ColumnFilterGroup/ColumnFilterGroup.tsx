@@ -30,6 +30,7 @@ export function ColumnFilterGroup({
   );
   const [initialFilterCount] = useState(currentFilters.length);
   const visibleFilters = findVisibleFilters(currentFilters, initialFilterCount);
+  console.log("@m5nmcjuw", "columnItem", columnItem);
 
   return (
     <DelayGroup>
