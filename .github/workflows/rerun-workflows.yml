@@ -61,10 +61,10 @@ jobs:
               });
 
               const failedJobs = jobInfo.data.jobs
-                .filter(job => job.status === 'completed' && job.conclusion === 'failure');
+                .filter(job => job.status === "completed" && job.conclusion === "failure");
 
               // don't bother slack if only the flaky job failed
-              if (failedJobs.length === 1 && failedJobs[0].name.includes("flaky")) {
+              if (failedJobs.every(job => job.name.includes("flaky"))) {
                 return;
               }
 
