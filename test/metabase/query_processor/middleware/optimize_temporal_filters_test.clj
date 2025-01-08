@@ -26,29 +26,29 @@
       (letfn [(optimize [filter-type]
                 (#'optimize-temporal-filters/optimize-filter
                  [filter-type
-                  [:field 1 {:temporal-unit :day}]
+                  [:field (meta/id :orders :created-at) {:temporal-unit :day}]
                   [:absolute-datetime (t/zoned-date-time "2014-03-04T12:30Z[UTC]") :day]]))]
         (testing :<
           (is (= [:<
-                  [:field 1 {:temporal-unit :default}]
+                  [:field (meta/id :orders :created-at) {:temporal-unit :default}]
                   [:absolute-datetime (t/zoned-date-time "2014-03-04T00:00Z[UTC]") :default]]
                  (optimize :<))
               "day(field) < day('2014-03-04T12:30') => day(field) < '2014-03-04' => field < '2014-03-04T00:00'"))
         (testing :<=
           (is (= [:<
-                  [:field 1 {:temporal-unit :default}]
+                  [:field (meta/id :orders :created-at) {:temporal-unit :default}]
                   [:absolute-datetime (t/zoned-date-time "2014-03-05T00:00Z[UTC]") :default]]
                  (optimize :<=))
               "day(field) <= day('2014-03-04T12:30') => day(field) <= '2014-03-04' => field < '2014-03-05T00:00'"))
         (testing :>
           (is (= [:>=
-                  [:field 1 {:temporal-unit :default}]
+                  [:field (meta/id :orders :created-at) {:temporal-unit :default}]
                   [:absolute-datetime (t/zoned-date-time "2014-03-05T00:00Z[UTC]") :default]]
                  (optimize :>))
               "day(field) > day('2014-03-04T12:30') => day(field) > '2014-03-04' => field >= '2014-03-05T00:00'"))
         (testing :>=
           (is (= [:>=
-                  [:field 1 {:temporal-unit :default}]
+                  [:field (meta/id :orders :created-at) {:temporal-unit :default}]
                   [:absolute-datetime (t/zoned-date-time "2014-03-04T00:00Z[UTC]") :default]]
                  (optimize :>=))
               "day(field) >= day('2014-03-04T12:30') => day(field) >= '2014-03-04' => field >= '2014-03-04T00:00'"))))))
@@ -101,7 +101,7 @@
 
 (deftest ^:parallel optimize-temporal-filters-test
   (driver/with-driver ::timezone-driver
-    (doseq [field-or-expr [[:field 1 {}]
+    (doseq [field-or-expr [[:field (meta/id :orders :created-at) {}]
                            [:expression "date" {}]]
             {:keys [unit filter-value lower upper]} test-units-and-values]
       (let [lower [:absolute-datetime lower :default]
@@ -202,7 +202,7 @@
   (let [query {:database 1
                :type     :query
                :query    {:filter [:=
-                                   [:field 1 {:temporal-unit :day}]
+                                   [:field (meta/id :orders :created-at) {:temporal-unit :day}]
                                    [:absolute-datetime t :day]]}}]
     (-> (optimize-temporal-filters/optimize-temporal-filters query)
         (get-in [:query :filter]))))
@@ -225,8 +225,8 @@
                     (format "upper bound of day(%s) in the %s timezone should be %s" t timezone-id upper)))
               (testing "optimize-with-datetime"
                 (let [expected [:and
-                                [:>= [:field 1 {:temporal-unit :default}] [:absolute-datetime lower :default]]
-                                [:<  [:field 1 {:temporal-unit :default}] [:absolute-datetime upper :default]]]]
+                                [:>= [:field (meta/id :orders :created-at) {:temporal-unit :default}] [:absolute-datetime lower :default]]
+                                [:<  [:field (meta/id :orders :created-at) {:temporal-unit :default}] [:absolute-datetime upper :default]]]]
                   (is (= expected
                          (optimize-filter-clauses t))
                       (format "= %s in the %s timezone should be optimized to range %s -> %s"
@@ -586,14 +586,14 @@
     (doseq [operator [:= :!= :< :> :<= :>=]]
       (testing operator
         (let [clause [operator
-                      [:field 1 {:base-type :type/DateTime, :temporal-unit :day}]
-                      [:field 2 {:base-type :type/DateTime, :temporal-unit :day}]]]
+                      [:field (meta/id :orders :created-at) {:base-type :type/DateTime, :temporal-unit :day}]
+                      [:field (meta/id :people :created-at) {:base-type :type/DateTime, :temporal-unit :day}]]]
           (is (= clause
                  (optimize clause))))))
     (testing :between
       (let [clause [:between
-                    [:field 1 {:base-type :type/DateTime, :temporal-unit :day}]
-                    [:field 2 {:base-type :type/DateTime, :temporal-unit :day}]
-                    [:field 3 {:base-type :type/DateTime, :temporal-unit :day}]]]
+                    [:field (meta/id :orders   :created-at) {:base-type :type/DateTime, :temporal-unit :day}]
+                    [:field (meta/id :people   :created-at) {:base-type :type/DateTime, :temporal-unit :day}]
+                    [:field (meta/id :products :created-at) {:base-type :type/DateTime, :temporal-unit :day}]]]
         (is (= clause
                (optimize clause)))))))
