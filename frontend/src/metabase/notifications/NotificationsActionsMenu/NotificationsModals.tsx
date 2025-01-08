@@ -13,7 +13,7 @@ const MenuTarget = forwardRef(function _MenuTarget(
   _props,
   ref: Ref<HTMLDivElement>,
 ) {
-  return <Box h="2rem" ref={ref} />;
+  return <Box h="2rem" ml="-0.5rem" ref={ref} />;
 });
 
 type BaseNotificationsModalsProps = {

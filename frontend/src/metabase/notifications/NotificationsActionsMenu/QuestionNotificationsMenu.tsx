@@ -8,13 +8,9 @@ import type { QuestionNotificationsModalType } from "metabase/notifications/Noti
 import { setUIControls } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
-import { Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
-import {
-  NotificationsMenu,
-  NotificationsMenuTriggerButton,
-} from "./NotificationsMenu";
+import { NotificationsMenuTriggerButton } from "./NotificationsMenu";
 import { NotificationsModals } from "./NotificationsModals";
 
 export function QuestionNotificationsMenu({
@@ -53,18 +49,16 @@ export function QuestionNotificationsMenu({
   }
 
   return (
-    <Flex>
-      <NotificationsMenu>
-        <QuestionAlertsMenuItem
-          question={question}
-          onClick={() => setModalType("question-alert")}
-        />
-      </NotificationsMenu>
+    <>
+      <QuestionAlertsMenuItem
+        question={question}
+        onClick={() => setModalType("question-alert")}
+      />
       <NotificationsModals
         modalType={modalType}
         question={question}
         onClose={() => setModalType(null)}
       />
-    </Flex>
+    </>
   );
 }

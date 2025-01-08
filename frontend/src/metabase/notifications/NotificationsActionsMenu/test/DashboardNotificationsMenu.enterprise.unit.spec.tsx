@@ -1,6 +1,9 @@
 import { screen } from "__support__/ui";
 
-import { openMenu, setupDashboardSharingMenu } from "./setup";
+import {
+  setupDashboardSharingMenu,
+  waitForChannelsConfigLoaded,
+} from "./setup";
 
 describe("DashboardNotificationsMenu > Enterprise", () => {
   it('Should show the "Subscriptions" menu item to non-admins if the user has subscriptions/alerts permissions', async () => {
@@ -10,8 +13,12 @@ describe("DashboardNotificationsMenu > Enterprise", () => {
       isEnterprise: true,
       isAdmin: false,
     });
-    await openMenu();
-    expect(screen.getByText("Subscriptions")).toBeInTheDocument();
+
+    await waitForChannelsConfigLoaded();
+
+    expect(
+      screen.getByTestId("dashboard-subscription-menu-item"),
+    ).toBeInTheDocument();
   });
 
   it('Should not show the "Subscriptions" menu item to non-admins if the user lacks subscriptions/alerts permissions', async () => {
@@ -23,7 +30,7 @@ describe("DashboardNotificationsMenu > Enterprise", () => {
     });
 
     expect(
-      screen.queryByTestId("notifications-menu-button"),
+      screen.queryByTestId("dashboard-subscription-menu-item"),
     ).not.toBeInTheDocument();
   });
 });

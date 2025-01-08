@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { screen } from "__support__/ui";
 import {
@@ -6,17 +7,26 @@ import {
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
 
-import { openMenu, setupDashboardSharingMenu } from "./setup";
+import {
+  setupDashboardSharingMenu,
+  waitForChannelsConfigLoaded,
+} from "./setup";
 
 describe("DashboardNotificationsMenu", () => {
-  it("should have a 'Notifications' tooltip by default", () => {
+  afterEach(() => {
+    fetchMock.resetHistory();
+  });
+
+  it("should have a 'Subscriptions' tooltip by default", async () => {
     setupDashboardSharingMenu({
       isAdmin: true,
     });
-    expect(screen.getByTestId("notifications-menu-button")).toHaveAttribute(
-      "aria-label",
-      "Notifications",
-    );
+
+    await waitForChannelsConfigLoaded();
+
+    expect(
+      screen.getByTestId("dashboard-subscription-menu-item"),
+    ).toHaveAttribute("aria-label", "Subscriptions");
   });
 
   it("should not appear for archived dashboards", async () => {
@@ -26,98 +36,106 @@ describe("DashboardNotificationsMenu", () => {
     });
 
     expect(
-      screen.queryByTestId("notifications-menu-button"),
+      screen.queryByTestId("dashboard-subscription-menu-item"),
     ).not.toBeInTheDocument();
   });
 
-  describe("dashboard subscriptions", () => {
-    describe("admins", () => {
-      it("should show the 'Subscriptions' menu item if email and slack are not setup", async () => {
-        setupDashboardSharingMenu({
-          isAdmin: true,
-          isEmailSetup: false,
-          isSlackSetup: false,
-        });
-        await openMenu();
-        expect(screen.getByText("Subscriptions")).toBeInTheDocument();
+  describe("admins", () => {
+    it("should show the 'Subscriptions' menu item if email and slack are not setup", async () => {
+      setupDashboardSharingMenu({
+        isAdmin: true,
+        isEmailSetup: false,
+        isSlackSetup: false,
       });
 
-      it("should show the 'Subscriptions' menu item if email and slack are setup", async () => {
-        setupDashboardSharingMenu({
-          isAdmin: true,
-          isEmailSetup: true,
-          isSlackSetup: true,
-        });
-        await openMenu();
-        expect(screen.getByText("Subscriptions")).toBeInTheDocument();
-      });
+      await waitForChannelsConfigLoaded();
 
-      it("Should toggle the subscriptions sidebar on click", async () => {
-        setupDashboardSharingMenu({ isAdmin: true });
-        await openMenu();
-        await userEvent.click(screen.getByText("Subscriptions"));
-        expect(screen.getByTestId("fake-sidebar")).toHaveTextContent(
-          "Sidebar: sharing",
-        );
-      });
-
-      it("should not show the subscriptions menu item if there are no data cards", async () => {
-        setupDashboardSharingMenu({
-          isAdmin: true,
-          dashboard: {
-            dashcards: [
-              createMockDashboardCard({
-                card: createMockCard({ display: "text" }),
-              }),
-            ],
-          },
-        });
-
-        expect(
-          screen.queryByTestId("notifications-menu-button"),
-        ).not.toBeInTheDocument();
-      });
+      expect(screen.getByLabelText("Subscriptions")).toBeInTheDocument();
     });
 
-    describe("non-admins", () => {
-      it("should show 'subscriptions' option when email is set up", async () => {
-        setupDashboardSharingMenu({
-          isAdmin: false,
-          isEmailSetup: true,
-          isSlackSetup: false,
-        });
-        await openMenu();
-        expect(screen.getByText("Subscriptions")).toBeInTheDocument();
+    it("should show the 'Subscriptions' menu item if email and slack are setup", async () => {
+      setupDashboardSharingMenu({
+        isAdmin: true,
+        isEmailSetup: true,
+        isSlackSetup: true,
       });
 
-      it("should show disabled 'subscriptions' option when email is not set up", async () => {
-        setupDashboardSharingMenu({
-          isAdmin: false,
-          isEmailSetup: false,
-          isSlackSetup: true,
-        });
-        await openMenu();
-        expect(
-          await screen.findByText("Can't send subscriptions"),
-        ).toBeInTheDocument();
+      await waitForChannelsConfigLoaded();
+
+      expect(screen.getByLabelText("Subscriptions")).toBeInTheDocument();
+    });
+
+    it("Should toggle the subscriptions sidebar on click", async () => {
+      setupDashboardSharingMenu({ isAdmin: true });
+
+      await userEvent.click(screen.getByLabelText("Subscriptions"));
+      expect(screen.getByTestId("fake-sidebar")).toHaveTextContent(
+        "Sidebar: sharing",
+      );
+    });
+
+    it("should not show the subscriptions menu item if there are no data cards", async () => {
+      setupDashboardSharingMenu({
+        isAdmin: true,
+        dashboard: {
+          dashcards: [
+            createMockDashboardCard({
+              card: createMockCard({ display: "text" }),
+            }),
+          ],
+        },
       });
 
-      it("should not show the subscriptions menu item if there are no data cards", async () => {
-        setupDashboardSharingMenu({
-          isAdmin: false,
-          dashboard: {
-            dashcards: [
-              createMockDashboardCard({
-                card: createMockCard({ display: "heading" }),
-              }),
-            ],
-          },
-        });
+      expect(
+        screen.queryByTestId("dashboard-subscription-menu-item"),
+      ).not.toBeInTheDocument();
+    });
+  });
 
-        expect(
-          screen.queryByTestId("notifications-menu-button"),
-        ).not.toBeInTheDocument();
+  describe("non-admins", () => {
+    it("should show 'Subscriptions' option when email is set up", async () => {
+      setupDashboardSharingMenu({
+        isAdmin: false,
+        isEmailSetup: true,
+        isSlackSetup: false,
       });
+
+      await waitForChannelsConfigLoaded();
+
+      expect(screen.getByLabelText("Subscriptions")).toBeInTheDocument();
+    });
+
+    it("should show disabled 'Subscriptions' option when email is not set up", async () => {
+      setupDashboardSharingMenu({
+        isAdmin: false,
+        isEmailSetup: false,
+        isSlackSetup: true,
+      });
+
+      await waitForChannelsConfigLoaded();
+
+      expect(
+        screen.getByLabelText(
+          "Can't send subscriptions. Ask your admin to set up email",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("should not show the subscriptions menu item if there are no data cards", async () => {
+      setupDashboardSharingMenu({
+        isAdmin: false,
+        dashboard: {
+          dashcards: [
+            createMockDashboardCard({
+              card: createMockCard({ display: "heading" }),
+            }),
+          ],
+        },
+      });
+
+      expect(
+        screen.queryByTestId("dashboard-subscription-menu-item"),
+      ).not.toBeInTheDocument();
     });
   });
 });

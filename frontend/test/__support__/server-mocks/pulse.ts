@@ -5,5 +5,7 @@ import type { ChannelApiResponse } from "metabase-types/api";
 export const setupNotificationChannelsEndpoints = (
   channelData: Partial<ChannelApiResponse["channels"]>,
 ) => {
-  fetchMock.get("path:/api/pulse/form_input", { channels: channelData });
+  fetchMock.get("http://localhost/api/pulse/form_input", {
+    channels: channelData,
+  });
 };

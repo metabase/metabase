@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { skipToken, useListCardAlertsQuery } from "metabase/api";
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { useSelector } from "metabase/lib/redux";
-import { CommonNotificationsMenuItem } from "metabase/notifications/NotificationsActionsMenu/CommonNotificationsMenuItem";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import type Question from "metabase-lib/v1/Question";
 
@@ -26,11 +26,14 @@ export function QuestionAlertsMenuItem({
   }
 
   const hasAlerts = !!questionAlerts?.length;
+  const label = hasAlerts ? t`Edit alerts` : t`Create an alert`;
 
   return (
-    <CommonNotificationsMenuItem
-      title={hasAlerts ? t`Edit alerts` : t`Create alert`}
-      iconName={hasAlerts ? "alert_filled" : "alert"}
+    <ToolbarButton
+      icon={hasAlerts ? "alert_filled" : "alert"}
+      data-testid="notifications-menu-button"
+      tooltipLabel={label}
+      aria-label={label}
       onClick={onClick}
     />
   );

@@ -3,10 +3,7 @@ import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { DashboardSubscriptionMenuItem } from "metabase/notifications/NotificationsActionsMenu/DashboardSubscriptionMenuItem";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
-import { Flex } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
-
-import { NotificationsMenu } from "./NotificationsMenu";
 
 export function DashboardNotificationsMenu({
   dashboard,
@@ -36,11 +33,5 @@ export function DashboardNotificationsMenu({
     return null;
   }
 
-  return (
-    <Flex>
-      <NotificationsMenu>
-        <DashboardSubscriptionMenuItem onClick={toggleSubscriptionSidebar} />
-      </NotificationsMenu>
-    </Flex>
-  );
+  return <DashboardSubscriptionMenuItem onClick={toggleSubscriptionSidebar} />;
 }

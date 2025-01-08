@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import { useHasEmailSetup } from "metabase/common/hooks";
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Icon, Menu, Stack, Text, Title } from "metabase/ui";
 
 export function DashboardSubscriptionMenuItem({
   onClick,
@@ -15,29 +15,23 @@ export function DashboardSubscriptionMenuItem({
 
   if (!isAdmin && !hasEmailSetup) {
     return (
-      <Menu.Item
+      <ToolbarButton
+        icon="subscription"
         data-testid="dashboard-subscription-menu-item"
-        icon={<Icon name="subscription" />}
+        tooltipLabel={t`Can't send subscriptions. Ask your admin to set up email`}
+        aria-label={t`Can't send subscriptions. Ask your admin to set up email`}
         disabled
-      >
-        <Stack spacing="xs">
-          <Title order={4} color="inherit">{t`Can't send subscriptions`}</Title>
-          <Text
-            size="sm"
-            color="inherit"
-          >{t`Ask your admin to set up email`}</Text>
-        </Stack>
-      </Menu.Item>
+      />
     );
   }
 
   return (
-    <Menu.Item
+    <ToolbarButton
+      icon="subscription"
       data-testid="dashboard-subscription-menu-item"
-      icon={<Icon name="subscription" />}
+      tooltipLabel={t`Subscriptions`}
+      aria-label={t`Subscriptions`}
       onClick={onClick}
-    >
-      {t`Subscriptions`}
-    </Menu.Item>
+    />
   );
 }

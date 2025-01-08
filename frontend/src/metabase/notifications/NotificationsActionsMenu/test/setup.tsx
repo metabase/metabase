@@ -1,4 +1,5 @@
-import userEvent from "@testing-library/user-event";
+import { waitFor } from "@testing-library/react";
+import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -7,7 +8,8 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui";
+import { delay } from "metabase/lib/promise";
 import { useSelector } from "metabase/lib/redux";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -65,11 +67,6 @@ const setupState = ({
     audit_app: isEnterprise,
   });
 
-  setupNotificationChannelsEndpoints({
-    slack: { configured: isSlackSetup },
-    email: { configured: isEmailSetup },
-  } as any);
-
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
     "email-configured?": isEmailSetup,
@@ -124,6 +121,11 @@ export function setupDashboardSharingMenu({
     isEnterprise,
   });
 
+  setupNotificationChannelsEndpoints({
+    slack: { configured: isSlackSetup },
+    email: { configured: isEmailSetup },
+  } as any);
+
   if (isEnterprise) {
     setupEnterprisePlugins();
   }
@@ -171,6 +173,11 @@ export function setupQuestionSharingMenu({
   setupAlertsEndpoints(card, alerts);
   setupUsersEndpoints([state.currentUser] as UserListResult[]);
 
+  setupNotificationChannelsEndpoints({
+    slack: { configured: isSlackSetup },
+    email: { configured: isEmailSetup },
+  } as any);
+
   if (isEnterprise) {
     setupEnterprisePlugins();
   }
@@ -182,8 +189,26 @@ export function setupQuestionSharingMenu({
     </div>,
     { storeInitialState: state },
   );
+
+  return {
+    cardId: card.id,
+  };
 }
 
-export const openMenu = () => {
-  return userEvent.click(screen.getByTestId("notifications-menu-button"));
+export const waitForChannelsConfigLoaded = async () => {
+  await waitFor(() => {
+    expect(fetchMock.called(`path:/api/pulse/form_input`)).toBe(true);
+  });
+
+  await delay(50);
+};
+
+export const waitForAlertsListLoaded = async (questionId: number) => {
+  await waitFor(() => {
+    expect(fetchMock.called(`path:/api/alert/question/${questionId}`)).toBe(
+      true,
+    );
+  });
+
+  await delay(50);
 };
