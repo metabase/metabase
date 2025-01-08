@@ -4,9 +4,9 @@ import { useListCardAlertsQuery } from "metabase/api";
 import Modal from "metabase/components/Modal";
 import { isAlert, isSubscription } from "metabase/notifications/utils";
 import type Question from "metabase-lib/v1/Question";
-import type { Alert } from "metabase-types/api";
+import type { Notification } from "metabase-types/api";
 
-import { CreateAlertModalContent, UpdateAlertModalContent } from "../index";
+import { CreateAlertModalContent } from "../index";
 
 import { AlertListModalContent } from "./AlertListModalContent";
 
@@ -21,7 +21,7 @@ export const AlertListModal = ({
   question: Question;
   onClose: () => void;
 }) => {
-  const [editingAlert, setEditingAlert] = useState<Alert | null>(null);
+  const [editingItem, setEditingItem] = useState<Notification | null>(null);
 
   const { data: questionNotifications } = useListCardAlertsQuery({
     id: question.id(),
@@ -48,8 +48,8 @@ export const AlertListModal = ({
           notificationType={notificationType}
           questionAlerts={filteredByTypeNotifications}
           onCreate={() => setShowingElement("create-modal")}
-          onEdit={(alert: Alert) => {
-            setEditingAlert(alert);
+          onEdit={(notification: Notification) => {
+            setEditingItem(notification);
             setShowingElement("update-modal");
           }}
           onClose={onClose}
@@ -58,29 +58,20 @@ export const AlertListModal = ({
 
       <Modal
         medium
-        isOpen={showingElement === "create-modal"}
+        isOpen={
+          showingElement === "create-modal" || showingElement === "update-modal"
+        }
         onClose={onClose}
       >
         <CreateAlertModalContent
-          notificationType={notificationType}
+          editingNotification={
+            showingElement === "update-modal" && editingItem
+              ? editingItem
+              : undefined
+          }
           onCancel={onClose}
           onAlertCreated={onClose}
         />
-      </Modal>
-
-      <Modal
-        medium
-        isOpen={showingElement === "update-modal"}
-        onClose={onClose}
-      >
-        {editingAlert && (
-          <UpdateAlertModalContent
-            alert={editingAlert}
-            notificationType={notificationType}
-            onCancel={onClose}
-            onAlertUpdated={onClose}
-          />
-        )}
       </Modal>
     </>
   );

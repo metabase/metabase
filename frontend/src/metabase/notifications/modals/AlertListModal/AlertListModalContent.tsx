@@ -7,18 +7,19 @@ import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
-import type { Alert } from "metabase-types/api";
+import type { Alert, Notification } from "metabase-types/api";
 
 import { AlertListItem } from "./AlertListItem";
 
 type AlertListPopoverContentProps = {
   notificationType: "alert" | "subscription";
-  questionAlerts?: Alert[];
+  questionAlerts?: Notification[];
   onCreate: () => void;
-  onEdit: (alert: Alert) => void;
+  onEdit: (alert: Notification) => void;
   onClose: () => void;
 };
 
+// TODO: rename this to NotificationsListModalContent ?
 export const AlertListModalContent = ({
   notificationType,
   questionAlerts,

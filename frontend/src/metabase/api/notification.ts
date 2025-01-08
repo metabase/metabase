@@ -3,6 +3,7 @@ import type {
   ListNotificationsRequest,
   Notification,
   NotificationId,
+  UpdateNotificationRequest,
   // UpdateNotificationRequest,
 } from "metabase-types/api/notification";
 
@@ -49,21 +50,21 @@ export const notificationApi = Api.injectEndpoints({
       invalidatesTags: (notification, error) =>
         invalidateTags(error, [listTag("notification")]),
     }),
-    // updateNotification: builder.mutation<
-    //   Notification,
-    //   UpdateNotificationRequest
-    // >({
-    //   query: ({ id, ...body }) => ({
-    //     method: "PUT",
-    //     url: `/api/notification/${id}`,
-    //     body,
-    //   }),
-    //   invalidatesTags: (notification, error) =>
-    //     invalidateTags(error, [
-    //       listTag("notification"),
-    //       ...(notification ? [idTag("notification", notification.id)] : []),
-    //     ]),
-    // }),
+    updateNotification: builder.mutation<
+      Notification,
+      UpdateNotificationRequest
+    >({
+      query: body => ({
+        method: "PUT",
+        url: `/api/notification/${body.id}`,
+        body,
+      }),
+      invalidatesTags: (notification, error) =>
+        invalidateTags(error, [
+          listTag("notification"),
+          ...(notification ? [idTag("notification", notification.id)] : []),
+        ]),
+    }),
     unsubscribeFromNotification: builder.mutation<Notification, NotificationId>(
       {
         query: id => ({
@@ -84,6 +85,6 @@ export const {
   useListNotificationsQuery,
   useGetNotificationQuery,
   useCreateNotificationMutation,
-  // useUpdateNotificationMutation,
+  useUpdateNotificationMutation,
   useUnsubscribeFromNotificationMutation,
 } = notificationApi;

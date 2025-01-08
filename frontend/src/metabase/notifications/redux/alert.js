@@ -11,6 +11,7 @@ import { RestfulRequest } from "metabase/lib/request";
 import { addUndo } from "metabase/redux/undo";
 import { Icon } from "metabase/ui";
 
+// TODO: remove this file
 export const FETCH_ALL_ALERTS = "metabase/alerts/FETCH_ALL_ALERTS";
 const fetchAllAlertsRequest = new RestfulRequest({
   endpoint: (params, dispatch) =>

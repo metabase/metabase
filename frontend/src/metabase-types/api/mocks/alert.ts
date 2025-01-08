@@ -4,6 +4,7 @@ import type { Channel } from "../notifications";
 import { createMockEntityId } from "./entity-id";
 import { createMockUserInfo } from "./user";
 
+// TODO: remove this file
 export const createMockAlert = (opts?: Partial<Alert>): Alert => ({
   id: 1,
   name: "Alert",

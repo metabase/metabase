@@ -9,6 +9,7 @@ import {
   useCreateNotificationMutation,
   useGetChannelInfoQuery,
   useListUsersQuery,
+  useUpdateNotificationMutation,
 } from "metabase/api";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import ModalContent from "metabase/components/ModalContent";
@@ -34,10 +35,12 @@ import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Flex, Select, Stack, Switch } from "metabase/ui";
 import type {
   CreateAlertNotificationRequest,
+  Notification,
   NotificationCardSendCondition,
   NotificationHandler,
   ScheduleSettings,
   ScheduleType,
+  UpdateAlertNotificationRequest,
 } from "metabase-types/api";
 
 const ALERT_TRIGGER_OPTIONS_MAP: Record<
@@ -64,15 +67,25 @@ const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
   "weekly",
 ] as const;
 
-interface CreateAlertModalContentProps {
-  notificationType: "alert" | "subscription";
-  onAlertCreated: () => void;
+type CreateAlertModalContentProps = {
   onCancel: () => void;
-}
+} & (
+  | {
+      editingNotification?: undefined;
+      onAlertCreated: () => void;
+      onAlertUpdated?: never;
+    }
+  | {
+      editingNotification: Notification;
+      onAlertUpdated: () => void;
+      onAlertCreated?: never;
+    }
+);
 
 export const CreateAlertModalContent = ({
-  notificationType,
+  editingNotification,
   onAlertCreated,
+  onAlertUpdated,
   onCancel,
 }: CreateAlertModalContentProps) => {
   const dispatch = useDispatch();
@@ -84,12 +97,16 @@ export const CreateAlertModalContent = ({
   const { data: channelSpec } = useGetChannelInfoQuery();
   const { data: users } = useListUsersQuery({});
 
-  const [notification, setNotification] =
-    useState<CreateAlertNotificationRequest | null>(null);
+  const isEditMode = !!editingNotification;
+
+  const [notification, setNotification] = useState<
+    CreateAlertNotificationRequest | UpdateAlertNotificationRequest | null
+  >(null);
 
   const subscription = notification?.subscriptions[0];
 
   const [createNotification] = useCreateNotificationMutation();
+  const [updateNotification] = useUpdateNotificationMutation();
 
   const questionId = question?.id();
 
@@ -112,23 +129,39 @@ export const CreateAlertModalContent = ({
   useEffect(() => {
     if (questionId && channelSpec && user && !notification) {
       setNotification(
-        getDefaultQuestionAlertRequest({
-          cardId: questionId,
-          userId: user.id,
-          channelSpec,
-          availableTriggerOptions: triggerOptions,
-        }),
+        isEditMode
+          ? { ...editingNotification }
+          : getDefaultQuestionAlertRequest({
+              cardId: questionId,
+              userId: user.id,
+              channelSpec,
+              availableTriggerOptions: triggerOptions,
+            }),
       );
     }
-  }, [notification, channelSpec, questionId, triggerOptions, user]);
+  }, [
+    notification,
+    channelSpec,
+    questionId,
+    triggerOptions,
+    user,
+    editingNotification,
+    isEditMode,
+  ]);
 
-  const onCreateAlert = async () => {
+  const onCreateOrEditAlert = async () => {
     if (notification) {
-      await createNotification(notification);
+      if (isEditMode) {
+        await updateNotification(
+          notification as UpdateAlertNotificationRequest, // TODO: remove typecast
+        );
+        onAlertUpdated();
+      } else {
+        await createNotification(notification);
+        onAlertCreated();
+      }
 
       await dispatch(updateUrl(question, { dirty: false }));
-
-      onAlertCreated();
     }
   };
 
@@ -142,14 +175,15 @@ export const CreateAlertModalContent = ({
   return (
     <ModalContent
       data-testid="alert-create"
-      title={t`New alert`}
+      title={isEditMode ? t`Edit alert` : t`New alert`}
+      withFooterTopBorder
       footer={
         <>
           <Button onClick={onCancel} className={CS.mr2}>{t`Cancel`}</Button>
           <ButtonWithStatus
             titleForState={{ default: t`Done` }}
             // disabled={!isValid}
-            onClickOperation={onCreateAlert}
+            onClickOperation={onCreateOrEditAlert}
           />
         </>
       }

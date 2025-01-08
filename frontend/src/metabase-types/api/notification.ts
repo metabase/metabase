@@ -1,4 +1,5 @@
 import type { CardId } from "metabase-types/api/card";
+import type { Channel } from "metabase-types/api/notifications";
 import type { PaginationRequest } from "metabase-types/api/pagination";
 import type { UserId, UserInfo } from "metabase-types/api/user";
 
@@ -13,31 +14,43 @@ export type NotificationCardSendCondition =
 type NotificationCardPayload = {
   payload_type: "notification/card";
   payload: {
-    id?: number;
     card_id: CardId;
     send_once: boolean;
     send_condition: NotificationCardSendCondition;
-  };
-};
 
-type NotificationDashboardPayload = {
-  payload_type: "notification/dashboard";
-  payload: {
     id?: number;
-    send_once: boolean;
+    created_at?: string;
+    updated_at?: string;
   };
+  payload_id?: number;
 };
 
-type NotificationPayload =
-  | NotificationCardPayload
-  | NotificationDashboardPayload;
+// type NotificationDashboardPayload = {
+//   payload_type: "notification/dashboard";
+//   payload: {
+//     id?: number;
+//     send_once: boolean;
+//   };
+// };
+
+type NotificationPayload = NotificationCardPayload;
+// | NotificationDashboardPayload;
 
 //#endregion
 
 //#region Handler union type
 export type NotificationRecipientUser = {
   type: "notification-recipient/user";
-  user_id: number;
+  user_id?: number | null;
+  permissions_group_id?: number | null;
+
+  details: null;
+
+  id?: number;
+  notification_handler_id?: number;
+  user?: UserInfo;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type NotificationRecipientRawValue = {
@@ -45,6 +58,9 @@ export type NotificationRecipientRawValue = {
   details: {
     value: string;
   };
+
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type NotificationRecipient =
@@ -52,9 +68,16 @@ export type NotificationRecipient =
   | NotificationRecipientRawValue;
 
 type NotificationHandlerBase = {
-  template_id?: number;
-  channel_id?: number;
+  notification_id?: NotificationId;
+  template_id?: number | null;
+  channel_id?: number | null;
+  channel?: Channel | null;
+  template?: unknown | null; // TODO: hydrated template
   active?: boolean;
+
+  id?: number;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type NotificationChannelType =
@@ -90,6 +113,12 @@ type NotificationCronSubscription = {
   type: "notification-subscription/cron";
   event_name: null;
   cron_schedule: string;
+
+  // only for existing notifications
+  id?: number;
+  notification_id?: number;
+  created_at?: string;
+  updated_at?: string;
 };
 
 //#endregion
@@ -109,10 +138,20 @@ export type CreateNotificationRequest = NotificationPayload & {
 
 export type CreateAlertNotificationRequest = NotificationCardPayload & {
   handlers: NotificationHandler[];
-  subscriptions: [NotificationCronSubscription];
+  subscriptions: NotificationCronSubscription[];
 };
 
-// export interface UpdateNotificationRequest extends NotificationCardPayload {}
+export type UpdateNotificationRequest = NotificationCardPayload & {
+  id: NotificationId;
+  handlers: NotificationHandler[];
+  subscriptions: NotificationCronSubscription[];
+};
+
+export type UpdateAlertNotificationRequest = NotificationCardPayload & {
+  id: NotificationId;
+  handlers: NotificationHandler[];
+  subscriptions: NotificationCronSubscription[];
+};
 
 export type Notification = NotificationPayload & {
   id: NotificationId;
@@ -123,4 +162,7 @@ export type Notification = NotificationPayload & {
 
   creator_id: UserId;
   creator: UserInfo;
+
+  updated_at?: string;
+  created_at?: string;
 };
