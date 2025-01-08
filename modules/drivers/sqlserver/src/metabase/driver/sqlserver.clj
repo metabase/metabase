@@ -653,7 +653,7 @@
                  rset (.executeQuery stmt)]
        (when (.next rset)
          (when-let [offset-date-time (.getObject rset 1 java.time.OffsetDateTime)]
-           (t/zone-offset offset-date-time)))))))
+           (str (t/zone-offset offset-date-time))))))))
 
 (defmethod sql.qp/current-datetime-honeysql-form :sqlserver
   [_]
