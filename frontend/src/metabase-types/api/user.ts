@@ -114,3 +114,25 @@ export type UpdateUserRequest = {
   login_attributes?: Record<UserAttribute, UserAttribute> | null;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
 };
+
+export type UserKeyValueNamespace = string; // TODO;
+export type UserKeyValueKey = string; // TODO;
+
+export type DeleteUserKeyValueRequest = {
+  namespace: UserKeyValueNamespace;
+  key: UserKeyValueKey;
+};
+
+export type GetUserKeyValueRequest = {
+  namespace: UserKeyValueNamespace;
+  key: UserKeyValueKey;
+};
+
+export type UpdateUserKeyValueRequest = {
+  namespace: UserKeyValueNamespace;
+  key: UserKeyValueKey;
+  // TODO: type
+  // TODO: send as v
+  value: any;
+  expires_at?: string;
+};
