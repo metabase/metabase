@@ -209,9 +209,9 @@ const SERIALIZERS: Serializer[] = [
       }
     },
   },
-  // `lastmonth`, `lastyear`
+  // `previousmonth`, `previousyear`
   {
-    regex: /^last(\w+)$/,
+    regex: /^previous(\w+)$/,
     // TODO serialize properly when legacy `getFilterTitle` is removed
     serialize: () => undefined,
     deserialize: match => {
