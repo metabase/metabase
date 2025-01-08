@@ -58,7 +58,7 @@
             ;; This will block the calling thread (i.e. the test) waiting for the promise to be delivered. There is a
             ;; very high timeout (30 seconds) that we should never reach, but without it, if we do hit that scenario, it
             ;; should at least not hang forever in CI
-            promise-value (deref p (if config/is-dev? 3000 30000) ::timeout)]
+            promise-value (deref p (cond-> 30000 config/is-dev? (/ 10)) ::timeout)]
         (if (= promise-value ::timeout)
           (throw (Exception. "Timed out while waiting for messages in the inbox"))
           result))

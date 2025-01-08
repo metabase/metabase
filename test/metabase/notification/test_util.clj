@@ -46,16 +46,17 @@
   `(binding [notification/*default-options* {:notification/sync? true}]
      ~@body))
 
-(defn do-with-captured-channel-send!
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defn do-with-captured-channel-send
   [thunk]
   (with-send-notification-sync
     (let [channel-messages (atom {})]
-      (with-redefs [channel/send! (fn [channel message]
-                                    (swap! channel-messages update (:type channel) u/conjv message))]
+      (mt/with-dynamic-redefs [channel/send! (fn [channel message]
+                                               (swap! channel-messages update (:type channel) u/conjv message))]
         (thunk)
         @channel-messages))))
 
-(defmacro with-captured-channel-send!
+(defmacro with-captured-channel-send
   "Macro that captures all messages sent to channels in the body of the macro.
   Returns a map of channel-type -> messages sent to that channel.
 
@@ -66,7 +67,7 @@
   @captured-messages
   ;; => {:channel/email [{:say :hi} {:say :xin-chao}]}"
   [& body]
-  `(do-with-captured-channel-send!
+  `(do-with-captured-channel-send
     (fn []
       ~@body)))
 
@@ -77,7 +78,7 @@
      (try
        (doseq [topic# topics#]
          (derive topic# :metabase/event))
-       (with-redefs [events.notification/supported-topics (set/union @#'events.notification/supported-topics topics#)]
+       (mt/with-dynamic-redefs [events.notification/supported-topics (set/union @#'events.notification/supported-topics topics#)]
          ~@body)
        (finally
          (doseq [topic# topics#]
@@ -171,7 +172,7 @@
                                                                  email-smtp-port 587
                                                                  site-url        "https://metabase.com/testmb"]
                                 (thunk)))
-   :channel/slack (fn [thunk] (with-redefs [slack/files-channel (constantly "FOO")]
+   :channel/slack (fn [thunk] (mt/with-dynamic-redefs [slack/files-channel (constantly "FOO")]
                                 (thunk)))})
 
 (defn apply-channel-fixtures
@@ -185,11 +186,12 @@
   [channel-types & body]
   `(apply-channel-fixtures ~channel-types (fn [] ~@body)))
 
-(defn test-send-notification!
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defn test-send-notification
   "Test sending a notification with the given channel-type->assert-fn map."
   [notification channel-type->assert-fn]
   (with-channel-fixtures (keys channel-type->assert-fn)
-    (let [channel-type->captured-message (with-captured-channel-send!
+    (let [channel-type->captured-message (with-captured-channel-send
                                            (notification/send-notification! notification))]
 
       (doseq [[channel-type assert-fn] channel-type->assert-fn]
@@ -208,8 +210,8 @@
   "Helper function that mocks email/send-email! to capture emails in a vector and returns them."
   [thunk]
   (let [emails (atom [])]
-    (with-redefs [email/send-email! (fn [_ email]
-                                      (swap! emails conj email))]
+    (mt/with-dynamic-redefs [email/send-email! (fn [_ email]
+                                                 (swap! emails conj email))]
       (thunk)
       @emails)))
 

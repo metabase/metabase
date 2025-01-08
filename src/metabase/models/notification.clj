@@ -470,11 +470,11 @@
 (mu/defn hydrate-notification :- ::FullyHydratedNotification
   "Fully hydrate notifictitons."
   [notification-or-notifications]
-  (u/prog1 (t2/hydrate notification-or-notifications
-                       :creator
-                       :payload
-                       :subscriptions
-                       [:handlers :channel :template :recipients])))
+  (t2/hydrate notification-or-notifications
+              :creator
+              :payload
+              :subscriptions
+              [:handlers :channel :template :recipients]))
 
 (defn notifications-for-event
   "Find all active notifications for a given event."

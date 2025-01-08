@@ -100,7 +100,7 @@
     (doseq [from-setup? [true false]]
       (testing (format "from %s page" (if from-setup? "setup" "invite"))
         (is (= {:channel/email 1}
-               (update-vals (notification.tu/with-captured-channel-send!
+               (update-vals (notification.tu/with-captured-channel-send
                               (publish-user-invited-event! (t2/select-one :model/User)
                                                            {:first_name "Ngoc"
                                                             :email      "ngoc@metabase.com"}
@@ -112,7 +112,7 @@
                 (let [email (mt/with-temporary-setting-values
                               [site-url  "https://metabase.com"
                                site-name "SuperStar"]
-                              (-> (notification.tu/with-captured-channel-send!
+                              (-> (notification.tu/with-captured-channel-send
                                     (publish-user-invited-event! (t2/select-one :model/User :email "crowberto@metabase.com")
                                                                  {:first_name "Ngoc" :email "ngoc@metabase.com"}
                                                                  sent-from-setup?))
@@ -158,7 +158,7 @@
                     (let [regexes [#"This is just a confirmation"
                                    (re-pattern (format "<a href=\"%s\"*>%s</a>" (urls/card-url (:id card)) (:name card)))
                                    condition-regex]
-                          email   (-> (notification.tu/with-captured-channel-send!
+                          email   (-> (notification.tu/with-captured-channel-send
                                         (events/publish-event! :event/alert-create {:object (t2/instance :model/Pulse
                                                                                                          (merge {:name "A Pulse"
                                                                                                                  :card card}
@@ -188,7 +188,7 @@
   (let [check (fn [recipients regexes]
                 (let [email (mt/with-temporary-setting-values
                               [site-url  "https://metabase.com"]
-                              (-> (notification.tu/with-captured-channel-send!
+                              (-> (notification.tu/with-captured-channel-send
                                     (events/publish-event! :event/slack-token-invalid {}))
                                   :channel/email
                                   first))]

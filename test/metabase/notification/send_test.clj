@@ -47,7 +47,7 @@
             (testing "channel/send! are called on rendered messages"
               (is (=? {:channel/metabase-test [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}
                                                {:type :notification-recipient/user :user_id (mt/user->id :rasta)}]}
-                      (notification.tu/with-captured-channel-send!
+                      (notification.tu/with-captured-channel-send
                         (notification.send/send-notification-sync! notification-info)))))
 
             (testing "render-notification is called on all handlers with the correct channel and template"

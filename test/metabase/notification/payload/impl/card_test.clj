@@ -13,10 +13,10 @@
    [toucan2.core :as t2]))
 
 (use-fixtures
- :each
- (fn [thunk]
-   (binding [notification/*default-options* {:notification/sync? true}]
-     (thunk))))
+  :each
+  (fn [thunk]
+    (binding [notification/*default-options* {:notification/sync? true}]
+      (thunk))))
 
 (defn- construct-email
   [& [data]]
@@ -47,7 +47,7 @@
                                       {:channel_type :channel/http
                                        :channel_id   http-channel-id}]}]
             (let [card-id (-> notification :payload :card_id)]
-              (notification.tu/test-send-notification!
+              (notification.tu/test-send-notification
                notification
                {:channel/email
                 (fn [[email]]
@@ -95,7 +95,6 @@
                                   :sent_at            (mt/malli=? :any)}}
                           req)))}))))))))
 
-
 (deftest basic-line-graph-test
   (testing "card notification of a simple line graph"
     (notification.tu/with-card-notification
@@ -104,7 +103,7 @@
                                 :display       :line}
                      :handlers [@notification.tu/default-email-handler
                                 notification.tu/default-slack-handler]}]
-      (notification.tu/test-send-notification!
+      (notification.tu/test-send-notification
        notification
        {:channel/email
         (fn [[email]]
@@ -141,7 +140,7 @@
       (notification.tu/with-card-notification [notification {:card     {:dataset_query (mt/mbql-query orders)}
                                                              :handlers [@notification.tu/default-email-handler]}]
 
-        (notification.tu/test-send-notification!
+        (notification.tu/test-send-notification
          notification
          {:channel/email
           (fn [[email]]
@@ -160,7 +159,7 @@
                                               {:type    :notification-recipient/raw-value
                                                :details {:value "ngoc@metabase.com"}}]}]}]
 
-    (notification.tu/test-send-notification!
+    (notification.tu/test-send-notification
      notification
      {:channel/email
       (fn [emails]
@@ -178,7 +177,7 @@
                          :notification-card {:send_condition :has_result}
                          :handlers          [@notification.tu/default-email-handler
                                              notification.tu/default-slack-handler]}]
-          (notification.tu/test-send-notification!
+          (notification.tu/test-send-notification
            notification
            {:channel/email
             (fn [emails]
@@ -241,7 +240,7 @@
                                                                   :graph.metrics    ["count"]}}
                      :notification-card {:send_condition :goal_above}
                      :handlers          [@notification.tu/default-email-handler]}]
-      (notification.tu/test-send-notification!
+      (notification.tu/test-send-notification
        notification
        {:channel/email
         (fn [emails]
@@ -261,7 +260,7 @@
                                                                   :graph.metrics    ["count"]}}
                      :notification-card {:send_condition :goal_above}
                      :handlers          [@notification.tu/default-email-handler]}]
-      (notification.tu/test-send-notification!
+      (notification.tu/test-send-notification
        notification
        {:channel/email
         (fn [[email]]
@@ -292,7 +291,7 @@
                                                                   :graph.metrics    ["count"]}}
                      :notification-card {:send_condition :goal_below}
                      :handlers          [@notification.tu/default-email-handler]}]
-      (notification.tu/test-send-notification!
+      (notification.tu/test-send-notification
        notification
        {:channel/email
         (fn [emails]
@@ -312,7 +311,7 @@
                                                                   :graph.metrics    ["count"]}}
                      :notification-card {:send_condition :goal_below}
                      :handlers          [@notification.tu/default-email-handler]}]
-      (notification.tu/test-send-notification!
+      (notification.tu/test-send-notification
        notification
        {:channel/email
         (fn [[email]]
@@ -333,7 +332,7 @@
     [notification {:handlers [{:channel_type :channel/email
                                :recipients   [{:type    :notification-recipient/raw-value
                                                :details {:value "ngoc@metabase.com"}}]}]}]
-    (notification.tu/test-send-notification!
+    (notification.tu/test-send-notification
      notification
      {:channel/email
       (fn [[email]]
@@ -397,7 +396,7 @@
                                                         (throw (ex-info "Slack failed" {}))
                                                         (apply original-render-noti args)))]
             ;; slack failed but email should still be sent
-            (notification.tu/test-send-notification!
+            (notification.tu/test-send-notification
              notification
              {:channel/email
               (fn [emails]
@@ -412,7 +411,7 @@
       [notification {:card     {:archived true}
 
                      :handlers [@notification.tu/default-email-handler]}]
-      (notification.tu/test-send-notification!
+      (notification.tu/test-send-notification
        notification
        {:channel/email
         (fn [emails]

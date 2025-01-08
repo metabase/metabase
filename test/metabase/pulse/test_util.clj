@@ -70,7 +70,7 @@
 
 (defmacro with-captured-channel-send-messages!
   [& body]
-  `(notification.tu/with-captured-channel-send!
+  `(notification.tu/with-captured-channel-send
      ~@body))
 
 (def png-attachment
