@@ -254,7 +254,7 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   }, [dispatch, rtkError, requestStatePath, queryKey]);
 
   useEffect(() => {
-    if (data) {
+    if (data && !isFetching) {
       const { results, metadata } = transformResponse(data);
 
       if (isPaginationMetadata(metadata)) {
@@ -289,6 +289,7 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
     data,
     entityDefinition,
     entityQuery,
+    isFetching,
     requestStatePath,
     queryKey,
     setHasMorePages,
