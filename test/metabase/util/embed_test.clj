@@ -5,9 +5,8 @@
    [crypto.random :as crypto-random]
    [java-time.api :as t]
    [metabase.config :as config]
-   [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
+   [metabase.premium-features.token-check :as token-check]
+   [metabase.premium-features.token-check-test :as token-check-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
@@ -42,12 +41,12 @@
             (is (not (embed/show-static-embed-terms)))))
         (when config/ee-available?
           (testing "should return false when an EE user has a valid token"
-            (with-redefs [premium-features/fetch-token-status (fn [_x]
-                                                                {:valid    true
-                                                                 :status   "fake"
-                                                                 :features ["test" "fixture"]
-                                                                 :trial    false})]
-              (mt/with-temporary-setting-values [premium-embedding-token (premium-features-test/random-token)]
+            (with-redefs [token-check/fetch-token-status (fn [_x]
+                                                           {:valid    true
+                                                            :status   "fake"
+                                                            :features ["test" "fixture"]
+                                                            :trial    false})]
+              (mt/with-temporary-setting-values [premium-embedding-token (token-check-test/random-token)]
                 (is (not (embed/show-static-embed-terms)))
                 (embed/show-static-embed-terms! false)
                 (is (not (embed/show-static-embed-terms))))))

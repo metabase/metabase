@@ -8,7 +8,7 @@
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
