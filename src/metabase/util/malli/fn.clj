@@ -330,6 +330,7 @@
   [namespace]
   (or (true? (:instrument/always (meta namespace)))
       config/is-dev?
+      ;; baseline
       config/is-test?))
 
 (defmacro fn
