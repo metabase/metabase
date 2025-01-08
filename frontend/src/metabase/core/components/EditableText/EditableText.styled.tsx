@@ -1,7 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-export interface EditableTextRootProps {
+interface EditableTextRootProps {
   isEditing?: boolean;
   isDisabled: boolean;
   isEditingMarkdown?: boolean;

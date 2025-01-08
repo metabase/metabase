@@ -4,8 +4,7 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.model-index :as model-index :refer [ModelIndex]]
+   [metabase.models.model-index :as model-index]
    [metabase.task.index-values :as task.index-values]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -37,7 +36,7 @@
   {model_id  ms/PositiveInt
    pk_ref    any?
    value_ref any?}
-  (let [model    (api/write-check Card model_id)
+  (let [model    (api/write-check :model/Card model_id)
         metadata (:result_metadata model)]
     (when-not (seq metadata)
       (throw (ex-info (tru "Model has no metadata. Cannot index")
@@ -55,25 +54,25 @@
                               :model-id model_id})
       (task.index-values/add-indexing-job model-index)
       (model-index/add-values! model-index)
-      (t2/select-one ModelIndex :id (:id model-index)))))
+      (t2/select-one :model/ModelIndex :id (:id model-index)))))
 
 (api/defendpoint GET "/"
   "Retrieve list of ModelIndex."
   [model_id]
   {model_id ms/PositiveInt}
-  (let [model (api/read-check Card model_id)]
+  (let [model (api/read-check :model/Card model_id)]
     (when-not (= (:type model) :model)
       (throw (ex-info (tru "Question {0} is not a model" model_id)
                       {:model_id model_id
                        :status-code 400})))
-    (t2/select ModelIndex :model_id model_id)))
+    (t2/select :model/ModelIndex :model_id model_id)))
 
 (api/defendpoint GET "/:id"
   "Retrieve ModelIndex."
   [id]
   {id ms/PositiveInt}
-  (let [model-index (api/check-404 (t2/select-one ModelIndex :id id))
-        model       (api/read-check Card (:model_id model-index))]
+  (let [model-index (api/check-404 (t2/select-one :model/ModelIndex :id id))
+        model       (api/read-check :model/Card (:model_id model-index))]
     (when-not (= (:type model) :model)
       (throw (ex-info (tru "Question {0} is not a model" id)
                       {:model_id id
@@ -84,8 +83,8 @@
   "Delete ModelIndex."
   [id]
   {id ms/PositiveInt}
-  (api/let-404 [model-index (t2/select-one ModelIndex :id id)]
-    (api/write-check Card (:model_id model-index))
-    (t2/delete! ModelIndex id)))
+  (api/let-404 [model-index (t2/select-one :model/ModelIndex :id id)]
+    (api/write-check :model/Card (:model_id model-index))
+    (t2/delete! :model/ModelIndex id)))
 
 (api/define-routes)

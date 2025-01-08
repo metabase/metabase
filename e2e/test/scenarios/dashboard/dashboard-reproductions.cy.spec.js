@@ -1051,7 +1051,9 @@ describe("should not redirect users to other pages when linking an entity (metab
 
     cy.icon("link").click();
     H.popover().findByText("Link").click();
-    cy.findByTestId("custom-edit-text-link").type(TEST_QUESTION_NAME);
+    cy.findByTestId("custom-edit-text-link")
+      .findByPlaceholderText("https://example.com")
+      .type(TEST_QUESTION_NAME);
     cy.findByTestId("search-results-list").within(() => {
       cy.findByText(TEST_QUESTION_NAME).click();
     });
@@ -1506,7 +1508,7 @@ describe("issue 42165", () => {
       H.visitDashboard(dashboardId);
 
       H.filterWidget().click();
-      H.popover().findByText("Last 30 Days").click();
+      H.popover().findByText("Last 30 days").click();
       cy.wait("@dashcardQuery");
 
       H.getDashboardCard(0).findByText("fooBarQuestion").click();
