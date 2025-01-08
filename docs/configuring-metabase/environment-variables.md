@@ -738,7 +738,7 @@ Enable group membership synchronization with JWT.
 - Default: `null`
 - [Configuration file name](./config-file.md): `jwt-identity-provider-uri`
 
-URL of JWT based login page.
+URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK.
 
 ### `MB_JWT_SHARED_SECRET`
 
