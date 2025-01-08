@@ -24,8 +24,6 @@ describe("server clock", () => {
       cy.wrap(response.body).as("serverTimeZone");
     });
 
-    expect(1).to.equal("x");
-
     cy.then(function () {
       const oneDayInMilliseconds = 86400000;
 
