@@ -186,6 +186,8 @@
   (cond
     (:card_id dashcard)
     (let [parameters (merge-default-values parameters)]
+      ;; only do this for dashboard subscriptions but not alerts since alerts has only one card, which doesn't eat much
+      ;; memory
       (m/update-existing (execute-dashboard-subscription-card dashcard parameters) :result data-rows-to-disk!))
 
     (virtual-card-of-type? dashcard "iframe")
