@@ -8,8 +8,8 @@ const setup = () => {
   return render(
     <>
       <HoverCard>
-        <HoverCard.Target>
-          <Button>Target</Button>
+        <HoverCard.Target data-testid="hovercard-target">
+          Target
         </HoverCard.Target>
         <HoverCard.Dropdown>
           <Paper>Dropdown</Paper>
@@ -29,7 +29,7 @@ describe("HoverCard", () => {
 
     // Let's move the focus to the HoverCard's target
     await userEvent.tab();
-    expect(screen.getByRole("button", { name: "Target" })).toHaveFocus();
+    expect(await screen.findByTestId("hovercard-target")).toHaveFocus();
 
     // The dropdown should appear soon
     expect(await screen.findByText("Dropdown")).toBeVisible();
