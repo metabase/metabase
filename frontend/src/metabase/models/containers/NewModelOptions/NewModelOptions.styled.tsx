@@ -39,7 +39,7 @@ export const EducationalButton = styled(ExternalLink)`
   }
 `;
 
-export interface OptionsGridItemProps {
+interface OptionsGridItemProps {
   itemsCount: number;
 }
 

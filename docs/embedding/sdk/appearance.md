@@ -6,7 +6,7 @@ title: "Embedded analytics SDK - appearance"
 
 {% include beta-blockquote.html %}
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true enterprise-only=true %}
 
 You can style your embedded Metabase components with a theme.
 
@@ -96,6 +96,10 @@ const theme = defineMetabaseTheme({
     dashboard: {
       // Background color for all dashboards
       backgroundColor: "#2F3640",
+
+      // Border color of the dashboard grid, shown only when editing dashboards.
+      // Defaults to `colors.border`
+      gridBorderColor: "#EEECEC",
 
       card: {
         // Background color for all dashboard cards

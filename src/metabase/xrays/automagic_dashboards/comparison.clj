@@ -4,7 +4,6 @@
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
    [metabase.util :as u]
@@ -205,7 +204,7 @@
                           :description ""})
                        (when (and ((some-fn :query-filter :cell-query) left)
                                   (not= (:source left) (:entity right)))
-                         [{:url         (if (->> left :source (mi/instance-of? Table))
+                         [{:url         (if (->> left :source (mi/instance-of? :model/Table))
                                           (str (:url left) "/compare/table/"
                                                (-> left :source u/the-id))
                                           (str (:url left) "/compare/adhoc/"
@@ -247,7 +246,7 @@
         right              (cond-> right
                              (part-vs-whole-comparison? left right)
                              (assoc :comparison-name (condp mi/instance-of? (:entity right)
-                                                       Table
+                                                       :model/Table
                                                        (tru "All {0}" (:short-name right))
 
                                                        (tru "{0}, all {1}"

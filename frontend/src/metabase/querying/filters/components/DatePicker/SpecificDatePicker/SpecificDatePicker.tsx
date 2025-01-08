@@ -29,7 +29,7 @@ interface SpecificDatePickerProps {
   value?: SpecificDatePickerValue;
   availableOperators: DatePickerOperator[];
   availableUnits: DatePickerUnit[];
-  isNew: boolean;
+  submitButtonLabel: string;
   onChange: (value: SpecificDatePickerValue) => void;
   onBack: () => void;
 }
@@ -38,7 +38,7 @@ export function SpecificDatePicker({
   value: initialValue,
   availableOperators,
   availableUnits,
-  isNew,
+  submitButtonLabel,
   onChange,
   onBack,
 }: SpecificDatePickerProps) {
@@ -86,7 +86,7 @@ export function SpecificDatePicker({
           {isDateRange(value.values) ? (
             <DateRangePicker
               value={{ dateRange: value.values, hasTime: value.hasTime }}
-              isNew={isNew}
+              submitButtonLabel={submitButtonLabel}
               hasTimeToggle={hasTimeToggle}
               onChange={handleDateRangeChange}
               onSubmit={handleSubmit}
@@ -94,7 +94,7 @@ export function SpecificDatePicker({
           ) : (
             <SingleDatePicker
               value={{ date: getDate(value), hasTime: value.hasTime }}
-              isNew={isNew}
+              submitButtonLabel={submitButtonLabel}
               hasTimeToggle={hasTimeToggle}
               onChange={handleDateChange}
               onSubmit={handleSubmit}

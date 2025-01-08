@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 
 import { alpha } from "metabase/lib/colors";
 
-export interface ButtonRootProps {
+interface ButtonRootProps {
   purple?: boolean;
   onlyText?: boolean;
   light?: boolean;
@@ -61,7 +61,7 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
     `}
 `;
 
-export interface ButtonContentProps {
+interface ButtonContentProps {
   iconVertical?: boolean;
 }
 
@@ -73,7 +73,7 @@ export const ButtonContent = styled.div<ButtonContentProps>`
   min-width: ${props => (props.iconVertical ? "60px" : "")};
 `;
 
-export interface ButtonTextContainerProps {
+interface ButtonTextContainerProps {
   iconVertical: boolean;
   hasIcon: boolean;
   hasRightIcon: boolean;

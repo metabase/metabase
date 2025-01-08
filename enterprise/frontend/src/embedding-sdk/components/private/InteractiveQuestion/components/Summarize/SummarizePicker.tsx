@@ -44,7 +44,6 @@ export const SummarizePicker = ({
         aggregation?.operators ??
         Lib.availableAggregationOperators(query, stageIndex)
       }
-      allowTemporalComparisons
       onQueryChange={onQueryChange}
       onBack={aggregationPickerProps.onBack}
       onClose={aggregationPickerProps.onClose}

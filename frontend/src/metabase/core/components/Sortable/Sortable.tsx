@@ -46,6 +46,7 @@ export function Sortable({
       transform={CSS.Translate.toString(transform)}
       transition={transition}
       isDragging={isDragging}
+      data-is-dragging={isDragging}
       ref={setNodeRef}
       {...attributes}
       {...listeners}

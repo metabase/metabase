@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
 
-export interface FormTextAreaRootProps {
+interface FormTextAreaRootProps {
   touched?: boolean;
   error?: string | boolean;
 }
