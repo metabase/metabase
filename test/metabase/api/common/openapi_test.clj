@@ -64,12 +64,14 @@
 
 ;;; definitions
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id"
   "docstring"
   [id]
   {id ms/PositiveInt}
   {:id (str id)})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id"
   "docstring"
   [id value]
@@ -78,6 +80,7 @@
   {:id    (str id)
    :value value})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint ^:multipart POST "/:id/upload"
   "docstring"
   [id :as {{:strs [file]} :multipart-params}]
@@ -86,6 +89,7 @@
                  {:description "File to upload"})}
   {:id id :data file})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/export"
   "docstring"
   [:as {{:strs [collection settings data-model]} :query-params}]
@@ -94,12 +98,14 @@
    data-model ms/MaybeBooleanValue}
   {:collections collection :settings settings})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/rename"
   "this one renames query parameter trying to trick us"
   [:as {{c :count} :query-params}]
   {c ms/PositiveInt}
   {:count c})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/complex/:id"
   "More complex body schema"
   [id :as {data :body}]

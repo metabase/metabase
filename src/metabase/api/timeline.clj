@@ -80,6 +80,7 @@
                                                :events/start (when start (u.date/parse start))
                                                :events/end   (when end (u.date/parse end))}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id"
   "Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the
   events in that timeline."
@@ -102,6 +103,7 @@
       (t2/update! :model/TimelineEvent {:timeline_id id} {:archived archived}))
     (t2/hydrate (t2/select-one :model/Timeline :id id) :creator [:collection :can_write])))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:id"
   "Delete a [[Timeline]]. Will cascade delete its events as well."
   [id]

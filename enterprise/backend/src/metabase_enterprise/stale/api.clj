@@ -116,6 +116,7 @@
        annotate-dashboard-with-collection-info
        present-collections))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id"
   "A flexible endpoint that returns stale entities, in the same shape as collections/items, with the following options:
   - `before_date` - only return entities that were last edited before this date (default: 6 months ago)
