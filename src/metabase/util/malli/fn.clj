@@ -329,9 +329,7 @@
   "Returns true if mu.fn/fn and mu/defn in a namespace should be instrumented with malli schema validation."
   [namespace]
   (or (true? (:instrument/always (meta namespace)))
-      config/is-dev?
-      ;; baseline
-      config/is-test?))
+      config/is-dev?))
 
 (defmacro fn
   "Malli version of [[schema.core/fn]].
