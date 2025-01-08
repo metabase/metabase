@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
+   [metabase.events :as events]
    [metabase.models.interface :as mi]
    [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
@@ -99,6 +100,7 @@
                        (:handlers body)))]
     (when (card-notification? notification)
       (send-you-were-added-card-notification-email! notification))
+    (events/publish-event! :event/notification-create {:object notification :user-id api/*current-user-id*})
     notification))
 
 (defn- notify-notification-updates!
@@ -138,7 +140,10 @@
     (models.notification/update-notification! existing-notification body)
     (when (card-notification? existing-notification)
       (notify-notification-updates! body existing-notification))
-    (get-notification id)))
+    (u/prog1 (get-notification id)
+      (events/publish-event! :event/notification-update {:object          <>
+                                                         :previous-object existing-notification
+                                                         :user-id         api/*current-user-id*}))))
 
 (api/defendpoint POST "/:id/send"
   "Send a notification by id."
@@ -167,13 +172,16 @@
   {id ms/PositiveInt}
   (let [notification (get-notification id)]
     (api/check-403 (models.notification/can-unsubscribe? notification))
-    (models.notification/unsubscribe-user! id api/*current-user-id*)
-    (let [notification (get-notification id)]
-      (when (card-notification? notification)
-        (u/ignore-exceptions
-          (messages/send-you-unsubscribed-notification-card-email!
-           (update notification :payload t2/hydrate :card)
-           [(:email @api/*current-user*)])))
-      notification)))
+    (when (pos? (models.notification/unsubscribe-user! id api/*current-user-id*))
+      (let [user-email   (:email @api/*current-user*)
+            notification (get-notification id)]
+        (when (card-notification? notification)
+          (u/ignore-exceptions
+            (messages/send-you-unsubscribed-notification-card-email!
+             (update notification :payload t2/hydrate :card)
+             [user-email])))
+        (events/publish-event! :event/notification-unsubscribe {:object {:id id}
+                                                                :user-id api/*current-user-id*})
+        nil))))
 
 (api/define-routes)
