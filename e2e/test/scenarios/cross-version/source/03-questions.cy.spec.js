@@ -53,7 +53,7 @@ it("should create questions", () => {
 
   cy.get(".bar").should("have.length", 4);
 
-  cy.findByTestId("viz-settings-button").click();
+  H.openVizSettingsSidebar();
 
   //NOTE: In older versions of Metabase, Display is selected by default. Newer
   // versions default to Data. This will ensure we've selected the right tab
@@ -110,7 +110,7 @@ it("should create questions", () => {
   H.visualize();
   cy.get("circle");
 
-  cy.findByTestId("viz-type-button").click();
+  H.openVizTypeSidebar();
   cy.findByTestId("Area-button").click();
 
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

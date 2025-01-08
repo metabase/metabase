@@ -198,7 +198,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
                false)))
 
 (defsetting jwt-identity-provider-uri
-  (deferred-tru "URL of JWT based login page")
+  (deferred-tru "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK.")
   :encryption :when-encryption-key-set
   :feature    :sso-jwt
   :audit      :getter)
@@ -267,9 +267,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :default false
   :feature :sso-jwt
   :setter  :none
-  :getter  (fn [] (boolean
-                   (and (jwt-identity-provider-uri)
-                        (jwt-shared-secret)))))
+  :getter  (fn [] (boolean (jwt-shared-secret))))
 
 (defsetting jwt-enabled
   (deferred-tru "Is JWT authentication configured and enabled?")

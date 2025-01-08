@@ -388,6 +388,33 @@
   (str "data:application/octet-stream;base64,"
        (u/encode-base64 private-key-value)))
 
+(deftest can-change-from-password-test
+  (mt/test-driver
+    :snowflake
+    (let [details (:details (mt/db))
+          pk-key "testing"]
+      (is (=?
+           {:user some?
+            :password some?
+            :private_key_file complement}
+           (sql-jdbc.conn/connection-details->spec :snowflake details)))
+      (is (=?
+           {:user some?
+            :password some?
+            :private_key_file complement}
+            ;; Before `use-password` password took precedence over a key file
+           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :private-key-value pk-key))))
+      (is (=?
+           {:user some?
+            :password complement
+            :private_key_file some?}
+           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :password nil :private-key-value pk-key))))
+      (is (=?
+           {:user some?
+            :password complement
+            :private_key_file some?}
+           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :use-password false :private-key-value pk-key)))))))
+
 (deftest can-connect-test
   (let [pk-key (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
         pk-user (tx/db-test-env-var :snowflake :pk-user)
