@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import { SearchFilterDatePicker } from "./SearchFilterDatePicker";
 
@@ -21,7 +21,7 @@ const setup = ({ value = null }: SetupProps = {}) => {
 describe("SearchFilterDatePicker", () => {
   it("should render SearchFilterDatePicker component", () => {
     setup();
-    expect(screen.getByTestId("date-picker")).toBeInTheDocument();
+    expect(screen.getByText("Specific dates…")).toBeInTheDocument();
   });
 
   it("should not display Exclude… in the date picker shortcut options", () => {
@@ -37,17 +37,12 @@ describe("SearchFilterDatePicker", () => {
 
   it("should populate the `Specific dates…` date picker with the value passed in", () => {
     setup({ value: "2023-09-20" });
-    const specificDatePicker = screen.getByTestId("specific-date-picker");
-    expect(specificDatePicker).toBeInTheDocument();
-
-    expect(
-      within(screen.getByTestId("specific-date-picker")).getByRole("textbox"),
-    ).toHaveValue("09/20/2023");
+    expect(screen.getByLabelText("Date")).toHaveValue("September 20, 2023");
   });
 
   it("should populate the `Relative dates…` date picker with the value passed in", () => {
     setup({ value: "past30days" });
-    expect(screen.getByTestId("relative-datetime-value")).toHaveValue("30");
-    expect(screen.getByTestId("relative-datetime-unit")).toHaveValue("days");
+    expect(screen.getByLabelText("Interval")).toHaveValue("30");
+    expect(screen.getByLabelText("Unit")).toHaveValue("days");
   });
 });

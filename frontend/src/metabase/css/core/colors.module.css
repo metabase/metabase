@@ -101,6 +101,7 @@
     #000
   );
   --mb-color-syntax-parameters: var(--mb-base-color-mango-30);
+  --mb-color-switch-off: var(--mb-base-color-orion-10);
 
   /**
     * Base colors
