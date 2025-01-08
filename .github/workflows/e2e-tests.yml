@@ -70,7 +70,7 @@ jobs:
       !cancelled() &&
       github.event.pull_request.draft == false &&
       needs.files-changed.outputs.e2e_all == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: them-good-ones
     timeout-minutes: 25
     strategy:
       matrix:
