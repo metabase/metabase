@@ -29,9 +29,10 @@ const MantineHoverCardTarget = MantineHoverCard.Target;
 /** A HoverCard target that opens the dropdown on focus and closes it on blur.
  * This adds a missing a11y feature to the component.
  *
- * According to Mantine, its native HoverCard " cannot be activated with
- * keyboard, use it to display only additional information that is not required
- * to understand the context." (https://mantine.dev/core/hover-card/#accessibility)
+ * According to the Mantine docs, its native HoverCard "cannot be activated
+ * with keyboard, use it to display only additional information that is not
+ * required to understand the context."
+ * (https://mantine.dev/core/hover-card/#accessibility)
  */
 const HoverCardTarget = forwardRef<HTMLDivElement, HoverCardTargetProps>(
   function Target(props, targetRef) {
