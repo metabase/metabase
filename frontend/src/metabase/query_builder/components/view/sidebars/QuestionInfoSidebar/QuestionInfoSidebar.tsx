@@ -109,8 +109,8 @@ export const QuestionInfoSidebar = ({
               <SidesheetCard>
                 <QuestionDetails question={question} />
               </SidesheetCard>
-              <EntityIdCard entityId={question._card.entity_id} />
               <SidesheetCardWithFields question={question} />
+              <EntityIdCard entityId={question._card.entity_id} />
             </Stack>
           </Tabs.Panel>
           <Tabs.Panel value="history">
