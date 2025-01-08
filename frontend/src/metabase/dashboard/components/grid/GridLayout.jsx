@@ -2,6 +2,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { Responsive as ReactGridLayout } from "react-grid-layout";
 
+import { useMantineTheme } from "metabase/ui";
+
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
@@ -20,6 +22,8 @@ export function GridLayout({
   onLayoutChange,
   ...props
 }) {
+  const theme = useMantineTheme();
+
   const [currentBreakpoint, setCurrentBreakpoint] = useState(
     ReactGridLayout.utils.getBreakpointFromWidth(breakpoints, gridWidth),
   );
@@ -95,8 +99,20 @@ export function GridLayout({
   }, [cellSize.height, layout, margin, isEditing]);
 
   const background = useMemo(
-    () => generateGridBackground({ cellSize, margin, cols, gridWidth }),
-    [cellSize, gridWidth, margin, cols],
+    () =>
+      generateGridBackground({
+        cellSize,
+        margin,
+        cols,
+        gridWidth,
+
+        // We cannot use CSS variables here, as the svg data in background-image
+        // lives a separate style tree from the rest of the app.
+        cellStrokeColor:
+          theme.other?.dashboard?.gridBorderColor ??
+          theme.fn.themeColor("border"),
+      }),
+    [cellSize, gridWidth, margin, cols, theme],
   );
 
   const style = useMemo(

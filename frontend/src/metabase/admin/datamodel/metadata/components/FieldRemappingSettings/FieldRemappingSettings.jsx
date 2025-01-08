@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component, createRef } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,6 +8,7 @@ import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
+import { connect } from "metabase/lib/redux";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { FieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";

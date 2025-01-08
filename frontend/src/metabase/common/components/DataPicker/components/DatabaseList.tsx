@@ -48,6 +48,15 @@ export const DatabaseList = ({
         items={items}
         selectedItem={selectedItem}
         onClick={onClick}
+        navLinkProps={isSelected => ({
+          px: "1.5rem",
+          py: "1.25rem",
+          mb: "1rem",
+          rightSection: null,
+          style: {
+            border: isSelected ? undefined : "1px solid var(--mb-color-border)",
+          },
+        })}
       />
     </ListBox>
   );

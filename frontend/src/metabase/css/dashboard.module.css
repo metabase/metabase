@@ -6,6 +6,28 @@
 
 /* Night mode */
 .Dashboard.DashboardNight {
+  /**
+    * Apply dark mode colors to semantic color variables.
+    * Referenced from EmbedFrame.module.css
+   */
+  --mb-color-text-primary: color-mix(
+    in srgb,
+    var(--mb-color-text-white) 90%,
+    transparent
+  );
+  --mb-color-text-dark: var(--mb-color-text-primary);
+  --mb-color-text-secondary: color-mix(
+    in srgb,
+    var(--mb-color-text-white) 65%,
+    transparent
+  );
+  --mb-color-text-tertiary: color-mix(
+    in srgb,
+    var(--mb-color-text-white) 45%,
+    transparent
+  );
+  --mb-color-bg-light: var(--mb-base-color-gray-70);
+
   background-color: var(--mb-color-bg-black);
 }
 

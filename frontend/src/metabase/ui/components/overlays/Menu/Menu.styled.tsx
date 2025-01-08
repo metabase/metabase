@@ -1,6 +1,8 @@
 import type { MantineThemeOverride } from "@mantine/core";
 import { getStylesRef, px, rem } from "@mantine/core";
 
+import ZIndex from "metabase/css/core/z-index.module.css";
+
 export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
   Menu: {
     defaultProps: {
@@ -8,6 +10,7 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
       shadow: "md",
       withinPortal: true,
     },
+    classNames: { dropdown: ZIndex.Overlay },
     styles: theme => ({
       dropdown: {
         padding: "0.75rem !important",

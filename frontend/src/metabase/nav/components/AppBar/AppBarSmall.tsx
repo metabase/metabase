@@ -30,7 +30,6 @@ export interface AppBarSmallProps {
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
-  isContainingDashboardPathVisible?: boolean;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
   onLogout: () => void;
@@ -45,7 +44,6 @@ const AppBarSmall = ({
   isProfileLinkVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
-  isContainingDashboardPathVisible,
   onToggleNavbar,
   onCloseNavbar,
   onLogout,
@@ -114,9 +112,7 @@ const AppBarSmall = ({
           {isQuestionLineageVisible ? (
             <QuestionLineage />
           ) : isCollectionPathVisible ? (
-            <CollectionBreadcrumbs
-              showContainingDashboard={isContainingDashboardPathVisible}
-            />
+            <CollectionBreadcrumbs />
           ) : null}
         </AppBarSubheader>
       )}

@@ -7,7 +7,6 @@
    [metabase.lib.ident :as lib.ident]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.search.core :as search]
@@ -21,16 +20,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; model lifecycle ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def ModelIndex
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the ModelIndex symbol in our codebase."
-  :model/ModelIndex)
-
-(def ModelIndexValue
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the ModelIndexValue symbol in our codebase."
-  :model/ModelIndexValue)
-
 (methodical/defmethod t2/table-name :model/ModelIndex [_model] :model_index)
 (methodical/defmethod t2/table-name :model/ModelIndexValue [_model] :model_index_value)
 (derive :model/ModelIndex :metabase/model)
@@ -40,11 +29,11 @@
 ;; TODO disabled due to issues having an update hook causes, seemingly due to a toucan2 bug
 #_(derive :model/ModelIndex :hook/search-index)
 
-(t2/deftransforms ModelIndex
+(t2/deftransforms :model/ModelIndex
   {:pk_ref    mi/transform-field-ref
    :value_ref mi/transform-field-ref})
 
-(t2/define-before-delete ModelIndex
+(t2/define-before-delete :model/ModelIndex
   [model-index]
   (let [remove-refresh-job (requiring-resolve 'metabase.task.index-values/remove-indexing-job)]
     (remove-refresh-job model-index)))
@@ -86,7 +75,7 @@
 
 (mu/defn ^:private fetch-values
   [model-index :- ::model-index]
-  (let [model     (t2/select-one Card :id (:model_id model-index))
+  (let [model     (t2/select-one :model/Card :id (:model_id model-index))
         fix       (mu/fn [field-ref :- some?
                           base-type :- ::lib.schema.common/base-type]
                     (-> field-ref mbql.normalize/normalize-field-ref (fix-expression-refs base-type)))
@@ -129,30 +118,30 @@
   (let [[error-message values-to-index] (fetch-values model-index)
         current-index-values            (into #{}
                                               (map (juxt :model_pk :name))
-                                              (t2/select ModelIndexValue
+                                              (t2/select :model/ModelIndexValue
                                                          :model_index_id (:id model-index)))]
     (if-not (str/blank? error-message)
-      (t2/update! ModelIndex (:id model-index) {:state      "error"
-                                                :error      error-message
-                                                :indexed_at :%now})
+      (t2/update! :model/ModelIndex (:id model-index) {:state      "error"
+                                                       :error      error-message
+                                                       :indexed_at :%now})
       (try
         (t2/with-transaction [_conn]
           (let [{:keys [additions deletions]} (find-changes {:current-index current-index-values
                                                              :source-values values-to-index})]
             (when (seq deletions)
               (doseq [deletions-part (partition-all 10000 deletions)]
-                (t2/delete! ModelIndexValue
+                (t2/delete! :model/ModelIndexValue
                             :model_index_id (:id model-index)
                             :model_pk [:in (->> deletions-part (map first))])))
             (when (seq additions)
               (doseq [additions-part (partition-all 10000 additions)]
-                (t2/insert! ModelIndexValue
+                (t2/insert! :model/ModelIndexValue
                             (map (fn [[id v]]
                                    {:name           v
                                     :model_pk       id
                                     :model_index_id (:id model-index)})
                                  additions-part)))))
-          (t2/update! ModelIndex (:id model-index)
+          (t2/update! :model/ModelIndex (:id model-index)
                       {:indexed_at :%now
                        :error      nil
                        :state      (if (> (count values-to-index) max-indexed-values)
@@ -161,7 +150,7 @@
         (catch Exception e
           (log/errorf e "Error saving model-index values for model-index: %d, model: %d"
                       (:id model-index) (:model_id model-index))
-          (t2/update! ModelIndex (:id model-index)
+          (t2/update! :model/ModelIndex (:id model-index)
                       {:state      "error"
                        :error      (ex-message e)
                        :indexed_at :%now}))))))
@@ -176,7 +165,7 @@
 (defn create
   "Create a model index"
   [{:keys [model-id pk-ref value-ref creator-id]}]
-  (t2/insert-returning-instance! ModelIndex
+  (t2/insert-returning-instance! :model/ModelIndex
                                  [{:model_id   model-id
                                    ;; todo: sanitize these?
                                    :pk_ref     pk-ref

@@ -53,7 +53,7 @@ describe("scenarios > question > download", () => {
       it(`downloads ${fileType} file`, () => {
         H.startNewQuestion();
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Saved questions").click();
+          H.entityPickerModalTab("Collections").click();
           cy.findByText("Orders, Count").click();
         });
 
@@ -283,7 +283,7 @@ describe("scenarios > question > download", () => {
 
       H.filterWidget().contains("ID").click();
 
-      H.popover().within(() => H.multiAutocompleteInput().type("1"));
+      H.popover().within(() => H.fieldValuesInput().type("1"));
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filter").click();

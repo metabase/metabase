@@ -20,7 +20,8 @@
    [potemkin.types :as p.types])
   (:import
    (java.math RoundingMode)
-   (java.text DecimalFormat DecimalFormatSymbols)))
+   (java.text DecimalFormat DecimalFormatSymbols)
+   (java.util.regex Pattern)))
 
 (set! *warn-on-reflection* true)
 
@@ -41,14 +42,14 @@
 
 (defn- strip-trailing-zeroes
   [num-as-string decimal]
-  (if (str/includes? num-as-string (str decimal))
-    (let [pattern (re-pattern (str/escape (str decimal \$) {\. "\\."}))]
-      (-> num-as-string
-          (str/split #"0+$")
-          first
-          (str/split pattern)
-          first))
-    num-as-string))
+  (let [decimal (str decimal)]
+    (if (str/includes? num-as-string decimal)
+      (let [pattern (case decimal
+                      "." #"\.?0+$"
+                      "," #",?0+$"
+                      (re-pattern (str (Pattern/quote decimal) "?0+$")))]
+        (str/replace num-as-string pattern ""))
+      num-as-string)))
 
 (defn- digits-after-decimal
   ([value] (digits-after-decimal value "."))
@@ -125,7 +126,7 @@
 
         currency           (when currency?
                              (keyword (or currency "USD")))
-        integral?          (isa? (or effective_type base_type) :type/Integer)
+        integral?          (and (isa? (or effective_type base_type) :type/Integer) (integer? (or scale 1)))
         relation?          (isa? semantic_type :Relation/*)
         percent?           (or (isa? semantic_type :type/Percentage) (= number-style "percent"))
         scientific?        (= number-style "scientific")

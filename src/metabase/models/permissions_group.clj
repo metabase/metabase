@@ -21,11 +21,6 @@
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
-(def PermissionsGroup
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/PermissionsGroup)
-
 (methodical/defmethod t2/table-name :model/PermissionsGroup [_model] :permissions_group)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :permissions_group] [_original-model _k] :model/PermissionsGroup)
 (methodical/defmethod t2.hydrate/fk-keys-for-automagic-hydration [:default :permissions_group :default]
@@ -45,7 +40,7 @@
 (defn- magic-group [group-name]
   (mdb/memoize-for-application-db
    (fn []
-     (u/prog1 (t2/select-one [PermissionsGroup :id :name] :name group-name)
+     (u/prog1 (t2/select-one [:model/PermissionsGroup :id :name] :name group-name)
        ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
        ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
        ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.
@@ -75,7 +70,7 @@
   "Does a `PermissionsGroup` with `group-name` exist in the DB? (case-insensitive)"
   ^Boolean [group-name]
   {:pre [((some-fn keyword? string?) group-name)]}
-  (t2/exists? PermissionsGroup
+  (t2/exists? :model/PermissionsGroup
               :%lower.name (u/lower-case-en (name group-name))))
 
 (defn- check-name-not-already-taken
@@ -163,10 +158,10 @@
 (defn non-admin-groups
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group."
   []
-  (t2/select PermissionsGroup :name [:not= admin-group-name]))
+  (t2/select :model/PermissionsGroup :name [:not= admin-group-name]))
 
 (defn non-magic-groups
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group and the All Users group."
   []
-  (t2/select PermissionsGroup {:where [:and [:not= :name admin-group-name]
-                                       [:not= :name all-users-group-name]]}))
+  (t2/select :model/PermissionsGroup {:where [:and [:not= :name admin-group-name]
+                                              [:not= :name all-users-group-name]]}))

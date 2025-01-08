@@ -60,24 +60,26 @@ export const Onboarding = () => {
 
   const exampleDashboardId = useSetting("example-dashboard-id");
 
-  const iframeRefs = useMemo(() => {
+  const itemRefs = useMemo(() => {
     return {
-      "x-ray": createRef<HTMLIFrameElement>(),
-      notebook: createRef<HTMLIFrameElement>(),
-      sql: createRef<HTMLIFrameElement>(),
-      dashboard: createRef<HTMLIFrameElement>(),
-      subscription: createRef<HTMLIFrameElement>(),
-      alert: createRef<HTMLIFrameElement>(),
+      database: createRef<HTMLDivElement>(),
+      invite: createRef<HTMLDivElement>(),
+      "x-ray": createRef<HTMLDivElement>(),
+      notebook: createRef<HTMLDivElement>(),
+      sql: createRef<HTMLDivElement>(),
+      dashboard: createRef<HTMLDivElement>(),
+      subscription: createRef<HTMLDivElement>(),
+      alert: createRef<HTMLDivElement>(),
     };
   }, []);
 
-  type IframeKeys = keyof typeof iframeRefs;
+  type ItemKey = keyof typeof itemRefs;
 
-  const isValidIframeKey = useCallback(
-    (key: ChecklistItemValue | null): key is IframeKeys => {
-      return key !== null && Object.keys(iframeRefs).includes(key);
+  const isValidItemKey = useCallback(
+    (key?: ChecklistItemValue | null): key is ItemKey => {
+      return key != null && key in itemRefs;
     },
-    [iframeRefs],
+    [itemRefs],
   );
 
   const [itemValue, setItemValue] = useState<ChecklistItemValue | null>(null);
@@ -103,43 +105,44 @@ export const Onboarding = () => {
     databaseId: lastUsedDatabaseId || undefined,
   });
 
-  const sendMessage = (command: string, value: IframeKeys) => {
-    const iframeRef = iframeRefs[value];
-    if (iframeRef.current) {
-      iframeRef.current?.contentWindow?.postMessage(
-        JSON.stringify({
-          event: "command",
-          func: command,
-          args: [],
-        }),
-        "*",
-      );
-    }
-  };
-
   const [lastItemOpened, setLastItemOpened] = useTempStorage(
     "last-opened-onboarding-checklist-item",
   );
 
-  useEffect(() => {
-    if (lastItemOpened && isValidIframeKey(lastItemOpened)) {
-      iframeRefs[lastItemOpened]?.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
+  const scrollElementIntoView = (element?: HTMLDivElement | null) => {
+    if (!element) {
+      return;
     }
-  }, [iframeRefs, lastItemOpened, isValidIframeKey]);
+    element.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  };
 
-  const stopVideo = (key: IframeKeys) => sendMessage("stopVideo", key);
+  // Scroll the last opened item into view when the user navigates back go this page
+  useEffect(() => {
+    if (isValidItemKey(lastItemOpened)) {
+      const item = itemRefs[lastItemOpened].current;
+      scrollElementIntoView(item);
+    }
+  }, [itemRefs, lastItemOpened, isValidItemKey]);
 
   const handleValueChange = (newValue: ChecklistItemValue | null) => {
-    if (isValidIframeKey(itemValue)) {
-      stopVideo(itemValue);
+    if (isValidItemKey(itemValue)) {
+      const currentItem = itemRefs[itemValue].current;
+      const iframe = currentItem?.querySelector("iframe");
+
+      // If the current accordion item contains an iframe, stop the video before expanding a new item
+      stopVideo(iframe);
     }
 
     if (newValue !== null) {
       setLastItemOpened(newValue);
       trackChecklistItemExpanded(newValue);
+
+      // Make sure that the new item always expands inside the viewport
+      const newItem = itemRefs[newValue].current;
+      scrollElementIntoView(newItem);
     }
 
     setItemValue(newValue);
@@ -229,7 +232,11 @@ export const Onboarding = () => {
                 order={2}
                 mb="lg"
               >{t`Set up your ${applicationName}`}</Title>
-              <Accordion.Item value="database" data-testid="database-item">
+              <Accordion.Item
+                value="database"
+                data-testid="database-item"
+                ref={itemRefs["database"]}
+              >
                 <Accordion.Control icon={<Icon name="add_data" />}>
                   {t`Connect to your database`}
                 </Accordion.Control>
@@ -258,7 +265,11 @@ export const Onboarding = () => {
                   </Stack>
                 </Accordion.Panel>
               </Accordion.Item>
-              <Accordion.Item value="invite" data-testid="invite-item">
+              <Accordion.Item
+                value="invite"
+                data-testid="invite-item"
+                ref={itemRefs["invite"]}
+              >
                 <Accordion.Control icon={<Icon name="group" />}>
                   {t`Invite people`}
                 </Accordion.Control>
@@ -306,7 +317,11 @@ export const Onboarding = () => {
 
           <Box mb={64}>
             <Title order={2} mb="lg">{t`Start visualizing your data`}</Title>
-            <Accordion.Item value="x-ray" data-testid="x-ray-item">
+            <Accordion.Item
+              value="x-ray"
+              data-testid="x-ray-item"
+              ref={itemRefs["x-ray"]}
+            >
               <Accordion.Control icon={<Icon name="bolt" />}>
                 {t`Create automatic dashboards`}
               </Accordion.Control>
@@ -314,7 +329,6 @@ export const Onboarding = () => {
                 <Stack spacing="lg">
                   <VideoTutorial
                     id="FOAXF4p1AL0"
-                    ref={iframeRefs["x-ray"]}
                     si="COmu2w0SqGagUoVp"
                     title="How to find and use X-rays?"
                   />
@@ -350,7 +364,11 @@ export const Onboarding = () => {
                 </Stack>
               </Accordion.Panel>
             </Accordion.Item>
-            <Accordion.Item value="notebook" data-testid="notebook-item">
+            <Accordion.Item
+              value="notebook"
+              data-testid="notebook-item"
+              ref={itemRefs["notebook"]}
+            >
               <Accordion.Control icon={<Icon name="notebook" />}>
                 {t`Make an interactive chart with the query builder`}
               </Accordion.Control>
@@ -358,7 +376,6 @@ export const Onboarding = () => {
                 <Stack spacing="lg">
                   <VideoTutorial
                     id="N9pR8KyaWzY"
-                    ref={iframeRefs["notebook"]}
                     si="EQbwmOGt733oWkXF"
                     title="How to use the Notebook editor?"
                   />
@@ -383,7 +400,11 @@ export const Onboarding = () => {
               </Accordion.Panel>
             </Accordion.Item>
 
-            <Accordion.Item value="sql" data-testid="sql-item">
+            <Accordion.Item
+              value="sql"
+              data-testid="sql-item"
+              ref={itemRefs["sql"]}
+            >
               <Accordion.Control icon={<Icon name="sql" />}>
                 {t`Query with SQL`}
               </Accordion.Control>
@@ -391,7 +412,6 @@ export const Onboarding = () => {
                 <Stack spacing="lg">
                   <VideoTutorial
                     id="_iiG_MoxdAE"
-                    ref={iframeRefs["sql"]}
                     si="QInRPzkHpFamjsHw"
                     title="How to use the SQL/Native query editor?"
                   />
@@ -424,7 +444,11 @@ export const Onboarding = () => {
                 </Stack>
               </Accordion.Panel>
             </Accordion.Item>
-            <Accordion.Item value="dashboard" data-testid="dashboard-item">
+            <Accordion.Item
+              value="dashboard"
+              data-testid="dashboard-item"
+              ref={itemRefs["dashboard"]}
+            >
               <Accordion.Control icon={<Icon name="dashboard" />}>
                 {t`Create and filter a dashboard`}
               </Accordion.Control>
@@ -432,7 +456,6 @@ export const Onboarding = () => {
                 <Stack spacing="lg">
                   <VideoTutorial
                     id="FAst1nabBck"
-                    ref={iframeRefs["dashboard"]}
                     si="yVMfXeh0tkr1Yt8_"
                     title="How to use dashboards?"
                   />
@@ -474,6 +497,7 @@ export const Onboarding = () => {
             <Accordion.Item
               value="subscription"
               data-testid="subscription-item"
+              ref={itemRefs["subscription"]}
             >
               <Accordion.Control icon={<Icon name="subscription" />}>
                 {t`Subscribe to a dashboard by email or Slack`}
@@ -482,7 +506,6 @@ export const Onboarding = () => {
                 <Stack spacing="lg">
                   <VideoTutorial
                     id="IustSQH6bfQ"
-                    ref={iframeRefs["subscription"]}
                     si="GYTUdFsXfpc2QL8S"
                     title="How to create a dashboard email subscription?"
                   />
@@ -535,7 +558,11 @@ export const Onboarding = () => {
                 </Stack>
               </Accordion.Panel>
             </Accordion.Item>
-            <Accordion.Item value="alert" data-testid="alert-item">
+            <Accordion.Item
+              value="alert"
+              data-testid="alert-item"
+              ref={itemRefs["alert"]}
+            >
               <Accordion.Control icon={<Icon name="alert" />}>
                 {t`Get alerts when metrics behave unexpectedly`}
               </Accordion.Control>
@@ -543,7 +570,6 @@ export const Onboarding = () => {
                 <Stack spacing="lg">
                   <VideoTutorial
                     id="pbkECx-1Cos"
-                    ref={iframeRefs["alert"]}
                     si="r1KRkR0CJ3BmHOOE"
                     title="How to create an alert?"
                   />
@@ -685,3 +711,18 @@ const VideoTutorial = forwardRef(function VideoTutorial(
     />
   );
 });
+
+const stopVideo = (iframe?: HTMLIFrameElement | null) => {
+  if (!iframe) {
+    return;
+  }
+
+  iframe.contentWindow?.postMessage(
+    JSON.stringify({
+      event: "command",
+      func: "stopVideo",
+      args: [],
+    }),
+    "*",
+  );
+};

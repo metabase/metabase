@@ -543,7 +543,7 @@ describe("metabase/lib/expression/suggest", () => {
           }),
         ).toMatchObject({
           name: "contains",
-          example: 'contains([Status], "Pass")',
+          example: 'contains([Title], "Small", "Medium", "case-insensitive")',
         });
       });
     });

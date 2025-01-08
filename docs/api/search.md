@@ -44,6 +44,8 @@ Search for items in Metabase.
 
 -  **`created_at`** nullable value must be a non-blank string.
 
+-  **`include_dashboard_questions`** nullable boolean.
+
 -  **`archived`** nullable boolean.
 
 -  **`q`** nullable value must be a non-blank string.

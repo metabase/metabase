@@ -8,10 +8,10 @@ import {
   type UpdateQueryHookProps,
   useBreakoutQueryHandlers,
 } from "metabase/query_builder/hooks";
-import { DelayGroup } from "metabase/ui";
+import { Box, DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { ColumnGroupName, SearchContainer } from "./BreakoutColumnList.styled";
+import BreakoutColumnListS from "./BreakoutColumnList.module.css";
 import { BreakoutColumnListItem } from "./BreakoutColumnListItem";
 import { getBreakoutListItem, getColumnSections, isPinnedColumn } from "./util";
 
@@ -105,7 +105,7 @@ export function BreakoutColumnList({
 
   return (
     <>
-      <SearchContainer>
+      <Box mb="md">
         <Input
           fullWidth
           placeholder={t`Find...`}
@@ -114,7 +114,7 @@ export function BreakoutColumnList({
           onResetClick={handleResetSearch}
           onChange={handleChangeSearchQuery}
         />
-      </SearchContainer>
+      </Box>
       {!isSearching && (
         <DelayGroup>
           <ul data-testid="pinned-dimensions">
@@ -138,7 +138,9 @@ export function BreakoutColumnList({
         <ul data-testid="unpinned-dimensions">
           {sections.map(section => (
             <li key={section.name}>
-              <ColumnGroupName>{section.name}</ColumnGroupName>
+              <Box className={BreakoutColumnListS.ColumnGroupName}>
+                {section.name}
+              </Box>
               <ul>
                 {section.items.map((item, itemIndex) => (
                   <BreakoutColumnListItem

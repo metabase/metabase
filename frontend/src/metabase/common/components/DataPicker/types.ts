@@ -1,6 +1,7 @@
 import type {
   CardId,
   Collection,
+  DashboardId,
   DatabaseId,
   SchemaName,
   TableId,
@@ -42,6 +43,12 @@ export type QuestionItem = {
   model: "card";
 };
 
+export type DashboardItem = {
+  id: DashboardId;
+  name: string;
+  model: "dashboard";
+};
+
 export type ModelItem = {
   id: CardId;
   name: string;
@@ -68,7 +75,11 @@ export type DataPickerValue =
   | ModelItem
   | MetricItem;
 
-export type DataPickerFolderItem = CollectionItem | DatabaseItem | SchemaItem;
+export type DataPickerFolderItem =
+  | CollectionItem
+  | DatabaseItem
+  | SchemaItem
+  | DashboardItem;
 
 export type DataPickerValueItem =
   | TableItem

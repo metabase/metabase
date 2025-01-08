@@ -189,7 +189,7 @@
           bucketing
           {"CREATED_AT" "2022-12-01"}))))))
 
-(deftest ^:parallel returns-zoom-in-timeseries-for-multi-stage-queries
+(deftest ^:parallel returns-zoom-in-timeseries-for-multi-stage-queries-test
   (lib.drill-thru.tu/test-returns-drill
    {:drill-type   :drill-thru/zoom-in.timeseries
     :click-type   :cell

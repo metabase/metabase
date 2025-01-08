@@ -44,10 +44,10 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should allow you to reorder and hide columns in the table header", () => {
-    H.openNativeEditor().type("select * from orders LIMIT 2");
+    H.startNewNativeQuestion({ query: "select * from orders LIMIT 2" });
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     cy.findByTestId(/subtotal-hide-button/i).click();
     cy.findByTestId(/tax-hide-button/i).click();
@@ -389,7 +389,7 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
         },
       });
 
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
       H.sidebar().findByText("Conditional Formatting").click();
     });
 
@@ -417,7 +417,7 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
       cy.findByTestId("conditional-formatting-color-selector").click();
 
       H.popover()
-        .findByRole("generic", { name: /#F2A86F/i })
+        .findByRole("button", { name: /#F2A86F/i })
         .click();
 
       cy.button("Add rule").click();
@@ -480,7 +480,7 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
     });
 
     it("should work with boolean columns", { tags: ["@external"] }, () => {
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
       H.leftSidebar().findByText("Conditional Formatting").click();
       cy.findByRole("button", { name: /add a rule/i }).click();
 

@@ -6,6 +6,7 @@
        [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
         [metabase.models.dispatch :as models.dispatch]])
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as schema.helpers]
@@ -147,6 +148,29 @@
    new-clause   :- [:maybe mbql.s/Filter]]
   (update outer-query :query add-filter-clause-to-inner-query stage-number new-clause))
 
+(defn- map-stages*
+  "Helper for [[map-stages]]; call that instead."
+  [f {:keys [source-query] :as inner-query}]
+  (if source-query
+    ;; Recursive case: Call `map-stages*` on the `:source-query`, then `f` on this stage. Increment the stage count.
+    (let [[new-source-query stage-count] (map-stages* f source-query)]
+      [(-> (assoc inner-query :source-query new-source-query)
+           (f stage-count))
+       (inc stage-count)])
+    ;; Base case: No `:source-query`, so just call `f` and return a `stage-count` of 1.
+    [(f inner-query 0) 1]))
+
+(defn map-stages
+  "Given a function `(f inner-query stage-number)`, recursively calls it on the stages of this (legacy MBQL)
+  `inner-query`.
+
+  The calls run postorder, that is the earliest/innermost stage first.
+
+  Returns the updated `inner-query`."
+  [f inner-query]
+  (let [[updated-inner-query _stage-count] (map-stages* f inner-query)]
+    updated-inner-query))
+
 (defn desugar-inside
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."
   [m]
@@ -284,6 +308,16 @@
     m
     [:if & args]
     (into [:case] args)))
+
+(defn desugar-in
+  "Transform `:in` and `:not-in` expressions to `:=` and `:!=` expressions."
+  [m]
+  (lib.util.match/replace m
+    [:in & args]
+    (into [:=] args)
+
+    [:not-in & args]
+    (into [:!=] args)))
 
 (defn desugar-does-not-contain
   "Rewrite `:does-not-contain` filter clauses as simpler `[:not [:contains ...]]` clauses.
@@ -425,6 +459,7 @@
   [filter-clause :- mbql.s/Filter]
   (-> filter-clause
       desugar-current-relative-datetime
+      desugar-in
       desugar-multi-argument-comparisons
       desugar-does-not-contain
       desugar-time-interval
@@ -506,17 +541,20 @@
 (mu/defn add-order-by-clause :- mbql.s/MBQLQuery
   "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
   already being used in another order-by clause, this function does nothing."
-  [inner-query                           :- mbql.s/MBQLQuery
-   [_dir orderable, :as order-by-clause] :- ::mbql.s/OrderBy]
+  [inner-query     :- mbql.s/MBQLQuery
+   [dir orderable] :- ::mbql.s/OrderBy]
   (let [existing-orderables (into #{}
                                   (map (fn [[_dir orderable]]
                                          orderable))
-                                  (:order-by inner-query))]
+                                  (:order-by inner-query))
+        ;; Remove any :ident the orderable might have had. `:ident` in the options of a ref is for clauses that
+        ;; create columns, eg. breakouts; it's not referring to another clause by ident.
+        orderable           (m/update-existing orderable 2 #(not-empty (dissoc % :ident)))]
     (if (existing-orderables orderable)
       ;; Field already referenced, nothing to do
       inner-query
       ;; otherwise add new clause at the end
-      (update inner-query :order-by (comp vec distinct conj) order-by-clause))))
+      (update inner-query :order-by (comp vec distinct conj) [dir orderable]))))
 
 (defn dispatch-by-clause-name-or-class
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL

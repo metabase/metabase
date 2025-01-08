@@ -83,6 +83,7 @@ describe("scenarios > dashboard", () => {
         .click();
 
       H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Collections").click();
         cy.findByPlaceholderText("Search this collection or everywhere…").type(
           "Pro",
         );
@@ -93,6 +94,10 @@ describe("scenarios > dashboard", () => {
       H.queryBuilderHeader().findByText("Save").click();
       cy.findByTestId("save-question-modal").within(modal => {
         cy.findByLabelText("Name").clear().type(newQuestionName);
+        cy.findByLabelText("Where do you want to save this?").should(
+          "contain.text",
+          dashboardName,
+        );
         cy.findByText("Save").click();
       });
       cy.wait("@createQuestion");
@@ -1108,7 +1113,7 @@ describe("scenarios > dashboard", () => {
     cy.findByRole("dialog").within(() => {
       cy.findByRole("switch", {
         name: "Hide this card if there are no results",
-      }).click();
+      }).click({ force: true });
       cy.button("Done").click();
     });
 
@@ -1197,7 +1202,10 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
     H.popover().findByText("Link").click();
 
     cy.wait("@recentViews");
-    cy.findByTestId("custom-edit-text-link").click().type("Orders");
+
+    cy.findByTestId("custom-edit-text-link")
+      .findByPlaceholderText("https://example.com")
+      .type("Orders");
 
     H.popover().within(() => {
       cy.findByText(/Loading/i).should("not.exist");
@@ -1231,9 +1239,9 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
       cy.findByRole("switch", {
         name: "Hide this card if there are no results",
       })
-        .click() // enable
-        .click() // disable
-        .click(); // enable
+        .click({ force: true }) // enable
+        .click({ force: true }) // disable
+        .click({ force: true }); // enable
 
       H.expectGoodSnowplowEvent(
         {

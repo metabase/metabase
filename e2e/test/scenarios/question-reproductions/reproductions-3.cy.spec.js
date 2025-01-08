@@ -97,10 +97,10 @@ describe("issue 32964", () => {
 
   it("should not overflow chart settings sidebar with long column name (metabase#32964)", () => {
     H.visitQuestionAdhoc(QUESTION);
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left").within(([sidebar]) => {
       const maxX = sidebar.getBoundingClientRect().right;
-      cy.findByText(`Sum of ${LONG_NAME}`).then(([el]) => {
+      cy.findByDisplayValue(`Sum of ${LONG_NAME}`).then(([el]) => {
         const x = el.getBoundingClientRect().right;
         expect(x).to.be.lessThan(maxX);
       });
@@ -425,7 +425,7 @@ describe("issue 39795", () => {
         type: "query",
       },
     });
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.moveColumnDown(H.getDraggableElements().first(), 2);
 
     // We are not able to re-order because the dataset will also contain values a column for Product ID
@@ -498,7 +498,7 @@ describe("issue 40435", () => {
     });
     H.getNotebookStep("data").button("Pick columns").click();
     H.visualize();
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTestId("ID-hide-button").click();
       cy.findByTestId("ID-show-button").click();
@@ -713,7 +713,7 @@ describe("issue 42957", () => {
 
     H.startNewQuestion();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Models").click();
+      H.entityPickerModalTab("Collections").click();
 
       cy.findByText("Collection without models").should("not.exist");
     });
@@ -866,12 +866,12 @@ describe("issue 32020", () => {
 
     cy.log("create joined question manually");
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText(question1Details.name).click();
     });
     H.join();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText(question2Details.name).click();
     });
     H.popover().findByText("ID").click();
@@ -920,7 +920,7 @@ describe("issue 44071", () => {
     cy.visit("/");
     H.newButton("Question").click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText(/Personal Collection/).click();
       cy.findByText(questionDetails.name).click();
     });
@@ -1017,7 +1017,7 @@ describe("issue 37374", () => {
     cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
 
     cy.log("changing the viz type to pivot table and running the query works");
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     cy.findByTestId("chart-type-sidebar")
       .findByTestId("Pivot Table-button")
       .click();
@@ -1398,21 +1398,21 @@ describe("issue 19894", () => {
 
     H.startNewQuestion();
 
-    H.modal().findByText("Saved questions").click();
-    H.modal().findByText("Q1").click();
+    H.entityPickerModalTab("Collections").click();
+    H.entityPickerModalItem(1, "Q1").click();
 
     cy.button("Join data").click();
 
-    H.modal().findByText("Saved questions").click();
-    H.modal().findByText("Q2").click();
+    H.entityPickerModalTab("Collections").click();
+    H.entityPickerModalItem(1, "Q2").click();
 
     H.popover().findByText("Category").click();
     H.popover().findByText("Category").click();
 
     cy.button("Join data").click();
 
-    H.modal().findByText("Saved questions").click();
-    H.modal().findByText("Q3").click();
+    H.entityPickerModalTab("Collections").click();
+    H.entityPickerModalItem(1, "Q3").click();
 
     H.popover().findByText("Category").should("be.visible");
     H.popover().findByText("Count").should("be.visible");
@@ -1515,7 +1515,7 @@ describe("issue 44668", () => {
     // Ensure custom columns weren't added as series automatically
     H.queryBuilderMain().findByLabelText("Legend").should("not.exist");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     // Ensure can use Custom Number as series
     H.leftSidebar().findByText("Add another series").click();
@@ -1581,7 +1581,7 @@ describe("issue 44974", () => {
 
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab("Recents").should("not.exist");
-        H.entityPickerModalTab("Saved questions").click();
+        H.entityPickerModalTab("Collections").click();
         cy.findByText(questionDetails.name).should("not.exist");
       });
     });
@@ -1800,8 +1800,11 @@ describe("issue 45063", () => {
     H.popover()
       .findByPlaceholderText(`Search by ${fieldDisplayName}`)
       .type(fieldValueLabel);
-    H.popover().last().findByText(fieldValueLabel).click();
-    H.popover().first().click().button("Add filter").click();
+    H.selectDropdown().findByText(fieldValueLabel).click();
+    cy.findByTestId("number-filter-picker")
+      .click()
+      .button("Add filter")
+      .click();
     cy.findByTestId("qb-filters-panel")
       .findByText(`${fieldDisplayName} is ${fieldValue}`)
       .should("be.visible");

@@ -2,7 +2,6 @@
 
 import PropTypes from "prop-types";
 import { Component } from "react";
-import { connect } from "react-redux";
 import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -13,6 +12,7 @@ import {
   cleanPulse,
   createChannel,
 } from "metabase/lib/pulse";
+import { connect } from "metabase/lib/redux";
 import {
   AddEditEmailSidebar,
   AddEditSlackSidebar,

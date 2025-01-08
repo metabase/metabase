@@ -18,7 +18,7 @@ describe("binning related reproductions", () => {
 
     H.startNewQuestion();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("16327").click();
     });
 
@@ -90,7 +90,7 @@ describe("binning related reproductions", () => {
 
     H.startNewQuestion();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("17975").click();
     });
 
@@ -130,7 +130,7 @@ describe("binning related reproductions", () => {
     cy.icon("join_left_outer").click();
 
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("18646").click();
     });
 
@@ -176,7 +176,7 @@ describe("binning related reproductions", () => {
     // (for example, visiting `/collection/root` would yield different result)
     H.startNewQuestion();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("11439").click();
     });
 
@@ -211,13 +211,16 @@ describe("binning related reproductions", () => {
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
     // Open settings through viz type picker to ensure "Table Options" is in the sidebar.
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTestId("Table-button").click();
       cy.findByTextEnsureVisible("Table options");
-      cy.findByText("Created At: Month")
-        .siblings("[data-testid$=hide-button]")
-        .click();
+      cy.findByTestId("draggable-item-Created At: Month")
+        .findByText("Created At: Month")
+        .should("be.visible");
+      cy.findByTestId("draggable-item-Created At: Month")
+        .icon("eye_outline")
+        .click({ force: true });
       cy.button("Done").click();
     });
 
@@ -365,7 +368,7 @@ describe("binning related reproductions", () => {
 function openSummarizeOptions(questionType) {
   H.startNewQuestion();
   H.entityPickerModal().within(() => {
-    H.entityPickerModalTab("Saved questions").click();
+    H.entityPickerModalTab("Collections").click();
     cy.findByText("16379").click();
   });
 

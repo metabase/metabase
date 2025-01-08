@@ -137,6 +137,7 @@ describe("metabase-lib/v1/expressions/resolve", () => {
       expect(expr(["concat", A, B]).dimensions).toEqual(["A", "B"]);
       expect(expr(["coalesce", P]).dimensions).toEqual(["P"]);
       expect(expr(["coalesce", P, Q, R]).dimensions).toEqual(["P", "Q", "R"]);
+      expect(expr(["in", A, B, C]).dimensions).toEqual(["A", "B", "C"]);
     });
 
     it("should allow any number of arguments in a variadic function", () => {

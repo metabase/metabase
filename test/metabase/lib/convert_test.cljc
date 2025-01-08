@@ -510,6 +510,20 @@
                :limit              4
                :source-table       33674}}))
 
+(deftest ^:parallel round-trip-in-test
+  (test-round-trip
+   {:database 2762
+    :type     :query
+    :query    {:expressions        {"a" [:case [[[:in [:field 1 nil] 1 2], "A"]] {:default "B"}]}
+               :expression-idents  {"a" (u/generate-nano-id)}
+               :filter             [:not-in [:field 2 nil] 3 4]
+               :aggregation        [[:sum-where
+                                     [:field 3 nil]
+                                     [:in [:field 4 nil] 5 6]]]
+               :aggregation-idents {0 (u/generate-nano-id)}
+               :limit              4
+               :source-table       33674}}))
+
 (deftest ^:parallel round-trip-aggregation-with-metric-test
   (test-round-trip
    {:database 1

@@ -669,7 +669,7 @@ H.describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.filterWidget().contains("Hello").click();
       H.popover().within(() => {
-        H.multiAutocompleteInput().type("{backspace}World{enter}");
+        H.fieldValuesInput().type("{backspace}World{enter}");
         cy.button("Update filter").click();
       });
 
@@ -751,7 +751,7 @@ H.describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         .parent()
         .click();
       H.popover().within(() => {
-        H.multiAutocompleteInput().type("John Doe{enter}");
+        H.fieldValuesInput().type("John Doe{enter}");
         cy.button("Add filter").click();
       });
 
@@ -760,7 +760,7 @@ H.describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         .parent()
         .click();
       H.popover().within(() => {
-        H.multiAutocompleteInput().type("{backspace}World{enter}");
+        H.fieldValuesInput().type("{backspace}World{enter}");
         cy.button("Update filter").click();
       });
 
@@ -1282,7 +1282,7 @@ H.describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.popover().should("contain.text", "Filter by this value");
 
       getTableCell(COLUMN_INDEX.CREATED_AT).click();
-      H.popover().should("contain.text", "Filter by this date");
+      H.popover().should("contain.text", "Filter by this date and time");
 
       H.editDashboard();
 
@@ -1625,7 +1625,7 @@ H.describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
 
         cy.button(DASHBOARD_FILTER_TEXT.name).click();
         H.popover().within(() => {
-          H.removeMultiAutocompleteValue(0);
+          H.removeFieldValuesValue(0);
           cy.findByPlaceholderText("Search by Name").type("Dell Adams");
           cy.button("Update filter").click();
         });
@@ -2875,11 +2875,11 @@ function customizeLinkText(text) {
 }
 
 function verifyVizTypeIsLine() {
-  cy.findByTestId("viz-type-button").click();
+  H.openVizTypeSidebar();
   cy.findByTestId("sidebar-content")
     .findByTestId("Line-container")
     .should("have.attr", "aria-selected", "true");
-  cy.findByTestId("viz-type-button").click();
+  H.openVizTypeSidebar();
 }
 
 function getClickMapping(columnName) {

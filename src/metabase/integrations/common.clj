@@ -4,9 +4,7 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.permissions-group-membership
-    :as perms-group-membership
-    :refer [PermissionsGroupMembership]]
+   [metabase.models.permissions-group-membership :as perms-group-membership]
    [metabase.models.setting.multi-setting :refer [define-multi-setting
                                                   define-multi-setting-impl]]
    [metabase.public-settings.premium-features :as premium-features]
@@ -23,7 +21,7 @@
         excluded-group-ids #{(u/the-id (perms-group/all-users))}
         user-id            (u/the-id user-or-id)
         current-group-ids  (when (seq mapped-group-ids)
-                             (t2/select-fn-set :group_id PermissionsGroupMembership
+                             (t2/select-fn-set :group_id :model/PermissionsGroupMembership
                                                {:where
                                                 [:and
                                                  [:= :user_id user-id]
@@ -37,7 +35,7 @@
     (when (seq to-remove)
       (log/debugf "Removing user %s from group(s) %s" user-id to-remove)
       (try
-        (t2/delete! PermissionsGroupMembership :group_id [:in to-remove], :user_id user-id)
+        (t2/delete! :model/PermissionsGroupMembership :group_id [:in to-remove], :user_id user-id)
         (catch clojure.lang.ExceptionInfo e
          ;; in case sync attempts to delete the last admin, the pre-delete hooks of
          ;; [[metabase.models.permissions-group-membership/PermissionsGroupMembership]] will throw an exception.
@@ -53,7 +51,7 @@
       ;; if adding membership fails for one reason or another (i.e. if the group doesn't exist) log the error add the
       ;; user to the other groups rather than failing entirely
       (try
-        (t2/insert! PermissionsGroupMembership :group_id id, :user_id user-id)
+        (t2/insert! :model/PermissionsGroupMembership :group_id id, :user_id user-id)
         (catch Throwable e
           (log/errorf e "Error adding User %s to Group %s" user-id id))))))
 

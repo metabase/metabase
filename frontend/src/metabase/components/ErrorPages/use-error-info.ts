@@ -7,7 +7,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { MetabaseApi, UtilApi } from "metabase/services";
 
 import type { ErrorPayload, ReportableEntityName } from "./types";
-import { getEntityDetails, hasQueryData } from "./utils";
+import { getBrowserInfo, getEntityDetails, hasQueryData } from "./utils";
 
 const maybeSerializeError = (key: string, value: any) => {
   if (value?.constructor.name === "Error") {
@@ -92,6 +92,8 @@ export const useErrorInfo = (
         log?.msg?.includes?.(` userID: ${currentUser.id} `),
     );
 
+    const browserInfo = getBrowserInfo();
+
     const payload: ErrorPayload = {
       url: location,
       entityInfo,
@@ -103,6 +105,7 @@ export const useErrorInfo = (
       backendErrors,
       userLogs,
       bugReportDetails,
+      browserInfo,
     };
 
     return payload;

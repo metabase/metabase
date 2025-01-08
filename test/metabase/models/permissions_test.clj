@@ -1,11 +1,9 @@
 (ns metabase.models.permissions-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.collection :as collection :refer [Collection]]
-   [metabase.models.permissions :as perms :refer [Permissions]]
-   [metabase.models.permissions-group
-    :as perms-group
-    :refer [PermissionsGroup]]
+   [metabase.models.collection :as collection]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -224,12 +222,12 @@
          #"You cannot edit permissions for a Personal Collection or its descendants."
          (perms/revoke-collection-permissions!
           (perms-group/all-users)
-          (u/the-id (t2/select-one Collection :personal_owner_id (mt/user->id :lucky))))))
+          (u/the-id (t2/select-one :model/Collection :personal_owner_id (mt/user->id :lucky))))))
 
     (testing "(should apply to descendants as well)"
-      (t2.with-temp/with-temp [Collection collection {:location (collection/children-location
-                                                                 (collection/user->personal-collection
-                                                                  (mt/user->id :lucky)))}]
+      (t2.with-temp/with-temp [:model/Collection collection {:location (collection/children-location
+                                                                        (collection/user->personal-collection
+                                                                         (mt/user->id :lucky)))}]
         (is (thrown-with-msg?
              Exception
              #"You cannot edit permissions for a Personal Collection or its descendants."
@@ -237,15 +235,15 @@
 
 (deftest revoke-collection-permissions-test
   (testing "Should be able to revoke permissions for non-personal Collections"
-    (t2.with-temp/with-temp [Collection {collection-id :id}]
+    (t2.with-temp/with-temp [:model/Collection {collection-id :id}]
       (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
       (testing "Collection should still exist"
-        (is (some? (t2/select-one Collection :id collection-id)))))))
+        (is (some? (t2/select-one :model/Collection :id collection-id)))))))
 
 (deftest disallow-granting-personal-collection-perms-test
-  (t2.with-temp/with-temp [Collection collection {:location (collection/children-location
-                                                             (collection/user->personal-collection
-                                                              (mt/user->id :lucky)))}]
+  (t2.with-temp/with-temp [:model/Collection collection {:location (collection/children-location
+                                                                    (collection/user->personal-collection
+                                                                     (mt/user->id :lucky)))}]
     (doseq [[perms-type f] {"read"  perms/grant-collection-read-permissions!
                             "write" perms/grant-collection-readwrite-permissions!}]
       (testing (format "Should throw Exception if you use the helper function to grant %s perms for a Personal Collection"
@@ -253,7 +251,7 @@
         (is (thrown?
              Exception
              (f (perms-group/all-users)
-                (u/the-id (t2/select-one Collection :personal_owner_id (mt/user->id :lucky))))))
+                (u/the-id (t2/select-one :model/Collection :personal_owner_id (mt/user->id :lucky))))))
 
         (testing "(should apply to descendants as well)"
           (is (thrown?
@@ -261,11 +259,11 @@
                (f (perms-group/all-users) collection))))))))
 
 (deftest grant-revoke-root-collection-permissions-test
-  (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
+  (t2.with-temp/with-temp [:model/PermissionsGroup {group-id :id}]
     (letfn [(perms []
-              (t2/select-fn-set :object Permissions {:where [:and
-                                                             [:like :object "/collection/%"]
-                                                             [:= :group_id group-id]]}))]
+              (t2/select-fn-set :object :model/Permissions {:where [:and
+                                                                    [:like :object "/collection/%"]
+                                                                    [:= :group_id group-id]]}))]
       (is (= nil
              (perms)))
       (testing "Should be able to grant Root Collection perms"
@@ -294,9 +292,9 @@
                (perms)))))))
 
 (deftest grant-revoke-application-permissions-test
-  (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
+  (t2.with-temp/with-temp [:model/PermissionsGroup {group-id :id}]
     (letfn [(perms []
-              (t2/select-fn-set :object Permissions
+              (t2/select-fn-set :object :model/Permissions
                                 {:where [:and [:= :group_id group-id]
                                          [:like :object "/application/%"]]}))]
       (is (= nil (perms)))

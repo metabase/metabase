@@ -1,7 +1,11 @@
-import type { HTMLAttributes, MouseEvent, Ref } from "react";
-import { forwardRef, useCallback } from "react";
+import cx from "classnames";
+import type { HTMLAttributes, MouseEvent } from "react";
+import { useCallback } from "react";
 
-import { ColorPillContent, ColorPillRoot } from "./ColorPill.styled";
+import CS from "metabase/css/core/index.css";
+import { Box, Center } from "metabase/ui";
+
+import ColorPillS from "./ColorPill.module.css";
 import type { PillSize } from "./types";
 
 export type ColorPillAttributes = Omit<
@@ -15,21 +19,19 @@ export interface ColorPillProps extends ColorPillAttributes {
   isSelected?: boolean;
   onSelect?: (newColor: string) => void;
   pillSize?: PillSize;
+  "data-testid"?: string;
 }
 
-const ColorPill = forwardRef(function ColorPill(
-  {
-    color,
-    isAuto = false,
-    isSelected = true,
-    "aria-label": ariaLabel = color,
-    pillSize = "medium",
-    onClick,
-    onSelect,
-    ...props
-  }: ColorPillProps,
-  ref: Ref<HTMLDivElement>,
-) {
+export const ColorPill = ({
+  color,
+  isAuto = false,
+  isSelected = true,
+  "aria-label": ariaLabel = color,
+  pillSize = "medium",
+  onClick,
+  onSelect,
+  "data-testid": dataTestId,
+}: ColorPillProps) => {
   const handleClick = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
       onClick?.(event);
@@ -39,22 +41,19 @@ const ColorPill = forwardRef(function ColorPill(
   );
 
   return (
-    <ColorPillRoot
-      {...props}
-      ref={ref}
-      isAuto={isAuto}
-      isSelected={isSelected}
+    <Center
+      data-testid={dataTestId}
       aria-label={ariaLabel}
+      role="button"
       onClick={handleClick}
-      pillSize={pillSize}
+      className={cx(ColorPillS.ColorPill, CS.flexNoShrink, {
+        [ColorPillS.Small]: pillSize === "small",
+        [ColorPillS.Medium]: pillSize === "medium",
+        [ColorPillS.Selected]: isSelected,
+        [ColorPillS.Auto]: isAuto,
+      })}
     >
-      <ColorPillContent style={{ backgroundColor: color }} />
-    </ColorPillRoot>
+      <Box bg={color} w="100%" h="100%" style={{ borderRadius: "50%" }}></Box>
+    </Center>
   );
-});
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(ColorPill, {
-  Content: ColorPillContent,
-  Root: ColorPillRoot,
-});
+};

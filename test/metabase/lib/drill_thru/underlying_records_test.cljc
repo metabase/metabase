@@ -88,7 +88,7 @@
       :column-name "max"
       :expected    #(->> % (map :type) (filter #{:drill-thru/underlying-records}) count (= 1))})))
 
-(deftest ^:parallel returns-underlying-records-for-multi-stage-queries
+(deftest ^:parallel returns-underlying-records-for-multi-stage-queries-test
   (lib.drill-thru.tu/test-returns-drill
    {:drill-type   :drill-thru/underlying-records
     :click-type   :cell
@@ -114,7 +114,7 @@
                    :table-name "Orders"
                    ;; the "underlying" aggregation ref is reconstructed.
                    :column-ref [:aggregation {:lib/source-name "count"} string?]
-                   ;; the "underyling" dimensions are reconstructed from the row.
+                   ;; the "underlying" dimensions are reconstructed from the row.
                    :dimensions [{:column     {:name       "PRODUCT_ID"
                                               :lib/source :source/previous-stage}
                                  :column-ref [:field {} "PRODUCT_ID"]

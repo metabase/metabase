@@ -1,8 +1,8 @@
 import { Component } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { connect } from "metabase/lib/redux";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { getOriginalQuestion } from "metabase/query_builder/selectors";

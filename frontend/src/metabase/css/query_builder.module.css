@@ -40,10 +40,6 @@
   margin-left: -0.5rem;
 }
 
-.SelectionModule {
-  color: var(--mb-color-brand);
-}
-
 .SelectionList {
   padding-top: 5px;
   overflow-y: auto;

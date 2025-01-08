@@ -1,12 +1,15 @@
 (ns ^:mb/once metabase.legacy-mbql.util-test
   (:require
-   #?@(:clj (#_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt]))
+   #?@(:clj  (#_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt])
+       :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.types]))
 
 (comment metabase.types/keep-me)
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (t/deftest ^:parallel simplify-compound-filter-test
   (t/is (= [:= [:field 1 nil] 2]
@@ -231,6 +234,28 @@
               stage-number
               [:= [:field 2 nil] 200])))))
 
+(t/deftest ^:parallel map-stages-test
+  (let [test-fn (fn [inner-query stage-number]
+                  (assoc inner-query ::stage-number stage-number))]
+    (t/is (=? {:source-table  1
+               :filter        [:= [:field 1 nil] 100]
+               :aggregation   [[:count]]
+               ::stage-number 0}
+              (mbql.u/map-stages test-fn {:source-table 1
+                                          :filter       [:= [:field 1 nil] 100]
+                                          :aggregation  [[:count]]})))
+    (t/is (=? {:source-query  {:source-table  1
+                               :filter        [:= [:field 1 nil] 100]
+                               :aggregation   [[:count]]
+                               ::stage-number 0}
+               :expressions   {"negated" [:* [:field 1 nil] -1]}
+
+               ::stage-number 1}
+              (mbql.u/map-stages test-fn {:source-query  {:source-table  1
+                                                          :filter        [:= [:field 1 nil] 100]
+                                                          :aggregation   [[:count]]}
+                                          :expressions   {"negated" [:* [:field 1 nil] -1]}})))))
+
 (t/deftest ^:parallel desugar-time-interval-test
   (t/is (= [:between
             [:field 1 {:temporal-unit :month}]
@@ -380,6 +405,16 @@
              (mbql.u/desugar-filter-clause [:if [[[:< [:field 1 nil] 1] 2] [[:< [:field 3 nil] 4] 5]]])))
     (t/is (= [:case [[[:< [:field 1 nil] 1] 2]] {:default 3}]
              (mbql.u/desugar-filter-clause [:if [[[:< [:field 1 nil] 1] 2]] {:default 3}])))))
+
+(t/deftest ^:parallel desugar-in-test
+  (t/testing "Desugaring in and not-in produces expected [:= ..] and [:!= ..] expressions"
+    (t/are [expected clause] (= expected (mbql.u/desugar-filter-clause clause))
+      [:= [:field 1 nil] 2]                                [:in [:field 1 nil] 2]
+      [:= [:field 1 nil] [:field 2 nil]]                   [:in [:field 1 nil] [:field 2 nil]]
+      [:or [:= [:field 1 nil] 2] [:= [:field 1 nil] 3]]    [:in [:field 1 nil] 2 3]
+      [:!= [:field 1 nil] 2]                               [:not-in [:field 1 nil] 2]
+      [:!= [:field 1 nil] [:field 2 nil]]                  [:not-in [:field 1 nil] [:field 2 nil]]
+      [:and [:!= [:field 1 nil] 2] [:!= [:field 1 nil] 3]] [:not-in [:field 1 nil] 2 3])))
 
 (t/deftest ^:parallel desugar-relative-time-interval-positive-test
   (t/testing "Desugaring relative-date-time produces expected [:and [:>=..] [:<..]] expression"

@@ -46,14 +46,14 @@ describe("scenarios > visualizations > sankey", () => {
     });
 
     // Select Sankey viz type
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     cy.findByTestId("Sankey-button").click();
 
     // Ensure it shows node labels
     H.echartsContainer().findByText("Social Media");
 
     // Edit viz settings
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar")
       .as("settings-sidebar")
       .findByText("Display")
@@ -72,7 +72,9 @@ describe("scenarios > visualizations > sankey", () => {
     H.echartsContainer().findByText("60,000").should("not.exist");
 
     // Enable edge labels
-    cy.get("@settings-sidebar").findByLabelText("Show edge labels").click();
+    cy.get("@settings-sidebar")
+      .findByLabelText("Show edge labels")
+      .click({ force: true });
 
     // Ensure it shows edge labels
     H.echartsContainer().findByText("60,000");
@@ -83,27 +85,48 @@ describe("scenarios > visualizations > sankey", () => {
     // Ensure it shows compact labels
     H.echartsContainer().findByText("60.0k");
 
-    // Ensure tooltip shows correct values
-    H.sankeyEdge("#81898e").eq(0).realHover();
+    // Ensure tooltip shows correct values for edges
+    H.sankeyEdge("#81898e").eq(8).realHover();
     H.assertEChartsTooltip({
-      header: "Social Media → Landing Page",
+      header: "Onboarding → Active Users",
       rows: [
         {
-          name: "METRIC",
-          value: "30,000",
+          color: "#F7C41F",
+
+          name: "Active Users",
+          value: "25,000",
+          secondaryValue: "83.33 %",
+        },
+        {
+          color: "#F2A86F",
+          name: "Churned After Onboarding",
+          value: "5,000",
+          secondaryValue: "16.67 %",
         },
       ],
+      footer: { name: "Total", value: "30,000", secondaryValue: "100 %" },
     });
 
-    H.chartPathWithFillColor("#509EE3").realHover();
+    // Ensure tooltip shows correct values for nodes
+    H.chartPathWithFillColor("#E75454").realHover();
     H.assertEChartsTooltip({
-      header: "Social Media",
+      header: "Onboarding",
       rows: [
         {
-          name: "METRIC",
-          value: "30,000",
+          color: "#F7C41F",
+          name: "Active Users",
+          value: "25,000",
+          secondaryValue: "83.33 %",
+        },
+        {
+          color: "#F2A86F",
+          name: "Churned After Onboarding",
+          value: "5,000",
+          secondaryValue: "16.67 %",
         },
       ],
+      footer: { name: "Total", value: "30,000", secondaryValue: "100 %" },
+      blurAfter: true,
     });
 
     // Ensure saving the question works

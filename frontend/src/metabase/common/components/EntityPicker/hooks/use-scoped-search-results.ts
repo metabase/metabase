@@ -4,12 +4,14 @@ import {
   skipToken,
   useGetDatabaseQuery,
   useListCollectionItemsQuery,
+  useListDashboardItemsQuery,
   useListDatabaseSchemaTablesQuery,
 } from "metabase/api";
 import { isNotNull } from "metabase/lib/types";
 import type {
   CollectionId,
   CollectionItem,
+  DashboardId,
   SearchResultId,
   Table,
 } from "metabase-types/api";
@@ -35,11 +37,19 @@ export const useScopedSearchResults = <
 
   const shouldUseCollectionItems =
     isScopedSearchEnabled && folder.model === "collection";
+  const shouldUseDashboardItems =
+    isScopedSearchEnabled && folder.model === "dashboard";
+
   const shouldUseTables = isScopedSearchEnabled && folder.model === "schema";
 
   const { data: collectionItemsData, isFetching: isFetchingCollectionItems } =
     useListCollectionItemsQuery(
       shouldUseCollectionItems ? { id: folder.id as CollectionId } : skipToken,
+    );
+
+  const { data: dashboardItemsData, isFetching: isFetchingDashboardItems } =
+    useListDashboardItemsQuery(
+      shouldUseDashboardItems ? { id: folder.id as DashboardId } : skipToken,
     );
 
   const dbId =
@@ -65,6 +75,13 @@ export const useScopedSearchResults = <
     );
   }, [collectionItemsData, folder]);
 
+  const dashboardItems = useMemo(() => {
+    return collectionItemsToSearchResults(
+      dashboardItemsData?.data ?? [],
+      folder,
+    );
+  }, [dashboardItemsData, folder]);
+
   const tableItems = useMemo(() => {
     return tablesToSearchResults(tables ?? [], database?.name);
   }, [tables, database]);
@@ -74,6 +91,12 @@ export const useScopedSearchResults = <
       return isFetchingCollectionItems
         ? null
         : filterSearchResults(collectionItems, searchQuery, searchModels);
+    }
+
+    if (isScopedSearchEnabled && shouldUseDashboardItems) {
+      return isFetchingDashboardItems
+        ? null
+        : filterSearchResults(dashboardItems, searchQuery, searchModels);
     }
 
     if (isScopedSearchEnabled && shouldUseTables) {
@@ -86,9 +109,12 @@ export const useScopedSearchResults = <
   }, [
     isFetchingTables,
     isFetchingCollectionItems,
+    isFetchingDashboardItems,
     shouldUseCollectionItems,
+    shouldUseDashboardItems,
     shouldUseTables,
     collectionItems,
+    dashboardItems,
     tableItems,
     searchQuery,
     searchModels,

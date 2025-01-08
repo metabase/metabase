@@ -1,5 +1,5 @@
 /* NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
- * NOTE: KEEP SYNCRONIZED WITH:
+ * NOTE: KEEP SYNCHRONIZED WITH:
  * frontend/src/metabase/ui/utils/colors.ts
  * frontend/src/metabase/lib/colors/palette.ts
  * frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
@@ -101,6 +101,7 @@
     #000
   );
   --mb-color-syntax-parameters: var(--mb-base-color-mango-30);
+  --mb-color-switch-off: var(--mb-base-color-orion-10);
 
   /**
     * Base colors
