@@ -7,7 +7,6 @@
    [metabase-enterprise.serialization.api :as api.serialization]
    [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.models :refer [Card Collection Dashboard]]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.compress :as u.compress]
@@ -87,11 +86,11 @@
       (mt/with-premium-features #{:serialization}
         (testing "POST /api/ee/serialization/export"
           (mt/with-empty-h2-app-db
-            (mt/with-temp [Collection    coll  {:name "API Collection"}
-                           Dashboard     _     {:collection_id (:id coll)}
-                           Card          card  {:collection_id (:id coll)}
-                           Collection    coll2 {:name "Other Collection"}
-                           Card          _     {:collection_id (:id coll2)}]
+            (mt/with-temp [:model/Collection    coll  {:name "API Collection"}
+                           :model/Dashboard     _     {:collection_id (:id coll)}
+                           :model/Card          card  {:collection_id (:id coll)}
+                           :model/Collection    coll2 {:name "Other Collection"}
+                           :model/Card          _     {:collection_id (:id coll2)}]
               (testing "API respects parameters"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :all_collections false :data_model false :settings true)]
@@ -167,9 +166,9 @@
       (snowplow-test/with-fake-snowplow-collector
         (mt/with-premium-features #{:serialization}
           (testing "POST /api/ee/serialization/export"
-            (mt/with-temp [Collection coll  {}
-                           Dashboard  _dash {:collection_id (:id coll)}
-                           Card       card  {:collection_id (:id coll)}]
+            (mt/with-temp [:model/Collection coll  {}
+                           :model/Dashboard  _dash {:collection_id (:id coll)}
+                           :model/Card       card  {:collection_id (:id coll)}]
 
               (let [res (-> (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
                                                   :collection (:id coll) :data_model false :settings false)

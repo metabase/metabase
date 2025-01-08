@@ -8,7 +8,6 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.http-client :as client]
-   [metabase.models :refer [Action Card Database]]
    [metabase.models.action :as action]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data :as data]
@@ -97,7 +96,7 @@
       (finally
         (when-let [{driver :engine, db-id :id} @db]
           (tx/destroy-db! driver dataset-definition)
-          (t2/delete! Database :id db-id))))))
+          (t2/delete! :model/Database :id db-id))))))
 
 (defmacro with-actions-test-data
   "Sets the current dataset to a freshly-loaded copy of [[defs/test-data]] that only includes the `categories` table
@@ -272,8 +271,8 @@
            binding-forms-and-option-maps])]
     `(do
        (initialize/initialize-if-needed! :web-server)
-       (t2.with-temp/with-temp ~[Card model model-def]
-         (tu/with-model-cleanup [Action]
+       (t2.with-temp/with-temp ~[:model/Card model model-def]
+         (tu/with-model-cleanup [:model/Action]
            (let [~custom-binding ~model
                  ~@(mapcat (fn [[binding-form option-map]]
                              [binding-form `(do-with-action (merge {:type :query} ~option-map) (:id ~model))])
@@ -293,7 +292,7 @@
 (defn do-with-actions-set!
   "Impl for [[with-actions-enabled]]."
   [enable? thunk]
-  (tu/with-temp-vals-in-db Database (data/id) {:settings {:database-enable-actions enable?}}
+  (tu/with-temp-vals-in-db :model/Database (data/id) {:settings {:database-enable-actions enable?}}
     (thunk)))
 
 ;;; TODO -- FIXME, rename this to `with-actions-enabled!` and remove the `:clj-kondo/ignore`

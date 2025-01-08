@@ -6,7 +6,7 @@ title: Embedded analytics SDK
 
 {% include beta-blockquote.html %}
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true enterprise-only=true %}
 
 With the Embedded analytics SDK, you can embed individual Metabase components with React (like standalone charts, dashboards, the query builder, and more). You can manage access and interactivity per component, and you have advanced customization for seamless styling.
 

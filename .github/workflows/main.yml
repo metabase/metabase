@@ -1,0 +1,38 @@
+name: Slack Notification for New Feature Requests
+
+on:
+  issues:
+    types:
+      - labeled
+jobs:
+  on-issue-labeled:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    if: |
+      contains(github.event.issue.labels.*.name, 'Type:New Feature')
+    steps:
+      - name: Setting title
+        uses: actions/github-script@v7
+        id: vars
+        with:
+          script: |
+            core.setOutput('issue_title', ${{ toJson(github.event.issue.title) }}.replaceAll(/"/g, '\\"'));
+      - name: Send the issue ${{ github.event.issue.number }} to Slack
+        id: slack
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "New incoming feature request: ${{ steps.vars.outputs.issue_title }}\n${{ github.event.issue.html_url }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_FEATURE_REQUEST_TRIAGE_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

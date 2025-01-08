@@ -58,6 +58,27 @@ const SERIALIZERS: Serializer[] = [
       }
     },
   },
+  // entire quarter, `Q2`
+  {
+    regex: /^Q([1-4])-([0-9]{4})$/,
+    serialize: value => {
+      if (value.type === "quarter") {
+        const { year, quarter } = value;
+        return `Q${quarter}-${year.toString().padStart(4, "0")}`;
+      }
+    },
+    deserialize: match => {
+      const year = parseInt(match[2]);
+      const quarter = parseInt(match[1]);
+      if (isFinite(year) && isFinite(quarter)) {
+        return {
+          type: "quarter",
+          year,
+          quarter,
+        };
+      }
+    },
+  },
   // single day, `2020-01-02` or `2020-01-02T:10:20:00`
   {
     regex: /^([\d-T:]+)$/,
