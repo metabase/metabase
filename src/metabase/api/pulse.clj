@@ -22,8 +22,9 @@
    [metabase.models.pulse :as models.pulse]
    [metabase.models.pulse-channel :as pulse-channel]
    [metabase.notification.core :as notification]
+   [metabase.permissions.util :as perms-util]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.pulse.core :as pulse]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -45,7 +46,7 @@
   "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
   themselves. Recipients that are plain email addresses are preserved."
   [pulses]
-  (if (premium-features/sandboxed-or-impersonated-user?)
+  (if (perms-util/sandboxed-or-impersonated-user?)
     (for [pulse pulses]
       (assoc pulse :channels
              (for [channel (:channels pulse)]
@@ -163,7 +164,7 @@
   to merge in existing recipients before writing the pulse updates to avoid them being deleted unintentionally. We only
   merge in recipients that are Metabase users, not raw email addresses, which these users can still view and modify."
   [pulse-updates pulse-before-update]
-  (if (premium-features/sandboxed-or-impersonated-user?)
+  (if (perms-util/sandboxed-or-impersonated-user?)
     (let [recipients-to-add (filter
                              (fn [{id :id}] (and id (not= id api/*current-user-id*)))
                              (:recipients (api.alert/email-channel pulse-before-update)))]
@@ -236,7 +237,7 @@
                        (assoc-in [:email :configured] (email/email-configured?))
                        (assoc-in [:http :configured] (t2/exists? :model/Channel :type :channel/http :active true)))]
     {:channels (cond
-                 (premium-features/sandboxed-or-impersonated-user?)
+                 (perms-util/sandboxed-or-impersonated-user?)
                  (dissoc chan-types :slack)
 
                  ;; no Slack integration, so we are g2g

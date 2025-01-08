@@ -20,7 +20,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.sync :as sync]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as sync.field-values]

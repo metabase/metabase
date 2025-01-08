@@ -17,9 +17,10 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :as user]
+   [metabase.permissions.util :as perms-util]
    [metabase.plugins.classloader :as classloader]
+   [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -145,18 +146,18 @@
   - with include_deactivated"
   [status query group_ids include_deactivated]
   (cond-> {}
-    true                                               (sql.helpers/where [:= :core_user.type "personal"])
-    true                                               (sql.helpers/where (status-clause status include_deactivated))
+    true                                         (sql.helpers/where [:= :core_user.type "personal"])
+    true                                         (sql.helpers/where (status-clause status include_deactivated))
     ;; don't send the internal user
-    (premium-features/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
-    (some? query)                                      (sql.helpers/where (query-clause query))
-    (some? group_ids)                                  (sql.helpers/right-join
-                                                        :permissions_group_membership
-                                                        [:= :core_user.id :permissions_group_membership.user_id])
-    (some? group_ids)                                  (sql.helpers/where
-                                                        [:in :permissions_group_membership.group_id group_ids])
-    (some? (request/limit))                            (sql.helpers/limit (request/limit))
-    (some? (request/offset))                           (sql.helpers/offset (request/offset))))
+    (perms-util/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
+    (some? query)                                (sql.helpers/where (query-clause query))
+    (some? group_ids)                            (sql.helpers/right-join
+                                                  :permissions_group_membership
+                                                  [:= :core_user.id :permissions_group_membership.user_id])
+    (some? group_ids)                            (sql.helpers/where
+                                                  [:in :permissions_group_membership.group_id group_ids])
+    (some? (request/limit))                      (sql.helpers/limit (request/limit))
+    (some? (request/offset))                     (sql.helpers/offset (request/offset))))
 
 (defn- filter-clauses-without-paging
   "Given a where clause, return a clause that can be used to count."
@@ -263,7 +264,7 @@
     (cond
       ;; if they're sandboxed OR if they're a superuser, ignore the setting and just give them nothing or everything,
       ;; respectively.
-      (premium-features/sandboxed-user?)
+      (perms-util/sandboxed-user?)
       (just-me)
 
       api/*is-superuser?*

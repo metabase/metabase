@@ -4,7 +4,7 @@
    [compojure.core :refer [GET]]
    [metabase.api.common :as api]
    [metabase.models.cache-config :as cache-config]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util.i18n :refer [tru trun]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]

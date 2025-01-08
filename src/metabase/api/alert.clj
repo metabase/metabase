@@ -16,7 +16,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as models.pulse]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
