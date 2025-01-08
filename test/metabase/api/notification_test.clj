@@ -12,7 +12,7 @@
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :test-users))
+(use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
 (deftest get-notification-card-test
   (mt/with-temp [:model/Channel {chn-id :id} notification.tu/default-can-connect-channel
@@ -341,7 +341,7 @@
                                             (mt/user-http-request user-or-id :put expected-status (format "notification/%d" (:id notification))
                                                                   (assoc notification :updated_at (t/offset-date-time))))
               change-notification-creator (fn [user-id]
-                                            (t2/update! :model/Notification (:id notification) {:creator_id user-id}))
+                                            (t2/update! :notification (:id notification) {:creator_id user-id}))
               move-card-collection        (fn [user-id]
                                             (t2/update! :model/Card (-> notification :payload :card_id)
                                                         {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id user-id)}))]
@@ -396,7 +396,7 @@
                                      :recipients   [{:type    :notification-recipient/user
                                                      :user_id (mt/user->id :lucky)}]}]}]
       (let [send-notification (fn [user-or-id expected-status]
-                               (mt/user-http-request user-or-id :get expected-status (format "notification/%d" (:id notification))))]
+                                (mt/user-http-request user-or-id :get expected-status (format "notification/%d" (:id notification))))]
         (testing "admin can send"
           (send-notification :crowberto 200))
         (testing "creator can send"

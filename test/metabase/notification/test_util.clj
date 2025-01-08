@@ -114,7 +114,6 @@
       (finally
         (t2/delete! :model/Notification (:id notification))))))
 
-
 (defn do-with-card-notification
   [{:keys [card notification-card notification subscriptions handlers]} thunk]
   (mt/with-temp
