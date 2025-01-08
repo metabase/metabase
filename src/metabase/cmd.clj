@@ -34,6 +34,7 @@
 (defn- system-exit!
   "Proxy function to System/exit to enable the use of `with-redefs`."
   [return-code]
+  (flush)
   (System/exit return-code))
 
 (defn- cmd->var
@@ -151,6 +152,12 @@
   []
   (classloader/require 'metabase.cmd.endpoint-dox)
   ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
+
+(defn ^:command api-documentation-2
+  "Replacement for the [[api-documentation]] command that generates OpenAPI documentation instead of custom stuff."
+  []
+  (classloader/require 'metabase.cmd.endpoint-dox-2)
+  ((resolve 'metabase.cmd.endpoint-dox-2/generate-dox!)))
 
 (defn ^:command environment-variables-documentation
   "Generates a markdown file containing documentation for environment variables relevant to configuring Metabase.
@@ -322,6 +329,7 @@
   [& messages]
   (doseq [msg messages]
     (println (u/format-color 'red msg)))
+  (flush)
   (System/exit 1))
 
 (defn run-cmd
@@ -340,7 +348,9 @@
       (apply @(cmd->var command-name) args)
       (catch Throwable e
         (when (:cmd/exit (ex-data e)) ;; fast-track for commands that have their own error handling
+          (flush)
           (System/exit 1))
         (.printStackTrace e)
         (fail! (str "Command failed with exception: " (.getMessage e))))))
+  (flush)
   (System/exit 0))
