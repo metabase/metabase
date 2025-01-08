@@ -151,7 +151,7 @@ export async function reportCIFailure({
   const response = await updateComment({
     fileName: spec.name,
     testName: test.titlePath.join(" > "),
-  });
+  }).catch(console.error);
 
   console.log("response", response);
 
@@ -161,8 +161,6 @@ export async function reportCIFailure({
         " > ",
       )}`,
     );
-    const payload = response.json();
-    console.log(payload);
   }
 
   return null;
