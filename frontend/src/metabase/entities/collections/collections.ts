@@ -200,7 +200,7 @@ function useListQuery(
   return params?.tree ? collectionsTree : collections;
 }
 
-export { getExpandedCollectionsById };
+export { getExpandedCollectionsById, useListQuery };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Collections;
