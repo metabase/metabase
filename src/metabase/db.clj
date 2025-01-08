@@ -12,6 +12,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.db.data-source :as mdb.data-source]
+   [metabase.db.encryption :as mdb.encryption]
    [metabase.db.env :as mdb.env]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.liquibase :as liquibase]
@@ -40,6 +41,10 @@
 
  [mdb.jdbc-protocols
   clob->str]
+
+ [mdb.encryption
+  decrypt-db
+  encrypt-db]
 
  [mdb.setup
   migrate!
