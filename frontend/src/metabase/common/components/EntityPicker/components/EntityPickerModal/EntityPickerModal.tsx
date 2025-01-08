@@ -417,7 +417,6 @@ export function EntityPickerModal<
               )}
               {!!hydratedOptions.hasConfirmButtons && onConfirm && (
                 <ButtonBar
-                  modalRef={modalRef}
                   onConfirm={onConfirm}
                   onCancel={onClose}
                   canConfirm={canSelectItem}
