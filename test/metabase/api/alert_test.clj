@@ -252,23 +252,6 @@
                                     :card             {:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
                                     :channels         ["abc"]}))))
 
-(defn- new-alert-email [user body-map]
-  (mt/email-to user {:subject "You set up an alert",
-                     :body (merge {"https://metabase.com/testmb" true,
-                                   "My question"                 true}
-                                  body-map)}))
-
-(defn- added-to-alert-email [user body-map]
-  (mt/email-to user {:subject "Crowberto Corv added you to an alert",
-                     :body (merge {"https://metabase.com/testmb" true,
-                                   "now getting alerts" true}
-                                  body-map)}))
-
-(defn- unsubscribe-email [user body-map]
-  (mt/email-to user {:subject "You unsubscribed from an alert",
-                     :body (merge {"https://metabase.com/testmb" true}
-                                  body-map)}))
-
 (defn- default-alert [card]
   {:id                  true
    :name                nil
@@ -355,10 +338,10 @@
 ;; Check creation of a below goal alert
 (deftest below-goal-alert-test
   (mt/with-non-admin-groups-no-root-collection-perms
-    (mt/with-temp [:model/ollection collection {}
-                   :model/ard       card {:name          "My question"
-                                          :display       "line"
-                                          :collection_id (u/the-id collection)}]
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card       card {:name          "My question"
+                                           :display       "line"
+                                           :collection_id (u/the-id collection)}]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
       (with-alert-setup!
         (mt/user-http-request
@@ -372,10 +355,10 @@
 ;; Check creation of a above goal alert
 (deftest above-goal-alert-test
   (mt/with-non-admin-groups-no-root-collection-perms
-    (mt/with-temp [:model/ollection collection {}
-                   :model/ard       card {:name          "My question"
-                                          :display       "bar"
-                                          :collection_id (u/the-id collection)}]
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card       card {:name          "My question"
+                                           :display       "bar"
+                                           :collection_id (u/the-id collection)}]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
       (with-alert-setup!
         (mt/user-http-request
