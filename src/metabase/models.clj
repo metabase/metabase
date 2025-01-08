@@ -169,6 +169,7 @@
         (and (not (str/blank? setting))
              (not= "false" setting)))))
 
+#_
 (when (update-hook-enabled?)
   (t2/define-after-update :hook/search-index
     [instance]
