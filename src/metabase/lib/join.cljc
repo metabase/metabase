@@ -26,7 +26,6 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.lib.stage.util :as lib.stage.util]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
@@ -313,11 +312,10 @@
   a-join-clause)
 
 ;;; TODO -- this probably ought to live in [[metabase.lib.query]]
-;; TODO: Is the missing stage here a bug?
 (defmethod join-clause-method :mbql/query
   [another-query]
   (-> {:lib/type :mbql/join
-       :stages   (:stages (lib.stage.util/append-stage #_(requiring-resolve 'lib.stage/append-stage) (lib.util/pipeline another-query)))}
+       :stages   (:stages (lib.util/pipeline another-query))}
       lib.options/ensure-uuid))
 
 ;;; TODO -- this probably ought to live in [[metabase.lib.stage]]
