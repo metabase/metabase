@@ -1,15 +1,15 @@
 import { t } from "ttag";
 
-import { DateMonthYearWidget } from "metabase/components/DateMonthYearWidget";
-import { DateQuarterYearWidget } from "metabase/components/DateQuarterYearWidget";
-import { DateRelativeWidget } from "metabase/components/DateRelativeWidget";
 import { TextWidget } from "metabase/components/TextWidget";
 import type { ParameterValueWidgetProps } from "metabase/parameters/components/ParameterValueWidget";
 import { NumberInputWidget } from "metabase/parameters/components/widgets/NumberInputWidget";
 import { StringInputWidget } from "metabase/parameters/components/widgets/StringInputWidget";
 import { getParameterWidgetTitle } from "metabase/parameters/utils/ui";
 import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
+import { DateMonthYearWidget } from "metabase/querying/parameters/components/DateMonthYearWidget";
+import { DateQuarterYearWidget } from "metabase/querying/parameters/components/DateQuarterYearWidget";
 import { DateRangeWidget } from "metabase/querying/parameters/components/DateRangeWidget";
+import { DateRelativeWidget } from "metabase/querying/parameters/components/DateRelativeWidget";
 import { DateSingleWidget } from "metabase/querying/parameters/components/DateSingleWidget";
 import type {
   FieldFilterUiParameter,
@@ -68,13 +68,10 @@ export const ParameterDropdownWidget = ({
     const DateWidget = {
       "date/single": DateSingleWidget,
       "date/range": DateRangeWidget,
-      "date/all-options": DateAllOptionsWidget,
-    }[parameter.type];
-
-    const LegacyDateWidget = {
-      "date/relative": DateRelativeWidget,
       "date/month-year": DateMonthYearWidget,
       "date/quarter-year": DateQuarterYearWidget,
+      "date/relative": DateRelativeWidget,
+      "date/all-options": DateAllOptionsWidget,
     }[parameter.type];
 
     if (DateWidget) {
@@ -87,19 +84,6 @@ export const ParameterDropdownWidget = ({
             setValue?.(value);
             onPopoverClose?.();
           }}
-        />
-      );
-    }
-
-    if (LegacyDateWidget) {
-      return (
-        <LegacyDateWidget
-          value={value}
-          initialValue={value}
-          defaultValue={parameter.default}
-          required={parameter.required}
-          setValue={setValue}
-          onClose={() => onPopoverClose?.()}
         />
       );
     }

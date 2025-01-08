@@ -17,8 +17,7 @@
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.collection :as collection]
    [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.root :as collection.root]
@@ -973,7 +972,7 @@
   "Fetch a specific Collection with standard details added"
   [id]
   {id ms/PositiveInt}
-  (collection-detail (api/read-check Collection id)))
+  (collection-detail (api/read-check :model/Collection id)))
 
 (api/defendpoint GET "/trash"
   "Fetch the trash collection, as in `/api/collection/:trash-id`"
@@ -1021,7 +1020,7 @@
    official_collections_first [:maybe ms/MaybeBooleanValue]
    show_dashboard_questions   [:maybe ms/BooleanValue]}
   (let [model-kwds (set (map keyword (u/one-or-many models)))
-        collection (api/read-check Collection id)]
+        collection (api/read-check :model/Collection id)]
     (u/prog1 (collection-children collection
                                   {:show-dashboard-questions? show_dashboard_questions
                                    :models                    model-kwds
@@ -1114,7 +1113,7 @@
     (throw (ex-info (tru "You cannot modify the Trash Collection.")
                     {:status-code 400})))
   (api/write-check (if collection-id
-                     (t2/select-one Collection :id collection-id)
+                     (t2/select-one :model/Collection :id collection-id)
                      (cond-> collection/root-collection
                        collection-namespace (assoc :namespace collection-namespace)))))
 
@@ -1136,7 +1135,7 @@
               :authority_level authority_level
               :namespace       namespace}
              (when parent_id
-               {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))})))
+               {:location (collection/children-location (t2/select-one [:model/Collection :location :id] :id parent_id))})))
     (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))
 
 (api/defendpoint POST "/"
@@ -1156,7 +1155,7 @@
   [& {:keys [collection-before-update collection-updates actor]}]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
     (when-let [alerts (not-empty (models.pulse/retrieve-alerts-for-cards
-                                  {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
+                                  {:card-ids (t2/select-pks-set :model/Card :collection_id (u/the-id collection-before-update))}))]
       (t2/delete! :model/Pulse :id [:in (mapv u/the-id alerts)])
       (events/publish-event! :event/card-update.alerts-deleted.card-archived {:alerts alerts, :actor actor}))))
 
@@ -1169,7 +1168,7 @@
     (let [orig-location (:location collection-before-update)
           new-parent-id (:parent_id collection-updates)
           new-parent    (if new-parent-id
-                          (t2/select-one [Collection :location :id] :id new-parent-id)
+                          (t2/select-one [:model/Collection :location :id] :id new-parent-id)
                           collection/root-collection)
           new-location  (collection/children-location new-parent)]
       ;; check and make sure we're actually supposed to be moving something
@@ -1221,7 +1220,7 @@
    parent_id       [:maybe ms/PositiveInt]
    authority_level [:maybe collection/AuthorityLevel]}
   ;; do we have perms to edit this Collection?
-  (let [collection-before-update (t2/hydrate (api/write-check Collection id) :parent_id)]
+  (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
     ;; if authority_level is changing, make sure we're allowed to do that
     (when (and (contains? collection-updates :authority_level)
                (not= (keyword authority_level) (:authority_level collection-before-update)))
@@ -1231,12 +1230,12 @@
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
       (when (seq updates)
-        (t2/update! Collection id updates)))
+        (t2/update! :model/Collection id updates)))
     ;; if we're trying to move or archive the Collection, go ahead and do that
     (move-or-archive-collection-if-needed! collection-before-update collection-updates)
     (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
   ;; finally, return the updated object
-  (collection-detail (t2/select-one Collection :id id)))
+  (collection-detail (t2/select-one :model/Collection :id id)))
 
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
 

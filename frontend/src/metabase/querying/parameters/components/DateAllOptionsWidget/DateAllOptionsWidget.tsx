@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { DatePicker } from "metabase/querying/filters/components/DatePicker";
@@ -24,10 +25,7 @@ export function DateAllOptionsWidget({
   submitButtonLabel = t`Apply`,
   onChange,
 }: DateAllOptionsWidgetProps) {
-  const value = useMemo(
-    () => (valueText != null ? deserializeDateFilter(valueText) : undefined),
-    [valueText],
-  );
+  const value = useMemo(() => getPickerValue(valueText), [valueText]);
 
   const handleChange = (value: DatePickerValue) => {
     onChange(serializeDateFilter(value));
@@ -41,4 +39,15 @@ export function DateAllOptionsWidget({
       onChange={handleChange}
     />
   );
+}
+
+function getPickerValue(
+  valueText: string | undefined,
+): DatePickerValue | undefined {
+  const value =
+    valueText != null ? deserializeDateFilter(valueText) : undefined;
+  return match(value)
+    .returnType<DatePickerValue | undefined>()
+    .with({ type: P.union("specific", "relative", "exclude") }, value => value)
+    .otherwise(() => undefined);
 }
