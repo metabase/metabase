@@ -3,6 +3,7 @@
   (:require
    [malli.core :as mc]
    [malli.error :as me]
+   [medley.core :as m]
    [metabase.util.i18n :refer [tru]]))
 
 (defn validate-channel-details
@@ -22,4 +23,5 @@
 (defn realize-data-rows
   "Realize the data rows in a [[metabase.notification.payload.execute/Part]]"
   [part]
-  (update-in part [:result :data :rows] maybe-deref))
+  (when part
+    (m/update-existing-in part [:result :data :rows] maybe-deref)))

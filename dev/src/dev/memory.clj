@@ -42,7 +42,7 @@
 
 (def ^:dynamic *memory-log-level* -1)
 
-(defn- get-memory-stats
+(defn- used-mb
   []
   (let [rt (Runtime/getRuntime)
         mb (* 1024.0 1024.0)]
@@ -54,7 +54,7 @@
   [body-fn context]
   (binding [*memory-log-level* (inc *memory-log-level*)]
     (let [indent (apply str (repeat *memory-log-level* "  "))
-          before (get-memory-stats)
+          before (used-mb)
           print-stats (fn
                         ([stats]
                          (println (format "%s%s | Memory before:: %.2f MB "
@@ -64,7 +64,7 @@
                                           indent context after (- after before)))))
           _ (print-stats before)
           result (body-fn)
-          after (get-memory-stats)
+          after (used-mb)
           _ (print-stats before after)]
       result)))
 
@@ -78,7 +78,3 @@
   ;; almost correct, at least a constant error
   (measuring-thread-allocations
    (byte-array (* 1024 1024))))
-  ;; => 1.028MB
-  ;; => 1.028MB
-  ;; => 1.028MB
-

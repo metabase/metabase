@@ -112,7 +112,7 @@
 (defn- email-attachment
   [rendered-cards parts]
   (filter some?
-          ;; maybe we need to rewrite this into a transudcer?
+          ;; maybe we need to rewrite this into a transducer?
           (concat (map make-message-attachment (apply merge (map :attachments (u/one-or-many rendered-cards))))
                   (mapcat email.result-attachment/result-attachment parts))))
 

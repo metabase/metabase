@@ -1,6 +1,7 @@
 (ns metabase.notification.payload.execute
   (:require
    [malli.core :as mc]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
@@ -185,7 +186,7 @@
   (cond
     (:card_id dashcard)
     (let [parameters (merge-default-values parameters)]
-      (update (execute-dashboard-subscription-card dashcard parameters) :result data-rows-to-disk!))
+      (m/update-existing (execute-dashboard-subscription-card dashcard parameters) :result data-rows-to-disk!))
 
     (virtual-card-of-type? dashcard "iframe")
     nil

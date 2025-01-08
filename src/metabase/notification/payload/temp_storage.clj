@@ -12,6 +12,8 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private temp-file-lifetime-seconds (* 5 60))
+
 (def ^:private temp-dir
   (delay
     (let [dir (io/file (System/getProperty "java.io.tmpdir")
@@ -60,14 +62,14 @@
 
 (defn to-temp-file!
   "Write data to a temporary file and schedule it for deletion after a specified time period.
-  The file will be automatically deleted after the given number of seconds (defaults to 5 minutes).
+  The file will be automatically deleted after the given number of seconds.
   Returns a derefable object that, when dereferenced, reads and returns the data from the temporary file.
 
   Arguments:
     data    - The data to write to the temporary file
-    seconds - Optional. Number of seconds before file deletion (default: 300)"
+    seconds - Optional. Number of seconds before file deletion (default: is [[temp-file-lifetime-seconds]])"
   ([data]
-   (to-temp-file! data (* 5 60)))
+   (to-temp-file! data temp-file-lifetime-seconds))
   ([data seconds]
    (let [f (temp-file)]
      (schedule-deletion! f seconds)
