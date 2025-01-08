@@ -125,7 +125,7 @@ describe("scenarios > visualizations > pie chart", () => {
       },
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     H.leftSidebar().within(() => {
       cy.findByText("Display").click();
@@ -146,7 +146,7 @@ describe("scenarios > visualizations > pie chart", () => {
       display: "pie",
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     H.leftSidebar().within(() => {
       cy.findByText("Display").click();
@@ -218,7 +218,7 @@ describe("scenarios > visualizations > pie chart", () => {
 
     ensurePieChartRendered(["Widget", "Gadget", "Gizmo", "Doohickey"]);
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     // Open color picker
     cy.findByLabelText("#F2A86F").click();
@@ -247,7 +247,7 @@ describe("scenarios > visualizations > pie chart", () => {
     ensurePieChartRendered(["Gadget", "Doohickey"]);
 
     // Ensure row settings should show only two rows
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.getDraggableElements().should("have.length", 2);
     H.getDraggableElements().contains("Woooget").should("not.exist");
     H.getDraggableElements().contains("Gizmo").should("not.exist");
@@ -305,7 +305,7 @@ describe("scenarios > visualizations > pie chart", () => {
       ["Doohickey", "Gadget", "Gizmo", "Widget"],
     );
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     cy.findAllByTestId("chartsettings-field-picker")
       .last()
