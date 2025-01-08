@@ -57,6 +57,7 @@ jobs:
               { name: "oss-subset", edition: 'oss', tags: "@OSS" },
               { name: "slow", tags: "@slow" },
               { name: "mongo", tags: "@mongo" },
+              { name: "external", tags: "@external" },
             ];
 
             const fileNames = "${{ steps.test-files.outputs.filenames }}"
