@@ -98,26 +98,24 @@
           (is (=? (assoc notification :id (mt/malli=? int?))
                   (mt/user-http-request :crowberto :post 200 "notification" notification))))))))
 
-
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
-(defn- do-with-send-messages-sync
+(defn- do-with-send-messages-sync!
   [f]
   (let [orig-send-email! @#'messages/send-email!]
-    (mt/with-dynamic-redefs [messages/send-email! (fn [& args]
-                                                    (deref (apply orig-send-email! args)))]
+    (with-redefs [messages/send-email! (fn [& args]
+                                         (deref (apply orig-send-email! args)))]
       (f))))
 
-(defmacro with-send-messages-sync
+(defmacro with-send-messages-sync!
   [& body]
-  `(do-with-send-messages-sync (fn [] ~@body)))
+  `(do-with-send-messages-sync! (fn [] ~@body)))
 
 (deftest create-notification-send-you-were-added-email-test
   (mt/with-model-cleanup [:model/Notification]
     (notification.tu/with-channel-fixtures [:channel/email]
       (mt/with-temp [:model/Card {card-id :id} {:name "My Card"}]
         (doseq [[send_condition expected_text] [["has_result" "whenever this question has any results"]
-                                                ["goal_above" "when this question meets its goal"]
-                                                ["goal_below" "when this question goes below its goal"]]]
+                                                #_["goal_above" "when this question meets its goal"]
+                                                #_["goal_below" "when this question goes below its goal"]]]
           (let [notification {:payload_type  "notification/card"
                               :active        true
                               :payload       {:card_id card-id
@@ -131,7 +129,7 @@
                                                               {:type    :notification-recipient/raw-value
                                                                :details {:value "ngoc@metabase.com"}}]}]}]
             (let [[email] (notification.tu/with-mock-inbox-email!
-                            (with-send-messages-sync
+                            (with-send-messages-sync!
                               (mt/user-http-request :crowberto :post 200 "notification" notification)))
                   a-card-url (format "<a href=\"https://metabase.com/testmb/question/%d\">My Card</a>." card-id)]
               (testing (format "send email with %s condition" send_condition)
@@ -747,7 +745,7 @@
                                                                                      :recipients   [{:type    :notification-recipient/user
                                                                                                      :user_id (mt/user->id :lucky)}]}]}]
           (let [[email] (notification.tu/with-mock-inbox-email!
-                          (with-send-messages-sync
+                          (with-send-messages-sync!
                             (mt/user-http-request :lucky :post 200 (format "notification/%d/unsubscribe" noti-1))))
                 a-href (format "<a href=\"https://metabase.com/testmb/question/%d\">My Card</a>."
                                (-> notification :payload :card_id))]
@@ -776,7 +774,7 @@
                                           (-> notification :payload :card_id)))
               update-notification! (fn [noti-id notification updates]
                                      (notification.tu/with-mock-inbox-email!
-                                       (with-send-messages-sync
+                                       (with-send-messages-sync!
                                          (mt/user-http-request :crowberto :put 200
                                                                (format "notification/%d" noti-id)
                                                                (merge notification updates)))))

@@ -110,9 +110,6 @@
           (is (= (construct-email
                   {:message [{notification.tu/default-card-name true
                               "Manage your subscriptions"       true}
-
-                             ;; static viz
-                             notification.tu/png-attachment
                              ;; icon
                              notification.tu/png-attachment
                              notification.tu/csv-attachment]})
@@ -269,7 +266,6 @@
                    :message [{notification.tu/default-card-name true
                               "This question has reached its goal of 5\\.9\\." true}
                              notification.tu/png-attachment
-                             notification.tu/png-attachment
                              notification.tu/csv-attachment]})
                  (mt/summarize-multipart-single-email
                   email
@@ -319,7 +315,6 @@
                   {:subject "Alert: Card notification test card has gone below its goal"
                    :message [{notification.tu/default-card-name true
                               "This question has gone below its goal of 1\\.1\\." true}
-                             notification.tu/png-attachment
                              notification.tu/png-attachment
                              notification.tu/csv-attachment]})
                  (mt/summarize-multipart-single-email

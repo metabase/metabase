@@ -51,8 +51,8 @@
   [thunk]
   (with-send-notification-sync
     (let [channel-messages (atom {})]
-      (mt/with-dynamic-redefs [channel/send! (fn [channel message]
-                                               (swap! channel-messages update (:type channel) u/conjv message))]
+      (with-redefs [channel/send! (fn [channel message]
+                                    (swap! channel-messages update (:type channel) u/conjv message))]
         (thunk)
         @channel-messages))))
 
@@ -78,7 +78,7 @@
      (try
        (doseq [topic# topics#]
          (derive topic# :metabase/event))
-       (mt/with-dynamic-redefs [events.notification/supported-topics (set/union @#'events.notification/supported-topics topics#)]
+       (with-redefs [events.notification/supported-topics (set/union @#'events.notification/supported-topics topics#)]
          ~@body)
        (finally
          (doseq [topic# topics#]
@@ -172,7 +172,7 @@
                                                                  email-smtp-port 587
                                                                  site-url        "https://metabase.com/testmb"]
                                 (thunk)))
-   :channel/slack (fn [thunk] (mt/with-dynamic-redefs [slack/files-channel (constantly "FOO")]
+   :channel/slack (fn [thunk] (with-redefs [slack/files-channel (constantly "FOO")]
                                 (thunk)))})
 
 (defn apply-channel-fixtures
@@ -210,8 +210,8 @@
   "Helper function that mocks email/send-email! to capture emails in a vector and returns them."
   [thunk]
   (let [emails (atom [])]
-    (mt/with-dynamic-redefs [email/send-email! (fn [_ email]
-                                                 (swap! emails conj email))]
+    (with-redefs [email/send-email! (fn [_ email]
+                                      (swap! emails conj email))]
       (thunk)
       @emails)))
 
