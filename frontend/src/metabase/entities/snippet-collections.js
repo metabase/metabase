@@ -6,7 +6,7 @@ import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import NormalCollections, {
   getExpandedCollectionsById,
-  useListQuery,
+  useListQuery as useListCollectionsQuery,
 } from "metabase/entities/collections";
 import { createEntity, undo } from "metabase/lib/entities";
 import { SnippetCollectionSchema } from "metabase/schema";
@@ -84,5 +84,9 @@ const useGetQuery = query => {
         },
   );
 };
+
+function useListQuery(query, options) {
+  return useListCollectionsQuery({ ...query, namespace: "snippets" }, options);
+}
 
 export default SnippetCollections;
