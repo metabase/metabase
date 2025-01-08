@@ -484,17 +484,23 @@
   [nmspace
    k    :- ::unique-key
    info :- ::info]
-  (alter-meta!
-   (the-ns nmspace)
-   (fn [metadata]
-     (letfn [(update-api-endpoints [api-endpoints]
-               ;; use an ordered map to preserve the order the endpoints were defined
-               (assoc (or api-endpoints (ordered-map/ordered-map)) k info))
-             (update-info [metadata]
-               (update metadata :api/endpoints update-api-endpoints))
-             (rebuild-handler [metadata]
-               (assoc metadata :api/handler (defendpoint-build-ns-handler (:api/endpoints metadata))))]
-       (-> metadata update-info rebuild-handler)))))
+  ;; we don't want to modify ns metadata during compilation, this will cause it to contain stuff like
+  ;;
+  ;;    #function[metabase.api.macros/fn--61462/defendpoint-base-handler61461--61463/f--61464]
+  ;;
+  ;; that can't get loaded again when you use the uberjar, we'll just recreate this stuff on namespace load.
+  (when-not *compile-files*
+    (alter-meta!
+     (the-ns nmspace)
+     (fn [metadata]
+       (letfn [(update-api-endpoints [api-endpoints]
+                 ;; use an ordered map to preserve the order the endpoints were defined
+                 (assoc (or api-endpoints (ordered-map/ordered-map)) k info))
+               (update-info [metadata]
+                 (update metadata :api/endpoints update-api-endpoints))
+               (rebuild-handler [metadata]
+                 (assoc metadata :api/handler (defendpoint-build-ns-handler (:api/endpoints metadata))))]
+         (-> metadata update-info rebuild-handler))))))
 
 (defn- quote-parsed-args
   "Quote the appropriate parts of the parsed [[defendpoint]] args (body and param bindings) so they can be emitted in

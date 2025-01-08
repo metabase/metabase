@@ -429,8 +429,7 @@
   [nmspace]
   ;; this fetches the handler from the namespace
   (let [nmspace    (the-ns nmspace)
-        handler-fn (fn []
-                     (:api/handler (meta nmspace)))]
+        handler-fn #(:api/handler (meta nmspace))]
     ;; for dev, fetch the handler from the metadata on every request so we get nice live reloading if the endpoints in a
     ;; namespace change. For prod that's not necessary since they shouldn't change
     (some-> (if config/is-dev?
