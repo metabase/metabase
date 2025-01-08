@@ -139,21 +139,11 @@
                 (let [data-uri? (re-find uploaded-base-64-prefix-pattern value)
                       secret-props (m/index-by (comp keyword :name) (driver.u/expand-secret-conn-prop conn-prop))
                       treatment (get-in secret-props [(:value kws) :treat-before-posting] "base64")]
-                  (cond
-                    (and data-uri? (= treatment "base64"))
+                  (if (and data-uri? (= treatment "base64"))
                     (-> value
                         (str/replace-first uploaded-base-64-prefix-pattern "")
                         u/decode-base64-to-bytes)
-
-                    (= treatment "base64")
-                    (try
-                      (u/decode-base64-to-bytes value)
-                      (catch IllegalArgumentException _
-                        (.getBytes value "UTF-8")))
-
-                    :else
-                    ;; This shouldn't happen in reality but tests might not encode their values.
-                    (.getBytes value "UTF-8"))))
+                    (u/string-to-bytes value))))
         has-path? (contains? details (:path kws))
         has-value? (contains? details (:value kws))
         options (get details (:options kws))
