@@ -44,7 +44,7 @@ Here is a diagram of the basic flow:
 +================================+
 ```
 
-You can play with notifications with this simpple code
+You can play with notifications with this simple code
 
 ```clojure
 (require '[metabase.notification.test-util :as notification.tu])
@@ -63,7 +63,7 @@ You can play with notifications with this simpple code
   (notification/send-notification! notification :notification/sync? true))
 ```
 
-This creates a card notification with 1 cron subscription and 2 handlers and send it synchronously.
+This creates a card notification with 1 cron subscription and 2 handlers and sends it synchronously.
 
 ## Subscription
 
@@ -75,7 +75,7 @@ Currently we have 2 types of subscriptions:
 
 ## Payload
 
-Once a notification is triggered, we need to execute the payload to get the data needed to render the notification.
+Once a notification is triggered, we need to construct a payload containing the data needed to render the notification.
 
 This is done by `metabase.notification.payload.core/payload` multimethod that dispatch by payload type. 
 
