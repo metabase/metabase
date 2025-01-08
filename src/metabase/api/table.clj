@@ -457,6 +457,7 @@
              :schema           (get-in card [:collection :name] (root-collection-schema-name))
              :moderated_status (:moderated_status card)
              :description      (:description card)
+             :entity_id        (:entity_id card)
              :metrics          (:metrics card)
              :type             card-type}
       (and (= card-type :metric)

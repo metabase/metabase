@@ -24,8 +24,8 @@ const DAY_WEEK_SHORTCUT_OPTIONS: ShortcutOption[] = [
     },
   },
   {
-    label: t`Last week`,
-    shortcut: "last-week",
+    label: t`Previous week`,
+    shortcut: "previous-week",
     value: {
       type: "relative",
       value: -1,
@@ -33,8 +33,8 @@ const DAY_WEEK_SHORTCUT_OPTIONS: ShortcutOption[] = [
     },
   },
   {
-    label: t`Last 7 days`,
-    shortcut: "last-7-days",
+    label: t`Previous 7 days`,
+    shortcut: "previous-7-days",
     value: {
       type: "relative",
       value: -7,
@@ -42,8 +42,8 @@ const DAY_WEEK_SHORTCUT_OPTIONS: ShortcutOption[] = [
     },
   },
   {
-    label: t`Last 30 days`,
-    shortcut: "last-30-days",
+    label: t`Previous 30 days`,
+    shortcut: "previous-30-days",
     value: {
       type: "relative",
       value: -30,
@@ -54,8 +54,8 @@ const DAY_WEEK_SHORTCUT_OPTIONS: ShortcutOption[] = [
 
 const MONTH_SHORTCUT_OPTIONS: ShortcutOption[] = [
   {
-    label: t`Last month`,
-    shortcut: "last-month",
+    label: t`Previous month`,
+    shortcut: "previous-month",
     value: {
       type: "relative",
       value: -1,
@@ -63,8 +63,8 @@ const MONTH_SHORTCUT_OPTIONS: ShortcutOption[] = [
     },
   },
   {
-    label: t`Last 3 months`,
-    shortcut: "last-3-months",
+    label: t`Previous 3 months`,
+    shortcut: "previous-3-months",
     value: {
       type: "relative",
       value: -3,
@@ -72,8 +72,8 @@ const MONTH_SHORTCUT_OPTIONS: ShortcutOption[] = [
     },
   },
   {
-    label: t`Last 12 months`,
-    shortcut: "last-12-months",
+    label: t`Previous 12 months`,
+    shortcut: "previous-12-months",
     value: {
       type: "relative",
       value: -12,

@@ -6,7 +6,7 @@ title: "Embedded analytics SDK - appearance"
 
 {% include beta-blockquote.html %}
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true enterprise-only=true %}
 
 You can style your embedded Metabase components with a theme.
 
