@@ -77,7 +77,7 @@ describe("scenarios > visualizations > combo", () => {
       },
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findByText("Display").click();
       cy.findByText("Stack").click();

@@ -208,7 +208,7 @@ describe("scenarios > question > native", () => {
       .as("runQuery")
       .click();
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left")
       .as("sidebar")
       .contains(/hidden/i)
