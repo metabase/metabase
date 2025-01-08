@@ -608,7 +608,7 @@ describe("issue 30039", () => {
   });
 });
 
-describe("issue 37726", () => {
+describe("issue 37726", { tags: "@flaky" }, () => {
   const PIVOT_QUESTION = {
     name: "Pivot table with custom column width",
     display: "pivot",
