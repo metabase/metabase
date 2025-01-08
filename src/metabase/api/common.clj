@@ -388,8 +388,10 @@
            (compojure/let-request [~args request#]
                                   ~@body)))))))
 
-(defmacro defendpoint
-  "Define an API function.
+(defmacro ^{:deprecated "0.53.0"} defendpoint
+  "DEPRECATED! Use [[metabase.api.macros/defendpoint]] instead going forward.
+
+  Define an API function.
    This automatically does several things:
 
    -  converts `route` from a simple form like `\"/:id\"` to a regex-typed one like `[\"/:id\" :id #\"[0-9]+\"]` based

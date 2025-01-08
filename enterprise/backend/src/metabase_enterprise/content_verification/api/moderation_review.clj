@@ -8,6 +8,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Create a new `ModerationReview`."
   [:as {{:keys [text moderated_item_id moderated_item_type status]} :body}]

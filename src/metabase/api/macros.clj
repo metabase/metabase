@@ -17,6 +17,7 @@
    [malli.error :as me]
    [malli.transform :as mtx]
    [metabase.api.common.internal]
+   [metabase.config :as config]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -92,7 +93,7 @@
 (mr/def ::info
   "The info about an individual endpoint that gets stored in the namespace metadata."
   [:map
-   [:f            ::core-fn]
+   [:core-fn      ::core-fn]
    [:base-handler ::handler]
    [:handler      ::handler]
    [:form         ::parsed-args]])
@@ -212,17 +213,26 @@
 (defn- encoder [schema]
   (mr/cached ::encoder schema #(mc/encoder schema encode-transformer)))
 
+(def ^:dynamic *enable-response-validation*
+  "Whether to validate responses against Malli schemas in [[defendpoint]]... normally enabled for dev/test and disabled
+  for prod for performance purposes. You can change this binding if you want to disable it for weird test reasons or
+  whatever.
+
+  Not that encoding is still applied regardless of this value, i.e. even in prod."
+  (not config/is-prod?))
+
 (mu/defn validate-and-encode-response :- any?
   "Impl for [[defendpoint-core-fn]]; validate the endpoint response against `schema` "
   [schema   :- some?
    response :- any?]
-  (when-not (mr/validate schema response)
-    (throw (ex-info "Invalid response" ; TODO -- better error message?
-                    {:status-code 400
-                     :error       (-> schema
-                                      (mr/explain response)
-                                      me/with-spell-checking
-                                      (me/humanize {:wrap mu/humanize-include-value}))})))
+  (when *enable-response-validation*
+    (when-not (mr/validate schema response)
+      (throw (ex-info "Invalid response" ; TODO -- better error message?
+                      {:status-code 400
+                       :error       (-> schema
+                                        (mr/explain response)
+                                        me/with-spell-checking
+                                        (me/humanize {:wrap mu/humanize-include-value}))}))))
   ((encoder schema) response))
 
 (mu/defn- params-binding :- some?
@@ -329,6 +339,9 @@
        (fn [_route-params _query-params body-params-1234]
          (let [body (decode-and-validate-params :body body-schema-5678 body-params-1234)]
            ...))))
+
+  Note that the schema functions are generated only once and reused for better performance.
+  See: [[mr/validator]], [[mr/expaliner]], [[decoder]], and [[encoder]].
 
   This is a drop-in wrapper for a form like
 
@@ -470,7 +483,7 @@
   [nmspace
    method :- ::method
    route  :- string?]
-  (:f (find-route nmspace method route)))
+  (:core-fn (find-route nmspace method route)))
 
 (mu/defn- defendpoint-build-ns-handler :- ::handler
   [endpoints :- [:map-of ::unique-key ::info]]
@@ -529,11 +542,13 @@
   (let [parsed (parse-defendpoint-args args)]
     `(let [core-fn#       (defendpoint-core-fn ~parsed)
            base-handler#  (defendpoint-base-handler core-fn#)
-           route-handler# (defendpoint-route-handler ~parsed base-handler#)]
-       (update-ns-endpoints! *ns* ~(defendpoint-unique-key parsed) {:f            core-fn#
-                                                                    :base-handler base-handler#
-                                                                    :handler      route-handler#
-                                                                    :form         ~(quote-parsed-args parsed)}))))
+           route-handler# (defendpoint-route-handler ~parsed base-handler#)
+           info#          {:core-fn      core-fn#
+                           :base-handler base-handler#
+                           :handler      route-handler#
+                           :form         ~(quote-parsed-args parsed)}]
+       (update-ns-endpoints! *ns* ~(defendpoint-unique-key parsed) info#)
+       info#)))
 
 (s/fdef defendpoint
   :args ::defendpoint

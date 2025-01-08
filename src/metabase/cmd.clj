@@ -153,12 +153,6 @@
   (classloader/require 'metabase.cmd.endpoint-dox)
   ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
 
-(defn ^:command api-documentation-2
-  "Replacement for the [[api-documentation]] command that generates OpenAPI documentation instead of custom stuff."
-  []
-  (classloader/require 'metabase.cmd.endpoint-dox-2)
-  ((resolve 'metabase.cmd.endpoint-dox-2/generate-dox!)))
-
 (defn ^:command environment-variables-documentation
   "Generates a markdown file containing documentation for environment variables relevant to configuring Metabase.
   The command only includes environment variables registered as defsettings.

@@ -174,6 +174,7 @@
   [& body]
   `(do-http-401-on-error (fn [] ~@body)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Login."
   [:as {{:keys [username password]} :body, :as request}]
@@ -192,6 +193,7 @@
                                    (login-throttlers :username)   username]
           (do-login))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/"
   "Logout."
   ;; `metabase-session-id` gets added automatically by the [[metabase.server.middleware.session]] middleware
@@ -230,6 +232,7 @@
       (events/publish-event! :event/password-reset-initiated
                              {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id user-id))}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
   [:as {{:keys [email]} :body, :as request}]
@@ -273,6 +276,7 @@
   "Throttler for password_reset. There's no good field to mark so use password as a default."
   (throttle/make-throttler :password :attempts-threshold 10))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/reset_password"
   "Reset password with a reset token."
   [:as {{:keys [token password]} :body, :as request}]
@@ -296,18 +300,21 @@
             (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/password_reset_token_valid"
   "Check if a password reset token is valid and isn't expired."
   [token]
   {token ms/NonBlankString}
   {:valid (boolean (valid-reset-token->user token))})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/properties"
   "Get all properties and their values. These are the specific `Settings` that are readable by the current user, or are
   public if no user is logged in."
   []
   (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/google_auth"
   "Login with Google Auth."
   [:as {{:keys [token]} :body, :as request}]

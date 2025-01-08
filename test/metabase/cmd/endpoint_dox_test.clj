@@ -1,11 +1,15 @@
 (ns metabase.cmd.endpoint-dox-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [metabase.cmd.endpoint-dox.markdown :as endpoint-dox.yaml]
-   [metabase.cmd.endpoint-dox.metadata :as endpoint-dox.metadata]))
+   [metabase.cmd.endpoint-dox :as cmd.endpoint-dox]
+   [metabase.test :as mt]))
 
-(deftest ^:parallel generate-all-dox-test
-  (testing "Make sure we can successfully generate documentation for all API namespaces"
-    (doseq [page (endpoint-dox.metadata/all-pages)]
-      (testing (:ns page)
-        (is (some? (endpoint-dox.yaml/page page)))))))
+(set! *warn-on-reflection* true)
+
+(deftest generate-dox-test
+  (testing "Make sure we can run the command successfully"
+    (mt/with-temp-file [filename]
+      (cmd.endpoint-dox/generate-dox! filename)
+      (is (.exists (io/file filename)))
+      (io/delete-file filename))))

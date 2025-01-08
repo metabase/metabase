@@ -89,6 +89,7 @@
               :when        (some? value)]
           [setting-name value])))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/"
   "Update multiple email Settings. You must be a superuser or have `setting` permission to do this."
   [:as {settings :body}]
@@ -124,6 +125,7 @@
       {:status 400
        :body   (humanize-error-messages response)})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/"
   "Clear all email related settings. You must be a superuser or have `setting` permission to do this."
   []
@@ -131,6 +133,7 @@
   (setting/set-many! (zipmap (keys mb-to-smtp-settings) (repeat nil)))
   api/generic-204-no-content)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/test"
   "Send a test email using the SMTP Settings. You must be a superuser or have `setting` permission to do this.
   Returns `{:ok true}` if we were able to send the message successfully, otherwise a standard 400 error response."
