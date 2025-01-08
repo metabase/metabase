@@ -115,88 +115,111 @@ describe("getSankeyData", () => {
 
     const result = getSankeyData(rawSeries, sankeyColumns);
 
-    expect(result).toEqual({
-      nodes: [
-        {
-          rawName: "A",
-          level: 0,
-          hasInputs: false,
-          hasOutputs: true,
-          inputColumnValues: {},
-          outputColumnValues: {
-            [getColumnKey(columns[0])]: "A",
-            [getColumnKey(columns[1])]: "C",
-            [getColumnKey(columns[2])]: 13,
-            [getColumnKey(columns[3])]: 130,
-          },
-        },
-        {
-          rawName: "B",
-          level: 1,
-          hasInputs: true,
-          hasOutputs: true,
-          outputColumnValues: {
-            [getColumnKey(columns[0])]: "B",
-            [getColumnKey(columns[1])]: "C",
-            [getColumnKey(columns[2])]: 20,
-            [getColumnKey(columns[3])]: 200,
-          },
-          inputColumnValues: {
-            [getColumnKey(columns[0])]: "A",
-            [getColumnKey(columns[1])]: "B",
-            [getColumnKey(columns[2])]: 11,
-            [getColumnKey(columns[3])]: 110,
-          },
-        },
-        {
-          rawName: "C",
-          level: 2,
-          hasInputs: true,
-          hasOutputs: false,
-          inputColumnValues: {
-            [getColumnKey(columns[0])]: "A",
-            [getColumnKey(columns[1])]: "C",
-            [getColumnKey(columns[2])]: 22,
-            [getColumnKey(columns[3])]: 220,
-          },
-          outputColumnValues: {},
-        },
-      ],
-      links: [
-        {
-          source: "A",
-          target: "B",
-          value: 11,
-          columnValues: {
-            [getColumnKey(columns[0])]: "A",
-            [getColumnKey(columns[1])]: "B",
-            [getColumnKey(columns[2])]: 11,
-            [getColumnKey(columns[3])]: 110,
-          },
-        },
-        {
-          source: "B",
-          target: "C",
-          value: 20,
-          columnValues: {
-            [getColumnKey(columns[0])]: "B",
-            [getColumnKey(columns[1])]: "C",
-            [getColumnKey(columns[2])]: 20,
-            [getColumnKey(columns[3])]: 200,
-          },
-        },
-        {
-          source: "A",
-          target: "C",
-          value: 2,
-          columnValues: {
-            [getColumnKey(columns[0])]: "A",
-            [getColumnKey(columns[1])]: "C",
-            [getColumnKey(columns[2])]: 2,
-            [getColumnKey(columns[3])]: 20,
-          },
-        },
-      ],
+    // Verify nodes
+    expect(result.nodes).toHaveLength(3);
+
+    // Node A
+    const nodeA = result.nodes[0];
+    expect(nodeA).toMatchObject({
+      rawName: "A",
+      level: 0,
+      hasInputs: false,
+      hasOutputs: true,
+      inputColumnValues: {},
+      outputColumnValues: {
+        [getColumnKey(columns[0])]: "A",
+        [getColumnKey(columns[1])]: "C",
+        [getColumnKey(columns[2])]: 13,
+        [getColumnKey(columns[3])]: 130,
+      },
     });
+    expect(nodeA.outputLinkByTarget.size).toBe(2);
+
+    // Node B
+    const nodeB = result.nodes[1];
+    expect(nodeB).toMatchObject({
+      rawName: "B",
+      level: 1,
+      hasInputs: true,
+      hasOutputs: true,
+      inputColumnValues: {
+        [getColumnKey(columns[0])]: "A",
+        [getColumnKey(columns[1])]: "B",
+        [getColumnKey(columns[2])]: 11,
+        [getColumnKey(columns[3])]: 110,
+      },
+      outputColumnValues: {
+        [getColumnKey(columns[0])]: "B",
+        [getColumnKey(columns[1])]: "C",
+        [getColumnKey(columns[2])]: 20,
+        [getColumnKey(columns[3])]: 200,
+      },
+    });
+    expect(nodeB.outputLinkByTarget.size).toBe(1);
+
+    // Node C
+    const nodeC = result.nodes[2];
+    expect(nodeC).toMatchObject({
+      rawName: "C",
+      level: 2,
+      hasInputs: true,
+      hasOutputs: false,
+      inputColumnValues: {
+        [getColumnKey(columns[0])]: "A",
+        [getColumnKey(columns[1])]: "C",
+        [getColumnKey(columns[2])]: 22,
+        [getColumnKey(columns[3])]: 220,
+      },
+      outputColumnValues: {},
+    });
+    expect(nodeC.outputLinkByTarget.size).toBe(0);
+
+    // Verify links
+    expect(result.links).toHaveLength(3);
+
+    // Link A->B
+    expect(result.links[0]).toMatchObject({
+      source: "A",
+      target: "B",
+      value: 11,
+      columnValues: {
+        [getColumnKey(columns[0])]: "A",
+        [getColumnKey(columns[1])]: "B",
+        [getColumnKey(columns[2])]: 11,
+        [getColumnKey(columns[3])]: 110,
+      },
+    });
+    expect(result.links[0].sourceNode).toBe(nodeA);
+    expect(result.links[0].targetNode).toBe(nodeB);
+
+    // Link B->C
+    expect(result.links[1]).toMatchObject({
+      source: "B",
+      target: "C",
+      value: 20,
+      columnValues: {
+        [getColumnKey(columns[0])]: "B",
+        [getColumnKey(columns[1])]: "C",
+        [getColumnKey(columns[2])]: 20,
+        [getColumnKey(columns[3])]: 200,
+      },
+    });
+    expect(result.links[1].sourceNode).toBe(nodeB);
+    expect(result.links[1].targetNode).toBe(nodeC);
+
+    // Link A->C
+    expect(result.links[2]).toMatchObject({
+      source: "A",
+      target: "C",
+      value: 2,
+      columnValues: {
+        [getColumnKey(columns[0])]: "A",
+        [getColumnKey(columns[1])]: "C",
+        [getColumnKey(columns[2])]: 2,
+        [getColumnKey(columns[3])]: 20,
+      },
+    });
+    expect(result.links[2].sourceNode).toBe(nodeA);
+    expect(result.links[2].targetNode).toBe(nodeC);
   });
 });

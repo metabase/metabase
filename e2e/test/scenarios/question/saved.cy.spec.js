@@ -2,6 +2,7 @@ import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -210,6 +211,30 @@ describe("scenarios > question > saved", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     H.appBar().within(() => cy.findByText("Second collection").click());
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Orders").should("be.visible");
+  });
+
+  it("should show dashboard breadcrumbs for a saved question in a dashboard", () => {
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+      dashboard_id: ORDERS_DASHBOARD_ID,
+    });
+
+    H.visitQuestion(ORDERS_QUESTION_ID);
+    H.appBar().within(() => {
+      cy.findByText("Our analytics").should("exist");
+      cy.log("should be able to navigate to the parent dashboard");
+      cy.findByText("Orders in a dashboard").should("exist").click();
+    });
+
+    cy.log(
+      "should have dashboard info disappear when navigating away from question",
+    );
+    H.appBar().within(() => {
+      cy.findByText("Our analytics").should("exist");
+      cy.findByText("Orders in a dashboard").should("not.exist");
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").should("be.visible");

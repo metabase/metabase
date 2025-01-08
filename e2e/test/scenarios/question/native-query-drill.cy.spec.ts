@@ -95,7 +95,7 @@ describe("scenarios > question > native query drill", () => {
 
       H.tableInteractive().findByText("October 7, 2023, 1:34 AM").click();
       H.popover().within(() => {
-        cy.findByText("Filter by this date").should("not.exist");
+        cy.findByText("Filter by this date and time").should("not.exist");
         cy.button("Save").click();
       });
       H.modal().within(() => {
@@ -107,7 +107,7 @@ describe("scenarios > question > native query drill", () => {
 
       H.tableInteractive().findByText("October 7, 2023, 1:34 AM").click();
       H.popover().within(() => {
-        cy.findByText("Filter by this date").should("be.visible");
+        cy.findByText("Filter by this date and time").should("be.visible");
         cy.findByText("On").click();
       });
       cy.wait("@dataset");
@@ -394,7 +394,7 @@ describe("scenarios > question > native query drill", () => {
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
       H.getDashboardCard().findByText("May 15, 2024, 8:04 AM").click();
       H.popover().within(() => {
-        cy.findByText("Filter by this date").should("be.visible");
+        cy.findByText("Filter by this date and time").should("be.visible");
         cy.findByText("On").click();
         cy.wait("@dataset");
       });

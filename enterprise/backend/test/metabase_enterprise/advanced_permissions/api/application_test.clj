@@ -2,13 +2,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as a-perms]
-   [metabase.models :refer [PermissionsGroup]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest application-permissions-test
-  (t2.with-temp/with-temp [PermissionsGroup _]
+  (t2.with-temp/with-temp [:model/PermissionsGroup _]
     (testing "GET /api/ee/advanced-permissions/application/graph"
       (mt/with-premium-features #{}
         (testing "Should require a token with `:advanced-permissions`"
@@ -34,7 +33,7 @@
                           groups))))))))
 
 (deftest application-permissions-test-2
-  (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
+  (t2.with-temp/with-temp [:model/PermissionsGroup {group-id :id}]
     (testing "PUT /api/ee/advanced-permissions/application/graph"
       (let [current-graph (mt/with-premium-features #{:advanced-permissions}
                             (mt/user-http-request :crowberto :get 200 "ee/advanced-permissions/application/graph"))

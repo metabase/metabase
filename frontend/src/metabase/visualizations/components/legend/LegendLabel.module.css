@@ -9,8 +9,4 @@
   &:hover {
     color: var(--mb-color-brand);
   }
-
-  &:focus-visible {
-    outline: 0;
-  }
 }

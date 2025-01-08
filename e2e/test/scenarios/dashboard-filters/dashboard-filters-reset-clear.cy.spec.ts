@@ -233,12 +233,20 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "Thomson",
       setValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").clear().type(value).blur();
+        H.popover()
+          .findByRole("textbox")
+          .type("{selectAll}{backspace}")
+          .type(value)
+          .blur();
         H.popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").clear().type(value).blur();
+        H.popover()
+          .findByRole("textbox")
+          .type("{selectAll}{backspace}")
+          .type(value)
+          .blur();
         H.popover().button("Update filter").click();
       },
     });
@@ -278,12 +286,16 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "Washington",
       setValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").focus().type(value).blur();
+        H.popover().findByRole("textbox").focus().type(value).blur();
         H.popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").clear().type(value).blur();
+        H.popover()
+          .findByRole("textbox")
+          .type("{selectAll}{backspace}")
+          .type(value)
+          .blur();
         H.popover().button("Update filter").click();
       },
     });
@@ -326,12 +338,16 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "2",
       setValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").focus().type(value).blur();
+        H.popover().findByRole("textbox").focus().type(value).blur();
         H.popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").clear().type(value).blur();
+        H.popover()
+          .findByRole("textbox")
+          .type("{selectAll}{backspace}")
+          .type(value)
+          .blur();
         H.popover().button("Update filter").click();
       },
     });
@@ -371,12 +387,16 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "3",
       setValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").focus().type(value).blur();
+        H.popover().findByRole("textbox").focus().type(value).blur();
         H.popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").clear().type(value).blur();
+        H.popover()
+          .findByRole("textbox")
+          .type("{selectAll}{backspace}")
+          .type(value)
+          .blur();
         H.popover().button("Update filter").click();
       },
     });
@@ -501,16 +521,16 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
 
     checkDashboardParameters({
       defaultValueFormatted: "Gizmo",
-      otherValue: "{backspace}Gadget,",
+      otherValue: "{selectAll}{backspace}Gadget",
       otherValueFormatted: "Gadget",
       setValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("combobox").type(value);
+        H.popover().findByRole("textbox").type(value);
         H.popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("combobox").type(value);
+        H.popover().findByRole("textbox").type(value);
         H.popover().button("Update filter").click();
       },
     });
@@ -550,12 +570,12 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "2 selections",
       setValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("combobox").type(value);
+        H.popover().findByRole("textbox").type(value);
         H.popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("combobox").type(value);
+        H.popover().findByRole("textbox").type(value);
         H.popover().button("Update filter").click();
       },
     });
@@ -1069,7 +1089,9 @@ function addDateFilter(label: string, value: string) {
 function updateDateFilter(label: string, value: string) {
   filter(label).click();
   H.popover().findByRole("textbox").clear().type(value).blur();
-  H.popover().button("Update filter").click();
+  H.popover()
+    .button(/(Add|Update) filter/)
+    .click();
 }
 
 function addRangeFilter(

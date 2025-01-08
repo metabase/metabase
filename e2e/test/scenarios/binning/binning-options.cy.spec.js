@@ -80,6 +80,9 @@ const LONGITUDE_BUCKETS = [
   "Bin every 1 degree",
   "Bin every 10 degrees",
   "Bin every 20 degrees",
+  "Bin every 0.05 degrees",
+  "Bin every 0.01 degrees",
+  "Bin every 0.005 degrees",
   "Don't bin",
 ];
 
@@ -125,7 +128,11 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Longitude: Auto binned");
 
       openBinningListForDimension("Longitude", "Auto binned");
-      getAllOptions({ options: LONGITUDE_BUCKETS, isSelected: "Auto bin" });
+      getAllOptions({
+        options: LONGITUDE_BUCKETS,
+        isSelected: "Auto bin",
+        shouldExpandList: true,
+      });
     });
   });
 
@@ -179,7 +186,11 @@ describe("scenarios > binning > binning options", () => {
       cy.findByText("Longitude: Auto binned").click();
       openBinningListForDimension("Longitude", "Auto binned");
 
-      getAllOptions({ options: LONGITUDE_BUCKETS, isSelected: "Auto bin" });
+      getAllOptions({
+        options: LONGITUDE_BUCKETS,
+        isSelected: "Auto bin",
+        shouldExpandList: true,
+      });
     });
   });
 

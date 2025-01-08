@@ -6,11 +6,6 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(def LegacyMetricImportantField
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all these symbols in our codebase."
-  :model/LegacyMetricImportantField)
-
 (methodical/defmethod t2/table-name :model/LegacyMetricImportantField [_model] :metric_important_field)
 
 (doto :model/LegacyMetricImportantField

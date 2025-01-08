@@ -8,7 +8,6 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -62,7 +61,7 @@
   [form]
   (lib.util.match/match form :field &match))
 
-(mu/defn ->field :- [:maybe (ms/InstanceOf Field)]
+(mu/defn ->field :- [:maybe (ms/InstanceOf :model/Field)]
   "Return `Field` instance for a given ID or name in the context of root."
   [{{result-metadata :result_metadata} :source, :as root}
    field-id-or-name-or-clause :- [:or ms/PositiveInt ms/NonBlankString [:fn mbql.preds/Field?]]]
@@ -72,7 +71,7 @@
     (or
      ;; Handle integer Field IDs.
      (when (integer? id-or-name)
-       (t2/select-one Field :id id-or-name))
+       (t2/select-one :model/Field :id id-or-name))
      ;; handle field string names. Only if we have result metadata. (Not sure why)
      (when (string? id-or-name)
        (when-not result-metadata
@@ -82,7 +81,7 @@
          (as-> field field
            (update field :base_type keyword)
            (update field :semantic_type keyword)
-           (mi/instance Field field)
+           (mi/instance :model/Field field)
            (analyze/run-classifiers field {}))))
      ;; otherwise this isn't returning something, and that's probably an error. Log it.
      (log/warnf "Cannot resolve Field %s in automagic analysis context\n%s" field-id-or-name-or-clause (u/pprint-to-str root)))))

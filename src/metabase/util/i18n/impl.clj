@@ -90,6 +90,7 @@
 (def ^:private ^{:arglists '([a-locale])} find-fallback-locale
   (memoize find-fallback-locale*))
 
+;; Note: this logic should be kept in sync with the one in `frontend/src/metabase/public/LocaleProvider.tsx`
 (defn fallback-locale
   "Find a translated fallback Locale in the following order:
     1) If it is a language + country Locale, try the language-only Locale

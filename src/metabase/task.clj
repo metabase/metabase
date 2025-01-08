@@ -132,7 +132,7 @@
 
 (defn- set-jdbc-backend-properties!
   "Set the appropriate system properties needed so Quartz can connect to the JDBC backend. (Since we don't know our DB
-  connection properties ahead of time, we'll need to set these at runtime rather than Setting them in the
+  connection properties ahead of time, we'll need to set these at runtime rather than setting them in the
   `quartz.properties` file.)"
   []
   (when (= (mdb/db-type) :postgres)
@@ -327,8 +327,9 @@
   "Check whether there is a Job with the given key."
   [job-key]
   (boolean
-   (when-let [s (scheduler)]
-     (qs/get-job s (->job-key job-key)))))
+   (let [s (scheduler)]
+     (when (and s (not (.isShutdown s)))
+       (qs/get-job s (->job-key job-key))))))
 
 (defn job-info
   "Get info about a specific Job (`job-key` can be either a String or `JobKey`).

@@ -4,7 +4,7 @@ import { isNotNull } from "metabase/lib/types";
 import {
   getAvailableOperatorOptions,
   getDefaultAvailableOperator,
-} from "metabase/querying/filters/utils/operators";
+} from "metabase/querying/filters/utils";
 import * as Lib from "metabase-lib";
 
 import { OPERATOR_OPTIONS } from "./constants";

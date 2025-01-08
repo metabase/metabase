@@ -102,7 +102,7 @@ describe("issue 39221", () => {
       cy.signIn(user as "admin" | "normal");
       H.openReviewsTable({ mode: "notebook" });
       // Opening a SQL preview sidebar will trigger a user-local setting update
-      cy.findByLabelText("View the SQL").click();
+      cy.findByLabelText("View SQL").click();
 
       cy.wait("@sessionProperties");
 

@@ -61,7 +61,7 @@ describe("scenarios > dashboard > filters > date", () => {
     cy.findByText("Default value").next().click();
 
     DateFilter.setMonthAndYear({
-      month: "November",
+      month: "Nov",
       year: "2022",
     });
 
@@ -79,7 +79,7 @@ describe("scenarios > dashboard > filters > date", () => {
     // Make sure we can override the default value
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("November 2022").click();
-    H.popover().contains("June").click();
+    H.popover().contains("Jun").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("33.9");
   });
@@ -106,7 +106,7 @@ describe("scenarios > dashboard > filters > date", () => {
 
     H.sidebar().findByText("Default value").next().click();
     DateFilter.setMonthAndYear({
-      month: "November",
+      month: "Nov",
       year: "2023",
     });
 
@@ -115,7 +115,7 @@ describe("scenarios > dashboard > filters > date", () => {
 
     // Updates the filter value
     H.filterWidget().should("contain.text", "November 2023").click();
-    H.popover().findByText("December").click();
+    H.popover().findByText("Dec").click();
     H.filterWidget().findByText("December 2023");
     H.ensureDashboardCardHasText("76.83");
 
@@ -133,9 +133,9 @@ describe("scenarios > dashboard > filters > date", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No default").click();
-    // click on Relative dates..., to open the relative date filter type tabs
+    // click on Relative dates…, to open the relative date filter type tabs
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative dates...").click();
+    cy.findByText("Relative dates…").click();
     // choose Next, under which the new options should be available
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Next").click();
@@ -149,7 +149,6 @@ describe("scenarios > dashboard > filters > date", () => {
     cy.findByText("minutes").click();
     // also check the "Include this minute" checkbox
     // which is actually "Include" followed by "this minute" wrapped in <strong>, so has to be clicked this way
-    H.popover().icon("ellipsis").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Include this minute").click();
   });
@@ -178,9 +177,9 @@ describe("scenarios > dashboard > filters > date", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Toutes les options").click(); // "All Options"
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Exclure...").click(); // "Exclude..."
+    cy.findByText("Exclure...").click(); // "Exclude…"
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Mois de l'année...").click(); // "Months of the year..."
+    cy.findByText("Mois de l'année...").click(); // "Months of the year…"
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("janvier").click(); // "January"
 

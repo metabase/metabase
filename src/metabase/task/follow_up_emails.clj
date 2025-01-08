@@ -8,7 +8,6 @@
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.models.setting :as setting]
-   [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.task :as task]
    [metabase.util.date-2 :as u.date]
@@ -39,7 +38,7 @@
              (not (follow-up-email-sent)))
     ;; grab the oldest admins email address (likely the user who created this MB instance), that's who we'll send to
     ;; TODO - Does it make to send to this user instead of `(public-settings/admin-email)`?
-    (when-let [admin (t2/select-one User :is_superuser true, :is_active true, {:order-by [:date_joined]})]
+    (when-let [admin (t2/select-one :model/User :is_superuser true, :is_active true, {:order-by [:date_joined]})]
       (try
         (messages/send-follow-up-email! (:email admin))
         (catch Throwable e
@@ -50,7 +49,7 @@
 (defn- instance-creation-timestamp
   "The date this Metabase instance was created. We use the `:date_joined` of the first `User` to determine this."
   ^java.time.temporal.Temporal []
-  (t2/select-one-fn :date_joined User, {:order-by [[:date_joined :asc]]}))
+  (t2/select-one-fn :date_joined :model/User, {:order-by [[:date_joined :asc]]}))
 
 (jobs/defjob ^{:doc "Sends out a general 2 week email follow up email"} FollowUpEmail [_]
   ;; if we've already sent the follow-up email then we are done
