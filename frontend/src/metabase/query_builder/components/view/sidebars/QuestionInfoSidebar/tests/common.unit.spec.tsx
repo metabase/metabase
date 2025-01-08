@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { testDataset } from "__support__/testDataset";
+import { screen, within } from "__support__/ui";
 import * as Urls from "metabase/lib/urls";
 import type { BaseEntityId } from "metabase-types/api";
 import {
@@ -189,6 +190,29 @@ describe("QuestionInfoSidebar", () => {
 
       expect(screen.getByLabelText("embed icon")).toBeInTheDocument();
       expect(screen.getByText("Embedded")).toBeInTheDocument();
+    });
+
+    it("should show fields", async () => {
+      const card = createMockCard({
+        name: "Question",
+      });
+      await setup({ card });
+
+      const fieldCount = testDataset.cols.length;
+      const cardWithFields = await screen.findByLabelText(
+        new RegExp(`${fieldCount} fields`),
+      );
+      expect(cardWithFields).toBeInTheDocument();
+
+      // Expect the correct number of fields
+      const listItems = await within(cardWithFields).findAllByRole("listitem");
+      expect(listItems).toHaveLength(fieldCount);
+
+      // Expect the correct field names
+      const fieldNames = testDataset.cols.map(col => col.display_name);
+      fieldNames.forEach(fieldName => {
+        expect(within(cardWithFields).getByText(fieldName)).toBeInTheDocument();
+      });
     });
   });
 
