@@ -1,5 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
+import _ from "underscore";
 
 import {
   collectionApi,
@@ -181,24 +182,22 @@ const Collections = createEntity({
 });
 
 function useListQuery(
-  params: ListParams,
+  params: ListParams | undefined,
   options: Parameters<
     typeof useListCollectionsTreeQuery | typeof useListCollectionsQuery
   >[1],
 ) {
-  const { tree, ...entityQuery } = params;
-
   const collectionsTree = useListCollectionsTreeQuery(
-    tree ? entityQuery : skipToken,
+    params?.tree ? _.omit(params, "tree") : skipToken,
     options,
   );
 
   const collections = useListCollectionsQuery(
-    tree ? skipToken : entityQuery,
+    !params || params?.tree ? skipToken : params,
     options,
   );
 
-  return tree ? collectionsTree : collections;
+  return params?.tree ? collectionsTree : collections;
 }
 
 export { getExpandedCollectionsById };
