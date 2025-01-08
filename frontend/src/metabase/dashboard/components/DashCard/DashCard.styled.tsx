@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 
 import { getDashboardBodyBgColor } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
 
-export interface DashCardRootProps {
+interface DashCardRootProps {
   isNightMode: boolean;
   isUsuallySlow: boolean;
   hasHiddenBackground: boolean;

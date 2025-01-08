@@ -57,7 +57,7 @@ describe("issue 12439", () => {
     });
 
     // Make sure buttons are clickable
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     H.sidebar().contains("X-axis");
     H.sidebar().contains("Y-axis");
@@ -130,11 +130,14 @@ describe("issue 16914", () => {
       visualization_settings: {},
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left")
-      .contains(/hidden/i)
-      .siblings("[data-testid$=hide-button]")
-      .click();
+      .as("sidebar")
+      .within(() => {
+        cy.findByTestId("draggable-item-HIDDEN")
+          .icon("eye_outline")
+          .click({ force: true });
+      });
     cy.button("Done").click();
 
     H.focusNativeEditor();
@@ -189,7 +192,7 @@ describe("issue 17060", () => {
       visualization_settings: {},
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left").within(() => {
       rearrangeColumns();
     });

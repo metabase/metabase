@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { Flex, Modal } from "metabase/ui";
+import { Modal } from "metabase/ui";
 
 export const ModalContent = styled(Modal.Content)`
   flex-grow: 1;
@@ -13,10 +13,6 @@ export const ModalBody = styled(Modal.Body)`
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-`;
-
-export const GrowFlex = styled(Flex)`
-  flex-grow: 1;
 `;
 
 export const SinglePickerView = styled.div`

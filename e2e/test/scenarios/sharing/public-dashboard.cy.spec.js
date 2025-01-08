@@ -328,12 +328,18 @@ H.describeEE("scenarios [EE] > public > dashboard", () => {
     });
   });
 
+  // here
   it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
+    // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
+    cy.intercept("/app/locales/de.json").as("deLocale");
+
     cy.get("@dashboardId").then(id => {
       H.visitPublicDashboard(id, {
-        hash: { locale: "de" },
+        hash: { locale: "de-CH" },
       });
     });
+
+    cy.wait("@deLocale");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- we don't care where the text is
     cy.findByText("Registerkarte als PDF exportieren").should("be.visible");

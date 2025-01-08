@@ -25,6 +25,7 @@ import type {
   ReloadInterval,
   ReloadIntervalSelector,
 } from "./types";
+import { usePaginatedQuery } from "./usePaginatedQuery";
 
 interface ChildrenProps<Entity, EntityWrapper> {
   allError?: unknown;
@@ -59,9 +60,11 @@ interface Props<Entity, EntityWrapper> {
   ComposedComponent: (props: ChildrenProps<Entity, EntityWrapper>) => ReactNode;
   entityQuery?: EntityQuery | EntityQuerySelector;
   entityType: EntityType | EntityTypeSelector;
+  initialPage?: number;
   listName?: string;
   loadingAndErrorWrapper?: boolean;
   LoadingAndErrorWrapper?: ComponentType<LoadingAndErrorWrapperProps>;
+  pageSize?: number;
   reload?: boolean;
   reloadInterval?: ReloadInterval | ReloadIntervalSelector<Entity>;
   selectorName?: "getList" | "getListUnfiltered";
@@ -76,6 +79,16 @@ const transformResponse = (fetched: unknown) => {
 
   const { data, ...metadata } = fetched;
   return { results: data, metadata };
+};
+
+const isPaginationMetadata = (
+  value: Record<string, unknown>,
+): value is { limit: number; offset: number; total: number } => {
+  return (
+    typeof value.limit === "number" &&
+    typeof value.offset === "number" &&
+    typeof value.total === "number"
+  );
 };
 
 /**
@@ -93,9 +106,11 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   ComposedComponent,
   entityQuery: entityQueryProp,
   entityType: entityTypeProp,
+  initialPage,
   listName,
   loadingAndErrorWrapper = true,
   LoadingAndErrorWrapper = DefaultLoadingAndErrorWrapper,
+  pageSize,
   reload = false,
   reloadInterval: reloadIntervalProp,
   selectorName = "getList",
@@ -119,13 +134,32 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
       return entitiesDefinitions[entityType];
     }, [entityType]);
 
-  const entityQuery = useSelector(
+  const nonPaginatedEntityQuery = useSelector(
     state =>
       typeof entityQueryProp === "function"
         ? entityQueryProp(state, props)
         : entityQueryProp,
     _.isEqual,
   );
+
+  const {
+    entityQuery,
+    hasMorePages,
+    isPaginated,
+    page,
+    onNextPage,
+    onPreviousPage,
+    setHasMorePages,
+  } = usePaginatedQuery(nonPaginatedEntityQuery, pageSize, initialPage);
+  const paginationProps = isPaginated
+    ? {
+        hasMorePages,
+        page,
+        pageSize,
+        onNextPage,
+        onPreviousPage,
+      }
+    : undefined;
 
   const entityOptions = useMemo(() => ({ entityQuery }), [entityQuery]);
 
@@ -223,6 +257,10 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
     if (data) {
       const { results, metadata } = transformResponse(data);
 
+      if (isPaginationMetadata(metadata)) {
+        setHasMorePages(metadata.offset + metadata.limit < metadata.total);
+      }
+
       if (!Array.isArray(results)) {
         throw new Error(`Invalid response listing ${entityDefinition.name}`);
       }
@@ -253,6 +291,7 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
     entityQuery,
     requestStatePath,
     queryKey,
+    setHasMorePages,
   ]);
 
   const onLoadedRef = useLatest(onLoaded);
@@ -277,6 +316,7 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   const children = (
     <ComposedComponent
       {...actionCreators}
+      {...paginationProps}
       {...props}
       {...{
         [finalListName]: wrappedList,

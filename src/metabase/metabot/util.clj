@@ -9,7 +9,6 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.metabot.client :as metabot-client]
    [metabase.metabot.settings :as metabot-settings]
-   [metabase.models :refer [Card Field FieldValues Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.setup :as qp.setup]
@@ -99,7 +98,7 @@
                       (< 0
                          (get-in field [:fingerprint :global :distinct-count] 0)
                          (inc enum-cardinality-threshold)))
-                      (t2/select-one-fn :values FieldValues :field_id id))]
+                      (t2/select-one-fn :values :model/FieldValues :field_id id))]
      (-> (cond-> field
            (seq field-vals)
            (assoc :possible_values (vec field-vals)))
@@ -220,7 +219,7 @@
   ([{table-name :name} {field-name :name field-id :id :keys [base_type]} enum-cardinality-threshold]
    (when-let [values (and
                       (not= :type/Boolean base_type)
-                      (t2/select-one-fn :values FieldValues :field_id field-id))]
+                      (t2/select-one-fn :values :model/FieldValues :field_id field-id))]
      (when (<= (count values) enum-cardinality-threshold)
        (let [ddl-str (format "create type %s_%s_t as enum %s;"
                              table-name
@@ -241,7 +240,7 @@
   This can be very expensive if performed over an entire database, so memoization is recommended.
   Memoization currently happens in create-table-embedding."
   ([{table-name :name schema-name :schema table-id :id :as table} enum-cardinality-threshold]
-   (let [fields       (t2/select [Field
+   (let [fields       (t2/select [:model/Field
                                   :base_type
                                   :database_required
                                   :database_type
@@ -271,9 +270,9 @@
                               fields)]]
          foreign-keys (for [{field-name :name :keys [semantic_type fk_target_field_id]} fields
                             :when (= :type/FK semantic_type)
-                            :let [{fk-field-name :name fk-table-id :table_id} (t2/select-one [Field :name :table_id]
+                            :let [{fk-field-name :name fk-table-id :table_id} (t2/select-one [:model/Field :name :table_id]
                                                                                              :id fk_target_field_id)
-                                  {fk-table-name :name fk-table-schema :schema} (t2/select-one [Table :name :schema]
+                                  {fk-table-name :name fk-table-schema :schema} (t2/select-one [:model/Table :name :schema]
                                                                                                :id fk-table-id)]]
                         [[:foreign-key field-name]
                          [:references (cond->>
@@ -307,7 +306,7 @@
   Adds in denormalized models, sql-friendly names, and a json summary of the models
   appropriate for prompt engineering."
   [{database-name :name db_id :id :as database}]
-  (let [models (t2/select Card :database_id db_id :type :model)]
+  (let [models (t2/select :model/Card :database_id db_id :type :model)]
     (-> database
         (assoc :sql_name (normalize-name database-name))
         (assoc :models (mapv denormalize-model models))
