@@ -17,6 +17,7 @@
    [malli.error :as me]
    [malli.transform :as mtx]
    [metabase.api.common.internal]
+   [metabase.config :as config]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -212,17 +213,26 @@
 (defn- encoder [schema]
   (mr/cached ::encoder schema #(mc/encoder schema encode-transformer)))
 
+(def ^:dynamic *enable-response-validation*
+  "Whether to validate responses against Malli schemas in [[defendpoint]]... normally enabled for dev/test and disabled
+  for prod for performance purposes. You can change this binding if you want to disable it for weird test reasons or
+  whatever.
+
+  Not that encoding is still applied regardless of this value, i.e. even in prod."
+  (not config/is-prod?))
+
 (mu/defn validate-and-encode-response :- any?
   "Impl for [[defendpoint-core-fn]]; validate the endpoint response against `schema` "
   [schema   :- some?
    response :- any?]
-  (when-not (mr/validate schema response)
-    (throw (ex-info "Invalid response" ; TODO -- better error message?
-                    {:status-code 400
-                     :error       (-> schema
-                                      (mr/explain response)
-                                      me/with-spell-checking
-                                      (me/humanize {:wrap mu/humanize-include-value}))})))
+  (when *enable-response-validation*
+    (when-not (mr/validate schema response)
+      (throw (ex-info "Invalid response" ; TODO -- better error message?
+                      {:status-code 400
+                       :error       (-> schema
+                                        (mr/explain response)
+                                        me/with-spell-checking
+                                        (me/humanize {:wrap mu/humanize-include-value}))}))))
   ((encoder schema) response))
 
 (mu/defn- params-binding :- some?
