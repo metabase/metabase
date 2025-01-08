@@ -248,7 +248,10 @@ describe("issue 20438", () => {
   });
 
   it("dashboard filter connected to the field filter should work with a single value in embedded dashboards (metabase#20438)", () => {
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+    H.openStaticEmbeddingModal({
+      context: "dashboard",
+      activeTab: "parameters",
+    });
 
     H.visitIframe();
 
@@ -299,7 +302,10 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
   });
 
   it("should let the user lock parameters to specific values", () => {
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+    H.openStaticEmbeddingModal({
+      context: "question",
+      activeTab: "parameters",
+    });
 
     H.modal().within(() => {
       // select the dropdown next to the Text parameter so that we can set the value to "Locked"
@@ -676,6 +682,7 @@ H.describeEE("issue 30535", () => {
 
   it("user session should not apply sandboxing to a signed embedded question (metabase#30535)", () => {
     H.openStaticEmbeddingModal({
+      context: "question",
       activeTab: "parameters",
       previewMode: "preview",
       acceptTerms: false,
@@ -793,6 +800,7 @@ describe("dashboard preview", () => {
     });
 
     H.openStaticEmbeddingModal({
+      context: "dashboard",
       activeTab: "parameters",
       previewMode: "preview",
     });
@@ -878,6 +886,7 @@ describe("dashboard preview", () => {
     });
 
     H.openStaticEmbeddingModal({
+      context: "dashboard",
       activeTab: "parameters",
       previewMode: "preview",
     });
@@ -954,6 +963,7 @@ describe("issue 40660", () => {
 
   it("static dashboard content shouldn't overflow its container (metabase#40660)", () => {
     H.openStaticEmbeddingModal({
+      context: "dashboard",
       activeTab: "parameters",
       previewMode: "preview",
     });
@@ -994,6 +1004,7 @@ describe.skip("issue 49142", () => {
 
   it("embedding preview should be always working", () => {
     H.openStaticEmbeddingModal({
+      context: "dashboard",
       activeTab: "lookAndFeel",
       previewMode: "preview",
     });

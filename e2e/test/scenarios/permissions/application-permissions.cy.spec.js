@@ -60,14 +60,12 @@ H.describeEE("scenarios > admin > permissions > application", () => {
       it("revokes ability to create subscriptions and alerts and manage them", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
 
-        H.openSharingMenu();
-        H.sharingMenu()
-          .findByText(/subscri/i)
-          .should("not.exist");
+        H.notificationsMenuButton().should("not.exist");
 
         H.visitQuestion(ORDERS_QUESTION_ID);
         H.tableInteractive().should("be.visible");
-        H.sharingMenuButton().should("be.disabled");
+
+        H.notificationsMenuButton().should("not.exist");
 
         cy.visit("/account/notifications");
         cy.findByTestId("notifications-list").within(() => {
@@ -83,13 +81,13 @@ H.describeEE("scenarios > admin > permissions > application", () => {
 
         cy.log("Create a dashboard subscription");
         H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.openSharingMenu(/subscriptions/i);
+        H.openNotificationsMenu(/subscriptions/i);
         H.sidebar().findByText("Email this dashboard").should("exist");
 
         cy.log("Create a question alert");
         H.visitQuestion(ORDERS_QUESTION_ID);
-        H.openSharingMenu(/alert/i);
-        H.modal().findByText("The wide world of alerts").should("be.visible");
+        H.openNotificationsMenu(/subscriptions/i);
+        H.modal().findByText("Let's set up your alert").should("be.visible");
       });
     });
   });

@@ -486,7 +486,7 @@ describe("Dashboard > Dashboard Questions", () => {
         { visitQuestion: true },
       );
 
-      H.openSharingMenu("Create a public link");
+      H.openQuestionActions("Create a public link");
       cy.findByTestId("public-link-input")
         .invoke("val")
         .then(publicLink => {

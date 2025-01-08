@@ -68,8 +68,6 @@ const ViewInner = props => {
     onCreate,
     onSave,
     onChangeLocation,
-    questionAlerts,
-    user,
     modal,
     modalContext,
     card,
@@ -140,8 +138,6 @@ const ViewInner = props => {
           />
         )}
         <QueryModals
-          questionAlerts={questionAlerts}
-          user={user}
           onSave={onSave}
           onCreate={onCreate}
           updateQuestion={updateQuestion}
@@ -253,8 +249,6 @@ const ViewInner = props => {
       )}
 
       <QueryModals
-        questionAlerts={questionAlerts}
-        user={user}
         onSave={onSave}
         onCreate={onCreate}
         updateQuestion={updateQuestion}

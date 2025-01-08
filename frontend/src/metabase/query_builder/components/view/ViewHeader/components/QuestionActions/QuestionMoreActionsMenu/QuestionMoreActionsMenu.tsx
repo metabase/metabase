@@ -1,10 +1,12 @@
-import { type JSX, useState } from "react";
+import { Fragment, type JSX, type Ref, forwardRef, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { useSetting } from "metabase/common/hooks";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   onOpenQuestionSettings,
@@ -12,19 +14,22 @@ import {
   turnModelIntoQuestion,
 } from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
+import { EmbeddingQuestionActions } from "metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu/EmbeddingQuestionActions";
 import DatasetMetadataStrengthIndicator from "metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator";
 import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import {
   MODAL_TYPES,
   type QueryModalType,
 } from "metabase/query_builder/constants";
-import { Icon, Menu } from "metabase/ui";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { QuestionPublicLinkPopover } from "metabase/sharing/components/PublicLinkPopover";
+import { Box, Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { checkCanBeModel } from "metabase-lib/v1/metadata/utils/models";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
-import QuestionActionsS from "./QuestionActions.module.css";
+import QuestionActionsS from "../QuestionActions.module.css";
 
 const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
 const MOVE_TESTID = "move-button";
@@ -49,7 +54,11 @@ export const QuestionMoreActionsMenu = ({
   onOpenModal,
   onSetQueryBuilderMode,
 }: QuestionMoreActionsMenuProps): JSX.Element | null => {
+  const isAdmin = useSelector(getUserIsAdmin);
+  const isPublicSharingEnabled = useSetting("enable-public-sharing");
+
   const [opened, setOpened] = useState(false);
+  const [showPublicLinkPopover, setShowPublicLinkPopover] = useState(false);
 
   const dispatch = useDispatch();
 
@@ -57,6 +66,10 @@ export const QuestionMoreActionsMenu = ({
   const isModel = question.type() === "model";
   const isMetric = question.type() === "metric";
   const isModelOrMetric = isModel || isMetric;
+
+  const isArchived = question.isArchived();
+  const collection = question.collection();
+  const isAnalytics = collection && isInstanceAnalyticsCollection(collection);
 
   const isDashboardQuestion = isQuestion && _.isNumber(question.dashboardId());
   const isStandaloneQuestion =
@@ -68,6 +81,8 @@ export const QuestionMoreActionsMenu = ({
   const { isEditable: hasDataPermissions } = Lib.queryDisplayInfo(
     question.query(),
   );
+
+  const canUseEmbeddingActions = !isModel && !isArchived && !isAnalytics;
 
   const reload = () => dispatch(softReloadCard());
 
@@ -162,8 +177,18 @@ export const QuestionMoreActionsMenu = ({
         {t`Edit settings`}
       </Menu.Item>
     ),
+    canUseEmbeddingActions && (
+      <EmbeddingQuestionActions
+        key="embeddingActions"
+        question={question}
+        isAdmin={isAdmin}
+        isPublicSharingEnabled={isPublicSharingEnabled}
+        onOpenModal={onOpenModal}
+        setShowPublicLinkPopover={setShowPublicLinkPopover}
+      />
+    ),
     hasCollectionPermissions && (
-      <>
+      <Fragment key="move-block">
         <Menu.Divider />
         <Menu.Item
           key="move"
@@ -173,7 +198,7 @@ export const QuestionMoreActionsMenu = ({
         >
           {c("A verb, not a noun").t`Move`}
         </Menu.Item>
-      </>
+      </Fragment>
     ),
     hasDataPermissions && (
       <Menu.Item
@@ -186,17 +211,16 @@ export const QuestionMoreActionsMenu = ({
       </Menu.Item>
     ),
     hasCollectionPermissions && (
-      <>
+      <Fragment key="trash-block">
         <Menu.Divider />
         <Menu.Item
-          key="trash"
           icon={<Icon name="trash" />}
           data-testid={ARCHIVE_TESTID}
           onClick={() => onOpenModal(MODAL_TYPES.ARCHIVE)}
         >
           {t`Move to trash`}
         </Menu.Item>
-      </>
+      </Fragment>
     ),
   ].filter(Boolean);
 
@@ -205,16 +229,33 @@ export const QuestionMoreActionsMenu = ({
   }
 
   return (
-    <Menu position="bottom-end" opened={opened} onChange={setOpened}>
-      <Menu.Target>
-        <div>
-          <Tooltip tooltip={label} isEnabled={!opened}>
-            <Button onlyIcon icon="ellipsis" aria-label={label} />
-          </Tooltip>
-        </div>
-      </Menu.Target>
+    <>
+      <Menu position="bottom-end" opened={opened} onChange={setOpened}>
+        <Menu.Target>
+          <div>
+            <Tooltip tooltip={label} isEnabled={!opened}>
+              <Button onlyIcon icon="ellipsis" aria-label={label} />
+            </Tooltip>
+          </div>
+        </Menu.Target>
 
-      <Menu.Dropdown>{menuItems}</Menu.Dropdown>
-    </Menu>
+        <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+      </Menu>
+      {showPublicLinkPopover && (
+        <QuestionPublicLinkPopover
+          question={question}
+          target={<MenuTarget />}
+          onClose={() => setShowPublicLinkPopover(false)}
+          isOpen
+        />
+      )}
+    </>
   );
 };
+
+const MenuTarget = forwardRef(function _MenuTarget(
+  _props,
+  ref: Ref<HTMLDivElement>,
+) {
+  return <Box h="2rem" ref={ref} />;
+});

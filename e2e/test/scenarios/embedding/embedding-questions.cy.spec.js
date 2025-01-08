@@ -47,7 +47,10 @@ describe("scenarios > embedding > questions", () => {
       { visitQuestion: true },
     );
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+    H.openStaticEmbeddingModal({
+      context: "question",
+      activeTab: "parameters",
+    });
 
     H.visitIframe();
 
@@ -68,7 +71,10 @@ describe("scenarios > embedding > questions", () => {
       H.visitQuestion(id);
     });
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+    H.openStaticEmbeddingModal({
+      context: "question",
+      activeTab: "parameters",
+    });
 
     H.visitIframe();
 
@@ -108,7 +114,10 @@ describe("scenarios > embedding > questions", () => {
       H.visitQuestion(id);
     });
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+    H.openStaticEmbeddingModal({
+      context: "question",
+      activeTab: "parameters",
+    });
 
     H.visitIframe();
 
@@ -143,7 +152,10 @@ describe("scenarios > embedding > questions", () => {
       });
     });
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+    H.openStaticEmbeddingModal({
+      context: "question",
+      activeTab: "parameters",
+    });
 
     H.visitIframe();
 
@@ -179,7 +191,10 @@ describe("scenarios > embedding > questions", () => {
       H.visitQuestion(id);
     });
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+    H.openStaticEmbeddingModal({
+      context: "question",
+      activeTab: "parameters",
+    });
 
     H.visitIframe();
 
@@ -240,7 +255,11 @@ H.describeEE("scenarios [EE] > embedding > questions", () => {
 
     H.visitQuestion(ORDERS_QUESTION_ID);
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: false });
+    H.openStaticEmbeddingModal({
+      context: "question",
+      activeTab: "parameters",
+      acceptTerms: false,
+    });
 
     // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
     cy.intercept("/app/locales/de.json").as("deLocale");
@@ -303,7 +322,10 @@ H.describeEE("scenarios > embedding > questions > downloads", () => {
       cy.get("@questionId").then(questionId => {
         H.visitQuestion(questionId);
 
-        H.openStaticEmbeddingModal({ activeTab: "lookAndFeel" });
+        H.openStaticEmbeddingModal({
+          context: "question",
+          activeTab: "lookAndFeel",
+        });
 
         cy.log(
           "Embedding settings page should not show option to disable downloads",
@@ -364,6 +386,7 @@ H.describeEE("scenarios > embedding > questions > downloads", () => {
         H.visitQuestion(questionId);
 
         H.openStaticEmbeddingModal({
+          context: "question",
           activeTab: "lookAndFeel",
           acceptTerms: false,
         });

@@ -89,7 +89,7 @@ describe("scenarios > public > question", () => {
       cy.signInAsNormalUser().then(() => {
         H.visitQuestion(id);
 
-        H.openSharingMenu("Public link");
+        H.openQuestionActions("Public link");
 
         cy.findByTestId("public-link-popover-content").within(() => {
           cy.findByText("Public link").should("be.visible");

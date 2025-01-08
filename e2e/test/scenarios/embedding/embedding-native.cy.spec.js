@@ -28,7 +28,10 @@ describe("scenarios > embedding > native questions", () => {
         visitQuestion: true,
       });
 
-      H.openStaticEmbeddingModal({ activeTab: "parameters" });
+      H.openStaticEmbeddingModal({
+        context: "question",
+        activeTab: "parameters",
+      });
     }
 
     it("should not display disabled parameters", () => {
@@ -355,7 +358,10 @@ describe("scenarios > embedding > native questions", () => {
 
     it("locked parameters should still render results in the preview by default (metabase#47570)", () => {
       H.visitQuestion("@questionId");
-      H.openStaticEmbeddingModal({ activeTab: "parameters" });
+      H.openStaticEmbeddingModal({
+        context: "question",
+        activeTab: "parameters",
+      });
       H.visitIframe();
 
       cy.log("should show card results by default");
@@ -379,7 +385,10 @@ describe("scenarios > embedding > native questions with default parameters", () 
       wrapId: true,
     });
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+    H.openStaticEmbeddingModal({
+      context: "question",
+      activeTab: "parameters",
+    });
 
     // Note: ID is disabled
     H.setEmbeddingParameter("Source", "Locked");

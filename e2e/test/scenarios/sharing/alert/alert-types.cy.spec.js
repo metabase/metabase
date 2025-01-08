@@ -56,13 +56,15 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       it(`should be supported for ${questionType}`, () => {
         H.visitQuestion(questionId);
 
-        H.openSharingMenu("Create alert");
+        H.openNotificationsMenu("Create subscriptions");
         cy.wait("@channel");
 
-        H.modal().within(() => {
-          cy.findByText("Let's set up your alert").should("be.visible");
-          cy.findByText("Done").click();
-        });
+        H.modal()
+          .first()
+          .within(() => {
+            cy.findByText("Let's set up your alert").should("be.visible");
+            cy.findByText("Done").click();
+          });
 
         cy.wait("@savedAlert").then(({ response: { body } }) => {
           expect(body.alert_condition).to.equal("rows");
@@ -86,7 +88,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       H.visitQuestion(timeSeriesQuestionId);
       cy.findByTestId("chart-container").should("contain", "Goal");
 
-      H.openSharingMenu("Create alert");
+      H.openNotificationsMenu("Create alerts");
       cy.wait("@channel");
 
       cy.findByTestId("alert-create").within(() => {
@@ -106,7 +108,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
     it("should not be possible to create goal based alert for a multi-series question", () => {
       cy.createQuestion(multiSeriesQuestionWithGoal, { visitQuestion: true });
 
-      H.openSharingMenu("Create alert");
+      H.openNotificationsMenu("Create subscriptions");
       cy.wait("@channel");
 
       // *** The warning below is not showing when we try to make an alert (Issue #???)

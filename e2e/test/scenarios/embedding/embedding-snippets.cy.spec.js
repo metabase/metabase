@@ -19,7 +19,7 @@ features.forEach(feature => {
     it("dashboard should have the correct embed snippet", () => {
       const defaultDownloadsValue = feature === "all" ? true : undefined;
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openStaticEmbeddingModal({ acceptTerms: false });
+      H.openStaticEmbeddingModal({ context: "dashboard", acceptTerms: false });
 
       H.modal().within(() => {
         cy.findByText(
@@ -106,7 +106,7 @@ features.forEach(feature => {
     it("question should have the correct embed snippet", () => {
       const defaultDownloadsValue = feature === "all" ? true : undefined;
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openStaticEmbeddingModal({ acceptTerms: false });
+      H.openStaticEmbeddingModal({ context: "question", acceptTerms: false });
 
       H.modal().within(() => {
         cy.findByText(
