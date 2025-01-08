@@ -13,9 +13,9 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [ring.util.codec :as codec])
- (:import (java.io ByteArrayInputStream InputStream SequenceInputStream)
-          (javax.crypto Cipher CipherInputStream)
-          (javax.crypto.spec SecretKeySpec IvParameterSpec)))
+  (:import (java.io ByteArrayInputStream InputStream SequenceInputStream)
+           (javax.crypto Cipher CipherInputStream)
+           (javax.crypto.spec SecretKeySpec IvParameterSpec)))
 
 (set! *warn-on-reflection* true)
 
@@ -114,7 +114,7 @@
   (^bytes [^bytes input]
    (encrypt-for-stream default-secret-key input))
   (^bytes [secret-key ^bytes input]
-   (with-open [ encrypted (encrypt-stream secret-key (ByteArrayInputStream. input))]
+   (with-open [encrypted (encrypt-stream secret-key (ByteArrayInputStream. input))]
      (.readAllBytes encrypted))))
 
 (defn maybe-decrypt-stream
@@ -134,20 +134,8 @@
              (.init cipher Cipher/DECRYPT_MODE (SecretKeySpec. (bytes/slice secret-key 32 64) "AES") (IvParameterSpec. iv))
              (CipherInputStream. input-stream cipher))
            :else (SequenceInputStream.
-                   (ByteArrayInputStream. (bytes/slice spec-array 0 spec-array-length))
-                   input-stream)))))
-
-(defn maybe-decrypt-for-stream
-  "Decrypts a byte array that was encrypted for use as a stream. If the data was not encrypted, it returns it as-is."
-  {:added "0.53.0"}
-  (^bytes [^bytes input]
-   (maybe-decrypt-for-stream default-secret-key input))
-  (^bytes [secret-key ^bytes input]
-   (if (nil? input)
-     nil
-     (with-open [decrypted (maybe-decrypt-stream secret-key (ByteArrayInputStream. input))]
-       (.readAllBytes decrypted)))))
-
+                  (ByteArrayInputStream. (bytes/slice spec-array 0 spec-array-length))
+                  input-stream)))))
 
 (defn decrypt
   "Decrypt string `s` using a `secret-key` (a 64-byte byte array), by default the hashed value of

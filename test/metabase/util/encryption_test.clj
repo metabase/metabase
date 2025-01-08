@@ -10,7 +10,7 @@
    [metabase.test.util :as tu]
    [metabase.util.encryption :as encryption])
   (:import (java.io ByteArrayInputStream)
-         (org.apache.commons.io IOUtils)))
+           (org.apache.commons.io IOUtils)))
 
 (set! *warn-on-reflection* true)
 
@@ -164,12 +164,3 @@
     (testing "When secret is not set, it does not encrypt the stream"
       (let [encrypted (encryption/maybe-encrypt-for-stream nil (codecs/to-bytes "test string"))]
         (is (= "test string" (codecs/bytes->str encrypted)))))))
-
-(deftest ^:parallel maybe-decrypt-for-stream-test
-  (testing "Can decrypt decrypted values"
-    (let [encrypted-bytes (encryption/maybe-encrypt-for-stream secret (codecs/to-bytes "test string"))]
-      (is (= "test string" (codecs/bytes->str (encryption/maybe-decrypt-for-stream secret encrypted-bytes))))))
-  (testing "Can pass through plain-text values with no key set"
-    (is (= "test string" (codecs/bytes->str (encryption/maybe-decrypt-for-stream nil (codecs/to-bytes "test string"))))))
-  (testing "Can pass through plain-text values with key set"
-    (is (= "test string" (codecs/bytes->str (encryption/maybe-decrypt-for-stream secret (codecs/to-bytes "test string")))))))
