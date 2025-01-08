@@ -1,34 +1,34 @@
-import { c, t } from "ttag";
+import { c } from "ttag";
 import Question from "metabase-lib/v1/Question";
-import { HoverCard } from "metabase/ui";
-import type Field from "metabase-lib/v1/metadata/Field";
 import { SidesheetCard } from "metabase/common/components/Sidesheet";
-import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import {
   FieldListItem,
-  FieldIcon,
   FieldTitle,
 } from "metabase/models/components/ModelDetailPage/ModelSchemaDetails/ModelSchemaDetails.styled";
-import { QueryColumnInfo } from "metabase/components/MetadataInfo/ColumnInfo";
 import { getGroupItems } from "metabase/querying/filters/hooks/use-filter-modal/utils/filters";
 import { ColumnItem } from "metabase/querying/filters/types";
+import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 
-const Column = ({ col }: { col: ColumnItem }) => {
+const Column = ({
+  columnItem,
+  query,
+}: {
+  columnItem: ColumnItem;
+  query: Lib.Query;
+}) => {
+  const { displayName, stageIndex } = columnItem;
+  console.log("@m5nm8xgg", "columnItem", columnItem);
+
+  // FIXME: The popover content is not accurate
   return (
-    <FieldListItem key={col.displayName + col.stageIndex}>
-      <HoverCard position="left-start">
-        <HoverCard.Target>
-          <FieldIcon name="eye_filled" />
-        </HoverCard.Target>
-        <HoverCard.Dropdown>
-          <QueryColumnInfo
-            // FIXME: correct the stageindex
-            stageIndex={col.stageIndex}
-            column={col.column}
-          />
-        </HoverCard.Dropdown>
-      </HoverCard>
-      <FieldTitle>{col.displayName}</FieldTitle>
+    <FieldListItem key={`${displayName}${stageIndex}`}>
+      <QueryColumnInfoIcon
+        position="left-start"
+        query={query}
+        tabIndex={0}
+        {...columnItem}
+      />
+      <FieldTitle>{displayName}</FieldTitle>
     </FieldListItem>
   );
 };
@@ -38,14 +38,17 @@ export const SidesheetCardWithFields = ({
 }: {
   question: Question;
 }) => {
-  const items = getGroupItems(question.query());
-  const columns = items[0]?.columnItems;
+  const query = question.query();
+  const items = getGroupItems(query);
+
+  // FIXME: This is probably wrong. What are the groups?
+  const columnItems = items[0]?.columnItems;
 
   return (
     <SidesheetCard>
-      {c("{0} is the number of fields").t`${columns.length} fields`}
-      {columns.map(col => (
-        <Column col={col} />
+      {c("{0} is the number of fields").t`${columnItems.length} fields`}
+      {columnItems.map(columnItem => (
+        <Column query={query} columnItem={columnItem} />
       ))}
     </SidesheetCard>
   );

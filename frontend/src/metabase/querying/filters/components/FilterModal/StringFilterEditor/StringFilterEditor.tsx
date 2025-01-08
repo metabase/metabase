@@ -68,6 +68,8 @@ export function StringFilterEditor({
     onChange(getFilterClause(operator, values, options));
   };
 
+  console.log("@m5nmesvk", "column", column);
+
   return (
     <HoverParent data-testid="string-filter-editor">
       <Grid grow>

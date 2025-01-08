@@ -36,7 +36,7 @@ export function QueryColumnInfoIcon({
   return (
     <>
       <QueryColumnInfoPopover {...props}>
-        <span aria-label={t`More info`}>
+        <span aria-label={t`More info`} tabIndex={0}>
           <PopoverDefaultIcon
             className={className}
             name={icon ?? getColumnIcon(column)}

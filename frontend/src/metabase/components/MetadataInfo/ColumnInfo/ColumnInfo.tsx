@@ -71,6 +71,8 @@ export function QueryColumnInfo({
     ? Lib.displayInfo(query, stageIndex, column)
     : {};
 
+  console.log("@m5nmfpa8", "description", description);
+
   return (
     <InfoContainer className={className}>
       <ColumnDescription description={description} />
