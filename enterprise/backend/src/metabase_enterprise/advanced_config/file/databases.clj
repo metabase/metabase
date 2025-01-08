@@ -3,7 +3,6 @@
    [clojure.spec.alpha :as s]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.driver.util :as driver.u]
-   [metabase.models.database :refer [Database]]
    [metabase.models.setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -46,19 +45,19 @@
       (when (not= magic-request (:delete database))
         (throw (ex-info (format "To delete database %s set `delete` to %s" (pr-str (:name database)) (pr-str magic-request))
                         {:database-name (:name database)})))
-      (when-let [existing-database-id (t2/select-one-pk Database :engine (:engine database), :name (:name database))]
+      (when-let [existing-database-id (t2/select-one-pk :model/Database :engine (:engine database), :name (:name database))]
         (log/info (u/format-color :blue "Deleting Database %s %s" (:engine database) (pr-str (:name database))))
-        (t2/delete! Database existing-database-id)))
+        (t2/delete! :model/Database existing-database-id)))
     (do
       ;; assert that we are able to connect to this Database. Otherwise, throw an Exception.
       (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions)
-      (if-let [existing-database-id (t2/select-one-pk Database :engine (:engine database), :name (:name database))]
+      (if-let [existing-database-id (t2/select-one-pk :model/Database :engine (:engine database), :name (:name database))]
         (do
           (log/info (u/format-color :blue "Updating Database %s %s" (:engine database) (pr-str (:name database))))
-          (t2/update! Database existing-database-id database))
+          (t2/update! :model/Database existing-database-id database))
         (do
           (log/info (u/format-color :green "Creating new %s Database %s" (:engine database) (pr-str (:name database))))
-          (let [db (first (t2/insert-returning-instances! Database database))]
+          (let [db (first (t2/insert-returning-instances! :model/Database database))]
             (if (config-from-file-sync-databases)
               (future
                 ((requiring-resolve 'metabase.sync/sync-database!) db))

@@ -4,9 +4,11 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
+   (java.sql Connection)
    (java.util.concurrent Semaphore)))
 
 (set! *warn-on-reflection* true)
@@ -138,3 +140,19 @@
     (with-open [conn (.getConnection mdb.connection/*application-db*)]
       (is (= java.sql.Connection/TRANSACTION_READ_COMMITTED
              (.getTransactionIsolation conn))))))
+
+(deftest rollback-error-handling
+  (testing "rollback error handling"
+    (let [mock-conn (reify Connection
+                      (rollback [_ _savepoint]
+                        (throw (ex-info "Rollback error" {})))
+                      (setAutoCommit [_ _])
+                      (getAutoCommit [_] true)
+                      (setSavepoint [_])
+                      (commit [_]))]
+      (binding [t2.connection/*current-connectable* mock-conn]
+        (let [e (is (thrown? Exception
+                             (t2/with-transaction [_t-conn] (throw (ex-info "Original error" {})))))]
+          (is (= "Error rolling back after previous error: Original error" (ex-message e)))
+          (is (= "Rollback error" (-> e ex-data :rollback-error ex-message)))
+          (is (= "Original error" (-> e ex-cause ex-message))))))))

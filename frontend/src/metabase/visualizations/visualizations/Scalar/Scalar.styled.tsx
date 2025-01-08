@@ -5,7 +5,7 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
-export interface ScalarContainerProps {
+interface ScalarContainerProps {
   isClickable: boolean;
 }
 

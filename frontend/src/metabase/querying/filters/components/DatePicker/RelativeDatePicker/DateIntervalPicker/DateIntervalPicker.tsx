@@ -28,7 +28,7 @@ import { setDefaultOffset, setUnit } from "./utils";
 interface DateIntervalPickerProps {
   value: DateIntervalValue;
   availableUnits: DatePickerUnit[];
-  isNew: boolean;
+  submitButtonLabel: string;
   onChange: (value: DateIntervalValue) => void;
   onSubmit: () => void;
 }
@@ -36,7 +36,7 @@ interface DateIntervalPickerProps {
 export function DateIntervalPicker({
   value,
   availableUnits,
-  isNew,
+  submitButtonLabel,
   onChange,
   onSubmit,
 }: DateIntervalPickerProps) {
@@ -85,7 +85,7 @@ export function DateIntervalPicker({
         <Tooltip label={t`Starting from…`} position="bottom">
           <Button
             aria-label={t`Starting from…`}
-            c="text-medium"
+            c="var(--mb-color-text-secondary)"
             variant="subtle"
             leftIcon={<Icon name="arrow_left_to_line" />}
             onClick={handleStartingFromClick}
@@ -97,12 +97,12 @@ export function DateIntervalPicker({
       </Flex>
       <Divider />
       <Group px="md" py="sm" position="apart">
-        <Group c="text-medium" spacing="sm">
+        <Group c="var(--mb-color-text-secondary)" spacing="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
         <Button variant="filled" type="submit">
-          {isNew ? t`Add filter` : t`Update filter`}
+          {submitButtonLabel}
         </Button>
       </Group>
     </form>

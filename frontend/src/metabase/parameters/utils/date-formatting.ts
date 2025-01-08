@@ -1,9 +1,6 @@
 import moment, { type Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
-import _ from "underscore";
 
-import { DATE_OPERATORS } from "metabase/admin/datamodel/components/filters/pickers/DatePicker/DatePicker";
-import { EXCLUDE_OPERATORS } from "metabase/admin/datamodel/components/filters/pickers/DatePicker/ExcludeDatePicker";
 import {
   DATE_MBQL_FILTER_MAPPING,
   PARAMETER_OPERATOR_TYPES,
@@ -11,83 +8,16 @@ import {
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { dateParameterValueToMBQL } from "metabase-lib/v1/parameters/utils/mbql";
 import {
+  DATE_OPERATORS,
   generateTimeFilterValuesDescriptions,
-  getRelativeDatetimeInterval,
-  getStartingFrom,
 } from "metabase-lib/v1/queries/utils/query-time";
 
 // Use a placeholder value as field references are not used in dashboard filters
 const noopRef = null;
 const RANGE_SEPARATOR = "~"; // URL-safe
 
-function getFilterValueSerializer(func: (...args: any[]) => string) {
-  return (filter: any[]) => {
-    const startingFrom = getStartingFrom(filter);
-    if (startingFrom) {
-      const [value, unit] = getRelativeDatetimeInterval(filter);
-      return func(value, unit, { startingFrom });
-    } else {
-      return func(filter[2], filter[3], filter[4] || {});
-    }
-  };
-}
-
-const serializersByOperatorName: Record<
-  string,
-  (...args: any[]) => string | null
-> = {
-  previous: getFilterValueSerializer((value, unit, options = {}) => {
-    if (options.startingFrom) {
-      const [fromValue, fromUnit] = options.startingFrom;
-      return `past${-value}${unit}s-from-${fromValue}${fromUnit}s`;
-    }
-    return `past${-value}${unit}s${options["include-current"] ? "~" : ""}`;
-  }),
-  next: getFilterValueSerializer((value, unit, options = {}) => {
-    if (options.startingFrom) {
-      const [fromValue, fromUnit] = options.startingFrom;
-      return `next${value}${unit}s-from-${-fromValue}${fromUnit}s`;
-    }
-    return `next${value}${unit}s${options["include-current"] ? "~" : ""}`;
-  }),
-  current: getFilterValueSerializer((_, unit) => `this${unit}`),
-  before: getFilterValueSerializer(value => `~${value}`),
-  after: getFilterValueSerializer(value => `${value}~`),
-  on: getFilterValueSerializer(value => `${value}`),
-  between: getFilterValueSerializer((from, to) => `${from}~${to}`),
-  exclude: (filter: any[]) => {
-    const [_op, _field, ...values] = filter;
-    const operator = getExcludeOperator(filter);
-    if (!operator || !values.length) {
-      return null;
-    }
-    const options = operator
-      .getOptionGroups()
-      .flat()
-      .filter(
-        ({ test }) => _.find(values, (value: string) => test(value)) != null,
-      );
-    return `exclude-${operator.name}-${options
-      .map(({ serialized }) => serialized)
-      .join("-")}`;
-  },
-};
-
 function getFilterOperator(filter: any[] = []) {
   return DATE_OPERATORS.find(op => op.test(filter as any));
-}
-
-function getExcludeOperator(filter: any[] = []) {
-  return EXCLUDE_OPERATORS.find(op => op.test(filter as any));
-}
-
-export function filterToUrlEncoded(filter: any[]) {
-  const operator = getFilterOperator(filter);
-  if (operator) {
-    return serializersByOperatorName[operator.name](filter);
-  } else {
-    return null;
-  }
 }
 
 const prefixedOperators = new Set([

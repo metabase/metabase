@@ -27,6 +27,7 @@ const defaultProps: Pick<
         type: "duration",
         duration: 96,
         unit: CacheDurationUnit.Hours,
+        refresh_automatically: false,
       },
     },
     { model: "database", model_id: 1, strategy: { type: "nocache" } },

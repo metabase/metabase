@@ -3,7 +3,7 @@
    [compojure.core :refer [GET POST]]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
-   [metabase.models.revision :as revision :refer [Revision]]
+   [metabase.models.revision :as revision]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -33,7 +33,7 @@
    revision_id ms/PositiveInt}
   (let [[model instance] (model-and-instance entity id)
         _                (api/write-check instance)
-        revision         (api/check-404 (t2/select-one Revision :model (name model), :model_id id, :id revision_id))]
+        revision         (api/check-404 (t2/select-one :model/Revision :model (name model), :model_id id, :id revision_id))]
     ;; if reverting a Card, make sure we have *data* permissions to run the query we're reverting to
     (when (= model :model/Card)
       (api.card/check-permissions-for-query (get-in revision [:object :dataset_query])))

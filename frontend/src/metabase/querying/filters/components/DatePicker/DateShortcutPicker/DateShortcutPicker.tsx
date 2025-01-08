@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { Fragment, useMemo } from "react";
 
 import type {
@@ -7,7 +6,7 @@ import type {
   DatePickerValueType,
   RelativeDatePickerValue,
 } from "metabase/querying/filters/types";
-import { Box, Button, Divider } from "metabase/ui";
+import { Box, Button, Divider, PopoverBackButton } from "metabase/ui";
 
 import { MIN_WIDTH } from "../constants";
 
@@ -16,17 +15,19 @@ import { getShortcutOptionGroups, getTypeOptions } from "./utils";
 interface DateShortcutPickerProps {
   availableOperators: DatePickerOperator[];
   availableShortcuts: DatePickerShortcut[];
-  backButton?: ReactNode;
+  backButtonLabel?: string;
   onChange: (value: RelativeDatePickerValue) => void;
   onSelectType: (type: DatePickerValueType) => void;
+  onBack?: () => void;
 }
 
 export function DateShortcutPicker({
   availableOperators,
   availableShortcuts,
-  backButton,
+  backButtonLabel,
   onChange,
   onSelectType,
+  onBack,
 }: DateShortcutPickerProps) {
   const shortcutGroups = useMemo(() => {
     return getShortcutOptionGroups(availableShortcuts);
@@ -38,14 +39,18 @@ export function DateShortcutPicker({
 
   return (
     <Box p="sm" miw={MIN_WIDTH}>
-      {backButton}
+      {onBack && (
+        <PopoverBackButton p="sm" onClick={onBack}>
+          {backButtonLabel}
+        </PopoverBackButton>
+      )}
       {shortcutGroups.map((group, groupIndex) => (
         <Fragment key={groupIndex}>
           {groupIndex > 0 && <Divider mx="md" my="sm" />}
           {group.map((option, optionIndex) => (
             <Button
               key={optionIndex}
-              c="text-dark"
+              c="var(--mb-text-primary)"
               display="block"
               variant="subtle"
               onClick={() => onChange(option.value)}
@@ -61,7 +66,7 @@ export function DateShortcutPicker({
       {typeOptions.map((option, optionIndex) => (
         <Button
           key={optionIndex}
-          c="text-dark"
+          c="var(--mb-text-primary)"
           display="block"
           variant="subtle"
           onClick={() => onSelectType(option.type)}
