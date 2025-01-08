@@ -1,7 +1,9 @@
 import { MonthPicker } from "metabase/ui";
 
 const args = {
-  allowDeselect: undefined,
+  type: "default",
+  allowDeselect: false,
+  allowSingleDateInRange: false,
 };
 
 const sampleArgs = {
@@ -9,7 +11,14 @@ const sampleArgs = {
 };
 
 const argTypes = {
+  type: {
+    options: ["default", "range", "multiple"],
+    control: { type: "inline-radio" },
+  },
   allowDeselect: {
+    control: { type: "boolean" },
+  },
+  allowSingleDateInRange: {
     control: { type: "boolean" },
   },
 };

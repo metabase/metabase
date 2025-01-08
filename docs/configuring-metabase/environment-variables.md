@@ -620,7 +620,7 @@ Keyword setting to control whitelabeling of the help link. Valid values are `:me
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
-- Default: `null`
+- Default: `https://www.metabase.com/help/premium`
 - [Configuration file name](./config-file.md): `help-link-custom-destination`
 
 Custom URL for the help link.
@@ -738,7 +738,7 @@ Enable group membership synchronization with JWT.
 - Default: `null`
 - [Configuration file name](./config-file.md): `jwt-identity-provider-uri`
 
-URL of JWT based login page.
+URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK.
 
 ### `MB_JWT_SHARED_SECRET`
 
@@ -1084,7 +1084,7 @@ The base URL where dashboard notitification links will point to instead of the M
 ### `MB_NOTIFICATION_THREAD_POOL_SIZE`
 
 - Type: integer
-- Default: `10`
+- Default: `2`
 
 The size of the thread pool used to send notifications.
 
@@ -1869,6 +1869,15 @@ Type: string<br>
 Default: `null`
 
 Used during development of third-party drivers. Set the value to have that plugin manifest get loaded during startup. Specify multiple plugin manifests by comma-separating them.
+
+### `MB_DISABLE_SCHEDULER`
+
+Type: boolean<br>
+Default: `false`
+
+When `true`, Metabase will turn off Metabase’s scheduled jobs, which include syncs, fingerprinting, and scanning, as well as dashboard subscriptions, alerts, and model caching.
+
+Can be useful for testing, or when setting up a [git-based workflow](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/git-based-workflow).
 
 ### `MB_DISABLE_SESSION_THROTTLE`
 

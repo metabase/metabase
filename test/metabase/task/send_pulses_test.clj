@@ -5,9 +5,6 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.driver :as driver]
-   [metabase.models.pulse :refer [Pulse]]
-   [metabase.models.pulse-channel :refer [PulseChannel]]
-   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.send :as pulse.send]
    [metabase.task :as task]
@@ -23,59 +20,59 @@
 (deftest clear-pulse-channels-test
   (pulse-channel-test/with-send-pulse-setup!
     (testing "Removes empty PulseChannel"
-      (mt/with-temp [Pulse        {pulse-id :id} {}
-                     PulseChannel _ {:pulse_id pulse-id}]
+      (mt/with-temp [:model/Pulse        {pulse-id :id} {}
+                     :model/PulseChannel _ {:pulse_id pulse-id}]
         (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
         (is (= 0
-               (t2/count PulseChannel)))
-        (is (:archived (t2/select-one Pulse :id pulse-id)))))
+               (t2/count :model/PulseChannel)))
+        (is (:archived (t2/select-one :model/Pulse :id pulse-id)))))
 
     (testing "emails"
       (testing "keep if has PulseChannelRecipient"
-        (mt/with-temp [Pulse                 {pulse-id :id} {}
-                       PulseChannel          {pc-id :id} {:pulse_id     pulse-id
-                                                          :channel_type :email}
-                       PulseChannelRecipient _           {:user_id          (mt/user->id :rasta)
-                                                          :pulse_channel_id pc-id}]
+        (mt/with-temp [:model/Pulse                 {pulse-id :id} {}
+                       :model/PulseChannel          {pc-id :id} {:pulse_id     pulse-id
+                                                                 :channel_type :email}
+                       :model/PulseChannelRecipient _           {:user_id          (mt/user->id :rasta)
+                                                                 :pulse_channel_id pc-id}]
           (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
           (is (= 1
-                 (t2/count PulseChannel)))))
+                 (t2/count :model/PulseChannel)))))
 
       (testing "keep if has external email"
-        (mt/with-temp [Pulse        {pulse-id :id} {}
-                       PulseChannel _ {:pulse_id     pulse-id
-                                       :channel_type :email
-                                       :details      {:emails ["test@metabase.com"]}}]
+        (mt/with-temp [:model/Pulse        {pulse-id :id} {}
+                       :model/PulseChannel _ {:pulse_id     pulse-id
+                                              :channel_type :email
+                                              :details      {:emails ["test@metabase.com"]}}]
           (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
           (is (= 1
-                 (t2/count PulseChannel)))))
+                 (t2/count :model/PulseChannel)))))
 
       (testing "clear if no recipients"
-        (mt/with-temp [Pulse        {pulse-id :id} {}
-                       PulseChannel _ {:pulse_id     pulse-id
-                                       :channel_type :email}]
+        (mt/with-temp [:model/Pulse        {pulse-id :id} {}
+                       :model/PulseChannel _ {:pulse_id     pulse-id
+                                              :channel_type :email}]
           (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
           (is (= 0
-                 (t2/count PulseChannel))))))
+                 (t2/count :model/PulseChannel))))))
 
     (testing "slack"
       (testing "Has channel"
-        (mt/with-temp [Pulse        {pulse-id :id} {}
-                       PulseChannel _ {:pulse_id     pulse-id
-                                       :channel_type :slack
-                                       :details      {:channel "#test"}}]
+        (mt/with-temp [:model/Pulse        {pulse-id :id} {}
+                       :model/PulseChannel _ {:pulse_id     pulse-id
+                                              :channel_type :slack
+                                              :details      {:channel "#test"}}]
           (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
           (is (= 1
-                 (t2/count PulseChannel)))))
+                 (t2/count :model/PulseChannel)))))
 
       (testing "No channel"
-        (mt/with-temp [Pulse        {pulse-id :id} {}
-                       PulseChannel _ {:pulse_id     pulse-id
-                                       :channel_type :slack
-                                       :details      {:channel nil}}]
+        (mt/with-temp [:model/Pulse        {pulse-id :id} {}
+                       :model/PulseChannel _ {:pulse_id     pulse-id
+                                              :channel_type :slack
+                                              :details      {:channel nil}}]
           (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
           (is (= 0
-                 (t2/count PulseChannel))))))
+                 (t2/count :model/PulseChannel))))))
 
     (testing "http"
       (testing "do not clear if has a channel_id"

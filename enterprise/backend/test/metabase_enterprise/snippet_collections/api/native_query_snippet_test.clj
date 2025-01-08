@@ -1,7 +1,6 @@
 (ns metabase-enterprise.snippet-collections.api.native-query-snippet-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [Collection NativeQuerySnippet]]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
@@ -18,13 +17,13 @@
   the permissions we *should* need, either `:read` or `:write`."
   [required-perms has-perms?]
   (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
-    (t2.with-temp/with-temp [Collection      normal-collection {:name "Normal Collection", :namespace "snippets"}]
+    (t2.with-temp/with-temp [:model/Collection      normal-collection {:name "Normal Collection", :namespace "snippets"}]
       ;; A user needs native query permissions on *any* database (among other things, in EE) to read/edit/create a NativeQuerySnippet
       (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
       ;; run tests with both a normal Collection and the Root Collection
       (doseq [{collection-name :name, :as collection} [normal-collection root-collection]]
         (testing (format "\nSnippet in %s" collection-name)
-          (t2.with-temp/with-temp [NativeQuerySnippet snippet {:collection_id (:id collection)}]
+          (t2.with-temp/with-temp [:model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
             (testing "\nShould be allowed regardless if EE features aren't enabled"
               (mt/with-premium-features #{}
                 (is (= true
@@ -85,7 +84,7 @@
              (let [response (mt/user-http-request :rasta :post "native-query-snippet" snippet-properties)]
                (not= response "You don't have permissions to do that."))
              (finally
-               (t2/delete! NativeQuerySnippet :name snippet-name)))))))))
+               (t2/delete! :model/NativeQuerySnippet :name snippet-name)))))))))
 
 (deftest edit-test
   (testing "PUT /api/native-query-snippet/:id"
@@ -100,16 +99,16 @@
   (testing "PUT /api/native-query-snippet/:id"
     (testing "\nPerms for moving a Snippet"
       (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
-        (mt/with-temp [Collection source {:name "Current Parent Collection", :namespace "snippets"}
-                       Collection dest   {:name "New Parent Collection", :namespace "snippets"}]
+        (mt/with-temp [:model/Collection source {:name "Current Parent Collection", :namespace "snippets"}
+                       :model/Collection dest   {:name "New Parent Collection", :namespace "snippets"}]
           ;; A user needs native query permissions on *any* database (among other things, in EE) to read/edit/create a NativeQuerySnippet
           (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
           (doseq [source-collection [source root-collection]]
-            (t2.with-temp/with-temp [NativeQuerySnippet snippet {:collection_id (:id source-collection)}]
+            (t2.with-temp/with-temp [:model/NativeQuerySnippet snippet {:collection_id (:id source-collection)}]
               (doseq [dest-collection [dest root-collection]]
                 (letfn [(has-perms? []
                           ;; make sure the Snippet is back in the original Collection if it was changed
-                          (t2/update! NativeQuerySnippet (:id snippet) {:collection_id (:id source-collection)})
+                          (t2/update! :model/NativeQuerySnippet (:id snippet) {:collection_id (:id source-collection)})
                           (let [response (mt/user-http-request :rasta :put (format "native-query-snippet/%d" (:id snippet))
                                                                {:collection_id (:id dest-collection)})]
                             (cond
@@ -146,13 +145,13 @@
     (testing "Snippet collections should be returned on EE with the snippet-collections feature flag, rather than
              returning all nested snippets as a flat list"
       (mt/with-premium-features #{:snippet-collections}
-        (mt/with-temp [Collection         collection {:namespace "snippets" :name "My Snippet Collection"}
-                       Collection         sub-collection {:namespace "snippets"
-                                                          :name      "Nested Snippet Collection"
-                                                          :location  (collection/location-path collection)}
-                       NativeQuerySnippet snippet {:collection_id (:id collection) :name "My Snippet"}
-                       NativeQuerySnippet _ {:collection_id (:id sub-collection)
-                                             :name          "Nested Snippet"}]
+        (mt/with-temp [:model/Collection         collection {:namespace "snippets" :name "My Snippet Collection"}
+                       :model/Collection         sub-collection {:namespace "snippets"
+                                                                 :name      "Nested Snippet Collection"
+                                                                 :location  (collection/location-path collection)}
+                       :model/NativeQuerySnippet snippet {:collection_id (:id collection) :name "My Snippet"}
+                       :model/NativeQuerySnippet _ {:collection_id (:id sub-collection)
+                                                    :name          "Nested Snippet"}]
           (is (=?
                [{:id (:id snippet) :name "My Snippet"}
                 {:id (:id sub-collection) :name "Nested Snippet Collection"}]

@@ -4,7 +4,7 @@
   (:require
    [metabase.db.query :as mdb.query]
    [metabase.models.field :as field]
-   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -134,7 +134,7 @@
        (field-values/advanced-field-values-expired? fv)
        (do
          ;; It's possible another process has already recalculated this, but spurious recalculations are OK.
-         (t2/delete! FieldValues :id (:id fv))
+         (t2/delete! :model/FieldValues :id (:id fv))
          (recur fv-type field constraints))
 
        :else fv))))
