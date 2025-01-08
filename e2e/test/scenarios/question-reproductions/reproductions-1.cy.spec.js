@@ -515,37 +515,41 @@ describe("issue 17514", () => {
       });
     });
 
-    it("should not show the run overlay when we apply dashboard filter on a question with removed column and then click through its title (metabase#17514-1)", () => {
-      H.editDashboard();
+    it(
+      "should not show the run overlay when we apply dashboard filter on a question with removed column and then click through its title (metabase#17514-1)",
+      { tags: "@flaky" },
+      () => {
+        H.editDashboard();
 
-      openVisualizationOptions();
+        openVisualizationOptions();
 
-      hideColumn("Products → Ean");
+        hideColumn("Products → Ean");
 
-      closeModal();
+        closeModal();
 
-      H.saveDashboard();
+        H.saveDashboard();
 
-      H.filterWidget().click();
-      setAdHocFilter({ timeBucket: "years" });
+        H.filterWidget().click();
+        setAdHocFilter({ timeBucket: "years" });
 
-      cy.location("search").should("eq", "?date_filter=past30years");
-      cy.wait("@cardQuery");
+        cy.location("search").should("eq", "?date_filter=past30years");
+        cy.wait("@cardQuery");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Previous 30 Years");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Previous 30 Years");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("17514").click();
-      cy.wait("@dataset");
-      cy.findByTextEnsureVisible("Subtotal");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("17514").click();
+        cy.wait("@dataset");
+        cy.findByTextEnsureVisible("Subtotal");
 
-      // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("79.37").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Filter by this value");
-    });
+        // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("79.37").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Filter by this value");
+      },
+    );
   });
 
   describe("scenario 2", () => {

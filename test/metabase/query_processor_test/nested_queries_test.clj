@@ -671,7 +671,7 @@
                                                    :data :cols)]
                                        (-> (into {} col)
                                            (assoc :source :fields)
-                                           (dissoc :position :aggregation_index)))]
+                                           (dissoc :position :aggregation_index :ident)))]
             ;; since the bucketing is happening in the source query rather than at this level, the field ref should
             ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
             ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
