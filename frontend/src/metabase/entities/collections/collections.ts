@@ -193,7 +193,7 @@ function useListQuery(
   );
 
   const collections = useListCollectionsQuery(
-    !params || params?.tree ? skipToken : params,
+    params?.tree ? skipToken : params,
     options,
   );
 
