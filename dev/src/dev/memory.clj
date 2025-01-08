@@ -40,7 +40,8 @@
      (log/warnf "Allocated: %s" (mb-str (:allocations m#)))
      (:result m#)))
 
-(def ^:dynamic *memory-log-level* -1)
+(def ^{:dynamic true
+       :private true} *memory-log-level* -1)
 
 (defn- used-mb
   []
@@ -57,11 +58,11 @@
           before (used-mb)
           print-stats (fn
                         ([stats]
-                         (println (format "%s%s | Memory before:: %.2f MB "
-                                          indent context stats)))
+                         (log/infof "%s%s | Memory before:: %.2f MB "
+                                   indent context stats))
                         ([before after]
-                         (println (format "%s%s | Memory after:: %.2f MB (delta: %.2f MB)"
-                                          indent context after (- after before)))))
+                         (log/infof "%s%s | Memory after:: %.2f MB (delta: %.2f MB)"
+                                    indent context after (- after before))))
           _ (print-stats before)
           result (body-fn)
           after (used-mb)
